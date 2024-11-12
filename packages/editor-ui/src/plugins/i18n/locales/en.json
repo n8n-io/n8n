@@ -2694,5 +2694,6 @@
 	"communityPlusModal.features.third.description": "Search and organize past workflow executions for easier review",
 	"communityPlusModal.input.email.label": "Enter email to receive your license key",
 	"communityPlusModal.button.skip": "Skip",
-	"communityPlusModal.button.confirm": "Send me a free license key"
+	"communityPlusModal.button.confirm": "Send me a free license key",
+	"executeWorkflowTrigger.createNewSubworkflow": "Create a sub-workflow in {projectName}"
 }

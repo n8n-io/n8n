@@ -18,6 +18,9 @@ import { useRouter } from 'vue-router';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/constants';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -52,9 +55,11 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const projectStore = useProjectsStore();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
+const telemetry = useTelemetry();
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
@@ -80,6 +85,14 @@ const {
 	setWorkflowsResources,
 	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
+
+const currentProjectName = computed(() => {
+	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
+		return `'${i18n.baseText('projects.menu.personal')}'`;
+	}
+
+	return `'${projectStore.currentProject?.name}'`;
+});
 
 const valueToDisplay = computed<NodeParameterValue>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -122,6 +135,7 @@ function onInputChange(value: NodeParameterValue): void {
 }
 
 function onListItemSelected(value: NodeParameterValue) {
+	telemetry.track('User chose sub-workflow', {}, { withPostHog: true });
 	onInputChange(value);
 	hideDropdown();
 }
@@ -176,6 +190,19 @@ watch(
 onClickOutside(dropdown, () => {
 	isDropdownVisible.value = false;
 });
+
+const onAddResourceClicked = () => {
+	const urlSearchParams = new URLSearchParams();
+	urlSearchParams.set('sub-workflow', 'true');
+
+	if (projectStore.currentProjectId) {
+		urlSearchParams.set('projectId', projectStore.currentProjectId);
+	}
+
+	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
+
+	window.open(`${VIEWS.NEW_WORKFLOW}?${urlSearchParams.toString()}`, '_blank');
+};
 </script>
 
 <template>
@@ -194,11 +221,17 @@ onClickOutside(dropdown, () => {
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
 			:error-view="false"
+			:allow-new-resources="{
+				label: i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
+					interpolate: { projectName: currentProjectName },
+				}),
+			}"
 			:width="width"
 			:event-bus="eventBus"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
