@@ -56,9 +56,9 @@ export class TaskRunnersConfig {
 
 	/** Max duration (in seconds) a task is allowed to take before being aborted. */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 5; // @TODO: Update later to 60
+	taskTimeout: number = 60; // @TODO: Update later to 60
 
 	/** Interval (in seconds) at which the runner should send a heartbeat to the broker. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
-	heartbeatInterval: number = 30; // @TODO: Decide on default
+	heartbeatInterval: number = 30;
 }
