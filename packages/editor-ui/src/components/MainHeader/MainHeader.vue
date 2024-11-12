@@ -9,6 +9,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
+	WORKFLOW_EVALUATION_EXPERIMENT,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -17,6 +18,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { usePushConnection } from '@/composables/usePushConnection';
+import { usePostHog } from '@/stores/posthog.store';
 
 const router = useRouter();
 const route = useRoute();
@@ -27,17 +29,24 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const posthogStore = usePostHog();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
 const executionToReturnTo = ref('');
 const dirtyState = ref(false);
 
-const tabBarItems = computed(() => [
-	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
-	{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-	{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
-]);
+const tabBarItems = computed(() => {
+	const items = [
+		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
+		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+	];
+
+	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
+		items.push({ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') });
+	}
+	return items;
+});
 
 const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
@@ -68,7 +77,6 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	console.log('🚀 ~ syncTabsWithRoute ~ to.name:', to.name);
 	if (to.name === VIEWS.WORKFLOW_EVALUATION) {
 		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 	}

@@ -3,6 +3,8 @@ import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import { createTestDefinitionsApi } from '@/api/evaluations.ee';
 import type { ITestDefinition } from '@/api/evaluations.ee';
+import { usePostHog } from './posthog.store';
+import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
 export const useEvaluationsStore = defineStore(
 	'evaluations',
@@ -13,6 +15,7 @@ export const useEvaluationsStore = defineStore(
 		const fetchedAll = ref(false);
 
 		// Store instances
+		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
 		const testDefinitionsApi = createTestDefinitionsApi();
 
@@ -21,13 +24,17 @@ export const useEvaluationsStore = defineStore(
 			return Object.values(testDefinitionsById.value).sort((a, b) => a.name.localeCompare(b.name));
 		});
 
+		// Enable with `window.featureFlags.override('025_workflow_evaluation', true)`
+		const isFeatureEnabled = computed(() =>
+			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT),
+		);
+
 		const isLoading = computed(() => loading.value);
 
 		const hasTestDefinitions = computed(() => Object.keys(testDefinitionsById.value).length > 0);
 
 		// Methods
 		const setAllTestDefinitions = (definitions: ITestDefinition[]) => {
-			console.log('🚀 ~ setAllTestDefinitions ~ definitions:', definitions);
 			testDefinitionsById.value = definitions.reduce(
 				(acc: Record<number, ITestDefinition>, def: ITestDefinition) => {
 					acc[def.id] = def;
@@ -76,7 +83,7 @@ export const useEvaluationsStore = defineStore(
 					rootStore.restApiContext,
 					{ includeScopes },
 				);
-				console.log('🚀 ~ fetchAll ~ retrievedDefinitions:', retrievedDefinitions);
+
 				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
 				return retrievedDefinitions;
 			} finally {
@@ -131,6 +138,7 @@ export const useEvaluationsStore = defineStore(
 			allTestDefinitions,
 			isLoading,
 			hasTestDefinitions,
+			isFeatureEnabled,
 
 			// Methods
 			fetchAll,

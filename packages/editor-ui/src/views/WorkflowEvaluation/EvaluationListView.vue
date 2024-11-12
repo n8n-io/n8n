@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
@@ -8,8 +8,10 @@ import { useI18n } from '@/composables/useI18n';
 import EmptyState from '@/components/WorkflowEvaluation/ListEvaluation/EmptyState.vue';
 import TestsList from '@/components/WorkflowEvaluation/ListEvaluation/TestsList.vue';
 import type { TestExecution, TestListItem } from '@/components/WorkflowEvaluation/types';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 const router = useRouter();
+const tagsStore = useAnnotationTagsStore();
 const evaluationsStore = useEvaluationsStore();
 const isLoading = ref(false);
 const toast = useToast();
@@ -20,25 +22,21 @@ const tests = computed<TestListItem[]>(() => {
 		id: test.id,
 		name: test.name,
 		tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
-		testCases: 0, // This should come from the API
+		testCases: 0, // TODO: This should come from the API
 		execution: getTestExecution(test.id),
 	}));
 });
 const hasTests = computed(() => tests.value.length > 0);
+const allTags = computed(() => tagsStore.allTags);
 
-// Mock function to get tag name - replace with actual tag lookup
 function getTagName(tagId: string) {
-	const tags = {
-		tag1: 'marketing',
-		tag2: 'SupportOps',
-	};
-	return tags[tagId] || '';
+	const matchingTag = allTags.value.find((t) => t.id === tagId);
+
+	return matchingTag?.name ?? '';
 }
 
-// Mock function to get test execution data - replace with actual API call
-function getTestExecution(testId: number): TestExecution {
-	console.log('🚀 ~ getTestExecution ~ testId:', testId);
-	// Mock data - replace with actual data from your API
+// TODO: Replace with actual API call once implemented
+function getTestExecution(_testId: number): TestExecution {
 	const mockExecutions = {
 		12: {
 			lastRun: 'an hour ago',
@@ -63,24 +61,18 @@ function onCreateTest() {
 
 function onRunTest(testId: number) {
 	console.log('Running test:', testId);
-	// Implement test run logic
+	// TODO: Implement test run logic
 }
 
 function onViewDetails(testId: number) {
-	console.log('Viewing details for test:', testId);
 	void router.push({ name: VIEWS.WORKFLOW_EVALUATION_EDIT, params: { testId } });
-	// Implement navigation to test details
 }
 
 function onEditTest(testId: number) {
-	console.log('Editing test:', testId);
 	void router.push({ name: VIEWS.WORKFLOW_EVALUATION_EDIT, params: { testId } });
-	// Implement edit navigation
 }
 
 async function onDeleteTest(testId: number) {
-	console.log('Deleting test:', testId);
-	// Implement delete logic
 	await evaluationsStore.deleteById(testId);
 
 	toast.showMessage({
@@ -90,17 +82,30 @@ async function onDeleteTest(testId: number) {
 }
 
 // Load initial data
-async function loadTests() {
+async function loadInitialData() {
 	isLoading.value = true;
 	try {
+		await tagsStore.fetchAll();
 		await evaluationsStore.fetchAll();
 	} finally {
 		isLoading.value = false;
 	}
 }
 
-// Load tests on mount
-void loadTests();
+onMounted(() => {
+	if (!evaluationsStore.isFeatureEnabled) {
+		toast.showMessage({
+			// message: "Feature not enabled",
+			title: 'Feature not enabled',
+			type: 'error',
+		});
+		void router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: router.currentRoute.value.params.name },
+		});
+	}
+	void loadInitialData();
+});
 </script>
 
 <template>
