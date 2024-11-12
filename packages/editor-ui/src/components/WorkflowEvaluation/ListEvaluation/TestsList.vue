@@ -5,6 +5,7 @@ import type { TestListItem } from '@/components/WorkflowEvaluation/types';
 export interface TestListProps {
 	tests: TestListItem[];
 }
+defineEmits<{ 'create-test': [] }>();
 defineProps<TestListProps>();
 </script>
 

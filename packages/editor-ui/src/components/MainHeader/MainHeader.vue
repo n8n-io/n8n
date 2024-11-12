@@ -77,7 +77,7 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	if (to.name === VIEWS.WORKFLOW_EVALUATION) {
+	if (to.matched.some((record) => record.name === VIEWS.WORKFLOW_EVALUATION)) {
 		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 	}
 	if (
