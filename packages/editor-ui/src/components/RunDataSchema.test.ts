@@ -135,7 +135,7 @@ describe('RunDataSchema.vue', () => {
 	});
 
 	it('renders schema for empty data', async () => {
-		const { getAllByText, getAllByTestId, container } = renderComponent();
+		const { getAllByText, getAllByTestId } = renderComponent();
 
 		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2);
 
@@ -160,7 +160,7 @@ describe('RunDataSchema.vue', () => {
 			],
 		});
 
-		const { getAllByTestId, html } = renderComponent();
+		const { getAllByTestId } = renderComponent();
 		const headers = getAllByTestId('run-data-schema-header');
 		expect(headers.length).toBe(2);
 		expect(headers[0]).toHaveTextContent('Set1');
