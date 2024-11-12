@@ -297,7 +297,7 @@ export const useFlattenSchema = () => {
 			return items.concat(
 				schema.value
 					.map((item) => {
-						const itemPrefix = ['array', 'object'].includes(schema.type) ? schema.key : '';
+						const itemPrefix = schema.type === 'array' ? schema.key : '';
 						return flattenSchema({
 							schema: item,
 							node,
