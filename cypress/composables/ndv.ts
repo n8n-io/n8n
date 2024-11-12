@@ -53,7 +53,7 @@ export function getOutputPanelTable() {
 }
 
 export function getNoToolsUsedCallout() {
-	return cy.getByTestId('no-tools-used-callout');
+	return cy.getByTestId('run-data-callout');
 }
 
 /**
