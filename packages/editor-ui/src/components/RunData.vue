@@ -1227,17 +1227,20 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function getExecutionLinkLabel(task: ITaskMetadata) {
+function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	if (task.parentExecution) {
 		return i18n.baseText('runData.openParentExecution', {
 			interpolate: { id: task.parentExecution.executionId },
 		});
 	}
+
 	if (task.subExecution) {
 		return i18n.baseText('runData.openSubExecution', {
 			interpolate: { id: task.subExecution.executionId },
 		});
 	}
+
+	return;
 }
 
 defineExpose({ enterEditMode });
