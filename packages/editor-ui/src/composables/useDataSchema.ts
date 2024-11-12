@@ -1,15 +1,19 @@
+import { ref } from 'vue';
 import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
 import {
 	type ITaskDataConnections,
 	type IDataObject,
 	type INodeExecutionData,
+	type INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { merge } from 'lodash-es';
-import { generatePath } from '@/utils/mappingUtils';
+import { generatePath, getMappedExpression } from '@/utils/mappingUtils';
 import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isPresent } from '@/utils/typesUtils';
+import { isPresent, shorten } from '@/utils/typesUtils';
+import { i18n } from '@/plugins/i18n';
+import { checkExhaustive } from '@/utils/typeGuards';
 
 export function useDataSchema() {
 	function getSchema(
@@ -164,3 +168,197 @@ export function useDataSchema() {
 		filterSchema,
 	};
 }
+
+export type SchemaNode = {
+	node: INodeUi;
+	nodeType: INodeTypeDescription;
+	depth: number;
+	connectedOutputIndexes: number[];
+	itemsCount: number;
+	schema: Schema | null;
+};
+
+export type RenderItem = {
+	title?: string;
+	path?: string;
+	level?: number;
+	depth?: number;
+	expression?: string;
+	value?: string;
+	id: string;
+	icon?: string;
+	collapsable?: boolean;
+	nodeType?: INodeUi['type'];
+	type: 'item';
+};
+
+export type RenderHeader = {
+	id: string;
+	title: string;
+	info?: string;
+	collapsable: boolean;
+	nodeType: INodeTypeDescription;
+	itemCount: number | null;
+	type: 'header';
+};
+
+type Renders = RenderHeader | RenderItem;
+
+const getIconBySchemaType = (type: Schema['type']): string => {
+	switch (type) {
+		case 'object':
+			return 'cube';
+		case 'array':
+			return 'list';
+		case 'string':
+		case 'null':
+			return 'font';
+		case 'number':
+			return 'hashtag';
+		case 'boolean':
+			return 'check-square';
+		case 'function':
+			return 'code';
+		case 'bigint':
+			return 'calculator';
+		case 'symbol':
+			return 'sun';
+		case 'undefined':
+			return 'ban';
+		default:
+			checkExhaustive(type);
+			return '';
+	}
+};
+
+const isDataEmpty = (schema: Schema | null) => {
+	if (!schema) return true;
+	// Utilize the generated schema instead of looping over the entire data again
+	// The schema for empty data is { type: 'object' | 'array', value: [] }
+	const isObjectOrArray = schema.type === 'object' || schema.type === 'array';
+	const isEmpty = Array.isArray(schema.value) && schema.value.length === 0;
+
+	return isObjectOrArray && isEmpty;
+};
+
+export const useFlattenSchema = () => {
+	const closedNodes = ref<Set<string>>(new Set());
+	const toggleNode = (id: string) => {
+		if (closedNodes.value.has(id)) {
+			closedNodes.value.delete(id);
+		} else {
+			closedNodes.value.add(id);
+		}
+	};
+
+	const flattSchema = ({
+		schema,
+		node = { name: '', type: '' },
+		depth = 0,
+		prefix = '',
+		level = 0,
+	}: {
+		schema: Schema;
+		node?: { name: string; type: string };
+		depth?: number;
+		prefix?: string;
+		level?: number;
+	}): RenderItem[] => {
+		const expression = getMappedExpression({
+			nodeName: node.name,
+			distanceFromActive: depth,
+			path: schema.path,
+		});
+
+		if (Array.isArray(schema.value)) {
+			const items: RenderItem[] = [];
+
+			if (schema.key) {
+				items.push({
+					title: prefix ? `${prefix}[${schema.key}]` : schema.key,
+					path: schema.path,
+					expression,
+					depth,
+					level,
+					icon: getIconBySchemaType(schema.type),
+					id: expression,
+					collapsable: true,
+					nodeType: node.type,
+					type: 'item',
+				});
+			}
+
+			if (closedNodes.value.has(expression)) {
+				return items;
+			}
+
+			return items.concat(
+				schema.value
+					.map((item) => {
+						const itemPrefix = schema.type === 'array' ? schema.key : '';
+						return flattSchema({ schema: item, node, depth, prefix: itemPrefix, level: level + 1 });
+					})
+					.flat(),
+			);
+		} else if (schema.key) {
+			return [
+				{
+					title: schema.key,
+					path: schema.path,
+					expression,
+					level,
+					depth,
+					value: shorten(schema.value, 600, 0),
+					id: expression,
+					icon: getIconBySchemaType(schema.type),
+					collapsable: false,
+					nodeType: node.type,
+					type: 'item',
+				},
+			];
+		} else {
+			return [];
+		}
+	};
+
+	const flattSchemaNode = (schemaNode: SchemaNode) => {
+		const { schema, node, depth } = schemaNode;
+
+		if (!schema) {
+			return [];
+		}
+
+		return flattSchema({ schema, node, depth });
+	};
+
+	const flattMultipleSchema = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
+		nodes.reduce<Renders[]>((acc, item, index) => {
+			acc.push({
+				title: item.node.name,
+				id: item.node.name,
+				collapsable: true,
+				nodeType: item.nodeType,
+				itemCount: item.itemsCount,
+				info: additionalInfo(item.node),
+				type: 'header',
+			});
+
+			if (closedNodes.value.has(item.node.name)) {
+				return acc;
+			}
+
+			if (isDataEmpty(item.schema)) {
+				acc.push({
+					id: `empty-${index}`,
+					value: i18n.baseText('dataMapping.schemaView.emptyData'),
+					type: 'item',
+				});
+				return acc;
+			}
+
+			acc.push(...flattSchemaNode(item));
+			return acc;
+		}, []);
+
+	return { closedNodes, toggleNode, flattSchema, flattMultipleSchema };
+};
