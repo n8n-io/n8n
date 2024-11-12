@@ -53,4 +53,8 @@ export class TaskRunnersConfig {
 	/** Should the output of deduplication be asserted for correctness */
 	@Env('N8N_RUNNERS_ASSERT_DEDUPLICATION_OUTPUT')
 	assertDeduplicationOutput: boolean = false;
+
+	/** Max duration (in seconds) a task is allowed to take before being aborted. */
+	@Env('N8N_RUNNERS_TASK_TIMEOUT')
+	taskTimeout: number = 3; // @TODO: Change later to 60
 }
