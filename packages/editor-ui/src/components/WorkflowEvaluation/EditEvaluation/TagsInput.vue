@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ITag } from '@/Interface';
+import { createEventBus } from 'n8n-design-system';
 import { computed } from 'vue';
 
 export interface TagsInputProps {
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<TagsInputProps>(), {
 
 const emit = defineEmits<{ 'update:modelValue': [value: TagsInputProps['modelValue']] }>();
 
+const tagsEventBus = createEventBus();
 const getTagName = computed(() => (tagId: string) => {
 	return props.tagsById[tagId]?.name ?? '';
 });
@@ -60,8 +62,8 @@ function updateTags(tags: string[]) {
 				:all-tags="allTags"
 				:is-loading="isLoading"
 				:tags-by-id="tagsById"
-				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
+				:event-bus="tagsEventBus"
 				@update:model-value="updateTags"
 				@esc="cancelEditing('tags')"
 				@blur="saveChanges('tags')"
