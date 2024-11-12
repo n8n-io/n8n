@@ -513,8 +513,8 @@ const subWorkflowData = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
-	const metadata = get(workflowRunData.value, [node.value.name, props.runIndex, 'metadata'], null);
-	return metadata;
+
+	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
 });
 
 const hasReleatedExectuion = computed((): boolean => {
@@ -990,7 +990,7 @@ function getRunLabel(option: number) {
 		interpolate: { count: itemsCount },
 	});
 
-	const metadata = get(workflowRunData.value, [node.value.name, props.runIndex, 'metadata'], null);
+	const metadata = workflowRunData.value?.[node.value.name]?.[option - 1]?.metadata ?? null;
 	const subexecutions = metadata?.subExecutionsCount
 		? i18n.baseText('ndv.output.andSubExecutions', {
 				adjustToNumber: metadata.subExecutionsCount,
