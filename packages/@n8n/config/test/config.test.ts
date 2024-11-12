@@ -235,6 +235,7 @@ describe('GlobalConfig', () => {
 			maxConcurrency: 5,
 			assertDeduplicationOutput: false,
 			taskTimeout: 3, // @TODO: Update later to 60
+			heartbeatInterval: 5, // @TODO: Decide on default
 		},
 		sentry: {
 			backendDsn: '',
