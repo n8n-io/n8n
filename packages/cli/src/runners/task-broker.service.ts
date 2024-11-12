@@ -432,24 +432,20 @@ export class TaskBroker {
 		});
 	}
 
-	private async handleTaskTimeout(taskId: string) {
+	private async handleTaskTimeout(taskId: Task['id']) {
 		const task = this.tasks.get(taskId);
 
 		if (!task) return;
 
 		clearTimeout(task.timeout);
 
-		const timeoutMsg = `Task execution timed out after ${this.config.taskTimeout} seconds`;
+		this.runnerLifecycleEvents.emit('runner:timed-out-during-task'); // unresponsive -> restart
 
-		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+		const timeoutError = new ApplicationError(
+			`Task execution timed out after ${this.config.taskTimeout} seconds`,
+		);
 
-		await this.messageRunner(task.runnerId, {
-			type: 'broker:taskcancel', // @TODO: Kill task runner process instead
-			taskId,
-			reason: timeoutMsg,
-		});
-
-		await this.taskErrorHandler(taskId, new ApplicationError(timeoutMsg));
+		await this.taskErrorHandler(taskId, timeoutError);
 	}
 
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {

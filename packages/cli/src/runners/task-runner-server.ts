@@ -80,7 +80,7 @@ export class TaskRunnerServer {
 			this.wsServer.clients.forEach((ws) => {
 				if (!ws.isAlive) {
 					void this.taskRunnerWsServer.disconnect(ws);
-					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
+					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check'); // unresponsive -> restart
 					return;
 				}
 
@@ -205,7 +205,7 @@ export class TaskRunnerServer {
 		this.wsServer.handleUpgrade(request, socket, head, (ws) => {
 			ws.isAlive = true;
 			ws.on('pong', () => {
-				this.logger.info('Task runner pong received'); // @TODO: Change later to debug
+				this.logger.debug('Received heartbeat from task runner');
 				ws.isAlive = true;
 			});
 			request.ws = ws;
