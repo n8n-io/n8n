@@ -26,6 +26,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -188,6 +189,9 @@ onMounted(() => {
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
+		<template #header>
+			<ProjectHeader />
+		</template>
 		<template #add-button="{ disabled }">
 			<div>
 				<N8nButton

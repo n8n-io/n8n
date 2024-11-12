@@ -34,6 +34,7 @@ import {
 	N8nTooltip,
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -309,6 +310,9 @@ onMounted(async () => {
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
+		<template #header>
+			<ProjectHeader />
+		</template>
 		<template #add-button="{ disabled }">
 			<N8nTooltip :disabled="!readOnlyEnv">
 				<div>
