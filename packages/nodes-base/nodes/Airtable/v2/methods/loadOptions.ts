@@ -113,6 +113,23 @@ export async function getAttachmentColumns(
 	return result;
 }
 
+
+
+/**
+ * Fetches the field IDs for a specific table in a given base.
+ *
+ * This function retrieves field information from the Airtable API and returns a mapping of field names to their corresponding field IDs.
+ * It is primarily used for mapping fields in Airtable tables, allowing users to reference fields by their IDs rather than names.
+ *
+ * @param {ILoadOptionsFunctions} this - The context in which the function is called, providing access to node parameters.
+ * @returns {Promise<Record<string, string>>} A promise that resolves to a record containing field names as keys and their corresponding field IDs as values.
+ * @throws {NodeOperationError} Throws an error if the response from the Airtable API is invalid or does not contain the expected data structure.
+ *
+ * @example
+ * const fieldIds = await getFieldIds.call(this);
+ * console.log(fieldIds); // { "Name": "fld12345", "Email": "fld67890", ... }
+ */
+
 interface Field {
 	id: string;
 	name: string;
