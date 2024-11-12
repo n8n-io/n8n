@@ -37,7 +37,7 @@ export function useEvaluationForm(testId?: number) {
 	const state = ref<IEvaluationFormState>({
 		description: '',
 		name: {
-			value: 'My Test',
+			value: `My Test [${new Date().toLocaleString(undefined, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })}]`,
 			isEditing: false,
 			tempValue: '',
 		},

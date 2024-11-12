@@ -4,7 +4,7 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-	modelValue: 'Change me Description Default',
+	modelValue: '',
 });
 
 defineEmits<{ 'update:modelValue': [value: string] }>();
@@ -16,7 +16,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>();
 			<N8nInput
 				:model-value="modelValue"
 				type="textarea"
-				placeholder="Enter evaluation description"
+				:placeholder="$locale.baseText('workflowEvaluation.edit.descriptionPlaceholder')"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>
