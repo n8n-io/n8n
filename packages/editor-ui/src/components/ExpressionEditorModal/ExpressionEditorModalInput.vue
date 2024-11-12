@@ -74,7 +74,7 @@ const { segments, readEditorValue, editor, hasFocus, focus } = useExpressionEdit
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadOnly,
+	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 });
 
@@ -110,7 +110,15 @@ defineExpose({ editor });
 </template>
 
 <style lang="scss" module>
-:global(.cm-content) {
-	border-radius: var(--border-radius-base);
+.editor {
+	:global(.cm-content) {
+		border-radius: var(--border-radius-base);
+		&[aria-readonly='true'] {
+			--disabled-fill: var(--color-background-medium);
+			background-color: var(--disabled-fill, var(--color-background-light));
+			color: var(--disabled-color, var(--color-text-base));
+			cursor: not-allowed;
+		}
+	}
 }
 </style>
