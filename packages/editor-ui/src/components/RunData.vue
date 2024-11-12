@@ -509,7 +509,7 @@ const pinButtonDisabled = computed(
 		readOnlyEnv.value,
 );
 
-const subWorkflowData = computed((): ITaskMetadata | null => {
+const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	if (!node.value) {
 		return null;
 	}
@@ -518,7 +518,9 @@ const subWorkflowData = computed((): ITaskMetadata | null => {
 });
 
 const hasReleatedExectuion = computed((): boolean => {
-	return Boolean(subWorkflowData.value?.subExecution || subWorkflowData.value?.parentExecution);
+	return Boolean(
+		activeTaskMetadata.value?.subExecution || activeTaskMetadata.value?.parentExecution,
+	);
 });
 
 const hasInputOverwrite = computed((): boolean => {
@@ -526,8 +528,7 @@ const hasInputOverwrite = computed((): boolean => {
 		return false;
 	}
 	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
-	if (taskData === null) return false;
-	return !!taskData.inputOverride;
+	return Boolean(taskData?.inputOverride);
 });
 
 watch(node, (newNode, prevNode) => {
@@ -1391,14 +1392,14 @@ defineExpose({ enterEditMode });
 
 			<a
 				v-if="
-					subWorkflowData && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.parentExecutionInfo"
-				@click.stop="openRelatedExecution(subWorkflowData, displayMode)"
+				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{
-					subWorkflowData.parentExecution
+					activeTaskMetadata.parentExecution
 						? $locale.baseText('runData.openParentExecution')
 						: $locale.baseText('runData.openSubExecution')
 				}}
@@ -1464,11 +1465,11 @@ defineExpose({ enterEditMode });
 						})
 					}}
 				</span>
-				<span v-if="subWorkflowData?.subExecutionsCount">
+				<span v-if="activeTaskMetadata?.subExecutionsCount">
 					{{
 						$locale.baseText('ndv.output.andSubExecutions', {
-							adjustToNumber: subWorkflowData.subExecutionsCount,
-							interpolate: { count: subWorkflowData.subExecutionsCount },
+							adjustToNumber: activeTaskMetadata.subExecutionsCount,
+							interpolate: { count: activeTaskMetadata.subExecutionsCount },
 						})
 					}}
 				</span>
@@ -1476,14 +1477,14 @@ defineExpose({ enterEditMode });
 
 			<a
 				v-if="
-					subWorkflowData && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.parentExecutionInfo"
-				@click.stop="openRelatedExecution(subWorkflowData, displayMode)"
+				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{
-					subWorkflowData.parentExecution
+					activeTaskMetadata.parentExecution
 						? $locale.baseText('runData.openParentExecution')
 						: $locale.baseText('runData.openSubExecution')
 				}}
@@ -1677,7 +1678,7 @@ defineExpose({ enterEditMode });
 					:total-runs="maxRunIndex"
 					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
-					:sub-execution-override="subWorkflowData?.subExecution"
+					:sub-execution-override="activeTaskMetadata?.subExecution"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
