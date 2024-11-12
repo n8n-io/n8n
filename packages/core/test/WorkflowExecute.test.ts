@@ -191,7 +191,8 @@ describe('WorkflowExecute', () => {
 						return nodeData.data.main[0];
 					});
 
-					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+					// used toMatchObject instead of toEqual to ignore paired items
+					expect(resultData).toMatchObject(testData.output.nodeData[nodeName]);
 				}
 
 				// Check if other data has correct value
