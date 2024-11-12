@@ -36,15 +36,13 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 
 	for (const field of tableData.fields as IDataObject[]) {
 
-		const fieldLabel = useFieldIDs ? field.id : field.name;
-		const fieldDescription = `Type: ${field.type}`;
-
-
+		const fieldId  = useFieldIDs ? field.id : undefined;
 
 		result.push({
-			name: fieldLabel as string,
-			value: fieldLabel as string,
-			description: fieldDescription,
+			name: field.name as string,
+			value: field.name as string,
+			description: `Type: ${field.type}`,
+			id: fieldId,
 		});
 	}
 
