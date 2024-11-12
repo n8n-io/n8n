@@ -404,7 +404,12 @@ async function onDrop(value: string, event: MouseEvent) {
 				data-test-id="code-node-tab-code"
 				:class="$style.fillHeight"
 			>
-				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+				<DraggableTarget
+					type="mapping"
+					:disabled="!dragAndDropEnabled"
+					:class="$style.fillHeight"
+					@drop="onDrop"
+				>
 					<template #default="{ activeDrop, droppable }">
 						<div
 							ref="codeNodeEditorRef"
@@ -437,7 +442,12 @@ async function onDrop(value: string, event: MouseEvent) {
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
-			<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+			<DraggableTarget
+				type="mapping"
+				:disabled="!dragAndDropEnabled"
+				:class="$style.fillHeight"
+				@drop="onDrop"
+			>
 				<template #default="{ activeDrop, droppable }">
 					<div
 						ref="codeNodeEditorRef"

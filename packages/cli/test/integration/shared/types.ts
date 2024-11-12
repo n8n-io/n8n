@@ -41,7 +41,8 @@ type EndpointGroup =
 	| 'project'
 	| 'role'
 	| 'dynamic-node-parameters'
-	| 'apiKeys';
+	| 'apiKeys'
+	| 'evaluation';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

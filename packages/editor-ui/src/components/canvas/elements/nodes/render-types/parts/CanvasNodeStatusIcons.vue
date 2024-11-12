@@ -12,7 +12,7 @@ const {
 	hasIssues,
 	executionStatus,
 	executionWaiting,
-	executionRunning,
+	executionRunningThrottled,
 	hasRunData,
 	runDataIterations,
 	isDisabled,
@@ -58,7 +58,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
-		v-else-if="executionRunning || executionStatus === 'running'"
+		v-else-if="executionRunningThrottled || executionStatus === 'running'"
 		data-test-id="canvas-node-status-running"
 		:class="[$style.status, $style.running]"
 	>
