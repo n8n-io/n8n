@@ -18,8 +18,8 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import WorkflowEvaluationView from './views/WorkflowEvaluationView.vue';
-import NewWorkflowEvaluationView from './views/NewWorkflowEvaluationView.vue';
+import ListEvaluations from './views/WorkflowEvaluation/ListEvaluations.vue';
+import NewEvaluation from './views/WorkflowEvaluation/NewEvaluation.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -254,7 +254,7 @@ export const routes: RouteRecordRaw[] = [
 		path: '/workflow/:name/evaluation',
 		name: VIEWS.WORKFLOW_EVALUATION,
 		components: {
-			default: WorkflowEvaluationView,
+			default: ListEvaluations,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
@@ -291,7 +291,7 @@ export const routes: RouteRecordRaw[] = [
 		path: '/workflow/:name/evaluation/new',
 		name: VIEWS.NEW_WORKFLOW_EVALUATION,
 		components: {
-			default: NewWorkflowEvaluationView,
+			default: NewEvaluation,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
