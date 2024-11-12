@@ -121,8 +121,10 @@ interface Field {
 }
 
 export async function getFieldIds(this: ILoadOptionsFunctions): Promise<Record<string, string>> {
-	const baseId = this.getNodeParameter('baseId', 0) as string;
-	const tableId = encodeURI(this.getNodeParameter('tableId', 0) as string);
+
+
+	const baseId = this.getNodeParameter('baseId', undefined) as string;
+	const tableId = encodeURI(this.getNodeParameter('tableId', undefined) as string);
 
 	try {
 			const response = await apiRequest.call(this, 'GET', `meta/bases/${baseId}/tables/${tableId}/fields`);
