@@ -828,6 +828,28 @@ export class Mautic implements INodeType {
 							responseData = responseData.map((item) => item.fields.all);
 						}
 					}
+					//https://developer.mautic.org/?php#get-contact
+					if (operation === 'getByEmail') {
+						const options = this.getNodeParameter('options', i);
+						const email = this.getNodeParameter('contactEmail', i) as string;
+						const qs = {
+							'where[0][col]': 'email',
+							'where[0][expr]': 'eq',
+							'where[0][val]': email,
+						};
+						//            const query = `where[0][col]=email&where[0][expr]=eq&where[0][val]=${email}&minimal=0`;
+						responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
+						let result;
+						for (const key in responseData.contacts) {
+							result = responseData.contacts[key];
+							break;
+						}
+						responseData = [result];
+						if (options.rawData === false) {
+							responseData = responseData.map((item) => item.fields.all);
+						}
+					}
+
 					//https://developer.mautic.org/?php#list-contacts
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
