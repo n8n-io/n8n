@@ -4,6 +4,7 @@
 :root {
 	// Using native css variable enables us to use this value in JS
 	--header-height: 65;
+	--content-container-width: 1280px;
 }
 
 .clickable {
