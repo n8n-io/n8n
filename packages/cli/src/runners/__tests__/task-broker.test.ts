@@ -6,6 +6,7 @@ import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 import { Time } from '@/constants';
 
 import { TaskRejectError } from '../errors';
+import type { RunnerLifecycleEvents } from '../runner-lifecycle-events';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
@@ -625,11 +626,12 @@ describe('TaskBroker', () => {
 	describe('task timeouts', () => {
 		let taskBroker: TaskBroker;
 		let config: TaskRunnersConfig;
+		let runnerLifecycleEvents = mock<RunnerLifecycleEvents>();
 
 		beforeAll(() => {
 			jest.useFakeTimers();
 			config = mock<TaskRunnersConfig>({ taskTimeout: 30 });
-			taskBroker = new TaskBroker(mock(), config, mock());
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
 		});
 
 		afterAll(() => {
@@ -707,7 +709,7 @@ describe('TaskBroker', () => {
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
 
-		it('on timeout, we should send abort message to runner and error to requester', async () => {
+		it('on timeout, we should emit `runner:timed-out-during-task` event and send error to requester', async () => {
 			jest.spyOn(global, 'clearTimeout');
 
 			const taskId = 'task1';
@@ -730,11 +732,7 @@ describe('TaskBroker', () => {
 
 			await Promise.resolve();
 
-			expect(runnerCallback).toHaveBeenCalledWith({
-				type: 'broker:taskcancel',
-				taskId,
-				reason: `Task execution timed out after ${config.taskTimeout} seconds`,
-			});
+			expect(runnerLifecycleEvents.emit).toHaveBeenCalledWith('runner:timed-out-during-task');
 
 			await Promise.resolve();
 
