@@ -284,12 +284,18 @@ const activatePane = () => {
 	emit('activatePane');
 };
 
-const shouldShowWarning = computed(() => {
+const didNotUseTools = computed(() => {
 	if (!node.value) return false;
 
-	const parents = props.workflow.getParentNodes(node.value.name, NodeConnectionType.AiTool, 1);
-	const active = parents.filter((x) => !!workflowRunData.value?.[x]?.[props.runIndex]);
-	return parents.length > 0 && active.length === 0;
+	const toolsAvailable = props.workflow.getParentNodes(
+		node.value.name,
+		NodeConnectionType.AiTool,
+		1,
+	);
+	const toolsUsedInLatestRun = toolsAvailable.filter(
+		(x) => !!workflowRunData.value?.[x]?.[props.runIndex],
+	);
+	return toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0;
 });
 </script>
 
@@ -384,7 +390,7 @@ const shouldShowWarning = computed(() => {
 			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
 		</template>
 
-		<template v-if="shouldShowWarning" #panel-callout-info>
+		<template v-if="didNotUseTools" #panel-callout-info>
 			<div :class="$style.noToolsUsedAlert" data-test-id="no-tools-used-callout">
 				<N8nCallout theme="secondary">
 					{{ i18n.baseText('ndv.output.noToolUsedInfo') }}
