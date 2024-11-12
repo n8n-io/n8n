@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from 'n8n-design-system';
@@ -28,9 +27,8 @@ type FormRefs = {
 	tagsInput: ComponentPublicInstance<typeof AnnotationTagsDropdownEe>;
 };
 
-export function useEvaluationForm(testId?: number) {
+export function useEvaluationForm() {
 	// Stores
-	const tagsStore = useAnnotationTagsStore();
 	const evaluationsStore = useEvaluationsStore();
 
 	// Form state
@@ -55,20 +53,16 @@ export function useEvaluationForm(testId?: number) {
 
 	// Loading states
 	const isSaving = ref(false);
-	const isLoading = computed(() => tagsStore.isLoading);
+	const fieldsIssues = ref<Array<{ field: string; message: string }>>([]);
 
 	// Computed
-	const isEditing = computed(() => !!testId);
-	const allTags = computed(() => tagsStore.allTags);
-	const tagsById = computed(() => tagsStore.tagsById);
+	// const isEditing = computed(() => !!testId);
 
 	// Field refs
 	const fields = ref<FormRefs>({} as FormRefs);
 
 	// Methods
-	const loadTestData = async () => {
-		if (!testId) return;
-
+	const loadTestData = async (testId: number) => {
 		try {
 			await evaluationsStore.fetchAll({ force: true });
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
@@ -99,11 +93,16 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	const saveTest = async () => {
+	const saveTest = async (testId?: number) => {
 		if (isSaving.value) return;
 
 		isSaving.value = true;
+		fieldsIssues.value = [];
 		try {
+			if (!state.value.evaluationWorkflow.value) {
+				addFieldIssue('evaluationWorkflow', 'Evaluation workflow is required');
+			}
+
 			const params = {
 				name: state.value.name.value,
 				...(state.value.tags.appliedTagIds[0] && {
@@ -114,7 +113,7 @@ export function useEvaluationForm(testId?: number) {
 				}),
 			};
 
-			if (isEditing.value && testId) {
+			if (testId) {
 				await evaluationsStore.update({
 					id: testId,
 					...params,
@@ -130,6 +129,10 @@ export function useEvaluationForm(testId?: number) {
 		} finally {
 			isSaving.value = false;
 		}
+	};
+
+	const addFieldIssue = (field: string, message: string) => {
+		fieldsIssues.value.push({ field, message });
 	};
 
 	const startEditing = async (field: string) => {
@@ -167,22 +170,12 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	const init = async () => {
-		await tagsStore.fetchAll();
-		if (testId) {
-			await loadTestData();
-		}
-	};
-
 	return {
 		state,
 		fields,
-		isEditing,
-		isLoading,
-		isSaving,
-		allTags,
-		tagsById,
-		init,
+		isSaving: computed(() => isSaving.value),
+		fieldsIssues: computed(() => fieldsIssues.value),
+		loadTestData,
 		saveTest,
 		startEditing,
 		saveChanges,
