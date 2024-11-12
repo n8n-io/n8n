@@ -703,6 +703,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 ];
 
+export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
+
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
 	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
