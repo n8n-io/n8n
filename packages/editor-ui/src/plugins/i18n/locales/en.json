@@ -1603,6 +1603,7 @@
 	"runData.showBinaryData": "View",
 	"runData.startTime": "Start Time",
 	"runData.table": "Table",
+	"runData.table.inspectSubExecution": "Inspect sub execution {id}",
 	"runData.pindata.learnMore": "Learn more",
 	"runData.pindata.thisDataIsPinned": "This data is pinned.",
 	"runData.pindata.unpin": "Unpin",

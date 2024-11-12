@@ -543,15 +543,24 @@ watch(focusedMappableInput, (curr) => {
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<N8nIconButton
-							v-if="tableData.metadata.data[index1]"
-							v-show="showExecutionLink(index1)"
-							type="secondary"
-							icon="external-link-alt"
-							data-test-id="debug-sub-execution"
-							size="mini"
-							@click="openRelatedExecution(tableData.metadata.data[index1], 'table')"
-						/>
+						<N8nTooltip
+							:content="
+								i18n.baseText('runData.table.inspectSubExecution', {
+									interpolate: { id: tableData.metadata.data[index1]?.subExecution.executionId },
+								})
+							"
+							:hide-after="0"
+						>
+							<N8nIconButton
+								v-if="tableData.metadata.data[index1]"
+								v-show="showExecutionLink(index1)"
+								type="secondary"
+								icon="external-link-alt"
+								data-test-id="debug-sub-execution"
+								size="mini"
+								@click="openRelatedExecution(tableData.metadata.data[index1], 'table')"
+							/>
+						</N8nTooltip>
 					</td>
 					<td
 						v-for="(data, index2) in row"
