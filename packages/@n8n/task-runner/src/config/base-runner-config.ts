@@ -1,4 +1,16 @@
-import { Config, Env } from '@n8n/config';
+import { Config, Env, Nested } from '@n8n/config';
+
+@Config
+class TaskRunnerServerConfig {
+	@Env('N8N_RUNNERS_SERVER_ENABLED')
+	enabled: boolean = true;
+
+	@Env('N8N_RUNNERS_SERVER_HOST')
+	host: string = '127.0.0.1';
+
+	@Env('N8N_RUNNERS_SERVER_PORT')
+	port: number = 5680;
+}
 
 @Config
 export class BaseRunnerConfig {
@@ -13,4 +25,7 @@ export class BaseRunnerConfig {
 
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 5;
+
+	@Nested
+	server!: TaskRunnerServerConfig;
 }
