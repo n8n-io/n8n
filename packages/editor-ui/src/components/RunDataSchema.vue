@@ -53,7 +53,7 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const { getSchemaForExecutionData, filterSchema } = useDataSchema();
-const { closedNodes, flattSchema, flattMultipleSchema, toggleNode } = useFlattenSchema();
+const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
 
 const emit = defineEmits<{
@@ -134,10 +134,12 @@ const nodeAdditionalInfo = (node: INodeUi) => {
 	return returnData.length ? `(${returnData.join(' | ')})` : '';
 };
 
-const flattenedNodes = computed(() => flattMultipleSchema(nodesSchemas.value, nodeAdditionalInfo));
+const flattenedNodes = computed(() =>
+	flattenMultipleSchemas(nodesSchemas.value, nodeAdditionalInfo),
+);
 
 const flattenNodeSchema = computed(() =>
-	nodeSchema.value ? flattSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
+	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
 );
 
 const items = computed(() =>

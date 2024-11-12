@@ -251,7 +251,7 @@ export const useFlattenSchema = () => {
 		}
 	};
 
-	const flattSchema = ({
+	const flattenSchema = ({
 		schema,
 		node = { name: '', type: '' },
 		depth = 0,
@@ -296,7 +296,13 @@ export const useFlattenSchema = () => {
 				schema.value
 					.map((item) => {
 						const itemPrefix = schema.type === 'array' ? schema.key : '';
-						return flattSchema({ schema: item, node, depth, prefix: itemPrefix, level: level + 1 });
+						return flattenSchema({
+							schema: item,
+							node,
+							depth,
+							prefix: itemPrefix,
+							level: level + 1,
+						});
 					})
 					.flat(),
 			);
@@ -321,7 +327,7 @@ export const useFlattenSchema = () => {
 		}
 	};
 
-	const flattMultipleSchema = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
+	const flattenMultipleSchemas = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
 		nodes.reduce<Renders[]>((acc, item, index) => {
 			acc.push({
 				title: item.node.name,
@@ -346,9 +352,9 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
-			acc.push(...flattSchema(item));
+			acc.push(...flattenSchema(item));
 			return acc;
 		}, []);
 
-	return { closedNodes, toggleNode, flattSchema, flattMultipleSchema };
+	return { closedNodes, toggleNode, flattenSchema, flattenMultipleSchemas };
 };
