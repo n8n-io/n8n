@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -189,6 +189,16 @@ function onDrop(newParamValue: string) {
 		forceShowExpression.value = false;
 	}, 200);
 }
+
+// When switching to read-only mode, reset the value to the default value
+watch(
+	() => props.isReadOnly,
+	(isReadOnly) => {
+		if (isReadOnly) {
+			valueChanged({ name: props.path, value: props.parameter.default });
+		}
+	},
+);
 </script>
 
 <template>

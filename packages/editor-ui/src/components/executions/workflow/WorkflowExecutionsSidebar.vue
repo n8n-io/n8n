@@ -313,4 +313,9 @@ function scrollToActiveCard(): void {
 		border-radius: 0;
 	}
 }
+
+:deep(.el-checkbox) {
+	display: flex;
+	align-items: center;
+}
 </style>

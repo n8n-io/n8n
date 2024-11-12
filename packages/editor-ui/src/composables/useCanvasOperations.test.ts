@@ -17,6 +17,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import {
 	createTestNode,
+	createTestWorkflow,
 	createTestWorkflowObject,
 	mockNode,
 	mockNodeTypeDescription,
@@ -2032,6 +2033,52 @@ describe('useCanvasOperations', () => {
 				expect(node.parameters.path).toBe('random-id');
 			},
 		);
+	});
+
+	describe('initializeWorkspace', () => {
+		it('should initialize the workspace', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflow = createTestWorkflow({
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const { initializeWorkspace } = useCanvasOperations({ router });
+			initializeWorkspace(workflow);
+
+			expect(workflowsStore.setNodes).toHaveBeenCalled();
+			expect(workflowsStore.setConnections).toHaveBeenCalled();
+		});
+	});
+
+	it('should initialize node data from node type description', () => {
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const type = SET_NODE_TYPE;
+		const version = 1;
+		const expectedDescription = mockNodeTypeDescription({
+			name: type,
+			version,
+			properties: [
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'boolean',
+					default: true,
+				},
+			],
+		});
+
+		nodeTypesStore.nodeTypes = { [type]: { [version]: expectedDescription } };
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode()],
+			connections: {},
+		});
+
+		const { initializeWorkspace } = useCanvasOperations({ router });
+		initializeWorkspace(workflow);
+
+		expect(workflow.nodes[0].parameters).toEqual({ value: true });
 	});
 });
 

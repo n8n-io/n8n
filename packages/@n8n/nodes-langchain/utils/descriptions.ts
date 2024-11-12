@@ -66,7 +66,7 @@ export const inputSchemaField: INodeProperties = {
 };
 
 export const promptTypeOptions: INodeProperties = {
-	displayName: 'Prompt',
+	displayName: 'Prompt Source',
 	name: 'promptType',
 	type: 'options',
 	options: [
@@ -96,4 +96,16 @@ export const textInput: INodeProperties = {
 	typeOptions: {
 		rows: 2,
 	},
+};
+
+export const textFromPreviousNode: INodeProperties = {
+	displayName: 'Text From Previous Node',
+	name: 'text',
+	type: 'string',
+	required: true,
+	default: '={{ $json.chatInput }}',
+	typeOptions: {
+		rows: 2,
+	},
+	disabledOptions: { show: { promptType: ['auto'] } },
 };
