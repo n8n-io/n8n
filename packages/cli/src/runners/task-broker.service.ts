@@ -439,7 +439,7 @@ export class TaskBroker {
 
 		clearTimeout(task.timeout);
 
-		this.runnerLifecycleEvents.emit('runner:timed-out-during-task'); // unresponsive -> restart
+		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
 
 		const timeoutError = new ApplicationError(
 			`Task execution timed out after ${this.config.taskTimeout} seconds`,

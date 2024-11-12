@@ -54,7 +54,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private isShuttingDown = false;
 
-	private shouldRestartRunner = false;
+	/** Whether to force-restart a runner suspected of being unresponsive. */
+	private shouldForceRestartRunner = false;
 
 	private logger: Logger;
 
@@ -87,15 +88,15 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.logger = logger.scoped('task-runner');
 
 		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
-			this.logger.warn('Task runner failed heartbeat check');
-			this.shouldRestartRunner = true;
+			this.logger.warn('Task runner failed heartbeat check, restarting...');
+			this.shouldForceRestartRunner = true;
 
 			if (this.isInternalMode) void this.stop();
 		});
 
 		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
-			this.logger.warn('Task runner timed out during task');
-			this.shouldRestartRunner = true;
+			this.logger.warn('Task runner timed out during task, restarting...');
+			this.shouldForceRestartRunner = true;
 
 			if (this.isInternalMode) void this.stop();
 		});
@@ -148,27 +149,13 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		}
 		await this._runPromise;
 
-		this.logger.info('Stopped task runner process');
-
 		this.isShuttingDown = false;
 	}
 
 	killNode() {
 		if (!this.process) return;
 
-		this.process.kill(this.shouldRestartRunner ? 'SIGKILL' : 'SIGTERM');
-	}
-
-	// @TEMP
-	async terminateProcess({ force } = { force: false }) {
-		if (!this.process) return;
-
-		if (this.useLauncher) {
-			await this.killLauncher();
-		} else {
-			console.log('killing process');
-			this.process.kill(force ? 'SIGKILL' : 'SIGTERM');
-		}
+		this.process.kill(this.shouldForceRestartRunner ? 'SIGKILL' : 'SIGTERM');
 	}
 
 	async killLauncher() {
@@ -204,8 +191,11 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.emit('exit', { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' });
 		resolveFn();
 
-		if (!this.isShuttingDown || this.shouldRestartRunner) {
-			setImmediate(async () => await this.start());
+		if (!this.isShuttingDown || this.shouldForceRestartRunner) {
+			setImmediate(async () => {
+				await this.start();
+				this.shouldForceRestartRunner = false;
+			});
 		}
 	}
 

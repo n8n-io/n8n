@@ -80,7 +80,7 @@ export class TaskRunnerServer {
 			this.wsServer.clients.forEach((ws) => {
 				if (!ws.isAlive) {
 					void this.taskRunnerWsServer.disconnect(ws);
-					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check'); // unresponsive -> restart
+					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
 				}
 
