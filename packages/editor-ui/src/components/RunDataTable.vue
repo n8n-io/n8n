@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
 import { shorten } from '@/utils/typesUtils';
-import type { GenericValue, IDataObject, INodeExecutionData, RelatedExecution } from 'n8n-workflow';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import Draggable from './Draggable.vue';
 import MappingPill from './MappingPill.vue';
@@ -32,7 +32,6 @@ type Props = {
 	mappingEnabled?: boolean;
 	hasDefaultHoverState?: boolean;
 	search?: string;
-	subExecutionOverride?: RelatedExecution;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -342,10 +341,7 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 			leftEntryColumns = entryColumns;
 		}
 
-		if (props.subExecutionOverride) {
-			metadata.data.push({ subExecution: props.subExecutionOverride });
-			metadata.hasExecutionIds = true;
-		} else if (data.metadata?.subExecution) {
+		if (data.metadata?.subExecution) {
 			metadata.data.push(data.metadata);
 			metadata.hasExecutionIds = true;
 		} else {

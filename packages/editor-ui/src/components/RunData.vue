@@ -318,7 +318,9 @@ const workflowRunData = computed(() => {
 	}
 	return null;
 });
-const dataCount = computed(() => getDataCount(props.runIndex, currentOutputIndex.value));
+const dataCount = computed(() =>
+	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
 
 const unfilteredDataCount = computed(() =>
 	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
@@ -1683,7 +1685,6 @@ defineExpose({ enterEditMode });
 					:total-runs="maxRunIndex"
 					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
-					:sub-execution-override="activeTaskMetadata?.subExecution"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
