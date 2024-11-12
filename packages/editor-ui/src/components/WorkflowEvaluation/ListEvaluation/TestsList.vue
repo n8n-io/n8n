@@ -11,12 +11,7 @@ defineProps<TestListProps>();
 <template>
 	<div :class="$style.testsList">
 		<div :class="$style.testsHeader">
-			<n8n-button
-				size="small"
-				type="tertiary"
-				label="Create new test"
-				@click="$emit('create-test')"
-			/>
+			<n8n-button label="Create new test" @click="$emit('create-test')" />
 		</div>
 		<TestItem v-for="test in tests" :key="test.id" :test="test" v-bind="$attrs" />
 	</div>

@@ -71,7 +71,7 @@ const actions = [
 					:is="n8nIconButton"
 					:icon="action.icon"
 					type="tertiary"
-					size="small"
+					size="mini"
 					@click.stop="action.event"
 				/>
 			</n8n-tooltip>
@@ -83,10 +83,11 @@ const actions = [
 .testItem {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-s) var(--spacing-m);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-xl);
 	border: 1px solid var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-light);
+	cursor: pointer;
 
 	&:hover {
 		background-color: var(--color-background-base);
@@ -105,6 +106,7 @@ const actions = [
 	gap: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
 	margin-bottom: var(--spacing-4xs);
+	font-size: var(--font-size-s);
 }
 
 .testCases {
@@ -129,7 +131,7 @@ const actions = [
 
 .actions {
 	display: flex;
-	gap: var(--spacing-s);
+	gap: var(--spacing-xs);
 	--color-button-secondary-font: var(--color-callout-info-icon);
 }
 </style>
