@@ -1,5 +1,9 @@
+import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { databasePageUrlExtractionRegexp } from '../shared/constants';
-import { extractPageId, formatBlocks } from '../shared/GenericFunctions';
+import { extractPageId, formatBlocks, getPageId } from '../shared/GenericFunctions';
+import type { MockProxy } from 'jest-mock-extended';
+import { mock } from 'jest-mock-extended';
 
 describe('Test NotionV2, formatBlocks', () => {
 	it('should format to_do block', () => {
@@ -87,5 +91,115 @@ describe('Test Notion', () => {
 				expect(result).toBe(testId);
 			}
 		});
+	});
+});
+
+describe('Test Notion, getPageId', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+	const id = '3ab5bc794647496dac48feca926813fd';
+
+	beforeEach(() => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should return page ID directly when mode is id', () => {
+		const page = {
+			mode: 'id',
+			value: id,
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+
+		const result = getPageId.call(mockExecuteFunctions, 0);
+		expect(result).toBe(id);
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('pageId', 0, {});
+	});
+
+	it('should extract page ID from URL with p parameter', () => {
+		const page = {
+			mode: 'url',
+			value: `https://www.notion.so/xxxxx?v=xxxxx&p=${id}&pm=s`,
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+
+		const result = getPageId.call(mockExecuteFunctions, 0);
+		expect(result).toBe(id);
+	});
+
+	it('should extract page ID from URL using regex', () => {
+		const page = {
+			mode: 'url',
+			value: `https://www.notion.so/page-name-${id}`,
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+
+		const result = getPageId.call(mockExecuteFunctions, 0);
+		expect(result).toBe(id);
+	});
+
+	it('should throw error when page ID cannot be extracted', () => {
+		const page = {
+			mode: 'url',
+			value: 'https://www.notion.so/invalid-url',
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Notion', type: 'notion' }));
+
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(NodeOperationError);
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(
+			'Could not extract page ID from URL: https://www.notion.so/invalid-url',
+		);
+	});
+
+	it('should throw error when page value is empty', () => {
+		const page = {
+			mode: 'url',
+			value: '',
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Notion', type: 'notion' }));
+
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(NodeOperationError);
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(
+			'Could not extract page ID from URL: ',
+		);
+	});
+
+	it('should throw error when page value is undefined', () => {
+		const page = {
+			mode: 'url',
+			value: undefined,
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Notion', type: 'notion' }));
+
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(NodeOperationError);
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(
+			'Could not extract page ID from URL: undefined',
+		);
+	});
+
+	it('should throw error when page value is not a string', () => {
+		const page = {
+			mode: 'url',
+			value: 123 as any,
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Notion', type: 'notion' }));
+
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(NodeOperationError);
+		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(
+			'Could not extract page ID from URL: 123',
+		);
 	});
 });

@@ -35,7 +35,6 @@ import type {
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import config from '@/config';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
@@ -460,8 +459,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+		const { maxAge, maxCount } = this.globalConfig.pruning;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -515,9 +513,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.execute();
 	}
 
-	async hardDeleteSoftDeletedExecutions() {
+	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+		date.setHours(date.getHours() - this.globalConfig.pruning.hardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({

@@ -408,7 +408,8 @@ export function convertNodeToAiTool<
 			};
 
 			const noticeProp: INodeProperties = {
-				displayName: 'Use the expression {{ $fromAI() }} for any data to be filled by the model',
+				displayName:
+					"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -432,12 +433,15 @@ export function convertNodeToAiTool<
 		}
 	}
 
+	const resources = item.description.codex?.resources ?? {};
+
 	item.description.codex = {
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Tools'],
 			Tools: ['Other Tools'],
 		},
+		resources,
 	};
 	return item;
 }

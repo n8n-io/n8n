@@ -37,6 +37,7 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { onClickOutside } from '@vueuse/core';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -68,7 +69,10 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const sqlEditor = ref<HTMLElement>();
+const container = ref<HTMLDivElement>();
+const sqlEditor = ref<HTMLDivElement>();
+const isFocused = ref(false);
+
 const extensions = computed(() => {
 	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
 	function sqlWithN8nLanguageSupport() {
@@ -122,7 +126,7 @@ const {
 	editor,
 	segments: { all: segments },
 	readEditorValue,
-	hasFocus,
+	hasFocus: editorHasFocus,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue,
@@ -137,6 +141,12 @@ watch(
 		editorValue.value = newValue;
 	},
 );
+
+watch(editorHasFocus, (focus) => {
+	if (focus) {
+		isFocused.value = true;
+	}
+});
 
 watch(segments, () => {
 	emit('update:model-value', readEditorValue());
@@ -153,6 +163,19 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
+
+onClickOutside(container, (event) => onBlur(event));
+
+function onBlur(event: FocusEvent | KeyboardEvent) {
+	if (
+		event?.target instanceof Element &&
+		Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
+	) {
+		return; // prevent blur on resizing
+	}
+
+	isFocused.value = false;
+}
 
 function line(lineNumber: number): Line | null {
 	try {
@@ -189,7 +212,7 @@ async function onDrop(value: string, event: MouseEvent) {
 </script>
 
 <template>
-	<div :class="$style.sqlEditor">
+	<div ref="container" :class="$style.sqlEditor" @keydown.tab="onBlur">
 		<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
 			<template #default="{ activeDrop, droppable }">
 				<div
@@ -207,7 +230,7 @@ async function onDrop(value: string, event: MouseEvent) {
 			v-if="!fullscreen"
 			:segments="segments"
 			:is-read-only="isReadOnly"
-			:visible="hasFocus"
+			:visible="isFocused"
 		/>
 	</div>
 </template>

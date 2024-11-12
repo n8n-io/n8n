@@ -22,7 +22,6 @@ import { useUsersStore } from '@/stores/users.store';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type { Chat, ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types';
@@ -78,7 +77,6 @@ interface MemoryOutput {
 }
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
 const { runWorkflow } = useRunWorkflow({ router });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -145,9 +143,9 @@ const messageVars = {
 	'--chat--color-typing': 'var(--color-text-dark)',
 };
 
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 function getTriggerNode() {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
+	const triggerNode = workflow.value.queryNodes((nodeType: INodeType) =>
 		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 	);
 
@@ -164,19 +162,19 @@ function setNode() {
 		return;
 	}
 
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const childNodes = workflow.getChildNodes(triggerNode.name);
+	const childNodes = workflow.value.getChildNodes(triggerNode.name);
 
 	for (const childNode of childNodes) {
 		// Look for the first connected node with metadata
 		// TODO: Allow later users to change that in the UI
-		const resultData = workflowsStore.getWorkflowResultDataByNodeName(childNode);
+		const connectedSubNodes = workflow.value.getParentNodes(childNode, 'ALL_NON_MAIN');
+		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
 
 		if (!resultData && !Array.isArray(resultData)) {
 			continue;
 		}
 
-		if (resultData[resultData.length - 1].metadata) {
+		if (resultData.some((data) => data?.[0].metadata)) {
 			node.value = workflowsStore.getNodeByName(childNode);
 			break;
 		}
@@ -190,7 +188,6 @@ function setConnectedNode() {
 		showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found');
 		return;
 	}
-	const workflow = workflowHelpers.getCurrentWorkflow();
 
 	const chatNode = workflowsStore.getNodes().find((storeNode: INodeUi): boolean => {
 		if (storeNode.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) return false;
@@ -202,10 +199,10 @@ function setConnectedNode() {
 
 		let isCustomChainOrAgent = false;
 		if (nodeType.name === AI_CODE_NODE_TYPE) {
-			const inputs = NodeHelpers.getNodeInputs(workflow, storeNode, nodeType);
+			const inputs = NodeHelpers.getNodeInputs(workflow.value, storeNode, nodeType);
 			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-			const outputs = NodeHelpers.getNodeOutputs(workflow, storeNode, nodeType);
+			const outputs = NodeHelpers.getNodeOutputs(workflow.value, storeNode, nodeType);
 			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 			if (
@@ -219,7 +216,7 @@ function setConnectedNode() {
 
 		if (!isAgent && !isChain && !isCustomChainOrAgent) return false;
 
-		const parentNodes = workflow.getParentNodes(storeNode.name);
+		const parentNodes = workflow.value.getParentNodes(storeNode.name);
 		const isChatChild = parentNodes.some((parentNodeName) => parentNodeName === triggerNode.name);
 
 		return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
@@ -431,10 +428,9 @@ async function sendMessage(message: string, files?: File[]) {
 }
 
 function displayExecution(executionId: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
 	const route = router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: workflow.id, executionId },
+		params: { name: workflow.value.id, executionId },
 	});
 	window.open(route.href, '_blank');
 }
@@ -452,9 +448,10 @@ function reuseMessage(message: ChatMessageText) {
 function getChatMessages(): ChatMessageText[] {
 	if (!connectedNode.value) return [];
 
-	const workflow = workflowHelpers.getCurrentWorkflow();
 	const connectedMemoryInputs =
-		workflow.connectionsByDestinationNode[connectedNode.value.name][NodeConnectionType.AiMemory];
+		workflow.value.connectionsByDestinationNode[connectedNode.value.name][
+			NodeConnectionType.AiMemory
+		];
 	if (!connectedMemoryInputs) return [];
 
 	const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
@@ -539,7 +536,7 @@ onMounted(() => {
 				data-test-id="workflow-lm-chat-dialog"
 				:style="messageVars"
 			>
-				<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press']">
+				<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press-canvas']">
 					<template #beforeMessage="{ message }">
 						<MessageOptionTooltip
 							v-if="message.sender === 'bot' && !message.id.includes('preload')"
@@ -573,7 +570,13 @@ onMounted(() => {
 						locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div :class="$style.logs">
-						<LazyRunDataAi :key="messages.length" :node="node" hide-title slim />
+						<LazyRunDataAi
+							:key="messages.length"
+							:node="node"
+							hide-title
+							slim
+							:workflow="workflow"
+						/>
 					</div>
 				</div>
 			</div>

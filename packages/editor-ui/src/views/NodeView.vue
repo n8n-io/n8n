@@ -71,7 +71,6 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
-	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
 	INodeOutputConfiguration,
@@ -1269,7 +1268,7 @@ export default defineComponent({
 					element instanceof HTMLElement &&
 					element.className &&
 					typeof element.className === 'string' &&
-					element.className.includes('ignore-key-press')
+					element.className.includes('ignore-key-press-canvas')
 				) {
 					return;
 				}
@@ -2398,24 +2397,19 @@ export default defineComponent({
 			this.uiStore.stateIsDirty = true;
 
 			if (nodeTypeName === STICKY_NODE_TYPE) {
-				this.$telemetry.trackNodesPanel('nodeView.addSticky', {
+				this.$telemetry.track('User inserted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
 				});
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
-				const trackProperties: ITelemetryTrackProperties = {
+				this.nodeCreatorStore.onNodeAddedToCanvas({
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
 					is_auto_add: isAutoAdd,
 					workflow_id: this.workflowsStore.workflowId,
 					drag_and_drop: options.dragAndDrop,
-				};
-
-				if (lastSelectedNode) {
-					trackProperties.input_node_type = lastSelectedNode.type;
-				}
-
-				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
+					input_node_type: lastSelectedNode ? lastSelectedNode.type : undefined,
+				});
 			}
 
 			// Automatically deselect all nodes and select the current one and also active
@@ -4242,12 +4236,13 @@ export default defineComponent({
 				mode,
 				createNodeActive,
 			});
-			this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', {
-				source,
-				mode,
-				createNodeActive,
-				workflow_id: this.workflowsStore.workflowId,
-			});
+			if (createNodeActive) {
+				this.nodeCreatorStore.onCreatorOpened({
+					source,
+					mode,
+					workflow_id: this.workflowsStore.workflowId,
+				});
+			}
 		},
 		async onAddNodes(
 			{ nodes, connections }: AddedNodesAndConnections,

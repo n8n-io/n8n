@@ -69,6 +69,13 @@ export function getNodeCreatorPlusButton() {
 	return cy.getByTestId('node-creator-plus-button');
 }
 
+export function getCanvasNodes() {
+	return cy.ifCanvasVersion(
+		() => cy.getByTestId('canvas-node'),
+		() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
+	);
+}
+
 /**
  * Actions
  */
