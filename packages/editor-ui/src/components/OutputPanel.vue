@@ -21,7 +21,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
-import { N8nCallout, N8nRadioButtons, N8nText } from 'n8n-design-system';
+import { N8nRadioButtons, N8nText } from 'n8n-design-system';
 
 // Types
 
@@ -215,6 +215,24 @@ const canPinData = computed(() => {
 	return pinnedData.isValidNodeType.value && !props.isReadOnly;
 });
 
+const allToolsWereUnusedNotice = computed(() => {
+	if (!node.value) return undefined;
+
+	const toolsAvailable = props.workflow.getParentNodes(
+		node.value.name,
+		NodeConnectionType.AiTool,
+		1,
+	);
+	const toolsUsedInLatestRun = toolsAvailable.filter(
+		(x) => !!workflowRunData.value?.[x]?.[props.runIndex],
+	);
+	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0) {
+		return i18n.baseText('ndv.output.noToolUsedInfo');
+	} else {
+		return undefined;
+	}
+});
+
 // Methods
 
 const insertTestData = () => {
@@ -283,20 +301,6 @@ watch(defaultOutputMode, (newValue: OutputType, oldValue: OutputType) => {
 const activatePane = () => {
 	emit('activatePane');
 };
-
-const didNotUseTools = computed(() => {
-	if (!node.value) return false;
-
-	const toolsAvailable = props.workflow.getParentNodes(
-		node.value.name,
-		NodeConnectionType.AiTool,
-		1,
-	);
-	const toolsUsedInLatestRun = toolsAvailable.filter(
-		(x) => !!workflowRunData.value?.[x]?.[props.runIndex],
-	);
-	return toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0;
-});
 </script>
 
 <template>
@@ -318,6 +322,7 @@ const didNotUseTools = computed(() => {
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
+		:callout-message-key="allToolsWereUnusedNotice"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
@@ -390,14 +395,6 @@ const didNotUseTools = computed(() => {
 			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
 		</template>
 
-		<template v-if="didNotUseTools" #panel-callout-info>
-			<div :class="$style.noToolsUsedAlert" data-test-id="no-tools-used-callout">
-				<N8nCallout theme="secondary">
-					{{ i18n.baseText('ndv.output.noToolUsedInfo') }}
-				</N8nCallout>
-			</div>
-		</template>
-
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
@@ -463,11 +460,5 @@ const didNotUseTools = computed(() => {
 	> *:first-child {
 		margin-bottom: var(--spacing-m);
 	}
-}
-
-.noToolsUsedAlert {
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-s);
-	padding-bottom: var(--spacing-xs);
 }
 </style>

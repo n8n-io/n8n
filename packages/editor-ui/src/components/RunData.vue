@@ -118,6 +118,7 @@ type Props = {
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
 	hidePagination?: boolean;
+	calloutMessageKey?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -1352,6 +1353,14 @@ defineExpose({ enterEditMode });
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
 		<N8nCallout
+			v-if="props.calloutMessageKey"
+			:key="props.calloutMessageKey"
+			:class="$style.callout"
+			theme="secondary"
+			data-test-id="no-tools-used-callout"
+		/>
+
+		<N8nCallout
 			v-for="hint in getNodeHints()"
 			:key="hint.message"
 			:class="$style.hintCallout"
@@ -1360,9 +1369,6 @@ defineExpose({ enterEditMode });
 			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 		</N8nCallout>
 
-		<div v-if="hasNodeRun">
-			<slot name="panel-callout-info"></slot>
-		</div>
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
 			:class="$style.outputs"
@@ -2077,6 +2083,10 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--spacing-s);
+}
+
+.noToolsUsedAlert {
+	padding: var(--spacing-s);
 }
 </style>
 

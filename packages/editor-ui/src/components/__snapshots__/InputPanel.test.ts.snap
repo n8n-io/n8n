@@ -247,14 +247,9 @@ exports[`InputPanel > should render 1`] = `
     <!--v-if-->
     <!--v-if-->
     <!--v-if-->
+    <!--v-if-->
     
     
-    <div
-      data-v-2e5cd75c=""
-    >
-      
-      
-    </div>
     <!--v-if-->
     <div
       class="dataContainer"
