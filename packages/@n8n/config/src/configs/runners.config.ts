@@ -56,5 +56,5 @@ export class TaskRunnersConfig {
 
 	/** Max duration (in seconds) a task is allowed to take before being aborted. */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 3; // @TODO: Change later to 60
+	taskTimeout: number = 3; // @TODO: Update later to 60
 }
