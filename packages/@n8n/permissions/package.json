@@ -19,5 +19,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
-  ]
+  ],
+  "dependencies": {
+    "@n8n/permissions": "file:"
+  }
 }

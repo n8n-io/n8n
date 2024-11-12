@@ -26,13 +26,17 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	}
 
 
-	const useFieldIDs = this.getNodeParameter('useFieldIDs', undefined, false) as boolean;
+	 const DEFAULTS = {
+    useFieldIDs: false,
+   };
+
+  const useFieldIDs = (this.getNodeParameter('useFieldIDs') ?? DEFAULTS.useFieldIDs) as boolean;
 
 	const result: INodePropertyOptions[] = [];
 
 	for (const field of tableData.fields as IDataObject[]) {
 
-		const fieldLabel = useFieldIDs ? field.id : field.name; // Use field ID if flag is set
+		const fieldLabel = useFieldIDs ? field.id : field.name;
 		const fieldDescription = `Type: ${field.type}`;
 
 
