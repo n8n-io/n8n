@@ -490,6 +490,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	async function addNodes(nodes: AddedNodesAndConnections['nodes'], options: AddNodesOptions = {}) {
+		// here?
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];

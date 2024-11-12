@@ -7,6 +7,8 @@ import {
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 	QA_CHAIN_NODE_TYPE,
 } from '@/constants';
+import { getParentNodes } from '@/components/ButtonParameter/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const AI_NODES = [
 	QA_CHAIN_NODE_TYPE,
@@ -29,14 +31,22 @@ const PROMPT_PROVIDER_NODE_NAMES = [CHAT_TRIGGER_NODE_TYPE];
 
 type NodeWithType = Pick<INode, 'type'>;
 
-export function adjustNewlyConnectedNodes(parent: NodeWithType, child: NodeWithType) {
+const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
+
+export function adjustNewlyConnectedNodes(parent: INode, child: INode) {
+	const workflow = getCurrentWorkflow();
+
+	if (workflow.getParentNodesByDepth(child.name, 1).length > 0) {
+		return;
+	}
+
 	if (!PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && AI_NODES.includes(child.type)) {
-		Object.assign<NodeWithType, Partial<INode>>(child, {
+		Object.assign<INode, Partial<INode>>(child, {
 			parameters: { promptType: 'define' },
 		});
 	}
 	if (!PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && MEMORY_NODE_NAMES.includes(child.type)) {
-		Object.assign<NodeWithType, Partial<INode>>(child, {
+		Object.assign<INode, Partial<INode>>(child, {
 			parameters: { sessionIdType: 'customKey' },
 		});
 	}

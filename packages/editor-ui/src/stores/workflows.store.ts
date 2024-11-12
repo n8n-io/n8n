@@ -1112,6 +1112,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeData.type = getCredentialOnlyNodeTypeName(nodeData.extendsCredential);
 		}
 
+		// here?
 		workflow.value.nodes.push(nodeData);
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
