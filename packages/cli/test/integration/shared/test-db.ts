@@ -74,6 +74,7 @@ const repositories = [
 	'SharedCredentials',
 	'SharedWorkflow',
 	'Tag',
+	'TestDefinition',
 	'User',
 	'Variables',
 	'Webhook',
