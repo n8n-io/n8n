@@ -499,9 +499,87 @@ describe('LdapService', () => {
 			);
 		});
 	});
+
 	describe.skip('searchWithAdminBinding()', () => {});
-	describe.skip('validUser()', () => {});
+
+	describe('validUser()', () => {
+		it('should throw expected error if no configuration has been set', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await expect(ldapService.validUser('dn', 'password')).rejects.toThrowError(
+				'Service cannot be used without setting the property config',
+			);
+		});
+
+		it('should bind the ldap client with the expected distinguished name and password', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
+			const password = 'password';
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.validUser(distinguishedName, password);
+
+			expect(Client.prototype.bind).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.bind).toHaveBeenCalledWith(distinguishedName, password);
+		});
+
+		it('should throw expected error if binding fails', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
+			const password = 'password';
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			Client.prototype.bind = jest
+				.fn()
+				.mockRejectedValue(new Error('Error validating user against LDAP server'));
+
+			await ldapService.init();
+
+			await expect(ldapService.validUser(distinguishedName, password)).rejects.toThrowError(
+				'Error validating user against LDAP server',
+			);
+		});
+
+		it('should unbind the client binding', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
+			const password = 'password';
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			await ldapService.init();
+			await ldapService.validUser(distinguishedName, password);
+
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe.skip('findAndAuthenticateLdapUser()', () => {});
+
 	describe('testConnection()', () => {
 		it('should throw expected error if init() is not called first', async () => {
 			const settingsRepository = mock<SettingsRepository>({
