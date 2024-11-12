@@ -7,7 +7,6 @@ import * as transport from '../../../../v2/transport';
 import * as utils from '../../../../v2/helpers/utils';
 
 import { createMockExecuteFunction, createTestStream, driveNode } from '../helpers';
-import { Readable } from 'stream';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
