@@ -1,5 +1,6 @@
 import { RewriteFrames } from '@sentry/integrations';
 import { init, setTag, captureException, close } from '@sentry/node';
+import type { ErrorEvent, EventHint } from '@sentry/types';
 import * as a from 'assert/strict';
 import { createHash } from 'crypto';
 import { ApplicationError } from 'n8n-workflow';
@@ -9,8 +10,11 @@ import type { SentryConfig } from '@/config/sentry-config';
 /**
  * Handles error reporting using Sentry
  */
-export class ErrorReporting {
+export class ErrorReporter {
 	private isInitialized = false;
+
+	/** Hashes of error stack traces, to deduplicate error reports. */
+	private readonly seenErrors = new Set<string>();
 
 	private get dsn() {
 		return this.sentryConfig.sentryDsn;
@@ -37,7 +41,8 @@ export class ErrorReporting {
 			'OnUnhandledRejection',
 			'ContextLines',
 		];
-		const seenErrors = new Set<string>();
+
+		setTag('server_type', 'task_runner');
 
 		init({
 			dsn: this.dsn,
@@ -46,36 +51,12 @@ export class ErrorReporting {
 			enableTracing: false,
 			serverName: this.sentryConfig.deploymentName,
 			beforeBreadcrumb: () => null,
+			beforeSend: (event, hint) => this.beforeSend(event, hint),
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
 				new RewriteFrames({ root: process.cwd() }),
 			],
-			async beforeSend(event, { originalException }) {
-				if (!originalException) return null;
-
-				if (originalException instanceof Promise) {
-					originalException = await originalException.catch((error) => error as Error);
-				}
-
-				if (originalException instanceof ApplicationError) {
-					const { level, extra, tags } = originalException;
-					if (level === 'warning') return null;
-					event.level = level;
-					if (extra) event.extra = { ...event.extra, ...extra };
-					if (tags) event.tags = { ...event.tags, ...tags };
-				}
-
-				if (originalException instanceof Error && originalException.stack) {
-					const eventHash = createHash('sha1').update(originalException.stack).digest('base64');
-					if (seenErrors.has(eventHash)) return null;
-					seenErrors.add(eventHash);
-				}
-
-				return event;
-			},
 		});
-
-		setTag('server_type', 'task_runner');
 
 		this.isInitialized = true;
 	}
@@ -86,5 +67,25 @@ export class ErrorReporting {
 		}
 
 		await close(1000);
+	}
+
+	beforeSend(event: ErrorEvent, { originalException }: EventHint) {
+		if (!originalException) return null;
+
+		if (originalException instanceof ApplicationError) {
+			const { level, extra, tags } = originalException;
+			if (level === 'warning') return null;
+			event.level = level;
+			if (extra) event.extra = { ...event.extra, ...extra };
+			if (tags) event.tags = { ...event.tags, ...tags };
+		}
+
+		if (originalException instanceof Error && originalException.stack) {
+			const eventHash = createHash('sha1').update(originalException.stack).digest('base64');
+			if (this.seenErrors.has(eventHash)) return null;
+			this.seenErrors.add(eventHash);
+		}
+
+		return event;
 	}
 }

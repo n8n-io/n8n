@@ -2,12 +2,12 @@ import { ensureError } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
-import type { ErrorReporting } from './error-reporting';
+import type { ErrorReporter } from './error-reporter';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
-let errorReporting: ErrorReporting | undefined;
+let errorReporter: ErrorReporter | undefined;
 
 function createSignalHandler(signal: string) {
 	return async function onSignal() {
@@ -24,9 +24,9 @@ function createSignalHandler(signal: string) {
 				runner = undefined;
 			}
 
-			if (errorReporting) {
-				await errorReporting.stop();
-				errorReporting = undefined;
+			if (errorReporter) {
+				await errorReporter.stop();
+				errorReporter = undefined;
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -42,9 +42,9 @@ void (async function start() {
 	const config = Container.get(MainConfig);
 
 	if (config.sentryConfig.sentryDsn) {
-		const { ErrorReporting } = await import('@/error-reporting');
-		errorReporting = new ErrorReporting(config.sentryConfig);
-		await errorReporting.start();
+		const { ErrorReporter } = await import('@/error-reporter');
+		errorReporter = new ErrorReporter(config.sentryConfig);
+		await errorReporter.start();
 	}
 
 	runner = new JsTaskRunner(config);
