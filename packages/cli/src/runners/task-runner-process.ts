@@ -10,7 +10,7 @@ import { Logger } from '@/logging/logger.service';
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
-import { RunnerLifecycleEvents } from './task-runner-server';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 import { TypedEmitter } from '../typed-emitter';
 
 type ChildProcess = ReturnType<typeof spawn>;
@@ -54,6 +54,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private isShuttingDown = false;
 
+	private shouldRestartRunner = false;
+
 	private logger: Logger;
 
 	private readonly passthroughEnvVars = [
@@ -84,10 +86,18 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 		this.logger = logger.scoped('task-runner');
 
-		this.runnerLifecycleEvents.on('runner:failed-heartbeat', () => {
+		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
 			this.logger.warn('Task runner failed heartbeat check');
+			this.shouldRestartRunner = true;
 
-			if (this.isInternalMode) void this.terminateProcess({ force: true }); // @TODO: Use TaskRunnerProcess.stop instead?
+			if (this.isInternalMode) void this.stop();
+		});
+
+		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
+			this.logger.warn('Task runner timed out during task');
+			this.shouldRestartRunner = true;
+
+			if (this.isInternalMode) void this.stop();
 		});
 	}
 
@@ -125,7 +135,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	}
 
 	@OnShutdown()
-	async stop(opts = { force: false }) {
+	async stop() {
 		if (!this.process) return;
 
 		this.isShuttingDown = true;
@@ -134,7 +144,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		if (this.useLauncher) {
 			await this.killLauncher();
 		} else {
-			this.killNode(opts);
+			this.killNode();
 		}
 		await this._runPromise;
 
@@ -143,10 +153,10 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.isShuttingDown = false;
 	}
 
-	killNode({ force } = { force: false }) {
+	killNode() {
 		if (!this.process) return;
 
-		this.process.kill(force ? 'SIGKILL' : 'SIGTERM');
+		this.process.kill(this.shouldRestartRunner ? 'SIGKILL' : 'SIGTERM');
 	}
 
 	// @TEMP
@@ -194,8 +204,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.emit('exit', { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' });
 		resolveFn();
 
-		// If we are not shutting down, restart the process
-		if (!this.isShuttingDown) {
+		if (!this.isShuttingDown || this.shouldRestartRunner) {
 			setImmediate(async () => await this.start());
 		}
 	}

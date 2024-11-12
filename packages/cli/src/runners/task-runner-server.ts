@@ -21,14 +21,8 @@ import type {
 	TaskRunnerServerInitResponse,
 } from '@/runners/runner-types';
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
-import { TypedEmitter } from '@/typed-emitter';
 
-type RunnerLifecycleEventMap = {
-	'runner:failed-heartbeat': never;
-};
-
-@Service()
-export class RunnerLifecycleEvents extends TypedEmitter<RunnerLifecycleEventMap> {}
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 
 /**
  * Task Runner HTTP & WS server
@@ -86,7 +80,7 @@ export class TaskRunnerServer {
 			this.wsServer.clients.forEach((ws) => {
 				if (!ws.isAlive) {
 					void this.taskRunnerWsServer.disconnect(ws);
-					this.runnerLifecycleEvents.emit('runner:failed-heartbeat');
+					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
 				}
 

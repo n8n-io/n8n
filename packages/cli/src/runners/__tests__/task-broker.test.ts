@@ -15,7 +15,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock(), mock());
+		taskBroker = new TaskBroker(mock(), mock(), mock());
 		jest.restoreAllMocks();
 	});
 
@@ -629,7 +629,7 @@ describe('TaskBroker', () => {
 		beforeAll(() => {
 			jest.useFakeTimers();
 			config = mock<TaskRunnersConfig>({ taskTimeout: 30 });
-			taskBroker = new TaskBroker(mock(), config);
+			taskBroker = new TaskBroker(mock(), config, mock());
 		});
 
 		afterAll(() => {

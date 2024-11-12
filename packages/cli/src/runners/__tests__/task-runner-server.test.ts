@@ -22,6 +22,7 @@ describe('TaskRunnerServer', () => {
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
 				mock<TaskRunnerAuthController>(),
 				mock(),
+				mock(),
 			);
 
 			// @ts-expect-error Private property
@@ -48,6 +49,7 @@ describe('TaskRunnerServer', () => {
 				mock(),
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
 				mock<TaskRunnerAuthController>(),
+				mock(),
 				mock(),
 			);
 

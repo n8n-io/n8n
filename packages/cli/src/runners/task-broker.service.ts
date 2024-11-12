@@ -13,6 +13,7 @@ import { Time } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 
 export interface TaskRunner {
 	id: string;
@@ -84,6 +85,7 @@ export class TaskBroker {
 	constructor(
 		private readonly logger: Logger,
 		private readonly config: TaskRunnersConfig,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
 	) {}
 
 	expireTasks() {
@@ -438,6 +440,8 @@ export class TaskBroker {
 		clearTimeout(task.timeout);
 
 		const timeoutMsg = `Task execution timed out after ${this.config.taskTimeout} seconds`;
+
+		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
 
 		await this.messageRunner(task.runnerId, {
 			type: 'broker:taskcancel', // @TODO: Kill task runner process instead

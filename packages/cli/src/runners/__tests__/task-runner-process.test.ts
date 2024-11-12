@@ -25,7 +25,7 @@ describe('TaskRunnerProcess', () => {
 	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal_childprocess';
 	const authService = mock<TaskRunnerAuthService>();
-	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService);
+	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
 
 	afterEach(async () => {
 		spawnMock.mockClear();
@@ -35,7 +35,7 @@ describe('TaskRunnerProcess', () => {
 		it('should throw if runner mode is external', () => {
 			runnerConfig.mode = 'external';
 
-			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService)).toThrow();
+			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
 
 			runnerConfig.mode = 'internal_childprocess';
 		});
@@ -43,7 +43,7 @@ describe('TaskRunnerProcess', () => {
 
 	describe('start', () => {
 		beforeEach(() => {
-			taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService);
+			taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
 		});
 
 		test.each(['PATH', 'NODE_FUNCTION_ALLOW_BUILTIN', 'NODE_FUNCTION_ALLOW_EXTERNAL'])(
