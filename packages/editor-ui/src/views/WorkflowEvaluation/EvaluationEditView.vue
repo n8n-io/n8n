@@ -99,7 +99,13 @@ function hasIssues(key: string) {
 		<MetricsInput v-model="state.metrics" :class="{ 'has-issues': hasIssues('metrics') }" />
 
 		<div :class="$style.footer">
-			<n8n-button type="primary" :label="buttonLabel" :loading="isSaving" @click="onSaveTest" />
+			<n8n-button
+				type="primary"
+				data-test-id="run-test-button"
+				:label="buttonLabel"
+				:loading="isSaving"
+				@click="onSaveTest"
+			/>
 		</div>
 	</div>
 </template>

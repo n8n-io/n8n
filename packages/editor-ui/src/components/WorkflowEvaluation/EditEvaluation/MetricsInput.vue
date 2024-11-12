@@ -35,6 +35,7 @@ function updateMetric(index: number, value: string) {
 				<div v-for="(metric, index) in modelValue" :key="index">
 					<N8nInput
 						:ref="`metric_${index}`"
+						data-test-id="evaluation-metric-item"
 						:model-value="metric"
 						:placeholder="$locale.baseText('workflowEvaluation.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
