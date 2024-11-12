@@ -46,7 +46,6 @@ const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflo
 const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
-const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
@@ -192,17 +191,6 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: { middleware: ['authenticated'] },
-	},
-	{
-		path: '/executions',
-		name: VIEWS.EXECUTIONS,
-		components: {
-			default: ExecutionsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
 	},
 	{
 		path: '/workflow/:name/debug/:executionId',

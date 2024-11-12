@@ -21,12 +21,12 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -190,7 +190,7 @@ onMounted(() => {
 		@update:filters="filters = $event"
 	>
 		<template #header>
-			<ProjectTabs />
+			<ProjectHeader />
 		</template>
 		<template #add-button="{ disabled }">
 			<div>
