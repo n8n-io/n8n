@@ -234,7 +234,7 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
 			assertDeduplicationOutput: false,
-			taskTimeout: 60,
+			taskTimeout: 3, // @TODO: Update later to 60
 		},
 		sentry: {
 			backendDsn: '',
