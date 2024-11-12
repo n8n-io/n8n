@@ -1427,6 +1427,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
@@ -1672,6 +1673,7 @@ export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayName?: string;
+	disabledOptions?: ICredentialsDisplayOptions;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }

@@ -120,8 +120,9 @@ export function useNodeHelpers() {
 		parameter: INodeProperties | INodeCredentialDescription,
 		path: string,
 		node: INodeUi | null,
+		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	) {
-		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
+		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node, displayKey);
 	}
 
 	function refreshNodeIssues(): void {
