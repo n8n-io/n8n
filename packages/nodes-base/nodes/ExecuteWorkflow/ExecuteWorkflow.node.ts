@@ -231,11 +231,9 @@ export class ExecuteWorkflow implements INodeType {
 							[items[i]],
 							undefined,
 							{
-								startMetadata: {
-									parentExecution: {
-										executionId: workflowProxy.$execution.id,
-										workflowId: workflowProxy.$workflow.id,
-									},
+								parentExecution: {
+									executionId: workflowProxy.$execution.id,
+									workflowId: workflowProxy.$workflow.id,
 								},
 							},
 						);
@@ -265,11 +263,9 @@ export class ExecuteWorkflow implements INodeType {
 							undefined,
 							{
 								doNotWaitToFinish: true,
-								startMetadata: {
-									parentExecution: {
-										executionId: workflowProxy.$execution.id,
-										workflowId: workflowProxy.$workflow.id,
-									},
+								parentExecution: {
+									executionId: workflowProxy.$execution.id,
+									workflowId: workflowProxy.$workflow.id,
 								},
 							},
 						);
@@ -324,11 +320,9 @@ export class ExecuteWorkflow implements INodeType {
 					undefined,
 					{
 						doNotWaitToFinish: !waitForSubWorkflow,
-						startMetadata: {
-							parentExecution: {
-								executionId: workflowProxy.$execution.id,
-								workflowId: workflowProxy.$workflow.id,
-							},
+						parentExecution: {
+							executionId: workflowProxy.$execution.id,
+							workflowId: workflowProxy.$workflow.id,
 						},
 					},
 				);

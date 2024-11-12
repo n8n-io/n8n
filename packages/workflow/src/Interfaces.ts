@@ -956,7 +956,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			parentCallbackManager?: CallbackManager,
 			options?: {
 				doNotWaitToFinish?: boolean;
-				startMetadata?: ITaskMetadata;
+				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
@@ -2283,8 +2283,8 @@ export interface ExecuteWorkflowOptions {
 	loadedRunData?: IWorkflowExecutionDataProcess;
 	parentWorkflowSettings?: IWorkflowSettings;
 	parentCallbackManager?: CallbackManager;
-	startMetadata?: ITaskMetadata;
 	doNotWaitToFinish?: boolean;
+	parentExecution?: RelatedExecution;
 }
 
 export type AiEvent =

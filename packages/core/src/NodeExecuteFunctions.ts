@@ -111,6 +111,7 @@ import type {
 	ISupplyDataFunctions,
 	WebhookType,
 	SchedulingFunctions,
+	RelatedExecution,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -3646,7 +3647,7 @@ export function getExecuteFunctions(
 				parentCallbackManager?: CallbackManager,
 				options?: {
 					doNotWaitToFinish?: boolean;
-					startMetadata?: ITaskMetadata;
+					parentExecution?: RelatedExecution;
 				},
 			): Promise<ExecuteWorkflowData> {
 				return await additionalData
@@ -3982,7 +3983,7 @@ export function getSupplyDataFunctions(
 			parentCallbackManager?: CallbackManager,
 			options?: {
 				doNotWaitToFinish?: boolean;
-				startMetadata?: ITaskMetadata;
+				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData> =>
 			await additionalData

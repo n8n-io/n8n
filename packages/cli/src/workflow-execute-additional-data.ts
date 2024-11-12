@@ -36,8 +36,8 @@ import type {
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
 	EnvProviderState,
-	ITaskMetadata,
 	ExecuteWorkflowData,
+	RelatedExecution,
 } from 'n8n-workflow';
 import { Container } from 'typedi';
 
@@ -684,7 +684,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 export async function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
-	metadata?: ITaskMetadata,
+	parentExecution?: RelatedExecution,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
@@ -704,7 +704,7 @@ export async function getRunData(
 		data: {
 			main: [inputData],
 		},
-		metadata,
+		metadata: { parentExecution },
 		source: null,
 	});
 
@@ -785,7 +785,7 @@ export async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ??
-		(await getRunData(workflowData, options.inputData, options.startMetadata));
+		(await getRunData(workflowData, options.inputData, options.parentExecution));
 
 	const executionId = await activeExecutions.add(runData);
 

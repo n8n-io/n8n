@@ -397,11 +397,9 @@ export class RetrieverWorkflow implements INodeType {
 						items,
 						config?.getChild(),
 						{
-							startMetadata: {
-								parentExecution: {
-									executionId: workflowProxy.$execution.id,
-									workflowId: workflowProxy.$workflow.id,
-								},
+							parentExecution: {
+								executionId: workflowProxy.$execution.id,
+								workflowId: workflowProxy.$workflow.id,
 							},
 						},
 					);

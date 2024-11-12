@@ -455,11 +455,9 @@ export class ToolWorkflow implements INodeType {
 			let receivedData: ExecuteWorkflowData;
 			try {
 				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
-					startMetadata: {
-						parentExecution: {
-							executionId: workflowProxy.$execution.id,
-							workflowId: workflowProxy.$workflow.id,
-						},
+					parentExecution: {
+						executionId: workflowProxy.$execution.id,
+						workflowId: workflowProxy.$workflow.id,
 					},
 				});
 				subExecutionId = receivedData.executionId;
