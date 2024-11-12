@@ -7,6 +7,8 @@ import type { TaskRunnerAuthService } from '@/runners/auth/task-runner-auth.serv
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { mockInstance } from '@test/mocking';
 
+import type { RunnerLifecycleEvents } from '../runner-lifecycle-events';
+
 const spawnMock = jest.fn(() =>
 	mock<ChildProcess>({
 		stdout: {
@@ -38,6 +40,26 @@ describe('TaskRunnerProcess', () => {
 			expect(() => new TaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
 
 			runnerConfig.mode = 'internal_childprocess';
+		});
+
+		it('should register listener for `runner:failed-heartbeat-check` event', () => {
+			const runnerLifecycleEvents = mock<RunnerLifecycleEvents>();
+			new TaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+
+			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
+				'runner:failed-heartbeat-check',
+				expect.any(Function),
+			);
+		});
+
+		it('should register listener for `runner:timed-out-during-task` event', () => {
+			const runnerLifecycleEvents = mock<RunnerLifecycleEvents>();
+			new TaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+
+			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
+				'runner:timed-out-during-task',
+				expect.any(Function),
+			);
 		});
 	});
 
