@@ -87,19 +87,19 @@ export function useEvaluationForm(testId?: number) {
 					},
 					evaluationWorkflow: {
 						mode: 'list',
-						value: testDefinition.evaluationWorkflowId || '',
+						value: testDefinition.evaluationWorkflowId ?? '',
 						__rl: true,
 					},
 					metrics: [''],
 				};
 			}
 		} catch (error) {
+			// TODO: Throw better errors
 			console.error('Failed to load test data', error);
 		}
 	};
 
 	const saveTest = async () => {
-		console.log('Saving Test');
 		if (isSaving.value) return;
 
 		isSaving.value = true;
@@ -113,7 +113,6 @@ export function useEvaluationForm(testId?: number) {
 					evaluationWorkflowId: state.value.evaluationWorkflow.value as string,
 				}),
 			};
-			console.log('Saving Test with params', params, 'isEditing', isEditing.value);
 
 			if (isEditing.value && testId) {
 				await evaluationsStore.update({
@@ -127,7 +126,6 @@ export function useEvaluationForm(testId?: number) {
 				});
 			}
 		} catch (e) {
-			console.error(e);
 			throw e;
 		} finally {
 			isSaving.value = false;
@@ -169,7 +167,6 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	// Initialize
 	const init = async () => {
 		await tagsStore.fetchAll();
 		if (testId) {
