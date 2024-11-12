@@ -178,9 +178,9 @@ export const useLinter = (
 					message: i18n.baseText('codeNodeEditor.linter.allItems.unavailableProperty'),
 					actions: [
 						{
-							name: 'Remove',
+							name: 'Fix',
 							apply(view) {
-								view.dispatch({ changes: { from: start - '.'.length, to: end } });
+								view.dispatch({ changes: { from: start, to: end, insert: 'first()' } });
 							},
 						},
 					],
@@ -569,7 +569,8 @@ export const useLinter = (
 			node.callee.type === 'Identifier' &&
 			node.callee.name === '$' &&
 			node.arguments.length === 1 &&
-			node.arguments[0].type !== 'Literal';
+			((node.arguments[0].type !== 'Literal' && node.arguments[0].type !== 'TemplateLiteral') ||
+				(node.arguments[0].type === 'TemplateLiteral' && node.arguments[0].expressions.length > 0));
 
 		type TargetCallNode = RangeNode & {
 			callee: { name: string };
