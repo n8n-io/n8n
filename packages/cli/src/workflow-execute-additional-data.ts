@@ -309,7 +309,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteAfter: [
-			async function (this: WorkflowHooks): Promise<void> {
+			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 				const { pushRef, executionId } = this;
 				if (pushRef === undefined) return;
 
@@ -320,7 +320,9 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 
-				pushInstance.send('executionFinished', { executionId }, pushRef);
+			const pushType =
+					fullRunData.status === 'waiting' ? 'executionWaiting' : 'executionFinished';
+				pushInstance.send(pushType, { executionId }, pushRef);
 			},
 		],
 	};

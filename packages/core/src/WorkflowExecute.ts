@@ -913,7 +913,6 @@ export class WorkflowExecute {
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
 		let startTime: number;
-		let taskData: ITaskData;
 
 		if (this.runExecutionData.startData === undefined) {
 			this.runExecutionData.startData = {};
@@ -1443,12 +1442,12 @@ export class WorkflowExecute {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
 
-					taskData = {
+					const taskData: ITaskData = {
 						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
-						executionStatus: 'success',
+						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 					};
 
 					if (executionError !== undefined) {
