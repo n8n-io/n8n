@@ -485,6 +485,7 @@ export const enum VIEWS {
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	WORKFLOW_EVALUATION = 'WorkflowEvaluation',
+	WORKFLOW_EVALUATION_EDIT = 'WorkflowEvaluationEdit',
 	NEW_WORKFLOW_EVALUATION = 'NewWorkflowEvaluation',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
