@@ -17,6 +17,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import {
 	createTestNode,
+	createTestWorkflow,
 	createTestWorkflowObject,
 	mockNode,
 	mockNodeTypeDescription,
@@ -2032,6 +2033,22 @@ describe('useCanvasOperations', () => {
 				expect(node.parameters.path).toBe('random-id');
 			},
 		);
+	});
+
+	describe('initializeWorkspace', () => {
+		it('should initialize the workspace', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflow = createTestWorkflow({
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const { initializeWorkspace } = useCanvasOperations({ router });
+			initializeWorkspace(workflow);
+
+			expect(workflowsStore.setNodes).toHaveBeenCalled();
+			expect(workflowsStore.setConnections).toHaveBeenCalled();
+		});
 	});
 });
 
