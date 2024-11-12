@@ -288,21 +288,20 @@ describe('RunDataSchema.vue', () => {
 		});
 	});
 
-	it.skip('renders its own data for AI tools in debug mode', async () => {
-		const { getByTestId } = renderComponent({
+	it('renders its own data for AI tools in debug mode', async () => {
+		const { getByTestId, html } = renderComponent({
 			props: {
+				paneType: 'output',
 				nodes: [], // in debug mode nodes are empty
 				node: aiTool,
 				data: [{ output: 'AI tool output' }],
 			},
 		});
 
-		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
-		});
+		expect(getByTestId('run-data-schema-item')).toHaveTextContent('AI tool output');
 	});
 
-	test.skip.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(
+	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(
 		'renders schema instead of showing no data for %o',
 		(data) => {
 			useWorkflowsStore().pinData({
@@ -310,8 +309,8 @@ describe('RunDataSchema.vue', () => {
 				data: data.map((item) => ({ json: item })),
 			});
 
-			const { getByText } = renderComponent();
-			expect(getByText("No fields - item(s) exist, but they're empty")).not.toBeInTheDocument();
+			const { getAllByTestId } = renderComponent();
+			expect(getAllByTestId('run-data-schema-item')[0]).toHaveTextContent('tx');
 		},
 	);
 });
