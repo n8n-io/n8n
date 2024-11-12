@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,11 +8,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
+import { getSessionId } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {

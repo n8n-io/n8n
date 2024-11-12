@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BufferWindowMemoryInput } from 'langchain/memory';
+import { BufferWindowMemory } from 'langchain/memory';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,8 +8,8 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { BufferWindowMemoryInput } from 'langchain/memory';
-import { BufferWindowMemory } from 'langchain/memory';
+
+import { getSessionId } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import {
@@ -16,7 +18,6 @@ import {
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
 } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
 
 class MemoryChatBufferSingleton {
 	private static instance: MemoryChatBufferSingleton;

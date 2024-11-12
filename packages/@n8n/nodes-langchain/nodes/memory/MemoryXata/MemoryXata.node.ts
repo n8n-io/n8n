@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
+import { BaseClient } from '@xata.io/client';
+import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
@@ -6,9 +9,8 @@ import type {
 	INodeTypeDescription,
 	SupplyData,
 } from 'n8n-workflow';
-import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
-import { BaseClient } from '@xata.io/client';
+
+import { getSessionId } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import {
@@ -17,7 +19,6 @@ import {
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
 } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
