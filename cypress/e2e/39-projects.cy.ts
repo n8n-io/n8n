@@ -51,7 +51,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		projects.getHomeButton().click();
-		projects.getProjectTabs().should('have.length', 2);
+		projects.getProjectTabs().should('have.length', 3);
 
 		projects.getProjectTabCredentials().click();
 		credentialsPage.getters.credentialCards().should('not.have.length');
@@ -101,7 +101,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 		projects.getMenuItems().first().click();
 		workflowsPage.getters.workflowCards().should('not.have.length');
-		projects.getProjectTabs().should('have.length', 3);
+		projects.getProjectTabs().should('have.length', 4);
 
 		workflowsPage.getters.newWorkflowButtonCard().click();
 
@@ -441,9 +441,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('contain.text', 'Notion account personal project');
 		});
 
-		// Skip flaky test
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		it.skip('should move resources between projects', () => {
+		it('should move resources between projects', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -686,9 +684,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 1);
 		});
 
-		// Skip flaky test
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		it.skip('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -701,9 +697,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getHomeButton().click();
 			workflowsPage.getters.workflowCards().should('not.have.length');
 			workflowsPage.getters.newWorkflowButtonCard().click();
-			workflowsPage.getters.workflowCards().should('not.have.length');
 
-			workflowsPage.getters.newWorkflowButtonCard().click();
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			ndv.getters.backToCanvas().click();
@@ -789,7 +783,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 
-			mainSidebar.getters.executions().click();
+			projects.getMenuItems().last().click();
+			projects.getProjectTabExecutions().click();
 			cy.getByTestId('global-execution-list-item').first().find('td:last button').click();
 			getVisibleDropdown()
 				.find('li')
