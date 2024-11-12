@@ -224,6 +224,54 @@ describe('AI Assistant::enabled', () => {
 			.should('contain.text', 'item.json.myNewField = 1');
 	});
 
+	it('Should ignore node execution success and error messages after the node run successfully once', () => {
+		const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+
+		const getEditor = () => getParameter().find('.cm-content').should('exist');
+
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/code_diff_suggestion_response.json',
+		}).as('chatRequest');
+
+		cy.createFixtureWorkflow('aiAssistant/workflows/test_workflow.json');
+		wf.actions.openNode('Code');
+		ndv.getters.nodeExecuteButton().click();
+		aiAssistant.getters.nodeErrorViewAssistantButton().click({ force: true });
+		cy.wait('@chatRequest');
+
+		cy.intercept('POST', '/rest/ai/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/responses/node_execution_succeeded_response.json',
+		}).as('chatRequest2');
+
+		getEditor()
+			.type('{selectall}')
+			.paste(
+				'for (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();',
+			);
+
+		ndv.getters.nodeExecuteButton().click();
+
+		getEditor()
+			.type('{selectall}')
+			.paste(
+				'for (const item of $input.all()) {\n  item.json.myNewField = 1aaaa!;\n}\n\nreturn $input.all();',
+			);
+
+		ndv.getters.nodeExecuteButton().click();
+
+		aiAssistant.getters.chatMessagesAssistant().should('have.length', 3);
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(2)
+			.should(
+				'contain.text',
+				'Code node ran successfully, did my solution help resolve your issue?\nQuick reply 👇Yes, thanksNo, I am still stuck',
+			);
+	});
+
 	it('should end chat session when `end_session` event is received', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
