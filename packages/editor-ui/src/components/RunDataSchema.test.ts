@@ -289,7 +289,7 @@ describe('RunDataSchema.vue', () => {
 	});
 
 	it('renders its own data for AI tools in debug mode', async () => {
-		const { getByTestId, html } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				paneType: 'output',
 				nodes: [], // in debug mode nodes are empty
