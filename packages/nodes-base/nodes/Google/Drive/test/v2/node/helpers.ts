@@ -34,8 +34,8 @@ export const createMockExecuteFunction = (
 		helpers: {
 			constructExecutionMetaData,
 			returnJsonArray,
-			prepareBinaryData: jest.fn(),
-			httpRequest: jest.fn(),
+			prepareBinaryData: () => {},
+			httpRequest: () => {},
 		},
 		continueOnFail: () => continueOnFail,
 	} as unknown as IExecuteFunctions;
@@ -44,7 +44,7 @@ export const createMockExecuteFunction = (
 
 export function createTestStream(byteSize: number) {
 	let bytesSent = 0;
-	const CHUNK_SIZE = 64 * 1024; // 64kB chunks (default highWaterMark)
+	const CHUNK_SIZE = 64 * 1024; // 64kB chunks (default NodeJS highWaterMark)
 
 	return new Readable({
 		read() {

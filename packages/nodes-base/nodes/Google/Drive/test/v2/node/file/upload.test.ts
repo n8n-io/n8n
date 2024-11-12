@@ -116,6 +116,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		};
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
+		const httpRequestSpy = jest.spyOn(fakeExecuteFunction.helpers, 'httpRequest');
 
 		const fileSize = 7 * 1024 * 1024; // 7MB
 		jest.mocked(utils.getItemBinaryData).mockResolvedValue({
@@ -128,8 +129,8 @@ describe('test GoogleDriveV2: file upload', () => {
 		await upload.execute.call(fakeExecuteFunction, 0);
 
 		// 4 chunks: 7MB = 3x2MB + 1x1MB
-		expect(fakeExecuteFunction.helpers.httpRequest).toHaveBeenCalledTimes(4);
-		expect(fakeExecuteFunction.helpers.httpRequest).toHaveBeenCalledWith(
+		expect(httpRequestSpy).toHaveBeenCalledTimes(4);
+		expect(httpRequestSpy).toHaveBeenCalledWith(
 			expect.objectContaining({ body: expect.any(Buffer) }),
 		);
 		expect(transport.googleApiRequest).toBeCalledTimes(2);
