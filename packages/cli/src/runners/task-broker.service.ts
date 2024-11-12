@@ -440,7 +440,7 @@ export class TaskBroker {
 		const timeoutMsg = `Task execution timed out after ${this.config.taskTimeout} seconds`;
 
 		await this.messageRunner(task.runnerId, {
-			type: 'broker:taskcancel',
+			type: 'broker:taskcancel', // @TODO: Kill task runner process instead
 			taskId,
 			reason: timeoutMsg,
 		});

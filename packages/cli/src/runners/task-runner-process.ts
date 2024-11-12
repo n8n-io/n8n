@@ -10,6 +10,7 @@ import { Logger } from '@/logging/logger.service';
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
+import { RunnerLifecycleEvents } from './task-runner-server';
 import { TypedEmitter } from '../typed-emitter';
 
 type ChildProcess = ReturnType<typeof spawn>;
@@ -61,10 +62,18 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 	] as const;
 
+	private get isInternalMode() {
+		return (
+			this.runnerConfig.mode === 'internal_childprocess' ||
+			this.runnerConfig.mode === 'internal_launcher'
+		);
+	}
+
 	constructor(
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly authService: TaskRunnerAuthService,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
 	) {
 		super();
 
@@ -74,6 +83,12 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		);
 
 		this.logger = logger.scoped('task-runner');
+
+		this.runnerLifecycleEvents.on('runner:failed-heartbeat', () => {
+			this.logger.warn('Task runner failed heartbeat check');
+
+			if (this.isInternalMode) void this.terminateProcess({ force: true }); // @TODO: Use TaskRunnerProcess.stop instead?
+		});
 	}
 
 	async start() {
@@ -110,10 +125,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	}
 
 	@OnShutdown()
-	async stop() {
-		if (!this.process) {
-			return;
-		}
+	async stop(opts = { force: false }) {
+		if (!this.process) return;
 
 		this.isShuttingDown = true;
 
@@ -121,18 +134,31 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		if (this.useLauncher) {
 			await this.killLauncher();
 		} else {
-			this.killNode();
+			this.killNode(opts);
 		}
 		await this._runPromise;
+
+		this.logger.info('Stopped task runner process');
 
 		this.isShuttingDown = false;
 	}
 
-	killNode() {
-		if (!this.process) {
-			return;
+	killNode({ force } = { force: false }) {
+		if (!this.process) return;
+
+		this.process.kill(force ? 'SIGKILL' : 'SIGTERM');
+	}
+
+	// @TEMP
+	async terminateProcess({ force } = { force: false }) {
+		if (!this.process) return;
+
+		if (this.useLauncher) {
+			await this.killLauncher();
+		} else {
+			console.log('killing process');
+			this.process.kill(force ? 'SIGKILL' : 'SIGTERM');
 		}
-		this.process.kill();
 	}
 
 	async killLauncher() {

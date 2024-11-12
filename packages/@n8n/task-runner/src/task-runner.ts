@@ -89,6 +89,8 @@ export abstract class TaskRunner {
 			maxPayload: opts.maxPayloadSize,
 		});
 
+		// @TODO: Healthcheck for external mode
+
 		this.ws.addEventListener('error', (event) => {
 			const error = ensureError(event.error);
 

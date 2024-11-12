@@ -110,4 +110,12 @@ export class TaskRunnerWsServer {
 	handleRequest(req: TaskRunnerServerInitRequest, _res: TaskRunnerServerInitResponse) {
 		this.add(req.query.id, req.ws);
 	}
+
+	async disconnect(ws: WebSocket) {
+		const runnerId = Array.from(this.runnerConnections.entries()).find(
+			([_, connection]) => connection === ws,
+		)?.[0];
+
+		if (runnerId) await this.removeConnection(runnerId);
+	}
 }
