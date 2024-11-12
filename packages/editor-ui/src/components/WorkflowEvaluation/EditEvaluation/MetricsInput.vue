@@ -1,7 +1,6 @@
 <script setup lang="ts">
 export interface MetricsInputProps {
 	modelValue: string[];
-	helpText: string;
 }
 const props = defineProps<MetricsInputProps>();
 const emit = defineEmits<{ 'update:modelValue': [value: MetricsInputProps['modelValue']] }>();
@@ -19,24 +18,31 @@ function updateMetric(index: number, value: string) {
 
 <template>
 	<div :class="[$style.formGroup, $style.metrics]">
-		<n8n-text color="text-dark">Metrics</n8n-text>
+		<n8n-text color="text-dark">{{
+			$locale.baseText('workflowEvaluation.edit.metricsTitle')
+		}}</n8n-text>
 		<hr :class="$style.metricsDivider" />
 		<n8n-text size="small" color="text-light">
-			{{ helpText }}
+			{{ $locale.baseText('workflowEvaluation.edit.metricsHelpText') }}
 		</n8n-text>
-		<n8n-input-label label="Output field(s)" :bold="false" size="small" :class="$style.metricField">
+		<n8n-input-label
+			:label="$locale.baseText('workflowEvaluation.edit.metricsFields')"
+			:bold="false"
+			size="small"
+			:class="$style.metricField"
+		>
 			<div :class="$style.metricsContainer">
 				<div v-for="(metric, index) in modelValue" :key="index">
 					<N8nInput
 						:ref="`metric_${index}`"
 						:model-value="metric"
-						:placeholder="'Enter metric name'"
+						:placeholder="$locale.baseText('workflowEvaluation.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
 					/>
 				</div>
 				<n8n-button
 					type="tertiary"
-					:label="'New metric'"
+					:label="$locale.baseText('workflowEvaluation.edit.metricsNew')"
 					:class="$style.newMetricButton"
 					@click="addNewMetric"
 				/>

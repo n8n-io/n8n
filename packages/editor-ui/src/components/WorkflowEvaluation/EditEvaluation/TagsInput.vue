@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
 import type { ITag } from '@/Interface';
 import { createEventBus } from 'n8n-design-system';
 import { computed } from 'vue';
@@ -14,7 +15,6 @@ export interface TagsInputProps {
 	startEditing: (field: string) => void;
 	saveChanges: (field: string) => void;
 	cancelEditing: (field: string) => void;
-	helpText: string;
 }
 
 const props = withDefaults(defineProps<TagsInputProps>(), {
@@ -44,7 +44,9 @@ function updateTags(tags: string[]) {
 	<div :class="$style.formGroup">
 		<n8n-input-label label="Tag name" :bold="false" size="small">
 			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
-				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">Select tag...</n8n-text>
+				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">
+					{{ $locale.baseText('workflowEvaluation.edit.selectTag') }}
+				</n8n-text>
 				<n8n-tag v-for="tagId in modelValue.appliedTagIds" :key="tagId" :text="getTagName(tagId)" />
 				<n8n-icon-button
 					:class="$style.editInputButton"
@@ -69,7 +71,9 @@ function updateTags(tags: string[]) {
 				@blur="saveChanges('tags')"
 			/>
 		</n8n-input-label>
-		<n8n-text size="small" color="text-light">{{ helpText }}</n8n-text>
+		<n8n-text size="small" color="text-light">{{
+			$locale.baseText('workflowEvaluation.edit.tagsHelpText')
+		}}</n8n-text>
 	</div>
 </template>
 

@@ -9,6 +9,7 @@ import TagsInput from '@/components/WorkflowEvaluation/EditEvaluation/TagsInput.
 import WorkflowSelector from '@/components/WorkflowEvaluation/EditEvaluation/WorkflowSelector.vue';
 import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/MetricsInput.vue';
 import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	testId?: number;
@@ -16,8 +17,13 @@ const props = defineProps<{
 
 const router = useRouter();
 const route = useRoute();
-const testId = props.testId ?? (route.params.testId as unknown as number);
-
+const locale = useI18n();
+const testId = computed(() => props.testId ?? (route.params.testId as unknown as number));
+const buttonLabel = computed(() =>
+	isEditing.value
+		? locale.baseText('workflowEvaluation.edit.updateTest')
+		: locale.baseText('workflowEvaluation.edit.saveTest'),
+);
 const toast = useToast();
 const {
 	state,
@@ -32,17 +38,7 @@ const {
 	saveChanges,
 	cancelEditing,
 	handleKeydown,
-} = useEvaluationForm(testId);
-
-// Help texts
-const helpText = computed(
-	() => 'Executions with this tag will be added as test cases to this test.',
-);
-const workflowHelpText = computed(() => 'This workflow will be called once for each test case.');
-const metricsHelpText = computed(
-	() =>
-		'The output field of the last node in the evaluation workflow. Metrics will be averaged across all test cases.',
-);
+} = useEvaluationForm(testId.value);
 
 onMounted(() => {
 	void init();
@@ -51,10 +47,13 @@ onMounted(() => {
 async function onSaveTest() {
 	try {
 		await saveTest();
-		toast.showMessage({ title: 'Test saved', type: 'success' });
+		toast.showMessage({
+			title: locale.baseText('workflowEvaluation.edit.testSaved'),
+			type: 'success',
+		});
 		void router.push({ name: VIEWS.WORKFLOW_EVALUATION });
 	} catch (e: unknown) {
-		toast.showError(e, 'Failed to save test');
+		toast.showError(e, locale.baseText('workflowEvaluation.edit.testSaveFailed'));
 	}
 }
 </script>
@@ -78,27 +77,21 @@ async function onSaveTest() {
 			:start-editing="startEditing"
 			:save-changes="saveChanges"
 			:cancel-editing="cancelEditing"
-			:help-text="helpText"
 		/>
 
-		<WorkflowSelector v-model="state.evaluationWorkflow" :help-text="workflowHelpText" />
+		<WorkflowSelector v-model="state.evaluationWorkflow" />
 
-		<MetricsInput v-model="state.metrics" :help-text="metricsHelpText" />
+		<MetricsInput v-model="state.metrics" />
 
 		<div :class="$style.footer">
-			<n8n-button
-				type="primary"
-				:label="isEditing ? 'Update Test' : 'Save Test'"
-				:loading="isSaving"
-				@click="onSaveTest"
-			/>
+			<n8n-button type="primary" :label="buttonLabel" :loading="isSaving" @click="onSaveTest" />
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .container {
-	width: 383px;
+	width: var(--evaluation-edit-panel-width, 24rem);
 	height: 100%;
 	padding: var(--spacing-s);
 	border-right: 1px solid var(--color-foreground-base);

@@ -20,12 +20,14 @@ defineProps<EvaluationHeaderProps>();
 			icon="arrow-left"
 			:class="$style.backButton"
 			type="tertiary"
-			:title="$locale.baseText('common.back')"
+			:title="$locale.baseText('workflowEvaluation.edit.backButtonTitle')"
 			@click="$router.back()"
 		/>
 		<h2 :class="$style.title">
 			<template v-if="!modelValue.isEditing">
-				{{ modelValue.value }}
+				<span :class="$style.titleText">
+					{{ modelValue.value }}
+				</span>
 				<n8n-icon-button
 					:class="$style.editInputButton"
 					icon="pen"
@@ -38,7 +40,7 @@ defineProps<EvaluationHeaderProps>();
 				ref="nameInput"
 				:model-value="modelValue.tempValue"
 				type="text"
-				:placeholder="$locale.baseText('common.name')"
+				:placeholder="$locale.baseText('workflowEvaluation.edit.namePlaceholder')"
 				@update:model-value="$emit('update:modelValue', { ...modelValue, tempValue: $event })"
 				@blur="() => saveChanges('name')"
 				@keydown="(e: KeyboardEvent) => handleKeydown(e, 'name')"
@@ -64,19 +66,30 @@ defineProps<EvaluationHeaderProps>();
 .title {
 	margin: 0;
 	flex-grow: 1;
-	font-size: var(--font-size-l);
+	font-size: var(--font-size-xl);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-dark);
+	display: flex;
+	align-items: center;
+	max-width: 100%;
+	overflow: hidden;
+
+	.titleText {
+		display: block;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 
 .editInputButton {
+	--button-font-color: var(--prim-gray-490);
 	opacity: 0;
 	border: none;
-	--button-font-color: var(--prim-gray-490);
 }
 
 .backButton {
-	border: none;
 	--button-font-color: var(--color-text-light);
+	border: none;
 }
 </style>

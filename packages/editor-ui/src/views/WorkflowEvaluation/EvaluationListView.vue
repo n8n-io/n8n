@@ -38,15 +38,13 @@ function getTagName(tagId: string) {
 // TODO: Replace with actual API call once implemented
 function getTestExecution(_testId: number): TestExecution {
 	const mockExecutions = {
-		12: {
-			lastRun: 'an hour ago',
-			errorRate: 0,
-			metrics: { metric1: 0.12, metric2: 0.99, metric3: 0.87 },
-		},
+		lastRun: 'an hour ago',
+		errorRate: 0,
+		metrics: { metric1: 0.12, metric2: 0.99, metric3: 0.87 },
 	};
 
 	return (
-		mockExecutions[12] || {
+		mockExecutions || {
 			lastRun: null,
 			errorRate: null,
 			metrics: { metric1: null, metric2: null, metric3: null },
@@ -59,13 +57,20 @@ function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_WORKFLOW_EVALUATION });
 }
 
-function onRunTest(testId: number) {
-	console.log('Running test:', testId);
+function onRunTest(_testId: number) {
 	// TODO: Implement test run logic
+	toast.showMessage({
+		title: locale.baseText('workflowEvaluation.notImplemented'),
+		type: 'warning',
+	});
 }
 
-function onViewDetails(testId: number) {
-	void router.push({ name: VIEWS.WORKFLOW_EVALUATION_EDIT, params: { testId } });
+function onViewDetails(_testId: number) {
+	// TODO: Implement test details view
+	toast.showMessage({
+		title: locale.baseText('workflowEvaluation.notImplemented'),
+		type: 'warning',
+	});
 }
 
 function onEditTest(testId: number) {
@@ -76,7 +81,7 @@ async function onDeleteTest(testId: number) {
 	await evaluationsStore.deleteById(testId);
 
 	toast.showMessage({
-		title: locale.baseText('generic.deleted'),
+		title: locale.baseText('workflowEvaluation.list.testDeleted'),
 		type: 'success',
 	});
 }
@@ -95,10 +100,10 @@ async function loadInitialData() {
 onMounted(() => {
 	if (!evaluationsStore.isFeatureEnabled) {
 		toast.showMessage({
-			// message: "Feature not enabled",
-			title: 'Feature not enabled',
-			type: 'error',
+			title: locale.baseText('workflowEvaluation.notImplemented'),
+			type: 'warning',
 		});
+
 		void router.push({
 			name: VIEWS.WORKFLOW,
 			params: { name: router.currentRoute.value.params.name },
