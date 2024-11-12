@@ -643,7 +643,7 @@ function simplifyProperty(property: any) {
 			(file: { type: string; [key: string]: any }) => file[file.type].url,
 		);
 	} else if (['status'].includes(property.type as string)) {
-		result = property[type].name;
+		result = property[type]?.name;
 	}
 	return result;
 }
