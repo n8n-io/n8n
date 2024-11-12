@@ -26,6 +26,7 @@ const props = withDefaults(defineProps<TagsInputProps>(), {
 
 const emit = defineEmits<{ 'update:modelValue': [value: TagsInputProps['modelValue']] }>();
 
+const locale = useI18n();
 const tagsEventBus = createEventBus();
 const getTagName = computed(() => (tagId: string) => {
 	return props.tagsById[tagId]?.name ?? '';
@@ -45,7 +46,7 @@ function updateTags(tags: string[]) {
 		<n8n-input-label label="Tag name" :bold="false" size="small">
 			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
 				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">
-					{{ $locale.baseText('workflowEvaluation.edit.selectTag') }}
+					{{ locale.baseText('workflowEvaluation.edit.selectTag') }}
 				</n8n-text>
 				<n8n-tag v-for="tagId in modelValue.appliedTagIds" :key="tagId" :text="getTagName(tagId)" />
 				<n8n-icon-button
@@ -59,7 +60,7 @@ function updateTags(tags: string[]) {
 			<TagsDropdown
 				v-else
 				:model-value="modelValue.appliedTagIds"
-				:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
+				:placeholder="locale.baseText('executionAnnotationView.chooseOrCreateATag')"
 				:create-enabled="false"
 				:all-tags="allTags"
 				:is-loading="isLoading"
@@ -72,7 +73,7 @@ function updateTags(tags: string[]) {
 			/>
 		</n8n-input-label>
 		<n8n-text size="small" color="text-light">{{
-			$locale.baseText('workflowEvaluation.edit.tagsHelpText')
+			locale.baseText('workflowEvaluation.edit.tagsHelpText')
 		}}</n8n-text>
 	</div>
 </template>

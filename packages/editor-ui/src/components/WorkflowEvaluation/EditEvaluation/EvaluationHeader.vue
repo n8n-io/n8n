@@ -38,6 +38,7 @@ defineProps<EvaluationHeaderProps>();
 			<N8nInput
 				v-else
 				ref="nameInput"
+				data-test-id="evaluation-name-input"
 				:model-value="modelValue.tempValue"
 				type="text"
 				:placeholder="$locale.baseText('workflowEvaluation.edit.namePlaceholder')"
