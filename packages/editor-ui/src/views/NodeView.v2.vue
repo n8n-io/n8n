@@ -56,6 +56,7 @@ import {
 	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
@@ -105,8 +106,12 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import {
+	createCanvasConnectionHandleString,
+	mapLegacyConnectionsToCanvasConnections,
+} from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { uuid } from '@jsplumb/util';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -306,7 +311,9 @@ async function initializeRoute() {
 	// - if the redirect is blank, then do nothing
 	// - if the route is the template import view, then open the template
 	// - if the user is leaving the current view without saving the changes, then show a confirmation modal
-	if (isBlankRedirect.value) {
+	if (route.query['sub-workflow']) {
+		await createSampleSubworkflow();
+	} else if (isBlankRedirect.value) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const templateId = route.params.id;
@@ -1500,6 +1507,28 @@ function unregisterCustomActions() {
 	unregisterCustomAction('openNodeDetail');
 	unregisterCustomAction('openSelectiveNodeCreator');
 	unregisterCustomAction('showNodeCreator');
+}
+
+async function createSampleSubworkflow() {
+	resetWorkspace();
+
+	canvasStore.startLoading();
+	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+	workflowsStore.currentWorkflowExecutions = [];
+	executionsStore.activeExecution = null;
+
+	workflowsStore.setConnections(SAMPLE_SUBWORKFLOW_WORKFLOW.connections);
+
+	await addNodes(SAMPLE_SUBWORKFLOW_WORKFLOW.nodes, { trackHistory: true });
+
+	await workflowsStore.getNewWorkflowData('Sample Subworkflow', projectsStore.currentProjectId);
+
+	uiStore.stateIsDirty = true;
+
+	canvasStore.stopLoading();
+
+	fitView();
 }
 
 /**

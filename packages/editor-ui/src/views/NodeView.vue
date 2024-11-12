@@ -10,7 +10,6 @@ import type {
 	ConnectionDetachedParams,
 	ConnectionMovedParams,
 	ComponentParameters,
-	UINode,
 } from '@jsplumb/core';
 import {
 	EVENT_CONNECTION,
@@ -41,6 +40,7 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
 } from '@/constants';
 
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
@@ -1106,44 +1106,14 @@ export default defineComponent({
 			this.canvasStore.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
-			const workflow = {
-				nodes: [
-					{
-						parameters: {},
-						id: 'c055762a-8fe7-4141-a639-df2372f30060',
-						name: 'Execute Workflow Trigger',
-						type: 'n8n-nodes-base.executeWorkflowTrigger',
-						position: [260, 340],
-					},
-					{
-						parameters: {},
-						id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
-						name: 'Replace me with your logic',
-						type: 'n8n-nodes-base.noOp',
-						position: [520, 340],
-					},
-				] as INodeUi[],
-				connections: {
-					'Execute Workflow Trigger': {
-						main: [
-							[
-								{
-									node: 'Replace me with your logic',
-									type: NodeConnectionType.Main,
-									index: 0,
-								},
-							],
-						],
-					},
-				},
-				pinData: {},
-			};
-
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.executionsStore.activeExecution = null;
 			this.workflowsStore.setWorkflowName({ newName: 'Sample Subworkflow', setStateDirty: false });
 
-			await this.nodeHelpers.addNodes(workflow.nodes, workflow.connections);
+			await this.nodeHelpers.addNodes(
+				SAMPLE_SUBWORKFLOW_WORKFLOW.nodes,
+				SAMPLE_SUBWORKFLOW_WORKFLOW.connections,
+			);
 
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();

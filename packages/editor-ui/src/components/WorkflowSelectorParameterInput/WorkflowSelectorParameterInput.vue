@@ -201,7 +201,7 @@ const onAddResourceClicked = () => {
 
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
-	window.open(`${VIEWS.NEW_WORKFLOW}?${urlSearchParams.toString()}`, '_blank');
+	window.open(`/workflow/new?${urlSearchParams.toString()}`, '_blank');
 };
 </script>
 
