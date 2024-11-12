@@ -1,5 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { promptTypeOptions, textInput } from '../../../../../utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromPreviousNode,
+	textInput,
+} from '../../../../../utils/descriptions';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 
 const dataSourceOptions: INodeProperties = {
@@ -88,7 +92,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Prompt Source',
+		displayName: 'Prompt',
 		name: 'input',
 		type: 'string',
 		displayOptions: {
@@ -115,15 +119,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Text From Previous Node',
-		name: 'text',
-		type: 'string',
-		required: true,
-		default: '={{ $json.chatInput }}',
-		typeOptions: {
-			rows: 2,
-		},
-		disabledOptions: { show: { promptType: ['auto'] } },
+		...textFromPreviousNode,
 		displayOptions: {
 			show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.7 } }], agent: ['sqlAgent'] },
 		},

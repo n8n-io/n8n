@@ -36,6 +36,7 @@ import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
 } from '../../vendors/OpenAi/helpers/error-handling';
+import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
 
 interface MessagesTemplate {
 	type: string;
@@ -315,38 +316,15 @@ export class ChainLlm implements INodeType {
 				},
 			},
 			{
-				displayName: 'Prompt Source',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
+				...promptTypeOptions,
 				displayOptions: {
 					hide: {
 						'@version': [1, 1.1, 1.2, 1.3],
 					},
 				},
-				default: 'auto',
 			},
 			{
-				displayName: 'Text From Previous Node',
-				name: 'text',
-				type: 'string',
-				required: true,
-				default: '={{ $json.chatInput }}',
-				disabledOptions: { show: { promptType: ['auto'] } },
+				...textFromPreviousNode,
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 			},
 			{
