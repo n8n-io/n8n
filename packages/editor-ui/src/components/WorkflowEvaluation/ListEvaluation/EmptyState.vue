@@ -1,29 +1,33 @@
 <script setup lang="ts">
-defineEmits(['create-test']);
+defineEmits<{ 'create-test': [] }>();
 </script>
 
 <template>
-	<div>
+	<div :class="$style.container">
 		<div :class="$style.header">
-			<h1>Tests</h1>
-			<n8n-button type="primary" label="Create new test" @click="$emit('create-test')" />
+			<h1>{{ $locale.baseText('workflowEvaluation.list.tests') }}</h1>
 		</div>
 		<n8n-action-box
-			heading="Get confidence your workflow is working as expected"
-			description="Tests run your workflow and compare the results to expected ones. Create your first test from a past execution. More info"
-			button-text="Choose Execution(s)"
+			:description="$locale.baseText('workflowEvaluation.list.actionDescription')"
+			:button-text="$locale.baseText('workflowEvaluation.list.actionButton')"
 			@click:button="$emit('create-test')"
 		/>
 	</div>
 </template>
 
 <style module lang="scss">
+.container {
+	max-width: 44rem;
+	margin: var(--spacing-4xl) auto 0;
+	gap: var(--spacing-l);
+}
 .header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	color: var(--color-text-dark);
+	font-size: var(--font-size-l);
 	margin-bottom: var(--spacing-xl);
-
 	h1 {
 		margin: 0;
 	}
