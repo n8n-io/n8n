@@ -392,15 +392,10 @@ export interface IExecutionsListResponse {
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
-	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
-	retryOf?: string | null;
-	retrySuccessId?: string | null;
 	startedAt: Date;
-	stoppedAt?: Date;
 	workflowId: string;
-	workflowName?: string;
 }
 
 export interface IExecutionsStopData {

@@ -1335,38 +1335,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (activeExecution !== undefined) {
 			// Exists already so no need to add it again
-			if (activeExecution.workflowName === undefined) {
-				activeExecution.workflowName = newActiveExecution.workflowName;
-			}
 			return;
 		}
 
 		activeExecutions.value.unshift(newActiveExecution);
 		activeExecutionId.value = newActiveExecution.id;
-	}
-
-	function finishActiveExecution(finishedActiveExecution: PushPayload<'executionFinished'>): void {
-		// Find the execution to set to finished
-		const activeExecutionIndex = activeExecutions.value.findIndex((execution) => {
-			return execution.id === finishedActiveExecution.executionId;
-		});
-
-		if (activeExecutionIndex === -1) {
-			// The execution could not be found
-			return;
-		}
-
-		Object.assign(activeExecutions.value[activeExecutionIndex], {
-			...(finishedActiveExecution.executionId !== undefined
-				? { id: finishedActiveExecution.executionId }
-				: {}),
-			finished: finishedActiveExecution.data?.finished,
-			stoppedAt: finishedActiveExecution.data?.stoppedAt,
-		});
-
-		if (finishedActiveExecution.data?.data) {
-			setWorkflowExecutionRunData(finishedActiveExecution.data.data);
-		}
 	}
 
 	function setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
@@ -1739,7 +1712,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		pinDataByNodeName,
 		activeNode,
 		addActiveExecution,
-		finishActiveExecution,
 		setActiveExecutions,
 		getPastExecutions,
 		getActiveExecutions,

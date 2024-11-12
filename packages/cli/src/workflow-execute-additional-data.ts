@@ -309,54 +309,18 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteAfter: [
-			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
-				const { pushRef, executionId, retryOf } = this;
+			async function (this: WorkflowHooks): Promise<void> {
+				const { pushRef, executionId } = this;
+				if (pushRef === undefined) return;
+
 				const { id: workflowId } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId,
 					pushRef,
 					workflowId,
 				});
-				// Push data to session which started the workflow
-				if (pushRef === undefined) {
-					return;
-				}
 
-				// Clone the object except the runData. That one is not supposed
-				// to be send. Because that data got send piece by piece after
-				// each node which finished executing
-				// Edit: we now DO send the runData to the UI if mode=manual so that it shows the point of crashes
-				let pushRunData;
-				if (fullRunData.mode === 'manual') {
-					pushRunData = fullRunData;
-				} else {
-					pushRunData = {
-						...fullRunData,
-						data: {
-							...fullRunData.data,
-							resultData: {
-								...fullRunData.data.resultData,
-								runData: {},
-							},
-						},
-					};
-				}
-
-				// Push data to editor-ui once workflow finished
-				logger.debug(`Save execution progress to database for execution ID ${executionId} `, {
-					executionId,
-					workflowId,
-				});
-				// TODO: Look at this again
-				pushInstance.send(
-					'executionFinished',
-					{
-						executionId,
-						data: pushRunData,
-						retryOf,
-					},
-					pushRef,
-				);
+				pushInstance.send('executionFinished', { executionId }, pushRef);
 			},
 		],
 	};
