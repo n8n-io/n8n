@@ -10,6 +10,7 @@ import WorkflowSelector from '@/components/WorkflowEvaluation/EditEvaluation/Wor
 import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/MetricsInput.vue';
 import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
 import { useI18n } from '@/composables/useI18n';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 const props = defineProps<{
 	testId?: number;
@@ -20,33 +21,36 @@ const route = useRoute();
 const locale = useI18n();
 const testId = computed(() => props.testId ?? (route.params.testId as unknown as number));
 const buttonLabel = computed(() =>
-	isEditing.value
+	// No testId means we're creating a new one
+	testId.value
 		? locale.baseText('workflowEvaluation.edit.updateTest')
 		: locale.baseText('workflowEvaluation.edit.saveTest'),
 );
 const toast = useToast();
 const {
 	state,
-	isEditing,
-	isLoading,
+	fieldsIssues,
 	isSaving,
-	allTags,
-	tagsById,
-	init,
+	loadTestData,
 	saveTest,
 	startEditing,
 	saveChanges,
 	cancelEditing,
 	handleKeydown,
-} = useEvaluationForm(testId.value);
+} = useEvaluationForm();
 
-onMounted(() => {
-	void init();
+const { isLoading, allTags, tagsById, fetchAll } = useAnnotationTagsStore();
+
+onMounted(async () => {
+	await fetchAll();
+	if (testId.value) {
+		await loadTestData(testId.value);
+	}
 });
 
 async function onSaveTest() {
 	try {
-		await saveTest();
+		await saveTest(testId.value);
 		toast.showMessage({
 			title: locale.baseText('workflowEvaluation.edit.testSaved'),
 			type: 'success',
@@ -56,12 +60,19 @@ async function onSaveTest() {
 		toast.showError(e, locale.baseText('workflowEvaluation.edit.testSaveFailed'));
 	}
 }
+
+function hasIssues(key: string) {
+	const result = fieldsIssues.value.some((issue) => issue.field === key);
+
+	return result;
+}
 </script>
 
 <template>
 	<div :class="$style.container">
 		<EvaluationHeader
 			v-model="state.name"
+			:class="{ 'has-issues': hasIssues('name') }"
 			:start-editing="startEditing"
 			:save-changes="saveChanges"
 			:handle-keydown="handleKeydown"
@@ -71,6 +82,7 @@ async function onSaveTest() {
 
 		<TagsInput
 			v-model="state.tags"
+			:class="{ 'has-issues': hasIssues('tags') }"
 			:all-tags="allTags"
 			:tags-by-id="tagsById"
 			:is-loading="isLoading"
@@ -79,9 +91,12 @@ async function onSaveTest() {
 			:cancel-editing="cancelEditing"
 		/>
 
-		<WorkflowSelector v-model="state.evaluationWorkflow" />
+		<WorkflowSelector
+			v-model="state.evaluationWorkflow"
+			:class="{ 'has-issues': hasIssues('evaluationWorkflow') }"
+		/>
 
-		<MetricsInput v-model="state.metrics" />
+		<MetricsInput v-model="state.metrics" :class="{ 'has-issues': hasIssues('metrics') }" />
 
 		<div :class="$style.footer">
 			<n8n-button type="primary" :label="buttonLabel" :loading="isSaving" @click="onSaveTest" />
