@@ -241,6 +241,8 @@ const isDataEmpty = (schema: Schema | null) => {
 	return isObjectOrArray && isEmpty;
 };
 
+const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${title}]` : title);
+
 export const useFlattenSchema = () => {
 	const closedNodes = ref<Set<string>>(new Set());
 	const toggleNode = (id: string) => {
@@ -275,7 +277,7 @@ export const useFlattenSchema = () => {
 
 			if (schema.key) {
 				items.push({
-					title: prefix ? `${prefix}[${schema.key}]` : schema.key,
+					title: prefixTitle(schema.key, prefix),
 					path: schema.path,
 					expression,
 					depth,
@@ -309,7 +311,7 @@ export const useFlattenSchema = () => {
 		} else if (schema.key) {
 			return [
 				{
-					title: prefix ? `${prefix}[${schema.key}]` : schema.key,
+					title: prefixTitle(schema.key, prefix),
 					path: schema.path,
 					expression,
 					level,
