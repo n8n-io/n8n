@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 	SupplyData,
 	INodeParameterResourceLocator,
+	ExecuteWorkflowData,
 } from 'n8n-workflow';
 
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
@@ -389,7 +390,7 @@ export class RetrieverWorkflow implements INodeType {
 
 				const items = [newItem] as INodeExecutionData[];
 
-				let receivedData;
+				let receivedData: ExecuteWorkflowData;
 				try {
 					receivedData = await this.executeFunctions.executeWorkflow(
 						workflowInfo,
