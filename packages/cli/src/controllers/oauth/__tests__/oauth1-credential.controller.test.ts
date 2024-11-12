@@ -8,7 +8,7 @@ import Container from 'typedi';
 import { Time } from '@/constants';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -81,6 +81,7 @@ describe('OAuth1CredentialController', () => {
 			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				authUrl: 'https://example.domain/oauth/authorize',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
 				signatureMethod: 'HMAC-SHA1',
 			});
 			nock('https://example.domain')
@@ -164,7 +165,7 @@ describe('OAuth1CredentialController', () => {
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'OAuth1 callback failed because of insufficient permissions',
+					message: 'OAuth callback failed because of insufficient permissions',
 				},
 			});
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
@@ -172,7 +173,7 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should render the error page when state differs from the stored state in the credential', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
 
 			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
@@ -187,13 +188,13 @@ describe('OAuth1CredentialController', () => {
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'The OAuth1 callback state is invalid!',
+					message: 'The OAuth callback state is invalid!',
 				},
 			});
 		});
 
 		it('should render the error page when state is older than 5 minutes', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 
@@ -211,9 +212,52 @@ describe('OAuth1CredentialController', () => {
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'The OAuth1 state expired. Please try again.',
+					message: 'The OAuth callback state is invalid!',
 				},
 			});
+		});
+
+		it('should exchange the code for a valid token, and save it to DB', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
+			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
+			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA1',
+			});
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post('/oauth/access_token', {
+					oauth_token: 'token',
+					oauth_verifier: 'verifier',
+				})
+				.once()
+				.reply(200, 'access_token=new_token');
+			cipher.encrypt.mockReturnValue('encrypted');
+
+			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
+			const res = mock<Response>();
+			req.query = {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			} as OAuthRequest.OAuth1Credential.Callback['query'];
+
+			await controller.handleCallback(req, res);
+
+			expect(cipher.encrypt).toHaveBeenCalledWith({
+				oauthTokenData: { access_token: 'new_token' },
+			});
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: 'encrypted',
+					id: '1',
+					name: 'Test Credential',
+					type: 'oAuth1Api',
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 	});
 });

@@ -6,26 +6,27 @@ import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } f
 import { jsonParse, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsDb } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
-import type { OAuthRequest } from '@/requests';
+import type { AuthenticatedRequest, OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-export interface CsrfStateParam {
+type CsrfStateParam = {
 	cid: string;
 	token: string;
 	createdAt: number;
 	userId?: string;
-}
+};
 
 // TODO: Flip this flag in v2
 // https://linear.app/n8n/issue/CAT-329
@@ -136,23 +137,55 @@ export abstract class AbstractOAuthController {
 		return [csrfSecret, Buffer.from(JSON.stringify(state)).toString('base64')];
 	}
 
-	protected decodeCsrfState(encodedState: string): CsrfStateParam {
+	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfStateParam {
 		const errorMessage = 'Invalid state format';
 		const decoded = jsonParse<CsrfStateParam>(Buffer.from(encodedState, 'base64').toString(), {
 			errorMessage,
 		});
+
 		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new ApplicationError(errorMessage);
 		}
+
+		if (decoded.userId !== req.user?.id) {
+			throw new AuthError('Unauthorized');
+		}
+
 		return decoded;
 	}
 
 	protected verifyCsrfState(decrypted: ICredentialDataDecryptedObject, state: CsrfStateParam) {
 		const token = new Csrf();
-		return (
-			decrypted.csrfSecret === undefined ||
-			!token.verify(decrypted.csrfSecret as string, state.token)
+		if (decrypted.csrfSecret === undefined) return false;
+		if (!token.verify(decrypted.csrfSecret as string, state.token)) return false;
+		if (!state.createdAt || Date.now() - state.createdAt > 5 * Time.minutes.toMilliseconds)
+			return false;
+		return true;
+	}
+
+	protected async resolveCredential<T>(
+		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
+	): Promise<[ICredentialsDb, ICredentialDataDecryptedObject, T]> {
+		const { state: encodedState } = req.query;
+		const state = this.decodeCsrfState(encodedState, req);
+		const credential = await this.getCredentialWithoutUser(state.cid);
+		if (!credential) {
+			throw new ApplicationError('OAuth callback failed because of insufficient permissions');
+		}
+
+		const additionalData = await this.getAdditionalData();
+		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
+		const oauthCredentials = this.applyDefaultsAndOverwrites<T>(
+			credential,
+			decryptedDataOriginal,
+			additionalData,
 		);
+
+		if (!this.verifyCsrfState(decryptedDataOriginal, state)) {
+			throw new ApplicationError('The OAuth callback state is invalid!');
+		}
+
+		return [credential, decryptedDataOriginal, oauthCredentials];
 	}
 
 	protected renderCallbackError(res: Response, message: string, reason?: string) {

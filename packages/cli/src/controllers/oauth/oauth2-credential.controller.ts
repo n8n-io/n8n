@@ -8,19 +8,11 @@ import { jsonStringify } from 'n8n-workflow';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
-import {
-	Time,
-	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
-} from '@/constants';
+import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { Get, RestController } from '@/decorators';
-import { AuthError } from '@/errors/response-errors/auth.error';
 import { OAuthRequest } from '@/requests';
 
-import {
-	AbstractOAuthController,
-	skipAuthOnOAuthCallback,
-	type CsrfStateParam,
-} from './abstract-oauth.controller';
+import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -105,41 +97,8 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				);
 			}
 
-			let state: CsrfStateParam;
-			try {
-				state = this.decodeCsrfState(encodedState);
-				if (state.userId !== req.user.id) {
-					throw new AuthError('Unauthorized');
-				}
-			} catch (error) {
-				return this.renderCallbackError(res, (error as Error).message);
-			}
-
-			const credentialId = state.cid;
-			const credential = await this.getCredentialWithoutUser(credentialId);
-			if (!credential) {
-				const errorMessage = 'OAuth2 callback failed because of insufficient permissions';
-				this.logger.error(errorMessage, { credentialId });
-				return this.renderCallbackError(res, errorMessage);
-			}
-
-			const additionalData = await this.getAdditionalData();
-			const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
-			const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
-				credential,
-				decryptedDataOriginal,
-				additionalData,
-			);
-
-			if (this.verifyCsrfState(decryptedDataOriginal, state)) {
-				const errorMessage = 'The OAuth2 callback state is invalid!';
-				this.logger.debug(errorMessage, { credentialId });
-				return this.renderCallbackError(res, errorMessage);
-			}
-
-			if (!state.createdAt || Date.now() - state.createdAt > 5 * Time.minutes.toMilliseconds) {
-				return this.renderCallbackError(res, 'The OAuth2 state expired. Please try again.');
-			}
+			const [credential, decryptedDataOriginal, oauthCredentials] =
+				await this.resolveCredential<OAuth2CredentialData>(req);
 
 			let options: Partial<ClientOAuth2Options> = {};
 
@@ -174,12 +133,6 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
 
-			if (oauthToken === undefined) {
-				const errorMessage = 'Unable to get OAuth2 access tokens!';
-				this.logger.error(errorMessage, { credentialId });
-				return this.renderCallbackError(res, errorMessage);
-			}
-
 			if (decryptedDataOriginal.oauthTokenData) {
 				// Only overwrite supplied data as some providers do for example just return the
 				// refresh_token on the very first request and not on subsequent ones.
@@ -193,7 +146,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
 			this.logger.debug('OAuth2 callback successful for credential', {
-				credentialId,
+				credentialId: credential.id,
 			});
 
 			return res.render('oauth-callback');

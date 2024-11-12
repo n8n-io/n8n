@@ -54,6 +54,13 @@ describe('OAuth2CredentialController', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.resetAllMocks();
+
+		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
+			clientId: 'test-client-id',
+			clientSecret: 'oauth-secret',
+			authUrl: 'https://example.domain/o/oauth2/v2/auth',
+			accessTokenUrl: 'https://example.domain/token',
+		});
 	});
 
 	describe('getAuthUri', () => {
@@ -78,10 +85,6 @@ describe('OAuth2CredentialController', () => {
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
-				clientId: 'test-client-id',
-				authUrl: 'https://example.domain/o/oauth2/v2/auth',
-			});
 			cipher.encrypt.mockReturnValue('encrypted');
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
@@ -159,7 +162,7 @@ describe('OAuth2CredentialController', () => {
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'OAuth2 callback failed because of insufficient permissions',
+					message: 'OAuth callback failed because of insufficient permissions',
 				},
 			});
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
@@ -178,7 +181,7 @@ describe('OAuth2CredentialController', () => {
 			await controller.handleCallback(req, res);
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'The OAuth2 callback state is invalid!',
+					message: 'The OAuth callback state is invalid!',
 				},
 			});
 			expect(externalHooks.run).not.toHaveBeenCalled();
@@ -200,20 +203,43 @@ describe('OAuth2CredentialController', () => {
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'The OAuth2 state expired. Please try again.',
+					message: 'The OAuth callback state is invalid!',
 				},
 			});
 			expect(externalHooks.run).not.toHaveBeenCalled();
 		});
 
+		it('should render the error page when code exchange fails', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(403, { error: 'Code could not be exchanged' });
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { code: 'code', state: validState },
+				originalUrl: '?code=code',
+			});
+			const res = mock<Response>();
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalled();
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'Code could not be exchanged',
+					reason: '{"error":"Code could not be exchanged"}',
+				},
+			});
+		});
+
 		it('should exchange the code for a valid token, and save it to DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
-				clientId: 'test-client-id',
-				clientSecret: 'oauth-secret',
-				accessTokenUrl: 'https://example.domain/token',
-			});
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
 				.post(
