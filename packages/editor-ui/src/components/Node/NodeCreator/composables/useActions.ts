@@ -219,6 +219,8 @@ export const useActions = () => {
 		const { getByNameAndVersion } = getNodeTypes();
 
 		// We want to add a trigger if there are no triggers other than Manual Triggers
+		// Performance here should be fine as `getByNameAndVersion` fetches nodeTypes once in bulk
+		// and `every` aborts on first `false`
 		const shouldAddChatTrigger = allNodes.every((node) => {
 			const nodeType = getByNameAndVersion(node.type, node.typeVersion);
 
