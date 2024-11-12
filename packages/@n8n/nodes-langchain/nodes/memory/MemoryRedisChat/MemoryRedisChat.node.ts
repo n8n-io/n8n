@@ -120,6 +120,7 @@ export class MemoryRedisChat implements INodeType {
 			socket: {
 				host: credentials.host as string,
 				port: credentials.port as number,
+				tls: credentials.ssl === true,
 			},
 			database: credentials.database as number,
 		};
