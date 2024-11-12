@@ -18,8 +18,8 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import ListEvaluations from './views/WorkflowEvaluation/ListEvaluations.vue';
-import NewEvaluation from './views/WorkflowEvaluation/NewEvaluation.vue';
+import EvaluationListView from './views/WorkflowEvaluation/EvaluationListView.vue';
+import EvaluationEditView from './views/WorkflowEvaluation/EvaluationEditView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -253,52 +253,51 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:name/evaluation',
 		name: VIEWS.WORKFLOW_EVALUATION,
-		components: {
-			default: ListEvaluations,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
-		// children: [
-		// 	{
-		// 		path: '',
-		// 		name: VIEWS.EXECUTION_HOME,
-		// 		components: {
-		// 			executionPreview: WorkflowExecutionsLandingPage,
-		// 		},
-		// 		meta: {
-		// 			keepWorkflowAlive: true,
-		// 			middleware: ['authenticated'],
-		// 		},
-		// 	},
-		// 	{
-		// 		path: ':executionId',
-		// 		name: VIEWS.EXECUTION_PREVIEW,
-		// 		components: {
-		// 			executionPreview: WorkflowExecutionsPreview,
-		// 		},
-		// 		meta: {
-		// 			keepWorkflowAlive: true,
-		// 			middleware: ['authenticated'],
-		// 		},
-		// 	},
-		// ],
-	},
-	{
-		path: '/workflow/:name/evaluation/new',
-		name: VIEWS.NEW_WORKFLOW_EVALUATION,
-		components: {
-			default: NewEvaluation,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
-		},
+		children: [
+			{
+				path: '',
+				name: VIEWS.WORKFLOW_EVALUATION,
+				components: {
+					default: EvaluationListView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: 'new',
+				name: VIEWS.NEW_WORKFLOW_EVALUATION,
+				components: {
+					default: EvaluationEditView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId',
+				name: VIEWS.WORKFLOW_EVALUATION_EDIT,
+				components: {
+					default: EvaluationEditView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+		],
 		// children: [
 		// 	{
 		// 		path: '',

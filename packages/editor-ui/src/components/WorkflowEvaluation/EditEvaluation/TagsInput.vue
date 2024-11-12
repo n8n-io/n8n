@@ -1,0 +1,94 @@
+<script setup lang="ts">
+import type { ITag } from '@/Interface';
+import { computed } from 'vue';
+
+export interface TagsInputProps {
+	modelValue?: {
+		isEditing: boolean;
+		appliedTagIds: string[];
+	};
+	allTags: ITag[];
+	tagsById: Record<string, ITag>;
+	isLoading: boolean;
+	startEditing: (field: string) => void;
+	saveChanges: (field: string) => void;
+	cancelEditing: (field: string) => void;
+	helpText: string;
+}
+
+const props = withDefaults(defineProps<TagsInputProps>(), {
+	modelValue: () => ({
+		isEditing: false,
+		appliedTagIds: [],
+	}),
+});
+
+const emit = defineEmits<{ 'update:modelValue': [value: TagsInputProps['modelValue']] }>();
+
+const getTagName = computed(() => (tagId: string) => {
+	return props.tagsById[tagId]?.name ?? '';
+});
+
+function updateTags(tags: string[]) {
+	const newTags = tags[0] ? [tags[0]] : [];
+	emit('update:modelValue', {
+		...props.modelValue,
+		appliedTagIds: newTags,
+	});
+}
+</script>
+
+<template>
+	<div :class="$style.formGroup">
+		<n8n-input-label label="Tag name" :bold="false" size="small">
+			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
+				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">Select tag...</n8n-text>
+				<n8n-tag v-for="tagId in modelValue.appliedTagIds" :key="tagId" :text="getTagName(tagId)" />
+				<n8n-icon-button
+					:class="$style.editInputButton"
+					icon="pen"
+					type="tertiary"
+					size="small"
+					transparent
+				/>
+			</div>
+			<TagsDropdown
+				v-else
+				:model-value="modelValue.appliedTagIds"
+				:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
+				:create-enabled="false"
+				:all-tags="allTags"
+				:is-loading="isLoading"
+				:tags-by-id="tagsById"
+				class="tags-edit"
+				data-test-id="workflow-tags-dropdown"
+				@update:model-value="updateTags"
+				@esc="cancelEditing('tags')"
+				@blur="saveChanges('tags')"
+			/>
+		</n8n-input-label>
+		<n8n-text size="small" color="text-light">{{ helpText }}</n8n-text>
+	</div>
+</template>
+
+<style module lang="scss">
+.formGroup {
+	margin-bottom: var(--spacing-l);
+
+	:global(.n8n-input-label) {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.tagsRead {
+	&:hover .editInputButton {
+		opacity: 1;
+	}
+}
+
+.editInputButton {
+	opacity: 0;
+	border: none;
+	--button-font-color: var(--prim-gray-490);
+}
+</style>

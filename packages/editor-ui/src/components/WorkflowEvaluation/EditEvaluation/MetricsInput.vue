@@ -1,0 +1,81 @@
+<script setup lang="ts">
+export interface MetricsInputProps {
+	modelValue: string[];
+	helpText: string;
+}
+const props = defineProps<MetricsInputProps>();
+const emit = defineEmits<{ 'update:modelValue': [value: MetricsInputProps['modelValue']] }>();
+
+function addNewMetric() {
+	emit('update:modelValue', [...props.modelValue, '']);
+}
+
+function updateMetric(index: number, value: string) {
+	const newMetrics = [...props.modelValue];
+	newMetrics[index] = value;
+	emit('update:modelValue', newMetrics);
+}
+</script>
+
+<template>
+	<div :class="[$style.formGroup, $style.metrics]">
+		<n8n-text color="text-dark">Metrics</n8n-text>
+		<hr :class="$style.metricsDivider" />
+		<n8n-text size="small" color="text-light">
+			{{ helpText }}
+		</n8n-text>
+		<n8n-input-label label="Output field(s)" :bold="false" size="small" :class="$style.metricField">
+			<div :class="$style.metricsContainer">
+				<div v-for="(metric, index) in modelValue" :key="index">
+					<N8nInput
+						:ref="`metric_${index}`"
+						:model-value="metric"
+						:placeholder="'Enter metric name'"
+						@update:model-value="(value: string) => updateMetric(index, value)"
+					/>
+				</div>
+				<n8n-button
+					type="tertiary"
+					:label="'New metric'"
+					:class="$style.newMetricButton"
+					@click="addNewMetric"
+				/>
+			</div>
+		</n8n-input-label>
+	</div>
+</template>
+
+<style module lang="scss">
+.formGroup {
+	margin-bottom: var(--spacing-l);
+
+	:global(.n8n-input-label) {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.metricsContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.metricField {
+	width: 100%;
+	margin-top: var(--spacing-xs);
+}
+
+.metricsDivider {
+	margin-top: var(--spacing-4xs);
+	margin-bottom: var(--spacing-3xs);
+}
+
+.newMetricButton {
+	align-self: flex-start;
+	margin-top: var(--spacing-2xs);
+	width: 100%;
+	background-color: var(--color-sticky-code-background);
+	border-color: var(--color-button-secondary-focus-outline);
+	color: var(--color-button-secondary-font);
+}
+</style>
