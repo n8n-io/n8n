@@ -44,7 +44,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { adjustNewlyConnectedNodes } from '@/utils/connectionParameterUtils';
+import { adjustNewlyConnectedNodes } from '@/utils/connectionNodeUtils';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();

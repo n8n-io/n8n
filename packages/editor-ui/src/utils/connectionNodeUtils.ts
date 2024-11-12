@@ -17,12 +17,12 @@ const AI_NODES = [
 ];
 
 const MEMORY_NODE_NAMES = [
-	'memoryBufferWindow',
-	'memoryMotorhead',
-	'memoryPostgresChat',
-	'memoryRedisChat',
-	'memoryXata',
-	'memoryZep',
+	'@n8n/n8n-nodes-langchain.memoryBufferWindow',
+	'@n8n/n8n-nodes-langchain.memoryMotorhead',
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat',
+	'@n8n/n8n-nodes-langchain.memoryRedisChat',
+	'@n8n/n8n-nodes-langchain.memoryXata',
+	'@n8n/n8n-nodes-langchain.memoryZep',
 ];
 
 const PROMPT_PROVIDER_NODE_NAMES = [CHAT_TRIGGER_NODE_TYPE];

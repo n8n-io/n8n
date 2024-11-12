@@ -96,7 +96,7 @@ import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
-import { adjustNewlyConnectedNodes } from '@/utils/connectionParameterUtils';
+import { adjustNewlyConnectedNodes } from '@/utils/connectionNodeUtils';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
