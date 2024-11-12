@@ -4,7 +4,6 @@ import {
 	Generated,
 	Index,
 	ManyToOne,
-	OneToOne,
 	PrimaryColumn,
 	RelationId,
 } from '@n8n/typeorm';
@@ -31,7 +30,9 @@ export class TestDefinition extends WithTimestamps {
 	id: number;
 
 	@Column({ length: 255 })
-	@Length(1, 255, { message: 'Test name must be $constraint1 to $constraint2 characters long.' })
+	@Length(1, 255, {
+		message: 'Test definition name must be $constraint1 to $constraint2 characters long.',
+	})
 	name: string;
 
 	/**
@@ -56,6 +57,9 @@ export class TestDefinition extends WithTimestamps {
 	 * Relation to the annotation tag associated with the test
 	 * This tag will be used to select the test cases to run from previous executions
 	 */
-	@OneToOne('AnnotationTagEntity', 'test')
+	@ManyToOne('AnnotationTagEntity', 'test')
 	annotationTag: AnnotationTagEntity;
+
+	@RelationId((test: TestDefinition) => test.annotationTag)
+	annotationTagId: string;
 }
