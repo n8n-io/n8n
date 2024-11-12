@@ -3,7 +3,7 @@ import { Config, Env, Nested } from '@n8n/config';
 @Config
 class TaskRunnerServerConfig {
 	@Env('N8N_RUNNERS_SERVER_ENABLED')
-	enabled: boolean = true;
+	enabled: boolean = false;
 
 	@Env('N8N_RUNNERS_SERVER_HOST')
 	host: string = '127.0.0.1';
