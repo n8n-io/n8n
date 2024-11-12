@@ -18,6 +18,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
+import { VIEWS } from '@/constants';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -30,6 +31,7 @@ interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
+	allowNew?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	forceShowExpression: false,
 	expressionDisplayValue: '',
 	parameterIssues: () => [],
+	allowNew: false,
 });
 
 const emit = defineEmits<{
@@ -50,6 +53,7 @@ const emit = defineEmits<{
 	blur: [];
 }>();
 
+const NEW_WORKFLOW_VALUE = '__new_workflow__';
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
@@ -81,6 +85,20 @@ const {
 	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
 
+const resourcesWithNew = computed(() => {
+	if (!props.allowNew) return filteredResources.value;
+
+	const route = router.resolve({ name: VIEWS.NEW_WORKFLOW });
+	return [
+		{
+			value: NEW_WORKFLOW_VALUE,
+			name: '+ Create new workflow',
+			url: route.href,
+		},
+		...filteredResources.value,
+	];
+});
+
 const valueToDisplay = computed<NodeParameterValue>(() => {
 	if (typeof props.modelValue !== 'object') {
 		return props.modelValue;
@@ -111,6 +129,11 @@ function setWidth() {
 function onInputChange(value: NodeParameterValue): void {
 	if (typeof value !== 'string') return;
 
+	if (value === NEW_WORKFLOW_VALUE && props.allowNew) {
+		const route = router.resolve({ name: VIEWS.NEW_WORKFLOW });
+		window.open(route.href, '_blank');
+		return;
+	}
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = workflowsStore.getWorkflowById(value);
@@ -189,13 +212,14 @@ onClickOutside(dropdown, () => {
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="filteredResources"
+			:resources="resourcesWithNew"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
 			:error-view="false"
 			:width="width"
 			:event-bus="eventBus"
+			:allow-new="allowNew"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
