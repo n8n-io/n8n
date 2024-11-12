@@ -142,7 +142,13 @@ const outputError = computed(() => {
 					<li v-if="runMeta?.subExecution">
 						<a @click.stop="openRelatedExecution(runMeta, 'ai')">
 							<N8nIcon icon="external-link-alt" size="xsmall" />
-							{{ $locale.baseText('runData.openSubExecution') }}
+							{{
+								$locale.baseText('runData.openSubExecution', {
+									interpolate: {
+										id: runMeta.subExecution?.executionId,
+									},
+								})
+							}}
 						</a>
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">

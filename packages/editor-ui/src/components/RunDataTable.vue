@@ -551,6 +551,7 @@ watch(focusedMappableInput, (curr) => {
 									},
 								})
 							"
+							placement="left"
 							:hide-after="0"
 						>
 							<N8nIconButton

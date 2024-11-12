@@ -1225,6 +1225,19 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function getExecutionLinkLabel(task: ITaskMetadata) {
+	if (task.parentExecution) {
+		return i18n.baseText('runData.openParentExecution', {
+			interpolate: { id: task.parentExecution.executionId },
+		});
+	}
+	if (task.subExecution) {
+		return i18n.baseText('runData.openSubExecution', {
+			interpolate: { id: task.subExecution.executionId },
+		});
+	}
+}
+
 defineExpose({ enterEditMode });
 </script>
 
@@ -1398,11 +1411,7 @@ defineExpose({ enterEditMode });
 				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
-				{{
-					activeTaskMetadata.parentExecution
-						? $locale.baseText('runData.openParentExecution')
-						: $locale.baseText('runData.openSubExecution')
-				}}
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
 			</a>
 		</div>
 
@@ -1483,11 +1492,7 @@ defineExpose({ enterEditMode });
 				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
-				{{
-					activeTaskMetadata.parentExecution
-						? $locale.baseText('runData.openParentExecution')
-						: $locale.baseText('runData.openSubExecution')
-				}}
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
 			</a>
 		</div>
 
