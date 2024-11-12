@@ -2150,6 +2150,7 @@ export interface ITaskMetadata {
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
+	subExecutionsCount?: number;
 }
 
 // The data that gets returned when a node runs

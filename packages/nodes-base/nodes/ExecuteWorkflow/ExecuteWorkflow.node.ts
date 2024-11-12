@@ -304,6 +304,10 @@ export class ExecuteWorkflow implements INodeType {
 				}
 			}
 
+			this.setMetadata({
+				subExecutionsCount: items.length,
+			});
+
 			return returnData;
 		} else {
 			try {
@@ -334,6 +338,7 @@ export class ExecuteWorkflow implements INodeType {
 						executionId: executionResult.executionId,
 						workflowId: workflowInfo.id ?? (workflowProxy.$workflow.id as string),
 					},
+					subExecutionsCount: 1,
 				});
 
 				if (!waitForSubWorkflow) {
