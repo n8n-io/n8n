@@ -5,7 +5,6 @@ import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from 'n8n-design-system';
-import { VIEWS } from '@/constants';
 
 interface EditableField {
 	value: string;
@@ -15,7 +14,7 @@ interface EditableField {
 
 export interface IEvaluationFormState {
 	name: EditableField;
-	description?: string;
+	description: string;
 	tags: {
 		isEditing: boolean;
 		appliedTagIds: string[];
@@ -71,11 +70,12 @@ export function useEvaluationForm(testId?: number) {
 		if (!testId) return;
 
 		try {
-			await evaluationsStore.fetchAll();
+			await evaluationsStore.fetchAll({ force: true });
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
 
 			if (testDefinition) {
 				state.value = {
+					description: '',
 					name: {
 						value: testDefinition.name,
 						isEditing: false,
@@ -134,7 +134,7 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	const startEditing = async (field: 'name' | 'tags') => {
+	const startEditing = async (field: string) => {
 		if (field === 'name') {
 			state.value.name.tempValue = state.value.name.value;
 			state.value.name.isEditing = true;
@@ -143,7 +143,7 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	const saveChanges = (field: 'name' | 'tags') => {
+	const saveChanges = (field: string) => {
 		if (field === 'name') {
 			state.value.name.value = state.value.name.tempValue;
 			state.value.name.isEditing = false;
@@ -152,7 +152,7 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	const cancelEditing = (field: 'name' | 'tags') => {
+	const cancelEditing = (field: string) => {
 		if (field === 'name') {
 			state.value.name.isEditing = false;
 		} else {
@@ -160,25 +160,13 @@ export function useEvaluationForm(testId?: number) {
 		}
 	};
 
-	const handleKeydown = (event: KeyboardEvent, field: 'name' | 'tags') => {
+	const handleKeydown = (event: KeyboardEvent, field: string) => {
 		if (event.key === 'Escape') {
 			cancelEditing(field);
 		} else if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			saveChanges(field);
 		}
-	};
-
-	const updateMetrics = (metrics: string[]) => {
-		state.value.metrics = metrics;
-	};
-
-	const onTagUpdate = (tags: string[]) => {
-		state.value.tags.appliedTagIds = tags[0] ? [tags[0]] : [];
-	};
-
-	const onWorkflowUpdate = (value: INodeParameterResourceLocator) => {
-		state.value.evaluationWorkflow = value;
 	};
 
 	// Initialize
@@ -203,8 +191,5 @@ export function useEvaluationForm(testId?: number) {
 		saveChanges,
 		cancelEditing,
 		handleKeydown,
-		updateMetrics,
-		onTagUpdate,
-		onWorkflowUpdate,
 	};
 }
