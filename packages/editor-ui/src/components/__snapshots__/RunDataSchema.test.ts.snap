@@ -13,23 +13,28 @@ exports[`RunDataSchema.vue > renders previous nodes schema for AI tools 1`] = `
     class="toggle"
     data-v-c0d66716=""
   >
-    <svg
-      aria-hidden="true"
-      class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-      data-icon="angle-down"
-      data-prefix="fas"
+    <font-awesome-icon-stub
+      beat="false"
+      beatfade="false"
+      border="false"
+      bounce="false"
+      class="collapse-icon"
       data-v-c0d66716=""
-      focusable="false"
-      role="img"
-      viewBox="0 0 320 512"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        class=""
-        d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-        fill="currentColor"
-      />
-    </svg>
+      fade="false"
+      fixedwidth="false"
+      flash="false"
+      flip="false"
+      icon="angle-down"
+      inverse="false"
+      listitem="false"
+      pulse="false"
+      shake="false"
+      spin="false"
+      spinpulse="false"
+      spinreverse="false"
+      swapopacity="false"
+      symbol="false"
+    />
   </div>
   <div
     class="n8n-node-icon icon icon"
@@ -83,23 +88,28 @@ exports[`RunDataSchema.vue > renders schema for correct output branch 1`] = `
     class="toggle"
     data-v-c0d66716=""
   >
-    <svg
-      aria-hidden="true"
-      class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-      data-icon="angle-down"
-      data-prefix="fas"
+    <font-awesome-icon-stub
+      beat="false"
+      beatfade="false"
+      border="false"
+      bounce="false"
+      class="collapse-icon"
       data-v-c0d66716=""
-      focusable="false"
-      role="img"
-      viewBox="0 0 320 512"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        class=""
-        d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-        fill="currentColor"
-      />
-    </svg>
+      fade="false"
+      fixedwidth="false"
+      flash="false"
+      flip="false"
+      icon="angle-down"
+      inverse="false"
+      listitem="false"
+      pulse="false"
+      shake="false"
+      spin="false"
+      spinpulse="false"
+      spinreverse="false"
+      swapopacity="false"
+      symbol="false"
+    />
   </div>
   <div
     class="n8n-node-icon icon icon"
@@ -183,23 +193,29 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.name }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-font fa-w-14 fa-sm type-icon"
-              data-icon="font"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 448 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -251,23 +267,29 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.age }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-hashtag fa-w-14 fa-sm type-icon"
-              data-icon="hashtag"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 448 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -310,23 +332,28 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
               class="toggle"
               data-v-ce2825e7=""
             >
-              <svg
-                aria-hidden="true"
-                class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-                data-icon="angle-down"
-                data-prefix="fas"
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
                 data-v-ce2825e7=""
-                focusable="false"
-                role="img"
-                viewBox="0 0 320 512"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  class=""
-                  d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-                  fill="currentColor"
-                />
-              </svg>
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
             </div>
           </div>
           <div
@@ -340,23 +367,29 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.hobbies }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-list fa-w-16 fa-sm type-icon"
-              data-icon="list"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 512 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M80 368H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm0-320H16A16 16 0 0 0 0 64v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm0 160H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm416 176H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zm0-320H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16zm0 160H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="list"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -403,23 +436,29 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.hobbies[0] }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-font fa-w-14 fa-sm type-icon"
-              data-icon="font"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 448 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -471,23 +510,29 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.hobbies[1] }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-font fa-w-14 fa-sm type-icon"
-              data-icon="font"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 448 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -555,23 +600,28 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             class="toggle"
             data-v-c0d66716=""
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-              data-icon="angle-down"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="collapse-icon"
               data-v-c0d66716=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 320 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="angle-down"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
           </div>
           <div
             class="n8n-node-icon icon icon"
@@ -627,23 +677,28 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-ce2825e7=""
             >
-              <svg
-                aria-hidden="true"
-                class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-                data-icon="angle-down"
-                data-prefix="fas"
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
                 data-v-ce2825e7=""
-                focusable="false"
-                role="img"
-                viewBox="0 0 320 512"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  class=""
-                  d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-                  fill="currentColor"
-                />
-              </svg>
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
             </div>
           </div>
           <div
@@ -657,23 +712,29 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'] }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-list fa-w-16 fa-sm type-icon"
-              data-icon="list"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 512 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M80 368H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm0-320H16A16 16 0 0 0 0 64v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm0 160H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm416 176H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zm0-320H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16zm0 160H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="list"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -711,23 +772,28 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-ce2825e7=""
             >
-              <svg
-                aria-hidden="true"
-                class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-                data-icon="angle-down"
-                data-prefix="fas"
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
                 data-v-ce2825e7=""
-                focusable="false"
-                role="img"
-                viewBox="0 0 320 512"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  class=""
-                  d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-                  fill="currentColor"
-                />
-              </svg>
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
             </div>
           </div>
           <div
@@ -741,23 +807,29 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0] }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-cube fa-w-16 fa-sm type-icon"
-              data-icon="cube"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 512 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="cube"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -795,23 +867,28 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
               class="toggle"
               data-v-ce2825e7=""
             >
-              <svg
-                aria-hidden="true"
-                class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-                data-icon="angle-down"
-                data-prefix="fas"
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
                 data-v-ce2825e7=""
-                focusable="false"
-                role="img"
-                viewBox="0 0 320 512"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  class=""
-                  d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-                  fill="currentColor"
-                />
-              </svg>
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
             </div>
           </div>
           <div
@@ -825,23 +902,29 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0].test }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-cube fa-w-16 fa-sm type-icon"
-              data-icon="cube"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 512 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="cube"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -888,23 +971,29 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0].test['more to think about'] }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-hashtag fa-w-14 fa-sm type-icon"
-              data-icon="hashtag"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 448 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -956,23 +1045,29 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0]['test.how'] }}"
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-font fa-w-14 fa-sm type-icon"
-              data-icon="font"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
               data-v-ce2825e7=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 448 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
             <span
               class="content title"
               data-v-ce2825e7=""
@@ -1012,23 +1107,28 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             class="toggle"
             data-v-c0d66716=""
           >
-            <svg
-              aria-hidden="true"
-              class="svg-inline--fa fa-angle-down fa-w-10 collapse-icon"
-              data-icon="angle-down"
-              data-prefix="fas"
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="collapse-icon"
               data-v-c0d66716=""
-              focusable="false"
-              role="img"
-              viewBox="0 0 320 512"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                class=""
-                d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"
-                fill="currentColor"
-              />
-            </svg>
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="angle-down"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
           </div>
           <div
             class="n8n-node-icon icon icon"

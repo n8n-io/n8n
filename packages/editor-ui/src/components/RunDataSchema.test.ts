@@ -115,6 +115,7 @@ describe('RunDataSchema.vue', () => {
 				stubs: {
 					DynamicScroller: DynamicScrollerStub,
 					DynamicScrollerItem: DynamicScrollerItemStub,
+					FontAwesomeIcon: true,
 				},
 			},
 			pinia: await setupStore(),
