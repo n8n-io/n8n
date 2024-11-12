@@ -546,7 +546,9 @@ watch(focusedMappableInput, (curr) => {
 						<N8nTooltip
 							:content="
 								i18n.baseText('runData.table.inspectSubExecution', {
-									interpolate: { id: tableData.metadata.data[index1]?.subExecution.executionId },
+									interpolate: {
+										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
+									},
 								})
 							"
 							:hide-after="0"
