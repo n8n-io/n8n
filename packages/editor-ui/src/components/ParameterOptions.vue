@@ -4,6 +4,8 @@ import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
+import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 
 interface Props {
 	parameter: INodeProperties;
@@ -37,7 +39,7 @@ const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
 const shouldShowExpressionSelector = computed(
-	() => !props.parameter.noDataExpression && props.showExpressionSelector,
+	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {
@@ -59,10 +61,19 @@ const shouldShowOptions = computed(() => {
 	return false;
 });
 const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
+const activeNode = computed(() => useNDVStore().activeNode);
 const hasRemoteMethod = computed(
 	() =>
 		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
 );
+const resetValueLabel = computed(() => {
+	if (activeNode.value && [AI_TRANSFORM_NODE_TYPE].includes(activeNode.value.type)) {
+		return i18n.baseText('parameterInput.clearContents');
+	}
+
+	return i18n.baseText('parameterInput.resetValue');
+});
+
 const actions = computed(() => {
 	if (Array.isArray(props.customActions) && props.customActions.length > 0) {
 		return props.customActions;
@@ -79,7 +90,7 @@ const actions = computed(() => {
 
 	const parameterActions = [
 		{
-			label: i18n.baseText('parameterInput.resetValue'),
+			label: resetValueLabel.value,
 			value: 'resetValue',
 			disabled: isDefault.value,
 		},

@@ -27,7 +27,7 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { PruningService } from '@/services/pruning.service';
+import { PruningService } from '@/services/pruning/pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -221,7 +221,7 @@ export class Start extends BaseCommand {
 		}
 
 		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (!taskRunnerConfig.disabled) {
+		if (taskRunnerConfig.enabled) {
 			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();

@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { PruningConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
@@ -8,8 +8,7 @@ import { TIME } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logging/logger.service';
-import { PruningService } from '@/services/pruning.service';
+import { PruningService } from '@/services/pruning/pruning.service';
 
 import {
 	annotateExecution,
@@ -18,7 +17,7 @@ import {
 } from './shared/db/executions';
 import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/test-db';
-import { mockInstance } from '../shared/mocking';
+import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
@@ -28,19 +27,19 @@ describe('softDeleteOnPruningCycle()', () => {
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
 	let workflow: WorkflowEntity;
-	let globalConfig: GlobalConfig;
+	let pruningConfig: PruningConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 
-		globalConfig = Container.get(GlobalConfig);
+		pruningConfig = Container.get(PruningConfig);
 		pruningService = new PruningService(
-			mockInstance(Logger),
+			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			mock(),
-			globalConfig,
+			pruningConfig,
 		);
 
 		workflow = await createWorkflow();
@@ -63,8 +62,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
 		beforeAll(() => {
-			globalConfig.pruning.maxAge = 336;
-			globalConfig.pruning.maxCount = 1;
+			pruningConfig.maxAge = 336;
+			pruningConfig.maxCount = 1;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
@@ -74,7 +73,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -93,7 +92,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -114,7 +113,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -133,7 +132,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -151,7 +150,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -164,8 +163,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
 		beforeAll(() => {
-			globalConfig.pruning.maxAge = 1;
-			globalConfig.pruning.maxCount = 0;
+			pruningConfig.maxAge = 1;
+			pruningConfig.maxCount = 0;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {
@@ -180,7 +179,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -204,7 +203,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -222,7 +221,7 @@ describe('softDeleteOnPruningCycle()', () => {
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await createExecution({ status, ...attributes }, workflow);
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -240,7 +239,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -267,7 +266,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([

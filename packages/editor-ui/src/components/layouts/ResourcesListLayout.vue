@@ -1,19 +1,16 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, onMounted, watch } from 'vue';
 
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import ResourceListHeader from '@/components/layouts/ResourceListHeader.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
-import { useProjectsStore } from '@/stores/projects.store';
-import { N8nIconButton, N8nNavigationDropdown } from 'n8n-design-system';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -101,7 +98,6 @@ const route = useRoute();
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 
 const sortBy = ref(props.sortOptions[0]);
@@ -332,55 +328,11 @@ onMounted(async () => {
 		hasFilters.value = true;
 	}
 });
-
-const headerIcon = computed(() => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return 'user';
-	} else if (projectsStore.currentProject?.name) {
-		return 'layer-group';
-	} else {
-		return 'home';
-	}
-});
-
-const projectName = computed(() => {
-	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.menu.home');
-	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	} else {
-		return projectsStore.currentProject.name;
-	}
-});
-
-const { menu, handleSelect } = useGlobalEntityCreation(
-	computed(() => !Boolean(projectsStore.currentProject)),
-);
-
-const createLabel = computed(() => {
-	if (!projectsStore.currentProject) {
-		return 'Create';
-	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return 'Create personal';
-	} else {
-		return 'Create in project';
-	}
-});
 </script>
 
 <template>
 	<PageViewLayout>
 		<template #header>
-			<ResourceListHeader :icon="headerIcon" data-test-id="list-layout-header">
-				<template #title>
-					{{ projectName }}
-				</template>
-				<template #actions>
-					<N8nNavigationDropdown :menu @select="handleSelect">
-						<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
-					</N8nNavigationDropdown>
-				</template>
-			</ResourceListHeader>
 			<slot name="header" />
 		</template>
 		<div v-if="loading" class="resource-list-loading">

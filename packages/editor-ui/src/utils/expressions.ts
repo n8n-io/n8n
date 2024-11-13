@@ -60,7 +60,7 @@ export const isNoInputConnectionError = (error: unknown): error is ExpressionErr
 };
 
 export const isAnyPairedItemError = (error: unknown): error is ExpressionError => {
-	return error instanceof ExpressionError && error.context.functionality === 'pairedItem';
+	return error instanceof ExpressionError && error.functionality === 'pairedItem';
 };
 
 export const getResolvableState = (error: unknown, ignoreError = false): ResolvableState => {
