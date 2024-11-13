@@ -99,13 +99,6 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
-		id: 'executions',
-		icon: 'tasks',
-		label: locale.baseText('mainSidebar.executions'),
-		position: 'bottom',
-		route: { to: { name: VIEWS.EXECUTIONS } },
-	},
-	{
 		id: 'help',
 		icon: 'question',
 		label: locale.baseText('mainSidebar.help'),

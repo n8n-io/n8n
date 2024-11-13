@@ -702,13 +702,13 @@ exports[`RunDataSchema.vue > renders schema for data 1`] = `
             </div>
             <input
               checked=""
-              id="set_1-hobbies"
+              id="ndv_set_1-hobbies"
               inert=""
               type="checkbox"
             />
             <label
               class="toggle"
-              for="set_1-hobbies"
+              for="ndv_set_1-hobbies"
             >
               <svg
                 aria-hidden="true"
@@ -1138,13 +1138,13 @@ exports[`RunDataSchema.vue > renders schema for data 2`] = `
             </div>
             <input
               checked=""
-              id="set_2-hobbies"
+              id="ndv_set_2-hobbies"
               inert=""
               type="checkbox"
             />
             <label
               class="toggle"
-              for="set_2-hobbies"
+              for="ndv_set_2-hobbies"
             >
               <svg
                 aria-hidden="true"
@@ -1575,13 +1575,13 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
               </div>
               <input
                 checked=""
-                id="output_object-0-0-hobbies"
+                id="ndv_output_object-0-0-hobbies"
                 inert=""
                 type="checkbox"
               />
               <label
                 class="toggle"
-                for="output_object-0-0-hobbies"
+                for="ndv_output_object-0-0-hobbies"
               >
                 <svg
                   aria-hidden="true"
@@ -1967,13 +1967,13 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
                       </div>
                       <input
                         checked=""
-                        id="set_1-hello world"
+                        id="ndv_set_1-hello world"
                         inert=""
                         type="checkbox"
                       />
                       <label
                         class="toggle"
-                        for="set_1-hello world"
+                        for="ndv_set_1-hello world"
                       >
                         <svg
                           aria-hidden="true"
@@ -2060,13 +2060,13 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
                             </div>
                             <input
                               checked=""
-                              id="set_1-hello world-0"
+                              id="ndv_set_1-hello world-0"
                               inert=""
                               type="checkbox"
                             />
                             <label
                               class="toggle"
-                              for="set_1-hello world-0"
+                              for="ndv_set_1-hello world-0"
                             >
                               <svg
                                 aria-hidden="true"
@@ -2144,13 +2144,13 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
                                   </div>
                                   <input
                                     checked=""
-                                    id="set_1-hello world-0-test"
+                                    id="ndv_set_1-hello world-0-test"
                                     inert=""
                                     type="checkbox"
                                   />
                                   <label
                                     class="toggle"
-                                    for="set_1-hello world-0-test"
+                                    for="ndv_set_1-hello world-0-test"
                                   >
                                     <svg
                                       aria-hidden="true"

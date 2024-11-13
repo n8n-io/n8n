@@ -12,6 +12,7 @@ import { ChatOllama } from '@langchain/ollama';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,6 +65,7 @@ export class LmChatOllama implements INodeType {
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

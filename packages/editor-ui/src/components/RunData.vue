@@ -185,11 +185,16 @@ const node = toRef(props, 'node');
 
 const pinnedData = usePinnedData(node, {
 	runIndex: props.runIndex,
-	displayMode: ndvStore.getPanelDisplayMode(props.paneType),
+	displayMode:
+		props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
 });
 const { isSubNodeType } = useNodeType({
 	node,
 });
+
+const displayMode = computed(() =>
+	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
+);
 
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(
@@ -200,7 +205,6 @@ const isWaitNodeWaiting = computed(
 );
 
 const { activeNode } = storeToRefs(ndvStore);
-const displayMode = computed(() => ndvStore.getPanelDisplayMode(props.paneType));
 const nodeType = computed(() => {
 	if (!node.value) return null;
 
@@ -386,7 +390,10 @@ const currentOutputIndex = computed(() => {
 		return props.overrideOutputs[0];
 	}
 
-	return outputIndex.value;
+	// In some cases nodes may switch their outputCount while the user still
+	// has a higher outputIndex selected. We could adjust outputIndex directly,
+	// but that loses data as we can keep the user selection if the branch reappears.
+	return Math.min(outputIndex.value, maxOutputIndex.value);
 });
 const branches = computed(() => {
 	const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
@@ -1515,7 +1522,11 @@ defineExpose({ enterEditMode });
 				<slot name="no-output-data">xxx</slot>
 			</div>
 
-			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
+			<div
+				v-else-if="hasNodeRun && !showData"
+				data-test-id="ndv-data-size-warning"
+				:class="$style.center"
+			>
 				<N8nText :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</N8nText>
 				<N8nText align="center" tag="div"
 					><span

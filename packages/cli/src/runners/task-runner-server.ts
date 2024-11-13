@@ -181,7 +181,7 @@ export class TaskRunnerServer {
 
 			const response = new ServerResponse(request);
 			response.writeHead = (statusCode) => {
-				if (statusCode > 200) ws.close(100);
+				if (statusCode > 200) ws.close();
 				return response;
 			};
 
