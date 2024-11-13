@@ -11,7 +11,12 @@ import {
 	cmPosToTs,
 } from './utils';
 import type { Completion } from '@codemirror/autocomplete';
-import types from './types.d.ts?raw';
+
+// eslint-disable-next-line import/extensions
+import globalTypes from './type-declarations/globals.d.ts?raw';
+// eslint-disable-next-line import/extensions
+import n8nTypes from './type-declarations/n8n.d.ts?raw';
+import luxonTypes from './type-declarations/luxon.d.ts?raw';
 
 const TS_COMPLETE_BLOCKLIST: ts.ScriptElementKind[] = [ts.ScriptElementKind.warning];
 
@@ -42,7 +47,9 @@ const worker = (): LanguageServiceWorker => {
 				await indexedDbCache('typescript-cache', 'fs-map'),
 			);
 
-			fsMap.set('types.d.ts', types);
+			fsMap.set('globals.d.ts', globalTypes);
+			fsMap.set('n8n.d.ts', n8nTypes);
+			fsMap.set('luxon.d.ts', luxonTypes);
 			fsMap.set(FILE_NAME, wrapInFunction(content));
 
 			const system = tsvfs.createSystem(fsMap);

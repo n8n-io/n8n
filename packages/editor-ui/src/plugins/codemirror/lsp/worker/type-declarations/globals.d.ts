@@ -3,7 +3,6 @@ import type { DateTime as DateTimeClass } from 'luxon';
 export {};
 
 declare global {
-	// #region JS Globals
 	interface Array<T> {
 		/**
 		 * Gets or sets the length of the array. This is a number one higher than the highest index in the array.
@@ -1440,30 +1439,4 @@ declare global {
 	}
 
 	var console: Console;
-	// #endregion
-
-	// #region n8n Globals
-	interface N8nJson {
-		[key: string]: number | boolean | string | Object | Array<any> | Date | DateTimeClass;
-	}
-	interface N8nBinary {}
-	interface N8nItem {
-		json: N8nJson;
-		binary: N8nBinary;
-	}
-
-	interface N8nInput {
-		all(branchIndex?: number, runIndex?: number): Array<N8nItem>;
-		first(branchIndex?: number, runIndex?: number): N8nItem;
-		last(branchIndex?: number, runIndex?: number): N8nItem;
-		item: N8nItem;
-	}
-
-	const $input: N8nInput;
-	const DateTime: typeof DateTimeClass;
-
-	interface String {
-		hash(algo?: 'md5');
-	}
-	// #endregion
 }
