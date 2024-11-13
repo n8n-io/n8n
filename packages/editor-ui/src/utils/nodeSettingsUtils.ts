@@ -9,6 +9,8 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import { isEqual } from 'lodash-es';
 
+import { captureException } from '@sentry/vue';
+
 export function updateDynamicConnections(
 	node: INodeUi,
 	workflowConnections: IConnections,
@@ -124,7 +126,7 @@ export function updateDynamicConnections(
 			}
 		}
 	} catch (error) {
-		console.log(error.message);
+		captureException(error);
 	}
 
 	return null;
