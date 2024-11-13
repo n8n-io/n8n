@@ -17,6 +17,10 @@ type Item = BaseItem & {
 	submenu?: BaseItem[];
 };
 
+defineOptions({
+	name: 'N8nNavigationDropdown',
+});
+
 defineProps<{
 	menu: Item[];
 	disabled?: boolean;

@@ -29,6 +29,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
+			N8nNavigationDropdown: true,
 		},
 	},
 });
