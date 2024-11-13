@@ -13,7 +13,6 @@ import { isObj } from '@/utils/typeGuards';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isPresent, shorten } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import { checkExhaustive } from '@/utils/typeGuards';
 
 export function useDataSchema() {
 	function getSchema(
@@ -204,35 +203,22 @@ export type RenderHeader = {
 
 type Renders = RenderHeader | RenderItem;
 
-const getIconBySchemaType = (type: Schema['type']): string => {
-	switch (type) {
-		case 'object':
-			return 'cube';
-		case 'array':
-			return 'list';
-		case 'string':
-		case 'null':
-			return 'font';
-		case 'number':
-			return 'hashtag';
-		case 'boolean':
-			return 'check-square';
-		case 'function':
-			return 'code';
-		case 'bigint':
-			return 'calculator';
-		case 'symbol':
-			return 'sun';
-		case 'undefined':
-			return 'ban';
-		default:
-			checkExhaustive(type);
-			return '';
-	}
-};
+const icons = {
+	object: 'cube',
+	array: 'list',
+	['string']: 'font',
+	null: 'font',
+	['number']: 'hashtag',
+	['boolean']: 'check-square',
+	function: 'code',
+	bigint: 'calculator',
+	symbol: 'sun',
+	['undefined']: 'ban',
+} as const;
 
-const isDataEmpty = (schema: Schema | null) => {
-	if (!schema) return true;
+const getIconBySchemaType = (type: Schema['type']): string => icons[type];
+
+const isDataEmpty = (schema: Schema) => {
 	// Utilize the generated schema instead of looping over the entire data again
 	// The schema for empty data is { type: 'object' | 'array', value: [] }
 	const isObjectOrArray = schema.type === 'object' || schema.type === 'array';
@@ -324,9 +310,9 @@ export const useFlattenSchema = () => {
 					type: 'item',
 				},
 			];
-		} else {
-			return [];
 		}
+
+		return [];
 	};
 
 	const flattenMultipleSchemas = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
