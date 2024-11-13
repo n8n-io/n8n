@@ -185,7 +185,7 @@ export type RenderItem = {
 	expression?: string;
 	value?: string;
 	id: string;
-	icon?: string;
+	icon: string;
 	collapsable?: boolean;
 	nodeType?: INodeUi['type'];
 	type: 'item';
@@ -334,6 +334,7 @@ export const useFlattenSchema = () => {
 			if (isDataEmpty(item.schema)) {
 				acc.push({
 					id: `empty-${index}`,
+					icon: '',
 					value: useI18n().baseText('dataMapping.schemaView.emptyData'),
 					type: 'item',
 				});

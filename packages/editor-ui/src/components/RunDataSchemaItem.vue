@@ -10,10 +10,9 @@ type Props = {
 	expression?: string;
 	value?: string;
 	id: string;
-	icon?: string;
+	icon: string;
 	collapsable?: boolean;
 	nodeType?: string;
-	type: 'item';
 	highlight?: boolean;
 	draggable?: boolean;
 	collapsed?: boolean;
@@ -45,7 +44,7 @@ const emit = defineEmits<{
 			class="pill"
 			:class="{ 'pill--highlight': highlight }"
 		>
-			<FontAwesomeIcon v-if="icon" class="type-icon" :icon size="sm" />
+			<FontAwesomeIcon class="type-icon" :icon size="sm" />
 			<TextWithHighlights class="title" :content="title" :search="props.search" />
 		</div>
 		<TextWithHighlights class="text" :content="value" :search="props.search" />

@@ -9,7 +9,7 @@ import {
 	defaultNodeDescriptions,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { IF_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
+import { IF_NODE_TYPE, SET_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
@@ -17,8 +17,8 @@ import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 
 const mockNode1 = createTestNode({
-	name: 'Set1',
-	type: SET_NODE_TYPE,
+	name: 'Manual Trigger',
+	type: MANUAL_TRIGGER_NODE_TYPE,
 	typeVersion: 1,
 	disabled: false,
 });
@@ -68,6 +68,10 @@ async function setupStore() {
 
 	nodeTypesStore.setNodeTypes([
 		...defaultNodeDescriptions,
+		mockNodeTypeDescription({
+			name: MANUAL_TRIGGER_NODE_TYPE,
+			outputs: [NodeConnectionType.Main],
+		}),
 		mockNodeTypeDescription({
 			name: IF_NODE_TYPE,
 			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
@@ -128,7 +132,7 @@ describe('RunDataSchema.vue', () => {
 				connectionType: 'main',
 				search: '',
 				nodes: [
-					{ name: 'Set1', indicies: [], depth: 1 },
+					{ name: 'Manual Trigger', indicies: [], depth: 1 },
 					{ name: 'Set2', indicies: [], depth: 2 },
 				],
 			},
@@ -164,7 +168,7 @@ describe('RunDataSchema.vue', () => {
 		const { getAllByTestId } = renderComponent();
 		const headers = getAllByTestId('run-data-schema-header');
 		expect(headers.length).toBe(2);
-		expect(headers[0]).toHaveTextContent('Set1');
+		expect(headers[0]).toHaveTextContent('Manual Trigger');
 		expect(headers[0]).toHaveTextContent('2 items');
 		expect(headers[1]).toHaveTextContent('Set2');
 

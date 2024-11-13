@@ -175,6 +175,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -249,6 +250,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -323,6 +325,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -418,6 +421,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -492,6 +496,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -593,7 +598,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-header"
           data-v-46dade00=""
           data-v-c0d66716=""
-          id="Set1"
+          id="Manual Trigger"
           type="header"
         >
           <div
@@ -624,7 +629,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             />
           </div>
           <div
-            class="n8n-node-icon icon icon"
+            class="n8n-node-icon icon icon-trigger icon icon-trigger"
             data-v-c0d66716=""
           >
             <div
@@ -648,10 +653,32 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             class="title"
             data-v-c0d66716=""
           >
-            Set1 
+            Manual Trigger 
             <!--v-if-->
           </div>
-          <!--v-if-->
+          <font-awesome-icon-stub
+            beat="false"
+            beatfade="false"
+            border="false"
+            bounce="false"
+            class="trigger-icon"
+            data-v-c0d66716=""
+            fade="false"
+            fixedwidth="false"
+            flash="false"
+            flip="false"
+            icon="bolt"
+            inverse="false"
+            listitem="false"
+            pulse="false"
+            shake="false"
+            size="xs"
+            spin="false"
+            spinpulse="false"
+            spinreverse="false"
+            swapopacity="false"
+            symbol="false"
+          />
           <div
             class="item-count"
             data-test-id="run-data-schema-node-item-count"
@@ -668,6 +695,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -706,7 +734,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="hello world"
             data-nest-level="1"
-            data-node-type="n8n-nodes-base.set"
+            data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world']"
             data-target="mappable"
             data-v-ce2825e7=""
@@ -763,6 +791,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -801,7 +830,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="hello world[0]"
             data-nest-level="2"
-            data-node-type="n8n-nodes-base.set"
+            data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0]"
             data-target="mappable"
             data-v-ce2825e7=""
@@ -858,6 +887,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -896,7 +926,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="test"
             data-nest-level="3"
-            data-node-type="n8n-nodes-base.set"
+            data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0].test"
             data-target="mappable"
             data-v-ce2825e7=""
@@ -953,6 +983,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -965,7 +996,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="more to think about"
             data-nest-level="4"
-            data-node-type="n8n-nodes-base.set"
+            data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0].test['more to think about']"
             data-target="mappable"
             data-v-ce2825e7=""
@@ -1027,6 +1058,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
@@ -1039,7 +1071,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="test.how"
             data-nest-level="3"
-            data-node-type="n8n-nodes-base.set"
+            data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0]['test.how']"
             data-target="mappable"
             data-v-ce2825e7=""
@@ -1169,6 +1201,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           data-test-id="run-data-schema-item"
           data-v-46dade00=""
           data-v-ce2825e7=""
+          type="item"
         >
           <div
             class="toggle-container"
