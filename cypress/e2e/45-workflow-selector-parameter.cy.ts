@@ -27,7 +27,7 @@ describe('Workflow Selector Parameter', () => {
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
-			.should('have.length', 2);
+			.should('have.length', 3);
 	});
 
 	it('should show required parameter warning', () => {
@@ -44,7 +44,8 @@ describe('Workflow Selector Parameter', () => {
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
-			.should('have.length', 1)
+			.should('have.length', 2)
+			.eq(1)
 			.click();
 
 		ndv.getters
@@ -57,7 +58,7 @@ describe('Workflow Selector Parameter', () => {
 		ndv.getters.resourceLocator('workflowId').should('be.visible');
 		ndv.getters.resourceLocatorInput('workflowId').click();
 
-		getVisiblePopper().findChildByTestId('rlc-item').first().click();
+		getVisiblePopper().findChildByTestId('rlc-item').eq(1).click();
 
 		ndv.getters.resourceLocatorInput('workflowId').find('a').should('exist');
 		cy.getByTestId('radio-button-expression').eq(1).click();
@@ -68,7 +69,7 @@ describe('Workflow Selector Parameter', () => {
 		ndv.getters.resourceLocator('workflowId').should('be.visible');
 		ndv.getters.resourceLocatorInput('workflowId').click();
 
-		getVisiblePopper().findChildByTestId('rlc-item').first().click();
+		getVisiblePopper().findChildByTestId('rlc-item').eq(1).click();
 		ndv.getters
 			.resourceLocatorModeSelector('workflowId')
 			.find('input')
