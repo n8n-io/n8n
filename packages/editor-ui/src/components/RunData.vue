@@ -2177,7 +2177,7 @@ defineExpose({ enterEditMode });
 }
 
 .relatedExecutionInfo {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-s);
 	margin-left: var(--spacing-3xs);
 
 	svg {
