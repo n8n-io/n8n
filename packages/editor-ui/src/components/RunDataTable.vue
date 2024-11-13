@@ -417,6 +417,9 @@ watch(focusedMappableInput, (curr) => {
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<thead>
 				<tr>
+					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
+						<!-- column for execution link -->
+					</th>
 					<th :class="$style.emptyCell"></th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
@@ -427,6 +430,35 @@ watch(focusedMappableInput, (curr) => {
 					:key="index1"
 					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 				>
+					<td
+						v-if="tableData.metadata.hasExecutionIds"
+						:data-row="index1"
+						:class="$style.executionLinkCell"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<N8nTooltip
+							:content="
+								i18n.baseText('runData.table.inspectSubExecution', {
+									interpolate: {
+										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
+									},
+								})
+							"
+							placement="left"
+							:hide-after="0"
+						>
+							<N8nIconButton
+								v-if="tableData.metadata.data[index1]"
+								v-show="showExecutionLink(index1)"
+								type="secondary"
+								icon="external-link-alt"
+								data-test-id="debug-sub-execution"
+								size="mini"
+								@click="openRelatedExecution(tableData.metadata.data[index1], 'table')"
+							/>
+						</N8nTooltip>
+					</td>
 					<td
 						:data-row="index1"
 						:data-col="0"
