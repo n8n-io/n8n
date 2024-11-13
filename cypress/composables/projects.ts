@@ -6,8 +6,17 @@ const credentialsModal = new CredentialsModal();
 
 export const getHomeButton = () => cy.getByTestId('project-home-menu-item');
 export const getMenuItems = () => cy.getByTestId('project-menu-item');
-export const getAddProjectButton = () =>
-	cy.getByTestId('add-project-menu-item').should('contain', 'Add project').should('be.visible');
+export const getAddProjectButton = () => {
+	cy.getByTestId('universal-add').should('be.visible').click();
+	return cy
+		.getByTestId('navigation-menu-item')
+		.should('be.visible')
+		.filter(':contains("Project")')
+		.last();
+};
+
+// export const getAddProjectButton = () =>
+// 	cy.getByTestId('universal-add').should('contain', 'Add project').should('be.visible');
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');

@@ -7,7 +7,22 @@ export class WorkflowsPage extends BasePage {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
 		searchBar: () => cy.getByTestId('resources-list-search'),
-		createWorkflowButton: () => cy.getByTestId('resources-list-add'),
+		createWorkflowButton: () => {
+			cy.getByTestId('resource-add').should('be.visible').click();
+
+			cy.getByTestId('navigation-submenu')
+				.should('be.visible')
+				.filter(':contains("Workflow")')
+				.last()
+
+				.click();
+
+			return cy
+				.getByTestId('navigation-submenu-item')
+				.should('be.visible')
+				.filter(':contains("Personal")')
+				.first();
+		},
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>
 			this.getters

@@ -73,7 +73,7 @@ const createLabel = computed(() => {
 		</div>
 		<div :class="$style.actions">
 			<ProjectTabs :show-settings="showSettings" />
-			<N8nNavigationDropdown :menu @select="handleSelect">
+			<N8nNavigationDropdown data-test-id="resource-add" :menu @select="handleSelect">
 				<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
 			</N8nNavigationDropdown>
 		</div>

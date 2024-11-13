@@ -5,7 +5,24 @@ export class CredentialsPage extends BasePage {
 
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
-		createCredentialButton: () => cy.getByTestId('resources-list-add'),
+		createCredentialButton: () => {
+			cy.getByTestId('resource-add').should('be.visible').click();
+
+			cy.getByTestId('navigation-submenu')
+				.should('be.visible')
+				.filter(':contains("Credential")')
+				.last()
+
+				.click();
+
+			return cy
+				.getByTestId('navigation-submenu-item')
+				.should('be.visible')
+				.filter(':contains("Personal")')
+				.last();
+		},
+
+		// cy.getByTestId('resources-list-add'),
 		searchInput: () => cy.getByTestId('resources-list-search'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),
 		credentialCards: () => cy.getByTestId('resources-list-item'),

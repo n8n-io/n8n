@@ -314,7 +314,7 @@ const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
 			<template #header>
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-					<N8nNavigationDropdown :menu @select="handleMenuSelect">
+					<N8nNavigationDropdown data-test-id="universal-add" :menu @select="handleMenuSelect">
 						<N8nIconButton icon="plus" type="secondary" outline />
 					</N8nNavigationDropdown>
 				</div>
