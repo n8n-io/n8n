@@ -98,43 +98,61 @@ export function useEvaluationForm() {
 
 		isSaving.value = true;
 		fieldsIssues.value = [];
-		try {
-			if (!state.value.evaluationWorkflow.value) {
-				addFieldIssue('evaluationWorkflow', 'Evaluation workflow is required');
-			}
 
-			const params = {
+		const addFieldIssue = (field: string, message: string) => {
+			fieldsIssues.value.push({ field, message });
+		};
+
+		try {
+			// Validate that an evaluation workflow is selected
+			// if (!state.value.evaluationWorkflow.value) {
+			// 	addFieldIssue('evaluationWorkflow', 'Evaluation workflow is required');
+			// 	throw new Error('Validation failed');
+			// }
+
+			// Prepare the base parameters for creating or updating a test
+			const params: Record<string, string> = {
 				name: state.value.name.value,
-				...(state.value.tags.appliedTagIds[0] && {
-					annotationTagId: state.value.tags.appliedTagIds[0],
-				}),
-				...(state.value.evaluationWorkflow.value && {
-					evaluationWorkflowId: state.value.evaluationWorkflow.value as string,
-				}),
 			};
 
+			// Add annotation tag ID only for PATH requests
+			// TODO: Allow annotationTagId on POST?
+			const annotationTagId = state.value.tags.appliedTagIds[0];
+			if (testId && annotationTagId) {
+				params.annotationTagId = annotationTagId;
+			}
+
+			// Add evaluation workflow ID
+			if (state.value.evaluationWorkflow.value) {
+				params.evaluationWorkflowId = state.value.evaluationWorkflow.value as string;
+			}
+
 			if (testId) {
-				await evaluationsStore.update({
+				// Update existing test
+				return await evaluationsStore.update({
 					id: testId,
 					...params,
 				});
-			} else {
-				await evaluationsStore.create({
-					...params,
-					workflowId: state.value.evaluationWorkflow.value as string,
-				});
 			}
-		} catch (e) {
-			throw e;
+
+			// Create new test
+			const newTest = await evaluationsStore.create({
+				...params,
+				name: state.value.name.value,
+				workflowId: state.value.evaluationWorkflow.value as string,
+			});
+
+			isSaving.value = false;
+			return newTest;
+		} catch (error) {
+			// Re-throw the error to be handled by the caller
+			// Reset saving state regardless of success or failure
+			isSaving.value = false;
+			throw error;
 		} finally {
 			isSaving.value = false;
 		}
 	};
-
-	const addFieldIssue = (field: string, message: string) => {
-		fieldsIssues.value.push({ field, message });
-	};
-
 	const startEditing = async (field: string) => {
 		if (field === 'name') {
 			state.value.name.tempValue = state.value.name.value;

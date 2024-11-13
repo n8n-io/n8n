@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
@@ -11,6 +11,7 @@ import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/Metrics
 import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
 import { useI18n } from '@/composables/useI18n';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
+import { useDebounce } from '@/composables/useDebounce';
 
 const props = defineProps<{
 	testId?: number;
@@ -19,6 +20,8 @@ const props = defineProps<{
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
+const { debounce } = useDebounce();
+
 const testId = computed(() => props.testId ?? (route.params.testId as unknown as number));
 const buttonLabel = computed(() =>
 	// No testId means we're creating a new one
@@ -50,12 +53,18 @@ onMounted(async () => {
 
 async function onSaveTest() {
 	try {
-		await saveTest(testId.value);
+		const newTest = await saveTest(testId.value);
+		if (newTest) {
+			// Update the URL to reflect the new test ID
+			await router.replace({
+				name: VIEWS.WORKFLOW_EVALUATION_EDIT,
+				params: { testId: newTest.id },
+			});
+		}
 		toast.showMessage({
 			title: locale.baseText('workflowEvaluation.edit.testSaved'),
 			type: 'success',
 		});
-		void router.push({ name: VIEWS.WORKFLOW_EVALUATION });
 	} catch (e: unknown) {
 		toast.showError(e, locale.baseText('workflowEvaluation.edit.testSaveFailed'));
 	}
@@ -66,6 +75,22 @@ function hasIssues(key: string) {
 
 	return result;
 }
+
+watch(
+	() => state.value,
+	debounce(
+		async () => {
+			// We only want to auto-save the test if the workflow is selected
+			if (state.value.evaluationWorkflow.value) {
+				await onSaveTest();
+			}
+		},
+		{ debounceTime: 1000 },
+	),
+	{
+		deep: true,
+	},
+);
 </script>
 
 <template>
