@@ -550,7 +550,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		const connections = workflowsStore.allConnections;
 
 		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
-		console.log('updatedConnections', updatedConnections?.[_node.name]?.main);
 
 		if (updatedConnections) {
 			workflowsStore.setConnections(updatedConnections, true);
