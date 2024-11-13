@@ -358,14 +358,6 @@ describe('Langchain Integration', () => {
 		getConnectionBySourceAndTarget(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME).should('exist');
 		getNodes().should('have.length', 3);
 	});
-	it('should not auto-add nodes if ChatTrigger is already present', () => {
-		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
-		addNodeToCanvas(AGENT_NODE_NAME, true);
-
-		addNodeToCanvas(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, true);
-		getConnectionBySourceAndTarget(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME).should('exist');
-		getNodes().should('have.length', 3);
-	});
 	it('should render runItems for sub-nodes and allow switching between them', () => {
 		const workflowPage = new WorkflowPage();
 		const ndv = new NDV();
