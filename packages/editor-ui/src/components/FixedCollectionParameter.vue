@@ -222,7 +222,12 @@ const onDragChange = (optionName: string) => {
 			<div v-if="multipleValues">
 				<Draggable
 					v-model="mutableValues[property.name]"
-					:options="{ handle: '.drag-handle' }"
+					:options="{
+						handle: '.drag-handle',
+					}"
+					drag-class="dragging"
+					ghost-class="ghost"
+					chosen-class="chosen"
 					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
@@ -364,6 +369,7 @@ const onDragChange = (optionName: string) => {
 
 .fixed-collection-parameter-property {
 	margin: var(--spacing-xs) 0;
+	margin-bottom: 0;
 }
 
 .parameter-item:hover > .parameter-item-wrapper > .drag-option,
@@ -373,7 +379,7 @@ const onDragChange = (optionName: string) => {
 
 .parameter-item {
 	position: relative;
-	padding: 0 0 0 1em;
+	padding: 0 0 var(--spacing-s) var(--spacing-s);
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
@@ -390,5 +396,18 @@ const onDragChange = (optionName: string) => {
 
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
+}
+
+.chosen {
+	// background-color: var(--color-background-base);
+}
+.ghost {
+	background-color: var(--color-background-base);
+}
+.dragging {
+	background-color: var(--color-background-xlight);
+	.parameter-item-wrapper {
+		border: none;
+	}
 }
 </style>
