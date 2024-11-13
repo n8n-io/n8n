@@ -176,13 +176,13 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 					:active="workflow.active"
 					:read-only="readOnly"
 				/>
-				<TabBar
-					v-if="onWorkflowPage"
-					:items="tabBarItems"
-					:model-value="activeHeaderTab"
-					@update:model-value="onTabSelected"
-				/>
 			</div>
+			<TabBar
+				v-if="onWorkflowPage"
+				:items="tabBarItems"
+				:model-value="activeHeaderTab"
+				@update:model-value="onTabSelected"
+			/>
 		</div>
 		<div class="github-button">
 			<GithubButton
