@@ -353,7 +353,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		let isFormShown =
 			!options.destinationNode &&
-			workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			workflowsStore.allNodes.some(
+				(node) =>
+					node.type === FORM_TRIGGER_NODE_TYPE && !workflowsStore?.pinnedWorkflowData?.[node.name],
+			);
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
