@@ -1,7 +1,7 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { IConnections, NodeParameterValueType } from 'n8n-workflow';
-import { updateDynamicConnections } from '../nodeSettingsUtils';
+import { updateDynamicConnections } from './nodeSettingsUtils';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
