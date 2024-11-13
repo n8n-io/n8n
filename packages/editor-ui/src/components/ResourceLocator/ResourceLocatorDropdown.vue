@@ -237,6 +237,7 @@ function onResultsEnd() {
 				v-if="allowNewResources.label"
 				key="addResourceKey"
 				ref="itemsRef"
+				data-test-id="rlc-item"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.hovering]: hoverIndex === 0,

@@ -20,7 +20,6 @@ import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorMod
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { VIEWS } from '@/constants';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;

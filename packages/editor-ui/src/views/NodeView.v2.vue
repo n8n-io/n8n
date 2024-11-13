@@ -106,12 +106,8 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import {
-	createCanvasConnectionHandleString,
-	mapLegacyConnectionsToCanvasConnections,
-} from '@/utils/canvasUtilsV2';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { uuid } from '@jsplumb/util';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
