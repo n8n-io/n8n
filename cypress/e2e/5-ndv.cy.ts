@@ -81,7 +81,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('1 item').should('exist');
+		ndv.getters.outputPanel().contains('2 items').should('exist');
 		cy.contains('span', 'zero').should('exist');
 	});
 
