@@ -874,6 +874,8 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
+export const SAMPLE_SUBWORKFLOW_WORKFLOW_ID = '0';
+
 export const SAMPLE_SUBWORKFLOW_WORKFLOW = {
 	nodes: [
 		{

@@ -222,7 +222,7 @@ function onResultsEnd() {
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			v-else-if="!errorView && !allowNewResources.label && sortedResources.length === 0 && !loading"
 			:class="$style.messageContainer"
 		>
 			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}

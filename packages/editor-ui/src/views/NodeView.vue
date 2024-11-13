@@ -39,7 +39,6 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
-	SAMPLE_SUBWORKFLOW_WORKFLOW,
 } from '@/constants';
 
 import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
@@ -1102,30 +1101,6 @@ export default defineComponent({
 			}
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
-		},
-		async createSampleSubworkflow() {
-			this.canvasStore.startLoading();
-			this.canvasStore.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
-			this.resetWorkspace();
-
-			this.workflowsStore.currentWorkflowExecutions = [];
-			this.executionsStore.activeExecution = null;
-			this.workflowsStore.setWorkflowName({ newName: 'My Sub-Workflow', setStateDirty: false });
-
-			await this.nodeHelpers.addNodes(
-				SAMPLE_SUBWORKFLOW_WORKFLOW.nodes,
-				SAMPLE_SUBWORKFLOW_WORKFLOW.connections,
-			);
-
-			await this.$nextTick();
-
-			this.canvasStore.zoomToFit();
-
-			await this.workflowHelpers.saveAsNewWorkflow();
-
-			this.uiStore.stateIsDirty = true;
-
-			this.canvasStore.stopLoading();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.canvasStore.startLoading();
@@ -3399,9 +3374,7 @@ export default defineComponent({
 				this.uiStore.stateIsDirty = false;
 				return;
 			}
-			if (this.$route.query['sub-workflow']) {
-				await this.createSampleSubworkflow();
-			} else if (this.blankRedirect) {
+			if (this.blankRedirect) {
 				this.blankRedirect = false;
 			} else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 				const templateId = this.$route.params.id;

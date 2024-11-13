@@ -20,6 +20,7 @@ import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorMod
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { SAMPLE_SUBWORKFLOW_WORKFLOW_ID } from '@/constants';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -52,9 +53,10 @@ const emit = defineEmits<{
 	blur: [];
 }>();
 
-const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const projectStore = useProjectsStore();
+
+const router = useRouter();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
@@ -86,11 +88,23 @@ const {
 } = useWorkflowResourcesLocator(router);
 
 const currentProjectName = computed(() => {
+	if (!projectStore.isTeamProjectFeatureEnabled) return '';
+
 	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
 		return `'${i18n.baseText('projects.menu.personal')}'`;
 	}
 
 	return `'${projectStore.currentProject?.name}'`;
+});
+
+const getCreateResourceLabel = computed(() => {
+	if (!currentProjectName.value) {
+		return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow.noProject');
+	}
+
+	return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
+		interpolate: { projectName: currentProjectName.value },
+	});
 });
 
 const valueToDisplay = computed<NodeParameterValue>(() => {
@@ -192,7 +206,6 @@ onClickOutside(dropdown, () => {
 
 const onAddResourceClicked = () => {
 	const urlSearchParams = new URLSearchParams();
-	urlSearchParams.set('sub-workflow', 'true');
 
 	if (projectStore.currentProjectId) {
 		urlSearchParams.set('projectId', projectStore.currentProjectId);
@@ -200,10 +213,12 @@ const onAddResourceClicked = () => {
 
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
-	window.open(`/workflow/new?${urlSearchParams.toString()}`, '_blank');
+	window.open(
+		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW_ID}?${urlSearchParams.toString()}`,
+		'_blank',
+	);
 };
 </script>
-
 <template>
 	<div
 		ref="container"
@@ -221,9 +236,7 @@ const onAddResourceClicked = () => {
 			:has-more="hasMoreWorkflowsToLoad"
 			:error-view="false"
 			:allow-new-resources="{
-				label: i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
-					interpolate: { projectName: currentProjectName },
-				}),
+				label: getCreateResourceLabel,
 			}"
 			:width="width"
 			:event-bus="eventBus"

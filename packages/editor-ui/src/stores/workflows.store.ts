@@ -30,6 +30,7 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
+	IWorkflowDataCreate,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -1435,14 +1436,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return response && unflattenExecutionData(response);
 	}
 
-	async function createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+	async function createNewWorkflow(
+		sendData: IWorkflowDataCreate,
+		options: { inCurrentProject?: boolean } = {},
+	): Promise<IWorkflowDb> {
+		const { inCurrentProject = true } = options;
 		// make sure that the new ones are not active
 		sendData.active = false;
 
 		const rootStore = useRootStore();
 		const projectStore = useProjectsStore();
 
-		if (projectStore.currentProjectId) {
+		if (inCurrentProject && projectStore.currentProjectId) {
 			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
 		}
 
