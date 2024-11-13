@@ -42,13 +42,18 @@ function updateTags(tags: string[]) {
 </script>
 
 <template>
-	<div :class="$style.formGroup">
+	<div :class="$style.formGroup" data-test-id="workflow-tags-field">
 		<n8n-input-label label="Tag name" :bold="false" size="small">
 			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
 				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">
 					{{ locale.baseText('workflowEvaluation.edit.selectTag') }}
 				</n8n-text>
-				<n8n-tag v-for="tagId in modelValue.appliedTagIds" :key="tagId" :text="getTagName(tagId)" />
+				<n8n-tag
+					v-for="tagId in modelValue.appliedTagIds"
+					:key="tagId"
+					:text="getTagName(tagId)"
+					data-test-id="evaluation-tag-field"
+				/>
 				<n8n-icon-button
 					:class="$style.editInputButton"
 					icon="pen"

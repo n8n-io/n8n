@@ -69,7 +69,7 @@ export function useEvaluationForm() {
 
 			if (testDefinition) {
 				state.value = {
-					description: '',
+					description: testDefinition.description ?? '',
 					name: {
 						value: testDefinition.name,
 						isEditing: false,
@@ -113,6 +113,7 @@ export function useEvaluationForm() {
 			// Prepare the base parameters for creating or updating a test
 			const params: Record<string, string> = {
 				name: state.value.name.value,
+				description: state.value.description,
 			};
 
 			// Add annotation tag ID only for PATH requests

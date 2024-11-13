@@ -95,6 +95,7 @@ export const useEvaluationsStore = defineStore(
 			name: string;
 			workflowId: string;
 			evaluationWorkflowId?: string;
+			description?: string;
 		}) => {
 			const createdDefinition = await testDefinitionsApi.createTestDefinition(
 				rootStore.restApiContext,
@@ -107,6 +108,7 @@ export const useEvaluationsStore = defineStore(
 		const update = async (params: {
 			id: number;
 			name?: string;
+			description?: string;
 			evaluationWorkflowId?: string;
 			annotationTagId?: string;
 		}) => {

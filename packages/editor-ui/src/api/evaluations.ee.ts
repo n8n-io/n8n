@@ -10,19 +10,16 @@ export interface ITestDefinitionBase {
 	annotationTagId?: string;
 }
 
-// Complete test definition with ID
 export interface ITestDefinition extends ITestDefinitionBase {
 	id: number;
 }
 
-// Create params - requires name and workflowId, optional evaluationWorkflowId
-export type CreateTestDefinitionParams = Pick<ITestDefinitionBase, 'name' | 'workflowId'> &
-	Partial<Pick<ITestDefinitionBase, 'evaluationWorkflowId'>>;
-
-// All fields optional except ID
-export type UpdateTestDefinitionParams = Partial<
-	Pick<ITestDefinitionBase, 'name' | 'evaluationWorkflowId' | 'annotationTagId'>
+export type CreateTestDefinitionParams = Pick<
+	ITestDefinitionBase,
+	'name' | 'workflowId' | 'description' | 'evaluationWorkflowId'
 >;
+
+export type UpdateTestDefinitionParams = Partial<ITestDefinitionBase>;
 
 // Query options type
 export interface ITestDefinitionsQueryOptions {
@@ -58,18 +55,15 @@ export function createTestDefinitionsApi(): ITestDefinitionsApi {
 		getTestDefinitions: async (
 			context: IRestApiContext,
 			options?: ITestDefinitionsQueryOptions,
-		): Promise<ITestDefinition[]> => {
+		) => {
 			return await makeRestApiRequest(context, 'GET', endpoint, options);
 		},
 
-		getTestDefinition: async (context: IRestApiContext, id: number): Promise<ITestDefinition> => {
+		getTestDefinition: async (context: IRestApiContext, id: number) => {
 			return await makeRestApiRequest(context, 'GET', `${endpoint}/${id}`);
 		},
 
-		createTestDefinition: async (
-			context: IRestApiContext,
-			params: CreateTestDefinitionParams,
-		): Promise<ITestDefinition> => {
+		createTestDefinition: async (context: IRestApiContext, params: CreateTestDefinitionParams) => {
 			return await makeRestApiRequest(context, 'POST', endpoint, params);
 		},
 
@@ -77,14 +71,11 @@ export function createTestDefinitionsApi(): ITestDefinitionsApi {
 			context: IRestApiContext,
 			id: number,
 			params: UpdateTestDefinitionParams,
-		): Promise<ITestDefinition> => {
+		) => {
 			return await makeRestApiRequest(context, 'PATCH', `${endpoint}/${id}`, params);
 		},
 
-		deleteTestDefinition: async (
-			context: IRestApiContext,
-			id: number,
-		): Promise<{ success: boolean }> => {
+		deleteTestDefinition: async (context: IRestApiContext, id: number) => {
 			return await makeRestApiRequest(context, 'DELETE', `${endpoint}/${id}`);
 		},
 	};
