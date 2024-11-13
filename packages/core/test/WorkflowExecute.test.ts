@@ -188,11 +188,14 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
-						return nodeData.data.main[0];
+						return nodeData.data.main[0]!.map((entry) => {
+							// remove pairedItem from entry if it is an error output test
+							if (testData.description.includes('error_outputs')) delete entry.pairedItem;
+							return entry;
+						});
 					});
 
-					// used toMatchObject instead of toEqual to ignore paired items
-					expect(resultData).toMatchObject(testData.output.nodeData[nodeName]);
+					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 				}
 
 				// Check if other data has correct value
