@@ -792,8 +792,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			parameters,
 		};
 
-		resolveNodeParameters(nodeData);
 		resolveNodeName(nodeData);
+		resolveNodeParameters(nodeData, nodeTypeDescription);
 		resolveNodeWebhook(nodeData, nodeTypeDescription);
 
 		return nodeData;
@@ -842,10 +842,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return nodeVersion;
 	}
 
-	function resolveNodeParameters(node: INodeUi) {
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
 		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType?.properties ?? [],
+			nodeTypeDescription?.properties ?? [],
 			node.parameters,
 			true,
 			false,
@@ -1397,7 +1396,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowHelpers.initState(data);
 
 		data.nodes.forEach((node) => {
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			nodeHelpers.matchCredentials(node);
+			resolveNodeParameters(node, nodeTypeDescription);
+			resolveNodeWebhook(node, nodeTypeDescription);
 		});
 
 		workflowsStore.setNodes(data.nodes);
