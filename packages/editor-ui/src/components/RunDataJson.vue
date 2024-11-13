@@ -15,6 +15,10 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
+import { N8nIconButton } from 'n8n-design-system';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+
+const { openRelatedExecution } = useExecutionHelpers();
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
@@ -50,7 +54,15 @@ const jsonDataContainer = ref(null);
 
 const { height } = useElementSize(jsonDataContainer);
 
-const jsonData = computed(() => executionDataToJson(props.inputData));
+const jsonData = computed(() => {
+	console.log('jsonData', executionDataToJson(props.inputData));
+	return executionDataToJson(props.inputData);
+});
+
+const firstKey = computed(() => {
+	const keys = Object.keys(jsonData.value[0]);
+	return `"${keys?.[0]}"`;
+});
 
 const highlight = computed(() => ndvStore.highlightDraggables);
 
@@ -149,7 +161,21 @@ const getListItemName = (path: string) => {
 				:height="height"
 				@update:selected-value="selectedJsonPath = $event"
 			>
-				<template #renderNodeKey="{ node }">
+				<template #renderNodeKey="{ node, defaultKey }">
+					<div v-if="firstKey === defaultKey" :class="[$style.parentHoverShow, $style.goToButton]">
+						<!--
+						node = {"content":"3af3a3cc-ff5c-4775-af8c-88b37b0836aa","level":2,"key":"uid","path":"[0].uid","showComma":true,"length":1,"type":"content","id":2}
+						-->
+						<!-- v-show="showExecutionLink(index1)" -->
+						<N8nIconButton
+							v-if="!isNaN(node.path[1]) && inputData[Number(node.path[1])].metadata"
+							type="secondary"
+							icon="external-link-alt"
+							data-test-id="debug-sub-execution"
+							size="mini"
+							@click="openRelatedExecution(inputData[Number(node.path[1])].metadata!, 'json')"
+						/>
+					</div>
 					<TextWithHighlights
 						:content="getContent(node.key)"
 						:search="search"
@@ -226,6 +252,15 @@ const getListItemName = (path: string) => {
 			color: var(--color-primary);
 		}
 	}
+}
+
+.goToButton {
+	position: absolute;
+	top: -25px;
+	left: 35px;
+}
+*:not(:hover) > * > .parentHoverShow {
+	// display: none;
 }
 </style>
 
