@@ -2,6 +2,7 @@ import type {
 	EnterpriseEditionFeatureKey,
 	EnterpriseEditionFeatureValue,
 	INodeUi,
+	IWorkflowDataCreate,
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -876,7 +877,8 @@ export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
 export const SAMPLE_SUBWORKFLOW_WORKFLOW_ID = '0';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW = {
+export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
+	name: 'My Sub-Workflow',
 	nodes: [
 		{
 			parameters: {},
@@ -905,6 +907,9 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW = {
 				],
 			],
 		},
+	},
+	settings: {
+		executionOrder: 'v1',
 	},
 	pinData: {},
 };

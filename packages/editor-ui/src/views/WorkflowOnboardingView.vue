@@ -65,23 +65,14 @@ const openSampleSubworkflow = async () => {
 
 		const projectId = route.query?.projectId;
 
-		console.log('this is the projectId');
-
-		const workflow: IWorkflowDataCreate = {
-			name: 'My Sub-Workflow',
-			connections: SAMPLE_SUBWORKFLOW_WORKFLOW.connections,
-			nodes: SAMPLE_SUBWORKFLOW_WORKFLOW.nodes,
-			pinData: {},
-			settings: {
-				executionOrder: 'v1',
-			},
-		};
+		const workflow: IWorkflowDataCreate = {};
 
 		if (projectId) {
 			workflow.projectId = projectId as string;
 		}
 
-		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
+		const newWorkflow = await workflowsStore.createNewWorkflow(SAMPLE_SUBWORKFLOW_WORKFLOW);
+
 		await router.replace({
 			name: VIEWS.WORKFLOW,
 			params: { name: newWorkflow.id },
