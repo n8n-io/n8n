@@ -83,7 +83,7 @@ export const promptTypeOptions: INodeProperties = {
 			description: 'Use an expression to reference data in previous nodes or enter static text',
 		},
 	],
-	default: 'auto',
+	default: 'define',
 };
 
 export const textInput: INodeProperties = {

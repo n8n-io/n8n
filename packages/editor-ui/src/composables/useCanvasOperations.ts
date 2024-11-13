@@ -1116,8 +1116,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return;
 		}
 
-		adjustNewNodes(sourceNode, targetNode, { parentIsNew, childIsNew });
-
 		workflowsStore.addConnection({
 			connection: mappedConnection,
 		});
@@ -1125,6 +1123,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		void nextTick(() => {
 			nodeHelpers.updateNodeInputIssues(sourceNode);
 			nodeHelpers.updateNodeInputIssues(targetNode);
+			adjustNewNodes(sourceNode, targetNode, { parentIsNew, childIsNew });
 		});
 
 		if (!keepPristine) {
