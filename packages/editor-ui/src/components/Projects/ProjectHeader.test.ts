@@ -41,6 +41,8 @@ describe('ProjectHeader', () => {
 		createTestingPinia();
 		route = useRoute();
 		projectsStore = mockedStore(useProjectsStore);
+
+		projectsStore.teamProjectsLimit = -1;
 	});
 
 	afterEach(() => {
