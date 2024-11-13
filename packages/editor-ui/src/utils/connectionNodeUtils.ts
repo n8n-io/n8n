@@ -7,8 +7,8 @@ import {
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 	QA_CHAIN_NODE_TYPE,
 } from '@/constants';
-import { getParentNodes } from '@/components/ButtonParameter/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { AddedNode } from '@/Interface';
 
 const AI_NODES = [
 	QA_CHAIN_NODE_TYPE,
@@ -29,25 +29,37 @@ const MEMORY_NODE_NAMES = [
 
 const PROMPT_PROVIDER_NODE_NAMES = [CHAT_TRIGGER_NODE_TYPE];
 
-type NodeWithType = Pick<INode, 'type'>;
+export function adjustNewNodes(
+	parent: AddedNode,
+	child: AddedNode,
+	{ parentIsNew = true, childIsNew = true } = {},
+) {
+	if (childIsNew) adjustNewChild(parent, child);
+	if (parentIsNew) adjustNewParent(parent, child);
+}
 
-const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
-
-export function adjustNewlyConnectedNodes(parent: INode, child: INode) {
-	const workflow = getCurrentWorkflow();
-
-	if (workflow.getParentNodesByDepth(child.name, 1).length > 0) {
-		return;
-	}
-
+function adjustNewChild(parent: AddedNode, child: AddedNode) {
 	if (!PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && AI_NODES.includes(child.type)) {
-		Object.assign<INode, Partial<INode>>(child, {
+		Object.assign<AddedNode, Partial<INode>>(child, {
 			parameters: { promptType: 'define' },
 		});
 	}
-	if (!PROMPT_PROVIDER_NODE_NAMES.includes(parent.type) && MEMORY_NODE_NAMES.includes(child.type)) {
-		Object.assign<INode, Partial<INode>>(child, {
-			parameters: { sessionIdType: 'customKey' },
-		});
+}
+
+function adjustNewParent(parent: AddedNode, child: AddedNode) {
+	if (MEMORY_NODE_NAMES.includes(parent.type) && child.name) {
+		const { getCurrentWorkflow } = useWorkflowsStore();
+		const workflow = getCurrentWorkflow();
+
+		// If a memory node is added to an Agent, the memory node is actually the parent since it provides input
+		// So we need to look for the Agent's parents to determine if it's a prompt provider
+		const ps = workflow.getParentNodesByDepth(child.name, 1);
+		if (
+			!ps.some((x) => PROMPT_PROVIDER_NODE_NAMES.includes(workflow.getNode(x.name)?.type ?? ''))
+		) {
+			Object.assign<AddedNode, Partial<INode>>(parent, {
+				parameters: { sessionIdType: 'customKey' },
+			});
+		}
 	}
 }

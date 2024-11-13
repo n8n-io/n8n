@@ -96,7 +96,7 @@ import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
-import { adjustNewlyConnectedNodes } from '@/utils/connectionNodeUtils';
+import { adjustNewNodes } from '@/utils/connectionNodeUtils';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -673,37 +673,46 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			});
 
 			if (mode === CanvasConnectionMode.Input) {
-				createConnection({
-					source: nodeId,
-					sourceHandle: nodeHandle,
-					target: lastInteractedWithNodeId,
-					targetHandle: lastInteractedWithNodeHandle,
-				});
+				createConnection(
+					{
+						source: nodeId,
+						sourceHandle: nodeHandle,
+						target: lastInteractedWithNodeId,
+						targetHandle: lastInteractedWithNodeHandle,
+					},
+					{ parentIsNew: true },
+				);
 			} else {
-				createConnection({
-					source: lastInteractedWithNodeId,
-					sourceHandle: lastInteractedWithNodeHandle,
-					target: nodeId,
-					targetHandle: nodeHandle,
-				});
+				createConnection(
+					{
+						source: lastInteractedWithNodeId,
+						sourceHandle: lastInteractedWithNodeHandle,
+						target: nodeId,
+						targetHandle: nodeHandle,
+					},
+					{ childIsNew: true },
+				);
 			}
 		} else {
 			// If a node is last selected then connect between the active and its child ones
 			// Connect active node to the newly created one
-			createConnection({
-				source: lastInteractedWithNodeId,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
-					index: 0,
-				}),
-				target: node.id,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionType.Main,
-					index: 0,
-				}),
-			});
+			createConnection(
+				{
+					source: lastInteractedWithNodeId,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: NodeConnectionType.Main,
+						index: 0,
+					}),
+					target: node.id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: NodeConnectionType.Main,
+						index: 0,
+					}),
+				},
+				{ childIsNew: true },
+			);
 		}
 
 		if (lastInteractedWithNodeConnection) {
@@ -711,16 +720,19 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
 			if (targetNode) {
-				createConnection({
-					source: node.id,
-					sourceHandle: createCanvasConnectionHandleString({
-						mode: CanvasConnectionMode.Input,
-						type: NodeConnectionType.Main,
-						index: 0,
-					}),
-					target: lastInteractedWithNodeConnection.target,
-					targetHandle: lastInteractedWithNodeConnection.targetHandle,
-				});
+				createConnection(
+					{
+						source: node.id,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type: NodeConnectionType.Main,
+							index: 0,
+						}),
+						target: lastInteractedWithNodeConnection.target,
+						targetHandle: lastInteractedWithNodeConnection.targetHandle,
+					},
+					{ parentIsNew: true },
+				);
 			}
 		}
 	}
@@ -1079,7 +1091,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function createConnection(
 		connection: Connection,
-		{ trackHistory = false, keepPristine = false } = {},
+		{ trackHistory = false, keepPristine = false, parentIsNew = false, childIsNew = false } = {},
 	) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
@@ -1105,7 +1117,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return;
 		}
 
-		adjustNewlyConnectedNodes(sourceNode, targetNode);
+		adjustNewNodes(sourceNode, targetNode, { parentIsNew, childIsNew });
 
 		workflowsStore.addConnection({
 			connection: mappedConnection,
