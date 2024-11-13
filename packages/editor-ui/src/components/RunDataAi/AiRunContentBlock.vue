@@ -233,17 +233,17 @@ onMounted(() => {
 		white-space: pre-wrap;
 
 		h1 {
-			font-size: var(--font-size-xl);
+			font-size: var(--font-size-l);
 			line-height: var(--font-line-height-xloose);
 		}
 
 		h2 {
-			font-size: var(--font-size-l);
+			font-size: var(--font-size-m);
 			line-height: var(--font-line-height-loose);
 		}
 
 		h3 {
-			font-size: var(--font-size-m);
+			font-size: var(--font-size-s);
 			line-height: var(--font-line-height-regular);
 		}
 
@@ -260,10 +260,13 @@ onMounted(() => {
 .contentText {
 	padding-top: var(--spacing-s);
 	padding-left: var(--spacing-m);
-	font-size: var(--font-size-m);
+	font-size: var(--font-size-s);
 }
 .block {
+	padding: 0 0 var(--spacing-2xs) var(--spacing-2xs);
+	background: var(--color-foreground-light);
 	margin-top: var(--spacing-xl);
+	border-radius: var(--border-radius-base);
 }
 :root .blockContent {
 	height: 0;
@@ -278,8 +281,14 @@ onMounted(() => {
 	white-space: pre-line;
 }
 .rawSwitch {
+	opacity: 0;
 	height: fit-content;
 	margin-left: auto;
+	margin-right: var(--spacing-2xs);
+
+	.block:hover & {
+		opacity: 1;
+	}
 }
 .blockHeader {
 	display: flex;
@@ -287,7 +296,7 @@ onMounted(() => {
 	cursor: pointer;
 	/* This hack is needed to make the whole surface of header clickable  */
 	margin: calc(-1 * var(--spacing-xs));
-	padding: var(--spacing-4xs) var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-xs);
 	align-items: center;
 
 	& * {
@@ -295,11 +304,9 @@ onMounted(() => {
 	}
 }
 .blockTitle {
-	font-size: var(--font-size-m);
+	font-size: var(--font-size-s);
 	color: var(--color-text-dark);
-	font-weight: var(--font-weight-bold);
 	margin: 0;
-	// Visually center the title
 	padding-bottom: var(--spacing-4xs);
 }
 .blockToggle {
@@ -307,6 +314,7 @@ onMounted(() => {
 	background: none;
 	padding: 0;
 	color: var(--color-text-base);
+	margin-top: calc(-1 * var(--spacing-3xs));
 }
 .error {
 	padding: var(--spacing-s) 0;

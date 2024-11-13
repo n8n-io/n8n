@@ -298,6 +298,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	align-items: center;
 	justify-content: center;
 	width: 100%;
+	color: var(--color-text-light);
 }
 .empty {
 	padding: var(--spacing-l);
