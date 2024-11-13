@@ -55,7 +55,6 @@ const jsonDataContainer = ref(null);
 const { height } = useElementSize(jsonDataContainer);
 
 const jsonData = computed(() => {
-	console.log('jsonData', executionDataToJson(props.inputData));
 	return executionDataToJson(props.inputData);
 });
 
@@ -166,7 +165,6 @@ const getListItemName = (path: string) => {
 						<!--
 						node = {"content":"3af3a3cc-ff5c-4775-af8c-88b37b0836aa","level":2,"key":"uid","path":"[0].uid","showComma":true,"length":1,"type":"content","id":2}
 						-->
-						<!-- v-show="showExecutionLink(index1)" -->
 						<N8nIconButton
 							v-if="!isNaN(node.path[1]) && inputData[Number(node.path[1])].metadata"
 							type="secondary"
@@ -175,6 +173,7 @@ const getListItemName = (path: string) => {
 							size="mini"
 							@click="openRelatedExecution(inputData[Number(node.path[1])].metadata!, 'json')"
 						/>
+						<!-- ^--- may want to stop event propagation so the row in the json component doesn't end up selected-->
 					</div>
 					<TextWithHighlights
 						:content="getContent(node.key)"
@@ -259,6 +258,10 @@ const getListItemName = (path: string) => {
 	top: -25px;
 	left: 35px;
 }
+
+// trouble here is that the Tree holds all rows as direct children, so we either show hover on first
+// `"key": "value"` pair only or for the whole tree, so all would be visible at once
+// Alternatively we could place a button for each row with matching offsets so that they all overlap each other perfectly... yuck
 *:not(:hover) > * > .parentHoverShow {
 	// display: none;
 }
