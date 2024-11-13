@@ -61,7 +61,6 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import { extend } from '@jsplumb/util';
 
 export * from 'n8n-design-system/types';
 
