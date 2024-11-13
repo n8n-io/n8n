@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
-import type { AxiosProxyConfig } from 'axios';
+import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
@@ -530,6 +530,7 @@ export interface IHttpRequestOptions {
 	};
 	timeout?: number;
 	json?: boolean;
+	abortSignal?: GenericAbortSignal;
 }
 
 /**

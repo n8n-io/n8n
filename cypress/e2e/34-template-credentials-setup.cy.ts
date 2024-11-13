@@ -182,6 +182,7 @@ describe('Template credentials setup', () => {
 		});
 
 		it('should fill credentials from workflow editor', () => {
+			cy.viewport(1920, 1080);
 			templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 			templateCredentialsSetupPage.getters.skipLink().click();
 

@@ -22,11 +22,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import {
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	CUSTOM_NODES_DOCS_URL,
-	SHOULD_CLEAR_NODE_OUTPUTS,
-} from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -47,11 +43,11 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
+import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 
 const props = withDefaults(
 	defineProps<{
@@ -94,7 +90,6 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const { showMessage } = useToast();
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -483,20 +478,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			return;
 		}
 
-		if (
-			parameterData.type &&
-			workflowsStore.nodeHasOutputConnection(_node.name) &&
-			SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
-			SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
-		) {
-			workflowsStore.removeAllNodeConnection(_node, { preserveInputConnections: true });
-			showMessage({
-				type: 'warning',
-				title: i18n.baseText('nodeSettings.outputCleared.title'),
-				message: i18n.baseText('nodeSettings.outputCleared.message'),
-			});
-		}
-
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType.properties,
@@ -565,6 +546,14 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			name: _node.name,
 			value: nodeParameters,
 		};
+
+		const connections = workflowsStore.allConnections;
+
+		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
+
+		if (updatedConnections) {
+			workflowsStore.setConnections(updatedConnections, true);
+		}
 
 		workflowsStore.setNodeParameters(updateInformation);
 

@@ -514,6 +514,7 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for node rerun', () => {
+		cy.viewport(1920, 1080);
 		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
 
 		workflowPage.getters.zoomToFitButton().click();

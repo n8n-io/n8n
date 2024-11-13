@@ -575,7 +575,7 @@ export function mapFilters(filtersList: IDataObject[], timezone: string) {
 		}
 
 		return Object.assign(obj, {
-			['property']: getNameAndType(value.key as string).name,
+			['property']: getNameAndType(value.key as string)?.name,
 			[key]: { [`${value.condition}`]: valuePropertyName },
 		});
 	}, {});
@@ -606,7 +606,7 @@ function simplifyProperty(property: any) {
 	) {
 		result = property[type];
 	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type as string)) {
-		result = property[type] ? property[type].name : null;
+		result = property[type] ? property[type]?.name : null;
 	} else if (['people'].includes(property.type as string)) {
 		if (Array.isArray(property[type])) {
 			result = property[type].map((person: any) => person.person?.email || {});
@@ -615,35 +615,35 @@ function simplifyProperty(property: any) {
 		}
 	} else if (['multi_select'].includes(property.type as string)) {
 		if (Array.isArray(property[type])) {
-			result = property[type].map((e: IDataObject) => e.name || {});
+			result = property[type].map((e: IDataObject) => e?.name || {});
 		} else {
-			result = property[type].options.map((e: IDataObject) => e.name || {});
+			result = property[type].options.map((e: IDataObject) => e?.name || {});
 		}
 	} else if (['relation'].includes(property.type as string)) {
 		if (Array.isArray(property[type])) {
-			result = property[type].map((e: IDataObject) => e.id || {});
+			result = property[type].map((e: IDataObject) => e?.id || {});
 		} else {
-			result = property[type].database_id;
+			result = property[type]?.database_id;
 		}
 	} else if (['formula'].includes(property.type as string)) {
-		result = property[type][property[type].type];
+		result = property[type]?.[property[type]?.type];
 	} else if (['rollup'].includes(property.type as string)) {
-		const rollupFunction = property[type].function as string;
+		const rollupFunction = property[type]?.function as string;
 		if (rollupFunction.startsWith('count') || rollupFunction.includes('empty')) {
-			result = property[type].number;
+			result = property[type]?.number;
 			if (rollupFunction.includes('percent')) {
 				result = result * 100;
 			}
-		} else if (rollupFunction.startsWith('show') && property[type].type === 'array') {
+		} else if (rollupFunction.startsWith('show') && property[type]?.type === 'array') {
 			const elements = property[type].array.map(simplifyProperty).flat();
 			result = rollupFunction === 'show_unique' ? [...new Set(elements as string)] : elements;
 		}
 	} else if (['files'].includes(property.type as string)) {
 		result = property[type].map(
-			(file: { type: string; [key: string]: any }) => file[file.type].url,
+			(file: { type: string; [key: string]: any }) => file[file.type]?.url,
 		);
 	} else if (['status'].includes(property.type as string)) {
-		result = property[type].name;
+		result = property[type]?.name;
 	}
 	return result;
 }

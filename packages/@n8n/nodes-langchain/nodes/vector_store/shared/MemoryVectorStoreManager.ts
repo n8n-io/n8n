@@ -14,7 +14,16 @@ export class MemoryVectorStoreManager {
 	public static getInstance(embeddings: Embeddings): MemoryVectorStoreManager {
 		if (!MemoryVectorStoreManager.instance) {
 			MemoryVectorStoreManager.instance = new MemoryVectorStoreManager(embeddings);
+		} else {
+			// We need to update the embeddings in the existing instance.
+			// This is important as embeddings instance is wrapped in a logWrapper,
+			// which relies on supplyDataFunctions context which changes on each workflow run
+			MemoryVectorStoreManager.instance.embeddings = embeddings;
+			MemoryVectorStoreManager.instance.vectorStoreBuffer.forEach((vectorStoreInstance) => {
+				vectorStoreInstance.embeddings = embeddings;
+			});
 		}
+
 		return MemoryVectorStoreManager.instance;
 	}
 

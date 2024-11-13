@@ -103,6 +103,14 @@ export function sendErrorResponse(res: Response, error: Error) {
 			}
 		}
 
+		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
+			//codes other than 200  breaks redirection to form-waiting page from form trigger
+			//render form page instead of json
+			return res.render('form-trigger-409', {
+				message: error.message,
+			});
+		}
+
 		httpStatusCode = error.httpStatusCode;
 
 		if (error.errorCode) {
