@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useToast } from './useToast';
 import { createPinia, setActivePinia } from 'pinia';
-import { sanitizeHtml } from '@/utils/htmlUtils';
+import { ElNotification as Notification } from 'element-plus';
 
-vi.mock('@/utils/htmlUtils', () => ({
-	sanitizeHtml: vi.fn((str) => str),
-}));
+vi.mock('element-plus', async () => {
+	const original = await vi.importActual('element-plus');
+	return {
+		...original,
+		ElNotification: vi.fn(),
+		ElTooltip: vi.fn(),
+	};
+});
 
 describe('useToast', () => {
 	let toast: ReturnType<typeof useToast>;
@@ -16,11 +21,20 @@ describe('useToast', () => {
 		toast = useToast();
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('should show a message', () => {
 		const messageData = { message: 'Test message', title: 'Test title' };
-		const notification = toast.showMessage(messageData);
+		toast.showMessage(messageData);
 
-		expect(notification).toBeDefined();
+		expect(Notification).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Test message',
+				title: 'Test title',
+			}),
+		);
 	});
 
 	it('should sanitize message and title', () => {
@@ -31,7 +45,11 @@ describe('useToast', () => {
 
 		toast.showMessage(messageData);
 
-		expect(sanitizeHtml).toHaveBeenCalledWith(messageData.message);
-		expect(sanitizeHtml).toHaveBeenCalledWith(messageData.title);
+		expect(Notification).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'alert("xss")',
+				title: 'alert("xss")',
+			}),
+		);
 	});
 });
