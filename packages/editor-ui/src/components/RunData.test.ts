@@ -125,6 +125,7 @@ describe('RunData', () => {
 							fileName: 'test.pdf',
 							fileType: 'pdf',
 							mimeType: 'application/pdf',
+							data: '',
 						},
 					},
 				},
