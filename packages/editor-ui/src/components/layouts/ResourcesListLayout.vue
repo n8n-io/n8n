@@ -11,7 +11,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
@@ -84,7 +83,7 @@ defineSlots<{
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
-	'add-button'(props: { disabled: boolean }): unknown;
+	'add-button'(): unknown;
 	callout(): unknown;
 	filters(props: {
 		filters: Record<string, boolean | string | string[]>;
@@ -408,6 +407,7 @@ onMounted(async () => {
 								</n8n-select>
 							</div>
 						</div>
+						<slot name="add-button"></slot>
 					</div>
 
 					<slot name="callout"></slot>

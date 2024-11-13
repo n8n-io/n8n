@@ -6,6 +6,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -41,6 +42,20 @@ const showSettings = computed(
 		!!projectPermissions.value.update &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
+
+const { menu, handleSelect } = useGlobalEntityCreation(
+	computed(() => !Boolean(projectsStore.currentProject)),
+);
+
+const createLabel = computed(() => {
+	if (!projectsStore.currentProject) {
+		return 'Create';
+	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
+		return 'Create personal';
+	} else {
+		return 'Create in project';
+	}
+});
 </script>
 
 <template>
@@ -55,11 +70,13 @@ const showSettings = computed(
 					<slot name="subtitle" />
 				</N8nText>
 			</div>
-			<div v-if="$slots.actions" :class="[$style.actions]">
-				<slot name="actions"></slot>
-			</div>
 		</div>
-		<ProjectTabs :show-settings="showSettings" />
+		<div :class="$style.actions">
+			<ProjectTabs :show-settings="showSettings" />
+			<N8nNavigationDropdown :menu @select="handleSelect">
+				<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
+			</N8nNavigationDropdown>
+		</div>
 	</div>
 </template>
 
@@ -79,6 +96,9 @@ const showSettings = computed(
 }
 
 .actions {
-	margin-left: auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-end;
+	padding: var(--spacing-2xs) 0 var(--spacing-l);
 }
 </style>
