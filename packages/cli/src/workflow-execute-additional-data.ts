@@ -468,7 +468,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						(executionStatus === 'success' && !saveSettings.success) ||
 						(executionStatus !== 'success' && !saveSettings.error);
 
-					if (shouldNotSave) {
+					if (shouldNotSave && !fullRunData.waitTill) {
 						if (!fullRunData.waitTill && !isManualMode) {
 							executeErrorWorkflow(
 								this.workflowData,
@@ -494,6 +494,11 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						workflowStatusFinal: executionStatus,
 						retryOf: this.retryOf,
 					});
+
+					// When going into the waiting state, store the pushRef in the execution-data
+					if (fullRunData.waitTill && isManualMode) {
+						fullExecutionData.data.pushRef = this.pushRef;
+					}
 
 					await updateExistingExecution({
 						executionId: this.executionId,

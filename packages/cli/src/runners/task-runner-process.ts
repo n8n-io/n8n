@@ -69,8 +69,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		super();
 
 		a.ok(
-			this.runnerConfig.mode === 'internal_childprocess' ||
-				this.runnerConfig.mode === 'internal_launcher',
+			this.runnerConfig.mode !== 'external',
+			'Task Runner Process cannot be used in external mode',
 		);
 
 		this.logger = logger.scoped('task-runner');
@@ -92,7 +92,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	}
 
 	startNode(grantToken: string, n8nUri: string) {
-		const startScript = require.resolve('@n8n/task-runner');
+		const startScript = require.resolve('@n8n/task-runner/start');
 
 		return spawn('node', [startScript], {
 			env: this.getProcessEnvVars(grantToken, n8nUri),

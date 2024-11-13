@@ -354,7 +354,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		await openWorkflow(workflowData);
+		openWorkflow(workflowData);
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
@@ -379,11 +379,11 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
  * Workflow
  */
 
-async function openWorkflow(data: IWorkflowDb) {
+function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
 
-	await initializeWorkspace(data);
+	initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -815,7 +815,8 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 	resetWorkspace();
 
 	await initializeData();
-	await initializeWorkspace({
+
+	initializeWorkspace({
 		...workflowData,
 		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
@@ -1074,7 +1075,9 @@ async function openExecution(executionId: string) {
 	}
 
 	await initializeData();
-	await initializeWorkspace(data.workflowData);
+
+	initializeWorkspace(data.workflowData);
+
 	workflowsStore.setWorkflowExecutionData(data);
 
 	uiStore.stateIsDirty = false;
@@ -1254,7 +1257,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
-				await openWorkflow(workflowData);
+				openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
@@ -1276,17 +1279,19 @@ function removeSourceControlEventBindings() {
 
 function addPostMessageEventBindings() {
 	window.addEventListener('message', onPostMessageReceived);
+}
 
+function removePostMessageEventBindings() {
+	window.removeEventListener('message', onPostMessageReceived);
+}
+
+function emitPostMessageReady() {
 	if (window.parent) {
 		window.parent.postMessage(
 			JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
 			'*',
 		);
 	}
-}
-
-function removePostMessageEventBindings() {
-	window.removeEventListener('message', onPostMessageReceived);
 }
 
 async function onPostMessageReceived(messageEvent: MessageEvent) {
@@ -1450,7 +1455,7 @@ function selectNodes(ids: string[]) {
 
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
-	uiStore.isCreateNodeActive = false;
+	nodeCreatorStore.isCreateNodeActive = false;
 	setNodeSelected();
 }
 
@@ -1516,6 +1521,8 @@ onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
+
+	addPostMessageEventBindings();
 });
 
 onMounted(() => {
@@ -1536,6 +1543,8 @@ onMounted(() => {
 				canvasStore.stopLoading();
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
+
+				emitPostMessageReady();
 			});
 
 		void usersStore.showPersonalizationSurvey();
@@ -1544,7 +1553,6 @@ onMounted(() => {
 	});
 
 	addSourceControlEventBindings();
-	addPostMessageEventBindings();
 	addWorkflowSavedEventBindings();
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
@@ -1643,7 +1651,7 @@ onBeforeUnmount(() => {
 		<Suspense>
 			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
-				:create-node-active="uiStore.isCreateNodeActive"
+				:create-node-active="nodeCreatorStore.isCreateNodeActive"
 				:node-view-scale="viewportTransform.zoom"
 				@toggle-node-creator="onToggleNodeCreator"
 				@add-nodes="onAddNodesAndConnections"

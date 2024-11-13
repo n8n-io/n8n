@@ -731,11 +731,8 @@ export interface ICredentialTestFunctions {
 	};
 }
 
-interface BaseHelperFunctions {
+export interface BaseHelperFunctions {
 	createDeferredPromise: <T = void>() => IDeferredPromise<T>;
-}
-
-interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
@@ -756,6 +753,7 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
+	/** @deprecated */
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
@@ -985,8 +983,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			BinaryHelperFunctions &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
-			SSHTunnelFunctions &
-			JsonHelperFunctions & {
+			SSHTunnelFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1081,8 +1078,7 @@ export interface IPollFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
-		SchedulingFunctions &
-		JsonHelperFunctions;
+		SchedulingFunctions;
 }
 
 export interface ITriggerFunctions
@@ -1102,15 +1098,14 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions &
-		JsonHelperFunctions;
+		SchedulingFunctions;
 }
 
 export interface IHookFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	getWebhookName(): string;
-	getWebhookDescription(name: string): IWebhookDescription | undefined;
-	getNodeWebhookUrl: (name: string) => string | undefined;
+	getWebhookDescription(name: WebhookType): IWebhookDescription | undefined;
+	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -1132,7 +1127,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	getNodeWebhookUrl: (name: string) => string | undefined;
+	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -1140,10 +1135,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
-	helpers: RequestHelperFunctions &
-		BaseHelperFunctions &
-		BinaryHelperFunctions &
-		JsonHelperFunctions;
+	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -1425,6 +1417,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
@@ -1627,7 +1620,7 @@ export interface INodeType {
 		};
 	};
 	webhookMethods?: {
-		[name in IWebhookDescription['name']]?: {
+		[name in WebhookType]?: {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
@@ -1641,6 +1634,7 @@ export abstract class Node {
 	abstract description: INodeTypeDescription;
 	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
+	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 }
 
 export interface IVersionedNodeType {
@@ -1664,6 +1658,7 @@ export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayName?: string;
+	disabledOptions?: ICredentialsDisplayOptions;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
@@ -1979,11 +1974,13 @@ export interface IWebhookData {
 	staticData?: Workflow['staticData'];
 }
 
+export type WebhookType = 'default' | 'setup';
+
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
-	name: 'default' | 'setup';
+	name: WebhookType;
 	path: string;
 	responseBinaryPropertyName?: string;
 	responseContentType?: string;
@@ -2085,6 +2082,9 @@ export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
 
 export interface IRun {
 	data: IRunExecutionData;
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	waitTill?: Date | null;
@@ -2119,6 +2119,7 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	waitTill?: Date;
+	pushRef?: string;
 }
 
 export interface IRunData {
@@ -2556,6 +2557,9 @@ export type AnnotationVote = 'up' | 'down';
 
 export interface ExecutionSummary {
 	id: string;
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
@@ -2705,6 +2709,9 @@ export interface ExecutionOptions {
 }
 
 export interface ExecutionFilters {
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode?: WorkflowExecuteMode[];
 	retryOf?: string;

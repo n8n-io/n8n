@@ -21,7 +21,7 @@ import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
 import { toolsAgentExecute } from './agents/ToolsAgent/execute';
-import { promptTypeOptions, textInput } from '../../../utils/descriptions';
+import { promptTypeOptions, textFromPreviousNode, textInput } from '../../../utils/descriptions';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
@@ -337,6 +337,17 @@ export class Agent implements INodeType {
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
+						agent: ['sqlAgent'],
+					},
+				},
+			},
+			{
+				...textFromPreviousNode,
+				displayOptions: {
+					show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.7 } }] },
+					// SQL Agent has data source and credentials parameters so we need to include this input there manually
+					// to preserve the order
+					hide: {
 						agent: ['sqlAgent'],
 					},
 				},

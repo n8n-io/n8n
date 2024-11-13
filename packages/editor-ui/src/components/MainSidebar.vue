@@ -21,6 +21,7 @@ import { useUserHelpers } from '@/composables/useUserHelpers';
 
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -38,6 +39,7 @@ const locale = useI18n();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
+const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 
 useUserHelpers(router, route);
@@ -95,13 +97,6 @@ const mainMenuItems = computed(() => [
 		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
-	},
-	{
-		id: 'executions',
-		icon: 'tasks',
-		label: locale.baseText('mainSidebar.executions'),
-		position: 'bottom',
-		route: { to: { name: VIEWS.EXECUTIONS } },
 	},
 	{
 		id: 'help',
@@ -260,7 +255,7 @@ const handleSelect = (key: string) => {
 			break;
 		}
 		case 'cloud-admin': {
-			void cloudPlanStore.redirectToDashboard();
+			void pageRedirectionHelper.goToDashboard();
 			break;
 		}
 		case 'quickstart':

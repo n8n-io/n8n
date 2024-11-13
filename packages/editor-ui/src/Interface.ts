@@ -8,7 +8,7 @@ import type {
 	IVersionNotificationSettings,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
-import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
+import type { NodeCreatorTag } from 'n8n-design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -52,7 +52,6 @@ import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	SignInType,
-	FAKE_DOOR_FEATURES,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -62,7 +61,6 @@ import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
 
@@ -628,7 +626,6 @@ export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromA
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
 	maxExecutionTimeout?: number;
@@ -890,51 +887,6 @@ export interface RootState {
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
-export interface IRootState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
-	activeWorkflows: string[];
-	activeActions: string[];
-	activeCredentialType: string | null;
-	baseUrl: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	endpointWebhookWaiting: string;
-	executionId: string | null;
-	executingNode: string[];
-	executionWaitingForWebhook: boolean;
-	pushConnectionActive: boolean;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
-	timezone: string;
-	stateIsDirty: boolean;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: object;
-	workflowExecutionData: IExecutionResponse | null;
-	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
-	lastSelectedNode: string | null;
-	lastSelectedNodeOutputIndex: number | null;
-	nodeViewOffsetPosition: XYPosition;
-	nodeViewMoveInProgress: boolean;
-	selectedNodes: INodeUi[];
-	pushRef: string;
-	urlBaseEditor: string;
-	urlBaseWebhook: string;
-	workflow: IWorkflowDb;
-	workflowsById: IWorkflowsMap;
-	sidebarMenuItems: IMenuItem[];
-	instanceId: string;
-	nodeMetadata: NodeMetadataMap;
-	subworkflowExecutionError: Error | null;
-	binaryDataMode: string;
-}
 
 export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
@@ -1035,24 +987,6 @@ export interface NDVState {
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
 	message: string | ElementNotificationOptions['message'];
 }
-
-export type IFakeDoor = {
-	id: FAKE_DOOR_FEATURES;
-	featureName: BaseTextKey;
-	icon?: string;
-	infoText?: BaseTextKey;
-	actionBoxTitle: BaseTextKey;
-	actionBoxDescription: BaseTextKey;
-	actionBoxButtonLabel?: BaseTextKey;
-	linkURL: string;
-	uiLocations: IFakeDoorLocation[];
-};
-
-export type IFakeDoorLocation =
-	| 'settings'
-	| 'settings/users'
-	| 'credentialsModal'
-	| 'workflowShareModal';
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
@@ -1194,8 +1128,8 @@ export interface IInviteResponse {
 	error?: string;
 }
 
-export interface ITab {
-	value: string | number;
+export interface ITab<Value extends string | number = string | number> {
+	value: Value;
 	label?: string;
 	href?: string;
 	icon?: string;
@@ -1371,6 +1305,7 @@ export type ExecutionFilterType = {
 
 export type ExecutionsQueryFilter = {
 	status?: ExecutionStatus[];
+	projectId?: string;
 	workflowId?: string;
 	finished?: boolean;
 	waitTill?: boolean;
@@ -1650,3 +1585,44 @@ export type ApiKey = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+export type InputPanel = {
+	displayMode: IRunDataDisplayMode;
+	nodeName?: string;
+	run?: number;
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+};
+
+export type OutputPanel = {
+	branch?: number;
+	displayMode: IRunDataDisplayMode;
+	data: {
+		isEmpty: boolean;
+	};
+	editMode: {
+		enabled: boolean;
+		value: string;
+	};
+};
+
+export type Draggable = {
+	isDragging: boolean;
+	type: string;
+	data: string;
+	dimensions: DOMRect | null;
+	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
+};
+
+export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
+
+export type MainPanelDimensions = Record<
+	MainPanelType,
+	{
+		relativeLeft: number;
+		relativeRight: number;
+		relativeWidth: number;
+	}
+>;

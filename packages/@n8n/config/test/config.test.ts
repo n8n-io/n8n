@@ -222,7 +222,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			disabled: true,
+			enabled: false,
 			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
@@ -233,6 +233,7 @@ describe('GlobalConfig', () => {
 			launcherRunner: 'javascript',
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
+			assertDeduplicationOutput: false,
 		},
 		sentry: {
 			backendDsn: '',
@@ -270,6 +271,14 @@ describe('GlobalConfig', () => {
 			restrictFileAccessTo: '',
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
+		},
+		pruning: {
+			isEnabled: true,
+			maxAge: 336,
+			maxCount: 10_000,
+			hardDeleteBuffer: 1,
+			hardDeleteInterval: 15,
+			softDeleteInterval: 60,
 		},
 	};
 

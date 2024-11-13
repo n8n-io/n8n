@@ -735,14 +735,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function setWorkflowPinData(pinData?: IPinData) {
-		workflow.value = {
-			...workflow.value,
-			pinData: pinData ?? {},
-		};
+	function setWorkflowPinData(data: IPinData = {}) {
+		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
+			accu[nodeName] = data[nodeName].map((item) => {
+				if (!isJsonKeyObject(item)) {
+					return { json: item };
+				}
+
+				return item;
+			});
+
+			return accu;
+		}, {} as IPinData);
+
+		workflow.value.pinData = validPinData;
 		updateCachedWorkflow();
 
-		dataPinningEventBus.emit('pin-data', pinData ?? {});
+		dataPinningEventBus.emit('pin-data', validPinData);
 	}
 
 	function setWorkflowTagIds(tags: string[]) {
@@ -1037,6 +1046,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
+		nodeMetadata.value = nodes.reduce<NodeMetadataMap>((acc, node) => {
+			acc[node.name] = { pristine: true };
+			return acc;
+		}, {});
 	}
 
 	function setConnections(connections: IConnections, updateWorkflow = false): void {
