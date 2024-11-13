@@ -35,7 +35,7 @@ const workflowsStore = useWorkflowsStore();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
-const locale = useI18n();
+const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -53,11 +53,11 @@ const fullyExpanded = ref(false);
 const userMenuItems = ref([
 	{
 		id: 'settings',
-		label: locale.baseText('settings'),
+		label: i18n.baseText('settings'),
 	},
 	{
 		id: 'logout',
-		label: locale.baseText('auth.signout'),
+		label: i18n.baseText('auth.signout'),
 	},
 ]);
 
@@ -73,7 +73,7 @@ const mainMenuItems = computed(() => [
 		// Link to in-app templates, available if custom templates are enabled
 		id: 'templates',
 		icon: 'box-open',
-		label: locale.baseText('mainSidebar.templates'),
+		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
 		route: { to: { name: VIEWS.TEMPLATES } },
@@ -82,7 +82,7 @@ const mainMenuItems = computed(() => [
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
 		icon: 'box-open',
-		label: locale.baseText('mainSidebar.templates'),
+		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
 		link: {
@@ -93,7 +93,7 @@ const mainMenuItems = computed(() => [
 	{
 		id: 'variables',
 		icon: 'variable',
-		label: locale.baseText('mainSidebar.variables'),
+		label: i18n.baseText('mainSidebar.variables'),
 		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
@@ -101,13 +101,13 @@ const mainMenuItems = computed(() => [
 	{
 		id: 'help',
 		icon: 'question',
-		label: locale.baseText('mainSidebar.help'),
+		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
 			{
 				id: 'quickstart',
 				icon: 'video',
-				label: locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
 					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
 					target: '_blank',
@@ -116,7 +116,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'docs',
 				icon: 'book',
-				label: locale.baseText('mainSidebar.helpMenuItems.documentation'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
 					href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 					target: '_blank',
@@ -125,7 +125,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'forum',
 				icon: 'users',
-				label: locale.baseText('mainSidebar.helpMenuItems.forum'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
 					href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 					target: '_blank',
@@ -134,7 +134,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'examples',
 				icon: 'graduation-cap',
-				label: locale.baseText('mainSidebar.helpMenuItems.course'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
 					href: 'https://docs.n8n.io/courses/',
 					target: '_blank',
@@ -143,7 +143,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'report-bug',
 				icon: 'bug',
-				label: locale.baseText('mainSidebar.helpMenuItems.reportBug'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
 				link: {
 					href: getReportingURL(),
 					target: '_blank',
@@ -152,7 +152,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'about',
 				icon: 'info',
-				label: locale.baseText('mainSidebar.aboutN8n'),
+				label: i18n.baseText('mainSidebar.aboutN8n'),
 				position: 'bottom',
 			},
 		],
@@ -357,10 +357,10 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 							<template v-if="isCollapsed" #dropdown>
 								<el-dropdown-menu>
 									<el-dropdown-item command="settings">
-										{{ $locale.baseText('settings') }}
+										{{ i18n.baseText('settings') }}
 									</el-dropdown-item>
 									<el-dropdown-item command="logout">
-										{{ $locale.baseText('auth.signout') }}
+										{{ i18n.baseText('auth.signout') }}
 									</el-dropdown-item>
 								</el-dropdown-menu>
 							</template>

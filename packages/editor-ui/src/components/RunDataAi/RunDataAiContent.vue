@@ -11,6 +11,7 @@ import type {
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
+import { useI18n } from '@/composables/useI18n';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -26,6 +27,8 @@ const props = defineProps<{
 
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
 
 type TokenUsageData = {
 	completionTokens: number;
@@ -123,7 +126,7 @@ const outputError = computed(() => {
 								{{ new Date(runMeta?.startTimeMs).toLocaleString() }}
 							</template>
 							{{
-								$locale.baseText('runData.aiContentBlock.startedAt', {
+								i18n.baseText('runData.aiContentBlock.startedAt', {
 									interpolate: {
 										startTime: new Date(runMeta?.startTimeMs).toLocaleTimeString(),
 									},
@@ -133,7 +136,7 @@ const outputError = computed(() => {
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{
-							$locale.baseText('runData.aiContentBlock.tokens', {
+							i18n.baseText('runData.aiContentBlock.tokens', {
 								interpolate: {
 									count: formatTokenUsageCount(consumedTokensSum?.totalTokens ?? 0),
 								},
@@ -142,9 +145,9 @@ const outputError = computed(() => {
 						<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
 							<div>
 								<n8n-text :bold="true" size="small">
-									{{ $locale.baseText('runData.aiContentBlock.tokens.prompt') }}
+									{{ i18n.baseText('runData.aiContentBlock.tokens.prompt') }}
 									{{
-										$locale.baseText('runData.aiContentBlock.tokens', {
+										i18n.baseText('runData.aiContentBlock.tokens', {
 											interpolate: {
 												count: formatTokenUsageCount(consumedTokensSum?.promptTokens ?? 0),
 											},
@@ -153,9 +156,9 @@ const outputError = computed(() => {
 								</n8n-text>
 								<br />
 								<n8n-text :bold="true" size="small">
-									{{ $locale.baseText('runData.aiContentBlock.tokens.completion') }}
+									{{ i18n.baseText('runData.aiContentBlock.tokens.completion') }}
 									{{
-										$locale.baseText('runData.aiContentBlock.tokens', {
+										i18n.baseText('runData.aiContentBlock.tokens', {
 											interpolate: {
 												count: formatTokenUsageCount(consumedTokensSum?.completionTokens ?? 0),
 											},
