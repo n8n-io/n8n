@@ -52,7 +52,7 @@ function adjustNewParent(parent: AddedNode, child: AddedNode) {
 		const workflow = getCurrentWorkflow();
 
 		// If a memory node is added to an Agent, the memory node is actually the parent since it provides input
-		// So we need to look for the Agent's parents to determine if it's a prompt provider
+		// So we need to look for the Agent's parents to determine if there is a prompt provider
 		const ps = workflow.getParentNodesByDepth(child.name, 1);
 		if (
 			!ps.some((x) => PROMPT_PROVIDER_NODE_NAMES.includes(workflow.getNode(x.name)?.type ?? ''))

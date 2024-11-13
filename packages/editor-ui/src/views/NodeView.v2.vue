@@ -867,7 +867,6 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	// before here?
 	const addedNodes = await addNodes(nodes, {
 		dragAndDrop,
 		position,
