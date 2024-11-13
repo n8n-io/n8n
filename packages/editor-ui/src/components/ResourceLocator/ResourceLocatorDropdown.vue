@@ -270,7 +270,7 @@ function onResultsEnd() {
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
-						v-if="showHoverUrl && result.url && hoverIndex === i"
+						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link-alt"
 						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
