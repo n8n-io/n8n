@@ -66,6 +66,7 @@ describe('NDV', () => {
 	});
 
 	it('should disconect Switch outputs if rules order was changed', () => {
+		cy.viewport(1920, 1080);
 		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', 'NDV test switch reorder');
 		workflowPage.actions.zoomToFit();
 
@@ -232,6 +233,7 @@ describe('NDV', () => {
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
 		});
 		it('should display large schema', () => {
+			cy.viewport(1920, 1080);
 			cy.createFixtureWorkflow(
 				'Test_workflow_schema_test_pinned_data.json',
 				'NDV test schema view 2',
@@ -718,6 +720,7 @@ describe('NDV', () => {
 	});
 
 	it('Should open appropriate node creator after clicking on connection hint link', () => {
+		cy.viewport(1920, 1080);
 		const nodeCreator = new NodeCreator();
 		const hintMapper = {
 			Memory: 'AI Nodes',
