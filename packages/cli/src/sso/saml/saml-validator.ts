@@ -28,7 +28,7 @@ async function loadSchemas(): Promise<void> {
 			import('./schema/oasis-200401-wss-wssecurity-secext-1.0.xsd'),
 			import('./schema/oasis-200401-wss-wssecurity-utility-1.0.xsd'),
 			import('./schema/ws-addr.xsd'),
-			import('./schema/MetadataExchange.xsd'),
+			import('./schema/metadata-exchange.xsd'),
 			import('./schema/ws-securitypolicy-1.2.xsd'),
 			import('./schema/ws-authorization.xsd'),
 		])
