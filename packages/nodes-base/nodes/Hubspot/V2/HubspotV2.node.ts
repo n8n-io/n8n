@@ -19,7 +19,7 @@ import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workfl
 
 import { snakeCase } from 'change-case';
 import set from 'lodash/set';
-import { generatePairedItemData } from '../../../utils/utilities';
+
 import {
 	clean,
 	getAssociations,
@@ -1192,12 +1192,7 @@ export class HubspotV2 implements INodeType {
 					);
 				}
 
-				const itemData = generatePairedItemData(items.length);
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData },
-				);
+				const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {

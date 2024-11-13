@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
-import { generatePairedItemData } from '../../../utils/utilities';
 import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
@@ -737,24 +736,16 @@ export class AirtableV1 implements INodeType {
 					const downloadFieldNames = (
 						this.getNodeParameter('downloadFieldNames', 0) as string
 					).split(',');
-					const pairedItem = generatePairedItemData(items.length);
+
 					const data = await downloadRecordAttachments.call(
 						this,
 						responseData.records as IRecord[],
 						downloadFieldNames,
-						pairedItem,
 					);
 					return [data];
 				}
 
-				// We can return from here
-				const itemData = generatePairedItemData(items.length);
-
-				return [
-					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
-						itemData,
-					}),
-				];
+				return [this.helpers.returnJsonArray(returnData)];
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });

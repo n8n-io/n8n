@@ -20,7 +20,7 @@ import {
 } from 'n8n-workflow';
 import set from 'lodash/set';
 import jwt from 'jsonwebtoken';
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -444,11 +444,7 @@ export class RespondToWebhook implements INodeType {
 			this.sendResponse(response);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				const itemData = generatePairedItemData(items.length);
-				const returnData = this.helpers.constructExecutionMetaData(
-					[{ json: { error: error.message } }],
-					{ itemData },
-				);
+				const returnData = [{ json: { error: error.message } }];
 				return [returnData];
 			}
 

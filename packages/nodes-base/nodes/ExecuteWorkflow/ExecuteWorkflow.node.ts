@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { generatePairedItemData } from '../../utils/utilities';
+
 import { getWorkflowInfo } from './GenericFunctions';
 
 export class ExecuteWorkflow implements INodeType {
@@ -278,8 +278,6 @@ export class ExecuteWorkflow implements INodeType {
 					items,
 				);
 
-				const fallbackPairedItemData = generatePairedItemData(items.length);
-
 				for (const output of workflowResult) {
 					const sameLength = output.length === items.length;
 
@@ -288,17 +286,14 @@ export class ExecuteWorkflow implements INodeType {
 
 						if (sameLength) {
 							item.pairedItem = { item: itemIndex };
-						} else {
-							item.pairedItem = fallbackPairedItemData;
 						}
 					}
 				}
 
 				return workflowResult;
 			} catch (error) {
-				const pairedItem = generatePairedItemData(items.length);
 				if (this.continueOnFail()) {
-					return [[{ json: { error: error.message }, pairedItem }]];
+					return [[{ json: { error: error.message } }]];
 				}
 				throw error;
 			}

@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
@@ -234,17 +233,15 @@ export function configureQueryRunner(
 					.flat();
 
 				if (!returnData.length) {
-					const pairedItem = generatePairedItemData(queries.length);
-
 					if ((options?.nodeVersion as number) < 2.3) {
 						if (emptyReturnData.length) {
-							emptyReturnData[0].pairedItem = pairedItem;
+							emptyReturnData[0].pairedItem = undefined;
 						}
 						returnData = emptyReturnData;
 					} else {
 						returnData = queries.every((query) => isSelectQuery(query.query))
 							? []
-							: [{ json: { success: true }, pairedItem }];
+							: [{ json: { success: true } }];
 					}
 				}
 			} catch (err) {

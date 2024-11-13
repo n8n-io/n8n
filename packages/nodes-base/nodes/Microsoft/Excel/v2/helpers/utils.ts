@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
-import { generatePairedItemData, wrapData } from '@utils/utilities';
+import { wrapData } from '@utils/utilities';
 
 type PrepareOutputConfig = {
 	rawData: boolean;
@@ -60,11 +60,7 @@ export function prepareOutput(
 			returnData.push(...executionData);
 		}
 	} else {
-		const itemData = generatePairedItemData(this.getInputData().length);
-		const executionData = this.helpers.constructExecutionMetaData(
-			wrapData({ [config.dataProperty || 'data']: responseData }),
-			{ itemData },
-		);
+		const executionData = wrapData({ [config.dataProperty || 'data']: responseData });
 
 		returnData.push(...executionData);
 	}
