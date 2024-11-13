@@ -54,6 +54,7 @@ export const mockNodeTypeDescription = ({
 	credentials = [],
 	inputs = [NodeConnectionType.Main],
 	outputs = [NodeConnectionType.Main],
+	codex = {},
 	properties = [],
 }: {
 	name?: INodeTypeDescription['name'];
@@ -61,6 +62,7 @@ export const mockNodeTypeDescription = ({
 	credentials?: INodeTypeDescription['credentials'];
 	inputs?: INodeTypeDescription['inputs'];
 	outputs?: INodeTypeDescription['outputs'];
+	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
 } = {}) =>
 	mock<INodeTypeDescription>({
@@ -77,6 +79,7 @@ export const mockNodeTypeDescription = ({
 		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
 		inputs,
 		outputs,
+		codex,
 		credentials,
 		documentationUrl: 'https://docs',
 		webhooks: undefined,
