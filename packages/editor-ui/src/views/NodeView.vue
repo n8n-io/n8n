@@ -1108,7 +1108,7 @@ export default defineComponent({
 
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.executionsStore.activeExecution = null;
-			this.workflowsStore.setWorkflowName({ newName: 'Sample Subworkflow', setStateDirty: false });
+			this.workflowsStore.setWorkflowName({ newName: 'My Sub-Workflow', setStateDirty: false });
 
 			await this.nodeHelpers.addNodes(
 				SAMPLE_SUBWORKFLOW_WORKFLOW.nodes,
@@ -1116,7 +1116,11 @@ export default defineComponent({
 			);
 
 			await this.$nextTick();
+
 			this.canvasStore.zoomToFit();
+
+			await this.workflowHelpers.saveAsNewWorkflow();
+
 			this.uiStore.stateIsDirty = true;
 
 			this.canvasStore.stopLoading();

@@ -1509,6 +1509,7 @@ async function createSampleSubworkflow() {
 	resetWorkspace();
 
 	canvasStore.startLoading();
+
 	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
 	workflowsStore.currentWorkflowExecutions = [];
@@ -1518,7 +1519,9 @@ async function createSampleSubworkflow() {
 
 	await addNodes(SAMPLE_SUBWORKFLOW_WORKFLOW.nodes, { trackHistory: true });
 
-	await workflowsStore.getNewWorkflowData('Sample Subworkflow', projectsStore.currentProjectId);
+	await workflowsStore.getNewWorkflowData('My Sub-Workflow', projectsStore.currentProjectId);
+
+	await workflowHelpers.saveAsNewWorkflow();
 
 	uiStore.stateIsDirty = true;
 
