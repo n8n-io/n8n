@@ -51,7 +51,7 @@ export const addPostExecutionWarning = (
 			[
 				{
 					message:
-						'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>,',
+						'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
 					location: 'ndv',
 				},
 			],
