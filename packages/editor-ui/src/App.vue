@@ -33,14 +33,10 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
-
+const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
-
-watch(defaultLocale, (newLocale) => {
-	void loadLanguage(newLocale);
-});
 
 onMounted(async () => {
 	setAppZIndexes();
@@ -52,11 +48,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	window.removeEventListener('resize', updateGridWidth);
-});
-
-// As assistant sidebar width changes, recalculate the total width regularly
-watch(assistantSidebarWidth, async () => {
-	await updateGridWidth();
 });
 
 const logHiringBanner = () => {
@@ -71,6 +62,21 @@ const updateGridWidth = async () => {
 		uiStore.appGridWidth = appGrid.value.clientWidth;
 	}
 };
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
+});
+
+watch(route, (r) => {
+	hasContentFooter.value = r.matched.some(
+		(matchedRoute) => matchedRoute.components?.footer !== undefined,
+	);
+});
+
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
+});
 </script>
 
 <template>
@@ -94,12 +100,17 @@ const updateGridWidth = async () => {
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
-						<component :is="Component" />
-					</keep-alive>
-					<component :is="Component" v-else />
-				</router-view>
+				<div :class="$style.contentWrapper">
+					<router-view v-slot="{ Component }">
+						<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
+							<component :is="Component" />
+						</keep-alive>
+						<component :is="Component" v-else />
+					</router-view>
+				</div>
+				<div v-if="hasContentFooter" :class="$style.contentFooter">
+					<router-view name="footer" />
+				</div>
 			</div>
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
@@ -138,8 +149,26 @@ const updateGridWidth = async () => {
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
-
 .content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: auto;
+	grid-area: content;
+}
+
+.contentFooter {
+	height: auto;
+	z-index: 10;
+	width: 100%;
+	display: none;
+
+	// Only show footer if there's content
+	&:has(*) {
+		display: block;
+	}
+}
+.contentWrapper {
 	display: flex;
 	grid-area: content;
 	position: relative;

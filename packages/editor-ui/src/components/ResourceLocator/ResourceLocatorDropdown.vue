@@ -145,7 +145,12 @@ function onKeyDown(e: KeyboardEvent) {
 			}
 		}
 	} else if (e.key === 'Enter') {
-		emit('update:modelValue', sortedResources.value[hoverIndex.value].value);
+		const selected = sortedResources.value[hoverIndex.value]?.value;
+
+		// Selected resource can be empty when loading or empty results
+		if (selected) {
+			emit('update:modelValue', selected);
+		}
 	}
 }
 

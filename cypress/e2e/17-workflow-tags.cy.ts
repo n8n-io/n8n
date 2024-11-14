@@ -53,6 +53,7 @@ describe('Workflow tags', () => {
 	});
 
 	it('should detach a tag inline by clicking on X on tag pill', () => {
+		cy.viewport(1920, 1080);
 		wf.getters.createTagButton().click();
 		wf.actions.addTags(TEST_TAGS);
 		wf.getters.nthTagPill(1).click();
@@ -73,6 +74,7 @@ describe('Workflow tags', () => {
 	});
 
 	it('should not show non existing tag as a selectable option', () => {
+		cy.viewport(1920, 1080);
 		const NON_EXISTING_TAG = 'My Test Tag';
 
 		wf.getters.createTagButton().click();
