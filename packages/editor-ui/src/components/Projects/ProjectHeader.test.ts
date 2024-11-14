@@ -65,7 +65,7 @@ describe('ProjectHeader', () => {
 	it('should render the correct title', async () => {
 		const { getByText, rerender } = renderComponent();
 
-		expect(getByText('Home')).toBeVisible();
+		expect(getByText('Overview')).toBeVisible();
 
 		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
 		await rerender({});

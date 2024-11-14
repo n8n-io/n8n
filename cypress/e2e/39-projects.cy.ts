@@ -176,7 +176,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		let menuItems = cy.getByTestId('menu-item');
 
 		menuItems.filter('[class*=active_]').should('have.length', 1);
-		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+		menuItems.filter(':contains("Overview")[class*=active_]').should('exist');
 
 		projects.getMenuItems().first().click();
 
@@ -222,7 +222,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		menuItems = cy.getByTestId('menu-item');
 
 		menuItems.filter('[class*=active_]').should('have.length', 1);
-		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+		menuItems.filter(':contains("Overview")[class*=active_]').should('exist');
 
 		workflowsPage.getters.workflowCards().should('have.length', 2).first().click();
 
@@ -230,7 +230,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		cy.getByTestId('execute-workflow-button').should('be.visible');
 
 		menuItems = cy.getByTestId('menu-item');
-		menuItems.filter(':contains("Home")[class*=active_]').should('not.exist');
+		menuItems.filter(':contains("Overview")[class*=active_]').should('not.exist');
 
 		menuItems = cy.getByTestId('menu-item');
 		menuItems.filter('[class*=active_]').should('have.length', 1);

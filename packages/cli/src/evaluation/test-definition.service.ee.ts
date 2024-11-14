@@ -26,6 +26,7 @@ export class TestDefinitionService {
 
 	private toEntityLike(attrs: {
 		name?: string;
+		description?: string;
 		workflowId?: string;
 		evaluationWorkflowId?: string;
 		annotationTagId?: string;
@@ -39,6 +40,10 @@ export class TestDefinitionService {
 
 		if (attrs.name) {
 			entity.name = attrs.name?.trim();
+		}
+
+		if (attrs.description) {
+			entity.description = attrs.description.trim();
 		}
 
 		if (attrs.workflowId) {
