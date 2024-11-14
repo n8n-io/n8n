@@ -777,7 +777,7 @@ export class YouTube implements INodeType {
 						if (filters.publishedBefore) {
 							const publishedBefore = DateTime.fromISO(filters.publishedBefore as string);
 							if (publishedBefore.isValid) {
-								filters.publishedAfter = publishedBefore.setZone(this.getTimezone()).toISO();
+								filters.publishedBefore = publishedBefore.setZone(this.getTimezone()).toISO();
 							} else {
 								throw new NodeOperationError(
 									this.getNode(),
