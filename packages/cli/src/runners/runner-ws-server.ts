@@ -1,10 +1,13 @@
+import { TaskRunnersConfig } from '@n8n/config';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
+import { Time } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 import type {
 	DisconnectAnalyzer,
 	TaskRunnerServerInitRequest,
@@ -13,6 +16,7 @@ import type {
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
+	console.log('Received heartbeat from task runner'); // @TODO: Remove later
 	this.isAlive = true;
 }
 
@@ -20,11 +24,43 @@ function heartbeat(this: WebSocket) {
 export class TaskRunnerWsServer {
 	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
+	private heartbeatTimer: NodeJS.Timer | undefined;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskBroker: TaskBroker,
 		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
-	) {}
+		private readonly taskTunnersConfig: TaskRunnersConfig,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
+	) {
+		this.startHeartbeatChecks();
+	}
+
+	private startHeartbeatChecks() {
+		this.heartbeatTimer = setInterval(() => {
+			this.runnerConnections.forEach((ws) => {
+				if (!ws.isAlive) {
+					void this.disconnect(ws);
+					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
+					return;
+				}
+
+				ws.isAlive = false;
+				ws.ping();
+			});
+		}, this.taskTunnersConfig.heartbeatInterval * Time.seconds.toMilliseconds);
+	}
+
+	async shutdown() {
+		if (this.heartbeatTimer) {
+			clearInterval(this.heartbeatTimer);
+			this.heartbeatTimer = undefined;
+		}
+
+		await Promise.all(
+			Array.from(this.runnerConnections.keys()).map(async (id) => await this.removeConnection(id)),
+		);
+	}
 
 	setDisconnectAnalyzer(disconnectAnalyzer: DisconnectAnalyzer) {
 		this.disconnectAnalyzer = disconnectAnalyzer;

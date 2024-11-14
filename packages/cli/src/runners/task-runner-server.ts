@@ -1,7 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import compression from 'compression';
 import express from 'express';
-import assert from 'node:assert';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';
@@ -10,7 +9,7 @@ import { parse as parseUrl } from 'node:url';
 import { Service } from 'typedi';
 import { Server as WSServer } from 'ws';
 
-import { inTest, LOWEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
+import { inTest, LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { Logger } from '@/logging/logger.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -22,8 +21,6 @@ import type {
 } from '@/runners/runner-types';
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 
-import { RunnerLifecycleEvents } from './runner-lifecycle-events';
-
 /**
  * Task Runner HTTP & WS server
  */
@@ -34,8 +31,6 @@ export class TaskRunnerServer {
 	private wsServer: WSServer | undefined;
 
 	readonly app: express.Application;
-
-	private heartbeatTimer: NodeJS.Timer | undefined;
 
 	public get port() {
 		return (this.server?.address() as AddressInfo)?.port;
@@ -50,7 +45,6 @@ export class TaskRunnerServer {
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRunnerAuthController: TaskRunnerAuthController,
 		private readonly taskRunnerWsServer: TaskRunnerWsServer,
-		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -73,30 +67,10 @@ export class TaskRunnerServer {
 		this.setupCommonMiddlewares();
 
 		this.configureRoutes();
-
-		this.heartbeatTimer = setInterval(() => {
-			assert(this.wsServer);
-
-			this.wsServer.clients.forEach((ws) => {
-				if (!ws.isAlive) {
-					void this.taskRunnerWsServer.disconnect(ws);
-					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
-					return;
-				}
-
-				ws.isAlive = false;
-				ws.ping();
-			});
-		}, this.globalConfig.taskRunners.heartbeatInterval * Time.seconds.toMilliseconds);
 	}
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stop(): Promise<void> {
-		if (this.heartbeatTimer) {
-			clearInterval(this.heartbeatTimer);
-			this.heartbeatTimer = undefined;
-		}
-
 		if (this.wsServer) {
 			this.wsServer.close();
 			this.wsServer = undefined;
@@ -203,11 +177,6 @@ export class TaskRunnerServer {
 		}
 
 		this.wsServer.handleUpgrade(request, socket, head, (ws) => {
-			ws.isAlive = true;
-			ws.on('pong', () => {
-				this.logger.debug('Received heartbeat from task runner');
-				ws.isAlive = true;
-			});
 			request.ws = ws;
 
 			const response = new ServerResponse(request);
