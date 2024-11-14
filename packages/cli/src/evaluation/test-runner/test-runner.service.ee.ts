@@ -43,6 +43,32 @@ export class TestRunnerService {
 		return pinData;
 	}
 
+	private async runTestCase(
+		workflow: WorkflowEntity,
+		testCase: IPinData,
+		userId: string,
+	): Promise<IExecutionDb | undefined> {
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'evaluation',
+			runData: {},
+			pinData: testCase,
+			workflowData: workflow,
+			partialExecutionVersion: '-1',
+			userId,
+		};
+
+		// 2.1 Trigger the workflow under test with mocked data
+		const executionId = await this.workflowRunner.run(data);
+
+		assert(executionId);
+
+		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
+			executionId,
+		) as Promise<IExecutionDb | undefined>;
+
+		return await executePromise;
+	}
+
 	public async runTest(user: User, testId: number, accessibleWorkflowIds: string[]): Promise<any> {
 		const test = await this.testDefinitionsService.findOne(testId, accessibleWorkflowIds);
 
@@ -53,6 +79,10 @@ export class TestRunnerService {
 		const workflow = await this.workflowRepository.findById(test.workflowId);
 		assert(workflow, 'Workflow not found');
 
+		// 1. Make test cases from previous executions
+
+		// Select executions with the annotation tag and workflow ID of the test.
+		// Join with the execution data and metadata
 		const executions = await this.executionRepository
 			.createQueryBuilder('execution')
 			.leftJoin('execution.annotation', 'annotation')
@@ -67,26 +97,17 @@ export class TestRunnerService {
 			this.createPinDataFromExecution(workflow, execution),
 		);
 
+		// 2. Run the test cases
+
 		for (const testCase of testCases) {
-			// Start the workflow
-			const data: IWorkflowExecutionDataProcess = {
-				executionMode: 'evaluation',
-				runData: {},
-				pinData: testCase,
-				workflowData: workflow,
-				userId: user.id,
-				partialExecutionVersion: '-1',
-			};
+			// Run the test case and wait for it to finish
+			const execution = await this.runTestCase(workflow, testCase, user.id);
 
-			const executionId = await this.workflowRunner.run(data);
+			if (!execution) {
+				continue;
+			}
 
-			assert(executionId);
-
-			const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-				executionId,
-			) as Promise<IExecutionDb | undefined>;
-
-			const execution = await executePromise;
+			// TODO: 2.3 Collect the run data
 		}
 
 		return { success: true };
