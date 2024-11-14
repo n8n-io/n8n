@@ -1353,7 +1353,7 @@ defineExpose({ enterEditMode });
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
-		<div v-if="props.calloutMessageKey" :class="$style.calloutMessage">
+		<div v-if="props.calloutMessageKey" :class="$style.hintCallout">
 			<N8nCallout :key="props.calloutMessageKey" theme="secondary" data-test-id="run-data-callout">
 				<N8nText v-n8n-html="props.calloutMessageKey" size="small"></N8nText>
 			</N8nCallout>
@@ -2082,10 +2082,6 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--spacing-s);
-}
-
-.calloutMessage {
-	padding: var(--spacing-s);
 }
 </style>
 
