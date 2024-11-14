@@ -2,10 +2,10 @@ import { ensureError } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
+import { HealthcheckServer } from './healthcheck-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
-import { TaskRunnerServer } from './task-runner-server';
 
-let taskRunnerServer: TaskRunnerServer | undefined;
+let healthcheckServer: HealthcheckServer | undefined;
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
 
@@ -22,7 +22,7 @@ function createSignalHandler(signal: string) {
 			if (runner) {
 				await runner.stop();
 				runner = undefined;
-				void taskRunnerServer?.stop();
+				void healthcheckServer?.stop();
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -41,8 +41,8 @@ void (async function start() {
 	const { enabled, host, port } = config.baseRunnerConfig.server;
 
 	if (enabled) {
-		taskRunnerServer = new TaskRunnerServer();
-		await taskRunnerServer.start(host, port);
+		healthcheckServer = new HealthcheckServer();
+		await healthcheckServer.start(host, port);
 	}
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));

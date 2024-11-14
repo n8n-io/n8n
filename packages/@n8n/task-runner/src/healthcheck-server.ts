@@ -1,7 +1,7 @@
 import { ApplicationError } from 'n8n-workflow';
 import { createServer } from 'node:http';
 
-export class TaskRunnerServer {
+export class HealthcheckServer {
 	private server = createServer((_, res) => {
 		res.writeHead(200);
 		res.end('OK');
@@ -10,7 +10,7 @@ export class TaskRunnerServer {
 	async start(host: string, port: number) {
 		return await new Promise<void>((resolve, reject) => {
 			this.server.listen(port, host, () => {
-				console.log(`Task runner server listening on ${host}, port ${port}`);
+				console.log(`Healthcheck server listening on ${host}, port ${port}`);
 				resolve();
 			});
 
