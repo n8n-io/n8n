@@ -84,7 +84,24 @@ export function useExecutionHelpers() {
 		window.open(route.href, '_blank');
 	}
 
-	function openRelatedExecution(
+	function resolveRelatedExecutionUrl(metadata: {
+		parentExecution?: RelatedExecution;
+		subExecution?: RelatedExecution;
+	}): string {
+		const info = metadata.parentExecution || metadata.subExecution;
+		if (!info) {
+			return '';
+		}
+
+		const { workflowId, executionId } = info;
+
+		return router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { name: workflowId, executionId },
+		}).fullPath;
+	}
+
+	function trackOpeningRelatedExecution(
 		metadata: { parentExecution?: RelatedExecution; subExecution?: RelatedExecution },
 		view: IRunDataDisplayMode,
 	) {
@@ -92,8 +109,6 @@ export function useExecutionHelpers() {
 		if (!info) {
 			return;
 		}
-
-		openExecutionInNewTab(info.executionId, info.workflowId);
 
 		telemetry.track(
 			metadata.parentExecution
@@ -110,6 +125,7 @@ export function useExecutionHelpers() {
 		formatDate,
 		isExecutionRetriable,
 		openExecutionInNewTab,
-		openRelatedExecution,
+		trackOpeningRelatedExecution,
+		resolveRelatedExecutionUrl,
 	};
 }

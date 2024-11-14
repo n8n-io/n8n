@@ -64,7 +64,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { openRelatedExecution } = useExecutionHelpers();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const {
 	hoveringItem,
@@ -455,7 +455,9 @@ watch(focusedMappableInput, (curr) => {
 								icon="external-link-alt"
 								data-test-id="debug-sub-execution"
 								size="mini"
-								@click="openRelatedExecution(tableData.metadata.data[index1], 'table')"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
+								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
 							/>
 						</N8nTooltip>
 					</td>
@@ -582,15 +584,20 @@ watch(focusedMappableInput, (curr) => {
 							placement="left"
 							:hide-after="0"
 						>
-							<N8nIconButton
+							<a
 								v-if="tableData.metadata.data[index1]"
 								v-show="showExecutionLink(index1)"
-								type="secondary"
-								icon="external-link-alt"
-								data-test-id="debug-sub-execution"
-								size="mini"
-								@click="openRelatedExecution(tableData.metadata.data[index1], 'table')"
-							/>
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
+								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
+							>
+								<N8nIconButton
+									type="secondary"
+									icon="external-link-alt"
+									data-test-id="debug-sub-execution"
+									size="mini"
+								/>
+							</a>
 						</N8nTooltip>
 					</td>
 					<td

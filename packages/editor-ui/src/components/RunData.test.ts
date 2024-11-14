@@ -12,8 +12,11 @@ import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow'
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 
-const { openRelatedExecution } = vi.hoisted(() => ({
-	openRelatedExecution: vi.fn(),
+const MOCK_EXECUTION_URL = 'execution.url/123';
+
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = vi.hoisted(() => ({
+	trackOpeningRelatedExecution: vi.fn(),
+	resolveRelatedExecutionUrl: vi.fn(),
 }));
 
 vi.mock('vue-router', () => {
@@ -26,7 +29,8 @@ vi.mock('vue-router', () => {
 
 vi.mock('@/composables/useExecutionHelpers', () => ({
 	useExecutionHelpers: () => ({
-		openRelatedExecution,
+		trackOpeningRelatedExecution,
+		resolveRelatedExecutionUrl,
 	}),
 }));
 
@@ -42,6 +46,10 @@ const nodes = [
 ] as INodeUi[];
 
 describe('RunData', () => {
+	beforeAll(() => {
+		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
+	});
+
 	it("should render pin button in output panel disabled when there's binary data", () => {
 		const { getByTestId } = render({
 			defaultRunItems: [
@@ -253,11 +261,13 @@ describe('RunData', () => {
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
 		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
 		expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item, 1 sub-execution');
 
 		getByTestId('related-execution-link').click();
-		expect(openRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
 	});
 
 	it('should render parent-execution link in header', async () => {
@@ -280,11 +290,13 @@ describe('RunData', () => {
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
 		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Parent Execution 123');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
 		expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item');
 
 		getByTestId('related-execution-link').click();
-		expect(openRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
 	});
 
 	it('should render sub-execution link in header with multiple items', async () => {
@@ -311,11 +323,13 @@ describe('RunData', () => {
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
 		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
 		expect(getByTestId('ndv-items-count')).toHaveTextContent('2 items, 3 sub-executions');
 
 		getByTestId('related-execution-link').click();
-		expect(openRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
 	});
 
 	it('should render sub-execution link in header with multiple runs', async () => {
@@ -359,7 +373,7 @@ describe('RunData', () => {
 		expect(getByTestId('run-selector')).toBeInTheDocument();
 
 		getByTestId('related-execution-link').click();
-		expect(openRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
 	});
 
 	const render = ({

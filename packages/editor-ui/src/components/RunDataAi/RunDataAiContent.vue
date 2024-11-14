@@ -32,7 +32,7 @@ const props = defineProps<{
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 
-const { openRelatedExecution } = useExecutionHelpers();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 type TokenUsageData = {
 	completionTokens: number;
@@ -140,7 +140,11 @@ const outputError = computed(() => {
 						</n8n-tooltip>
 					</li>
 					<li v-if="runMeta?.subExecution">
-						<a @click.stop="openRelatedExecution(runMeta, 'ai')">
+						<a
+							:href="resolveRelatedExecutionUrl(runMeta)"
+							target="_blank"
+							@click.stop="trackOpeningRelatedExecution(runMeta, 'ai')"
+						>
 							<N8nIcon icon="external-link-alt" size="xsmall" />
 							{{
 								$locale.baseText('runData.openSubExecution', {

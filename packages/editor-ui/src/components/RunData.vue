@@ -182,7 +182,7 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { openRelatedExecution } = useExecutionHelpers();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const node = toRef(props, 'node');
 
@@ -1414,7 +1414,9 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.relatedExecutionInfo"
 				data-test-id="related-execution-link"
-				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{ getExecutionLinkLabel(activeTaskMetadata) }}
@@ -1496,7 +1498,9 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.relatedExecutionInfo"
 				data-test-id="related-execution-link"
-				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
 				{{ getExecutionLinkLabel(activeTaskMetadata) }}
