@@ -43,6 +43,7 @@ import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-Migrate
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -142,4 +143,5 @@ export const mysqlMigrations: Migration[] = [
 	UpdateProcessedDataValueColumnToText1729607673464,
 	CreateTestDefinitionTable1730386903556,
 	AddDescriptionToTestDefinition1731404028106,
+	MigrateTestDefinitionKeyToString1731582748663,
 ];

@@ -2,7 +2,6 @@ import express from 'express';
 import assert from 'node:assert';
 
 import { Get, Post, Patch, RestController, Delete } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
@@ -11,21 +10,12 @@ import {
 } from '@/evaluation/test-definition.schema';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { isPositiveInteger } from '@/utils';
 
 import { TestDefinitionService } from './test-definition.service.ee';
 import { TestDefinitionsRequest } from './test-definitions.types.ee';
 
 @RestController('/evaluation/test-definitions')
 export class TestDefinitionsController {
-	private validateId(id: string) {
-		if (!isPositiveInteger(id)) {
-			throw new BadRequestError('Test ID is not a number');
-		}
-
-		return Number(id);
-	}
-
 	constructor(private readonly testDefinitionService: TestDefinitionService) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -40,7 +30,7 @@ export class TestDefinitionsController {
 
 	@Get('/:id')
 	async getOne(req: TestDefinitionsRequest.GetOne) {
-		const testDefinitionId = this.validateId(req.params.id);
+		const { id: testDefinitionId } = req.params;
 
 		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -82,7 +72,7 @@ export class TestDefinitionsController {
 
 	@Delete('/:id')
 	async delete(req: TestDefinitionsRequest.Delete) {
-		const testDefinitionId = this.validateId(req.params.id);
+		const { id: testDefinitionId } = req.params;
 
 		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -96,7 +86,7 @@ export class TestDefinitionsController {
 
 	@Patch('/:id')
 	async patch(req: TestDefinitionsRequest.Patch, res: express.Response) {
-		const testDefinitionId = this.validateId(req.params.id);
+		const { id: testDefinitionId } = req.params;
 
 		const bodyParseResult = testDefinitionPatchRequestBodySchema.safeParse(req.body);
 		if (!bodyParseResult.success) {
