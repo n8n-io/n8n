@@ -5,8 +5,8 @@ import config from '@/config';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';
+import type { DisconnectErrorOptions } from './runner-types';
 import { SlidingWindowSignal } from './sliding-window-signal';
-import type { TaskRunner } from './task-broker.service';
 import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process';
 import { TaskRunnerProcess } from './task-runner-process';
 
@@ -38,13 +38,13 @@ export class InternalTaskRunnerDisconnectAnalyzer extends DefaultTaskRunnerDisco
 		});
 	}
 
-	async determineDisconnectReason(runnerId: TaskRunner['id']): Promise<Error> {
+	async toDisconnectError(opts: DisconnectErrorOptions): Promise<Error> {
 		const exitCode = await this.awaitExitSignal();
 		if (exitCode === 'oom') {
-			return new TaskRunnerOomError(runnerId, this.isCloudDeployment);
+			return new TaskRunnerOomError(opts.runnerId ?? 'Unknown runner ID', this.isCloudDeployment);
 		}
 
-		return await super.determineDisconnectReason(runnerId);
+		return await super.toDisconnectError(opts);
 	}
 
 	private async awaitExitSignal(): Promise<ExitReason> {

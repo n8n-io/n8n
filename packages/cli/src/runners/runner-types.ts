@@ -6,7 +6,7 @@ import type { TaskRunner } from './task-broker.service';
 import type { AuthlessRequest } from '../requests';
 
 export interface DisconnectAnalyzer {
-	determineDisconnectReason(runnerId: TaskRunner['id']): Promise<Error>;
+	toDisconnectError(opts: DisconnectErrorOptions): Promise<Error>;
 }
 
 export type DataRequestType = 'input' | 'node' | 'all';
@@ -22,3 +22,11 @@ export interface TaskRunnerServerInitRequest
 }
 
 export type TaskRunnerServerInitResponse = Response & { req: TaskRunnerServerInitRequest };
+
+export type DisconnectReason = 'unknown' | 'failed-heartbeat-check';
+
+export type DisconnectErrorOptions = {
+	runnerId?: TaskRunner['id'];
+	reason?: DisconnectReason;
+	heartbeatInterval?: number;
+};

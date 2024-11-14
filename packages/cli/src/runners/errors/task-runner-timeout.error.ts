@@ -9,7 +9,7 @@ export class TaskRunnerTimeoutError extends ApplicationError {
 		);
 
 		const subtitle =
-			'This task was taking too long, so it was aborted and the task runner was restarted. You can try the following:';
+			'The task runner was taking too long on this task, so it was suspected of being unresponsive and restarted, and the task was aborted. You can try the following:';
 
 		const fixes = {
 			optimizeScript:

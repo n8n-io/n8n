@@ -10,6 +10,7 @@ import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disco
 import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 import type {
 	DisconnectAnalyzer,
+	DisconnectReason,
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
 } from './runner-types';
@@ -40,7 +41,11 @@ export class TaskRunnerWsServer {
 		this.heartbeatTimer = setInterval(() => {
 			this.runnerConnections.forEach((connection) => {
 				if (!connection.isAlive) {
-					void this.disconnect(connection);
+					const runnerId = Array.from(this.runnerConnections.entries()).find(
+						([_, c]) => c === connection,
+					)?.[0];
+					if (runnerId) void this.removeConnection(runnerId, 'failed-heartbeat-check');
+
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
 				}
@@ -133,11 +138,15 @@ export class TaskRunnerWsServer {
 		);
 	}
 
-	async removeConnection(id: TaskRunner['id']) {
+	async removeConnection(id: TaskRunner['id'], reason: DisconnectReason = 'unknown') {
 		const connection = this.runnerConnections.get(id);
 		if (connection) {
-			const disconnectReason = await this.disconnectAnalyzer.determineDisconnectReason(id);
-			this.taskBroker.deregisterRunner(id, disconnectReason);
+			const disconnectError = await this.disconnectAnalyzer.toDisconnectError({
+				runnerId: id,
+				reason,
+				heartbeatInterval: this.taskTunnersConfig.heartbeatInterval,
+			});
+			this.taskBroker.deregisterRunner(id, disconnectError);
 			connection.close();
 			this.runnerConnections.delete(id);
 		}
@@ -145,13 +154,5 @@ export class TaskRunnerWsServer {
 
 	handleRequest(req: TaskRunnerServerInitRequest, _res: TaskRunnerServerInitResponse) {
 		this.add(req.query.id, req.ws);
-	}
-
-	async disconnect(ws: WebSocket) {
-		const runnerId = Array.from(this.runnerConnections.entries()).find(
-			([_, connection]) => connection === ws,
-		)?.[0];
-
-		if (runnerId) await this.removeConnection(runnerId);
 	}
 }
