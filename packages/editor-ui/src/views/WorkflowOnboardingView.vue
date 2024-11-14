@@ -38,7 +38,6 @@ const openWorkflowTemplate = async (templateId: string) => {
 			nodes: template.workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi),
 			pinData: template.workflow.pinData,
 			settings: template.workflow.settings,
-			projectId: 'fSncBvIOmJ9QFkFK',
 			meta: {
 				onboardingId: templateId,
 			},
