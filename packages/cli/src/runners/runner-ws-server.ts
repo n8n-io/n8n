@@ -1,5 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
+import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
@@ -38,6 +39,12 @@ export class TaskRunnerWsServer {
 	}
 
 	private startHeartbeatChecks() {
+		const { heartbeatInterval } = this.taskTunnersConfig;
+
+		if (heartbeatInterval <= 0) {
+			throw new ApplicationError('Heartbeat interval must be greater than 0');
+		}
+
 		this.heartbeatTimer = setInterval(() => {
 			this.runnerConnections.forEach((connection) => {
 				if (!connection.isAlive) {
@@ -53,7 +60,7 @@ export class TaskRunnerWsServer {
 				connection.isAlive = false;
 				connection.ping();
 			});
-		}, this.taskTunnersConfig.heartbeatInterval * Time.seconds.toMilliseconds);
+		}, heartbeatInterval * Time.seconds.toMilliseconds);
 	}
 
 	async shutdown() {

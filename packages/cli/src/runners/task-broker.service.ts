@@ -88,7 +88,11 @@ export class TaskBroker {
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
-	) {}
+	) {
+		if (this.taskRunnersConfig.taskTimeout <= 0) {
+			throw new ApplicationError('Task timeout must be greater than 0');
+		}
+	}
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
