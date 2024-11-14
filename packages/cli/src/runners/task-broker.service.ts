@@ -9,10 +9,12 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
+import config from '@/config';
 import { Time } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
+import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';
 import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 
 export interface TaskRunner {
@@ -84,7 +86,7 @@ export class TaskBroker {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly config: TaskRunnersConfig,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
 	) {}
 
@@ -422,7 +424,7 @@ export class TaskBroker {
 
 		task.timeout = setTimeout(async () => {
 			await this.handleTaskTimeout(taskId);
-		}, this.config.taskTimeout * Time.seconds.toMilliseconds);
+		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
 
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
@@ -437,11 +439,13 @@ export class TaskBroker {
 
 		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
 
-		const timeoutError = new ApplicationError(
-			`Task execution timed out after ${this.config.taskTimeout} seconds`,
+		await this.taskErrorHandler(
+			taskId,
+			new TaskRunnerTimeoutError(
+				this.taskRunnersConfig.taskTimeout,
+				config.getEnv('deployment.type') !== 'cloud',
+			),
 		);
-
-		await this.taskErrorHandler(taskId, timeoutError);
 	}
 
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
