@@ -54,9 +54,6 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private isShuttingDown = false;
 
-	/** Whether to force-restart a runner suspected of being unresponsive. */
-	private shouldForceRestartRunner = false;
-
 	private logger: Logger;
 
 	private readonly passthroughEnvVars = [
@@ -82,16 +79,12 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
 			this.logger.warn('Task runner failed heartbeat check, restarting...');
-			this.shouldForceRestartRunner = true;
-
-			void this.stop();
+			void this.forceRestart();
 		});
 
 		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
 			this.logger.warn('Task runner timed out during task, restarting...');
-			this.shouldForceRestartRunner = true;
-
-			void this.stop();
+			void this.forceRestart();
 		});
 	}
 
@@ -145,10 +138,23 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.isShuttingDown = false;
 	}
 
+	/** Force-restart a runner suspected of being unresponsive. */
+	async forceRestart() {
+		if (!this.process) return;
+
+		if (this.useLauncher) {
+			await this.killLauncher(); // @TODO: Implement SIGKILL in launcher
+		} else {
+			this.process.kill('SIGKILL');
+		}
+
+		await this._runPromise;
+	}
+
 	killNode() {
 		if (!this.process) return;
 
-		this.process.kill(this.shouldForceRestartRunner ? 'SIGKILL' : 'SIGTERM');
+		this.process.kill();
 	}
 
 	async killLauncher() {
@@ -184,11 +190,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.emit('exit', { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' });
 		resolveFn();
 
-		if (!this.isShuttingDown || this.shouldForceRestartRunner) {
-			setImmediate(async () => {
-				await this.start();
-				this.shouldForceRestartRunner = false;
-			});
+		if (!this.isShuttingDown) {
+			setImmediate(async () => await this.start());
 		}
 	}
 
