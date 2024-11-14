@@ -322,7 +322,10 @@ function mustHideDuringCustomApiCall(
 	return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 }
 
-function displayNodeParameter(parameter: INodeProperties): boolean {
+function displayNodeParameter(
+	parameter: INodeProperties,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
+): boolean {
 	if (parameter.type === 'hidden') {
 		return false;
 	}
@@ -343,7 +346,7 @@ function displayNodeParameter(parameter: INodeProperties): boolean {
 		return false;
 	}
 
-	if (parameter.displayOptions === undefined) {
+	if (parameter[displayKey] === undefined) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
@@ -402,13 +405,19 @@ function displayNodeParameter(parameter: INodeProperties): boolean {
 		if (props.path) {
 			rawValues = deepCopy(props.nodeValues);
 			set(rawValues, props.path, nodeValues);
-			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value);
+			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value, displayKey);
 		} else {
-			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value);
+			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value, displayKey);
 		}
 	}
 
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, node.value);
+	return nodeHelpers.displayParameter(
+		props.nodeValues,
+		parameter,
+		props.path,
+		node.value,
+		displayKey,
+	);
 }
 
 function valueChanged(parameterData: IUpdateInformation): void {
@@ -620,7 +629,10 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					:value="getParameterValue(parameter.name)"
 					:display-options="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
-					:is-read-only="isReadOnly"
+					:is-read-only="
+						isReadOnly ||
+						(parameter.disabledOptions && displayNodeParameter(parameter, 'disabledOptions'))
+					"
 					:hide-label="false"
 					:node-values="nodeValues"
 					@update="valueChanged"

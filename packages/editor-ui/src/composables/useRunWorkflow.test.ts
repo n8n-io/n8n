@@ -71,6 +71,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRouter: vi.fn().mockReturnValue({
 			push: vi.fn(),
 		}),
+		useRoute: vi.fn(),
 	};
 });
 

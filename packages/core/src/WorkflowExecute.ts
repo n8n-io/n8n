@@ -1243,7 +1243,7 @@ export class WorkflowExecute {
 											: [];
 
 										while (items.length) {
-											const item = items.pop();
+											const item = items.shift();
 											if (item === undefined) {
 												continue;
 											}

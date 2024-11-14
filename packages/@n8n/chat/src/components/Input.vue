@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useFileDialog } from '@vueuse/core';
-import IconFilePlus from 'virtual:icons/mdi/filePlus';
+import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
@@ -9,10 +9,20 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 
 import ChatFile from './ChatFile.vue';
 
+export interface ChatInputProps {
+	placeholder?: string;
+}
+
+const props = withDefaults(defineProps<ChatInputProps>(), {
+	placeholder: 'inputPlaceholder',
+});
+
 export interface ArrowKeyDownPayload {
 	key: 'ArrowUp' | 'ArrowDown';
 	currentInputValue: string;
 }
+
+const { t } = useI18n();
 const emit = defineEmits<{
 	arrowKeyDown: [value: ArrowKeyDownPayload];
 }>();
@@ -20,12 +30,12 @@ const emit = defineEmits<{
 const { options } = useOptions();
 const chatStore = useChat();
 const { waitingForResponse } = chatStore;
-const { t } = useI18n();
 
 const files = ref<FileList | null>(null);
 const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 const isSubmitting = ref(false);
+const resizeObserver = ref<ResizeObserver | null>(null);
 
 const isSubmitDisabled = computed(() => {
 	return input.value === '' || waitingForResponse.value || options.disabled?.value === true;
@@ -74,12 +84,30 @@ onMounted(() => {
 	chatEventBus.on('focusInput', focusChatInput);
 	chatEventBus.on('blurInput', blurChatInput);
 	chatEventBus.on('setInputValue', setInputValue);
+
+	if (chatTextArea.value) {
+		resizeObserver.value = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				if (entry.target === chatTextArea.value) {
+					adjustHeight({ target: chatTextArea.value } as unknown as Event);
+				}
+			}
+		});
+
+		// Start observing the textarea
+		resizeObserver.value.observe(chatTextArea.value);
+	}
 });
 
 onUnmounted(() => {
 	chatEventBus.off('focusInput', focusChatInput);
 	chatEventBus.off('blurInput', blurChatInput);
 	chatEventBus.off('setInputValue', setInputValue);
+
+	if (resizeObserver.value) {
+		resizeObserver.value.disconnect();
+		resizeObserver.value = null;
+	}
 });
 
 function blurChatInput() {
@@ -121,6 +149,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 	}
 
 	await onSubmit(event);
+	adjustHeight({ target: chatTextArea.value } as unknown as Event);
 }
 
 function onFileRemove(file: File) {
@@ -151,6 +180,15 @@ function onOpenFileDialog() {
 	if (isFileUploadDisabled.value) return;
 	openFileDialog({ accept: unref(allowedFileTypes) });
 }
+
+function adjustHeight(event: Event) {
+	const textarea = event.target as HTMLTextAreaElement;
+	// Set to content minimum to get the right scrollHeight
+	textarea.style.height = 'var(--chat--textarea--height)';
+	// Get the new height, with a small buffer for padding
+	const newHeight = Math.min(textarea.scrollHeight, 480); // 30rem
+	textarea.style.height = `${newHeight}px`;
+}
 </script>
 
 <template>
@@ -158,20 +196,25 @@ function onOpenFileDialog() {
 		<div class="chat-inputs">
 			<textarea
 				ref="chatTextArea"
+				data-test-id="chat-input"
 				v-model="input"
 				:disabled="isInputDisabled"
-				:placeholder="t('inputPlaceholder')"
+				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
+				@input="adjustHeight"
+				@mousedown="adjustHeight"
+				@focus="adjustHeight"
 			/>
 
 			<div class="chat-inputs-controls">
 				<button
 					v-if="isFileUploadAllowed"
 					:disabled="isFileUploadDisabled"
-					class="chat-input-send-button"
+					class="chat-input-file-button"
+					data-test-id="chat-attach-file-button"
 					@click="onOpenFileDialog"
 				>
-					<IconFilePlus height="24" width="24" />
+					<IconPaperclip height="24" width="24" />
 				</button>
 				<button :disabled="isSubmitDisabled" class="chat-input-send-button" @click="onSubmit">
 					<IconSend height="24" width="24" />
@@ -184,6 +227,7 @@ function onOpenFileDialog() {
 				:key="file.name"
 				:file="file"
 				:is-removable="true"
+				:is-previewable="true"
 				@remove="onFileRemove"
 			/>
 		</div>
@@ -217,13 +261,15 @@ function onOpenFileDialog() {
 		border-radius: var(--chat--input--border-radius, 0);
 		padding: 0.8rem;
 		padding-right: calc(0.8rem + (var(--controls-count, 1) * var(--chat--textarea--height)));
-		min-height: var(--chat--textarea--height);
-		max-height: var(--chat--textarea--max-height, var(--chat--textarea--height));
-		height: 100%;
+		min-height: var(--chat--textarea--height, 2.5rem); // Set a smaller initial height
+		max-height: var(--chat--textarea--max-height, 30rem);
+		height: var(--chat--textarea--height, 2.5rem); // Set initial height same as min-height
+		resize: none;
+		overflow-y: auto;
 		background: var(--chat--input--background, white);
-		resize: var(--chat--textarea--resize, none);
 		color: var(--chat--input--text-color, initial);
 		outline: none;
+		line-height: var(--chat--input--line-height, 1.5);
 
 		&:focus,
 		&:hover {
@@ -235,8 +281,10 @@ function onOpenFileDialog() {
 	display: flex;
 	position: absolute;
 	right: 0.5rem;
+	bottom: 0;
 }
-.chat-input-send-button {
+.chat-input-send-button,
+.chat-input-file-button {
 	height: var(--chat--textarea--height);
 	width: var(--chat--textarea--height);
 	background: var(--chat--input--send--button--background, white);
@@ -253,18 +301,32 @@ function onOpenFileDialog() {
 		min-width: fit-content;
 	}
 
-	&:hover,
-	&:focus {
-		background: var(
-			--chat--input--send--button--background-hover,
-			var(--chat--input--send--button--background)
-		);
-		color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary-shade-50));
-	}
-
 	&[disabled] {
 		cursor: no-drop;
 		color: var(--chat--color-disabled);
+	}
+
+	.chat-input-send-button {
+		&:hover,
+		&:focus {
+			background: var(
+				--chat--input--send--button--background-hover,
+				var(--chat--input--send--button--background)
+			);
+			color: var(--chat--input--send--button--color-hover, var(--chat--color-secondary-shade-50));
+		}
+	}
+}
+.chat-input-file-button {
+	background: var(--chat--input--file--button--background, white);
+	color: var(--chat--input--file--button--color, var(--chat--color-secondary));
+
+	&:hover {
+		background: var(
+			--chat--input--file--button--background-hover,
+			var(--chat--input--file--button--background)
+		);
+		color: var(--chat--input--file--button--color-hover, var(--chat--color-secondary-shade-50));
 	}
 }
 
@@ -275,7 +337,7 @@ function onOpenFileDialog() {
 	width: 100%;
 	flex-direction: row;
 	flex-wrap: wrap;
-	gap: 0.25rem;
+	gap: 0.5rem;
 	padding: var(--chat--files-spacing, 0.25rem);
 }
 </style>
