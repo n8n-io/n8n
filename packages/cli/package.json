@@ -25,6 +25,7 @@
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "pnpm test:sqlite",
+    "test:dev": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --watch",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --no-coverage",

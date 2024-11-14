@@ -59,7 +59,13 @@ declare global {
 			drag(
 				selector: string | Chainable<JQuery<HTMLElement>>,
 				target: [number, number],
-				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
+				options?: {
+					abs?: boolean;
+					index?: number;
+					realMouse?: boolean;
+					clickToFinish?: boolean;
+					moveTwice?: boolean;
+				},
 			): void;
 			draganddrop(
 				draggableSelector: string,
