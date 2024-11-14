@@ -170,7 +170,7 @@ onMounted(async () => {
 				</div>
 				<div>
 					<n8n-text size="medium" :bold="false">
-						<i18nn-t keypath="mfa.setup.step1.instruction1.subtitle" tag="span">
+						<i18n-t keypath="mfa.setup.step1.instruction1.subtitle" tag="span">
 							<template #part1>
 								{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
 							</template>
@@ -182,7 +182,7 @@ onMounted(async () => {
 									>{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
 								>
 							</template>
-						</i18nn-t>
+						</i18n-t>
 					</n8n-text>
 				</div>
 				<div :class="$style.qrContainer">
