@@ -30,9 +30,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	});
 
 	async function populateNextWorkflowsPage() {
-		if (workflowsStore.allWorkflows.length <= 1) {
-			await workflowsStore.fetchAllWorkflows();
-		}
+		await workflowsStore.fetchAllWorkflows();
 		const nextPage = sortedWorkflows.value.slice(
 			workflowsResources.value.length,
 			workflowsResources.value.length + PAGE_SIZE,
