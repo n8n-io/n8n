@@ -418,7 +418,6 @@ export class TaskBroker {
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		const task = this.tasks.get(taskId);
-
 		if (!task) return;
 
 		task.timeout = setTimeout(async () => {
@@ -434,7 +433,6 @@ export class TaskBroker {
 
 	private async handleTaskTimeout(taskId: Task['id']) {
 		const task = this.tasks.get(taskId);
-
 		if (!task) return;
 
 		clearTimeout(task.timeout);
@@ -450,7 +448,6 @@ export class TaskBroker {
 
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
 		const task = this.tasks.get(taskId);
-
 		if (!task) return;
 
 		clearTimeout(task.timeout);
@@ -465,7 +462,6 @@ export class TaskBroker {
 
 	async taskErrorHandler(taskId: Task['id'], error: unknown) {
 		const task = this.tasks.get(taskId);
-
 		if (!task) return;
 
 		clearTimeout(task.timeout);
