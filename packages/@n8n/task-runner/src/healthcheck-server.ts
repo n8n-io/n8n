@@ -25,8 +25,11 @@ export class HealthcheckServer {
 	}
 
 	async stop() {
-		return await new Promise<void>((resolve) => {
-			this.server.close(() => resolve());
+		return await new Promise<void>((resolve, reject) => {
+			this.server.close((error) => {
+				if (error) reject(error);
+				else resolve();
+			});
 		});
 	}
 }
