@@ -13,26 +13,30 @@ export class CredentialsPage extends BasePage {
 				.should('have.attr', 'aria-describedby');
 
 			cy.get('@menuitem')
+				.should('be.visible')
 				.invoke('attr', 'aria-describedby')
 				.then((el) => cy.get(`[id="${el}"]`))
 				.as('submenu');
 
-			cy.get('@submenu').within((submenu) => {
-				cy.wrap(submenu)
-					.find('[data-test-id="navigation-submenu"]')
-					.should('be.visible')
-					.filter(':contains("Credential")')
-					.as('child')
-					.click();
+			cy.get('@submenu')
+				.should('be.visible')
+				.within((submenu) => {
+					cy.wrap(submenu)
+						.find('[data-test-id="navigation-submenu"]')
+						.should('be.visible')
+						.filter(':contains("Credential")')
+						.as('child')
+						.click();
 
-				cy.get('@child')
-					.find('[data-test-id="navigation-submenu-item"]')
-					.should('be.visible')
-					.filter(':contains("Personal")')
-					.as('button');
-			});
+					cy.get('@child')
+						.should('be.visible')
+						.find('[data-test-id="navigation-submenu-item"]')
+						.should('be.visible')
+						.filter(':contains("Personal")')
+						.as('button');
+				});
 
-			return cy.get('@button');
+			return cy.get('@button').should('be.visible');
 		},
 
 		// cy.getByTestId('resources-list-add'),
