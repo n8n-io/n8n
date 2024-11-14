@@ -39,23 +39,10 @@ export function adjustNewNodes(
 }
 
 function adjustNewChild(parent: AddedNode, child: AddedNode) {
-	console.log('parent', parent);
-	console.log('child', child);
 	if (AI_NODES.includes(child.type)) {
-		const { getCurrentWorkflow } = useWorkflowsStore();
-		const workflow = getCurrentWorkflow();
-
-		const ps = [parent, ...(child.name ? workflow.getParentNodesByDepth(child.name, 1) : [])];
-		console.log('parents', ps);
-		if (
-			ps.some((x) =>
-				PROMPT_PROVIDER_NODE_NAMES.includes(
-					'type' in x ? x.type : (workflow.getNode(x?.name ?? '')?.type ?? ''),
-				),
-			)
-		) {
+		if (PROMPT_PROVIDER_NODE_NAMES.includes(parent.type)) {
 			Object.assign<AddedNode, Partial<INode>>(child, {
-				parameters: { ...child.parameters, promptType: 'auto' },
+				parameters: { ...child.parameters, promptType: 'auto', text: '={{ $json.chatInput }}' },
 			});
 		}
 	}
@@ -73,7 +60,7 @@ function adjustNewParent(parent: AddedNode, child: AddedNode) {
 			!ps.some((x) => PROMPT_PROVIDER_NODE_NAMES.includes(workflow.getNode(x.name)?.type ?? ''))
 		) {
 			Object.assign<AddedNode, Partial<INode>>(parent, {
-				parameters: { sessionIdType: 'customKey' },
+				parameters: { ...parent.parameters, sessionIdType: 'customKey' },
 			});
 		}
 	}

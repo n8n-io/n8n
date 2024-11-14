@@ -28,6 +28,10 @@ describe('adjustNewlyConnectedNodes', () => {
 
 		expect(child).toEqual({
 			type: AGENT_NODE_TYPE,
+			parameters: {
+				promptType: 'auto',
+				text: '={{ $json.chatInput }}',
+			},
 		});
 	});
 
@@ -39,6 +43,10 @@ describe('adjustNewlyConnectedNodes', () => {
 
 		expect(child).toEqual({
 			type: AGENT_NODE_TYPE,
+			parameters: {
+				promptType: 'auto',
+				text: '={{ $json.chatInput }}',
+			},
 		});
 	});
 
@@ -50,7 +58,6 @@ describe('adjustNewlyConnectedNodes', () => {
 
 		expect(child).toEqual({
 			type: AGENT_NODE_TYPE,
-			parameters: { promptType: 'define' },
 		});
 	});
 
