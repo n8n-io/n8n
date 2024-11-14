@@ -23,7 +23,7 @@ const headerIcon = computed(() => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.menu.home');
+		return i18n.baseText('projects.menu.overview');
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
