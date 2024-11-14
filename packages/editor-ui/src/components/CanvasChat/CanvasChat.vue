@@ -52,6 +52,7 @@ const isChatOpen = computed(() => {
 	const result = workflowsStore.isChatPanelOpen;
 	return result;
 });
+const canvasNodes = computed(() => workflowsStore.allNodes);
 const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 
@@ -70,7 +71,7 @@ const { runWorkflow } = useRunWorkflow({ router });
 const { chatTriggerNode, connectedNode, allowFileUploads, setChatTriggerNode, setConnectedNode } =
 	useChatTrigger({
 		workflow,
-		canvasNodes: workflowsStore.allNodes,
+		canvasNodes,
 		getNodeByName: workflowsStore.getNodeByName,
 		getNodeType: nodeTypesStore.getNodeType,
 	});

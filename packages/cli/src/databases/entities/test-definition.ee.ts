@@ -35,6 +35,9 @@ export class TestDefinition extends WithTimestamps {
 	})
 	name: string;
 
+	@Column('text')
+	description: string;
+
 	/**
 	 * Relation to the workflow under test
 	 */

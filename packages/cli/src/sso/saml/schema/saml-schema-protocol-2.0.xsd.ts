@@ -1,4 +1,8 @@
-export const xsdSamlSchemaProtocol20 = `<?xml version="1.0" encoding="UTF-8"?>
+import type { XMLFileInfo } from 'xmllint-wasm';
+
+export const xmlFileInfo: XMLFileInfo = {
+	fileName: 'saml-schema-protocol-2.0.xsd',
+	contents: `<?xml version="1.0" encoding="UTF-8"?>
 <schema
     targetNamespace="urn:oasis:names:tc:SAML:2.0:protocol"
     xmlns="http://www.w3.org/2001/XMLSchema"
@@ -299,4 +303,5 @@ export const xsdSamlSchemaProtocol20 = `<?xml version="1.0" encoding="UTF-8"?>
             </extension>
         </complexContent>
     </complexType>
-</schema>`;
+</schema>`,
+};

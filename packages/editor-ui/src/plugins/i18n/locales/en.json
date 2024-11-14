@@ -2499,7 +2499,7 @@
 	"settings.mfa.title": "Multi-factor Authentication",
 	"settings.mfa.updateConfiguration": "MFA configuration updated",
 	"settings.mfa.invalidAuthenticatorCode": "Invalid authenticator code",
-	"projects.menu.home": "Home",
+	"projects.menu.overview": "Overview",
 	"projects.menu.title": "Projects",
 	"projects.menu.personal": "Personal",
 	"projects.menu.addProject": "Add project",
