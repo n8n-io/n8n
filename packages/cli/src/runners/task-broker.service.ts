@@ -435,8 +435,6 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
-		clearTimeout(task.timeout);
-
 		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
 
 		const timeoutError = new ApplicationError(
