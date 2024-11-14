@@ -160,7 +160,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			});
 		}
 
-		await this.cache.store.expire(key, ttlMs / Time.milliseconds.toSeconds);
+		await this.cache.store.expire(key, ttlMs * Time.milliseconds.toSeconds);
 	}
 
 	// ----------------------------------
