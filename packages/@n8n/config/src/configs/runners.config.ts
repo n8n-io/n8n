@@ -54,11 +54,11 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_ASSERT_DEDUPLICATION_OUTPUT')
 	assertDeduplicationOutput: boolean = false;
 
-	/** How long (in seconds) a task is allowed to take before being aborted. */
+	/** How long (in seconds) a task is allowed to take before being aborted. Must be greater than 0. */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 60;
 
-	/** How often (in seconds) the runner must send a heartbeat to the broker. Failure to send a heartbeat within this interval will result in the runner being disconnected. */
+	/** How often (in seconds) the runner must send a heartbeat to the broker. Failure to send a heartbeat within this interval will result in the runner being disconnected. Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
 }
