@@ -1413,6 +1413,7 @@ defineExpose({ enterEditMode });
 					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
 				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
@@ -1494,6 +1495,7 @@ defineExpose({ enterEditMode });
 					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
 				@click.stop="openRelatedExecution(activeTaskMetadata, displayMode)"
 			>
 				<N8nIcon icon="external-link-alt" size="xsmall" />
@@ -2177,7 +2179,7 @@ defineExpose({ enterEditMode });
 }
 
 .relatedExecutionInfo {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-s);
 	margin-left: var(--spacing-3xs);
 
 	svg {
