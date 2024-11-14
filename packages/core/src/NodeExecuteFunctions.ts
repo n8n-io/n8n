@@ -918,6 +918,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 
 	axiosRequest.params = n8nRequest.qs;
 
+	if (n8nRequest.abortSignal) {
+		axiosRequest.signal = n8nRequest.abortSignal;
+	}
+
 	if (n8nRequest.baseURL !== undefined) {
 		axiosRequest.baseURL = n8nRequest.baseURL;
 	}
@@ -1717,6 +1721,11 @@ export async function httpRequestWithAuthentication(
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
 	removeEmptyBody(requestOptions);
+
+	// Cancel this request on execution cancellation
+	if ('getExecutionCancelSignal' in this) {
+		requestOptions.abortSignal = this.getExecutionCancelSignal();
+	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
