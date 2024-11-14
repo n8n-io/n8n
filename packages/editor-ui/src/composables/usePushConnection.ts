@@ -16,7 +16,6 @@ import type {
 } from 'n8n-workflow';
 import type { PushMessage } from '@n8n/api-types';
 
-import type { IExecutionsCurrentSummaryExtended } from '@/Interface';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
@@ -447,17 +446,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				resultDataError: iRunExecutionData.resultData.error,
 			});
 		} else if (receivedData.type === 'executionStarted') {
-			const pushData = receivedData.data;
-
-			const executionData: IExecutionsCurrentSummaryExtended = {
-				id: pushData.executionId,
-				status: 'running',
-				mode: pushData.mode,
-				startedAt: pushData.startedAt,
-				workflowId: pushData.workflowId,
-			};
-
-			workflowsStore.addActiveExecution(executionData);
+			// Nothing to do
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;
