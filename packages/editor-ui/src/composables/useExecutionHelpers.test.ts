@@ -3,6 +3,17 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
+const { resolve } = vi.hoisted(() => ({
+	resolve: vi.fn(),
+}));
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve,
+	}),
+	RouterLink: vi.fn(),
+}));
+
 describe('useExecutionHelpers()', () => {
 	describe('getUIDetails()', () => {
 		it.each([
@@ -66,6 +77,20 @@ describe('useExecutionHelpers()', () => {
 			expect(
 				isExecutionRetriable({ status: 'crashed', retrySuccessId: '123' } as ExecutionSummary),
 			).toEqual(false);
+		});
+	});
+
+	describe('openExecutionInNewTab', () => {
+		const executionId = '123';
+		const workflowId = 'xyz';
+		const href = 'test.com';
+		global.window.open = vi.fn();
+
+		it('opens execution in new tab', () => {
+			const { openExecutionInNewTab } = useExecutionHelpers();
+			resolve.mockReturnValue({ href });
+			openExecutionInNewTab(executionId, workflowId);
+			expect(window.open).toHaveBeenCalledWith(href, '_blank');
 		});
 	});
 });
