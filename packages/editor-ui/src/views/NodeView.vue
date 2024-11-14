@@ -34,7 +34,6 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
@@ -182,7 +181,6 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import type { PushPayload } from '@n8n/api-types';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -455,13 +453,13 @@ export default defineComponent({
 				)
 			);
 		},
+		canvasChatNode() {
+			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
 		isManualChatOnly(): boolean {
 			if (!this.canvasChatNode) return false;
 
 			return this.containsChatNodes && this.triggerNodes.length === 1 && !this.pinnedChatNodeData;
-		},
-		canvasChatNode() {
-			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 		},
 		pinnedChatNodeData() {
 			if (!this.canvasChatNode) return null;
@@ -512,6 +510,9 @@ export default defineComponent({
 				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
 				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
+		},
+		isChatOpen() {
+			return this.workflowsStore.isChatPanelOpen;
 		},
 	},
 	watch: {
@@ -863,7 +864,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
-			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+			this.workflowsStore.setPanelOpen('chat', !this.workflowsStore.isChatPanelOpen);
 		},
 
 		async onRunWorkflow() {
@@ -1726,10 +1727,6 @@ export default defineComponent({
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
 
-					this.workflowsStore.finishActiveExecution({
-						executionId,
-						data: { finished: true, stoppedAt: new Date() } as IRun,
-					});
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
@@ -1751,12 +1748,6 @@ export default defineComponent({
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,
 					} as IRun;
-					const pushData: PushPayload<'executionFinished'> = {
-						data: executedData,
-						executionId,
-						retryOf: execution.retryOf,
-					};
-					this.workflowsStore.finishActiveExecution(pushData);
 					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
@@ -4651,6 +4642,7 @@ export default defineComponent({
 					size="large"
 					icon="comment"
 					type="primary"
+					:outline="isChatOpen === false"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>
