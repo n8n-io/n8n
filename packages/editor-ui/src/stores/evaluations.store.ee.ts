@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
-import { createTestDefinitionsApi } from '@/api/evaluations.ee';
+import * as testDefinitionsApi from '@/api/evaluations.ee';
 import type { ITestDefinition } from '@/api/evaluations.ee';
 import { usePostHog } from './posthog.store';
 import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
@@ -17,7 +17,6 @@ export const useEvaluationsStore = defineStore(
 		// Store instances
 		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
-		const testDefinitionsApi = createTestDefinitionsApi();
 
 		// Computed
 		const allTestDefinitions = computed(() => {
@@ -45,9 +44,14 @@ export const useEvaluationsStore = defineStore(
 			fetchedAll.value = true;
 		};
 
-		const upsertTestDefinitions = (toUpsertDefinitions: ITestDefinition[]) => {
+		/**
+		 * Upserts test definitions in the store.
+		 * @param toUpsertDefinitions - An array of test definitions to upsert.
+		 */
+		const upsertTestDefinitions = (toUpsertDefinitions: Array<Partial<ITestDefinition>>) => {
 			toUpsertDefinitions.forEach((toUpsertDef) => {
 				const defId = toUpsertDef.id;
+				if (!defId) throw Error('ID is required for upserting');
 				const currentDef = testDefinitionsById.value[defId];
 				if (currentDef) {
 					testDefinitionsById.value = {
@@ -71,10 +75,19 @@ export const useEvaluationsStore = defineStore(
 			testDefinitionsById.value = rest;
 		};
 
+		/**
+		 * Fetches all test definitions from the API.
+		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
+		 * @param {boolean} includeScopes - If true, includes the scopes in the fetched definitions.
+		 */
 		const fetchAll = async (params?: { force?: boolean; includeScopes?: boolean }) => {
 			const { force = false, includeScopes = false } = params || {};
 			if (!force && fetchedAll.value) {
-				return Object.values(testDefinitionsById.value);
+				const testDefinitions = Object.values(testDefinitionsById.value);
+				return {
+					count: testDefinitions.length,
+					testDefinitions,
+				};
 			}
 
 			loading.value = true;
@@ -91,6 +104,17 @@ export const useEvaluationsStore = defineStore(
 			}
 		};
 
+		/**
+		 * Creates a new test definition using the provided parameters.
+		 *
+		 * @param {Object} params - An object containing the necessary parameters to create a test definition.
+		 * @param {string} params.name - The name of the new test definition.
+		 * @param {string} params.workflowId - The ID of the workflow associated with the test definition.
+		 * @param {string} [params.evaluationWorkflowId] - The optional ID of the evaluation workflow associated with the test definition.
+		 * @param {string} [params.description] - An optional description for the new test definition.
+		 * @returns {Promise<ITestDefinition>} A promise that resolves to the newly created test definition.
+		 * @throws {Error} Throws an error if there is a problem creating the test definition.
+		 */
 		const create = async (params: {
 			name: string;
 			workflowId: string;
@@ -105,13 +129,9 @@ export const useEvaluationsStore = defineStore(
 			return createdDefinition;
 		};
 
-		const update = async (params: {
-			id: number;
-			name?: string;
-			description?: string;
-			evaluationWorkflowId?: string;
-			annotationTagId?: string;
-		}) => {
+		const update = async (params: Partial<Omit<ITestDefinition, 'id'>> & { id: number }) => {
+			if (!params.id) throw new Error('ID is required to update a test definition');
+
 			const { id, ...updateParams } = params;
 			const updatedDefinition = await testDefinitionsApi.updateTestDefinition(
 				rootStore.restApiContext,
@@ -134,6 +154,7 @@ export const useEvaluationsStore = defineStore(
 
 		return {
 			// State
+			fetchedAll,
 			testDefinitionsById,
 
 			// Computed
