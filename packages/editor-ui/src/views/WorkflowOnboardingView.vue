@@ -77,9 +77,7 @@ const openSampleSubworkflow = async () => {
 			workflow.projectId = projectId as string;
 		}
 
-		const newWorkflow = await workflowsStore.createNewWorkflow(workflow, {
-			inCurrentProject: false,
-		});
+		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 
 		const sampleSubworkflowChannel = new BroadcastChannel('new-sample-sub-workflow-created');
 
