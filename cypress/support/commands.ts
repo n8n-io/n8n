@@ -177,6 +177,16 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				pageY: newPosition.y,
 				force: true,
 			});
+			if (options?.moveTwice) {
+				// first move like hover to trigger object to be visible
+				// like in main panel in ndv
+				element.trigger('mousemove', {
+					which: 1,
+					pageX: newPosition.x,
+					pageY: newPosition.y,
+					force: true,
+				});
+			}
 			if (options?.clickToFinish) {
 				// Click to finish the drag
 				// For some reason, mouseup isn't working when moving nodes
