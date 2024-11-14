@@ -9,17 +9,20 @@ export class HealthcheckServer {
 
 	async start(host: string, port: number) {
 		return await new Promise<void>((resolve, reject) => {
-			this.server.listen(port, host, () => {
-				console.log(`Healthcheck server listening on ${host}, port ${port}`);
-				resolve();
-			});
-
-			this.server.on('error', (error: NodeJS.ErrnoException) => {
+			const portInUseErrorHandler = (error: NodeJS.ErrnoException) => {
 				if (error.code === 'EADDRINUSE') {
 					reject(new ApplicationError(`Port ${port} is already in use`));
 				} else {
 					reject(error);
 				}
+			};
+
+			this.server.on('error', portInUseErrorHandler);
+
+			this.server.listen(port, host, () => {
+				this.server.removeListener('error', portInUseErrorHandler);
+				console.log(`Healthcheck server listening on ${host}, port ${port}`);
+				resolve();
 			});
 		});
 	}
