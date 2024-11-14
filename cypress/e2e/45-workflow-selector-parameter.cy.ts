@@ -98,6 +98,6 @@ describe('Workflow Selector Parameter', () => {
 
 		getVisiblePopper().findChildByTestId('rlc-item').eq(0).click();
 
-		cy.get('@windowOpen').should('be.calledWith', '/workflows/onboarding/0?');
+		cy.get('@windowOpen').should('be.calledWith', '/workflows/onboarding/0?sampleSubWorkflows=0');
 	});
 });

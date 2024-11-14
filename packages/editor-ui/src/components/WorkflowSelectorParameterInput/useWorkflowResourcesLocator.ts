@@ -24,8 +24,6 @@ export function useWorkflowResourcesLocator(router: Router) {
 	);
 
 	const filteredResources = computed(() => {
-		if (!searchFilter.value) return workflowsResources.value;
-
 		return workflowsStore.allWorkflows
 			.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
 			.map(workflowDbToResourceMapper);
@@ -46,6 +44,12 @@ export function useWorkflowResourcesLocator(router: Router) {
 	async function setWorkflowsResources() {
 		isLoadingResources.value = true;
 		await populateNextWorkflowsPage();
+		isLoadingResources.value = false;
+	}
+
+	async function reloadWorkflows() {
+		isLoadingResources.value = true;
+		await workflowsStore.fetchAllWorkflows();
 		isLoadingResources.value = false;
 	}
 
@@ -84,6 +88,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		hasMoreWorkflowsToLoad,
 		filteredResources,
 		searchFilter,
+		reloadWorkflows,
 		getWorkflowUrl,
 		onSearchFilter,
 		getWorkflowName,

@@ -64,13 +64,24 @@ const openSampleSubworkflow = async () => {
 
 		const projectId = route.query?.projectId;
 
+		const sampleSubWorkflows = Number(route.query?.sampleSubWorkflows ?? 0);
+
 		const workflow: IWorkflowDataCreate = {};
 
 		if (projectId) {
 			workflow.projectId = projectId as string;
 		}
 
-		const newWorkflow = await workflowsStore.createNewWorkflow(SAMPLE_SUBWORKFLOW_WORKFLOW);
+		const workflowName = `${SAMPLE_SUBWORKFLOW_WORKFLOW.name} ${sampleSubWorkflows + 1}`;
+
+		const newWorkflow = await workflowsStore.createNewWorkflow({
+			...SAMPLE_SUBWORKFLOW_WORKFLOW,
+			name: workflowName,
+		});
+
+		const sampleSubworkflowChannel = new BroadcastChannel('new-sample-sub-workflow-created');
+
+		sampleSubworkflowChannel.postMessage({});
 
 		await router.replace({
 			name: VIEWS.WORKFLOW,

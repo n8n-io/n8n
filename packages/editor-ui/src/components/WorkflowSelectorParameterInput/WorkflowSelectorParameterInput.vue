@@ -79,11 +79,12 @@ const {
 	hasMoreWorkflowsToLoad,
 	isLoadingResources,
 	filteredResources,
-	onSearchFilter,
 	searchFilter,
+	onSearchFilter,
 	getWorkflowName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
+	reloadWorkflows,
 	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
 
@@ -205,13 +206,27 @@ onClickOutside(dropdown, () => {
 });
 
 const onAddResourceClicked = () => {
+	const subWorkflowNameRegex = /My\s+Sub-Workflow\s+\d+/;
+
 	const urlSearchParams = new URLSearchParams();
 
 	if (projectStore.currentProjectId) {
 		urlSearchParams.set('projectId', projectStore.currentProjectId);
 	}
 
+	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+		(w) => w.name && subWorkflowNameRegex.test(w.name),
+	);
+
+	urlSearchParams.set('sampleSubWorkflows', sampleSubWorkflows.length.toString());
+
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
+
+	const sampleSubworkflowChannel = new BroadcastChannel('new-sample-sub-workflow-created');
+
+	sampleSubworkflowChannel.onmessage = async () => {
+		await reloadWorkflows();
+	};
 
 	window.open(
 		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW_ID}?${urlSearchParams.toString()}`,
