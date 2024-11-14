@@ -196,6 +196,7 @@ export interface IStartRunData {
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
+	dirtyIds?: string[];
 }
 
 export interface ITableData {
