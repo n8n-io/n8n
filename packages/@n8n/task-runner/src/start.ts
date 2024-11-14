@@ -2,7 +2,7 @@ import { ensureError } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
-import { HealthcheckServer } from './healthcheck-server';
+import type { HealthcheckServer } from './healthcheck-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
 let healthcheckServer: HealthcheckServer | undefined;
@@ -41,6 +41,7 @@ void (async function start() {
 	const { enabled, host, port } = config.baseRunnerConfig.server;
 
 	if (enabled) {
+		const { HealthcheckServer } = await import('./healthcheck-server');
 		healthcheckServer = new HealthcheckServer();
 		await healthcheckServer.start(host, port);
 	}
