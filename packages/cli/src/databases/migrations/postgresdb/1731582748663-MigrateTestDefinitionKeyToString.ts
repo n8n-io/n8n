@@ -19,5 +19,12 @@ export class MigrateTestDefinitionKeyToString1731582748663 implements Irreversib
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "pk_${tablePrefix}test_definition_id" ON ${tablePrefix}test_definition ("id");`,
 		);
+
+		await queryRunner.query(
+			`ALTER TABLE ${tablePrefix}test_definition DROP CONSTRAINT IF EXISTS "PK_${tablePrefix}245a0013672c8cdc7727afa9b99";`,
+		);
+
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}test_definition DROP COLUMN tmp_id;`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}test_definition ADD PRIMARY KEY (id);`);
 	}
 }
