@@ -3,7 +3,6 @@ import { mock } from 'jest-mock-extended';
 import { ServerResponse } from 'node:http';
 import type WebSocket from 'ws';
 
-import { Time } from '@/constants';
 import type { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
 import { TaskRunnerServer } from '@/runners/task-runner-server';
 
@@ -22,7 +21,6 @@ describe('TaskRunnerServer', () => {
 				mock(),
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
 				mock<TaskRunnerAuthController>(),
-				mock(),
 				mock(),
 			);
 
@@ -51,7 +49,6 @@ describe('TaskRunnerServer', () => {
 				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
 				mock<TaskRunnerAuthController>(),
 				mock(),
-				mock(),
 			);
 
 			// @ts-expect-error Private property
@@ -65,47 +62,6 @@ describe('TaskRunnerServer', () => {
 
 			response.writeHead(200);
 			expect(ws.close).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('heartbeat timer', () => {
-		it('should set up heartbeat timer on server start', async () => {
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
-
-			const server = new TaskRunnerServer(
-				mock(),
-				mock<GlobalConfig>({ taskRunners: { path: '/runners', heartbeatInterval: 30 } }),
-				mock<TaskRunnerAuthController>(),
-				mock(),
-				mock(),
-			);
-
-			await server.start();
-
-			expect(setIntervalSpy).toHaveBeenCalledWith(
-				expect.any(Function),
-				30 * Time.seconds.toMilliseconds,
-			);
-
-			await server.stop();
-		});
-
-		it('should clear heartbeat timer on server stop', async () => {
-			jest.spyOn(global, 'setInterval');
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-
-			const server = new TaskRunnerServer(
-				mock(),
-				mock<GlobalConfig>({ taskRunners: { path: '/runners', heartbeatInterval: 30 } }),
-				mock<TaskRunnerAuthController>(),
-				mock(),
-				mock(),
-			);
-
-			await server.start();
-			await server.stop();
-
-			expect(clearIntervalSpy).toHaveBeenCalled();
 		});
 	});
 });
