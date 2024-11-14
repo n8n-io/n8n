@@ -55,7 +55,7 @@ function adjustNewChild(parent: AddedNode, child: AddedNode) {
 			)
 		) {
 			Object.assign<AddedNode, Partial<INode>>(child, {
-				parameters: { promptType: 'auto' },
+				parameters: { ...child.parameters, promptType: 'auto' },
 			});
 		}
 	}
