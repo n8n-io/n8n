@@ -65,13 +65,6 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 	] as const;
 
-	private get isInternalMode() {
-		return (
-			this.runnerConfig.mode === 'internal_childprocess' ||
-			this.runnerConfig.mode === 'internal_launcher'
-		);
-	}
-
 	constructor(
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
@@ -91,14 +84,14 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 			this.logger.warn('Task runner failed heartbeat check, restarting...');
 			this.shouldForceRestartRunner = true;
 
-			if (this.isInternalMode) void this.stop();
+			void this.stop();
 		});
 
 		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
 			this.logger.warn('Task runner timed out during task, restarting...');
 			this.shouldForceRestartRunner = true;
 
-			if (this.isInternalMode) void this.stop();
+			void this.stop();
 		});
 	}
 
