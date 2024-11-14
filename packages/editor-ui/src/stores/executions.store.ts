@@ -14,9 +14,11 @@ import type {
 import { useRootStore } from '@/stores/root.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
+	const projectsStore = useProjectsStore();
 
 	const loading = ref(false);
 	const itemsPerPage = ref(10);
@@ -24,9 +26,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const activeExecution = ref<ExecutionSummary | null>(null);
 
 	const filters = ref<ExecutionFilterType>(getDefaultExecutionFilters());
-	const executionsFilters = computed<ExecutionsQueryFilter>(() =>
-		executionFilterToQueryFilter(filters.value),
-	);
+	const executionsFilters = computed<ExecutionsQueryFilter>(() => {
+		const filter = executionFilterToQueryFilter(filters.value);
+
+		if (projectsStore.currentProjectId) {
+			filter.projectId = projectsStore.currentProjectId;
+		}
+
+		return filter;
+	});
 	const currentExecutionsFilters = computed<Partial<ExecutionFilterType>>(() => ({
 		...(filters.value.workflowId !== 'all' ? { workflowId: filters.value.workflowId } : {}),
 	}));

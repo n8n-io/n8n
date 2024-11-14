@@ -60,7 +60,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
-			block: 'center',
+			block: 'start',
 		});
 	}
 };
@@ -132,14 +132,14 @@ onMounted(async () => {
 .chat-message {
 	display: block;
 	position: relative;
-	max-width: 80%;
+	max-width: fit-content;
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
-
+	scroll-margin: 100px;
 	.chat-message-actions {
 		position: absolute;
-		bottom: 100%;
+		bottom: calc(100% - 0.5rem);
 		left: 0;
 		opacity: 0;
 		transform: translateY(-0.25rem);
@@ -151,6 +151,9 @@ onMounted(async () => {
 		left: auto;
 		right: 0;
 	}
+	&.chat-message-from-bot .chat-message-actions {
+		bottom: calc(100% - 1rem);
+	}
 
 	&:hover {
 		.chat-message-actions {
@@ -159,7 +162,7 @@ onMounted(async () => {
 	}
 
 	p {
-		line-height: var(--chat--message-line-height, 1.8);
+		line-height: var(--chat--message-line-height, 1.5);
 		word-wrap: break-word;
 	}
 

@@ -1305,6 +1305,7 @@ export type ExecutionFilterType = {
 
 export type ExecutionsQueryFilter = {
 	status?: ExecutionStatus[];
+	projectId?: string;
 	workflowId?: string;
 	finished?: boolean;
 	waitTill?: boolean;

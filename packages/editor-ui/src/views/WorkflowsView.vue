@@ -15,7 +15,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
@@ -35,6 +34,7 @@ import {
 	N8nTooltip,
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -311,7 +311,7 @@ onMounted(async () => {
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs />
+			<ProjectHeader />
 		</template>
 		<template #add-button="{ disabled }">
 			<N8nTooltip :disabled="!readOnlyEnv">
