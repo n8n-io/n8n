@@ -11,6 +11,10 @@ export class WorkflowsPage extends BasePage {
 			cy.getByTestId('resource-add').should('be.visible').click();
 			cy.getByTestId('resource-add')
 				.find('.el-sub-menu__title')
+				.as('menuitem')
+				.should('have.attr', 'aria-describedby');
+
+			cy.get('@menuitem')
 				.invoke('attr', 'aria-describedby')
 				.then((el) => cy.get(`[id="${el}"]`))
 				.as('submenu');

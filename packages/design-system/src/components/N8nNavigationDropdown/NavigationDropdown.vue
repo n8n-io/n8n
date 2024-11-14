@@ -35,6 +35,8 @@ const emit = defineEmits<{
 <template>
 	<ElMenu
 		mode="horizontal"
+		unique-opened
+		menu-trigger="click"
 		:ellipsis="false"
 		:class="$style.dropdown"
 		@select="emit('select', $event)"

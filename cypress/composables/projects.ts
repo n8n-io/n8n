@@ -10,6 +10,10 @@ export const getAddProjectButton = () => {
 	cy.getByTestId('universal-add').should('be.visible').click();
 	cy.getByTestId('universal-add')
 		.find('.el-sub-menu__title')
+		.as('menuitem')
+		.should('have.attr', 'aria-describedby');
+
+	cy.get('@menuitem')
 		.invoke('attr', 'aria-describedby')
 		.then((el) => cy.get(`[id="${el}"]`))
 		.as('submenu');
