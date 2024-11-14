@@ -13,8 +13,9 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { N8nInfoTip, N8nTooltip, N8nTree } from 'n8n-design-system';
+import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from 'n8n-design-system';
 import { storeToRefs } from 'pinia';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -63,6 +64,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const {
 	hoveringItem,
@@ -114,6 +116,18 @@ function isHoveringRow(row: number): boolean {
 		hoveringItem.value.itemIndex,
 	);
 	return pairedItemMappings.value[itemNodeId].has(hoveringItemId);
+}
+
+function showExecutionLink(index: number) {
+	if (index === activeRow.value) {
+		return true;
+	}
+
+	if (activeRow.value === null) {
+		return index === 0;
+	}
+
+	return false;
 }
 
 function onMouseEnterCell(e: MouseEvent) {
@@ -304,6 +318,11 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 	let leftEntryColumns: string[], entryRows: GenericValue[];
 	// Go over all entries
 	let entry: IDataObject;
+
+	const metadata: ITableData['metadata'] = {
+		hasExecutionIds: false,
+		data: [],
+	};
 	const hasJson: { [key: string]: boolean } = {};
 	inputData.forEach((data) => {
 		if (!data.hasOwnProperty('json')) {
@@ -320,6 +339,13 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 			leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
 		} else {
 			leftEntryColumns = entryColumns;
+		}
+
+		if (data.metadata?.subExecution) {
+			metadata.data.push(data.metadata);
+			metadata.hasExecutionIds = true;
+		} else {
+			metadata.data.push(undefined);
 		}
 
 		// Go over all the already existing column-keys
@@ -368,6 +394,7 @@ function convertToTable(inputData: INodeExecutionData[]): ITableData {
 		hasJson,
 		columns: tableColumns,
 		data: resultTableData,
+		metadata,
 	};
 }
 
@@ -390,6 +417,9 @@ watch(focusedMappableInput, (curr) => {
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<thead>
 				<tr>
+					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
+						<!-- column for execution link -->
+					</th>
 					<th :class="$style.emptyCell"></th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
@@ -400,6 +430,37 @@ watch(focusedMappableInput, (curr) => {
 					:key="index1"
 					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 				>
+					<td
+						v-if="tableData.metadata.hasExecutionIds"
+						:data-row="index1"
+						:class="$style.executionLinkCell"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<N8nTooltip
+							:content="
+								i18n.baseText('runData.table.inspectSubExecution', {
+									interpolate: {
+										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
+									},
+								})
+							"
+							placement="left"
+							:hide-after="0"
+						>
+							<N8nIconButton
+								v-if="tableData.metadata.data[index1]"
+								v-show="showExecutionLink(index1)"
+								type="secondary"
+								icon="external-link-alt"
+								data-test-id="debug-sub-execution"
+								size="mini"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
+								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
+							/>
+						</N8nTooltip>
+					</td>
 					<td
 						:data-row="index1"
 						:data-col="0"
@@ -415,6 +476,9 @@ watch(focusedMappableInput, (curr) => {
 		<table v-else :class="$style.table">
 			<thead>
 				<tr>
+					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
+						<!-- column for execution link -->
+					</th>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
@@ -502,6 +566,40 @@ watch(focusedMappableInput, (curr) => {
 					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 				>
+					<td
+						v-if="tableData.metadata.hasExecutionIds"
+						:data-row="index1"
+						:class="$style.executionLinkCell"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<N8nTooltip
+							:content="
+								i18n.baseText('runData.table.inspectSubExecution', {
+									interpolate: {
+										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
+									},
+								})
+							"
+							placement="left"
+							:hide-after="0"
+						>
+							<a
+								v-if="tableData.metadata.data[index1]"
+								v-show="showExecutionLink(index1)"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
+								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
+							>
+								<N8nIconButton
+									type="secondary"
+									icon="external-link-alt"
+									data-test-id="debug-sub-execution"
+									size="mini"
+								/>
+							</a>
+						</N8nTooltip>
+					</td>
 					<td
 						v-for="(data, index2) in row"
 						:key="index2"
@@ -735,5 +833,13 @@ watch(focusedMappableInput, (curr) => {
 
 .warningTooltip {
 	color: var(--color-warning);
+}
+
+.executionLinkCell {
+	padding: var(--spacing-3xs) !important;
+}
+
+.executionLinkRowHeader {
+	width: var(--spacing-m);
 }
 </style>

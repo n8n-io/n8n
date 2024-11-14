@@ -48,8 +48,36 @@ export function getOutputTableRow(row: number) {
 	return getOutputTableRows().eq(row);
 }
 
+export function getOutputTableHeaders() {
+	return getOutputPanelDataContainer().find('table thead th');
+}
+
+export function getOutputTableHeaderByText(text: string) {
+	return getOutputTableHeaders().contains(text);
+}
+
+export function getOutputTbodyCell(row: number, col: number) {
+	return getOutputTableRows().eq(row).find('td').eq(col);
+}
+
+export function getOutputRunSelector() {
+	return getOutputPanel().findChildByTestId('run-selector');
+}
+
+export function getOutputRunSelectorInput() {
+	return getOutputRunSelector().find('input');
+}
+
 export function getOutputPanelTable() {
 	return getOutputPanelDataContainer().get('table');
+}
+
+export function getOutputPanelItemsCount() {
+	return getOutputPanel().getByTestId('ndv-items-count');
+}
+
+export function getOutputPanelRelatedExecutionLink() {
+	return getOutputPanel().getByTestId('related-execution-link');
 }
 
 /**
@@ -89,4 +117,9 @@ export function toggleParameterCheckboxInputByName(name: string) {
 export function setParameterSelectByContent(name: string, content: string) {
 	getParameterInputByName(name).realClick();
 	getVisibleSelect().find('.option-headline').contains(content).click();
+}
+
+export function changeOutputRunSelector(runName: string) {
+	getOutputRunSelector().click();
+	getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 }
