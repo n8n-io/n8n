@@ -40,6 +40,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { AddApiKeysTable1724951148974 } from './1724951148974-AddApiKeysTable';
 import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from './1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 import { AddDescriptionToTestDefinition1731404028106 } from './1731404028106-AddDescriptionToTestDefinition';
+import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -136,6 +137,7 @@ const sqliteMigrations: Migration[] = [
 	UpdateProcessedDataValueColumnToText1729607673464,
 	CreateTestDefinitionTable1730386903556,
 	AddDescriptionToTestDefinition1731404028106,
+	MigrateTestDefinitionKeyToString1731582748663,
 ];
 
 export { sqliteMigrations };
