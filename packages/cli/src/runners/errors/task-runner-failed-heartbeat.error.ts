@@ -4,10 +4,10 @@ export class TaskRunnerFailedHeartbeatError extends ApplicationError {
 	description: string;
 
 	constructor(heartbeatInterval: number, isSelfHosted: boolean) {
-		super('Task execution aborted because runner failed heartbeat check');
+		super('Task execution aborted because runner became unresponsive');
 
 		const subtitle =
-			'The task runner failed to send a heartbeat, so it was suspected of being unresponsive and restarted, and the task was aborted. You can try the following:';
+			'The task runner failed to respond as expected, so it was considered unresponsive, and the task was aborted. You can try the following:';
 
 		const fixes = {
 			optimizeScript:
