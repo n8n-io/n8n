@@ -30,7 +30,7 @@ export class TestDefinitionService {
 		workflowId?: string;
 		evaluationWorkflowId?: string;
 		annotationTagId?: string;
-		id?: number;
+		id?: string;
 	}) {
 		const entity: TestDefinitionLike = {};
 
@@ -72,13 +72,13 @@ export class TestDefinitionService {
 		workflowId?: string;
 		evaluationWorkflowId?: string;
 		annotationTagId?: string;
-		id?: number;
+		id?: string;
 	}) {
 		const entity = this.toEntityLike(attrs);
 		return this.testDefinitionRepository.create(entity);
 	}
 
-	async findOne(id: number, accessibleWorkflowIds: string[]) {
+	async findOne(id: string, accessibleWorkflowIds: string[]) {
 		return await this.testDefinitionRepository.getOne(id, accessibleWorkflowIds);
 	}
 
@@ -88,7 +88,7 @@ export class TestDefinitionService {
 		return await this.testDefinitionRepository.save(test);
 	}
 
-	async update(id: number, attrs: TestDefinitionLike) {
+	async update(id: string, attrs: TestDefinitionLike) {
 		if (attrs.name) {
 			const updatedTest = this.toEntity(attrs);
 			await validateEntity(updatedTest);
@@ -115,7 +115,7 @@ export class TestDefinitionService {
 		}
 	}
 
-	async delete(id: number, accessibleWorkflowIds: string[]) {
+	async delete(id: string, accessibleWorkflowIds: string[]) {
 		const deleteResult = await this.testDefinitionRepository.deleteById(id, accessibleWorkflowIds);
 
 		if (deleteResult.affected === 0) {
