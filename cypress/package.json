@@ -26,6 +26,7 @@
     "cypress": "^13.14.2",
     "cypress-otp": "^1.0.3",
     "cypress-real-events": "^1.13.0",
+    "flatted": "catalog:",
     "lodash": "catalog:",
     "nanoid": "catalog:",
     "start-server-and-test": "^2.0.8"
