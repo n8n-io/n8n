@@ -101,6 +101,7 @@ describe('NDV', () => {
 		ndv.getters.inputTableRow(1).should('have.text', '1111');
 
 		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
+		ndv.actions.dragMainPanelToRight();
 		ndv.getters.inputTbodyCell(1, 0).realMouseMove(10, 10);
 		ndv.getters.outputHoveringItem().should('have.text', '1111');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
