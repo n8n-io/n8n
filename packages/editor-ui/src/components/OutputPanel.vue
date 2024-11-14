@@ -216,7 +216,7 @@ const canPinData = computed(() => {
 });
 
 const allToolsWereUnusedNotice = computed(() => {
-	if (!node.value) return undefined;
+	if (!node.value || runsCount.value === 0) return undefined;
 
 	const toolsAvailable = props.workflow.getParentNodes(
 		node.value.name,
