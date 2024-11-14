@@ -17,7 +17,7 @@ import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
-import { standardizeOutput } from './utils';
+import { addPostExecutionWarning, standardizeOutput } from './utils';
 
 const { CODE_ENABLE_STDOUT } = process.env;
 
@@ -141,28 +141,30 @@ export class Code implements INodeType {
 			return sandbox;
 		};
 
+		const items = this.getInputData();
+
 		// ----------------------------------
 		//        runOnceForAllItems
 		// ----------------------------------
 
 		if (nodeMode === 'runOnceForAllItems') {
 			const sandbox = getSandbox();
-			let items: INodeExecutionData[];
+			let newItems: INodeExecutionData[];
 			try {
-				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
+				newItems = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
 				if (!this.continueOnFail()) {
 					set(error, 'node', node);
 					throw error;
 				}
-				items = [{ json: { error: error.message } }];
+				newItems = [{ json: { error: error.message } }];
 			}
 
-			for (const item of items) {
+			for (const item of newItems) {
 				standardizeOutput(item.json);
 			}
 
-			return [items];
+			return addPostExecutionWarning(newItems, items?.length);
 		}
 
 		// ----------------------------------
@@ -170,8 +172,6 @@ export class Code implements INodeType {
 		// ----------------------------------
 
 		const returnData: INodeExecutionData[] = [];
-
-		const items = this.getInputData();
 
 		for (let index = 0; index < items.length; index++) {
 			const sandbox = getSandbox(index);
@@ -200,6 +200,6 @@ export class Code implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return addPostExecutionWarning(returnData, items?.length);
 	}
 }
