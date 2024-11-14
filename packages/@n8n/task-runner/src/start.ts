@@ -38,7 +38,7 @@ void (async function start() {
 
 	runner = new JsTaskRunner(config);
 
-	const { enabled, host, port } = config.baseRunnerConfig.server;
+	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
 
 	if (enabled) {
 		const { HealthcheckServer } = await import('./healthcheck-server');

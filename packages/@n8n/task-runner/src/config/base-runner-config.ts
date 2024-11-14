@@ -1,7 +1,7 @@
 import { Config, Env, Nested } from '@n8n/config';
 
 @Config
-class TaskRunnerServerConfig {
+class HealthcheckServerConfig {
 	@Env('N8N_RUNNERS_SERVER_ENABLED')
 	enabled: boolean = false;
 
@@ -27,5 +27,5 @@ export class BaseRunnerConfig {
 	maxConcurrency: number = 5;
 
 	@Nested
-	server!: TaskRunnerServerConfig;
+	healthcheckServer!: HealthcheckServerConfig;
 }
