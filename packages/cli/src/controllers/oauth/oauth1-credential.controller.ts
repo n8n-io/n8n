@@ -2,7 +2,7 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { createHmac } from 'crypto';
 import { Response } from 'express';
-import { jsonStringify } from 'n8n-workflow';
+import { ensureError, jsonStringify } from 'n8n-workflow';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
@@ -139,10 +139,11 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 				credentialId: credential.id,
 			});
 			return res.render('oauth-callback');
-		} catch (error) {
+		} catch (e) {
+			const error = ensureError(e);
 			return this.renderCallbackError(
 				res,
-				(error as Error).message,
+				error.message,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				'body' in error ? jsonStringify(error.body) : undefined,
 			);

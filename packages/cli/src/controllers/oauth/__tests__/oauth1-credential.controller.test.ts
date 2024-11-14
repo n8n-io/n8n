@@ -53,7 +53,7 @@ describe('OAuth1CredentialController', () => {
 
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
-		jest.resetAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('getAuthUri', () => {
@@ -118,11 +118,19 @@ describe('OAuth1CredentialController', () => {
 			}),
 		).toString('base64');
 
+		const res = mock<Response>();
+		const req = mock<OAuthRequest.OAuth1Credential.Callback>({
+			query: {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			},
+		});
+
 		it('should render the error page when required query params are missing', async () => {
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = { state: 'test' } as OAuthRequest.OAuth1Credential.Callback['query'];
-			await controller.handleCallback(req, res);
+			const invalidReq = mock<OAuthRequest.OAuth1Credential.Callback>();
+			invalidReq.query = { state: 'test' } as OAuthRequest.OAuth1Credential.Callback['query'];
+			await controller.handleCallback(invalidReq, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
@@ -134,14 +142,14 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should render the error page when `state` query param is invalid', async () => {
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: 'test',
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
-			await controller.handleCallback(req, res);
+			const invalidReq = mock<OAuthRequest.OAuth1Credential.Callback>({
+				query: {
+					oauth_verifier: 'verifier',
+					oauth_token: 'token',
+					state: 'test',
+				},
+			});
+			await controller.handleCallback(invalidReq, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
@@ -154,13 +162,6 @@ describe('OAuth1CredentialController', () => {
 		it('should render the error page when credential is not found in DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValueOnce(null);
 
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: validState,
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
@@ -176,14 +177,6 @@ describe('OAuth1CredentialController', () => {
 			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
 
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: validState,
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
-
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
@@ -197,14 +190,6 @@ describe('OAuth1CredentialController', () => {
 			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
-
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: validState,
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
 
 			jest.advanceTimersByTime(10 * Time.minutes.toMilliseconds);
 
@@ -234,14 +219,6 @@ describe('OAuth1CredentialController', () => {
 				.once()
 				.reply(200, 'access_token=new_token');
 			cipher.encrypt.mockReturnValue('encrypted');
-
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: validState,
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
 
 			await controller.handleCallback(req, res);
 

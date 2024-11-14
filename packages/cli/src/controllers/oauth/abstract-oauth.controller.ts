@@ -22,9 +22,13 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 type CsrfStateParam = {
+	/** Id of the oAuth credential in the DB */
 	cid: string;
+	/** Random CSRF token, used to verify the signature of the CSRF state */
 	token: string;
+	/** Creation timestamp of the CSRF state. Used for expiration.  */
 	createdAt: number;
+	/** User who initiated OAuth flow, included to prevent cross-user credential hijacking. Optional only if `skipAuthOnOAuthCallback` is enabled. */
 	userId?: string;
 };
 
@@ -154,13 +158,18 @@ export abstract class AbstractOAuthController {
 		return decoded;
 	}
 
-	protected verifyCsrfState(decrypted: ICredentialDataDecryptedObject, state: CsrfStateParam) {
+	protected verifyCsrfState(
+		decrypted: ICredentialDataDecryptedObject & { csrfSecret?: string },
+		state: CsrfStateParam,
+	) {
 		const token = new Csrf();
-		if (decrypted.csrfSecret === undefined) return false;
-		if (!token.verify(decrypted.csrfSecret as string, state.token)) return false;
-		if (!state.createdAt || Date.now() - state.createdAt > 5 * Time.minutes.toMilliseconds)
-			return false;
-		return true;
+		const MAX_AGE = 5 * Time.minutes.toMilliseconds;
+
+		return (
+			decrypted.csrfSecret !== undefined &&
+			token.verify(decrypted.csrfSecret, state.token) &&
+			Date.now() - state.createdAt <= MAX_AGE
+		);
 	}
 
 	protected async resolveCredential<T>(
