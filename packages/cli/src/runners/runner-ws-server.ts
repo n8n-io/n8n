@@ -38,15 +38,15 @@ export class TaskRunnerWsServer {
 
 	private startHeartbeatChecks() {
 		this.heartbeatTimer = setInterval(() => {
-			this.runnerConnections.forEach((ws) => {
-				if (!ws.isAlive) {
-					void this.disconnect(ws);
+			this.runnerConnections.forEach((connection) => {
+				if (!connection.isAlive) {
+					void this.disconnect(connection);
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
 				}
 
-				ws.isAlive = false;
-				ws.ping();
+				connection.isAlive = false;
+				connection.ping();
 			});
 		}, this.taskTunnersConfig.heartbeatInterval * Time.seconds.toMilliseconds);
 	}
