@@ -8,11 +8,22 @@ export const getHomeButton = () => cy.getByTestId('project-home-menu-item');
 export const getMenuItems = () => cy.getByTestId('project-menu-item');
 export const getAddProjectButton = () => {
 	cy.getByTestId('universal-add').should('be.visible').click();
-	return cy
-		.getByTestId('navigation-menu-item')
-		.should('be.visible')
-		.filter(':contains("Project")')
-		.last();
+	cy.getByTestId('universal-add')
+		.find('.el-sub-menu__title')
+		.invoke('attr', 'aria-describedby')
+		.then((el) => cy.get(`[id="${el}"]`))
+		.as('submenu');
+
+	cy.get('@submenu').within((submenu) =>
+		cy
+			.wrap(submenu)
+			.getByTestId('navigation-menu-item')
+			.should('be.visible')
+			.filter(':contains("Project")')
+			.as('button'),
+	);
+
+	return cy.get('@button');
 };
 
 // export const getAddProjectButton = () =>

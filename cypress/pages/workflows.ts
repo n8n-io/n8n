@@ -9,19 +9,51 @@ export class WorkflowsPage extends BasePage {
 		searchBar: () => cy.getByTestId('resources-list-search'),
 		createWorkflowButton: () => {
 			cy.getByTestId('resource-add').should('be.visible').click();
+			cy.getByTestId('resource-add')
+				.find('.el-sub-menu__title')
+				.invoke('attr', 'aria-describedby')
+				.then((el) => cy.get(`[id="${el}"]`))
+				.as('submenu');
 
-			cy.getByTestId('navigation-submenu')
-				.should('be.visible')
-				.filter(':contains("Workflow")')
-				.last()
+			cy.get('@submenu').within((submenu) => {
+				cy.wrap(submenu)
+					.find('[data-test-id="navigation-submenu"]')
+					.should('be.visible')
+					.filter(':contains("Workflow")')
+					.as('child')
+					.click();
 
-				.click();
+				cy.get('@child')
+					.find('[data-test-id="navigation-submenu-item"]')
+					.should('be.visible')
+					.filter(':contains("Personal")')
+					.as('button');
+			});
 
-			return cy
-				.getByTestId('navigation-submenu-item')
-				.should('be.visible')
-				.filter(':contains("Personal")')
-				.first();
+			return cy.get('@button');
+			// cy.getByTestId('resource-add').should('be.visible').click();
+			// cy.getByTestId('resource-add')
+			// 	.find('.el-sub-menu__title')
+			// 	.invoke('attr', 'aria-describedby')
+			// 	.then((el) => cy.get(`[id="${el}"]`))
+			// 	.as('submenu');
+
+			// cy.get('@submenu')
+			// 	.getByTestId('navigation-submenu')
+			// 	.should('be.visible')
+			// 	.filter(':contains("Workflow")')
+			// 	.click();
+
+			// cy.get('@submenu').within((submenu) =>
+			// 	cy
+			// 		.wrap(submenu)
+			// 		.getByTestId('navigation-submenu-item')
+			// 		.should('be.visible')
+			// 		.filter(':contains("Personal")')
+			// 		.as('button'),
+			// );
+
+			// return cy.get('@button');
 		},
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>

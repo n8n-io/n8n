@@ -7,19 +7,28 @@ export class CredentialsPage extends BasePage {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
 		createCredentialButton: () => {
 			cy.getByTestId('resource-add').should('be.visible').click();
+			cy.getByTestId('resource-add')
+				.find('.el-sub-menu__title')
+				.invoke('attr', 'aria-describedby')
+				.then((el) => cy.get(`[id="${el}"]`))
+				.as('submenu');
 
-			cy.getByTestId('navigation-submenu')
-				.should('be.visible')
-				.filter(':contains("Credential")')
-				.last()
+			cy.get('@submenu').within((submenu) => {
+				cy.wrap(submenu)
+					.find('[data-test-id="navigation-submenu"]')
+					.should('be.visible')
+					.filter(':contains("Credential")')
+					.as('child')
+					.click();
 
-				.click();
+				cy.get('@child')
+					.find('[data-test-id="navigation-submenu-item"]')
+					.should('be.visible')
+					.filter(':contains("Personal")')
+					.as('button');
+			});
 
-			return cy
-				.getByTestId('navigation-submenu-item')
-				.should('be.visible')
-				.filter(':contains("Personal")')
-				.last();
+			return cy.get('@button');
 		},
 
 		// cy.getByTestId('resources-list-add'),

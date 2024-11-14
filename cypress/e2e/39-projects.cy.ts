@@ -275,7 +275,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.changeQuota('maxTeamProjects', -1);
 		});
 
-		it.only('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
+		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
