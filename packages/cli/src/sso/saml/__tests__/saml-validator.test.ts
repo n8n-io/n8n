@@ -1,6 +1,11 @@
+import { Logger } from '@/logging/logger.service';
+import { mockInstance } from '@test/mocking';
+
 import { validateMetadata, validateResponse } from '../saml-validator';
 
 describe('saml-validator', () => {
+	mockInstance(Logger);
+
 	describe('validateMetadata', () => {
 		test('successfully validates metadata containing ws federation tags', async () => {
 			// ARRANGE
