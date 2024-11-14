@@ -138,7 +138,9 @@ export class TestDefinitionsController {
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return await this.testRunnerService.runTest(req.user, Number(req.params.id), workflowIds);
+		// We do not await for the test run to complete
+		void this.testRunnerService.runTest(req.user, Number(req.params.id), workflowIds);
+
+		return { success: true };
 	}
 }

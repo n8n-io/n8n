@@ -63,13 +63,11 @@ export class TestRunnerService {
 			.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 			.getMany();
 
-		const testCases = executions.map((execution) => {
-			return this.createPinDataFromExecution(workflow, execution);
-		});
+		const testCases = executions.map((execution) =>
+			this.createPinDataFromExecution(workflow, execution),
+		);
 
 		for (const testCase of testCases) {
-			console.log({ testCase });
-
 			// Start the workflow
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: 'evaluation',
@@ -89,7 +87,6 @@ export class TestRunnerService {
 			) as Promise<IExecutionDb | undefined>;
 
 			const execution = await executePromise;
-			console.log(execution?.data.resultData.runData);
 		}
 
 		return { success: true };
