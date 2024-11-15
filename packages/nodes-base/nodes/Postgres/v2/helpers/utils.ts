@@ -142,20 +142,57 @@ export function addWhereClauses(
 
 			clause.value = value;
 		}
-		const columnReplacement = `$${replacementIndex}:name`;
-		values.push(clause.column);
-		replacementIndex = replacementIndex + 1;
 
-		let valueReplacement = '';
-		if (clause.condition !== 'IS NULL' && clause.condition !== 'IS NOT NULL') {
-			valueReplacement = ` $${replacementIndex}`;
+		let formattedClause = '';
+
+		if (['IN', 'NOT IN'].includes(clause.condition)) {
+			if (!Array.isArray(clause.value)) {
+				throw new NodeOperationError(
+					node,
+					`Operator in entry ${index + 1} of 'Select Rows' works with arrays, but value ${
+						clause.value
+					} is not an array`,
+					{
+						itemIndex,
+					},
+				);
+			}
+			if (clause.value.length > 0) {
+				const columnReplacement = `$${replacementIndex}:name`;
+				values.push(clause.column);
+				replacementIndex = replacementIndex + 1;
+
+				const valueReplacement = "(" + clause.value
+					.map((_, idx) => `$${replacementIndex + idx}`)
+					.join(', ') + ")";
+				values.push(...clause.value);
+				replacementIndex += clause.value.length;
+
+				formattedClause = `${columnReplacement} ${clause.condition} ${valueReplacement}`;
+			} else {
+				formattedClause = '1 = 0'
+			}
+		} else if (['IS NULL', 'IS NOT NULL'].includes(clause.condition)) {			
+			const columnReplacement = `$${replacementIndex}:name`;
+			values.push(clause.column);
+			replacementIndex = replacementIndex++;
+
+			formattedClause = `${columnReplacement} ${clause.condition}`;
+		} else {
+			const columnReplacement = `$${replacementIndex}:name`;
+			values.push(clause.column);
+			replacementIndex++;
+
+			const valueReplacement = `$${replacementIndex}`;
 			values.push(clause.value);
-			replacementIndex = replacementIndex + 1;
+			replacementIndex++;
+
+			formattedClause = ` ${columnReplacement} ${clause.condition} ${valueReplacement}`;
 		}
 
 		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
 
-		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
+		whereQuery += ` ${formattedClause}${operator}`;
 	});
 
 	return [`${query}${whereQuery}`, replacements.concat(...values)];

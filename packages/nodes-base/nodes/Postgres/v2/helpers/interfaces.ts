@@ -4,11 +4,15 @@ import type pg from 'pg-promise/typescript/pg-subset';
 
 export type QueryMode = 'single' | 'transaction' | 'independently';
 
-export type QueryValue = string | number | IDataObject | string[];
+export type QueryValue = string | number | IDataObject | string[] | number[];
 export type QueryValues = QueryValue[];
 export type QueryWithValues = { query: string; values?: QueryValues };
 
-export type WhereClause = { column: string; condition: string; value: string | number };
+export type WhereClause = {
+	column: string;
+	condition: string;
+	value: string | number | string[] | number[];
+};
 export type SortRule = { column: string; direction: string };
 export type ColumnInfo = {
 	column_name: string;
