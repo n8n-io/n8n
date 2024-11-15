@@ -18,7 +18,6 @@ import type {
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
-	console.log('Received heartbeat from task runner'); // @TODO: Remove later
 	this.isAlive = true;
 }
 
