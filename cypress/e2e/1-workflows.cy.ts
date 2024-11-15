@@ -23,7 +23,6 @@ describe('Workflows', () => {
 	});
 
 	it('should create multiple new workflows using add workflow button', () => {
-		cy.viewport(1920, 1080);
 		[...Array(multipleWorkflowsCount).keys()].forEach(() => {
 			cy.visit(WorkflowsPage.url);
 			WorkflowsPage.getters.createWorkflowButton().click();
@@ -36,7 +35,6 @@ describe('Workflows', () => {
 	});
 
 	it('should search for a workflow', () => {
-		cy.viewport(1920, 1080);
 		// One Result
 		WorkflowsPage.getters.searchBar().type('Empty State Card Workflow');
 		WorkflowsPage.getters.workflowCards().should('have.length', 1);
@@ -62,7 +60,6 @@ describe('Workflows', () => {
 	});
 
 	it('should delete all the workflows', () => {
-		cy.viewport(1920, 1080);
 		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
 
 		WorkflowsPage.getters.workflowCards().each(($el) => {
@@ -78,7 +75,6 @@ describe('Workflows', () => {
 	});
 
 	it('should respect tag querystring filter when listing workflows', () => {
-		cy.viewport(1920, 1080);
 		WorkflowsPage.getters.newWorkflowButtonCard().click();
 
 		cy.createFixtureWorkflow('Test_workflow_2.json', getUniqueWorkflowName('My New Workflow'));
