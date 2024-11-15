@@ -29,9 +29,10 @@ describe('N8nNavigationDropdown', () => {
 
 		await router.isReady();
 	});
+
 	it('default slot should trigger first level', async () => {
 		const { getByTestId, queryByTestId } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: { menu: [{ id: 'aaa', title: 'aaa', route: { name: 'projects' } }] },
 			global: {
 				plugins: [router],
@@ -46,7 +47,7 @@ describe('N8nNavigationDropdown', () => {
 
 	it('redirect to route', async () => {
 		const { getByTestId, queryByTestId } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
 					{
@@ -75,7 +76,7 @@ describe('N8nNavigationDropdown', () => {
 
 	it('should render icons in submenu when provided', () => {
 		const { getByTestId } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
 					{
@@ -95,7 +96,7 @@ describe('N8nNavigationDropdown', () => {
 
 	it('should propagate events', async () => {
 		const { getByTestId, emitted } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
 					{

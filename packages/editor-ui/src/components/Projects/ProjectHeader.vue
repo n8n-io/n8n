@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { N8nNavigationDropdown } from 'n8n-design-system';
+import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -11,6 +13,8 @@ import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 const route = useRoute();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
+
+const createBtn = ref<typeof N8nNavigationDropdown | null>(null);
 
 const headerIcon = computed(() => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
@@ -56,6 +60,10 @@ const createLabel = computed(() => {
 		return 'Create in project';
 	}
 });
+
+onClickOutside(createBtn, () => {
+	createBtn.value.close();
+});
 </script>
 
 <template>
@@ -73,7 +81,12 @@ const createLabel = computed(() => {
 		</div>
 		<div :class="$style.actions">
 			<ProjectTabs :show-settings="showSettings" />
-			<N8nNavigationDropdown data-test-id="resource-add" :menu @select="handleSelect">
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="resource-add"
+				:menu="menu"
+				@select="handleSelect"
+			>
 				<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
 			</N8nNavigationDropdown>
 		</div>

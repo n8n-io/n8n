@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
+import { ref, defineProps, defineEmits, defineOptions } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import ConditionalRouterLink from '../ConditionalRouterLink';
@@ -24,16 +25,27 @@ defineOptions({
 defineProps<{
 	menu: Item[];
 	disabled?: boolean;
+	teleport?: boolean;
 }>();
+
+const menuRef = ref<typeof ElMenu | null>(null);
+const menuIndex = ref('-1');
 
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
 }>();
+
+defineExpose({
+	close: () => {
+		menuRef.value?.close(menuIndex.value);
+	},
+});
 </script>
 
 <template>
 	<ElMenu
+		ref="menuRef"
 		mode="horizontal"
 		unique-opened
 		menu-trigger="click"
@@ -42,11 +54,12 @@ const emit = defineEmits<{
 		@select="emit('select', $event)"
 	>
 		<ElSubMenu
-			index="-1"
+			:index="menuIndex"
 			:class="$style.trigger"
 			:popper-offset="-10"
 			:popper-class="$style.submenu"
 			:disabled
+			:teleported="teleport"
 		>
 			<template #title>
 				<slot />
@@ -89,21 +102,17 @@ const emit = defineEmits<{
 :global(.el-menu).dropdown {
 	border-bottom: 0;
 	background-color: transparent;
-}
 
-:global(.el-sub-menu).trigger {
-	:global(.el-sub-menu__title) {
-		height: auto;
-		line-height: initial;
-		border-bottom: 0 !important;
-		padding: 0;
-		:global(.el-sub-menu__icon-arrow) {
-			display: none;
+	> :global(.el-sub-menu) {
+		> :global(.el-sub-menu__title) {
+			height: auto;
+			line-height: initial;
+			border-bottom: 0 !important;
+			padding: 0;
+			:global(.el-sub-menu__icon-arrow) {
+				display: none;
+			}
 		}
-	}
-
-	:global(.el-sub-menu__title:hover) {
-		background-color: transparent;
 	}
 }
 

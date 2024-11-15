@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@/stores/root.store';
@@ -24,7 +23,8 @@ import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nIconButton, N8nNavigationDropdown } from 'n8n-design-system';
+import { N8nNavigationDropdown } from 'n8n-design-system';
+import { onClickOutside } from '@vueuse/core';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -161,6 +161,7 @@ const mainMenuItems = computed(() => [
 		],
 	},
 ]);
+const createBtn = ref<typeof N8nNavigationDropdown | null>(null);
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
@@ -291,6 +292,9 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 };
 
 const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
+onClickOutside(createBtn, () => {
+	createBtn.value.close();
+});
 </script>
 
 <template>
@@ -314,7 +318,12 @@ const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
 			<template #header>
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-					<N8nNavigationDropdown data-test-id="universal-add" :menu @select="handleMenuSelect">
+					<N8nNavigationDropdown
+						ref="createBtn"
+						data-test-id="universal-add"
+						:menu="menu"
+						@select="handleMenuSelect"
+					>
 						<N8nIconButton icon="plus" type="secondary" outline />
 					</N8nNavigationDropdown>
 				</div>
