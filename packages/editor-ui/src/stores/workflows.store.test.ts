@@ -614,29 +614,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('setNodeValue', () => {
-		it('should update a node', () => {
-			const nodeName = 'Edit Fields';
-			workflowsStore.addNode({
-				parameters: {},
-				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				position: [680, 180],
-				typeVersion: 3.4,
-			});
-
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
-
-			workflowsStore.setNodeValue({ name: 'Edit Fields', key: 'executeOnce', value: true });
-
-			expect(workflowsStore.workflow.nodes[0].executeOnce).toBe(true);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
-		});
-	});
-
 	describe('setNodeValue()', () => {
 		it('should update a node', () => {
 			const nodeName = 'Edit Fields';
