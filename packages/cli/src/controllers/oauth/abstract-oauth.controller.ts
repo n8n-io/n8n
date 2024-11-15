@@ -32,6 +32,8 @@ type CsrfStateParam = {
 	userId?: string;
 };
 
+const MAX_CSRF_AGE = 5 * Time.minutes.toMilliseconds;
+
 // TODO: Flip this flag in v2
 // https://linear.app/n8n/issue/CAT-329
 export const skipAuthOnOAuthCallback = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK !== 'true';
@@ -163,12 +165,11 @@ export abstract class AbstractOAuthController {
 		state: CsrfStateParam,
 	) {
 		const token = new Csrf();
-		const MAX_AGE = 5 * Time.minutes.toMilliseconds;
 
 		return (
+			Date.now() - state.createdAt <= MAX_CSRF_AGE &&
 			decrypted.csrfSecret !== undefined &&
-			token.verify(decrypted.csrfSecret, state.token) &&
-			Date.now() - state.createdAt <= MAX_AGE
+			token.verify(decrypted.csrfSecret, state.token)
 		);
 	}
 

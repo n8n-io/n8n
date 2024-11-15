@@ -144,7 +144,6 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			return this.renderCallbackError(
 				res,
 				error.message,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				'body' in error ? jsonStringify(error.body) : undefined,
 			);
 		}
