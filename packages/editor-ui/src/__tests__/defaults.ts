@@ -1,6 +1,7 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
 	pruning: {
