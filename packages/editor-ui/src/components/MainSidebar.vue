@@ -161,7 +161,7 @@ const mainMenuItems = computed(() => [
 		],
 	},
 ]);
-const createBtn = ref<typeof N8nNavigationDropdown | null>(null);
+const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 

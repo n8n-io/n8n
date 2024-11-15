@@ -14,7 +14,7 @@ const route = useRoute();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 
-const createBtn = ref<typeof N8nNavigationDropdown | null>(null);
+const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const headerIcon = computed(() => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
