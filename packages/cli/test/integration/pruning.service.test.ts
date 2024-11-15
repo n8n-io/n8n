@@ -4,7 +4,7 @@ import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
-import { TIME } from '@/constants';
+import { Time } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -25,7 +25,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
-	const yesterday = new Date(Date.now() - TIME.DAY);
+	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
 	let workflow: WorkflowEntity;
 	let pruningConfig: PruningConfig;
 
