@@ -2,7 +2,13 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
+import {
+	ExpressionError,
+	type IPinData,
+	type IRunData,
+	type Workflow,
+	type IExecuteData,
+} from 'n8n-workflow';
 
 import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -215,6 +221,60 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should send dirty nodes for partial executions', async () => {
+			localStorage.setItem('PartialExecution.version', '1');
+			const composable = useRunWorkflow({ router });
+			const parentName = 'When clicking';
+			const executeName = 'Code';
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				[parentName]: [
+					{
+						startTime: 1,
+						executionTime: 0,
+						source: [],
+					},
+				],
+				[executeName]: [
+					{
+						startTime: 1,
+						executionTime: 8,
+						source: [
+							{
+								previousNode: parentName,
+							},
+						],
+					},
+				],
+			};
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+				getParentNodes: () => [parentName],
+				nodes: { [parentName]: {} },
+			} as unknown as Workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				{} as unknown as IWorkflowData,
+			);
+			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
+				data: {},
+				node: {},
+				source: null,
+			} as IExecuteData);
+
+			vi.mocked(workflowsStore).checkIfNodeHasChatParent.mockReturnValue(false);
+			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation((name: string) => {
+				if (name === executeName) return 2;
+				return undefined;
+			});
+
+			const { runWorkflow } = composable;
+
+			await runWorkflow({ destinationNode: 'Code 1', source: 'Node.executeNode' });
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ dirtyIds: [executeName] }),
+			);
 		});
 	});
 
