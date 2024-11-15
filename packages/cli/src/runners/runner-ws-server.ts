@@ -45,20 +45,15 @@ export class TaskRunnerWsServer {
 		}
 
 		this.heartbeatTimer = setInterval(() => {
-			this.runnerConnections.forEach((connection) => {
+			for (const [runnerId, connection] of this.runnerConnections.entries()) {
 				if (!connection.isAlive) {
-					const runnerId = Array.from(this.runnerConnections.entries()).find(
-						([_, c]) => c === connection,
-					)?.[0];
-					if (runnerId) void this.removeConnection(runnerId, 'failed-heartbeat-check');
-
+					void this.removeConnection(runnerId, 'failed-heartbeat-check');
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
 				}
-
 				connection.isAlive = false;
 				connection.ping();
-			});
+			}
 		}, heartbeatInterval * Time.seconds.toMilliseconds);
 	}
 
