@@ -306,6 +306,17 @@ onClickOutside(createBtn, () => {
 			[$style.sideMenuCollapsed]: isCollapsed,
 		}"
 	>
+		<div :class="$style.logo">
+			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon="plus" type="secondary" outline />
+			</N8nNavigationDropdown>
+		</div>
 		<div
 			id="collapse-change-button"
 			:class="['clickable', $style.sideMenuCollapseButton]"
@@ -316,17 +327,6 @@ onClickOutside(createBtn, () => {
 		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
-				<div :class="$style.logo">
-					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-					<N8nNavigationDropdown
-						ref="createBtn"
-						data-test-id="universal-add"
-						:menu="menu"
-						@select="handleMenuSelect"
-					>
-						<N8nIconButton icon="plus" type="secondary" outline />
-					</N8nNavigationDropdown>
-				</div>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
