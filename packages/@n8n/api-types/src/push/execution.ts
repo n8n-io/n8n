@@ -1,4 +1,4 @@
-import type { IRun, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 
 type ExecutionStarted = {
 	type: 'executionStarted';
@@ -16,8 +16,6 @@ type ExecutionFinished = {
 	type: 'executionFinished';
 	data: {
 		executionId: string;
-		data: IRun;
-		retryOf?: string;
 	};
 };
 

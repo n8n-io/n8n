@@ -181,7 +181,6 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import type { PushPayload } from '@n8n/api-types';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1728,10 +1727,6 @@ export default defineComponent({
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
 
-					this.workflowsStore.finishActiveExecution({
-						executionId,
-						data: { finished: true, stoppedAt: new Date() } as IRun,
-					});
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
@@ -1751,12 +1746,6 @@ export default defineComponent({
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,
 					} as IRun;
-					const pushData: PushPayload<'executionFinished'> = {
-						data: executedData,
-						executionId,
-						retryOf: execution.retryOf,
-					};
-					this.workflowsStore.finishActiveExecution(pushData);
 					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);

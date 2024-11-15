@@ -39,6 +39,7 @@ import type {
 	BinaryHelperFunctions,
 	CloseFunction,
 	ContextType,
+	ExecuteWorkflowData,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -78,6 +79,7 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 	ITaskDataConnections,
+	ITaskMetadata,
 	ITriggerFunctions,
 	IWebhookData,
 	IWebhookDescription,
@@ -109,6 +111,7 @@ import type {
 	ISupplyDataFunctions,
 	WebhookType,
 	SchedulingFunctions,
+	RelatedExecution,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -2721,6 +2724,7 @@ const addExecutionDataFunctions = async (
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
 	currentNodeRunIndex: number,
+	metadata?: ITaskMetadata,
 ): Promise<void> => {
 	if (connectionType === NodeConnectionType.Main) {
 		throw new ApplicationError('Setting type is not supported for main connection', {
@@ -2746,6 +2750,7 @@ const addExecutionDataFunctions = async (
 		if (taskData === undefined) {
 			return;
 		}
+		taskData.metadata = metadata;
 	}
 	taskData = taskData!;
 
@@ -3622,6 +3627,12 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
+			setMetadata: (metadata: ITaskMetadata): void => {
+				executeData.metadata = {
+					...(executeData.metadata ?? {}),
+					...metadata,
+				};
+			},
 			continueOnFail: () => {
 				return continueOnFail(node);
 			},
@@ -3643,23 +3654,28 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 				parentCallbackManager?: CallbackManager,
-			): Promise<any> {
+				options?: {
+					doNotWaitToFinish?: boolean;
+					parentExecution?: RelatedExecution;
+				},
+			): Promise<ExecuteWorkflowData> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
+						...options,
 						parentWorkflowId: workflow.id?.toString(),
 						inputData,
 						parentWorkflowSettings: workflow.settings,
 						node,
 						parentCallbackManager,
 					})
-					.then(
-						async (result) =>
-							await Container.get(BinaryDataService).duplicateBinaryData(
-								workflow.id,
-								additionalData.executionId!,
-								result,
-							),
-					);
+					.then(async (result) => {
+						const data = await Container.get(BinaryDataService).duplicateBinaryData(
+							workflow.id,
+							additionalData.executionId!,
+							result.data,
+						);
+						return { ...result, data };
+					});
 			},
 			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -3853,6 +3869,7 @@ export function getExecuteFunctions(
 				connectionType: NodeConnectionType,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
+				metadata?: ITaskMetadata,
 			): void {
 				addExecutionDataFunctions(
 					'output',
@@ -3864,6 +3881,7 @@ export function getExecuteFunctions(
 					node.name,
 					runIndex,
 					currentNodeRunIndex,
+					metadata,
 				).catch((error) => {
 					Logger.warn(
 						`There was a problem logging output data of node "${this.getNode().name}": ${
@@ -3972,7 +3990,11 @@ export function getSupplyDataFunctions(
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
 			parentCallbackManager?: CallbackManager,
-		) =>
+			options?: {
+				doNotWaitToFinish?: boolean;
+				parentExecution?: RelatedExecution;
+			},
+		): Promise<ExecuteWorkflowData> =>
 			await additionalData
 				.executeWorkflow(workflowInfo, additionalData, {
 					parentWorkflowId: workflow.id?.toString(),
@@ -3980,15 +4002,16 @@ export function getSupplyDataFunctions(
 					parentWorkflowSettings: workflow.settings,
 					node,
 					parentCallbackManager,
+					...options,
 				})
-				.then(
-					async (result) =>
-						await Container.get(BinaryDataService).duplicateBinaryData(
-							workflow.id,
-							additionalData.executionId!,
-							result,
-						),
-				),
+				.then(async (result) => {
+					const data = await Container.get(BinaryDataService).duplicateBinaryData(
+						workflow.id,
+						additionalData.executionId!,
+						result.data,
+					);
+					return { ...result, data };
+				}),
 		getNodeOutputs() {
 			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {
@@ -4143,6 +4166,7 @@ export function getSupplyDataFunctions(
 			connectionType: NodeConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][],
+			metadata?: ITaskMetadata,
 		): void {
 			addExecutionDataFunctions(
 				'output',
@@ -4154,6 +4178,7 @@ export function getSupplyDataFunctions(
 				node.name,
 				runIndex,
 				currentNodeRunIndex,
+				metadata,
 			).catch((error) => {
 				Logger.warn(
 					`There was a problem logging output data of node "${this.getNode().name}": ${

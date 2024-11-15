@@ -98,7 +98,7 @@ describe('SamlService', () => {
 			expect(samlService.reset).toHaveBeenCalledTimes(0);
 		});
 
-		test('does not call reset if no error is trown', async () => {
+		test('does not call reset if no error is thrown', async () => {
 			// ARRANGE
 			jest.spyOn(samlService, 'reset');
 

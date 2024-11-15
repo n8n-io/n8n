@@ -10,7 +10,12 @@ import type { Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+	ITaskMetadata,
+} from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
@@ -220,8 +225,24 @@ export function logWrapper(
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
+						const executionId: string | undefined = response[0]?.metadata?.executionId as string;
+						const workflowId: string | undefined = response[0]?.metadata?.workflowId as string;
+
+						const metadata: ITaskMetadata = {};
+						if (executionId && workflowId) {
+							metadata.subExecution = {
+								executionId,
+								workflowId,
+							};
+						}
+
 						logAiEvent(executeFunctions, 'ai-documents-retrieved', { query });
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(
+							connectionType,
+							index,
+							[[{ json: { response } }]],
+							metadata,
+						);
 						return response;
 					};
 				}

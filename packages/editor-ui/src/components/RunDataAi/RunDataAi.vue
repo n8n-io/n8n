@@ -64,6 +64,7 @@ function getReferencedData(
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
+					subExecution: taskData.metadata?.subExecution,
 				},
 			});
 		});

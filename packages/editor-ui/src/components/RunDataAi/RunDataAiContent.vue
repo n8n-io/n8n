@@ -11,6 +11,7 @@ import type {
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@/composables/useI18n';
 
 interface RunMeta {
@@ -19,6 +20,10 @@ interface RunMeta {
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
 	connectionType: NodeConnectionType;
+	subExecution?: {
+		workflowId: string;
+		executionId: string;
+	};
 }
 const props = defineProps<{
 	inputData: IAiData;
@@ -28,6 +33,7 @@ const props = defineProps<{
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 const i18n = useI18n();
 
 type TokenUsageData = {
@@ -78,6 +84,7 @@ function extractRunMeta(run: IAiDataContent) {
 		node: nodeType,
 		type: run.inOut,
 		connectionType: run.type,
+		subExecution: run.metadata?.subExecution,
 	};
 
 	return runMeta;
@@ -133,6 +140,22 @@ const outputError = computed(() => {
 								})
 							}}
 						</n8n-tooltip>
+					</li>
+					<li v-if="runMeta?.subExecution">
+						<a
+							:href="resolveRelatedExecutionUrl(runMeta)"
+							target="_blank"
+							@click.stop="trackOpeningRelatedExecution(runMeta, 'ai')"
+						>
+							<N8nIcon icon="external-link-alt" size="xsmall" />
+							{{
+								i18n.baseText('runData.openSubExecution', {
+									interpolate: {
+										id: runMeta.subExecution?.executionId,
+									},
+								})
+							}}
+						</a>
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{

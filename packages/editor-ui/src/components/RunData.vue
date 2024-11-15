@@ -9,6 +9,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunData,
 	IRunExecutionData,
+	ITaskMetadata,
 	NodeError,
 	NodeHint,
 	Workflow,
@@ -77,6 +78,7 @@ import {
 } from 'n8n-design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -180,6 +182,7 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const node = toRef(props, 'node');
 
@@ -315,7 +318,9 @@ const workflowRunData = computed(() => {
 	}
 	return null;
 });
-const dataCount = computed(() => getDataCount(props.runIndex, currentOutputIndex.value));
+const dataCount = computed(() =>
+	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
 
 const unfilteredDataCount = computed(() =>
 	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
@@ -505,6 +510,28 @@ const pinButtonDisabled = computed(
 		isReadOnlyRoute.value ||
 		readOnlyEnv.value,
 );
+
+const activeTaskMetadata = computed((): ITaskMetadata | null => {
+	if (!node.value) {
+		return null;
+	}
+
+	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
+});
+
+const hasReleatedExectuion = computed((): boolean => {
+	return Boolean(
+		activeTaskMetadata.value?.subExecution || activeTaskMetadata.value?.parentExecution,
+	);
+});
+
+const hasInputOverwrite = computed((): boolean => {
+	if (!node.value) {
+		return false;
+	}
+	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
+	return Boolean(taskData?.inputOverride);
+});
 
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;
@@ -953,6 +980,10 @@ function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
 }
 
 function getRunLabel(option: number) {
+	if (!node.value) {
+		return;
+	}
+
 	let itemsCount = 0;
 	for (let i = 0; i <= maxOutputIndex.value; i++) {
 		itemsCount += getPinDataOrLiveData(getRawInputData(option - 1, i)).length;
@@ -961,7 +992,18 @@ function getRunLabel(option: number) {
 		adjustToNumber: itemsCount,
 		interpolate: { count: itemsCount },
 	});
-	const itemsLabel = itemsCount > 0 ? ` (${items})` : '';
+
+	const metadata = workflowRunData.value?.[node.value.name]?.[option - 1]?.metadata ?? null;
+	const subexecutions = metadata?.subExecutionsCount
+		? i18n.baseText('ndv.output.andSubExecutions', {
+				adjustToNumber: metadata.subExecutionsCount,
+				interpolate: {
+					count: metadata.subExecutionsCount,
+				},
+			})
+		: '';
+
+	const itemsLabel = itemsCount > 0 ? ` (${items}${subexecutions})` : '';
 	return option + i18n.baseText('ndv.output.of') + (maxRunIndex.value + 1) + itemsLabel;
 }
 
@@ -1185,6 +1227,22 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
+	if (task.parentExecution) {
+		return i18n.baseText('runData.openParentExecution', {
+			interpolate: { id: task.parentExecution.executionId },
+		});
+	}
+
+	if (task.subExecution) {
+		return i18n.baseText('runData.openSubExecution', {
+			interpolate: { id: task.subExecution.executionId },
+		});
+	}
+
+	return;
+}
+
 defineExpose({ enterEditMode });
 </script>
 
@@ -1311,42 +1369,58 @@ defineExpose({ enterEditMode });
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 		>
-			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
+			<div :class="$style.runSelectorInner">
+				<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
 
-			<N8nSelect
-				:model-value="runIndex"
-				:class="$style.runSelectorInner"
-				size="small"
-				teleported
-				data-test-id="run-selector"
-				@update:model-value="onRunIndexChange"
-				@click.stop
-			>
-				<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
-				<N8nOption
-					v-for="option in maxRunIndex + 1"
-					:key="option"
-					:label="getRunLabel(option)"
-					:value="option - 1"
-				></N8nOption>
-			</N8nSelect>
-
-			<N8nTooltip v-if="canLinkRuns" placement="right">
-				<template #content>
-					{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-				</template>
-				<N8nIconButton
-					:icon="linkedRuns ? 'unlink' : 'link'"
-					class="linkRun"
-					text
-					type="tertiary"
+				<N8nSelect
+					:model-value="runIndex"
+					:class="$style.runSelectorSelect"
 					size="small"
-					data-test-id="link-run"
-					@click="toggleLinkRuns"
-				/>
-			</N8nTooltip>
+					teleported
+					data-test-id="run-selector"
+					@update:model-value="onRunIndexChange"
+					@click.stop
+				>
+					<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
+					<N8nOption
+						v-for="option in maxRunIndex + 1"
+						:key="option"
+						:label="getRunLabel(option)"
+						:value="option - 1"
+					></N8nOption>
+				</N8nSelect>
 
-			<slot name="run-info"></slot>
+				<N8nTooltip v-if="canLinkRuns" placement="right">
+					<template #content>
+						{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+					</template>
+					<N8nIconButton
+						:icon="linkedRuns ? 'unlink' : 'link'"
+						class="linkRun"
+						text
+						type="tertiary"
+						size="small"
+						data-test-id="link-run"
+						@click="toggleLinkRuns"
+					/>
+				</N8nTooltip>
+
+				<slot name="run-info"></slot>
+			</div>
+
+			<a
+				v-if="
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+				"
+				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
+			</a>
 		</div>
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
@@ -1400,13 +1474,37 @@ defineExpose({ enterEditMode });
 				}}
 			</N8nText>
 			<N8nText v-else :class="$style.itemsText">
-				{{
-					i18n.baseText('ndv.output.items', {
-						adjustToNumber: dataCount,
-						interpolate: { count: dataCount },
-					})
-				}}
+				<span>
+					{{
+						i18n.baseText('ndv.output.items', {
+							adjustToNumber: dataCount,
+							interpolate: { count: dataCount },
+						})
+					}}
+				</span>
+				<span v-if="activeTaskMetadata?.subExecutionsCount">
+					{{
+						i18n.baseText('ndv.output.andSubExecutions', {
+							adjustToNumber: activeTaskMetadata.subExecutionsCount,
+							interpolate: { count: activeTaskMetadata.subExecutionsCount },
+						})
+					}}
+				</span>
 			</N8nText>
+
+			<a
+				v-if="
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+				"
+				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
+			</a>
 		</div>
 
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
@@ -1873,6 +1971,7 @@ defineExpose({ enterEditMode });
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 	padding-bottom: var(--spacing-s);
+	flex-flow: wrap;
 
 	.itemsText {
 		flex-shrink: 0;
@@ -1894,24 +1993,31 @@ defineExpose({ enterEditMode });
 }
 
 .runSelector {
+	display: flex;
+	align-items: center;
+	flex-flow: wrap;
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
-	padding-bottom: var(--spacing-s);
-	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: center;
+	margin-bottom: var(--spacing-s);
+	gap: var(--spacing-3xs);
 
 	:global(.el-input--suffix .el-input__inner) {
 		padding-right: var(--spacing-l);
 	}
 }
 
-.search {
-	margin-left: auto;
+.runSelectorInner {
+	display: flex;
+	gap: var(--spacing-4xs);
+	align-items: center;
 }
 
-.runSelectorInner {
-	max-width: 172px;
+.runSelectorSelect {
+	max-width: 205px;
+}
+
+.search {
+	margin-left: auto;
 }
 
 .pagination {
@@ -2070,6 +2176,15 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--spacing-s);
+}
+
+.relatedExecutionInfo {
+	font-size: var(--font-size-s);
+	margin-left: var(--spacing-3xs);
+
+	svg {
+		padding-bottom: 2px;
+	}
 }
 </style>
 
