@@ -1196,8 +1196,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		uiStore.stateIsDirty = true;
 
-		console.log(updateInformation);
-
 		updateNodeAtIndex(nodeIndex, {
 			[updateInformation.key]: updateInformation.value,
 		});
