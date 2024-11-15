@@ -40,7 +40,7 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByTestId('test-trigger')).toBeVisible();
 		expect(queryByTestId('navigation-menu-item')).not.toBeVisible();
 
-		await userEvent.hover(getByTestId('test-trigger'));
+		await userEvent.click(getByTestId('test-trigger'));
 		await waitFor(() => expect(queryByTestId('navigation-menu-item')).toBeVisible());
 	});
 
@@ -64,7 +64,7 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByTestId('test-trigger')).toBeVisible();
 		expect(queryByTestId('navigation-submenu')).not.toBeVisible();
 
-		await userEvent.hover(getByTestId('test-trigger'));
+		await userEvent.click(getByTestId('test-trigger'));
 
 		await waitFor(() => expect(getByTestId('navigation-submenu')).toBeVisible());
 
