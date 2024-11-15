@@ -35,7 +35,6 @@ import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
-import type { PushPayload } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 
 const FORM_RELOAD = 'n8n_redirect_to_next_form_test_page';
@@ -537,10 +536,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			if (execution === undefined) {
 				// execution finished but was not saved (e.g. due to low connectivity)
-				workflowsStore.finishActiveExecution({
-					executionId,
-					data: { finished: true, stoppedAt: new Date() } as IRun,
-				});
 				workflowsStore.executingNode.length = 0;
 				uiStore.removeActiveAction('workflowRunning');
 
@@ -559,12 +554,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IRun;
-				const pushData: PushPayload<'executionFinished'> = {
-					data: executedData,
-					executionId,
-					retryOf: execution.retryOf,
-				};
-				workflowsStore.finishActiveExecution(pushData);
 				workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 				workflowsStore.executingNode.length = 0;
 				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);

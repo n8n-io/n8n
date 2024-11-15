@@ -8,13 +8,7 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type {
-	IExecutionResponse,
-	IExecutionsCurrentSummaryExtended,
-	INodeUi,
-	IWorkflowDb,
-	IWorkflowSettings,
-} from '@/Interface';
+import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
