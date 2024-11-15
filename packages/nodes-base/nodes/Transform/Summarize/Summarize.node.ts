@@ -32,6 +32,17 @@ export class Summarize implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		// [ria]
+		hints: [
+			{
+				message:
+					"The field '$aggregation.field' does not exist in any items. Consider turning on 'Continue if Field Not Found' in options.",
+				displayCondition: '={{ $parameter["fieldsToSummarize"] }}',
+				whenToDisplay: 'afterExecution',
+				location: 'outputPane',
+			},
+		],
+		// [ria]
 		properties: [
 			{
 				displayName: 'Fields to Summarize',
@@ -315,16 +326,17 @@ export class Summarize implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		if (nodeVersion < 2.1) {
-			try {
-				checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
-			} catch (error) {
-				if (options.continueIfFieldNotFound) {
-					const itemData = generatePairedItemData(items.length);
+			// try {
+			const fieldNotFound = checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+			// if this call returns something (the not-found field name)
+			// make it return something instead of throwing an error
+			// } catch (error) {
+			if (options.continueIfFieldNotFound || fieldNotFound) {
+				const itemData = generatePairedItemData(items.length);
 
-					return [[{ json: {}, pairedItem: itemData }]];
-				} else {
-					throw error;
-				}
+				return [[{ json: {}, pairedItem: itemData }]];
+			} else {
+				// throw error; // show hints instead
 			}
 		}
 

@@ -1,10 +1,5 @@
 import get from 'lodash/get';
-import {
-	type IDataObject,
-	type GenericValue,
-	type IExecuteFunctions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IDataObject, type GenericValue, type IExecuteFunctions } from 'n8n-workflow';
 
 type AggregationType =
 	| 'append'
@@ -94,6 +89,7 @@ export const fieldValueGetter = (disableDotNotation?: boolean) => {
 };
 
 export function checkIfFieldExists(
+	// add tests that check that no error is thrown and instead warning is issued
 	this: IExecuteFunctions,
 	items: IDataObject[],
 	aggregations: Aggregations,
@@ -105,10 +101,13 @@ export function checkIfFieldExists(
 		}
 		const exist = items.some((item) => getValue(item, aggregation.field) !== undefined);
 		if (!exist) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`The field '${aggregation.field}' does not exist in any items`,
-			);
+			return aggregation.field;
+			// throw new NodeOperationError(
+			// turn this into warning instead of error will return early
+			// return aggregation.field -> field name can be used in the hint description! but if it returns... does it end the iteration!?
+			// 	this.getNode(),
+			// 	`The field '${aggregation.field}' does not exist in any items`,
+			// );
 		}
 	}
 }
