@@ -132,14 +132,12 @@ export class TestDefinitionsController {
 
 	@Post('/:id/run')
 	async runTest(req: TestDefinitionsRequest.Run) {
-		if (!isPositiveInteger(req.params.id)) {
-			throw new BadRequestError('Test ID is not a number');
-		}
+		const { id: testDefinitionId } = req.params;
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, Number(req.params.id), workflowIds);
+		void this.testRunnerService.runTest(req.user, testDefinitionId, workflowIds);
 
 		return { success: true };
 	}
