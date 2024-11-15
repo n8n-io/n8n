@@ -113,6 +113,12 @@ defineExpose({
 				display: none;
 			}
 		}
+
+		&:global(.is-active) {
+			:global(.el-sub-menu__title) {
+				border: 0;
+			}
+		}
 	}
 }
 
