@@ -30,9 +30,7 @@ export class ErrorReporter {
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
 
-		process.on('uncaughtException', (error) => {
-			captureException(error);
-		});
+		process.on('uncaughtException', captureException);
 
 		const enabledIntegrations = [
 			'InboundFilters',
