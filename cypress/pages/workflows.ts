@@ -23,7 +23,6 @@ export class WorkflowsPage extends BasePage {
 			cy.get('@submenu')
 				.should('be.visible')
 				.within((submenu) => {
-
 					// If submenu has another submenu
 					if (submenu.find('[data-test-id="navigation-submenu"]').length) {
 						cy.wrap(submenu)
@@ -40,7 +39,10 @@ export class WorkflowsPage extends BasePage {
 							.filter(':contains("Personal")')
 							.as('button');
 					} else {
-						cy.wrap(submenu).find('[data-test-id="navigation-menu-item"]').filter(':contains("Workflow")').as('button');
+						cy.wrap(submenu)
+							.find('[data-test-id="navigation-menu-item"]')
+							.filter(':contains("Workflow")')
+							.as('button');
 					}
 				});
 
