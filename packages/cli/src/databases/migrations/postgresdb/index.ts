@@ -72,6 +72,7 @@ import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/172
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
 import { AddDescriptionToTestDefinition1731404028106 } from '../common/1731404028106-AddDescriptionToTestDefinition';
 import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
+import { CreateTestRun1731682242905 } from '../common/1731682242905-CreateTestRunTable';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -146,4 +147,5 @@ export const postgresMigrations: Migration[] = [
 	AddDescriptionToTestDefinition1731404028106,
 	MigrateTestDefinitionKeyToString1731582748663,
 	CreateTestMetricTable1732271325258,
+	CreateTestRun1731682242905,
 ];
