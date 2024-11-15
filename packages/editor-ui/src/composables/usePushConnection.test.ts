@@ -1,9 +1,6 @@
-import { stringify } from 'flatted';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
-import { mock } from 'vitest-mock-extended';
-import type { WorkflowOperationError } from 'n8n-workflow';
 
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -11,7 +8,7 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables/useToast';
-import type { IExecutionResponse } from '@/Interface';
+import type { WorkflowOperationError } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -138,40 +135,34 @@ describe('usePushConnection()', () => {
 		});
 
 		describe('executionFinished', () => {
-			const executionId = '1';
-			const event: PushMessage = {
-				type: 'executionFinished',
-				data: { executionId: '1' },
-			};
-
-			beforeEach(() => {
-				workflowsStore.activeExecutionId = executionId;
-				uiStore.isActionActive.workflowRunning = true;
-			});
-
 			it('should handle executionFinished event correctly', async () => {
-				const spy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(
-					mock<IExecutionResponse>({
-						id: executionId,
-						data: stringify({
-							resultData: {
-								runData: {},
+				const event: PushMessage = {
+					type: 'executionFinished',
+					data: {
+						executionId: '1',
+						data: {
+							data: {
+								resultData: {
+									runData: {},
+								},
 							},
-						}) as unknown as IExecutionResponse['data'],
-						finished: true,
-						mode: 'manual',
-						startedAt: new Date(),
-						stoppedAt: new Date(),
-						status: 'success',
-					}),
-				);
+							finished: true,
+							mode: 'manual',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							status: 'success',
+						},
+					},
+				};
+
+				workflowsStore.activeExecutionId = '1';
+				uiStore.isActionActive.workflowRunning = true;
 
 				const result = await pushConnection.pushMessageReceived(event);
 
 				expect(result).toBeTruthy();
 				expect(workflowsStore.workflowExecutionData).toBeDefined();
 				expect(uiStore.isActionActive['workflowRunning']).toBeTruthy();
-				expect(spy).toHaveBeenCalledWith(executionId);
 
 				expect(toast.showMessage).toHaveBeenCalledWith({
 					title: 'Workflow executed successfully',
@@ -180,29 +171,35 @@ describe('usePushConnection()', () => {
 			});
 
 			it('should handle isManualExecutionCancelled correctly', async () => {
-				const spy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(
-					mock<IExecutionResponse>({
-						id: executionId,
-						data: stringify({
-							startData: {},
-							resultData: {
-								runData: {
-									'Last Node': [],
+				const event: PushMessage = {
+					type: 'executionFinished',
+					data: {
+						executionId: '1',
+						data: {
+							data: {
+								startData: {},
+								resultData: {
+									runData: {
+										'Last Node': [],
+									},
+									lastNodeExecuted: 'Last Node',
+									error: {
+										message:
+											'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
+										name: 'NodeApiError',
+										node: 'Last Node',
+									} as unknown as WorkflowOperationError,
 								},
-								lastNodeExecuted: 'Last Node',
-								error: {
-									message:
-										'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
-									name: 'NodeApiError',
-									node: 'Last Node',
-								} as unknown as WorkflowOperationError,
 							},
-						}) as unknown as IExecutionResponse['data'],
-						mode: 'manual',
-						startedAt: new Date(),
-						status: 'running',
-					}),
-				);
+							startedAt: new Date(),
+							mode: 'manual',
+							status: 'running',
+						},
+					},
+				};
+
+				workflowsStore.activeExecutionId = '1';
+				uiStore.isActionActive['workflowRunning'] = true;
 
 				const result = await pushConnection.pushMessageReceived(event);
 
@@ -218,7 +215,6 @@ describe('usePushConnection()', () => {
 				expect(result).toBeTruthy();
 				expect(workflowsStore.workflowExecutionData).toBeDefined();
 				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
-				expect(spy).toHaveBeenCalledWith(executionId);
 			});
 		});
 	});

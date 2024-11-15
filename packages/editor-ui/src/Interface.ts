@@ -401,10 +401,15 @@ export interface IExecutionsListResponse {
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
+	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
+	retryOf?: string | null;
+	retrySuccessId?: string | null;
 	startedAt: Date;
+	stoppedAt?: Date;
 	workflowId: string;
+	workflowName?: string;
 }
 
 export interface IExecutionsStopData {
@@ -843,12 +848,14 @@ export interface IUsedCredential {
 }
 
 export interface WorkflowsState {
+	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeWorkflowExecution: ExecutionSummary | null;
 	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
+	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
@@ -1085,6 +1092,11 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
+export interface IWorkflowsState {
+	currentWorkflowExecutions: ExecutionSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
+	finishedExecutionsCount: number;
+}
 export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }

@@ -1,5 +1,5 @@
-import { stringify } from 'flatted';
 import type { IDataObject, IPinData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { clickExecuteWorkflowButton } from '../composables/workflow';
 
@@ -39,35 +39,41 @@ export function createMockNodeExecutionData(
 	};
 }
 
-function createMockWorkflowExecutionData({
+export function createMockWorkflowExecutionData({
+	executionId,
 	runData,
+	pinData = {},
 	lastNodeExecuted,
 }: {
+	executionId: string;
 	runData: Record<string, ITaskData | ITaskData[]>;
 	pinData?: IPinData;
 	lastNodeExecuted: string;
 }) {
 	return {
-		data: stringify({
-			startData: {},
-			resultData: {
-				runData,
-				pinData: {},
-				lastNodeExecuted,
+		executionId,
+		data: {
+			data: {
+				startData: {},
+				resultData: {
+					runData,
+					pinData,
+					lastNodeExecuted,
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
 			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		}),
-		mode: 'manual',
-		startedAt: new Date().toISOString(),
-		stoppedAt: new Date().toISOString(),
-		status: 'success',
-		finished: true,
+			mode: 'manual',
+			startedAt: new Date().toISOString(),
+			stoppedAt: new Date().toISOString(),
+			status: 'success',
+			finished: true,
+		},
 	};
 }
 
@@ -75,12 +81,14 @@ export function runMockWorkflowExecution({
 	trigger,
 	lastNodeExecuted,
 	runData,
+	workflowExecutionData,
 }: {
 	trigger?: () => void;
 	lastNodeExecuted: string;
 	runData: Array<ReturnType<typeof createMockNodeExecutionData>>;
+	workflowExecutionData?: ReturnType<typeof createMockWorkflowExecutionData>;
 }) {
-	const executionId = Math.floor(Math.random() * 1_000_000).toString();
+	const executionId = nanoid(8);
 
 	cy.intercept('POST', '/rest/workflows/**/run?**', {
 		statusCode: 201,
@@ -117,17 +125,13 @@ export function runMockWorkflowExecution({
 		resolvedRunData[nodeName] = nodeExecution[nodeName];
 	});
 
-	cy.intercept('GET', `/rest/executions/${executionId}`, {
-		statusCode: 200,
-		body: {
-			data: createMockWorkflowExecutionData({
-				lastNodeExecuted,
-				runData: resolvedRunData,
-			}),
-		},
-	}).as('getExecution');
-
-	cy.push('executionFinished', { executionId });
-
-	cy.wait('@getExecution');
+	cy.push(
+		'executionFinished',
+		createMockWorkflowExecutionData({
+			executionId,
+			lastNodeExecuted,
+			runData: resolvedRunData,
+			...workflowExecutionData,
+		}),
+	);
 }
