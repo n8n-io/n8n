@@ -49,7 +49,7 @@ export class ErrorReporter {
 			enableTracing: false,
 			serverName: this.sentryConfig.deploymentName,
 			beforeBreadcrumb: () => null,
-			beforeSend: (event, hint) => this.beforeSend(event, hint),
+			beforeSend: async (event, hint) => await this.beforeSend(event, hint),
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => ENABLED_INTEGRATIONS.includes(name)),
 				new RewriteFrames({ root: process.cwd() }),
@@ -67,8 +67,12 @@ export class ErrorReporter {
 		await close(1000);
 	}
 
-	beforeSend(event: ErrorEvent, { originalException }: EventHint) {
+	async beforeSend(event: ErrorEvent, { originalException }: EventHint) {
 		if (!originalException) return null;
+
+		if (originalException instanceof Promise) {
+			originalException = await originalException.catch((error) => error as Error);
+		}
 
 		if (originalException instanceof ApplicationError) {
 			const { level, extra, tags } = originalException;
