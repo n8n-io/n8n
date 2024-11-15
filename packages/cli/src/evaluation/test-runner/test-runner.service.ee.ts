@@ -69,7 +69,7 @@ export class TestRunnerService {
 		return await executePromise;
 	}
 
-	public async runTest(user: User, testId: number, accessibleWorkflowIds: string[]): Promise<any> {
+	public async runTest(user: User, testId: string, accessibleWorkflowIds: string[]): Promise<any> {
 		const test = await this.testDefinitionsService.findOne(testId, accessibleWorkflowIds);
 
 		if (!test) {
