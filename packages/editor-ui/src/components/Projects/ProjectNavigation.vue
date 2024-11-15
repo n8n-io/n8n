@@ -19,7 +19,7 @@ const projectsStore = useProjectsStore();
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
-	label: locale.baseText('projects.menu.home'),
+	label: locale.baseText('projects.menu.overview'),
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },

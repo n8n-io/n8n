@@ -11,6 +11,7 @@ import type {
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -18,6 +19,10 @@ interface RunMeta {
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
 	connectionType: NodeConnectionType;
+	subExecution?: {
+		workflowId: string;
+		executionId: string;
+	};
 }
 const props = defineProps<{
 	inputData: IAiData;
@@ -26,6 +31,8 @@ const props = defineProps<{
 
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 type TokenUsageData = {
 	completionTokens: number;
@@ -75,6 +82,7 @@ function extractRunMeta(run: IAiDataContent) {
 		node: nodeType,
 		type: run.inOut,
 		connectionType: run.type,
+		subExecution: run.metadata?.subExecution,
 	};
 
 	return runMeta;
@@ -130,6 +138,22 @@ const outputError = computed(() => {
 								})
 							}}
 						</n8n-tooltip>
+					</li>
+					<li v-if="runMeta?.subExecution">
+						<a
+							:href="resolveRelatedExecutionUrl(runMeta)"
+							target="_blank"
+							@click.stop="trackOpeningRelatedExecution(runMeta, 'ai')"
+						>
+							<N8nIcon icon="external-link-alt" size="xsmall" />
+							{{
+								$locale.baseText('runData.openSubExecution', {
+									interpolate: {
+										id: runMeta.subExecution?.executionId,
+									},
+								})
+							}}
+						</a>
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{

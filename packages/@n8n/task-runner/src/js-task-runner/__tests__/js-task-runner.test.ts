@@ -36,6 +36,12 @@ describe('JsTaskRunner', () => {
 				...defaultConfig.jsRunnerConfig,
 				...opts,
 			},
+			sentryConfig: {
+				sentryDsn: '',
+				deploymentName: '',
+				environment: '',
+				n8nVersion: '',
+			},
 		});
 
 	const defaultTaskRunner = createRunnerWithOpts();

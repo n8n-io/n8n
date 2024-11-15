@@ -1,4 +1,8 @@
-export const xsdXenc = `<?xml version="1.0" encoding="utf-8"?>
+import type { XMLFileInfo } from 'xmllint-wasm';
+
+export const xmlFileInfo: XMLFileInfo = {
+	fileName: 'xenc-schema.xsd',
+	contents: `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE schema  PUBLIC "-//W3C//DTD XMLSchema 200102//EN"
  "http://www.w3.org/2001/XMLSchema.dtd"
  [
@@ -142,4 +146,5 @@ export const xsdXenc = `<?xml version="1.0" encoding="utf-8"?>
       <anyAttribute namespace="http://www.w3.org/XML/1998/namespace"/>
     </complexType>
 
-</schema>`;
+</schema>`,
+};
