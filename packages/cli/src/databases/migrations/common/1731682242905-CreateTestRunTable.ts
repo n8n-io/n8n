@@ -11,7 +11,7 @@ export class CreateTestRun1731682242905 implements ReversibleMigration {
 				column('status').varchar().notNull,
 				column('runAt').timestamp(),
 				column('completedAt').timestamp(),
-				column('metrics').json.notNull,
+				column('metrics').json,
 			)
 			.withIndexOn('testDefinitionId')
 			.withForeignKey('testDefinitionId', {

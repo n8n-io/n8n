@@ -1,5 +1,5 @@
 import { Column, Entity, Index, ManyToOne, RelationId } from '@n8n/typeorm';
-import { IDataObject } from 'n8n-workflow/src';
+import { IDataObject } from 'n8n-workflow';
 
 import {
 	datetimeColumnType,
@@ -32,6 +32,6 @@ export class TestRun extends WithTimestampsAndStringId {
 	@Column(datetimeColumnType)
 	completedAt: Date;
 
-	@Column(jsonColumnType)
+	@Column(jsonColumnType, { nullable: true })
 	metrics: IDataObject;
 }

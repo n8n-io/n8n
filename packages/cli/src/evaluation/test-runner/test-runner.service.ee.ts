@@ -148,7 +148,7 @@ export class TestRunnerService {
 
 		// 0. Create new Test Run
 		const testRun = this.testRunRepository.create({
-			testDefinitionId: test.id,
+			testDefinition: { id: test.id },
 			status: 'new',
 		});
 
