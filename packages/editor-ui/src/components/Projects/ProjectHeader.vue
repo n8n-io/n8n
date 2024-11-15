@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, type Ref, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nNavigationDropdown } from 'n8n-design-system';
-import { onClickOutside } from '@vueuse/core';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -61,8 +61,8 @@ const createLabel = computed(() => {
 	}
 });
 
-onClickOutside(createBtn, () => {
-	createBtn.value.close();
+onClickOutside(createBtn as Ref<VueInstance>, () => {
+	createBtn.value?.close();
 });
 </script>
 

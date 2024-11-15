@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -24,7 +24,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { N8nNavigationDropdown } from 'n8n-design-system';
-import { onClickOutside } from '@vueuse/core';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -292,8 +292,8 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 };
 
 const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
-onClickOutside(createBtn, () => {
-	createBtn.value.close();
+onClickOutside(createBtn as Ref<VueInstance>, () => {
+	createBtn.value?.close();
 });
 </script>
 
