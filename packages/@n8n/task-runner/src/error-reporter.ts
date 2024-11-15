@@ -32,7 +32,7 @@ export class ErrorReporter {
 
 		process.on('uncaughtException', captureException);
 
-		const enabledIntegrations = [
+		const ENABLED_INTEGRATIONS = [
 			'InboundFilters',
 			'FunctionToString',
 			'LinkedErrors',
@@ -51,7 +51,7 @@ export class ErrorReporter {
 			beforeBreadcrumb: () => null,
 			beforeSend: (event, hint) => this.beforeSend(event, hint),
 			integrations: (integrations) => [
-				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
+				...integrations.filter(({ name }) => ENABLED_INTEGRATIONS.includes(name)),
 				new RewriteFrames({ root: process.cwd() }),
 			],
 		});
