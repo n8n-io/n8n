@@ -17,7 +17,8 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () =>
 			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.el-tag'),
+		tagPills: () =>
+			cy.get('[data-test-id="workflow-tags-container"] span.el-tag:not(.count-container)'),
 		nthTagPill: (n: number) =>
 			cy.get(`[data-test-id="workflow-tags-container"] span.el-tag:nth-child(${n})`),
 		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
