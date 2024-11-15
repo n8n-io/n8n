@@ -1,4 +1,8 @@
-export const xsdXmldsigCore = `<?xml version="1.0" encoding="utf-8"?>
+import type { XMLFileInfo } from 'xmllint-wasm';
+
+export const xmlFileInfo: XMLFileInfo = {
+	fileName: 'xmldsig-core-schema.xsd',
+	contents: `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE schema
   PUBLIC "-//W3C//DTD XMLSchema 200102//EN" "http://www.w3.org/2001/XMLSchema.dtd"
  [
@@ -315,4 +319,5 @@ export const xsdXmldsigCore = `<?xml version="1.0" encoding="utf-8"?>
 
 <!-- End Signature -->
 
-</schema>`;
+</schema>`,
+};

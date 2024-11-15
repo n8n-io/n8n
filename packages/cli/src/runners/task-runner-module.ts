@@ -26,7 +26,7 @@ export class TaskRunnerModule {
 	constructor(private readonly runnerConfig: TaskRunnersConfig) {}
 
 	async start() {
-		a.ok(!this.runnerConfig.disabled, 'Task runner is disabled');
+		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
 
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
@@ -54,7 +54,7 @@ export class TaskRunnerModule {
 	private async loadTaskManager() {
 		const { TaskManager } = await import('@/runners/task-managers/task-manager');
 		const { LocalTaskManager } = await import('@/runners/task-managers/local-task-manager');
-		this.taskManager = new LocalTaskManager();
+		this.taskManager = Container.get(LocalTaskManager);
 		Container.set(TaskManager, this.taskManager);
 	}
 

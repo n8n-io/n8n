@@ -2,6 +2,7 @@ import { isNumber, isValidNodeConnectionType } from '@/utils/typeGuards';
 import {
 	LIST_LIKE_NODE_OPERATIONS,
 	NODE_OUTPUT_DEFAULT_KEY,
+	NODE_POSITION_CONFLICT_ALLOWLIST,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -582,6 +583,11 @@ export const getNewNodePosition = (
 		conflictFound = false;
 		for (i = 0; i < nodes.length; i++) {
 			node = nodes[i];
+
+			if (NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
+				continue;
+			}
+
 			if (!canUsePosition(node.position, targetPosition)) {
 				conflictFound = true;
 				break;

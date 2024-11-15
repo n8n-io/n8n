@@ -22,6 +22,7 @@ import DraggableTarget from './DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { N8nInput, N8nText } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -154,6 +155,7 @@ async function onDrop(expression: string, event: MouseEvent) {
 					:mapping-enabled="!isReadOnly"
 					:connection-type="NodeConnectionType.Main"
 					pane-type="input"
+					context="modal"
 				/>
 			</div>
 
