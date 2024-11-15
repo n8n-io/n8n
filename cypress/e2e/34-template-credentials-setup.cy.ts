@@ -185,7 +185,7 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 			templateCredentialsSetupPage.getters.skipLink().click();
 
-			getSetupWorkflowCredentialsButton().click();
+			getSetupWorkflowCredentialsButton().click({ force: true });
 			setupCredsModal.getWorkflowCredentialsModal().should('be.visible');
 
 			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
