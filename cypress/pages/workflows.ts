@@ -15,49 +15,36 @@ export class WorkflowsPage extends BasePage {
 				.should('have.attr', 'aria-describedby');
 
 			cy.get('@menuitem')
+				.should('be.visible')
 				.invoke('attr', 'aria-describedby')
 				.then((el) => cy.get(`[id="${el}"]`))
 				.as('submenu');
 
-			cy.get('@submenu').within((submenu) => {
-				cy.wrap(submenu)
-					.find('[data-test-id="navigation-submenu"]')
-					.should('be.visible')
-					.filter(':contains("Workflow")')
-					.as('child')
-					.click();
+			cy.get('@submenu')
+				.should('be.visible')
+				.within((submenu) => {
 
-				cy.get('@child')
-					.find('[data-test-id="navigation-submenu-item"]')
-					.should('be.visible')
-					.filter(':contains("Personal")')
-					.as('button');
-			});
+					// If submenu has another submenu
+					if (submenu.find('[data-test-id="navigation-submenu"]').length) {
+						cy.wrap(submenu)
+							.find('[data-test-id="navigation-submenu"]')
+							.should('be.visible')
+							.filter(':contains("Workflow")')
+							.as('child')
+							.click();
 
-			return cy.get('@button');
-			// cy.getByTestId('resource-add').should('be.visible').click();
-			// cy.getByTestId('resource-add')
-			// 	.find('.el-sub-menu__title')
-			// 	.invoke('attr', 'aria-describedby')
-			// 	.then((el) => cy.get(`[id="${el}"]`))
-			// 	.as('submenu');
+						cy.get('@child')
+							.should('be.visible')
+							.find('[data-test-id="navigation-submenu-item"]')
+							.should('be.visible')
+							.filter(':contains("Personal")')
+							.as('button');
+					} else {
+						cy.wrap(submenu).find('[data-test-id="navigation-menu-item"]').filter(':contains("Workflow")').as('button');
+					}
+				});
 
-			// cy.get('@submenu')
-			// 	.getByTestId('navigation-submenu')
-			// 	.should('be.visible')
-			// 	.filter(':contains("Workflow")')
-			// 	.click();
-
-			// cy.get('@submenu').within((submenu) =>
-			// 	cy
-			// 		.wrap(submenu)
-			// 		.getByTestId('navigation-submenu-item')
-			// 		.should('be.visible')
-			// 		.filter(':contains("Personal")')
-			// 		.as('button'),
-			// );
-
-			// return cy.get('@button');
+			return cy.get('@button').should('be.visible');
 		},
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>
