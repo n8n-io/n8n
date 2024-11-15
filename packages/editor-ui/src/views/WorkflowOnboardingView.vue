@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@/composables/useI18n';
-import { SAMPLE_SUBWORKFLOW_WORKFLOW, SAMPLE_SUBWORKFLOW_WORKFLOW_ID, VIEWS } from '@/constants';
+import {
+	NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
+	SAMPLE_SUBWORKFLOW_WORKFLOW_ID,
+	VIEWS,
+} from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
@@ -79,9 +84,9 @@ const openSampleSubworkflow = async () => {
 
 		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 
-		const sampleSubworkflowChannel = new BroadcastChannel('new-sample-sub-workflow-created');
+		const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
 
-		sampleSubworkflowChannel.postMessage({});
+		sampleSubworkflowChannel.postMessage({ workflowId: newWorkflow.id });
 
 		await router.replace({
 			name: VIEWS.WORKFLOW,

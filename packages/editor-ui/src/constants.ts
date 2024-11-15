@@ -877,6 +877,8 @@ export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
 export const SAMPLE_SUBWORKFLOW_WORKFLOW_ID = '0';
 
+export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
+
 export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Sub-Workflow',
 	nodes: [
