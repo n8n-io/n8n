@@ -20,7 +20,7 @@ import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorMod
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { SAMPLE_SUBWORKFLOW_WORKFLOW_ID } from '@/constants';
+import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL, SAMPLE_SUBWORKFLOW_WORKFLOW_ID } from '@/constants';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -156,7 +156,6 @@ function onListItemSelected(value: NodeParameterValue) {
 
 function onInputFocus(): void {
 	setWidth();
-	showDropdown();
 	emit('focus');
 }
 
@@ -222,10 +221,13 @@ const onAddResourceClicked = () => {
 
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
-	const sampleSubworkflowChannel = new BroadcastChannel('new-sample-sub-workflow-created');
+	const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
 
-	sampleSubworkflowChannel.onmessage = async () => {
+	sampleSubworkflowChannel.onmessage = async (event: MessageEvent<{ workflowId: string }>) => {
+		const workflowId = event.data.workflowId;
 		await reloadWorkflows();
+		onInputChange(workflowId);
+		hideDropdown();
 	};
 
 	window.open(
