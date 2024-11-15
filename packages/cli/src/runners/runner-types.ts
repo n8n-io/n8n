@@ -23,7 +23,7 @@ export interface TaskRunnerServerInitRequest
 
 export type TaskRunnerServerInitResponse = Response & { req: TaskRunnerServerInitRequest };
 
-export type DisconnectReason = 'unknown' | 'failed-heartbeat-check';
+export type DisconnectReason = 'shutting-down' | 'failed-heartbeat-check' | 'unknown';
 
 export type DisconnectErrorOptions = {
 	runnerId?: TaskRunner['id'];

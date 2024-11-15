@@ -69,7 +69,9 @@ export class TaskRunnerWsServer {
 		}
 
 		await Promise.all(
-			Array.from(this.runnerConnections.keys()).map(async (id) => await this.removeConnection(id)),
+			Array.from(this.runnerConnections.keys()).map(
+				async (id) => await this.removeConnection(id, 'shutting-down'),
+			),
 		);
 	}
 
