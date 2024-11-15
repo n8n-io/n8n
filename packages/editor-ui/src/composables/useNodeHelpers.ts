@@ -566,6 +566,29 @@ export function useNodeHelpers() {
 		}
 	}
 
+	function getNodeTaskData(node: INodeUi | null, runIndex = 0) {
+		if (node === null) {
+			return null;
+		}
+		if (workflowsStore.getWorkflowExecution === null) {
+			return null;
+		}
+
+		const executionData = workflowsStore.getWorkflowExecution.data;
+		if (!executionData?.resultData) {
+			// unknown status
+			return null;
+		}
+		const runData = executionData.resultData.runData;
+
+		const taskData = get(runData, [node.name, runIndex]);
+		if (!taskData) {
+			return null;
+		}
+
+		return taskData;
+	}
+
 	function getNodeInputData(
 		node: INodeUi | null,
 		runIndex = 0,
@@ -583,22 +606,8 @@ export function useNodeHelpers() {
 			runIndex = runIndex - 1;
 		}
 
-		if (node === null) {
-			return [];
-		}
-		if (workflowsStore.getWorkflowExecution === null) {
-			return [];
-		}
-
-		const executionData = workflowsStore.getWorkflowExecution.data;
-		if (!executionData?.resultData) {
-			// unknown status
-			return [];
-		}
-		const runData = executionData.resultData.runData;
-
-		const taskData = get(runData, [node.name, runIndex]);
-		if (!taskData) {
+		const taskData = getNodeTaskData(node, runIndex);
+		if (taskData === null) {
 			return [];
 		}
 
@@ -1282,5 +1291,6 @@ export function useNodeHelpers() {
 		removeConnectionByConnectionInfo,
 		addPinDataConnections,
 		removePinDataConnections,
+		getNodeTaskData,
 	};
 }
