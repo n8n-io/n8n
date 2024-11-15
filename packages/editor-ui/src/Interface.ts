@@ -182,6 +182,10 @@ export interface IAiDataContent {
 	metadata: {
 		executionTime: number;
 		startTime: number;
+		subExecution?: {
+			workflowId: string;
+			executionId: string;
+		};
 	};
 }
 
@@ -202,6 +206,10 @@ export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
+	metadata: {
+		hasExecutionIds: boolean;
+		data: Array<INodeExecutionData['metadata'] | undefined>;
+	};
 }
 
 // Simple version of n8n-workflow.Workflow
