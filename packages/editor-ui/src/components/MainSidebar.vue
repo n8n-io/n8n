@@ -314,19 +314,19 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
 			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
+		<div :class="$style.logo">
+			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon="plus" type="secondary" outline />
+			</N8nNavigationDropdown>
+		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
-				<div :class="$style.logo">
-					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-					<N8nNavigationDropdown
-						ref="createBtn"
-						data-test-id="universal-add"
-						:menu="menu"
-						@select="handleMenuSelect"
-					>
-						<N8nIconButton icon="plus" type="secondary" outline />
-					</N8nNavigationDropdown>
-				</div>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
