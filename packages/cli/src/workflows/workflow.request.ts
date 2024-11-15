@@ -22,6 +22,7 @@ export declare namespace WorkflowRequest {
 		runData: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		dirtyIds?: string[];
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;

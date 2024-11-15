@@ -58,6 +58,7 @@ import {
 	cleanRunData,
 	recreateNodeExecutionStack,
 	handleCycles,
+	removeDirtyNodes,
 } from './PartialExecutionUtils';
 
 export class WorkflowExecute {
@@ -319,8 +320,9 @@ export class WorkflowExecute {
 	runPartialWorkflow2(
 		workflow: Workflow,
 		runData: IRunData,
+		pinData: IPinData = {},
+		dirtyNodeNames: string[] = [],
 		destinationNodeName?: string,
-		pinData?: IPinData,
 	): PCancelable<IRun> {
 		// TODO: Refactor the call-site to make `destinationNodeName` a required
 		// after removing the old partial execution flow.
@@ -349,7 +351,8 @@ export class WorkflowExecute {
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
+		runData = removeDirtyNodes(runData, dirtyNodeNames);
+		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
 		// 5. Handle Cycles

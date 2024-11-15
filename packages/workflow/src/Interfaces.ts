@@ -2274,6 +2274,7 @@ export interface IWorkflowExecutionDataProcess {
 	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
 	 */
 	partialExecutionVersion?: string;
+	dirtyNodeNames?: string[];
 }
 
 export interface ExecuteWorkflowOptions {
