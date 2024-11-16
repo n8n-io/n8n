@@ -16,6 +16,8 @@ import type { IWorkflowDb } from '@/Interface';
 import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
+import { fireEvent } from '@testing-library/dom';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -363,5 +365,39 @@ describe('RunDataSchema.vue', () => {
 		expect(headers.length).toBe(2);
 		expect(headers[0]).toHaveTextContent('Input 0');
 		expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
+	});
+
+	it('should handle drop event', async () => {
+		const ndvStore = useNDVStore();
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
+		});
+		const telemetry = useTelemetry();
+		const trackSpy = vi.spyOn(telemetry, 'track');
+		const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
+		const { getAllByTestId } = renderComponent();
+
+		const items = getAllByTestId('run-data-schema-item');
+		expect(items.length).toBe(6);
+
+		expect(items[0].className).toBe('schema-item draggable');
+		expect(items[0]).toHaveTextContent('nameJohn');
+
+		const pill = items[0].querySelector('.pill') as Element;
+
+		fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
+		fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
+		expect(reset).toHaveBeenCalled();
+
+		fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
+
+		await waitFor(() =>
+			expect(trackSpy).toHaveBeenCalledWith(
+				'User dragged data for mapping',
+				expect.any(Object),
+				expect.any(Object),
+			),
+		);
 	});
 });
