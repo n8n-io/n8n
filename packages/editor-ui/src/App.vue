@@ -141,8 +141,8 @@ watch(defaultLocale, (newLocale) => {
 		'banners banners'
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: minmax(0, max-content) 1fr;
-	grid-template-rows: auto fit-content($header-height) 1fr;
+	grid-auto-columns: auto 1fr;
+	grid-template-rows: auto auto 1fr;
 }
 
 .banners {
