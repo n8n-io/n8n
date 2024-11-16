@@ -7,6 +7,8 @@ import {
 	type INodeTypeDescription,
 	NodeExecutionOutput,
 	type NodeExecutionHint,
+	NodeExecutionOutput,
+	type NodeExecutionHint,
 } from 'n8n-workflow';
 
 import {
@@ -243,6 +245,7 @@ export class Summarize implements INodeType {
 				placeholder: 'Add option',
 				default: {},
 				options: [
+					// [ria] potentially delete this option??
 					{
 						displayName: 'Continue if Field Not Found',
 						name: 'continueIfFieldNotFound',
@@ -320,13 +323,18 @@ export class Summarize implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 
-		try {
-			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
-		} catch (error) {
-			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
+		if (nodeVersion < 2.1) {
+			const fieldNotFound: string | undefined = checkIfFieldExists.call(
+				this,
+				newItems,
+				fieldsToSummarize,
+				getValue,
+			);
+			if (options.continueIfFieldNotFound || fieldNotFound) {
+				// const itemData: IPairedItemData[] = generatePairedItemData(items.length); // [ria] had to delete type because i was getting compilation errors
 				const itemData = generatePairedItemData(items.length);
 				const fieldNotFoundHint: NodeExecutionHint = {
-					message: error.message,
+					message: `The field '${fieldNotFound}' does not exist in any items.`,
 					location: 'outputPane',
 				};
 				return new NodeExecutionOutput([[{ json: {}, pairedItem: itemData }]], [fieldNotFoundHint]);
