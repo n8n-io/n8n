@@ -6,7 +6,7 @@ import RunDataSchemaHeader from '@/components/RunDataSchemaHeader.vue';
 import { N8nText } from 'n8n-design-system';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { telemetry } from '@/plugins/telemetry';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { NodeConnectionType, type IConnectedNode, type IDataObject } from 'n8n-workflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
@@ -48,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
 	context: 'ndv',
 });
 
+const telemetry = useTelemetry();
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
