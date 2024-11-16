@@ -6,10 +6,13 @@ import type { ChartData, ChartOptions } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
 import { averageWorkerLoadFromLoads, memAsGb } from '@/utils/workerUtils';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	workerId: string;
 }>();
+
+const i18n = useI18n();
 
 const blankDataSet = (label: string, color: string, prefill: number = 0) => ({
 	datasets: [
@@ -94,7 +97,7 @@ orchestrationStore.$onAction(({ name, store }) => {
 <template>
 	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
 		<template #title>
-			{{ $locale.baseText('workerList.item.chartsTitle') }}
+			{{ i18n.baseText('workerList.item.chartsTitle') }}
 		</template>
 		<template #content>
 			<div :class="$style.charts">

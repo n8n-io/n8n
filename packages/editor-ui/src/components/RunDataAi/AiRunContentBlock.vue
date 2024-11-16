@@ -207,7 +207,7 @@ onMounted(() => {
 							size="small"
 							:class="$style.copyToClipboard"
 							type="secondary"
-							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
+							:title="i18n.baseText('nodeErrorView.copyToClipboard')"
 							icon="copy"
 							@click="onCopyToClipboard(raw)"
 						/>

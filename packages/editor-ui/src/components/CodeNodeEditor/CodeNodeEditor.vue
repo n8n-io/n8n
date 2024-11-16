@@ -399,7 +399,7 @@ async function onDrop(value: string, event: MouseEvent) {
 			:class="$style.tabs"
 		>
 			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				:label="i18n.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
 				:class="$style.fillHeight"
@@ -426,7 +426,7 @@ async function onDrop(value: string, event: MouseEvent) {
 				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
 				name="ask-ai"
 				data-test-id="code-node-tab-ai"
 			>
