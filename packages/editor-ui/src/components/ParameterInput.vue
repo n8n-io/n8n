@@ -1092,7 +1092,7 @@ onUpdated(async () => {
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					width="80%"
-					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
+					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
@@ -1181,7 +1181,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1203,7 +1203,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1224,7 +1224,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1246,7 +1246,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1266,7 +1266,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
