@@ -154,10 +154,6 @@ const onSelect = (item: IMenuItem): void => {
 	}
 }
 
-.menuFooter {
-	padding-bottom: 54px;
-}
-
 .upperContent {
 	ul {
 		padding-top: 0 !important;

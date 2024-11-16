@@ -36,10 +36,12 @@ const emit = defineEmits<{
 	select: [id: Item['id']];
 }>();
 
+const close = () => {
+	menuRef.value?.close(menuIndex.value);
+};
+
 defineExpose({
-	close: () => {
-		menuRef.value?.close(menuIndex.value);
-	},
+	close,
 });
 </script>
 
@@ -52,6 +54,7 @@ defineExpose({
 		:ellipsis="false"
 		:class="$style.dropdown"
 		@select="emit('select', $event)"
+		@keyup.escape="close"
 	>
 		<ElSubMenu
 			:index="menuIndex"
