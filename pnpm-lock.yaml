@@ -9,6 +9,12 @@ catalogs:
     '@langchain/core':
       specifier: 0.3.15
       version: 0.3.15
+    '@sentry/integrations':
+      specifier: 7.87.0
+      version: 7.87.0
+    '@sentry/node':
+      specifier: 7.87.0
+      version: 7.87.0
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -33,6 +39,9 @@ catalogs:
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
+    flatted:
+      specifier: 3.2.7
+      version: 3.2.7
     form-data:
       specifier: 4.0.0
       version: 4.0.0
@@ -216,6 +225,9 @@ importers:
       cypress-real-events:
         specifier: ^1.13.0
         version: 1.13.0(cypress@13.14.2)
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -642,6 +654,12 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
+      '@sentry/integrations':
+        specifier: 'catalog:'
+        version: 7.87.0
+      '@sentry/node':
+        specifier: 'catalog:'
+        version: 7.87.0
       acorn:
         specifier: 8.14.0
         version: 8.14.0
@@ -764,10 +782,10 @@ importers:
         specifier: 2.0.9
         version: 2.0.9(tslib@2.6.2)
       '@sentry/integrations':
-        specifier: 7.87.0
+        specifier: 'catalog:'
         version: 7.87.0
       '@sentry/node':
-        specifier: 7.87.0
+        specifier: 'catalog:'
         version: 7.87.0
       aws4:
         specifier: 1.11.0
@@ -839,7 +857,7 @@ importers:
         specifier: 5.0.2
         version: 5.0.2
       flatted:
-        specifier: 3.2.7
+        specifier: 'catalog:'
         version: 3.2.7
       formidable:
         specifier: 3.5.1
@@ -1424,7 +1442,7 @@ importers:
         specifier: ^2.0.2
         version: 2.0.5
       flatted:
-        specifier: ^3.2.4
+        specifier: 'catalog:'
         version: 3.2.7
       highlight.js:
         specifier: catalog:frontend
@@ -1477,6 +1495,9 @@ importers:
       vue-chartjs:
         specifier: ^5.2.0
         version: 5.2.0(chart.js@4.4.0)(vue@3.5.11(typescript@5.6.2))
+      vue-github-button:
+        specifier: ^3.1.3
+        version: 3.1.3
       vue-i18n:
         specifier: ^9.2.2
         version: 9.2.2(vue@3.5.11(typescript@5.6.2))
@@ -5395,6 +5416,7 @@ packages:
   '@xmldom/xmldom@0.8.6':
     resolution: {integrity: sha512-uRjjusqpoqfmRkTaNuLJ2VohVr67Q5YwDATW3VU7PfzTj6IRaihGrYI7zckGZjxQPBIp63nfvJbM+Yu5ICh0Bg==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   a-sync-waterfall@1.0.1:
     resolution: {integrity: sha512-RYTOHHdWipFUliRFMCS4X2Yn2X8M87V/OpSqWzKKOGhzqyUxzyVmhHDH9sAvG+ZuQf/TAOFsLCpMw09I1ufUnA==}
@@ -7634,6 +7656,9 @@ packages:
 
   getpass@0.1.7:
     resolution: {integrity: sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==}
+
+  github-buttons@2.29.1:
+    resolution: {integrity: sha512-TV3YgAKda5hPz75n7QXmGCsSzgVya1vvmBieebg3EB5ScmashTZ0FldViG1aU2d4V5rcAGrtQ7k5uAaCo0A4PA==}
 
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
@@ -12079,6 +12104,9 @@ packages:
     engines: {node: ^14.17.0 || >=16.0.0}
     peerDependencies:
       eslint: '>=6.0.0'
+
+  vue-github-button@3.1.3:
+    resolution: {integrity: sha512-ZdOnUuYJL/wUsxISsC96TARzCdf1twaWooZoI14+g4RHsJltPY+Agw6Ox6pjuMqMX0uhSK1JOMFUFNCQGlcZGA==}
 
   vue-i18n@9.2.2:
     resolution: {integrity: sha512-yswpwtj89rTBhegUAv9Mu37LNznyu3NpyLQmozF3i1hYOhwpG8RjcjIFIIfnu+2MDZJGSZPXaKWvnQA71Yv9TQ==}
@@ -19880,7 +19908,7 @@ snapshots:
   gaxios@6.6.0(encoding@0.1.13):
     dependencies:
       extend: 3.0.2
-      https-proxy-agent: 7.0.2
+      https-proxy-agent: 7.0.5
       is-stream: 2.0.1
       node-fetch: 2.7.0(encoding@0.1.13)
       uuid: 9.0.1
@@ -19963,6 +19991,8 @@ snapshots:
   getpass@0.1.7:
     dependencies:
       assert-plus: 1.0.0
+
+  github-buttons@2.29.1: {}
 
   github-from-package@0.0.0: {}
 
@@ -25364,6 +25394,10 @@ snapshots:
       semver: 7.6.0
     transitivePeerDependencies:
       - supports-color
+
+  vue-github-button@3.1.3:
+    dependencies:
+      github-buttons: 2.29.1
 
   vue-i18n@9.2.2(vue@3.5.11(typescript@5.6.2)):
     dependencies:

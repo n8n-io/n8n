@@ -1,4 +1,8 @@
-export const xsdSamlSchemaAssertion20 = `<?xml version="1.0" encoding="US-ASCII"?>
+import type { XMLFileInfo } from 'xmllint-wasm';
+
+export const xmlFileInfo: XMLFileInfo = {
+	fileName: 'saml-schema-assertion-2.0.xsd',
+	contents: `<?xml version="1.0" encoding="US-ASCII"?>
 <schema
     targetNamespace="urn:oasis:names:tc:SAML:2.0:assertion"
     xmlns="http://www.w3.org/2001/XMLSchema"
@@ -280,4 +284,5 @@ export const xsdSamlSchemaAssertion20 = `<?xml version="1.0" encoding="US-ASCII"
     </complexType>
     <element name="AttributeValue" type="anyType" nillable="true"/>
     <element name="EncryptedAttribute" type="saml:EncryptedElementType"/>
-</schema>`;
+	</schema>`,
+};

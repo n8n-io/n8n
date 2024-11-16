@@ -1,9 +1,11 @@
 import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteWorkflowInfo,
-	IWorkflowExecuteAdditionalData,
-	ExecuteWorkflowOptions,
-	IRun,
+import type { IWorkflowBase } from 'n8n-workflow';
+import {
+	type IExecuteWorkflowInfo,
+	type IWorkflowExecuteAdditionalData,
+	type ExecuteWorkflowOptions,
+	type IRun,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 import Container from 'typedi';
@@ -21,41 +23,57 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { Telemetry } from '@/telemetry';
 import { PermissionChecker } from '@/user-management/permission-checker';
-import { executeWorkflow, getBase } from '@/workflow-execute-additional-data';
+import { executeWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
 
-const run = mock<IRun>({
-	data: { resultData: {} },
-	finished: true,
-	mode: 'manual',
-	startedAt: new Date(),
-	status: 'new',
-});
+const EXECUTION_ID = '123';
+const LAST_NODE_EXECUTED = 'Last node executed';
 
-const cancelablePromise = mock<PCancelable<IRun>>({
-	then: jest
-		.fn()
-		.mockImplementation(async (onfulfilled) => await Promise.resolve(run).then(onfulfilled)),
-	catch: jest
-		.fn()
-		.mockImplementation(async (onrejected) => await Promise.resolve(run).catch(onrejected)),
-	finally: jest
-		.fn()
-		.mockImplementation(async (onfinally) => await Promise.resolve(run).finally(onfinally)),
-	[Symbol.toStringTag]: 'PCancelable',
-});
+const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionData[] | null> }) =>
+	mock<IRun>({
+		data: {
+			resultData: {
+				runData: {
+					[LAST_NODE_EXECUTED]: [
+						{
+							startTime: 100,
+							data: {
+								main: lastNodeOutput,
+							},
+						},
+					],
+				},
+				lastNodeExecuted: LAST_NODE_EXECUTED,
+			},
+		},
+		finished: true,
+		mode: 'manual',
+		startedAt: new Date(),
+		status: 'new',
+	});
+
+const getCancelablePromise = async (run: IRun) =>
+	await mock<PCancelable<IRun>>({
+		then: jest
+			.fn()
+			.mockImplementation(async (onfulfilled) => await Promise.resolve(run).then(onfulfilled)),
+		catch: jest
+			.fn()
+			.mockImplementation(async (onrejected) => await Promise.resolve(run).catch(onrejected)),
+		finally: jest
+			.fn()
+			.mockImplementation(async (onfinally) => await Promise.resolve(run).finally(onfinally)),
+		[Symbol.toStringTag]: 'PCancelable',
+	});
+
+const processRunExecutionData = jest.fn();
 
 jest.mock('n8n-core', () => ({
 	__esModule: true,
 	...jest.requireActual('n8n-core'),
 	WorkflowExecute: jest.fn().mockImplementation(() => ({
-		processRunExecutionData: jest.fn().mockReturnValue(cancelablePromise),
+		processRunExecutionData,
 	})),
-}));
-
-jest.mock('../workflow-helpers', () => ({
-	...jest.requireActual('../workflow-helpers'),
-	getDataLastExecutedNodeData: jest.fn().mockReturnValue({ data: { main: [] } }),
 }));
 
 describe('WorkflowExecuteAdditionalData', () => {
@@ -95,17 +113,129 @@ describe('WorkflowExecuteAdditionalData', () => {
 		expect(eventService.emit).toHaveBeenCalledWith(eventName, payload);
 	});
 
-	it('`executeWorkflow` should set subworkflow execution as running', async () => {
-		const executionId = '123';
-		workflowRepository.get.mockResolvedValue(mock<WorkflowEntity>({ id: executionId, nodes: [] }));
-		activeExecutions.add.mockResolvedValue(executionId);
+	describe('executeWorkflow', () => {
+		const runWithData = getMockRun({ lastNodeOutput: [[{ json: { test: 1 } }]] });
 
-		await executeWorkflow(
-			mock<IExecuteWorkflowInfo>(),
-			mock<IWorkflowExecuteAdditionalData>(),
-			mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined }),
-		);
+		beforeEach(() => {
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({ id: EXECUTION_ID, nodes: [] }),
+			);
+			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
+			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
+		});
 
-		expect(executionRepository.setRunning).toHaveBeenCalledWith(executionId);
+		it('should execute workflow, return data and execution id', async () => {
+			const response = await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>(),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			expect(response).toEqual({
+				data: runWithData.data.resultData.runData[LAST_NODE_EXECUTED][0].data!.main,
+				executionId: EXECUTION_ID,
+			});
+		});
+
+		it('should execute workflow, skip waiting', async () => {
+			const response = await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>(),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
+			);
+
+			expect(response).toEqual({
+				data: [null],
+				executionId: EXECUTION_ID,
+			});
+		});
+
+		it('should set sub workflow execution as running', async () => {
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>(),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined }),
+			);
+
+			expect(executionRepository.setRunning).toHaveBeenCalledWith(EXECUTION_ID);
+		});
+	});
+
+	describe('getRunData', () => {
+		it('should throw error to add trigger ndoe', async () => {
+			const workflow = mock<IWorkflowBase>({
+				id: '1',
+				name: 'test',
+				nodes: [],
+				active: false,
+			});
+			await expect(getRunData(workflow)).rejects.toThrowError('Missing node to start execution');
+		});
+
+		const workflow = mock<IWorkflowBase>({
+			id: '1',
+			name: 'test',
+			nodes: [
+				{
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+				},
+			],
+			active: false,
+		});
+
+		it('should return default data', async () => {
+			expect(await getRunData(workflow)).toEqual({
+				executionData: {
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack: [
+							{
+								data: { main: [[{ json: {} }]] },
+								metadata: { parentExecution: undefined },
+								node: workflow.nodes[0],
+								source: null,
+							},
+						],
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+					resultData: { runData: {} },
+					startData: {},
+				},
+				executionMode: 'integrated',
+				workflowData: workflow,
+			});
+		});
+
+		it('should return run data with input data and metadata', async () => {
+			const data = [{ json: { test: 1 } }];
+			const parentExecution = {
+				executionId: '123',
+				workflowId: '567',
+			};
+			expect(await getRunData(workflow, data, parentExecution)).toEqual({
+				executionData: {
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack: [
+							{
+								data: { main: [data] },
+								metadata: { parentExecution },
+								node: workflow.nodes[0],
+								source: null,
+							},
+						],
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+					resultData: { runData: {} },
+					startData: {},
+				},
+				executionMode: 'integrated',
+				workflowData: workflow,
+			});
+		});
 	});
 });

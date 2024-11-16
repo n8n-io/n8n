@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -35,6 +35,8 @@
   },
   "dependencies": {
     "@n8n/config": "workspace:*",
+    "@sentry/integrations": "catalog:",
+    "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
     "n8n-core": "workspace:*",

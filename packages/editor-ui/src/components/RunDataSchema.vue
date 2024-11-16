@@ -187,7 +187,7 @@ const onDragEnd = (el: HTMLElement) => {
 				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
