@@ -40,9 +40,9 @@ function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {
 <style module lang="scss">
 .container {
 	position: absolute;
-	top: 47px;
+	bottom: 0;
 	left: 50%;
-	transform: translateX(-50%);
+	transform: translateX(-50%) translateY(50%);
 	min-height: 30px;
 	display: flex;
 	padding: var(--spacing-5xs);

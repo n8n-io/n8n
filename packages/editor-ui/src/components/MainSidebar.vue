@@ -433,6 +433,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
+		padding-top: 90px;
 
 		.logo {
 			flex-direction: column;

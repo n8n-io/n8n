@@ -211,7 +211,6 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 
 .main-header {
 	background-color: var(--color-background-xlight);
-	height: $header-height;
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -222,9 +221,8 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	height: $header-height;
 	font-weight: 400;
-	padding: 0 var(--spacing-m) 0 var(--spacing-m);
+	padding: var(--spacing-xs) var(--spacing-m);
 }
 
 .github-button {
