@@ -5,6 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeExecutionOutput,
+	type NodeExecutionHint,
 } from 'n8n-workflow';
 
 import {
@@ -16,7 +18,7 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
-import { generatePairedItemData } from '../../../utils/utilities';
+// import type { IPairedItemData } from '../../../../workflow/src/Interfaces'; // [ria] this is an interface but cannot import it as such!
 
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,17 +34,6 @@ export class Summarize implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
-		// [ria]
-		hints: [
-			{
-				message:
-					"The field '$aggregation.field' does not exist in any items. Consider turning on 'Continue if Field Not Found' in options.",
-				displayCondition: '={{ $parameter["fieldsToSummarize"] }}',
-				whenToDisplay: 'afterExecution',
-				location: 'outputPane',
-			},
-		],
-		// [ria]
 		properties: [
 			{
 				displayName: 'Fields to Summarize',
@@ -253,13 +244,14 @@ export class Summarize implements INodeType {
 				placeholder: 'Add option',
 				default: {},
 				options: [
+					// [ria] potentially delete this option??
 					{
 						displayName: 'Continue if Field Not Found',
 						name: 'continueIfFieldNotFound',
 						type: 'boolean',
 						default: false,
 						description:
-							"Whether to continue if field to summarize can't be found in any items and return single empty item, owerwise an error would be thrown",
+							"Whether to continue if field to summarize can't be found in any items and return single empty item, otherwise an error would be thrown",
 					},
 					{
 						displayName: 'Disable Dot Notation',
@@ -326,17 +318,22 @@ export class Summarize implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		if (nodeVersion < 2.1) {
-			// try {
-			const fieldNotFound = checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
-			// if this call returns something (the not-found field name)
-			// make it return something instead of throwing an error
-			// } catch (error) {
+			const fieldNotFound: string | undefined = checkIfFieldExists.call(
+				this,
+				newItems,
+				fieldsToSummarize,
+				getValue,
+			);
 			if (options.continueIfFieldNotFound || fieldNotFound) {
+				// const itemData: IPairedItemData[] = generatePairedItemData(items.length); // [ria] had to delete type because i was getting compilation errors
 				const itemData = generatePairedItemData(items.length);
-
-				return [[{ json: {}, pairedItem: itemData }]];
+				const fieldNotFoundHint: NodeExecutionHint = {
+					message: `The field '${fieldNotFound}' does not exist in any items.`,
+					location: 'outputPane',
+				};
+				return new NodeExecutionOutput([[{ json: {}, pairedItem: itemData }]], [fieldNotFoundHint]);
 			} else {
-				// throw error; // show hints instead
+				// throw error; // [ria] show hints instead
 			}
 		}
 
