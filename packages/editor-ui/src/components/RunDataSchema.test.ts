@@ -15,6 +15,7 @@ import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
 import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -51,13 +52,23 @@ const aiTool = createTestNode({
 	disabled: false,
 });
 
+const unknownNodeType = createTestNode({
+	name: 'Unknown Node Type',
+	type: 'unknown',
+});
+
+const defaultNodes = [
+	{ name: 'Manual Trigger', indicies: [], depth: 1 },
+	{ name: 'Set2', indicies: [], depth: 2 },
+];
+
 async function setupStore() {
 	const workflow = mock<IWorkflowDb>({
 		id: '123',
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool],
+		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool, unknownNodeType],
 	});
 
 	const pinia = createPinia();
@@ -131,10 +142,7 @@ describe('RunDataSchema.vue', () => {
 				paneType: 'input',
 				connectionType: 'main',
 				search: '',
-				nodes: [
-					{ name: 'Manual Trigger', indicies: [], depth: 1 },
-					{ name: 'Set2', indicies: [], depth: 2 },
-				],
+				nodes: defaultNodes,
 			},
 		});
 	});
@@ -317,4 +325,43 @@ describe('RunDataSchema.vue', () => {
 			expect(getAllByTestId('run-data-schema-item')[0]).toHaveTextContent('tx');
 		},
 	);
+
+	it('should filter invalid connections', () => {
+		const { pinData } = useWorkflowsStore();
+		pinData({
+			node: mockNode1,
+			data: [{ json: { tx: 1 } }],
+		});
+		pinData({
+			node: mockNode2,
+			data: [{ json: { tx: 2 } }],
+		});
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [
+					{ name: mockNode1.name, indicies: [], depth: 1 },
+					{ name: 'unknown', indicies: [], depth: 1 },
+					{ name: mockNode2.name, indicies: [], depth: 1 },
+					{ name: unknownNodeType.name, indicies: [], depth: 1 },
+				],
+			},
+		});
+
+		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+	});
+
+	it('should show connections', () => {
+		const ndvStore = useNDVStore();
+		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
+			[defaultNodes[0].name]: [0],
+			[defaultNodes[1].name]: [0, 1, 2],
+		});
+
+		const { getAllByTestId } = renderComponent();
+		const headers = getAllByTestId('run-data-schema-header');
+		expect(headers.length).toBe(2);
+		expect(headers[0]).toHaveTextContent('Input 0');
+		expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
+	});
 });
