@@ -180,9 +180,7 @@ const onDragEnd = (el: HTMLElement) => {
 <template>
 	<div class="run-data-schema full-height">
 		<div v-if="noSearchResults" class="no-results">
-			<N8nText tag="h3" size="large">{{
-				$locale.baseText('ndv.search.noNodeMatch.title')
-			}}</N8nText>
+			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
 				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 					<template #link>
