@@ -305,7 +305,6 @@ describe('RunDataSchema.vue', () => {
 	it('renders its own data for AI tools in debug mode', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				paneType: 'output',
 				nodes: [], // in debug mode nodes are empty
 				node: aiTool,
 				data: [{ output: 'AI tool output' }],

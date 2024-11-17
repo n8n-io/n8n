@@ -143,8 +143,21 @@ const flattenNodeSchema = computed(() =>
 	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
 );
 
-const items = computed(() =>
-	props.paneType === 'input' ? flattenedNodes.value : flattenNodeSchema.value,
+const isDebugging = computed(() => !props.nodes.length);
+
+const items = computed(
+	() => {
+		if (isDebugging.value) {
+			return flattenNodeSchema.value;
+		}
+
+		if (props.paneType === 'input') {
+			return flattenedNodes.value;
+		}
+
+		return flattenedNodes.value;
+	},
+	// props.paneType === 'input' || !isDebugging.value ? flattenedNodes.value : flattenNodeSchema.value,
 );
 
 const noSearchResults = computed(() => {
@@ -190,6 +203,10 @@ const onDragEnd = (el: HTMLElement) => {
 						</a>
 					</template>
 				</i18n-t>
+			</N8nText>
+
+			<N8nText v-if="paneType === 'output'">
+				{{ i18n.baseText('ndv.search.noMatchSchema.description') }}
 			</N8nText>
 		</div>
 

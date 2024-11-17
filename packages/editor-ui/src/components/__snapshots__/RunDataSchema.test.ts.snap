@@ -191,6 +191,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-node-type=""
             data-path=".name"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.name }}"
           >
@@ -231,6 +232,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
@@ -266,6 +268,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-node-type=""
             data-path=".age"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.age }}"
           >
@@ -306,6 +309,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
@@ -367,6 +371,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-node-type=""
             data-path=".hobbies"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.hobbies }}"
           >
@@ -407,6 +412,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             <span />
@@ -437,6 +443,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-node-type=""
             data-path=".hobbies[0]"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.hobbies[0] }}"
           >
@@ -477,6 +484,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
@@ -512,6 +520,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
             data-node-type=""
             data-path=".hobbies[1]"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $('').item.json.hobbies[1] }}"
           >
@@ -552,6 +561,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
@@ -737,6 +747,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world']"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'] }}"
           >
@@ -777,6 +788,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             <span />
@@ -833,6 +845,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0]"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0] }}"
           >
@@ -873,6 +886,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             <span />
@@ -929,6 +943,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0].test"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0].test }}"
           >
@@ -969,6 +984,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             <span />
@@ -999,6 +1015,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0].test['more to think about']"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0].test['more to think about'] }}"
           >
@@ -1039,6 +1056,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
@@ -1074,6 +1092,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0]['test.how']"
             data-target="mappable"
+            data-test-id="run-data-schema-node-name"
             data-v-ce2825e7=""
             data-value="{{ $json['hello world'][0]['test.how'] }}"
           >
@@ -1114,6 +1133,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           </div>
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
@@ -1212,6 +1232,7 @@ exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
           <!--v-if-->
           <span
             class="content text"
+            data-test-id="run-data-schema-item-value"
             data-v-ce2825e7=""
           >
             
