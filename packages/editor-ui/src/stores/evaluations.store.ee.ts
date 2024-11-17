@@ -4,13 +4,13 @@ import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/evaluations.ee';
 import type { ITestDefinition } from '@/api/evaluations.ee';
 import { usePostHog } from './posthog.store';
-import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
+import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
 export const useEvaluationsStore = defineStore(
-	'evaluations',
+	STORES.EVALUATIONS,
 	() => {
 		// State
-		const testDefinitionsById = ref<Record<number, ITestDefinition>>({});
+		const testDefinitionsById = ref<Record<number, Partial<ITestDefinition>>>({});
 		const loading = ref(false);
 		const fetchedAll = ref(false);
 
@@ -20,7 +20,9 @@ export const useEvaluationsStore = defineStore(
 
 		// Computed
 		const allTestDefinitions = computed(() => {
-			return Object.values(testDefinitionsById.value).sort((a, b) => a.name.localeCompare(b.name));
+			return Object.values(testDefinitionsById.value).sort((a, b) =>
+				(a.name ?? '').localeCompare(b.name ?? ''),
+			);
 		});
 
 		// Enable with `window.featureFlags.override('025_workflow_evaluation', true)`
@@ -81,7 +83,7 @@ export const useEvaluationsStore = defineStore(
 		 * @param {boolean} includeScopes - If true, includes the scopes in the fetched definitions.
 		 */
 		const fetchAll = async (params?: { force?: boolean; includeScopes?: boolean }) => {
-			const { force = false, includeScopes = false } = params || {};
+			const { force = false, includeScopes = false } = params ?? {};
 			if (!force && fetchedAll.value) {
 				const testDefinitions = Object.values(testDefinitionsById.value);
 				return {
@@ -142,6 +144,12 @@ export const useEvaluationsStore = defineStore(
 			return updatedDefinition;
 		};
 
+		/**
+		 * Deletes a test definition by its ID.
+		 *
+		 * @param {number} id - The ID of the test definition to delete.
+		 * @returns {Promise<boolean>} A promise that resolves to true if the test definition was successfully deleted, false otherwise.
+		 */
 		const deleteById = async (id: number) => {
 			const result = await testDefinitionsApi.deleteTestDefinition(rootStore.restApiContext, id);
 

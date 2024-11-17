@@ -55,9 +55,6 @@ export function useEvaluationForm() {
 	const isSaving = ref(false);
 	const fieldsIssues = ref<Array<{ field: string; message: string }>>([]);
 
-	// Computed
-	// const isEditing = computed(() => !!testId);
-
 	// Field refs
 	const fields = ref<FormRefs>({} as FormRefs);
 
@@ -175,6 +172,7 @@ export function useEvaluationForm() {
 	const cancelEditing = (field: string) => {
 		if (field === 'name') {
 			state.value.name.isEditing = false;
+			state.value.name.tempValue = '';
 		} else {
 			state.value.tags.isEditing = false;
 		}
