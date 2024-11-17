@@ -3,8 +3,10 @@ import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
 import type { ErrorReporter } from './error-reporter';
+import type { HealthcheckServer } from './healthcheck-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
+let healthcheckServer: HealthcheckServer | undefined;
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
 let errorReporter: ErrorReporter | undefined;
@@ -22,6 +24,7 @@ function createSignalHandler(signal: string) {
 			if (runner) {
 				await runner.stop();
 				runner = undefined;
+				void healthcheckServer?.stop();
 			}
 
 			if (errorReporter) {
@@ -48,6 +51,14 @@ void (async function start() {
 	}
 
 	runner = new JsTaskRunner(config);
+
+	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
+
+	if (enabled) {
+		const { HealthcheckServer } = await import('./healthcheck-server');
+		healthcheckServer = new HealthcheckServer();
+		await healthcheckServer.start(host, port);
+	}
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));
 	process.on('SIGTERM', createSignalHandler('SIGTERM'));
