@@ -280,7 +280,7 @@ export async function odooGetAll(
 					password,
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
-					(filters && processFilters(filters)) || [],
+					[(filters && processFilters(filters)) || []],
 					{
 						fields: fieldsToReturn || [],
 						offset: 0,
