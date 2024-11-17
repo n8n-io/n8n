@@ -43,11 +43,17 @@ const emit = defineEmits<{
 			data-target="mappable"
 			class="pill"
 			:class="{ 'pill--highlight': highlight }"
+			data-test-id="run-data-schema-node-name"
 		>
 			<FontAwesomeIcon class="type-icon" :icon size="sm" />
 			<TextWithHighlights class="title" :content="title" :search="props.search" />
 		</div>
-		<TextWithHighlights class="text" :content="value" :search="props.search" />
+		<TextWithHighlights
+			data-test-id="run-data-schema-item-value"
+			class="text"
+			:content="value"
+			:search="props.search"
+		/>
 	</div>
 </template>
 
