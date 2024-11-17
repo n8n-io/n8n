@@ -1,3 +1,4 @@
+import { TaskRunnersConfig } from '@n8n/config';
 import type {
 	BrokerMessage,
 	RequesterMessage,
@@ -8,9 +9,13 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
+import config from '@/config';
+import { Time } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
+import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 
 export interface TaskRunner {
 	id: string;
@@ -24,6 +29,7 @@ export interface Task {
 	runnerId: TaskRunner['id'];
 	requesterId: string;
 	taskType: string;
+	timeout?: NodeJS.Timeout;
 }
 
 export interface TaskOffer {
@@ -78,7 +84,15 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
+	) {
+		if (this.taskRunnersConfig.taskTimeout <= 0) {
+			throw new ApplicationError('Task timeout must be greater than 0');
+		}
+	}
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
@@ -408,6 +422,14 @@ export class TaskBroker {
 
 	async sendTaskSettings(taskId: Task['id'], settings: unknown) {
 		const runner = await this.getRunnerOrFailTask(taskId);
+
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		task.timeout = setTimeout(async () => {
+			await this.handleTaskTimeout(taskId);
+		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
+
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
 			taskId,
@@ -415,11 +437,27 @@ export class TaskBroker {
 		});
 	}
 
+	private async handleTaskTimeout(taskId: Task['id']) {
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+
+		await this.taskErrorHandler(
+			taskId,
+			new TaskRunnerTimeoutError(
+				this.taskRunnersConfig.taskTimeout,
+				config.getEnv('deployment.type') !== 'cloud',
+			),
+		);
+	}
+
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
+		if (!task) return;
+
+		clearTimeout(task.timeout);
+
 		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskdone',
 			taskId: task.id,
@@ -430,9 +468,10 @@ export class TaskBroker {
 
 	async taskErrorHandler(taskId: Task['id'], error: unknown) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
+		if (!task) return;
+
+		clearTimeout(task.timeout);
+
 		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskerror',
 			taskId: task.id,
