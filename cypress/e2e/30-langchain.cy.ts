@@ -468,7 +468,9 @@ describe('Langchain Integration', () => {
 
 	it('should not show tool info notice if tools were used during execution', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
-		addNodeToCanvas(AGENT_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		getNoToolsUsedCallout().should('not.exist');
+		clickGetBackToCanvas();
 
 		addLanguageModelNodeToParent(
 			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
@@ -485,6 +487,8 @@ describe('Langchain Integration', () => {
 		addToolNodeToParent(AI_TOOL_CALCULATOR_NODE_NAME, AGENT_NODE_NAME);
 		clickGetBackToCanvas();
 		openNode(AGENT_NODE_NAME);
+
+		getNoToolsUsedCallout().should('not.exist');
 
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
