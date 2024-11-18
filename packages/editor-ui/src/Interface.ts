@@ -1179,7 +1179,8 @@ export type SchemaType =
 	| 'object'
 	| 'function'
 	| 'null'
-	| 'undefined';
+	| 'undefined'
+	| 'notice';
 
 export interface ILdapSyncData {
 	id: number;

@@ -1,26 +1,24 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import type { INodeUi, Schema } from '@/Interface';
+import type { Schema } from '@/Interface';
 import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
-import { getMappedExpression } from '@/utils/mappingUtils';
-import TextWithHighlights from './TextWithHighlights.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { computed } from 'vue';
+import TextWithHighlights from './TextWithHighlights.vue';
+import { generatePath } from '@/utils/mappingUtils';
 
 type Props = {
 	schema: Schema;
 	level: number;
 	parent: Schema | null;
 	subKey: string;
-	paneType: 'input' | 'output';
-	mappingEnabled: boolean;
-	draggingPath: string;
-	distanceFromActive?: number;
-	node: INodeUi | null;
-	search: string;
+	baseExpression?: string;
+	mappingEnabled?: boolean;
+	draggingPath?: string;
+	search?: string;
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { baseExpression: '' });
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const schemaArray = computed(
@@ -42,11 +40,8 @@ const text = computed(() =>
 const dragged = computed(() => props.draggingPath === props.schema.path);
 
 const getJsonParameterPath = (path: string): string =>
-	getMappedExpression({
-		nodeName: props.node!.name,
-		distanceFromActive: props.distanceFromActive ?? 1,
-		path,
-	});
+	console.log(path.split('.').filter(Boolean)) ||
+	`{{ ${generatePath(props.baseExpression, path.split('.').filter(Boolean))} }}`;
 
 const getIconBySchemaType = (type: Schema['type']): string => {
 	switch (type) {
@@ -132,12 +127,10 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 					:schema="s"
 					:level="level + 1"
 					:parent="schema"
-					:pane-type="paneType"
 					:sub-key="`${subKey}-${s.key ?? s.type}`"
 					:mapping-enabled="mappingEnabled"
 					:dragging-path="draggingPath"
-					:distance-from-active="distanceFromActive"
-					:node="node"
+					:base-expression="baseExpression"
 					:search="search"
 				/>
 			</div>

@@ -2,11 +2,13 @@ import { isObject } from 'lodash-es';
 import type { AssignmentValue, IDataObject } from 'n8n-workflow';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
+import { DateTime } from 'luxon';
 
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
 	if (typeof value === 'number') return 'number';
-	if (typeof value === 'string') return 'string';
+	if (typeof value === 'string' || DateTime.isDateTime(value) || value instanceof Date)
+		return 'string';
 	if (Array.isArray(value)) return 'array';
 	if (isObject(value)) return 'object';
 	return 'string';

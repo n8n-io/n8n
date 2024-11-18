@@ -18,7 +18,7 @@ export function generatePath(root: string, path: Array<string | number>): string
 			return `${accu}['${escapeMappingString(part)}']`;
 		}
 
-		return `${accu}.${part}`;
+		return accu ? `${accu}.${part}` : part;
 	}, root);
 }
 

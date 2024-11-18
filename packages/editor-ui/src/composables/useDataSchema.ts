@@ -156,11 +156,22 @@ export function useDataSchema() {
 		return schemaMatches(schema, search) ? schema : null;
 	}
 
+	function isSchemaEmpty(schema: Schema | null) {
+		if (!schema) return true;
+		// Utilize the generated schema instead of looping over the entire data again
+		// The schema for empty data is { type: 'object' | 'array', value: [] }
+		const isObjectOrArray = schema.type === 'object' || schema.type === 'array';
+		const isEmpty = Array.isArray(schema.value) && schema.value.length === 0;
+
+		return isObjectOrArray && isEmpty;
+	}
+
 	return {
 		getSchema,
 		getSchemaForExecutionData,
 		getNodeInputData,
 		getInputDataWithPinned,
 		filterSchema,
+		isSchemaEmpty,
 	};
 }
