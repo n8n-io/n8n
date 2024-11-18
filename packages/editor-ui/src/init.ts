@@ -60,7 +60,11 @@ export async function initializeAuthenticatedFeatures() {
 	const rolesStore = useRolesStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
-		await sourceControlStore.getPreferences();
+		try {
+			await sourceControlStore.getPreferences();
+		} catch (e) {
+			console.error('Failed to initialize source control store ', e);
+		}
 	}
 
 	if (settingsStore.isTemplatesEnabled) {
