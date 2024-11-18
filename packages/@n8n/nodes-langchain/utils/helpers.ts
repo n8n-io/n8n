@@ -165,10 +165,25 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
+export function escapeSingleCurlyBrackets(text?: string): string | undefined {
+	if (text === undefined) return undefined;
+	return (
+		text
+			// Replace single curly brackets with double curly brackets
+			// The negative lookbehind and lookahead ensure we don't match if there's already a matching bracket
+			// For opening brackets {
+			.replace(/(?<!{){(?!{)/g, '{{')
+			// For closing brackets }
+			.replace(/(?<!})}(?!})/g, '}}')
+			.replace(/(?<!})}(?!})/g, '}}')
+	);
+}
+
 export const getConnectedTools = async (
 	ctx: IExecuteFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
+	escapeCurlyBrackets: boolean = false,
 ) => {
 	const connectedTools =
 		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
@@ -188,6 +203,10 @@ export const getConnectedTools = async (
 			);
 		}
 		seenNames.add(name);
+
+		if (escapeCurlyBrackets) {
+			tool.description = escapeSingleCurlyBrackets(tool.description) ?? tool.description;
+		}
 
 		if (convertStructuredTool && tool instanceof N8nTool) {
 			finalTools.push(tool.asDynamicTool());
