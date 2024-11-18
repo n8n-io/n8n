@@ -68,7 +68,6 @@ import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-C
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
-import { AddDescriptionToTestDefinition1731404028106 } from '../common/1731404028106-AddDescriptionToTestDefinition';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
