@@ -164,7 +164,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	<div class="collection-parameter" @keydown.stop>
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
+				<n8n-text size="small">{{ i18n.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
 			<Suspense>

@@ -10,6 +10,7 @@ import { Logger } from '@/logging/logger.service';
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 import { TypedEmitter } from '../typed-emitter';
 
 type ChildProcess = ReturnType<typeof spawn>;
@@ -59,12 +60,18 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'PATH',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
+		'N8N_SENTRY_DSN',
+		// Metadata about the environment
+		'N8N_VERSION',
+		'ENVIRONMENT',
+		'DEPLOYMENT_NAME',
 	] as const;
 
 	constructor(
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly authService: TaskRunnerAuthService,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
 	) {
 		super();
 
@@ -74,6 +81,16 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		);
 
 		this.logger = logger.scoped('task-runner');
+
+		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
+			this.logger.warn('Task runner failed heartbeat check, restarting...');
+			void this.forceRestart();
+		});
+
+		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
+			this.logger.warn('Task runner timed out during task, restarting...');
+			void this.forceRestart();
+		});
 	}
 
 	async start() {
@@ -111,9 +128,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	@OnShutdown()
 	async stop() {
-		if (!this.process) {
-			return;
-		}
+		if (!this.process) return;
 
 		this.isShuttingDown = true;
 
@@ -128,10 +143,22 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.isShuttingDown = false;
 	}
 
-	killNode() {
-		if (!this.process) {
-			return;
+	/** Force-restart a runner suspected of being unresponsive. */
+	async forceRestart() {
+		if (!this.process) return;
+
+		if (this.useLauncher) {
+			await this.killLauncher(); // @TODO: Implement SIGKILL in launcher
+		} else {
+			this.process.kill('SIGKILL');
 		}
+
+		await this._runPromise;
+	}
+
+	killNode() {
+		if (!this.process) return;
+
 		this.process.kill();
 	}
 
@@ -168,7 +195,6 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.emit('exit', { reason: this.oomDetector?.didProcessOom ? 'oom' : 'unknown' });
 		resolveFn();
 
-		// If we are not shutting down, restart the process
 		if (!this.isShuttingDown) {
 			setImmediate(async () => await this.start());
 		}

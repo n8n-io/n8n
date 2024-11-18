@@ -983,7 +983,7 @@ watch(remoteParameterOptionsLoading, () => {
 
 // Focus input field when changing from fixed value to expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (isExpression && !wasExpression) {
+	if (!props.isReadOnly && isExpression && !wasExpression) {
 		await nextTick();
 		inputField.value?.focus();
 	}
@@ -1092,7 +1092,7 @@ onUpdated(async () => {
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					width="80%"
-					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
+					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
@@ -1181,7 +1181,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1203,7 +1203,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1224,7 +1224,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1246,7 +1246,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1266,7 +1266,7 @@ onUpdated(async () => {
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1497,7 +1497,7 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				@update:model-value="valueChanged"
 			/>
-			<div v-if="showDragnDropTip" :class="$style.tip">
+			<div v-if="!isReadOnly && showDragnDropTip" :class="$style.tip">
 				<InlineExpressionTip />
 			</div>
 		</div>

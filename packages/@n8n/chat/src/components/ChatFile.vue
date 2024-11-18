@@ -30,13 +30,12 @@ const TypeIcon = computed(() => {
 });
 
 function onClick() {
-	if (props.isRemovable) {
-		emit('remove', props.file);
-	}
-
 	if (props.isPreviewable) {
 		window.open(URL.createObjectURL(props.file));
 	}
+}
+function onDelete() {
+	emit('remove', props.file);
 }
 </script>
 
@@ -44,8 +43,10 @@ function onClick() {
 	<div class="chat-file" @click="onClick">
 		<TypeIcon />
 		<p class="chat-file-name">{{ file.name }}</p>
-		<IconDelete v-if="isRemovable" class="chat-file-delete" />
-		<IconPreview v-if="isPreviewable" class="chat-file-preview" />
+		<span v-if="isRemovable" class="chat-file-delete" @click.stop="onDelete">
+			<IconDelete />
+		</span>
+		<IconPreview v-else-if="isPreviewable" class="chat-file-preview" />
 	</div>
 </template>
 
@@ -80,12 +81,25 @@ function onClick() {
 .chat-file-preview {
 	background: none;
 	border: none;
-	display: none;
+	display: block;
 	cursor: pointer;
 	flex-shrink: 0;
+}
 
-	.chat-file:hover & {
-		display: block;
+.chat-file-delete {
+	position: relative;
+	&:hover {
+		color: red;
+	}
+
+	/* Increase hit area for better clickability */
+	&:before {
+		content: '';
+		position: absolute;
+		top: -10px;
+		right: -10px;
+		bottom: -10px;
+		left: -10px;
 	}
 }
 </style>

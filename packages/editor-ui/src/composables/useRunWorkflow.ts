@@ -22,12 +22,7 @@ import { FORM_NODE_TYPE, NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WAIT_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
-} from '@/constants';
+import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -40,7 +35,6 @@ import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
-import type { PushPayload } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 
 const FORM_RELOAD = 'n8n_redirect_to_next_form_test_page';
@@ -55,7 +49,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
-
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
 		if (!rootStore.pushConnectionActive) {
@@ -175,7 +168,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+						workflowsStore.setPanelOpen('chat', true);
 						return;
 					}
 				}
@@ -359,7 +352,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		let isFormShown =
 			!options.destinationNode &&
-			workflowsStore.allNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			workflowsStore.allNodes.some(
+				(node) =>
+					node.type === FORM_TRIGGER_NODE_TYPE && !workflowsStore?.pinnedWorkflowData?.[node.name],
+			);
 
 		const resolveWaitingNodesData = async (): Promise<void> => {
 			return await new Promise<void>((resolve) => {
@@ -518,10 +514,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			if (execution === undefined) {
 				// execution finished but was not saved (e.g. due to low connectivity)
-				workflowsStore.finishActiveExecution({
-					executionId,
-					data: { finished: true, stoppedAt: new Date() } as IRun,
-				});
 				workflowsStore.executingNode.length = 0;
 				uiStore.removeActiveAction('workflowRunning');
 
@@ -540,12 +532,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IRun;
-				const pushData: PushPayload<'executionFinished'> = {
-					data: executedData,
-					executionId,
-					retryOf: execution.retryOf,
-				};
-				workflowsStore.finishActiveExecution(pushData);
 				workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 				workflowsStore.executingNode.length = 0;
 				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);

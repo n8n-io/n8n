@@ -1,19 +1,10 @@
-import {
-	Column,
-	Entity,
-	Generated,
-	Index,
-	ManyToOne,
-	OneToOne,
-	PrimaryColumn,
-	RelationId,
-} from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, RelationId } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
-import { WithTimestamps } from './abstract-entity';
+import { WithTimestampsAndStringId } from './abstract-entity';
 
 /**
  * Entity representing a Test Definition
@@ -25,14 +16,15 @@ import { WithTimestamps } from './abstract-entity';
 @Entity()
 @Index(['workflow'])
 @Index(['evaluationWorkflow'])
-export class TestDefinition extends WithTimestamps {
-	@Generated()
-	@PrimaryColumn()
-	id: number;
-
+export class TestDefinition extends WithTimestampsAndStringId {
 	@Column({ length: 255 })
-	@Length(1, 255, { message: 'Test name must be $constraint1 to $constraint2 characters long.' })
+	@Length(1, 255, {
+		message: 'Test definition name must be $constraint1 to $constraint2 characters long.',
+	})
 	name: string;
+
+	@Column('text')
+	description: string;
 
 	/**
 	 * Relation to the workflow under test
@@ -56,6 +48,9 @@ export class TestDefinition extends WithTimestamps {
 	 * Relation to the annotation tag associated with the test
 	 * This tag will be used to select the test cases to run from previous executions
 	 */
-	@OneToOne('AnnotationTagEntity', 'test')
+	@ManyToOne('AnnotationTagEntity', 'test')
 	annotationTag: AnnotationTagEntity;
+
+	@RelationId((test: TestDefinition) => test.annotationTag)
+	annotationTagId: string;
 }
