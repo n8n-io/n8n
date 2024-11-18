@@ -93,7 +93,14 @@ describe('useActions', () => {
 				],
 				nodes: [
 					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
-					{ type: AGENT_NODE_TYPE, openDetail: true },
+					{
+						type: AGENT_NODE_TYPE,
+						parameters: {
+							promptType: 'auto',
+							text: '={{ $json.chatInput }}',
+						},
+						openDetail: true,
+					},
 				],
 			});
 		});
@@ -123,7 +130,14 @@ describe('useActions', () => {
 				],
 				nodes: [
 					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
-					{ type: AGENT_NODE_TYPE, openDetail: true },
+					{
+						type: AGENT_NODE_TYPE,
+						parameters: {
+							promptType: 'auto',
+							text: '={{ $json.chatInput }}',
+						},
+						openDetail: true,
+					},
 				],
 			});
 		});

@@ -16,6 +16,7 @@ export function adjustNewNodes(
 
 function adjustNewChild(parent: AddedNode, child: AddedNode) {
 	if (AI_ROOT_NODE_TYPES.includes(child.type) && PROMPT_PROVIDER_NODE_NAMES.includes(parent.type)) {
+		// Need to re-set text to support disabled parameter value for prompt text.
 		Object.assign<AddedNode, Partial<INode>>(child, {
 			parameters: { ...child.parameters, promptType: 'auto', text: '={{ $json.chatInput }}' },
 		});
