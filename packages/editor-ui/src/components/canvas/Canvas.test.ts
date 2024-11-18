@@ -119,13 +119,6 @@ describe('Canvas', () => {
 				[
 					{
 						id: '1',
-						type: 'position',
-						dragging: true,
-						from: {
-							x: 100,
-							y: 100,
-							z: 0,
-						},
 						position: { x: 120, y: 120 },
 					},
 				],
