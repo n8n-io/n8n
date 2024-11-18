@@ -26,7 +26,7 @@ import {
 	clickCreateNewCredential,
 	clickExecuteNode,
 	clickGetBackToCanvas,
-	getNoToolsUsedCallout,
+	getRunDataInfoCallout,
 	getOutputPanelTable,
 	toggleParameterCheckboxInputByName,
 } from '../composables/ndv';
@@ -463,13 +463,13 @@ describe('Langchain Integration', () => {
 		closeManualChatModal();
 		openNode(AGENT_NODE_NAME);
 
-		getNoToolsUsedCallout().should('exist');
+		getRunDataInfoCallout().should('exist');
 	});
 
 	it('should not show tool info notice if tools were used during execution', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
-		getNoToolsUsedCallout().should('not.exist');
+		getRunDataInfoCallout().should('not.exist');
 		clickGetBackToCanvas();
 
 		addLanguageModelNodeToParent(
@@ -488,7 +488,7 @@ describe('Langchain Integration', () => {
 		clickGetBackToCanvas();
 		openNode(AGENT_NODE_NAME);
 
-		getNoToolsUsedCallout().should('not.exist');
+		getRunDataInfoCallout().should('not.exist');
 
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
@@ -516,6 +516,6 @@ describe('Langchain Integration', () => {
 		// This waits to ensure the output panel is rendered
 		getOutputPanelTable();
 
-		getNoToolsUsedCallout().should('not.exist');
+		getRunDataInfoCallout().should('not.exist');
 	});
 });

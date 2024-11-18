@@ -52,7 +52,7 @@ export function getOutputPanelTable() {
 	return getOutputPanelDataContainer().get('table');
 }
 
-export function getNoToolsUsedCallout() {
+export function getRunDataInfoCallout() {
 	return cy.getByTestId('run-data-callout');
 }
 
