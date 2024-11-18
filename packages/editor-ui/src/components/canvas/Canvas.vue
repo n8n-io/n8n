@@ -6,7 +6,13 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type { Connection, XYPosition, ViewportTransform, NodeDragEvent } from '@vue-flow/core';
+import type {
+	Connection,
+	XYPosition,
+	ViewportTransform,
+	NodeDragEvent,
+	GraphNode,
+} from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
@@ -26,6 +32,7 @@ import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
+import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 
 const $style = useCssModule();
 
@@ -91,6 +98,7 @@ const props = withDefaults(
 
 const { controlKeyCode } = useDeviceSupport();
 
+const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -101,15 +109,20 @@ const {
 	zoomOut,
 	zoomTo,
 	setInteractive,
-	getIncomers,
-	getOutgoers,
 	elementsSelectable,
 	project,
 	nodes: graphNodes,
 	onPaneReady,
 	findNode,
 	viewport,
-} = useVueFlow({ id: props.id, deleteKeyCode: null });
+} = vueFlow;
+const {
+	getIncomingNodes,
+	getOutgoingNodes,
+	getSiblingNodes,
+	getDownstreamNodes,
+	getUpstreamNodes,
+} = useCanvasTraversal(vueFlow);
 
 const isPaneReady = ref(false);
 
@@ -139,26 +152,6 @@ onKeyUp(panningKeyCode.value, () => {
 	selectionKeyCode.value = true;
 });
 
-function sortNodesByVerticalPosition(nodes: CanvasNode[]) {
-	return nodes.sort((a, b) => a.position.y - b.position.y);
-}
-
-function getIncomingNodes(id: string) {
-	return sortNodesByVerticalPosition(getIncomers(id));
-}
-
-function getOutgoingNodes(id: string) {
-	return sortNodesByVerticalPosition(getOutgoers(id));
-}
-
-function getSiblingNodes(id: string) {
-	return sortNodesByVerticalPosition(
-		getIncomers(id)
-			.flatMap((incomingNode) => getOutgoers(incomingNode.id))
-			.filter((node, index, nodes) => nodes.findIndex((n) => n.id === node.id) === index),
-	);
-}
-
 function selectLeftNode(id: string) {
 	const incomingNodes = getIncomingNodes(id);
 	const previousNode = incomingNodes[0];
@@ -178,22 +171,33 @@ function selectRightNode(id: string) {
 function selectLowerSiblingNode(id: string) {
 	const siblingNodes = getSiblingNodes(id);
 	const index = siblingNodes.findIndex((n) => n.id === id);
-	const nextNode = siblingNodes[index + 1];
-
-	console.log(siblingNodes, nextNode);
-
+	const nextNode = siblingNodes[index + 1] ?? siblingNodes[0];
 	if (nextNode) {
-		onSelectNodes({ ids: [nextNode.id] });
+		onSelectNodes({
+			ids: [nextNode.id],
+		});
 	}
 }
 
 function selectUpperSiblingNode(id: string) {
 	const siblingNodes = getSiblingNodes(id);
 	const index = siblingNodes.findIndex((n) => n.id === id);
-	const previousNode = siblingNodes[index - 1];
+	const previousNode = siblingNodes[index - 1] ?? siblingNodes[siblingNodes.length - 1];
 	if (previousNode) {
-		onSelectNodes({ ids: [previousNode.id] });
+		onSelectNodes({
+			ids: [previousNode.id],
+		});
 	}
+}
+
+function selectDownstreamNodes(id: string) {
+	const downstreamNodes = getDownstreamNodes(id);
+	onSelectNodes({ ids: [...downstreamNodes.map((node) => node.id), id] });
+}
+
+function selectUpstreamNodes(id: string) {
+	const upstreamNodes = getUpstreamNodes(id);
+	onSelectNodes({ ids: [...upstreamNodes.map((node) => node.id), id] });
 }
 
 const keyMap = computed(() => ({
@@ -208,6 +212,8 @@ const keyMap = computed(() => ({
 	ArrowDown: emitWithLastSelectedNode(selectLowerSiblingNode),
 	ArrowLeft: emitWithLastSelectedNode(selectLeftNode),
 	ArrowRight: emitWithLastSelectedNode(selectRightNode),
+	shift_ArrowLeft: emitWithLastSelectedNode(selectUpstreamNodes),
+	shift_ArrowRight: emitWithLastSelectedNode(selectDownstreamNodes),
 	// @TODO implement arrow key shortcuts to modify selection
 
 	...(props.readOnly
@@ -233,9 +239,15 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
+
+const lastSelectedNode = ref<GraphNode>();
+watch(selectedNodes, (nodes) => {
+	if (!lastSelectedNode.value || !nodes.find((node) => node.id === lastSelectedNode.value?.id)) {
+		lastSelectedNode.value = nodes[nodes.length - 1];
+	}
+});
 
 function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
@@ -566,6 +578,7 @@ provide(CanvasKey, {
 		:class="classes"
 		:selection-key-code="selectionKeyCode"
 		:pan-activation-key-code="panningKeyCode"
+		:disable-keyboard-a11y="true"
 		data-test-id="canvas"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
