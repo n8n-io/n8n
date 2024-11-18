@@ -19,7 +19,7 @@ const sanitizedErrorMessage = computed(() => {
 
 <template>
 	<div>
-		<span v-html="sanitizedErrorMessage"></span>
+		<span data-test-id="sanitized-error-message" v-html="sanitizedErrorMessage"></span>
 		<br />
 		<a data-action="openNodeDetail" :data-action-parameter-node="nodeName">{{
 			i18n.baseText('node.executionError.openNode')
