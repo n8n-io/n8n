@@ -16,6 +16,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnection } from '@/composables/usePushConnection';
 
 import GithubButton from 'vue-github-button';
@@ -29,6 +30,7 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const settingsStore = useSettingsStore();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
@@ -50,6 +52,7 @@ const workflowId = computed(() =>
 );
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+const showGitHubButton = computed(() => !settingsStore.settings.inE2ETests);
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -184,15 +187,16 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 				@update:model-value="onTabSelected"
 			/>
 		</div>
-		<div class="github-button">
+		<div class="github-button" v-if="showGitHubButton">
 			<GithubButton
 				href="https://github.com/n8n-io/n8n"
 				:data-color-scheme="uiStore.appliedTheme"
 				data-size="large"
 				data-show-count="true"
 				aria-label="Star n8n-io/n8n on GitHub"
-				>Star</GithubButton
 			>
+				Star
+			</GithubButton>
 		</div>
 	</div>
 </template>

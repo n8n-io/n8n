@@ -35,7 +35,7 @@ const onDragStart = () => {
 		@dragend="onDragEnd"
 	>
 		<template #default="{ isDragging }">
-			<div :class="{ [$style.dragButton]: true }">
+			<div :class="{ [$style.dragButton]: true }" data-test-id="panel-drag-button">
 				<span
 					v-if="canMoveLeft"
 					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
