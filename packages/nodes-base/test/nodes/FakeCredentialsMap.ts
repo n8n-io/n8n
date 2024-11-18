@@ -80,6 +80,30 @@ BQIDAQAB
 		},
 		baseUrl: 'https://api.gong.io',
 	},
+	microsoftEntraOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+		accessTokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'openid offline_access AccessReview.ReadWrite.All Directory.ReadWrite.All NetworkAccessPolicy.ReadWrite.All DelegatedAdminRelationship.ReadWrite.All EntitlementManagement.ReadWrite.All User.ReadWrite.All Directory.AccessAsUser.All Sites.FullControl.All',
+		authQueryParameters: 'response_mode=query',
+		authentication: 'body',
+		oauthTokenData: {
+			token_type: 'Bearer',
+			scope:
+				'AccessReview.ReadWrite.All DelegatedAdminRelationship.ReadWrite.All Directory.AccessAsUser.All Directory.Read.All Directory.ReadWrite.All EntitlementManagement.ReadWrite.All Group.ReadWrite.All NetworkAccessPolicy.ReadWrite.All openid Sites.FullControl.All User.DeleteRestore.All User.EnableDisableAccount.All User.Export.All User.Invite.All User.ManageIdentities.All User.Read User.Read.All User.ReadBasic.All User.ReadWrite User.ReadWrite.All User.RevokeSessions.All profile email',
+			expires_in: 4822,
+			ext_expires_in: 4822,
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			id_token: 'IDTOKEN',
+			callbackQueryString: {
+				session_state: 'SESSIONSTATE',
+			},
+		},
+	},
 	n8nApi: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',

@@ -903,6 +903,8 @@ export async function proxyRequestToAxios(
 	}
 }
 
+const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
+
 // eslint-disable-next-line complexity
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
@@ -979,7 +981,11 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		// if there is a body and it's empty (does not have properties),
 		// make sure not to send anything in it as some services fail when
 		// sending GET request with empty body.
-		if (typeof body === 'string' || (typeof body === 'object' && !isObjectEmpty(body))) {
+		if (
+			typeof body === 'string' ||
+			(typeof body === 'object' &&
+				!(isObjectEmpty(body) && NoBodyHttpMethods.includes(method || 'GET')))
+		) {
 			axiosRequest.data = body;
 		}
 	}
@@ -1012,8 +1018,6 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 
 	return axiosRequest;
 }
-
-const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
 export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
