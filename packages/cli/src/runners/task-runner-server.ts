@@ -182,7 +182,7 @@ export class TaskRunnerServer {
 			const response = new ServerResponse(request);
 			response.writeHead = (statusCode) => {
 				if (statusCode > 200) {
-					this.logger.error(`Closed WebSocket connection with status code ${statusCode}`);
+					this.logger.error(`Task runner connection attempt failed with status code ${statusCode}`);
 					ws.close();
 				}
 				return response;
