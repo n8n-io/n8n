@@ -327,7 +327,7 @@ export const useFlattenSchema = () => {
 	};
 
 	const flattenMultipleSchemas = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
-		nodes.reduce<Renders[]>((acc, item, index) => {
+		nodes.reduce<Renders[]>((acc, item) => {
 			acc.push({
 				title: item.node.name,
 				id: item.node.name,
