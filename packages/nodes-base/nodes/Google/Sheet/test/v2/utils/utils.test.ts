@@ -1,15 +1,24 @@
-import type { IExecuteFunctions, INode, ResourceMapperField } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INode,
+	type ResourceMapperField,
+} from 'n8n-workflow';
+
 import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import {
 	addRowNumber,
 	autoMapInputData,
 	checkForSchemaChanges,
+	getSpreadsheetId,
 	prepareSheetData,
 	removeEmptyColumns,
 	removeEmptyRows,
 	trimLeadingEmptyRows,
 	trimToFirstEmptyRow,
 } from '../../../v2/helpers/GoogleSheets.utils';
+
+import { GOOGLE_SHEETS_SHEET_URL_REGEX } from '../../../../constants';
 
 describe('Test Google Sheets, addRowNumber', () => {
 	it('should add row nomber', () => {
@@ -442,5 +451,75 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 				{ id: 'text' },
 			] as ResourceMapperField[]),
 		).toThrow("Column names were updated after the node's setup");
+	});
+});
+
+describe('Test Google Sheets, getSpreadsheetId', () => {
+	let mockNode: INode;
+
+	beforeEach(() => {
+		mockNode = { name: 'Google Sheets' } as INode;
+		jest.clearAllMocks();
+	});
+
+	it('should throw an error if value is empty', () => {
+		expect(() => getSpreadsheetId(mockNode, 'url', '')).toThrow(NodeOperationError);
+	});
+
+	it('should return the ID from a valid URL', () => {
+		const url =
+			'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0';
+		const result = getSpreadsheetId(mockNode, 'url', url);
+		expect(result).toBe('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms');
+	});
+
+	it('should return an empty string for an invalid URL', () => {
+		const url = 'https://docs.google.com/spreadsheets/d/';
+		const result = getSpreadsheetId(mockNode, 'url', url);
+		expect(result).toBe('');
+	});
+
+	it('should return the value for documentIdType byId or byList', () => {
+		const value = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+		expect(getSpreadsheetId(mockNode, 'id', value)).toBe(value);
+		expect(getSpreadsheetId(mockNode, 'list', value)).toBe(value);
+	});
+});
+
+describe('Test Google Sheets, Google Sheets Sheet URL Regex', () => {
+	const regex = new RegExp(GOOGLE_SHEETS_SHEET_URL_REGEX);
+
+	it('should match a valid Google Sheets URL', () => {
+		const urls = [
+			'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0',
+			'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=123456',
+			'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit?gid=654321#gid=654321',
+		];
+		for (const url of urls) {
+			expect(regex.test(url)).toBe(true);
+		}
+	});
+
+	it('should not match an invalid Google Sheets URL', () => {
+		const url = 'https://docs.google.com/spreadsheets/d/';
+		expect(regex.test(url)).toBe(false);
+	});
+
+	it('should not match a URL that does not match the pattern', () => {
+		const url =
+			'https://example.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0';
+		expect(regex.test(url)).toBe(false);
+	});
+
+	it('should extract the gid from a valid Google Sheets URL', () => {
+		const urls = [
+			'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=12345',
+			'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit?gid=12345#gid=12345',
+		];
+		for (const url of urls) {
+			const match = url.match(regex);
+			expect(match).not.toBeNull();
+			expect(match?.[1]).toBe('12345');
+		}
 	});
 });
