@@ -1795,6 +1795,7 @@
 	"settings.api.delete.button": "Delete Forever",
 	"settings.api.delete.error": "Deleting the API Key failed.",
 	"settings.api.delete.toast": "API Key deleted",
+	"settings.api.creationTime": "Created {time} ago",
 	"settings.api.view.copy.toast": "API Key copied to clipboard",
 	"settings.api.view.apiPlayground": "API Playground",
 	"settings.api.view.info": "Use your API Key to control n8n programmatically using the {apiAction}. But if you only want to trigger workflows, consider using the {webhookAction} instead.",

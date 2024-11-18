@@ -13,6 +13,7 @@ import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { createEventBus } from 'n8n-design-system';
 
 const settingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -29,6 +30,8 @@ const loading = ref(false);
 const mounted = ref(false);
 const apiKeys = ref<ApiKey[]>([]);
 const apiDocsURL = ref('');
+
+const eventBus = createEventBus();
 
 const { isPublicApiEnabled, isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } =
 	settingsStore;
@@ -105,6 +108,13 @@ async function deleteApiKey() {
 	}
 }
 
+function onDelete(id: string) {
+	console.log('on delete');
+}
+function onEdit(id: string) {
+	console.log('on edit');
+}
+
 function onCopy() {
 	telemetry.track('User clicked copy API key button');
 }
@@ -120,8 +130,25 @@ function onCopy() {
 				</span>
 			</n8n-heading>
 		</div>
+		<template v-if="apiKeys.length">
+			<el-row
+				v-for="apiKey in apiKeys"
+				:key="apiKey.id"
+				:gutter="10"
+				:class="$style.destinationItem"
+			>
+				<el-col>
+					<ApiKeyCard :api-key="apiKey" @delete="onDelete('123')" @edit="onEdit('123')" />
+				</el-col>
+			</el-row>
+			<div class="mt-m text-right"></div>
+		</template>
 
-		<div v-if="apiKeys.length">
+		<div class="mt-m text-right">
+			<n8n-button size="large"> Create an API Key</n8n-button>
+		</div>
+
+		<!-- <div v-if="apiKeys.length">
 			<p class="mb-s">
 				<n8n-info-tip :bold="false">
 					<i18n-t keypath="settings.api.view.info" tag="span">
@@ -191,7 +218,7 @@ function onCopy() {
 			"
 			:description="i18n.baseText('settings.api.create.description')"
 			@click:button="createApiKey"
-		/>
+		/> -->
 	</div>
 </template>
 
