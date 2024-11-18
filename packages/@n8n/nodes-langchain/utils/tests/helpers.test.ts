@@ -68,6 +68,61 @@ describe('escapeSingleCurlyBrackets', () => {
 	it('should handle string with whitespace in curly brackets', () => {
 		expect(escapeSingleCurlyBrackets('Whitespace {  } here')).toBe('Whitespace {{  }} here');
 	});
+	it('should handle multi-line input with single curly brackets', () => {
+		const input = `
+      Line 1 {test}
+      Line 2 {another test}
+      Line 3
+    `;
+		const expected = `
+      Line 1 {{test}}
+      Line 2 {{another test}}
+      Line 3
+    `;
+		expect(escapeSingleCurlyBrackets(input)).toBe(expected);
+	});
+
+	it('should handle multi-line input with mixed single and double curly brackets', () => {
+		const input = `
+      {Line 1}
+      {{Line 2}}
+      Line {3} {{4}}
+    `;
+		const expected = `
+      {{Line 1}}
+      {{Line 2}}
+      Line {{3}} {{4}}
+    `;
+		expect(escapeSingleCurlyBrackets(input)).toBe(expected);
+	});
+
+	it('should handle multi-line input with curly brackets at line starts and ends', () => {
+		const input = `
+      {Start of line 1
+      End of line 2}
+      {3} Line 3 {3}
+    `;
+		const expected = `
+      {{Start of line 1
+      End of line 2}}
+      {{3}} Line 3 {{3}}
+    `;
+		expect(escapeSingleCurlyBrackets(input)).toBe(expected);
+	});
+
+	it('should handle multi-line input with nested curly brackets', () => {
+		const input = `
+      Outer {
+        Inner {nested}
+      }
+    `;
+		const expected = `
+      Outer {{
+        Inner {{nested}}
+      }}
+    `;
+		expect(escapeSingleCurlyBrackets(input)).toBe(expected);
+	});
 });
 
 describe('getConnectedTools', () => {
