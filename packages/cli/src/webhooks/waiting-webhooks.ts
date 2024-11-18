@@ -215,7 +215,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				workflowData as IWorkflowDb,
 				workflowStartNode,
 				executionMode,
-				undefined,
+				runExecutionData.pushRef,
 				runExecutionData,
 				execution.id,
 				req,

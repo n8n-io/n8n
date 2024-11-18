@@ -11,10 +11,8 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import type {
-	ExecutionsQueryFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
-	IExecutionsCurrentSummaryExtended,
 	IExecutionsListResponse,
 	INewWorkflowData,
 	INodeMetadata,
@@ -125,10 +123,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const activeWorkflows = ref<string[]>([]);
-	const activeExecutions = ref<IExecutionsCurrentSummaryExtended[]>([]);
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
-	const finishedExecutionsCount = ref(0);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const activeExecutionId = ref<string | null>(null);
@@ -139,6 +135,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeMetadata = ref<NodeMetadataMap>({});
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
+	const isChatPanelOpen = ref(false);
+	const isLogsPanelOpen = ref(false);
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -263,8 +261,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const getWorkflowExecution = computed(() => workflowExecutionData.value);
-
-	const getTotalFinishedExecutionsCount = computed(() => finishedExecutionsCount.value);
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
@@ -1046,10 +1042,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
+		nodeMetadata.value = nodes.reduce<NodeMetadataMap>((acc, node) => {
+			acc[node.name] = { pristine: true };
+			return acc;
+		}, {});
 	}
 
-	function setConnections(connections: IConnections): void {
+	function setConnections(connections: IConnections, updateWorkflow = false): void {
 		workflow.value.connections = connections;
+
+		if (updateWorkflow) {
+			updateCachedWorkflow();
+		}
 	}
 
 	function resetAllNodesIssues(): boolean {
@@ -1118,6 +1122,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function removeNode(node: INodeUi): void {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
+
+		// If chat trigger node is removed, close chat
+		if (node.type === CHAT_TRIGGER_NODE_TYPE) {
+			setPanelOpen('chat', false);
+		}
 
 		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
 			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
@@ -1323,52 +1332,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return ndvStore.activeNode;
 	}
 
-	function addActiveExecution(newActiveExecution: IExecutionsCurrentSummaryExtended): void {
-		// Check if the execution exists already
-		const activeExecution = activeExecutions.value.find((execution) => {
-			return execution.id === newActiveExecution.id;
-		});
-
-		if (activeExecution !== undefined) {
-			// Exists already so no need to add it again
-			if (activeExecution.workflowName === undefined) {
-				activeExecution.workflowName = newActiveExecution.workflowName;
-			}
-			return;
-		}
-
-		activeExecutions.value.unshift(newActiveExecution);
-		activeExecutionId.value = newActiveExecution.id;
-	}
-
-	function finishActiveExecution(finishedActiveExecution: PushPayload<'executionFinished'>): void {
-		// Find the execution to set to finished
-		const activeExecutionIndex = activeExecutions.value.findIndex((execution) => {
-			return execution.id === finishedActiveExecution.executionId;
-		});
-
-		if (activeExecutionIndex === -1) {
-			// The execution could not be found
-			return;
-		}
-
-		Object.assign(activeExecutions.value[activeExecutionIndex], {
-			...(finishedActiveExecution.executionId !== undefined
-				? { id: finishedActiveExecution.executionId }
-				: {}),
-			finished: finishedActiveExecution.data?.finished,
-			stoppedAt: finishedActiveExecution.data?.stoppedAt,
-		});
-
-		if (finishedActiveExecution.data?.data) {
-			setWorkflowExecutionRunData(finishedActiveExecution.data.data);
-		}
-	}
-
-	function setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
-		activeExecutions.value = newActiveExecutions;
-	}
-
 	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 	async function getPastExecutions(
 		filter: IDataObject,
@@ -1387,26 +1350,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		const rootStore = useRootStore();
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/executions', sendData);
-	}
-
-	async function getActiveExecutions(
-		filter: IDataObject,
-	): Promise<IExecutionsCurrentSummaryExtended[]> {
-		let sendData = {};
-		if (filter) {
-			sendData = {
-				filter,
-			};
-		}
-		const rootStore = useRootStore();
-		const output = await makeRestApiRequest<{ results: IExecutionsCurrentSummaryExtended[] }>(
-			rootStore.restApiContext,
-			'GET',
-			'/executions',
-			sendData,
-		);
-
-		return output.results;
 	}
 
 	async function getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1490,36 +1433,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'DELETE',
 			`/test-webhook/${targetWorkflowId}`,
 		);
-	}
-
-	async function loadCurrentWorkflowExecutions(
-		requestFilter: ExecutionsQueryFilter,
-	): Promise<ExecutionSummary[]> {
-		let retrievedActiveExecutions: IExecutionsCurrentSummaryExtended[] = [];
-
-		if (!requestFilter.workflowId) {
-			return [];
-		}
-
-		try {
-			const rootStore = useRootStore();
-			if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
-				retrievedActiveExecutions = await workflowsApi.getActiveExecutions(
-					rootStore.restApiContext,
-					{
-						workflowId: requestFilter.workflowId,
-					},
-				);
-			}
-			const retrievedFinishedExecutions = await workflowsApi.getExecutions(
-				rootStore.restApiContext,
-				requestFilter,
-			);
-			finishedExecutionsCount.value = retrievedFinishedExecutions.count;
-			return [...retrievedActiveExecutions, ...(retrievedFinishedExecutions.results || [])];
-		} catch (error) {
-			throw error;
-		}
 	}
 
 	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
@@ -1617,14 +1530,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
+	function setPanelOpen(panel: 'chat' | 'logs', isOpen: boolean) {
+		if (panel === 'chat') {
+			isChatPanelOpen.value = isOpen;
+		}
+		// Logs panel open/close is tied to the chat panel open/close
+		isLogsPanelOpen.value = isOpen;
+	}
+
 	return {
 		workflow,
 		usedCredentials,
 		activeWorkflows,
-		activeExecutions,
 		activeWorkflowExecution,
 		currentWorkflowExecutions,
-		finishedExecutionsCount,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
 		activeExecutionId,
@@ -1659,8 +1578,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
-		getTotalFinishedExecutionsCount,
 		getPastChatMessages,
+		isChatPanelOpen: computed(() => isChatPanelOpen.value),
+		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
+		setPanelOpen,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
@@ -1734,17 +1655,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		clearNodeExecutionData,
 		pinDataByNodeName,
 		activeNode,
-		addActiveExecution,
-		finishActiveExecution,
-		setActiveExecutions,
 		getPastExecutions,
-		getActiveExecutions,
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,
 		runWorkflow,
 		removeTestWebhook,
-		loadCurrentWorkflowExecutions,
 		fetchExecutionDataById,
 		deleteExecution,
 		addToCurrentExecutions,

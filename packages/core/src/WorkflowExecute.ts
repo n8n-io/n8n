@@ -408,7 +408,10 @@ export class WorkflowExecute {
 			let metaRunData: ITaskMetadata;
 			for (const nodeName of Object.keys(metadata)) {
 				for ([index, metaRunData] of metadata[nodeName].entries()) {
-					runData[nodeName][index].metadata = metaRunData;
+					runData[nodeName][index].metadata = {
+						...(runData[nodeName][index].metadata ?? {}),
+						...metaRunData,
+					};
 				}
 			}
 		}
@@ -1243,7 +1246,7 @@ export class WorkflowExecute {
 											: [];
 
 										while (items.length) {
-											const item = items.pop();
+											const item = items.shift();
 											if (item === undefined) {
 												continue;
 											}
@@ -1448,6 +1451,7 @@ export class WorkflowExecute {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
+						metadata: executionData.metadata,
 						executionStatus: 'success',
 					};
 

@@ -34,7 +34,6 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
@@ -182,7 +181,6 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import type { PushPayload } from '@n8n/api-types';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -223,7 +221,7 @@ export default defineComponent({
 
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
-		const locale = useI18n();
+		const i18n = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
@@ -242,7 +240,7 @@ export default defineComponent({
 		});
 
 		return {
-			locale,
+			i18n,
 			contextMenu,
 			dataSchema,
 			nodeHelpers,
@@ -368,14 +366,14 @@ export default defineComponent({
 		},
 		runButtonText(): string {
 			if (!this.workflowRunning) {
-				return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
+				return this.i18n.baseText('nodeView.runButtonText.executeWorkflow');
 			}
 
 			if (this.executionWaitingForWebhook) {
-				return this.$locale.baseText('nodeView.runButtonText.waitingForTriggerEvent');
+				return this.i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
 			}
 
-			return this.$locale.baseText('nodeView.runButtonText.executingWorkflow');
+			return this.i18n.baseText('nodeView.runButtonText.executingWorkflow');
 		},
 		workflowStyle() {
 			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
@@ -455,13 +453,13 @@ export default defineComponent({
 				)
 			);
 		},
+		canvasChatNode() {
+			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
 		isManualChatOnly(): boolean {
 			if (!this.canvasChatNode) return false;
 
 			return this.containsChatNodes && this.triggerNodes.length === 1 && !this.pinnedChatNodeData;
-		},
-		canvasChatNode() {
-			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 		},
 		pinnedChatNodeData() {
 			if (!this.canvasChatNode) return null;
@@ -512,6 +510,9 @@ export default defineComponent({
 				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
 				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
+		},
+		isChatOpen() {
+			return this.workflowsStore.isChatPanelOpen;
 		},
 	},
 	watch: {
@@ -588,8 +589,8 @@ export default defineComponent({
 		if (!this.nodeViewRef) {
 			this.showError(
 				new Error('NodeView reference not found'),
-				this.$locale.baseText('nodeView.showError.mounted1.title'),
-				this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
+				this.i18n.baseText('nodeView.showError.mounted1.title'),
+				this.i18n.baseText('nodeView.showError.mounted1.message') + ':',
 			);
 			return;
 		}
@@ -623,8 +624,8 @@ export default defineComponent({
 		} catch (error) {
 			this.showError(
 				error,
-				this.$locale.baseText('nodeView.showError.mounted1.title'),
-				this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
+				this.i18n.baseText('nodeView.showError.mounted1.title'),
+				this.i18n.baseText('nodeView.showError.mounted1.message') + ':',
 			);
 			return;
 		}
@@ -644,8 +645,8 @@ export default defineComponent({
 			} catch (error) {
 				this.showError(
 					error,
-					this.$locale.baseText('nodeView.showError.mounted2.title'),
-					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
+					this.i18n.baseText('nodeView.showError.mounted2.title'),
+					this.i18n.baseText('nodeView.showError.mounted2.message') + ':',
 				);
 			}
 			this.canvasStore.stopLoading();
@@ -813,12 +814,12 @@ export default defineComponent({
 			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
 				this.readOnlyNotification = this.showMessage({
-					title: this.$locale.baseText(
+					title: this.i18n.baseText(
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${this.isReadOnlyRoute ? 'executions' : 'workflows'}.title`
 							: 'readOnly.showMessage.executions.title',
 					),
-					message: this.$locale.baseText(
+					message: this.i18n.baseText(
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${
 									this.isReadOnlyRoute ? 'executions' : 'workflows'
@@ -863,7 +864,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
-			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+			this.workflowsStore.setPanelOpen('chat', !this.workflowsStore.isChatPanelOpen);
 		},
 
 		async onRunWorkflow() {
@@ -930,12 +931,12 @@ export default defineComponent({
 
 			const message =
 				this.containsTrigger && this.allTriggersDisabled
-					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
-					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
+					? this.i18n.baseText('nodeView.addOrEnableTriggerNode')
+					: this.i18n.baseText('nodeView.addATriggerNodeFirst');
 
 			const notice = this.showMessage({
 				type: 'info',
-				title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
+				title: this.i18n.baseText('nodeView.cantExecuteNoTrigger'),
 				message,
 				duration: 3000,
 				onClick: () =>
@@ -972,7 +973,7 @@ export default defineComponent({
 				}
 				if (saved) {
 					this.showMessage({
-						title: this.$locale.baseText('generic.workflowSaved'),
+						title: this.i18n.baseText('generic.workflowSaved'),
 						type: 'success',
 					});
 				}
@@ -1000,7 +1001,7 @@ export default defineComponent({
 			try {
 				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
+				this.showError(error, this.i18n.baseText('nodeView.showError.openExecution.title'));
 				return;
 			}
 			if (data === undefined) {
@@ -1068,7 +1069,7 @@ export default defineComponent({
 					console.error(`Execution ${executionId} error:`);
 					console.error(data.data.resultData.error.stack);
 					this.showMessage({
-						title: this.$locale.baseText('nodeView.showError.workflowError'),
+						title: this.i18n.baseText('nodeView.showError.workflowError'),
 						message: data.data.resultData.error.message,
 						type: 'error',
 						duration: 0,
@@ -1077,7 +1078,7 @@ export default defineComponent({
 			}
 			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
-					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
+					title: this.i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: h(NodeViewUnfinishedWorkflowMessage),
 					type: 'warning',
 					duration: 0,
@@ -1102,7 +1103,7 @@ export default defineComponent({
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.canvasStore.startLoading();
-			this.canvasStore.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
+			this.canvasStore.setLoadingText(this.i18n.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
@@ -1115,13 +1116,13 @@ export default defineComponent({
 
 				if (!data) {
 					throw new Error(
-						this.$locale.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
+						this.i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
 							interpolate: { templateId },
 						}),
 					);
 				}
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
+				this.showError(error, this.i18n.baseText('nodeView.couldntImportWorkflow'));
 				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
@@ -1268,7 +1269,7 @@ export default defineComponent({
 					element instanceof HTMLElement &&
 					element.className &&
 					typeof element.className === 'string' &&
-					element.className.includes('ignore-key-press')
+					element.className.includes('ignore-key-press-canvas')
 				) {
 					return;
 				}
@@ -1366,7 +1367,7 @@ export default defineComponent({
 				}
 
 				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
+					title: this.i18n.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
 			} else if (e.key === 'Enter' && noModifierKeys) {
@@ -1698,7 +1699,7 @@ export default defineComponent({
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
-							title: this.$locale.baseText('generic.copiedToClipboard'),
+							title: this.i18n.baseText('generic.copiedToClipboard'),
 							message: '',
 							type: 'success',
 						});
@@ -1726,19 +1727,13 @@ export default defineComponent({
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
 
-					this.workflowsStore.finishActiveExecution({
-						executionId,
-						data: { finished: true, stoppedAt: new Date() } as IRun,
-					});
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
 					this.workflowHelpers.setDocumentTitle(this.workflowsStore.workflowName, 'IDLE');
 					this.showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
-						message: this.$locale.baseText(
-							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
-						),
+						title: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.message'),
 						type: 'success',
 					});
 				} else if (execution?.finished) {
@@ -1751,23 +1746,17 @@ export default defineComponent({
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,
 					} as IRun;
-					const pushData: PushPayload<'executionFinished'> = {
-						data: executedData,
-						executionId,
-						retryOf: execution.retryOf,
-					};
-					this.workflowsStore.finishActiveExecution(pushData);
 					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
 					this.showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
-						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
+						title: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
+						message: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),
 						type: 'success',
 					});
 				} else {
-					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
+					this.showError(error, this.i18n.baseText('nodeView.showError.stopExecution.title'));
 				}
 			}
 			this.stopExecutionInProgress = false;
@@ -1791,10 +1780,7 @@ export default defineComponent({
 			try {
 				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.title'),
-				);
+				this.showError(error, this.i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
 				return;
 			}
 		},
@@ -1825,16 +1811,16 @@ export default defineComponent({
 					}
 
 					const importConfirm = await this.confirm(
-						this.$locale.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
+						this.i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
 							interpolate: { plainTextData },
 						}),
-						this.$locale.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
+						this.i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
 						{
 							type: 'warning',
-							confirmButtonText: this.$locale.baseText(
+							confirmButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
 							),
-							cancelButtonText: this.$locale.baseText(
+							cancelButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
 							dangerouslyUseHTMLString: true,
@@ -1884,7 +1870,7 @@ export default defineComponent({
 				this.canvasStore.stopLoading();
 				this.showError(
 					error,
-					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
+					this.i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
 				return;
 			}
@@ -2034,7 +2020,7 @@ export default defineComponent({
 					});
 				}
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
+				this.showError(error, this.i18n.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
 
@@ -2107,8 +2093,8 @@ export default defineComponent({
 		showMaxNodeTypeError(nodeTypeData: INodeTypeDescription) {
 			const maxNodes = nodeTypeData.maxNodes;
 			this.showMessage({
-				title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
-				message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
+				title: this.i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
+				message: this.i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
 					adjustToNumber: maxNodes,
 					interpolate: { nodeTypeDataDisplayName: nodeTypeData.displayName },
 				}),
@@ -2215,8 +2201,8 @@ export default defineComponent({
 
 			if (nodeTypeData === null) {
 				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
-					message: this.$locale.baseText('nodeView.showMessage.addNodeButton.message', {
+					title: this.i18n.baseText('nodeView.showMessage.addNodeButton.title'),
+					message: this.i18n.baseText('nodeView.showMessage.addNodeButton.message', {
 						interpolate: { nodeTypeName },
 					}),
 					type: 'error',
@@ -2383,7 +2369,7 @@ export default defineComponent({
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
 
-			const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
+			const localizedName = this.i18n.localizeNodeName(newNodeData.name, newNodeData.type);
 
 			newNodeData.name = this.uniqueNodeName(localizedName);
 
@@ -2734,8 +2720,8 @@ export default defineComponent({
 						if (!input.filter.nodes.includes(sourceNode.type)) {
 							this.dropPrevented = true;
 							this.showToast({
-								title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
-								message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
+								title: this.i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+								message: this.i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
 									interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
 								}),
 								type: 'error',
@@ -3385,14 +3371,14 @@ export default defineComponent({
 					(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
 				) {
 					const confirmModal = await this.confirm(
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+						this.i18n.baseText('generic.unsavedWork.confirmMessage.message'),
 						{
-							title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+							title: this.i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
 							type: 'warning',
-							confirmButtonText: this.$locale.baseText(
+							confirmButtonText: this.i18n.baseText(
 								'generic.unsavedWork.confirmMessage.confirmButtonText',
 							),
-							cancelButtonText: this.$locale.baseText(
+							cancelButtonText: this.i18n.baseText(
 								'generic.unsavedWork.confirmMessage.cancelButtonText',
 							),
 							showClose: true,
@@ -3415,7 +3401,7 @@ export default defineComponent({
 					try {
 						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
 					} catch (error) {
-						this.showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+						this.showError(error, this.i18n.baseText('openWorkflow.workflowNotFoundError'));
 
 						void this.$router.push({
 							name: VIEWS.NEW_WORKFLOW,
@@ -3713,17 +3699,17 @@ export default defineComponent({
 		async renameNodePrompt(currentName: string) {
 			try {
 				const promptResponsePromise = this.prompt(
-					this.$locale.baseText('nodeView.prompt.newName') + ':',
-					this.$locale.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
+					this.i18n.baseText('nodeView.prompt.newName') + ':',
+					this.i18n.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
 					{
 						customClass: 'rename-prompt',
-						confirmButtonText: this.$locale.baseText('nodeView.prompt.rename'),
-						cancelButtonText: this.$locale.baseText('nodeView.prompt.cancel'),
-						inputErrorMessage: this.$locale.baseText('nodeView.prompt.invalidName'),
+						confirmButtonText: this.i18n.baseText('nodeView.prompt.rename'),
+						cancelButtonText: this.i18n.baseText('nodeView.prompt.cancel'),
+						inputErrorMessage: this.i18n.baseText('nodeView.prompt.invalidName'),
 						inputValue: currentName,
 						inputValidator: (value: string) => {
 							if (!value.trim()) {
-								return this.$locale.baseText('nodeView.prompt.invalidName');
+								return this.i18n.baseText('nodeView.prompt.invalidName');
 							}
 							return true;
 						},
@@ -3835,7 +3821,7 @@ export default defineComponent({
 
 			if (!data.nodes) {
 				// No nodes to add
-				throw new Error(this.$locale.baseText('nodeView.noNodesGivenToAdd'));
+				throw new Error(this.i18n.baseText('nodeView.noNodesGivenToAdd'));
 			}
 
 			// Get how many of the nodes of the types which have
@@ -3869,7 +3855,7 @@ export default defineComponent({
 
 				oldName = node.name;
 
-				const localized = this.locale.localizeNodeName(node.name, node.type);
+				const localized = this.i18n.localizeNodeName(node.name, node.type);
 
 				newName = this.uniqueNodeName(localized, newNodeNames);
 
@@ -3942,8 +3928,8 @@ export default defineComponent({
 					// Pin data limit reached
 					if (!pinDataSuccess) {
 						this.showError(
-							new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
-							this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+							new Error(this.i18n.baseText('ndv.pinData.error.tooLarge.description')),
+							this.i18n.baseText('ndv.pinData.error.tooLarge.title'),
 						);
 						continue;
 					}
@@ -4151,13 +4137,13 @@ export default defineComponent({
 							window.top.postMessage(
 								JSON.stringify({
 									command: 'error',
-									message: this.$locale.baseText('openWorkflow.workflowImportError'),
+									message: this.i18n.baseText('openWorkflow.workflowImportError'),
 								}),
 								'*',
 							);
 						}
 						this.showMessage({
-							title: this.$locale.baseText('openWorkflow.workflowImportError'),
+							title: this.i18n.baseText('openWorkflow.workflowImportError'),
 							message: (e as Error).message,
 							type: 'error',
 						});
@@ -4177,13 +4163,13 @@ export default defineComponent({
 							window.top.postMessage(
 								JSON.stringify({
 									command: 'error',
-									message: this.$locale.baseText('nodeView.showError.openExecution.title'),
+									message: this.i18n.baseText('nodeView.showError.openExecution.title'),
 								}),
 								'*',
 							);
 						}
 						this.showMessage({
-							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
+							title: this.i18n.baseText('nodeView.showError.openExecution.title'),
 							message: (e as Error).message,
 							type: 'error',
 						});
@@ -4548,7 +4534,7 @@ export default defineComponent({
 					>
 						<template #custom-tooltip>
 							<span
-								v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
+								v-text="i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
 							/>
 						</template>
 					</Node>
@@ -4651,6 +4637,7 @@ export default defineComponent({
 					size="large"
 					icon="comment"
 					type="primary"
+					:outline="isChatOpen === false"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>
@@ -4663,8 +4650,8 @@ export default defineComponent({
 					type="secondary"
 					:title="
 						stopExecutionInProgress
-							? $locale.baseText('nodeView.stoppingCurrentExecution')
-							: $locale.baseText('nodeView.stopCurrentExecution')
+							? i18n.baseText('nodeView.stoppingCurrentExecution')
+							: i18n.baseText('nodeView.stopCurrentExecution')
 					"
 					:loading="stopExecutionInProgress"
 					data-test-id="stop-execution-button"
@@ -4676,7 +4663,7 @@ export default defineComponent({
 					class="stop-execution"
 					icon="stop"
 					size="large"
-					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
+					:title="i18n.baseText('nodeView.stopWaitingForWebhookCall')"
 					type="secondary"
 					data-test-id="stop-execution-waiting-for-webhook-button"
 					@click.stop="stopWaitingForWebhook"
@@ -4684,7 +4671,7 @@ export default defineComponent({
 
 				<n8n-icon-button
 					v-if="workflowExecution && !workflowRunning && !allTriggersDisabled"
-					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
+					:title="i18n.baseText('nodeView.deletesTheCurrentExecutionData')"
 					icon="trash"
 					size="large"
 					data-test-id="clear-execution-data-button"

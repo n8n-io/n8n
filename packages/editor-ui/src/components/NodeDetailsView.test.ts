@@ -16,6 +16,14 @@ import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
+vi.mock('vue-router', () => {
+	return {
+		useRouter: () => ({}),
+		useRoute: () => ({ meta: {} }),
+		RouterLink: vi.fn(),
+	};
+});
+
 async function createPiniaWithActiveNode() {
 	const node = mockNodes[0];
 	const workflow = mock<IWorkflowDb>({

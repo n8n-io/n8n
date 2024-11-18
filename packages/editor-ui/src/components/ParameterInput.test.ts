@@ -54,7 +54,8 @@ describe('ParameterInput.vue', () => {
 				type: 'test',
 				typeVersion: 1,
 			},
-			isNDVDataEmpty: vi.fn(() => false),
+			isInputPanelEmpty: false,
+			isOutputPanelEmpty: false,
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],

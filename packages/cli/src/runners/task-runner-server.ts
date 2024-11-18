@@ -44,7 +44,7 @@ export class TaskRunnerServer {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRunnerAuthController: TaskRunnerAuthController,
-		private readonly taskRunnerService: TaskRunnerWsServer,
+		private readonly taskRunnerWsServer: TaskRunnerWsServer,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -148,7 +148,7 @@ export class TaskRunnerServer {
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.taskRunnerAuthController.authMiddleware,
 			(req: TaskRunnerServerInitRequest, res: TaskRunnerServerInitResponse) =>
-				this.taskRunnerService.handleRequest(req, res),
+				this.taskRunnerWsServer.handleRequest(req, res),
 		);
 
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
@@ -181,7 +181,7 @@ export class TaskRunnerServer {
 
 			const response = new ServerResponse(request);
 			response.writeHead = (statusCode) => {
-				if (statusCode > 200) ws.close(100);
+				if (statusCode > 200) ws.close();
 				return response;
 			};
 

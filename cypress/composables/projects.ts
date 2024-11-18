@@ -11,6 +11,7 @@ export const getAddProjectButton = () =>
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
+export const getProjectTabExecutions = () => getProjectTabs().filter('a[href$="/executions"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
 export const getProjectSettingsNameInput = () =>
 	cy.getByTestId('project-settings-name-input').find('input');

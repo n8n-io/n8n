@@ -76,6 +76,14 @@ export function getCanvasNodes() {
 	);
 }
 
+export function getSaveButton() {
+	return cy.getByTestId('workflow-save-button');
+}
+
+export function getZoomToFitButton() {
+	return cy.getByTestId('zoom-to-fit');
+}
+
 /**
  * Actions
  */
@@ -169,4 +177,20 @@ export function clickManualChatButton() {
 
 export function openNode(nodeName: string) {
 	getNodeByName(nodeName).dblclick();
+}
+
+export function saveWorkflowOnButtonClick() {
+	cy.intercept('POST', '/rest/workflows').as('createWorkflow');
+	getSaveButton().should('contain', 'Save');
+	getSaveButton().click();
+	getSaveButton().should('contain', 'Saved');
+	cy.url().should('not.have.string', '/new');
+}
+
+export function pasteWorkflow(workflow: object) {
+	cy.get('body').paste(JSON.stringify(workflow));
+}
+
+export function clickZoomToFit() {
+	getZoomToFitButton().click();
 }

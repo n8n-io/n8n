@@ -1,10 +1,17 @@
+import { stringify } from 'flatted';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
+import { mock } from 'vitest-mock-extended';
+import type { WorkflowOperationError } from 'n8n-workflow';
 
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useToast } from '@/composables/useToast';
+import type { IExecutionResponse } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	return {
@@ -16,6 +23,19 @@ vi.mock('vue-router', () => {
 	};
 });
 
+vi.mock('@/composables/useToast', () => {
+	const showMessage = vi.fn();
+	const showError = vi.fn();
+	return {
+		useToast: () => {
+			return {
+				showMessage,
+				showError,
+			};
+		},
+	};
+});
+
 vi.useFakeTimers();
 
 describe('usePushConnection()', () => {
@@ -23,6 +43,9 @@ describe('usePushConnection()', () => {
 	let pushStore: ReturnType<typeof usePushConnectionStore>;
 	let orchestrationStore: ReturnType<typeof useOrchestrationStore>;
 	let pushConnection: ReturnType<typeof usePushConnection>;
+	let uiStore: ReturnType<typeof useUIStore>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let toast: ReturnType<typeof useToast>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -30,7 +53,14 @@ describe('usePushConnection()', () => {
 		router = vi.mocked(useRouter)();
 		pushStore = usePushConnectionStore();
 		orchestrationStore = useOrchestrationStore();
+		uiStore = useUIStore();
+		workflowsStore = useWorkflowsStore();
 		pushConnection = usePushConnection({ router });
+		toast = useToast();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('initialize()', () => {
@@ -104,6 +134,91 @@ describe('usePushConnection()', () => {
 
 				expect(spy).toHaveBeenCalledWith(event.data.status);
 				expect(result).toBeTruthy();
+			});
+		});
+
+		describe('executionFinished', () => {
+			const executionId = '1';
+			const event: PushMessage = {
+				type: 'executionFinished',
+				data: { executionId: '1' },
+			};
+
+			beforeEach(() => {
+				workflowsStore.activeExecutionId = executionId;
+				uiStore.isActionActive.workflowRunning = true;
+			});
+
+			it('should handle executionFinished event correctly', async () => {
+				const spy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(
+					mock<IExecutionResponse>({
+						id: executionId,
+						data: stringify({
+							resultData: {
+								runData: {},
+							},
+						}) as unknown as IExecutionResponse['data'],
+						finished: true,
+						mode: 'manual',
+						startedAt: new Date(),
+						stoppedAt: new Date(),
+						status: 'success',
+					}),
+				);
+
+				const result = await pushConnection.pushMessageReceived(event);
+
+				expect(result).toBeTruthy();
+				expect(workflowsStore.workflowExecutionData).toBeDefined();
+				expect(uiStore.isActionActive['workflowRunning']).toBeTruthy();
+				expect(spy).toHaveBeenCalledWith(executionId);
+
+				expect(toast.showMessage).toHaveBeenCalledWith({
+					title: 'Workflow executed successfully',
+					type: 'success',
+				});
+			});
+
+			it('should handle isManualExecutionCancelled correctly', async () => {
+				const spy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(
+					mock<IExecutionResponse>({
+						id: executionId,
+						data: stringify({
+							startData: {},
+							resultData: {
+								runData: {
+									'Last Node': [],
+								},
+								lastNodeExecuted: 'Last Node',
+								error: {
+									message:
+										'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
+									name: 'NodeApiError',
+									node: 'Last Node',
+								} as unknown as WorkflowOperationError,
+							},
+						}) as unknown as IExecutionResponse['data'],
+						mode: 'manual',
+						startedAt: new Date(),
+						status: 'running',
+					}),
+				);
+
+				const result = await pushConnection.pushMessageReceived(event);
+
+				expect(useToast().showMessage).toHaveBeenCalledWith({
+					message:
+						'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
+					title: 'Problem in node ‘Last Node‘',
+					type: 'error',
+					duration: 0,
+					dangerouslyUseHTMLString: true,
+				});
+
+				expect(result).toBeTruthy();
+				expect(workflowsStore.workflowExecutionData).toBeDefined();
+				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
+				expect(spy).toHaveBeenCalledWith(executionId);
 			});
 		});
 	});

@@ -39,7 +39,7 @@ const loadingQrCode = ref(true);
 
 const clipboard = useClipboard();
 const userStore = useUsersStore();
-const i18 = useI18n();
+const i18n = useI18n();
 const toast = useToast();
 
 // #endregion
@@ -64,15 +64,15 @@ const onInput = (value: string) => {
 			authenticatorCode.value = value;
 		})
 		.catch(() => {
-			infoTextErrorMessage.value = i18.baseText('mfa.setup.invalidCode');
+			infoTextErrorMessage.value = i18n.baseText('mfa.setup.invalidCode');
 		});
 };
 
 const onCopySecretToClipboard = () => {
 	void clipboard.copy(secret.value);
 	toast.showToast({
-		title: i18.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
-		message: i18.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
+		title: i18n.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
+		message: i18n.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
 		type: 'success',
 	});
 };
@@ -102,20 +102,20 @@ const onSetupClick = async () => {
 		closeDialog();
 		toast.showMessage({
 			type: 'success',
-			title: i18.baseText('mfa.setup.step2.toast.setupFinished.message'),
+			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.message'),
 		});
 	} catch (e) {
 		if (e.errorCode === MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED) {
 			toast.showMessage({
 				type: 'error',
-				title: i18.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),
+				title: i18n.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),
 			});
 			return;
 		}
 
 		toast.showMessage({
 			type: 'error',
-			title: i18.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
+			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
 		});
 	}
 };
@@ -127,7 +127,7 @@ const getMfaQR = async () => {
 		secret.value = response.secret;
 		recoveryCodes.value = response.recoveryCodes;
 	} catch (error) {
-		toast.showError(error, i18.baseText('settings.api.view.error'));
+		toast.showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
 		loadingQrCode.value = false;
 	}
@@ -153,8 +153,8 @@ onMounted(async () => {
 		max-height="640px"
 		:title="
 			!showRecoveryCodes
-				? i18.baseText('mfa.setup.step1.title')
-				: i18.baseText('mfa.setup.step2.title')
+				? i18n.baseText('mfa.setup.step1.title')
+				: i18n.baseText('mfa.setup.step2.title')
 		"
 		:event-bus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY_NAME"
@@ -165,21 +165,21 @@ onMounted(async () => {
 			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{
-						i18.baseText('mfa.setup.step1.instruction1.title')
+						i18n.baseText('mfa.setup.step1.instruction1.title')
 					}}</n8n-text>
 				</div>
 				<div>
 					<n8n-text size="medium" :bold="false">
 						<i18n-t keypath="mfa.setup.step1.instruction1.subtitle" tag="span">
 							<template #part1>
-								{{ i18.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
+								{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
 							</template>
 							<template #part2>
 								<a
 									:class="$style.secret"
 									data-test-id="mfa-secret-button"
 									@click="onCopySecretToClipboard"
-									>{{ i18.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
+									>{{ i18n.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
 								>
 							</template>
 						</i18n-t>
@@ -190,7 +190,7 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{
-						i18.baseText('mfa.setup.step1.instruction2.title')
+						i18n.baseText('mfa.setup.step1.instruction2.title')
 					}}</n8n-text>
 				</div>
 				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
@@ -198,13 +198,13 @@ onMounted(async () => {
 						size="medium"
 						:bold="false"
 						:class="$style.labelTooltip"
-						:label="i18.baseText('mfa.setup.step1.input.label')"
+						:label="i18n.baseText('mfa.setup.step1.input.label')"
 					>
 						<n8n-input
 							v-model="authenticatorCode"
 							type="text"
 							:maxlength="6"
-							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
+							:placeholder="i18n.baseText('mfa.code.input.placeholder')"
 							:required="true"
 							data-test-id="mfa-token-input"
 							@input="onInput"
@@ -218,7 +218,7 @@ onMounted(async () => {
 			<div v-else :class="$style.container">
 				<div>
 					<n8n-text size="medium" :bold="false">{{
-						i18.baseText('mfa.setup.step2.description')
+						i18n.baseText('mfa.setup.step2.description')
 					}}</n8n-text>
 				</div>
 				<div :class="$style.recoveryCodesContainer">
@@ -227,23 +227,23 @@ onMounted(async () => {
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					<i18n-t keypath="mfa.setup.step2.infobox.description" tag="span">
+					<i18nn-t keypath="mfa.setup.step2.infobox.description" tag="span">
 						<template #part1>
-							{{ i18.baseText('mfa.setup.step2.infobox.description.part1') }}
+							{{ i18n.baseText('mfa.setup.step2.infobox.description.part1') }}
 						</template>
 						<template #part2>
 							<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
-								{{ i18.baseText('mfa.setup.step2.infobox.description.part2') }}
+								{{ i18n.baseText('mfa.setup.step2.infobox.description.part2') }}
 							</n8n-text>
 						</template>
-					</i18n-t>
+					</i18nn-t>
 				</n8n-info-tip>
 				<div>
 					<n8n-button
 						type="primary"
 						icon="download"
 						float="right"
-						:label="i18.baseText('mfa.setup.step2.button.download')"
+						:label="i18n.baseText('mfa.setup.step2.button.download')"
 						data-test-id="mfa-recovery-codes-button"
 						@click="onDownloadClick"
 					/>
@@ -256,7 +256,7 @@ onMounted(async () => {
 					<n8n-button
 						float="right"
 						:disabled="!recoveryCodesDownloaded"
-						:label="i18.baseText('mfa.setup.step2.button.save')"
+						:label="i18n.baseText('mfa.setup.step2.button.save')"
 						size="large"
 						data-test-id="mfa-save-button"
 						@click="onSetupClick"
@@ -267,7 +267,7 @@ onMounted(async () => {
 				<div>
 					<n8n-button
 						float="right"
-						:label="i18.baseText('mfa.setup.step1.button.continue')"
+						:label="i18n.baseText('mfa.setup.step1.button.continue')"
 						size="large"
 						:disabled="!readyToSubmit"
 						@click="onSaveClick"

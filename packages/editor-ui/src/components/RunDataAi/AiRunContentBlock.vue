@@ -24,7 +24,7 @@ const contentParsers = useAiContentParsers();
 
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
-const isShowRaw = ref(false);
+const renderType = ref<'rendered' | 'json'>('rendered');
 const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
 function getInitialExpandedState() {
@@ -134,6 +134,10 @@ function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	} catch (err) {}
 }
 
+function onRenderTypeChange(value: 'rendered' | 'json') {
+	renderType.value = value;
+}
+
 onMounted(() => {
 	parsedRun.value = parseAiRunData(props.runData);
 	if (parsedRun.value) {
@@ -146,16 +150,19 @@ onMounted(() => {
 	<div :class="$style.block">
 		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
 			<button :class="$style.blockToggle">
-				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
+				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
-			<el-switch
-				v-if="contentParsed && !error"
-				v-model="isShowRaw"
+			<n8n-radio-buttons
+				v-if="contentParsed && !error && isExpanded"
+				size="small"
+				:model-value="renderType"
 				:class="$style.rawSwitch"
-				active-text="RAW JSON"
-				@click.stop
+				:options="[
+					{ label: 'Rendered', value: 'rendered' },
+					{ label: 'JSON', value: 'json' },
+				]"
+				@update:model-value="onRenderTypeChange"
 			/>
 		</header>
 		<main
@@ -172,7 +179,7 @@ onMounted(() => {
 				:class="$style.contentText"
 				:data-content-type="parsedContent?.type"
 			>
-				<template v-if="parsedContent && !isShowRaw">
+				<template v-if="parsedContent && renderType === 'rendered'">
 					<template v-if="parsedContent.type === 'json'">
 						<VueMarkdown
 							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
@@ -200,7 +207,7 @@ onMounted(() => {
 							size="small"
 							:class="$style.copyToClipboard"
 							type="secondary"
-							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
+							:title="i18n.baseText('nodeErrorView.copyToClipboard')"
 							icon="copy"
 							@click="onCopyToClipboard(raw)"
 						/>
@@ -226,17 +233,17 @@ onMounted(() => {
 		white-space: pre-wrap;
 
 		h1 {
-			font-size: var(--font-size-xl);
+			font-size: var(--font-size-l);
 			line-height: var(--font-line-height-xloose);
 		}
 
 		h2 {
-			font-size: var(--font-size-l);
+			font-size: var(--font-size-m);
 			line-height: var(--font-line-height-loose);
 		}
 
 		h3 {
-			font-size: var(--font-size-m);
+			font-size: var(--font-size-s);
 			line-height: var(--font-line-height-regular);
 		}
 
@@ -252,17 +259,16 @@ onMounted(() => {
 }
 .contentText {
 	padding-top: var(--spacing-s);
-	font-size: var(--font-size-xs);
-	// max-height: 100%;
+	padding-left: var(--spacing-m);
+	font-size: var(--font-size-s);
 }
 .block {
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
-	padding: var(--spacing-xs);
-	border-radius: 4px;
-	margin-bottom: var(--spacing-2xs);
+	padding: 0 0 var(--spacing-2xs) var(--spacing-2xs);
+	background: var(--color-foreground-light);
+	margin-top: var(--spacing-xl);
+	border-radius: var(--border-radius-base);
 }
-.blockContent {
+:root .blockContent {
 	height: 0;
 	overflow: hidden;
 
@@ -271,14 +277,17 @@ onMounted(() => {
 	}
 }
 .runText {
-	line-height: var(--font-line-height-regular);
+	line-height: var(--font-line-height-xloose);
 	white-space: pre-line;
 }
 .rawSwitch {
+	opacity: 0;
+	height: fit-content;
 	margin-left: auto;
+	margin-right: var(--spacing-2xs);
 
-	& * {
-		font-size: var(--font-size-2xs);
+	.block:hover & {
+		opacity: 1;
 	}
 }
 .blockHeader {
@@ -287,21 +296,25 @@ onMounted(() => {
 	cursor: pointer;
 	/* This hack is needed to make the whole surface of header clickable  */
 	margin: calc(-1 * var(--spacing-xs));
-	padding: var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	align-items: center;
 
 	& * {
 		user-select: none;
 	}
 }
 .blockTitle {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-s);
 	color: var(--color-text-dark);
+	margin: 0;
+	padding-bottom: var(--spacing-4xs);
 }
 .blockToggle {
 	border: none;
 	background: none;
 	padding: 0;
 	color: var(--color-text-base);
+	margin-top: calc(-1 * var(--spacing-3xs));
 }
 .error {
 	padding: var(--spacing-s) 0;
