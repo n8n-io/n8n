@@ -340,10 +340,10 @@ function activatePane() {
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
-		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"
-		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
+		:too-much-data-title="i18n.baseText('ndv.input.tooMuchData.title')"
+		:no-data-in-branch-message="i18n.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
-		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
+		:executing-message="i18n.baseText('ndv.input.executingPrevious')"
 		:push-ref="pushRef"
 		:override-outputs="connectedCurrentNodeOutputs"
 		:mapping-enabled="isMappingEnabled"
@@ -362,7 +362,7 @@ function activatePane() {
 	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
+				<span :class="$style.title">{{ i18n.baseText('ndv.input') }}</span>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
@@ -402,13 +402,13 @@ function activatePane() {
 				:class="$style.noOutputData"
 			>
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('ndv.input.noOutputData.title')
+					i18n.baseText('ndv.input.noOutputData.title')
 				}}</N8nText>
 				<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
 							v-n8n-html="
-								$locale.baseText('dataMapping.dragFromPreviousHint', {
+								i18n.baseText('dataMapping.dragFromPreviousHint', {
 									interpolate: { name: focusedMappableInput },
 								})
 							"
@@ -419,14 +419,14 @@ function activatePane() {
 						hide-icon
 						:transparent="true"
 						:node-name="(isActiveNodeConfig ? rootNode : currentNodeName) ?? ''"
-						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
+						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
 						@execute="onNodeExecute"
 					/>
 				</N8nTooltip>
 				<N8nText v-if="!readOnly" tag="div" size="small">
-					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
+					{{ i18n.baseText('ndv.input.noOutputData.hint') }}
 				</N8nText>
 			</div>
 			<div v-else :class="$style.notConnected">
@@ -434,16 +434,16 @@ function activatePane() {
 					<WireMeUp />
 				</div>
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('ndv.input.notConnected.title')
+					i18n.baseText('ndv.input.notConnected.title')
 				}}</N8nText>
 				<N8nText tag="div">
-					{{ $locale.baseText('ndv.input.notConnected.message') }}
+					{{ i18n.baseText('ndv.input.notConnected.message') }}
 					<a
 						href="https://docs.n8n.io/workflows/connections/"
 						target="_blank"
 						@click="onConnectionHelpClick"
 					>
-						{{ $locale.baseText('ndv.input.notConnected.learnMore') }}
+						{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
 					</a>
 				</N8nText>
 			</div>
@@ -456,17 +456,17 @@ function activatePane() {
 
 		<template #no-output-data>
 			<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-				$locale.baseText('ndv.input.noOutputData')
+				i18n.baseText('ndv.input.noOutputData')
 			}}</N8nText>
 		</template>
 
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+					i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')
 				}}</N8nText>
 				<N8nText>
-					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+					{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 				</N8nText>
 			</div>
 		</template>

@@ -245,7 +245,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<CategorizedItemsRenderer
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
-			:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
