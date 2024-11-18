@@ -191,7 +191,6 @@ watch(defaultLocale, (newLocale) => {
 .sidebar {
 	grid-area: sidebar;
 	height: 100%;
-	width: 100%;
 	z-index: var(--z-index-app-sidebar);
 }
 
