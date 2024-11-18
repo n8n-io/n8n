@@ -446,13 +446,14 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				runDataExecutedStartData: iRunExecutionData.startData,
 				resultDataError: iRunExecutionData.resultData.error,
 			});
+		} else if (receivedData.type === 'executionWaiting') {
+			// Nothing to do
 		} else if (receivedData.type === 'executionStarted') {
 			// Nothing to do
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;
-			workflowsStore.addNodeExecutionData(pushData);
-			workflowsStore.removeExecutingNode(pushData.nodeName);
+			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
