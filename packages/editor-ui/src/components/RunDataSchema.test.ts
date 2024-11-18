@@ -13,7 +13,7 @@ import { IF_NODE_TYPE, SET_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constan
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
+import { NodeConnectionType, type IDataObject, type INodeExecutionData } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { fireEvent } from '@testing-library/dom';
@@ -238,6 +238,17 @@ describe('RunDataSchema.vue', () => {
 
 		const { getAllByText } = renderComponent();
 		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2);
+	});
+
+	// this can happen when setting the output to [{}]
+	it('renders empty state to show for empty data', () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [{} as INodeExecutionData],
+		});
+
+		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
+		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
 	});
 
 	it('renders disabled nodes correctly', () => {

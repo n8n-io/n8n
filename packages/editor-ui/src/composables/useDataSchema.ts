@@ -220,8 +220,8 @@ const getIconBySchemaType = (type: Schema['type']): string => icons[type];
 
 const isDataEmpty = (schema: Schema) => {
 	// Utilize the generated schema instead of looping over the entire data again
-	// The schema for empty data is { type: 'object' | 'array', value: [] }
-	const isObjectOrArray = schema.type === 'object' || schema.type === 'array';
+	// The schema for empty data is { type: 'object', value: [] }
+	const isObjectOrArray = schema.type === 'object';
 	const isEmpty = Array.isArray(schema.value) && schema.value.length === 0;
 
 	return isObjectOrArray && isEmpty;
@@ -252,6 +252,17 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 	}): RenderItem[] => {
+		if (isDataEmpty(schema)) {
+			return [
+				{
+					id: `empty-${window.crypto.randomUUID()}`,
+					icon: '',
+					value: useI18n().baseText('dataMapping.schemaView.emptyData'),
+					type: 'item',
+				},
+			];
+		}
+
 		const expression = getMappedExpression({
 			nodeName: node.name,
 			distanceFromActive: depth,
@@ -328,16 +339,6 @@ export const useFlattenSchema = () => {
 			});
 
 			if (closedNodes.value.has(item.node.name)) {
-				return acc;
-			}
-
-			if (isDataEmpty(item.schema)) {
-				acc.push({
-					id: `empty-${index}`,
-					icon: '',
-					value: useI18n().baseText('dataMapping.schemaView.emptyData'),
-					type: 'item',
-				});
 				return acc;
 			}
 
