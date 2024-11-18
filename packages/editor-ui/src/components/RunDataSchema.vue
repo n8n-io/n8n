@@ -143,22 +143,18 @@ const flattenNodeSchema = computed(() =>
 	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
 );
 
+/**
+ * In debug mode nodes are empty
+ */
 const isDebugging = computed(() => !props.nodes.length);
 
-const items = computed(
-	() => {
-		if (isDebugging.value) {
-			return flattenNodeSchema.value;
-		}
+const items = computed(() => {
+	if (isDebugging.value || props.paneType === 'output') {
+		return flattenNodeSchema.value;
+	}
 
-		if (props.paneType === 'input') {
-			return flattenedNodes.value;
-		}
-
-		return flattenedNodes.value;
-	},
-	// props.paneType === 'input' || !isDebugging.value ? flattenedNodes.value : flattenNodeSchema.value,
-);
+	return flattenedNodes.value;
+});
 
 const noSearchResults = computed(() => {
 	return Boolean(props.search.trim()) && !Boolean(items.value.length);
