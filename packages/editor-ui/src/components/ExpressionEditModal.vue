@@ -155,7 +155,6 @@ async function onDrop(expression: string, event: MouseEvent) {
 					:mapping-enabled="!isReadOnly"
 					:connection-type="NodeConnectionType.Main"
 					pane-type="input"
-					context="modal"
 				/>
 			</div>
 

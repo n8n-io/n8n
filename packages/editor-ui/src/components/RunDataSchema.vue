@@ -31,7 +31,6 @@ type Props = {
 	paneType: 'input' | 'output';
 	connectionType?: NodeConnectionType;
 	search?: string;
-	context?: 'ndv' | 'modal';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -45,7 +44,6 @@ const props = withDefaults(defineProps<Props>(), {
 	connectionType: NodeConnectionType.Main,
 	search: '',
 	mappingEnabled: false,
-	context: 'ndv',
 });
 
 const telemetry = useTelemetry();
