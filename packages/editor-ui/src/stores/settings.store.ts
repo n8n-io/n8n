@@ -202,6 +202,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		if (!isV1BannerDismissedPermanently && settings.value.versionCli.startsWith('1.')) {
 			useUIStore().pushBannerToStack('V1');
 		}
+
+		if (settings.value.releaseChannel === 'dev') {
+			const favicon = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+			if (favicon && favicon.href.includes('/favicon.ico')) {
+				favicon.href = favicon.href.replace('favicon', 'favicon-dev');
+			}
+		}
 	};
 
 	const setAllowedModules = (allowedModules: FrontendSettings['allowedModules']) => {
