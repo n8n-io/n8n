@@ -144,6 +144,12 @@ export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
 export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
+export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+export const MEMORY_MOTORHEAD_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryMotorhead';
+export const MEMORY_POSTGRES_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryPostgresChat';
+export const MEMORY_REDIS_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryRedisChat';
+export const MEMORY_XATA_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryXata';
+export const MEMORY_ZEP_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryZep';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
@@ -233,6 +239,23 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
 export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
+
+export const AI_ROOT_NODE_TYPES = [
+	QA_CHAIN_NODE_TYPE,
+	AGENT_NODE_TYPE,
+	BASIC_CHAIN_NODE_TYPE,
+	OPEN_AI_ASSISTANT_NODE_TYPE,
+	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+];
+
+export const AI_MEMORY_NODE_TYPES = [
+	MEMORY_BUFFER_WINDOW_NODE_TYPE,
+	MEMORY_MOTORHEAD_NODE_TYPE,
+	MEMORY_POSTGRES_CHAT_NODE_TYPE,
+	MEMORY_REDIS_CHAT_NODE_TYPE,
+	MEMORY_XATA_NODE_TYPE,
+	MEMORY_ZEP_NODE_TYPE,
+];
 
 // Node creator
 export const NODE_CREATOR_OPEN_SOURCES: Record<

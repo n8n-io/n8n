@@ -490,7 +490,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	async function addNodes(nodes: AddedNodesAndConnections['nodes'], options: AddNodesOptions = {}) {
-		// here?
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
@@ -1116,6 +1115,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return;
 		}
 
+		adjustNewNodes(sourceNode, targetNode, { parentIsNew, childIsNew });
 		workflowsStore.addConnection({
 			connection: mappedConnection,
 		});
@@ -1123,7 +1123,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		void nextTick(() => {
 			nodeHelpers.updateNodeInputIssues(sourceNode);
 			nodeHelpers.updateNodeInputIssues(targetNode);
-			adjustNewNodes(sourceNode, targetNode, { parentIsNew, childIsNew });
 		});
 
 		if (!keepPristine) {
