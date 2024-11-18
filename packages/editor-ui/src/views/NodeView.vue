@@ -1749,6 +1749,8 @@ export default defineComponent({
 				} else {
 					this.showError(error, this.i18n.baseText('nodeView.showError.stopExecution.title'));
 				}
+			} finally {
+				this.workflowsStore.markExecutionAsStopped();
 			}
 			this.stopExecutionInProgress = false;
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
