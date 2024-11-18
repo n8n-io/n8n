@@ -1,6 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { promptTypeOptions, textInput } from '../../../../../utils/descriptions';
+
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
+import {
+	promptTypeOptions,
+	textFromPreviousNode,
+	textInput,
+} from '../../../../../utils/descriptions';
 
 const dataSourceOptions: INodeProperties = {
 	displayName: 'Data Source',
@@ -112,6 +117,12 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 			show: {
 				agent: ['sqlAgent'],
 			},
+		},
+	},
+	{
+		...textFromPreviousNode,
+		displayOptions: {
+			show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.7 } }], agent: ['sqlAgent'] },
 		},
 	},
 	{

@@ -3,18 +3,21 @@ import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
+import type { JsRunnerConfig } from '@/config/js-runner-config';
+import { MainConfig } from '@/config/main-config';
+import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
-import {
-	JsTaskRunner,
-	type AllCodeTaskData,
-	type JSExecSettings,
-} from '@/js-task-runner/js-task-runner';
+import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
+import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
+import type { DataRequestResponse } from '@/runner-types';
 import type { Task } from '@/task-runner';
 
-import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
-import type { JsRunnerConfig } from '../../config/js-runner-config';
-import { MainConfig } from '../../config/main-config';
-import { ExecutionError } from '../errors/execution-error';
+import {
+	newDataRequestResponse,
+	newTaskWithSettings,
+	withPairedItem,
+	wrapIntoJson,
+} from './test-data';
 
 jest.mock('ws');
 
@@ -33,6 +36,12 @@ describe('JsTaskRunner', () => {
 				...defaultConfig.jsRunnerConfig,
 				...opts,
 			},
+			sentryConfig: {
+				sentryDsn: '',
+				deploymentName: '',
+				environment: '',
+				n8nVersion: '',
+			},
 		});
 
 	const defaultTaskRunner = createRunnerWithOpts();
@@ -43,7 +52,7 @@ describe('JsTaskRunner', () => {
 		runner = defaultTaskRunner,
 	}: {
 		task: Task<JSExecSettings>;
-		taskData: AllCodeTaskData;
+		taskData: DataRequestResponse;
 		runner?: JsTaskRunner;
 	}) => {
 		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
@@ -71,7 +80,7 @@ describe('JsTaskRunner', () => {
 				nodeMode: 'runOnceForAllItems',
 				...settings,
 			}),
-			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+			taskData: newDataRequestResponse(inputItems.map(wrapIntoJson)),
 			runner,
 		});
 	};
@@ -94,7 +103,7 @@ describe('JsTaskRunner', () => {
 				nodeMode: 'runOnceForEachItem',
 				...settings,
 			}),
-			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+			taskData: newDataRequestResponse(inputItems.map(wrapIntoJson)),
 			runner,
 		});
 	};
@@ -111,7 +120,7 @@ describe('JsTaskRunner', () => {
 
 				await execTaskWithParams({
 					task,
-					taskData: newAllCodeTaskData([wrapIntoJson({})]),
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
 				});
 
 				expect(defaultTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
@@ -246,7 +255,7 @@ describe('JsTaskRunner', () => {
 						code: 'return { val: $env.VAR1 }',
 						nodeMode: 'runOnceForAllItems',
 					}),
-					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 						envProviderState: {
 							isEnvAccessBlocked: false,
 							isProcessAvailable: true,
@@ -265,7 +274,7 @@ describe('JsTaskRunner', () => {
 							code: 'return { val: $env.VAR1 }',
 							nodeMode: 'runOnceForAllItems',
 						}),
-						taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+						taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 							envProviderState: {
 								isEnvAccessBlocked: true,
 								isProcessAvailable: true,
@@ -282,7 +291,7 @@ describe('JsTaskRunner', () => {
 						code: 'return Object.values($env).concat(Object.keys($env))',
 						nodeMode: 'runOnceForAllItems',
 					}),
-					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 						envProviderState: {
 							isEnvAccessBlocked: false,
 							isProcessAvailable: true,
@@ -301,7 +310,7 @@ describe('JsTaskRunner', () => {
 						code: 'return { val: $env.N8N_RUNNERS_N8N_URI }',
 						nodeMode: 'runOnceForAllItems',
 					}),
-					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 						envProviderState: undefined,
 					}),
 				});
@@ -316,7 +325,7 @@ describe('JsTaskRunner', () => {
 					code: 'return { val: Buffer.from("test-buffer").toString() }',
 					nodeMode: 'runOnceForAllItems',
 				}),
-				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+				taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 					envProviderState: undefined,
 				}),
 			});
@@ -328,7 +337,7 @@ describe('JsTaskRunner', () => {
 					code: 'return { val: Buffer.from("test-buffer").toString() }',
 					nodeMode: 'runOnceForEachItem',
 				}),
-				taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+				taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 					envProviderState: undefined,
 				}),
 			});
@@ -774,7 +783,7 @@ describe('JsTaskRunner', () => {
 							code: 'unknown',
 							nodeMode,
 						}),
-						taskData: newAllCodeTaskData([wrapIntoJson({ a: 1 })]),
+						taskData: newDataRequestResponse([wrapIntoJson({ a: 1 })]),
 					}),
 				).rejects.toThrow(ExecutionError);
 			},
@@ -796,7 +805,7 @@ describe('JsTaskRunner', () => {
 			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
 			jest
 				.spyOn(runner, 'requestData')
-				.mockResolvedValue(newAllCodeTaskData([wrapIntoJson({ a: 1 })]));
+				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
 
 			await runner.receivedSettings(taskId, task.settings);
 

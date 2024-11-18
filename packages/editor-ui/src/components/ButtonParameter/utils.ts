@@ -1,9 +1,16 @@
 import type { Schema } from '@/Interface';
-import type { INodeExecutionData } from 'n8n-workflow';
+import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { generateCodeForPrompt } from '../../api/ai';
+import { useRootStore } from '../../stores/root.store';
+import { type AskAiRequest } from '../../types/assistant.types';
+import { useSettingsStore } from '../../stores/settings.store';
+import { format } from 'prettier';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
 
 export function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
@@ -43,4 +50,42 @@ export function getSchemas() {
 		inputSchema,
 		parentNodesSchemas,
 	};
+}
+
+export async function generateCodeForAiTransform(prompt: string, path: string) {
+	const schemas = getSchemas();
+
+	const payload: AskAiRequest.RequestPayload = {
+		question: prompt,
+		context: {
+			schema: schemas.parentNodesSchemas,
+			inputSchema: schemas.inputSchema!,
+			ndvPushRef: useNDVStore().pushRef,
+			pushRef: useRootStore().pushRef,
+		},
+		forNode: 'transform',
+	};
+
+	let value;
+	if (useSettingsStore().isAskAiEnabled) {
+		const { restApiContext } = useRootStore();
+		const { code } = await generateCodeForPrompt(restApiContext, payload);
+		value = code;
+	} else {
+		throw new ApplicationError('AI code generation is not enabled');
+	}
+
+	if (value === undefined) return;
+
+	const formattedCode = await format(String(value), {
+		parser: 'babel',
+		plugins: [jsParser, estree],
+	});
+
+	const updateInformation = {
+		name: path,
+		value: formattedCode,
+	};
+
+	return updateInformation;
 }

@@ -1,16 +1,18 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	ICredentialTestFunctions,
-	IDataObject,
-	IPollFunctions,
-	IRequestOptions,
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type IPollFunctions,
+	type IRequestOptions,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
 import { formatPrivateKey } from '@utils/utilities';
+import { DateTime } from 'luxon';
 
 const googleServiceAccountScopes = {
 	bigquery: ['https://www.googleapis.com/auth/bigquery'],
@@ -109,4 +111,21 @@ export async function getGoogleAccessToken(
 	};
 
 	return await this.helpers.request(options);
+}
+
+export function validateAndSetDate(
+	filter: IDataObject,
+	key: string,
+	timezone: string,
+	context: IExecuteFunctions,
+) {
+	const date = DateTime.fromISO(filter[key] as string);
+	if (date.isValid) {
+		filter[key] = date.setZone(timezone).toISO();
+	} else {
+		throw new NodeOperationError(
+			context.getNode(),
+			`The value "${filter[key] as string}" is not a valid DateTime.`,
+		);
+	}
 }

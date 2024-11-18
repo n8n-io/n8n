@@ -1,12 +1,21 @@
+import { TaskRunnersConfig } from '@n8n/config';
+import type {
+	BrokerMessage,
+	RequesterMessage,
+	RunnerMessage,
+	TaskResultData,
+} from '@n8n/task-runner';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import config from '@/config';
+import { Time } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { TaskRejectError } from './errors';
-import type { N8nMessage, RunnerMessage, RequesterMessage, TaskResultData } from './runner-types';
+import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 
 export interface TaskRunner {
 	id: string;
@@ -20,6 +29,7 @@ export interface Task {
 	runnerId: TaskRunner['id'];
 	requesterId: string;
 	taskType: string;
+	timeout?: NodeJS.Timeout;
 }
 
 export interface TaskOffer {
@@ -38,13 +48,15 @@ export interface TaskRequest {
 	acceptInProgress?: boolean;
 }
 
-export type MessageCallback = (message: N8nMessage.ToRunner.All) => Promise<void> | void;
+export type MessageCallback = (message: BrokerMessage.ToRunner.All) => Promise<void> | void;
 export type RequesterMessageCallback = (
-	message: N8nMessage.ToRequester.All,
+	message: BrokerMessage.ToRequester.All,
 ) => Promise<void> | void;
 
 type RunnerAcceptCallback = () => void;
-type RequesterAcceptCallback = (settings: RequesterMessage.ToN8n.TaskSettings['settings']) => void;
+type RequesterAcceptCallback = (
+	settings: RequesterMessage.ToBroker.TaskSettings['settings'],
+) => void;
 type TaskRejectCallback = (reason: TaskRejectError) => void;
 
 @Service()
@@ -74,17 +86,13 @@ export class TaskBroker {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
 	) {
-		this.loadNodesAndCredentials.addPostProcessor(this.updateNodeTypes);
+		if (this.taskRunnersConfig.taskTimeout <= 0) {
+			throw new ApplicationError('Task timeout must be greater than 0');
+		}
 	}
-
-	updateNodeTypes = async () => {
-		await this.messageAllRunners({
-			type: 'broker:nodetypes',
-			nodeTypes: this.loadNodesAndCredentials.types.nodes,
-		});
-	};
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
@@ -98,10 +106,6 @@ export class TaskBroker {
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
 		this.knownRunners.set(runner.id, { runner, messageCallback });
 		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
-		void this.knownRunners.get(runner.id)!.messageCallback({
-			type: 'broker:nodetypes',
-			nodeTypes: this.loadNodesAndCredentials.types.nodes,
-		});
 	}
 
 	deregisterRunner(runnerId: string, error: Error) {
@@ -134,23 +138,15 @@ export class TaskBroker {
 		this.requesters.delete(requesterId);
 	}
 
-	private async messageRunner(runnerId: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
+	private async messageRunner(runnerId: TaskRunner['id'], message: BrokerMessage.ToRunner.All) {
 		await this.knownRunners.get(runnerId)?.messageCallback(message);
 	}
 
-	private async messageAllRunners(message: N8nMessage.ToRunner.All) {
-		await Promise.allSettled(
-			[...this.knownRunners.values()].map(async (runner) => {
-				await runner.messageCallback(message);
-			}),
-		);
-	}
-
-	private async messageRequester(requesterId: string, message: N8nMessage.ToRequester.All) {
+	private async messageRequester(requesterId: string, message: BrokerMessage.ToRequester.All) {
 		await this.requesters.get(requesterId)?.(message);
 	}
 
-	async onRunnerMessage(runnerId: TaskRunner['id'], message: RunnerMessage.ToN8n.All) {
+	async onRunnerMessage(runnerId: TaskRunner['id'], message: RunnerMessage.ToBroker.All) {
 		const runner = this.knownRunners.get(runnerId);
 		if (!runner) {
 			return;
@@ -178,14 +174,11 @@ export class TaskBroker {
 				await this.taskErrorHandler(message.taskId, message.error);
 				break;
 			case 'runner:taskdatarequest':
-				await this.handleDataRequest(
-					message.taskId,
-					message.requestId,
-					message.requestType,
-					message.param,
-				);
+				await this.handleDataRequest(message.taskId, message.requestId, message.requestParams);
 				break;
-
+			case 'runner:nodetypesrequest':
+				await this.handleNodeTypesRequest(message.taskId, message.requestId, message.requestParams);
+				break;
 			case 'runner:rpc':
 				await this.handleRpcRequest(message.taskId, message.callId, message.name, message.params);
 				break;
@@ -198,7 +191,7 @@ export class TaskBroker {
 	async handleRpcRequest(
 		taskId: Task['id'],
 		callId: string,
-		name: RunnerMessage.ToN8n.RPC['name'],
+		name: RunnerMessage.ToBroker.RPC['name'],
 		params: unknown[],
 	) {
 		const task = this.tasks.get(taskId);
@@ -232,9 +225,8 @@ export class TaskBroker {
 
 	async handleDataRequest(
 		taskId: Task['id'],
-		requestId: RunnerMessage.ToN8n.TaskDataRequest['requestId'],
-		requestType: RunnerMessage.ToN8n.TaskDataRequest['requestType'],
-		param?: string,
+		requestId: RunnerMessage.ToBroker.TaskDataRequest['requestId'],
+		requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'],
 	) {
 		const task = this.tasks.get(taskId);
 		if (!task) {
@@ -244,14 +236,30 @@ export class TaskBroker {
 			type: 'broker:taskdatarequest',
 			taskId,
 			requestId,
-			requestType,
-			param,
+			requestParams,
+		});
+	}
+
+	async handleNodeTypesRequest(
+		taskId: Task['id'],
+		requestId: RunnerMessage.ToBroker.NodeTypesRequest['requestId'],
+		requestParams: RunnerMessage.ToBroker.NodeTypesRequest['requestParams'],
+	) {
+		const task = this.tasks.get(taskId);
+		if (!task) {
+			return;
+		}
+		await this.messageRequester(task.requesterId, {
+			type: 'broker:nodetypesrequest',
+			taskId,
+			requestId,
+			requestParams,
 		});
 	}
 
 	async handleResponse(
 		taskId: Task['id'],
-		requestId: RunnerMessage.ToN8n.TaskDataRequest['requestId'],
+		requestId: RunnerMessage.ToBroker.TaskDataRequest['requestId'],
 		data: unknown,
 	) {
 		const task = this.tasks.get(taskId);
@@ -266,7 +274,7 @@ export class TaskBroker {
 		});
 	}
 
-	async onRequesterMessage(requesterId: string, message: RequesterMessage.ToN8n.All) {
+	async onRequesterMessage(requesterId: string, message: RequesterMessage.ToBroker.All) {
 		switch (message.type) {
 			case 'requester:tasksettings':
 				this.handleRequesterAccept(message.taskId, message.settings);
@@ -284,6 +292,13 @@ export class TaskBroker {
 			case 'requester:taskdataresponse':
 				await this.handleRequesterDataResponse(message.taskId, message.requestId, message.data);
 				break;
+			case 'requester:nodetypesresponse':
+				await this.handleRequesterNodeTypesResponse(
+					message.taskId,
+					message.requestId,
+					message.nodeTypes,
+				);
+				break;
 			case 'requester:rpcresponse':
 				await this.handleRequesterRpcResponse(
 					message.taskId,
@@ -298,7 +313,7 @@ export class TaskBroker {
 	async handleRequesterRpcResponse(
 		taskId: string,
 		callId: string,
-		status: RequesterMessage.ToN8n.RPCResponse['status'],
+		status: RequesterMessage.ToBroker.RPCResponse['status'],
 		data: unknown,
 	) {
 		const runner = await this.getRunnerOrFailTask(taskId);
@@ -322,9 +337,24 @@ export class TaskBroker {
 		});
 	}
 
+	async handleRequesterNodeTypesResponse(
+		taskId: Task['id'],
+		requestId: RequesterMessage.ToBroker.NodeTypesResponse['requestId'],
+		nodeTypes: RequesterMessage.ToBroker.NodeTypesResponse['nodeTypes'],
+	) {
+		const runner = await this.getRunnerOrFailTask(taskId);
+
+		await this.messageRunner(runner.id, {
+			type: 'broker:nodetypes',
+			taskId,
+			requestId,
+			nodeTypes,
+		});
+	}
+
 	handleRequesterAccept(
 		taskId: Task['id'],
-		settings: RequesterMessage.ToN8n.TaskSettings['settings'],
+		settings: RequesterMessage.ToBroker.TaskSettings['settings'],
 	) {
 		const acceptReject = this.requesterAcceptRejects.get(taskId);
 		if (acceptReject) {
@@ -392,6 +422,14 @@ export class TaskBroker {
 
 	async sendTaskSettings(taskId: Task['id'], settings: unknown) {
 		const runner = await this.getRunnerOrFailTask(taskId);
+
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		task.timeout = setTimeout(async () => {
+			await this.handleTaskTimeout(taskId);
+		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
+
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
 			taskId,
@@ -399,11 +437,27 @@ export class TaskBroker {
 		});
 	}
 
+	private async handleTaskTimeout(taskId: Task['id']) {
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+
+		await this.taskErrorHandler(
+			taskId,
+			new TaskRunnerTimeoutError(
+				this.taskRunnersConfig.taskTimeout,
+				config.getEnv('deployment.type') !== 'cloud',
+			),
+		);
+	}
+
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
+		if (!task) return;
+
+		clearTimeout(task.timeout);
+
 		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskdone',
 			taskId: task.id,
@@ -414,9 +468,10 @@ export class TaskBroker {
 
 	async taskErrorHandler(taskId: Task['id'], error: unknown) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
+		if (!task) return;
+
+		clearTimeout(task.timeout);
+
 		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskerror',
 			taskId: task.id,
@@ -474,10 +529,12 @@ export class TaskBroker {
 		this.pendingTaskRequests.splice(requestIndex, 1);
 
 		try {
-			const acceptPromise = new Promise<RequesterMessage.ToN8n.TaskSettings['settings']>(
+			const acceptPromise = new Promise<RequesterMessage.ToBroker.TaskSettings['settings']>(
 				(resolve, reject) => {
 					this.requesterAcceptRejects.set(taskId, {
-						accept: resolve as (settings: RequesterMessage.ToN8n.TaskSettings['settings']) => void,
+						accept: resolve as (
+							settings: RequesterMessage.ToBroker.TaskSettings['settings'],
+						) => void,
 						reject,
 					});
 

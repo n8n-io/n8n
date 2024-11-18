@@ -7,8 +7,8 @@ import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
 import { sortByProperty } from '@/utils/sortUtils';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type Props = {
 	collapsed: boolean;
@@ -21,13 +21,13 @@ const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 const projectsStore = useProjectsStore();
-const uiStore = useUIStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isCreatingProject = ref(false);
 const isComponentMounted = ref(false);
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
-	label: locale.baseText('projects.menu.home'),
+	label: locale.baseText('projects.menu.overview'),
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
@@ -99,7 +99,7 @@ const canCreateProjects = computed(
 );
 
 const goToUpgrade = async () => {
-	await uiStore.goToUpgrade('rbac', 'upgrade-rbac');
+	await pageRedirectionHelper.goToUpgrade('rbac', 'upgrade-rbac');
 };
 
 onMounted(async () => {

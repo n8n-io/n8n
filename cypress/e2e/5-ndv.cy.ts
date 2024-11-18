@@ -81,7 +81,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('1 item').should('exist');
+		ndv.getters.outputPanel().contains('2 items').should('exist');
 		cy.contains('span', 'zero').should('exist');
 	});
 
@@ -794,5 +794,47 @@ describe('NDV', () => {
 			.inputPanel()
 			.find('[data-test-id=run-data-schema-item]')
 			.should('contain.text', 'onlyOnItem3');
+	});
+
+	it('should keep search expanded after Test step node run', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.getters.outputPanel().findChildByTestId('ndv-search').click().type('US');
+		ndv.getters.outputTableRow(1).find('mark').should('have.text', 'US');
+
+		ndv.actions.execute();
+		ndv.getters
+			.outputPanel()
+			.findChildByTestId('ndv-search')
+			.should('be.visible')
+			.should('have.value', 'US');
+	});
+
+	it('should not show items count when seaching in schema view', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		ndv.actions.switchOutputMode('Schema');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('US');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
+	});
+
+	it('should show additional tooltip when seaching in schema view if no matches', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		ndv.actions.switchOutputMode('Schema');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
+		ndv.getters
+			.outputPanel()
+			.contains('To search field contents rather than just names, use Table or JSON view')
+			.should('exist');
 	});
 });

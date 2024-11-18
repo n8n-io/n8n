@@ -408,7 +408,8 @@ export function convertNodeToAiTool<
 			};
 
 			const noticeProp: INodeProperties = {
-				displayName: 'Use the expression {{ $fromAI() }} for any data to be filled by the model',
+				displayName:
+					"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -432,12 +433,15 @@ export function convertNodeToAiTool<
 		}
 	}
 
+	const resources = item.description.codex?.resources ?? {};
+
 	item.description.codex = {
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Tools'],
 			Tools: ['Other Tools'],
 		},
+		resources,
 	};
 	return item;
 }
@@ -635,12 +639,13 @@ export function displayParameter(
 	parameter: INodeProperties | INodeCredentialDescription,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
-	if (!parameter.displayOptions) {
+	if (!parameter[displayKey]) {
 		return true;
 	}
 
-	const { show, hide } = parameter.displayOptions;
+	const { show, hide } = parameter[displayKey];
 
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
@@ -687,6 +692,7 @@ export function displayParameterPath(
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -699,7 +705,7 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot);
+	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot, displayKey);
 }
 
 /**

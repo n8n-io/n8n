@@ -42,6 +42,7 @@ import type {
 	JsonObject,
 	CloseFunction,
 	INodeCredentialDescription,
+	IExecutePaginationFunctions,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { sleep } from './utils';
@@ -623,26 +624,27 @@ export class RoutingNode {
 			);
 		}
 
-		const executePaginationFunctions = {
-			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
-				return await this.rawRoutingRequest(
-					executeSingleFunctions,
-					requestOptions,
-					credentialType,
-					credentialsDecrypted,
-				).then(
-					async (data) =>
-						await this.postProcessResponseData(
-							executeSingleFunctions,
-							data,
-							requestData,
-							itemIndex,
-							runIndex,
-						),
-				);
-			},
+		const makeRoutingRequest = async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
+			return await this.rawRoutingRequest(
+				executeSingleFunctions,
+				requestOptions,
+				credentialType,
+				credentialsDecrypted,
+			).then(
+				async (data) =>
+					await this.postProcessResponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
+			);
 		};
+
+		const executePaginationFunctions = Object.create(executeSingleFunctions, {
+			makeRoutingRequest: { value: makeRoutingRequest },
+		}) as IExecutePaginationFunctions;
 
 		if (requestData.paginate && requestOperations?.pagination) {
 			// Has pagination

@@ -147,7 +147,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isBelowUserQuota = computed(
-		() =>
+		(): boolean =>
 			userManagement.value.quota === -1 ||
 			userManagement.value.quota > useUsersStore().allUsers.length,
 	);

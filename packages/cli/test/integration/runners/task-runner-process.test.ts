@@ -1,7 +1,7 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import Container from 'typedi';
 
-import { TaskRunnerService } from '@/runners/runner-ws-server';
+import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { TaskRunnerServer } from '@/runners/task-runner-server';
@@ -10,7 +10,7 @@ import { retryUntil } from '@test-integration/retry-until';
 describe('TaskRunnerProcess', () => {
 	const authToken = 'token';
 	const runnerConfig = Container.get(TaskRunnersConfig);
-	runnerConfig.disabled = false;
+	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal_childprocess';
 	runnerConfig.authToken = authToken;
 	runnerConfig.port = 0; // Use any port
@@ -18,7 +18,7 @@ describe('TaskRunnerProcess', () => {
 
 	const runnerProcess = Container.get(TaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
-	const taskRunnerService = Container.get(TaskRunnerService);
+	const taskRunnerService = Container.get(TaskRunnerWsServer);
 
 	const startLauncherSpy = jest.spyOn(runnerProcess, 'startLauncher');
 	const startNodeSpy = jest.spyOn(runnerProcess, 'startNode');
