@@ -9,6 +9,7 @@ import EmptyState from '@/components/WorkflowEvaluation/ListEvaluation/EmptyStat
 import TestsList from '@/components/WorkflowEvaluation/ListEvaluation/TestsList.vue';
 import type { TestExecution, TestListItem } from '@/components/WorkflowEvaluation/types';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
+import type { ITestDefinition } from '@/api/evaluations.ee';
 
 const router = useRouter();
 const tagsStore = useAnnotationTagsStore();
@@ -18,13 +19,15 @@ const toast = useToast();
 const locale = useI18n();
 
 const tests = computed<TestListItem[]>(() => {
-	return evaluationsStore.allTestDefinitions.map((test) => ({
-		id: test.id,
-		name: test.name,
-		tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
-		testCases: 0, // TODO: This should come from the API
-		execution: getTestExecution(test.id),
-	}));
+	return evaluationsStore.allTestDefinitions
+		.filter((test): test is ITestDefinition => test.id !== undefined)
+		.map((test) => ({
+			id: test.id,
+			name: test.name ?? '',
+			tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
+			testCases: 0, // TODO: This should come from the API
+			execution: getTestExecution(test.id),
+		}));
 });
 const hasTests = computed(() => tests.value.length > 0);
 const allTags = computed(() => tagsStore.allTags);

@@ -1,15 +1,19 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
 defineEmits<{ 'create-test': [] }>();
+
+const locale = useI18n();
 </script>
 
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
-			<h1>{{ $locale.baseText('workflowEvaluation.list.tests') }}</h1>
+			<h1>{{ locale.baseText('workflowEvaluation.list.tests') }}</h1>
 		</div>
 		<n8n-action-box
-			:description="$locale.baseText('workflowEvaluation.list.actionDescription')"
-			:button-text="$locale.baseText('workflowEvaluation.list.actionButton')"
+			:description="locale.baseText('workflowEvaluation.list.actionDescription')"
+			:button-text="locale.baseText('workflowEvaluation.list.actionButton')"
 			@click:button="$emit('create-test')"
 		/>
 	</div>

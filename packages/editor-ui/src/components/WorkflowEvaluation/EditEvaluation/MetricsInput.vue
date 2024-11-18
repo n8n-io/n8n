@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
 export interface MetricsInputProps {
 	modelValue: string[];
 }
 const props = defineProps<MetricsInputProps>();
 const emit = defineEmits<{ 'update:modelValue': [value: MetricsInputProps['modelValue']] }>();
+const locale = useI18n();
 
 function addNewMetric() {
 	emit('update:modelValue', [...props.modelValue, '']);
@@ -19,14 +22,14 @@ function updateMetric(index: number, value: string) {
 <template>
 	<div :class="[$style.formGroup, $style.metrics]">
 		<n8n-text color="text-dark">{{
-			$locale.baseText('workflowEvaluation.edit.metricsTitle')
+			locale.baseText('workflowEvaluation.edit.metricsTitle')
 		}}</n8n-text>
 		<hr :class="$style.metricsDivider" />
 		<n8n-text size="small" color="text-light">
-			{{ $locale.baseText('workflowEvaluation.edit.metricsHelpText') }}
+			{{ locale.baseText('workflowEvaluation.edit.metricsHelpText') }}
 		</n8n-text>
 		<n8n-input-label
-			:label="$locale.baseText('workflowEvaluation.edit.metricsFields')"
+			:label="locale.baseText('workflowEvaluation.edit.metricsFields')"
 			:bold="false"
 			size="small"
 			:class="$style.metricField"
@@ -37,13 +40,13 @@ function updateMetric(index: number, value: string) {
 						:ref="`metric_${index}`"
 						data-test-id="evaluation-metric-item"
 						:model-value="metric"
-						:placeholder="$locale.baseText('workflowEvaluation.edit.metricsPlaceholder')"
+						:placeholder="locale.baseText('workflowEvaluation.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
 					/>
 				</div>
 				<n8n-button
 					type="tertiary"
-					:label="$locale.baseText('workflowEvaluation.edit.metricsNew')"
+					:label="locale.baseText('workflowEvaluation.edit.metricsNew')"
 					:class="$style.newMetricButton"
 					@click="addNewMetric"
 				/>

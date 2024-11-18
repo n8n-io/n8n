@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
 export interface EvaluationHeaderProps {
 	modelValue: {
 		value: string;
@@ -12,6 +14,8 @@ export interface EvaluationHeaderProps {
 
 defineEmits<{ 'update:modelValue': [value: EvaluationHeaderProps['modelValue']] }>();
 defineProps<EvaluationHeaderProps>();
+
+const locale = useI18n();
 </script>
 
 <template>
@@ -20,7 +24,7 @@ defineProps<EvaluationHeaderProps>();
 			icon="arrow-left"
 			:class="$style.backButton"
 			type="tertiary"
-			:title="$locale.baseText('workflowEvaluation.edit.backButtonTitle')"
+			:title="locale.baseText('workflowEvaluation.edit.backButtonTitle')"
 			@click="$router.back()"
 		/>
 		<h2 :class="$style.title">
@@ -41,7 +45,7 @@ defineProps<EvaluationHeaderProps>();
 				data-test-id="evaluation-name-input"
 				:model-value="modelValue.tempValue"
 				type="text"
-				:placeholder="$locale.baseText('workflowEvaluation.edit.namePlaceholder')"
+				:placeholder="locale.baseText('workflowEvaluation.edit.namePlaceholder')"
 				@update:model-value="$emit('update:modelValue', { ...modelValue, tempValue: $event })"
 				@blur="() => saveChanges('name')"
 				@keydown="(e: KeyboardEvent) => handleKeydown(e, 'name')"

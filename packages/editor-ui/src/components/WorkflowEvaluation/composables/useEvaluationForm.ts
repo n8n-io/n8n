@@ -68,7 +68,7 @@ export function useEvaluationForm() {
 				state.value = {
 					description: testDefinition.description ?? '',
 					name: {
-						value: testDefinition.name,
+						value: testDefinition.name ?? '',
 						isEditing: false,
 						tempValue: '',
 					},
@@ -96,9 +96,9 @@ export function useEvaluationForm() {
 		isSaving.value = true;
 		fieldsIssues.value = [];
 
-		const addFieldIssue = (field: string, message: string) => {
-			fieldsIssues.value.push({ field, message });
-		};
+		// const _addFieldIssue = (field: string, message: string) => {
+		// 	fieldsIssues.value.push({ field, message });
+		// };
 
 		try {
 			// Validate that an evaluation workflow is selected

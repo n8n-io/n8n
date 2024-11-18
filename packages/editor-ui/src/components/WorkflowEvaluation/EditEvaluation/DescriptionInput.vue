@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
 interface Props {
 	modelValue: string;
 }
@@ -8,6 +10,8 @@ withDefaults(defineProps<Props>(), {
 });
 
 defineEmits<{ 'update:modelValue': [value: string] }>();
+
+const locale = useI18n();
 </script>
 
 <template>
@@ -16,7 +20,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>();
 			<N8nInput
 				:model-value="modelValue"
 				type="textarea"
-				:placeholder="$locale.baseText('workflowEvaluation.edit.descriptionPlaceholder')"
+				:placeholder="locale.baseText('workflowEvaluation.edit.descriptionPlaceholder')"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>
