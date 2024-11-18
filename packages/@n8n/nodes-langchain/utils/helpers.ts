@@ -167,16 +167,20 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 
 export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 	if (text === undefined) return undefined;
-	return (
-		text
-			// Replace single curly brackets with double curly brackets
-			// The negative lookbehind and lookahead ensure we don't match if there's already a matching bracket
-			// For opening brackets {
-			.replace(/(?<!{){(?!{)/g, '{{')
-			// For closing brackets }
-			.replace(/(?<!})}(?!})/g, '}}')
-			.replace(/(?<!})}(?!})/g, '}}')
-	);
+
+	let result = text;
+
+	result = result
+		// First handle triple brackets to avoid interference with double brackets
+		.replace(/(?<!{){{{(?!{)/g, '{{{{')
+		.replace(/(?<!})}}}(?!})/g, '}}}}')
+		// Then handle single brackets, but only if they're not part of double brackets
+		// Convert single { to {{ if it's not already part of {{ or {{{
+		.replace(/(?<!{){(?!{)/g, '{{')
+		// Convert single } to }} if it's not already part of }} or }}}
+		.replace(/(?<!})}(?!})/g, '}}');
+
+	return result;
 }
 
 export const getConnectedTools = async (

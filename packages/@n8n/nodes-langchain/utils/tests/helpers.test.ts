@@ -123,6 +123,35 @@ describe('escapeSingleCurlyBrackets', () => {
     `;
 		expect(escapeSingleCurlyBrackets(input)).toBe(expected);
 	});
+	it('should handle string with triple uneven curly brackets - opening', () => {
+		expect(escapeSingleCurlyBrackets('Hello {{{world}')).toBe('Hello {{{{world}}');
+	});
+
+	it('should handle string with triple uneven curly brackets - closing', () => {
+		expect(escapeSingleCurlyBrackets('Hello world}}}')).toBe('Hello world}}}}');
+	});
+
+	it('should handle string with triple uneven curly brackets - mixed opening and closing', () => {
+		expect(escapeSingleCurlyBrackets('{{{Hello}}} {world}}}')).toBe('{{{{Hello}}}} {{world}}}}');
+	});
+
+	it('should handle string with triple uneven curly brackets - multiple occurrences', () => {
+		expect(escapeSingleCurlyBrackets('{{{a}}} {{b}}} {{{c}')).toBe('{{{{a}}}} {{b}}}} {{{{c}}');
+	});
+
+	it('should handle multi-line input with triple uneven curly brackets', () => {
+		const input = `
+					{{{Line 1}
+					Line 2}}}
+					{{{3}}} Line 3 {{{4
+			`;
+		const expected = `
+					{{{{Line 1}}
+					Line 2}}}}
+					{{{{3}}}} Line 3 {{{{4
+			`;
+		expect(escapeSingleCurlyBrackets(input)).toBe(expected);
+	});
 });
 
 describe('getConnectedTools', () => {
