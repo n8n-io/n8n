@@ -3,7 +3,7 @@ import { OpenAIError } from 'openai/error';
 
 const errorMap: Record<string, string> = {
 	insufficient_quota:
-		'OpenAI: <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota" target="_blank">Insufficient quota</a>',
+		'Insufficient quota detected. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota" target="_blank">Learn more</a> about resolving this issue',
 	rate_limit_exceeded: 'OpenAI: Rate limit reached',
 };
 

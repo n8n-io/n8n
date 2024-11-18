@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/* eslint-disable vue/no-v-html */
 import { useI18n } from '@/composables/useI18n';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 
