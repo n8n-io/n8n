@@ -1,5 +1,8 @@
 import type { Diagnostic } from '@codemirror/lint';
 import ts from 'typescript';
+import type { Schema } from '@/Interface';
+import { type DocMetadata, type DocMetadataArgument } from 'n8n-workflow';
+import { capitalize } from 'lodash-es';
 
 export const FILE_NAME = 'index.js';
 const FN_PREFIX = '(() => {\n';
@@ -86,4 +89,81 @@ export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation): Diagnosti
 		message,
 		severity: tsCategoryToSeverity(d),
 	};
+}
+
+function processSchema(schema: Schema): string {
+	switch (schema.type) {
+		case 'string':
+		case 'number':
+		case 'boolean':
+		case 'bigint':
+		case 'symbol':
+		case 'null':
+		case 'undefined':
+			return schema.type;
+
+		case 'function':
+			return 'Function';
+
+		case 'array':
+			if (Array.isArray(schema.value)) {
+				// Handle tuple type if array has different types
+				if (schema.value.length > 0) {
+					const arrayTypes = schema.value.map((item) => processSchema(item)).join(', ');
+					return `[${arrayTypes}]`;
+				}
+				return '[]';
+			}
+			return `${schema.value}[]`;
+
+		case 'object':
+			if (!Array.isArray(schema.value)) {
+				return '{}';
+			}
+
+			const properties = schema.value
+				.map((prop) => {
+					const key = prop.key ?? 'unknown';
+					const type = processSchema(prop);
+					return `  ${key}: ${type};`;
+				})
+				.join('\n');
+
+			return `{\n${properties}\n}`;
+
+		default:
+			return 'any';
+	}
+}
+
+export function schemaToTypescriptTypes(schema: Schema, interfaceName: string): string {
+	return `interface ${interfaceName} ${processSchema(schema)}`;
+}
+
+function docToTypescriptType(name: string, doc?: DocMetadata) {
+	if (!doc) return null;
+	return `${name}(${doc?.args?.map((arg) => argToTypescriptType(arg)) ?? ''}): ${doc?.returnType ?? 'any'};`;
+}
+
+function argToTypescriptType(arg: DocMetadataArgument) {
+	return `${arg.name}${arg.optional ? '?:' : ':'} ${arg.type ?? 'any'}`;
+}
+
+export async function generateExtensionTypes() {
+	const extensions = await import('n8n-workflow').then((module) => module.ExpressionExtensions);
+	const types = extensions
+		.map(
+			({ typeName, functions }) => `interface ${capitalize(typeName)} {
+${Object.entries(functions)
+	.map(([name, fn]) => docToTypescriptType(name, fn.doc))
+	.filter(Boolean)
+	.join('\n')}
+}`,
+		)
+		.join('\n');
+
+	return `export {}
+declare global {
+	${types}
+}`;
 }

@@ -9,6 +9,7 @@ import {
 	wrapInFunction,
 	FILE_NAME,
 	cmPosToTs,
+	generateExtensionTypes,
 } from './utils';
 import type { Completion } from '@codemirror/autocomplete';
 
@@ -17,14 +18,20 @@ import globalTypes from './type-declarations/globals.d.ts?raw';
 // eslint-disable-next-line import/extensions
 import n8nTypes from './type-declarations/n8n.d.ts?raw';
 import luxonTypes from './type-declarations/luxon.d.ts?raw';
+import type { IDataObject } from 'n8n-workflow';
+
+self.process = { env: {} } as NodeJS.Process;
 
 const TS_COMPLETE_BLOCKLIST: ts.ScriptElementKind[] = [ts.ScriptElementKind.warning];
 
 const worker = (): LanguageServiceWorker => {
 	let env: tsvfs.VirtualTypeScriptEnvironment;
+	let nodeJsonFetcher: (nodeName: string) => IDataObject = () => ({});
 
 	return {
-		async init(content: string) {
+		async init(content: string, nodeJsonFetcherArg: (nodeName: string) => IDataObject) {
+			nodeJsonFetcher = nodeJsonFetcherArg;
+
 			const compilerOptions: ts.CompilerOptions = {
 				allowJs: true,
 				checkJs: true,
@@ -50,6 +57,7 @@ const worker = (): LanguageServiceWorker => {
 			fsMap.set('globals.d.ts', globalTypes);
 			fsMap.set('n8n.d.ts', n8nTypes);
 			fsMap.set('luxon.d.ts', luxonTypes);
+			fsMap.set('n8n-extensions.d.ts', await generateExtensionTypes());
 			fsMap.set(FILE_NAME, wrapInFunction(content));
 
 			const system = tsvfs.createSystem(fsMap);
@@ -69,12 +77,46 @@ const worker = (): LanguageServiceWorker => {
 			}
 		},
 		getCompletionsAtPos(pos) {
-			const completionInfo = env.languageService.getCompletionsAtPosition(
-				FILE_NAME,
-				cmPosToTs(pos),
-				{},
-				{},
-			);
+			const tsPos = cmPosToTs(pos);
+
+			function findNode(node: ts.Node, check: (node: ts.Node) => boolean): ts.Node | undefined {
+				if (check(node)) {
+					return node;
+				}
+
+				return ts.forEachChild(node, (n) => findNode(n, check));
+			}
+
+			const file = env.getSourceFile(FILE_NAME);
+			// If we are completing a N8nJson type -> fetch types first
+			// $('Node A').item.json.
+			if (file) {
+				const node = findNode(
+					file,
+					(n) =>
+						n.getStart() <= tsPos - 1 &&
+						n.getEnd() >= tsPos - 1 &&
+						n.kind === ts.SyntaxKind.Identifier,
+				);
+
+				const callExpression = findNode(
+					node!.parent,
+					(n) =>
+						n.kind === ts.SyntaxKind.CallExpression &&
+						(n as ts.CallExpression).expression.getText() === '$',
+				);
+
+				const nodeName = ((callExpression as ts.CallExpression).arguments.at(0) as ts.StringLiteral)
+					.text;
+
+				const data = nodeJsonFetcher(nodeName);
+			}
+
+			// const jsonData = nodeJsonFetcher(nodeName)
+			// const type = jsonDataToTypescriptType()
+			// env.updateFile('n8n-variables.d.ts', type);
+
+			const completionInfo = env.languageService.getCompletionsAtPosition(FILE_NAME, tsPos, {}, {});
 
 			if (!completionInfo) return null;
 

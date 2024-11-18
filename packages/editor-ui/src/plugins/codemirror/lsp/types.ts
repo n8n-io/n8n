@@ -10,7 +10,7 @@ export interface HoverInfo {
 }
 
 export type LanguageServiceWorker = {
-	init(content: string): Promise<void>;
+	init(content: string, nodeJsonFetcher: () => []): Promise<void>;
 	updateFile(content: string): void;
 	getCompletionsAtPos(pos: number): CompletionResult | null;
 	getDiagnostics(): Diagnostic[];
