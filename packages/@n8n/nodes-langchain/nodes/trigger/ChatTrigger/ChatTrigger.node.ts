@@ -1,6 +1,7 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { Serialized } from '@langchain/core/load/serializable';
+import type { BaseChatMemory } from 'langchain/memory/chat_memory';
 import { pick } from 'lodash';
-import { Node, NodeConnectionType, commonCORSParameters } from 'n8n-workflow';
+import { NodeConnectionType, commonCORSParameters } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -10,6 +11,7 @@ import type {
 	INodeExecutionData,
 	IBinaryData,
 	INodeProperties,
+	INodeType,
 } from 'n8n-workflow';
 
 import { validateAuth } from './GenericFunctions';
@@ -34,7 +36,69 @@ const allowedFileMimeTypeOption: INodeProperties = {
 		'Allowed file types for upload. Comma-separated list of <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">MIME types</a>.',
 };
 
-export class ChatTrigger extends Node {
+async function handleFormData(context: IWebhookFunctions) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+	const { data, files } = req.body;
+
+	const returnItem: INodeExecutionData = {
+		json: data,
+	};
+
+	if (files && Object.keys(files).length) {
+		returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
+		returnItem.binary = {};
+
+		const count = 0;
+		for (const fileKey of Object.keys(files)) {
+			const processedFiles: MultiPartFormData.File[] = [];
+			if (Array.isArray(files[fileKey])) {
+				processedFiles.push(...files[fileKey]);
+			} else {
+				processedFiles.push(files[fileKey]);
+			}
+
+			let fileIndex = 0;
+			for (const file of processedFiles) {
+				let binaryPropertyName = 'data';
+
+				// Remove the '[]' suffix from the binaryPropertyName if it exists
+				if (binaryPropertyName.endsWith('[]')) {
+					binaryPropertyName = binaryPropertyName.slice(0, -2);
+				}
+				if (options.binaryPropertyName) {
+					binaryPropertyName = `${options.binaryPropertyName.toString()}${count}`;
+				}
+
+				const binaryFile = await context.nodeHelpers.copyBinaryFile(
+					file.filepath,
+					file.originalFilename ?? file.newFilename,
+					file.mimetype,
+				);
+
+				const binaryKey = `${binaryPropertyName}${fileIndex}`;
+
+				const binaryInfo = {
+					...pick(binaryFile, ['fileName', 'fileSize', 'fileType', 'mimeType', 'fileExtension']),
+					binaryKey,
+				};
+
+				returnItem.binary = Object.assign(returnItem.binary ?? {}, {
+					[`${binaryKey}`]: binaryFile,
+				});
+				returnItem.json.files = [
+					...(returnItem.json.files as Array<Omit<IBinaryData, 'data'>>),
+					binaryInfo,
+				];
+				fileIndex += 1;
+			}
+		}
+	}
+
+	return returnItem;
+}
+
+export class ChatTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
@@ -378,73 +442,11 @@ export class ChatTrigger extends Node {
 		],
 	};
 
-	private async handleFormData(context: IWebhookFunctions) {
-		const req = context.getRequestObject() as MultiPartFormData.Request;
-		const options = context.getNodeParameter('options', {}) as IDataObject;
-		const { data, files } = req.body;
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const res = this.getResponseObject();
 
-		const returnItem: INodeExecutionData = {
-			json: data,
-		};
-
-		if (files && Object.keys(files).length) {
-			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
-			returnItem.binary = {};
-
-			const count = 0;
-			for (const fileKey of Object.keys(files)) {
-				const processedFiles: MultiPartFormData.File[] = [];
-				if (Array.isArray(files[fileKey])) {
-					processedFiles.push(...files[fileKey]);
-				} else {
-					processedFiles.push(files[fileKey]);
-				}
-
-				let fileIndex = 0;
-				for (const file of processedFiles) {
-					let binaryPropertyName = 'data';
-
-					// Remove the '[]' suffix from the binaryPropertyName if it exists
-					if (binaryPropertyName.endsWith('[]')) {
-						binaryPropertyName = binaryPropertyName.slice(0, -2);
-					}
-					if (options.binaryPropertyName) {
-						binaryPropertyName = `${options.binaryPropertyName.toString()}${count}`;
-					}
-
-					const binaryFile = await context.nodeHelpers.copyBinaryFile(
-						file.filepath,
-						file.originalFilename ?? file.newFilename,
-						file.mimetype,
-					);
-
-					const binaryKey = `${binaryPropertyName}${fileIndex}`;
-
-					const binaryInfo = {
-						...pick(binaryFile, ['fileName', 'fileSize', 'fileType', 'mimeType', 'fileExtension']),
-						binaryKey,
-					};
-
-					returnItem.binary = Object.assign(returnItem.binary ?? {}, {
-						[`${binaryKey}`]: binaryFile,
-					});
-					returnItem.json.files = [
-						...(returnItem.json.files as Array<Omit<IBinaryData, 'data'>>),
-						binaryInfo,
-					];
-					fileIndex += 1;
-				}
-			}
-		}
-
-		return returnItem;
-	}
-
-	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const res = ctx.getResponseObject();
-
-		const isPublic = ctx.getNodeParameter('public', false) as boolean;
-		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat') as string;
+		const isPublic = this.getNodeParameter('public', false) as boolean;
+		const nodeMode = this.getNodeParameter('mode', 'hostedChat') as string;
 		if (!isPublic) {
 			res.status(404).end();
 			return {
@@ -452,7 +454,7 @@ export class ChatTrigger extends Node {
 			};
 		}
 
-		const options = ctx.getNodeParameter('options', {}) as {
+		const options = this.getNodeParameter('options', {}) as {
 			getStarted?: string;
 			inputPlaceholder?: string;
 			loadPreviousSession?: LoadPreviousSessionChatOption;
@@ -463,14 +465,15 @@ export class ChatTrigger extends Node {
 			allowedFilesMimeTypes?: string;
 		};
 
-		const req = ctx.getRequestObject();
-		const webhookName = ctx.getWebhookName();
-		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
-		const bodyData = ctx.getBodyData() ?? {};
+		const req = this.getRequestObject();
+		const webhookName = this.getWebhookName();
+		const mode = this.getMode() === 'manual' ? 'test' : 'production';
+		const bodyData = this.getBodyData() ?? {};
 
 		try {
-			await validateAuth(ctx);
+			await validateAuth(this);
 		} catch (error) {
+			console.log('🚀 ~ ChatTrigger ~ webhook ~ error:', error);
 			if (error) {
 				res.writeHead((error as IDataObject).responseCode as number, {
 					'www-authenticate': 'Basic realm="Webhook"',
@@ -483,19 +486,19 @@ export class ChatTrigger extends Node {
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
 			if (webhookName === 'setup') {
-				const webhookUrlRaw = ctx.getNodeWebhookUrl('default') as string;
+				const webhookUrlRaw = this.getNodeWebhookUrl('default') as string;
 				const webhookUrl =
 					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
-				const authentication = ctx.getNodeParameter('authentication') as
+				const authentication = this.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
 					| 'n8nUserAuth';
-				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '') as string;
+				const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 				const initialMessages = initialMessagesRaw
 					.split('\n')
 					.filter((line) => line)
 					.map((line) => line.trim());
-				const instanceId = ctx.getInstanceId();
+				const instanceId = this.getInstanceId();
 
 				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
 
@@ -514,7 +517,9 @@ export class ChatTrigger extends Node {
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 				});
 
-				res.status(200).send(page).end();
+				res.status(200);
+				res.send(page);
+
 				return {
 					noWebhookResponse: true,
 				};
@@ -522,28 +527,31 @@ export class ChatTrigger extends Node {
 		}
 
 		if (bodyData.action === 'loadPreviousSession') {
+			const webhookResponse: { data: Serialized[]; error?: unknown } = { data: [] };
 			if (options?.loadPreviousSession === 'memory') {
-				const memory = (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-					| BaseChatMemory
-					| undefined;
-				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
-					.filter((message) => !message?.additional_kwargs?.hideFromUI)
-					.map((message) => message?.toJSON());
-				return {
-					webhookResponse: { data: messages },
-				};
-			} else if (options?.loadPreviousSession === 'notSupported') {
-				// If messages of a previous session should not be loaded, simply return an empty array
-				return {
-					webhookResponse: { data: [] },
-				};
+				try {
+					const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+						| BaseChatMemory
+						| undefined;
+
+					webhookResponse.data = ((await memory?.chatHistory.getMessages()) ?? [])
+						.filter((message) => !message?.additional_kwargs?.hideFromUI)
+						.map((message) => message?.toJSON());
+				} catch (error) {
+					webhookResponse.error = error.message;
+					this.logger.error(`Could not retrieve memory for loadPreviousSession: ${error.message}`);
+				} finally {
+					return { webhookResponse };
+				}
 			}
+
+			return { webhookResponse };
 		}
 
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
 		if (req.contentType === 'multipart/form-data') {
-			returnData = [await this.handleFormData(ctx)];
+			returnData = [await handleFormData(this)];
 			return {
 				webhookResponse,
 				workflowData: [returnData],
@@ -554,7 +562,7 @@ export class ChatTrigger extends Node {
 
 		return {
 			webhookResponse,
-			workflowData: [ctx.helpers.returnJsonArray(returnData)],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }
