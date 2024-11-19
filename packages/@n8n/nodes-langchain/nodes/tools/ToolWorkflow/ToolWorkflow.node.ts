@@ -381,19 +381,6 @@ export class ToolWorkflow implements INodeType {
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
-			// const responsePropertyName = this.getNodeParameter(
-			// 	'responsePropertyName',
-			// 	itemIndex,
-			// ) as string;
-
-			// if (!responsePropertyName) {
-			// 	throw new NodeOperationError(this.getNode(), "Field to return can't be empty", {
-			// 		itemIndex,
-			// 		description:
-			// 			'Enter the name of a field in the last node of the workflow that contains the response to return',
-			// 	});
-			// }
-
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
