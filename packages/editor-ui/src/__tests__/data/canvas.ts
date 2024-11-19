@@ -154,6 +154,7 @@ export function createCanvasHandleProvide({
 	isReadOnly?: boolean;
 	isRequired?: boolean;
 } = {}) {
+	const supportsMultipleConnections = [NodeConnectionType.AiTool].includes(type);
 	return {
 		[String(CanvasNodeHandleKey)]: {
 			label: ref(label),
@@ -164,6 +165,7 @@ export function createCanvasHandleProvide({
 			isConnecting: ref(isConnecting),
 			isReadOnly: ref(isReadOnly),
 			isRequired: ref(isRequired),
+			supportsMultipleConnections: ref(supportsMultipleConnections),
 			runData: ref(runData),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
