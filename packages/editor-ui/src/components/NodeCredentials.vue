@@ -75,7 +75,6 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
 const nodeHelpers = useNodeHelpers();
-
 const toast = useToast();
 
 const subscribedToCredentialType = ref('');
@@ -558,7 +557,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 						<N8nTooltip placement="top">
 							<template #content>
 								<TitledList
-									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
+									:title="`${i18n.baseText('nodeCredentials.issues')}:`"
 									:items="getIssues(type.name)"
 								/>
 							</template>
@@ -574,7 +573,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 						<font-awesome-icon
 							icon="pen"
 							class="clickable"
-							:title="$locale.baseText('nodeCredentials.updateCredential')"
+							:title="i18n.baseText('nodeCredentials.updateCredential')"
 							@click="editCredential(type.name)"
 						/>
 					</div>

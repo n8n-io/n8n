@@ -176,9 +176,7 @@ function onBackButton() {
 				v-if="activeViewStack.hasSearch"
 				:class="$style.searchBar"
 				:placeholder="
-					searchPlaceholder
-						? searchPlaceholder
-						: $locale.baseText('nodeCreator.searchBar.searchNodes')
+					searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')
 				"
 				:model-value="activeViewStack.search"
 				@update:model-value="onSearch"

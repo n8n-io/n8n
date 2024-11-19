@@ -37,7 +37,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	async init() {
-		if (!config.getEnv('diagnostics.enabled')) return;
+		if (!this.globalConfig.diagnostics.enabled) return;
 
 		await this.telemetry.init();
 
