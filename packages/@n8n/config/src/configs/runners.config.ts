@@ -16,7 +16,7 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_MODE')
 	mode: TaskRunnerMode = 'internal_childprocess';
 
-	/** Endpoint path to which task runners connect to */
+	/** Endpoint which task runners connect to */
 	@Env('N8N_RUNNERS_PATH')
 	path: string = '/runners';
 
