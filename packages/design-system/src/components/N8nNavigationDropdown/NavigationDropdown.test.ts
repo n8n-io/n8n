@@ -29,9 +29,10 @@ describe('N8nNavigationDropdown', () => {
 
 		await router.isReady();
 	});
+
 	it('default slot should trigger first level', async () => {
 		const { getByTestId, queryByTestId } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: { menu: [{ id: 'aaa', title: 'aaa', route: { name: 'projects' } }] },
 			global: {
 				plugins: [router],
@@ -40,13 +41,13 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByTestId('test-trigger')).toBeVisible();
 		expect(queryByTestId('navigation-menu-item')).not.toBeVisible();
 
-		await userEvent.hover(getByTestId('test-trigger'));
+		await userEvent.click(getByTestId('test-trigger'));
 		await waitFor(() => expect(queryByTestId('navigation-menu-item')).toBeVisible());
 	});
 
 	it('redirect to route', async () => {
 		const { getByTestId, queryByTestId } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
 					{
@@ -64,7 +65,7 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByTestId('test-trigger')).toBeVisible();
 		expect(queryByTestId('navigation-submenu')).not.toBeVisible();
 
-		await userEvent.hover(getByTestId('test-trigger'));
+		await userEvent.click(getByTestId('test-trigger'));
 
 		await waitFor(() => expect(getByTestId('navigation-submenu')).toBeVisible());
 
@@ -75,7 +76,7 @@ describe('N8nNavigationDropdown', () => {
 
 	it('should render icons in submenu when provided', () => {
 		const { getByTestId } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
 					{
@@ -95,7 +96,7 @@ describe('N8nNavigationDropdown', () => {
 
 	it('should propagate events', async () => {
 		const { getByTestId, emitted } = render(NavigationDropdown, {
-			slots: { default: h('button', { ['data-test-id']: 'test-trigger' }) },
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
 				menu: [
 					{
