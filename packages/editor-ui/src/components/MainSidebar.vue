@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@/stores/root.store';
@@ -22,6 +21,10 @@ import { useUserHelpers } from '@/composables/useUserHelpers';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { N8nNavigationDropdown } from 'n8n-design-system';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -158,6 +161,7 @@ const mainMenuItems = computed(() => [
 		],
 	},
 ]);
+const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
@@ -286,6 +290,11 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 		fullyExpanded.value = !isCollapsed.value;
 	}
 };
+
+const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
+onClickOutside(createBtn as Ref<VueInstance>, () => {
+	createBtn.value?.close();
+});
 </script>
 
 <template>
@@ -305,11 +314,19 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
 			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
+		<div :class="$style.logo">
+			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon="plus" type="secondary" outline />
+			</N8nNavigationDropdown>
+		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
-				<div :class="$style.logo">
-					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-				</div>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
@@ -394,11 +411,18 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
+	padding-top: 54px;
+	background-color: var(--menu-background, var(--color-background-xlight));
+
 	.logo {
-		height: $header-height;
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
+		justify-content: space-between;
 
 		img {
 			position: relative;
@@ -409,6 +433,12 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
+		padding-top: 90px;
+
+		.logo {
+			flex-direction: column;
+			gap: 16px;
+		}
 
 		.logo img {
 			left: 0;
