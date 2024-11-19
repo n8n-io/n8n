@@ -1,6 +1,7 @@
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
+import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
@@ -117,4 +118,7 @@ export class GlobalConfig {
 
 	@Nested
 	pruning: PruningConfig;
+
+	@Nested
+	diagnostics: DiagnosticsConfig;
 }

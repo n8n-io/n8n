@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { render } from '@testing-library/vue';
-import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
+import { i18nInstance } from '@/plugins/i18n';
 import { GlobalComponentsPlugin } from '@/plugins/components';
 import { GlobalDirectivesPlugin } from '@/plugins/directives';
 import { FontAwesomePlugin } from '@/plugins/icons';
@@ -32,7 +32,6 @@ const defaultOptions = {
 			'vue-json-pretty': vueJsonPretty,
 		},
 		plugins: [
-			I18nPlugin,
 			i18nInstance,
 			PiniaVuePlugin,
 			FontAwesomePlugin,

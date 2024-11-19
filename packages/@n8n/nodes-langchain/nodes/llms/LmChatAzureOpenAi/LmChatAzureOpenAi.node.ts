@@ -168,6 +168,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
+			endpoint?: string;
 		}>('azureOpenAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -184,9 +185,11 @@ export class LmChatAzureOpenAi implements INodeType {
 
 		const model = new ChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
-			azureOpenAIApiInstanceName: credentials.resourceName,
+			// instance name only needed to set base url
+			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
 			azureOpenAIApiKey: credentials.apiKey,
 			azureOpenAIApiVersion: credentials.apiVersion,
+			azureOpenAIEndpoint: credentials.endpoint,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,

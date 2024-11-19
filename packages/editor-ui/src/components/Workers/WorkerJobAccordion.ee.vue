@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { RunningJobSummary } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	items: RunningJobSummary[];
 }>();
+
+const i18n = useI18n();
 
 function runningSince(started: Date): string {
 	let seconds = Math.floor((new Date().getTime() - started.getTime()) / 1000);
@@ -19,7 +22,7 @@ function runningSince(started: Date): string {
 <template>
 	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
 		<template #title>
-			{{ $locale.baseText('workerList.item.jobListTitle') }} ({{ items.length }})
+			{{ i18n.baseText('workerList.item.jobListTitle') }} ({{ items.length }})
 		</template>
 		<template #content>
 			<div v-if="props.items.length > 0" :class="$style.accordionItems">
@@ -38,7 +41,7 @@ function runningSince(started: Date): string {
 			</div>
 			<div v-else :class="$style.accordionItems">
 				<span :class="$style.empty">
-					{{ $locale.baseText('workerList.item.jobList.empty') }}
+					{{ i18n.baseText('workerList.item.jobList.empty') }}
 				</span>
 			</div>
 		</template>

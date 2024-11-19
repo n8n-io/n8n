@@ -72,6 +72,10 @@ export function getOutputPanelTable() {
 	return getOutputPanelDataContainer().get('table');
 }
 
+export function getRunDataInfoCallout() {
+	return cy.getByTestId('run-data-callout');
+}
+
 export function getOutputPanelItemsCount() {
 	return getOutputPanel().getByTestId('ndv-items-count');
 }

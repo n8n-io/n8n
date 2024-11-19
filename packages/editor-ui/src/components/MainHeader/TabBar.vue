@@ -49,6 +49,7 @@ function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {
 	background-color: var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
 	transition: all 150ms ease-in-out;
+	z-index: 1;
 }
 
 @media screen and (max-width: 430px) {

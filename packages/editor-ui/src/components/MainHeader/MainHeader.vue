@@ -229,7 +229,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	display: flex;
 	position: relative;
 	align-items: center;
-	height: $header-height;
+	align-self: stretch;
 	padding-left: var(--spacing-m);
 	padding-right: var(--spacing-m);
 	background-color: var(--color-background-xlight);

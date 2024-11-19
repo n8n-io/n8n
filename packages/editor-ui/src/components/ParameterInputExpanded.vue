@@ -110,8 +110,8 @@ function onDocumentationUrlClick(): void {
 
 <template>
 	<n8n-input-label
-		:label="$locale.credText().inputLabelDisplayName(parameter)"
-		:tooltip-text="$locale.credText().inputLabelDescription(parameter)"
+		:label="i18n.credText().inputLabelDisplayName(parameter)"
+		:tooltip-text="i18n.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:show-tooltip="focused"
 		:show-options="menuExpanded"
@@ -149,7 +149,7 @@ function onDocumentationUrlClick(): void {
 		/>
 		<div v-if="showRequiredErrors" :class="$style.errors">
 			<n8n-text color="danger" size="small">
-				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
 				<n8n-link
 					v-if="documentationUrl"
 					:to="documentationUrl"
@@ -157,7 +157,7 @@ function onDocumentationUrlClick(): void {
 					:underline="true"
 					@click="onDocumentationUrlClick"
 				>
-					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+					{{ i18n.baseText('parameterInputExpanded.openDocs') }}
 				</n8n-link>
 			</n8n-text>
 		</div>
