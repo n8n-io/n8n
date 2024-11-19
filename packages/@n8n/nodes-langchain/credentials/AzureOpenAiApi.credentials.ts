@@ -30,6 +30,13 @@ export class AzureOpenAiApi implements ICredentialType {
 			required: true,
 			default: '2023-07-01-preview',
 		},
+		{
+			displayName: 'Endpoint',
+			name: 'endpoint',
+			type: 'string',
+			default: undefined,
+			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
