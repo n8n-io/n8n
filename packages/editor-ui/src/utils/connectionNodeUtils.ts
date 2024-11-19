@@ -11,6 +11,7 @@ export function adjustNewNodes(
 	target: AddedNode,
 	{ sourceIsNew = true, targetIsNew = true } = {},
 ) {
+	console.log('adjustNewNodes', source, target, sourceIsNew, targetIsNew);
 	if (sourceIsNew) adjustNewSource(source, target);
 	if (targetIsNew) adjustNewTarget(source, target);
 }
@@ -28,7 +29,9 @@ function adjustNewTarget(source: AddedNode, target: AddedNode) {
 }
 
 function adjustNewSource(source: AddedNode, target: AddedNode) {
+	console.log('adjustNewSource', source, target);
 	if (AI_MEMORY_NODE_TYPES.includes(source.type) && target.name) {
+		console.log('branch', AI_MEMORY_NODE_TYPES.includes(source.type), target.name);
 		const { getCurrentWorkflow } = useWorkflowsStore();
 		const workflow = getCurrentWorkflow();
 
@@ -38,6 +41,7 @@ function adjustNewSource(source: AddedNode, target: AddedNode) {
 		if (
 			!ps.some((x) => PROMPT_PROVIDER_NODE_NAMES.includes(workflow.getNode(x.name)?.type ?? ''))
 		) {
+			console.log('parents', ps);
 			Object.assign<AddedNode, Partial<INode>>(source, {
 				parameters: { ...source.parameters, sessionIdType: 'customKey' },
 			});
