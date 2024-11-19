@@ -155,7 +155,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The data is not for the currently active execution or
 				// we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(receivedData, retryAttempts);
+					instance.queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
@@ -531,7 +531,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		return errorMessage;
 	}
 
-	return {
+	// This allows mocking and spying on individual functions in tests.
+	const instance = {
 		initialize,
 		terminate,
 		pushMessageReceived,
@@ -540,4 +541,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		pushMessageQueue,
 		retryTimeout,
 	};
+
+	return instance;
 }

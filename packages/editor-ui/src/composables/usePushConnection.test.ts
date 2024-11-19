@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
-import type { WorkflowOperationError } from 'n8n-workflow';
+import type { ITaskData, WorkflowOperationError } from 'n8n-workflow';
 
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -219,6 +219,30 @@ describe('usePushConnection()', () => {
 				expect(workflowsStore.workflowExecutionData).toBeDefined();
 				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
 				expect(spy).toHaveBeenCalledWith(executionId);
+			});
+		});
+
+		describe('nodeExecuteAfter', async () => {
+			it("enqueues messages if we don't have the active execution id yet", async () => {
+				//const spy = vi.spyOn(orchestrationStore, 'updateWorkerStatus').mockImplementation(() => {});
+
+				uiStore.isActionActive.workflowRunning = true;
+				const queuePushMessageSpy = vi
+					.spyOn(pushConnection, 'queuePushMessage')
+					.mockImplementation(() => {});
+				const event: PushMessage = {
+					type: 'nodeExecuteAfter',
+					data: {
+						executionId: '1',
+						nodeName: 'foo',
+						data: {} as ITaskData,
+					},
+				};
+
+				const result = await pushConnection.pushMessageReceived(event);
+
+				expect(queuePushMessageSpy).toHaveBeenCalledWith(event, 5);
+				expect(result).toBe(false);
 			});
 		});
 	});
