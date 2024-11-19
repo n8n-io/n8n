@@ -1,19 +1,12 @@
 services:
-  mysql:
-    image: mysql:8
-    command:
-      - --skip-performance-schema
-      - --skip-name-resolve
+  mariadb:
+    image: mariadb:10.9
     environment:
-      - MYSQL_DATABASE=n8n
-      - MYSQL_ROOT_PASSWORD=password
+      - MARIADB_DATABASE=n8n
+      - MARIADB_ROOT_PASSWORD=password
+      - MARIADB_MYSQL_LOCALHOST_USER=true
     ports:
       - 3306:3306
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 26677
-        hard: 46677
 
   postgres:
     image: postgres:16
