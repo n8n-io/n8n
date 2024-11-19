@@ -60,23 +60,23 @@ describe('NodeExecutionErrorMessage', () => {
 	});
 
 	it('sanitizes malicious script in error message', () => {
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				nodeName: 'Test Node',
 				errorMessage: '<img src=x onerror=alert(1)>',
 			},
 		});
-		expect(container.querySelector('img')).not.toBeInTheDocument();
+		expect(getByTestId('sanitized-error-message')).toContainHTML('<img src="x">');
 	});
 
 	it('sanitizes malicious script in error message with nested tags', () => {
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				nodeName: 'Test Node',
 				errorMessage: '<div><img src=x onerror=alert(1)></div>',
 			},
 		});
-		expect(container.querySelector('img')).not.toBeInTheDocument();
+		expect(getByTestId('sanitized-error-message')).toContainHTML('<div><img src="x"></div>');
 	});
 
 	it('sanitizes malicious script in error message with script tag', () => {

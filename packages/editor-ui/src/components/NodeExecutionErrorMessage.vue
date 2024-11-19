@@ -1,25 +1,17 @@
 <script lang="ts" setup>
-/* eslint-disable vue/no-v-html */
 import { useI18n } from '@/composables/useI18n';
-import { sanitizeHtml } from '@/utils/htmlUtils';
-
-import { computed } from 'vue';
 
 const i18n = useI18n();
 
-const props = defineProps<{
+defineProps<{
 	nodeName: string;
 	errorMessage?: string;
 }>();
-
-const sanitizedErrorMessage = computed(() => {
-	return props.errorMessage ? sanitizeHtml(props.errorMessage) : '';
-});
 </script>
 
 <template>
 	<div>
-		<span data-test-id="sanitized-error-message" v-html="sanitizedErrorMessage"></span>
+		<span v-n8n-html="errorMessage" data-test-id="sanitized-error-message"></span>
 		<br />
 		<a data-action="openNodeDetail" :data-action-parameter-node="nodeName">{{
 			i18n.baseText('node.executionError.openNode')
