@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/dom';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestProject } from '@/__tests__/data/projects';
@@ -108,9 +109,10 @@ describe('ProjectHeader', () => {
 
 	it('should render ProjectTabs without Settings if project is not team project', () => {
 		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject(
-			createTestProject({ type: ProjectTypes.Personal, scopes: ['project:update'] }),
-		);
+		projectsStore.currentProject = createTestProject({
+			type: ProjectTypes.Personal,
+			scopes: ['project:update'],
+		});
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
@@ -119,5 +121,24 @@ describe('ProjectHeader', () => {
 			},
 			null,
 		);
+	});
+
+	test.each([
+		[null, 'Create'],
+		[createTestProject({ type: ProjectTypes.Personal }), 'Create in personal'],
+		[createTestProject({ type: ProjectTypes.Team }), 'Create in project'],
+	])('in project %s should render correct create button label %s', (project, label) => {
+		projectsStore.currentProject = project;
+		const { getByTestId } = renderComponent({
+			global: {
+				stubs: {
+					N8nNavigationDropdown: {
+						template: '<div><slot></slot></div>',
+					},
+				},
+			},
+		});
+
+		expect(within(getByTestId('resource-add')).getByRole('button', { name: label })).toBeVisible();
 	});
 });

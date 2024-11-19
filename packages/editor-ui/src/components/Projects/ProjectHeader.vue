@@ -53,11 +53,11 @@ const { menu, handleSelect } = useGlobalEntityCreation(
 
 const createLabel = computed(() => {
 	if (!projectsStore.currentProject) {
-		return 'Create';
+		return i18n.baseText('projects.create');
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return 'Create personal';
+		return i18n.baseText('projects.create.personal');
 	} else {
-		return 'Create in project';
+		return i18n.baseText('projects.create.team');
 	}
 });
 
@@ -74,8 +74,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			</div>
 			<div>
 				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
-				<N8nText v-if="$slots.subtitle" size="small" color="text-light">
-					<slot name="subtitle" />
+				<N8nText color="text-light">
+					<slot name="subtitle">
+						{{ i18n.baseText('projects.header.subtitle') }}
+					</slot>
 				</N8nText>
 			</div>
 		</div>
