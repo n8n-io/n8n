@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { deepCopy, randomInt } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy, randomInt } from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
 import {
@@ -51,8 +51,8 @@ export class Odoo implements INodeType {
 		defaults: {
 			name: 'Odoo',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'odooApi',
@@ -751,7 +751,7 @@ export class Odoo implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

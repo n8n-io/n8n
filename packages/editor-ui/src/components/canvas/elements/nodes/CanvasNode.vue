@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { computed, provide, toRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from 'vue';
 import type {
-	CanvasNodeData,
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
+	CanvasNodeData,
+	CanvasNodeEventBusEvents,
+	CanvasEventBusEvents,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -14,8 +16,17 @@ import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHan
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
 import { useContextMenu } from '@/composables/useContextMenu';
+import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
-import type { XYPosition, NodeProps } from '@vue-flow/core';
+import { useCanvas } from '@/composables/useCanvas';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
+
+type Props = NodeProps<CanvasNodeData> & {
+	readOnly?: boolean;
+	eventBus?: EventBus<CanvasEventBusEvents>;
+};
 
 const emit = defineEmits<{
 	add: [id: string, handle: string];
@@ -28,10 +39,13 @@ const emit = defineEmits<{
 	update: [id: string, parameters: Record<string, unknown>];
 	move: [id: string, position: XYPosition];
 }>();
-const props = defineProps<NodeProps<CanvasNodeData>>();
+
+const props = defineProps<Props>();
 
 const nodeTypesStore = useNodeTypesStore();
 const contextMenu = useContextMenu();
+
+const { connectingHandle } = useCanvas();
 
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
@@ -48,6 +62,18 @@ const isDisabled = computed(() => props.data.disabled);
 const nodeTypeDescription = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+
+/**
+ * Event bus
+ */
+
+const canvasNodeEventBus = ref(createEventBus<CanvasNodeEventBusEvents>());
+
+function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
+	if (event.ids.includes(props.id)) {
+		canvasNodeEventBus.value.emit(event.action, event.payload);
+	}
+}
 
 /**
  * Inputs
@@ -122,9 +148,23 @@ const createEndpointMappingFn =
 		index: number,
 		endpoints: CanvasConnectionPort[],
 	): CanvasElementPortWithRenderData => {
+		const handleId = createCanvasConnectionHandleString({
+			mode,
+			type: endpoint.type,
+			index: endpoint.index,
+		});
+		const handleType = mode === CanvasConnectionMode.Input ? 'target' : 'source';
+		const connectionsCount = connections.value[mode][endpoint.type]?.[endpoint.index]?.length ?? 0;
+		const isConnecting =
+			connectingHandle.value?.nodeId === props.id &&
+			connectingHandle.value?.handleType === handleType &&
+			connectingHandle.value?.handleId === handleId;
+
 		return {
 			...endpoint,
-			connected: !!connections.value[mode][endpoint.type]?.[endpoint.index]?.length,
+			handleId,
+			connectionsCount,
+			isConnecting,
 			position,
 			offset: {
 				[offsetAxis]: `${(100 / (endpoints.length + 1)) * (index + 1)}%`,
@@ -179,12 +219,15 @@ const id = toRef(props, 'id');
 const data = toRef(props, 'data');
 const label = toRef(props, 'label');
 const selected = toRef(props, 'selected');
+const readOnly = toRef(props, 'readOnly');
 
 provide(CanvasNodeKey, {
 	id,
 	data,
 	label,
 	selected,
+	readOnly,
+	eventBus: canvasNodeEventBus,
 });
 
 const showToolbar = computed(() => {
@@ -202,45 +245,50 @@ watch(
 		emit('select', props.id, value);
 	},
 );
+
+onMounted(() => {
+	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
+});
 </script>
 
 <template>
 	<div
 		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
 		data-test-id="canvas-node"
+		:data-node-type="data.type"
 	>
 		<template
 			v-for="source in mappedOutputs"
-			:key="`${CanvasConnectionMode.Output}/${source.type}/${source.index}`"
+			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
 		>
 			<CanvasHandleRenderer
-				data-test-id="canvas-node-output-handle"
-				:connected="source.connected"
+				v-bind="source"
 				:mode="CanvasConnectionMode.Output"
-				:type="source.type"
-				:label="source.label"
-				:index="source.index"
-				:position="source.position"
-				:offset="source.offset"
+				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				:data-node-name="label"
+				data-test-id="canvas-node-output-handle"
+				:data-handle-index="source.index"
 				@add="onAdd"
 			/>
 		</template>
 
 		<template
 			v-for="target in mappedInputs"
-			:key="`${CanvasConnectionMode.Input}/${target.type}/${target.index}`"
+			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
 		>
 			<CanvasHandleRenderer
-				data-test-id="canvas-node-input-handle"
-				:connected="!!connections[CanvasConnectionMode.Input][target.type]?.[target.index]?.length"
+				v-bind="target"
 				:mode="CanvasConnectionMode.Input"
-				:type="target.type"
-				:label="target.label"
-				:index="target.index"
-				:position="target.position"
-				:offset="target.offset"
+				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				data-test-id="canvas-node-input-handle"
+				:data-handle-index="target.index"
+				:data-node-name="label"
 				@add="onAdd"
 			/>
 		</template>
@@ -248,21 +296,22 @@ watch(
 		<CanvasNodeToolbar
 			v-if="nodeTypeDescription"
 			data-test-id="canvas-node-toolbar"
+			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
+			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromToolbar"
 		/>
 
 		<CanvasNodeRenderer
-			@dblclick="onActivate"
+			@dblclick.stop="onActivate"
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
 		>
 			<NodeIcon
-				v-if="nodeTypeDescription"
 				:node-type="nodeTypeDescription"
 				:size="nodeIconSize"
 				:shrink="false"
@@ -276,6 +325,7 @@ watch(
 <style lang="scss" module>
 .canvasNode {
 	&:hover,
+	&:focus-within,
 	&.showToolbar {
 		.canvasNodeToolbar {
 			opacity: 1;
@@ -290,5 +340,11 @@ watch(
 	left: 50%;
 	transform: translate(-50%, -100%);
 	opacity: 0;
+	z-index: 1;
+
+	&:focus-within,
+	&:hover {
+		opacity: 1;
+	}
 }
 </style>

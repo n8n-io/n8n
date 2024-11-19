@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/discord"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/discord/"
 			}
 		],
 		"primaryDocumentation": [

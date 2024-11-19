@@ -7,6 +7,7 @@ import { isPresent } from '@/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from './NodeIcon.vue';
+import { truncate } from 'n8n-design-system';
 
 type Props = {
 	nodes: IConnectedNode[];
@@ -63,6 +64,15 @@ const isMultiInputNode = computed(() => {
 	return nodeType !== null && nodeType.inputs.length > 1;
 });
 
+const connectedTo = (nodeName: string) => {
+	const connections = ndvStore.ndvNodeInputNumber[nodeName];
+	if (!connections) return '';
+	if (connections.length === 1) {
+		return `Input ${ndvStore.ndvNodeInputNumber[nodeName]}`;
+	}
+	return `Inputs ${ndvStore.ndvNodeInputNumber[nodeName].join(', ')}`;
+};
+
 function getMultipleNodesText(nodeName: string): string {
 	if (
 		!nodeName ||
@@ -90,12 +100,8 @@ function getMultipleNodesText(nodeName: string): string {
 	return `(${connectedInputs.join(' & ')})`;
 }
 
-function title(nodeName: string) {
-	const truncated = nodeName.substring(0, 30);
-	if (truncated.length < nodeName.length) {
-		return `${truncated}...`;
-	}
-	return truncated;
+function title(nodeName: string, length = 30) {
+	return truncate(nodeName, length);
 }
 
 function subtitle(nodeName: string, depth: number) {
@@ -150,7 +156,9 @@ function onInputNodeChange(value: string) {
 				<span v-if="node.disabled">({{ i18n.baseText('node.disabled') }})</span>
 			</span>
 
-			<span :class="$style.subtitle">{{ subtitle(node.name, depth) }}</span>
+			<span :class="$style.subtitle">{{
+				connectedTo(node.name) ? connectedTo(node.name) : subtitle(node.name, depth)
+			}}</span>
 		</n8n-option>
 	</n8n-select>
 </template>

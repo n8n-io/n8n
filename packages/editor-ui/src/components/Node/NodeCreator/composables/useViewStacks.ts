@@ -36,8 +36,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { INodeInputFilter, NodeConnectionType, Themed } from 'n8n-workflow';
+import {
+	AI_TRANSFORM_NODE_TYPE,
+	type INodeInputFilter,
+	type NodeConnectionType,
+	type Themed,
+} from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 interface ViewStack {
 	uuid?: string;
@@ -62,6 +68,7 @@ interface ViewStack {
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
 	mode?: 'actions' | 'nodes';
+	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	panelClass?: string;
@@ -72,6 +79,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
 
 	const viewStacks = ref<ViewStack[]>([]);
 
@@ -93,8 +101,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			if (
 				// Filter-out AI sub-nodes if canvas has no AI nodes and the root view is not AI
 				!(isAiRootView(stack) || canvasHasAINodes) ||
-				// or if the source is a plus endpoint or a node connection drop
-				['plus_endpoint', 'node_connection_drop'].includes(nodeCreatorStore.openSource)
+				// or if the source is a plus endpoint or a node connection drop and the root view is not AI subcategory
+				(['plus_endpoint', 'node_connection_drop'].includes(nodeCreatorStore.openSource) &&
+					!isAiSubcategoryView(stack))
 			) {
 				searchBase = filterOutAiNodes(searchBase);
 			}
@@ -135,6 +144,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
 	});
 
+	function isAiSubcategoryView(stack: ViewStack) {
+		return stack.rootView === AI_OTHERS_NODE_CREATOR_VIEW;
+	}
+
 	function getLastActiveStack() {
 		return viewStacks.value[viewStacks.value.length - 1];
 	}
@@ -142,7 +155,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
-		if (!stack?.search) return [];
+		if (!stack?.search || isAiSubcategoryView(stack)) return [];
 
 		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
 		// Apply filtering for AI nodes if the current view is not the AI root view
@@ -213,17 +226,25 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				const section = node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.[0];
 
 				if (section) {
-					const currentItems = sectionsMap.get(section)?.items ?? [];
+					const subSection = node.properties.codex?.subcategories?.[section]?.[0];
+					const sectionKey = subSection ?? section;
+					const currentItems = sectionsMap.get(sectionKey)?.items ?? [];
 					const isSubnodesSection =
 						!node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
 							AI_CATEGORY_ROOT_NODES,
 						);
 
-					sectionsMap.set(section, {
-						key: section,
-						title: isSubnodesSection
-							? `${section} (${i18n.baseText('nodeCreator.subnodes')})`
-							: section,
+					let title = section;
+					if (isSubnodesSection) {
+						title = `${section} (${i18n.baseText('nodeCreator.subnodes')})`;
+					}
+					if (subSection) {
+						title = subSection;
+					}
+
+					sectionsMap.set(sectionKey, {
+						key: sectionKey,
+						title,
 						items: [...currentItems, node.key],
 					});
 				}
@@ -284,9 +305,16 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			);
 		}
 
+		// Only add info field if the view does not have any filters (e.g.
+		let extendedInfo = {};
+		if (!filter?.nodes?.length && relatedAIView?.properties.info) {
+			extendedInfo = { info: relatedAIView?.properties.info };
+		}
+
 		await nextTick();
 		pushViewStack({
 			title: relatedAIView?.properties.title,
+			...extendedInfo,
 			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
@@ -318,6 +346,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					subcategory: connectionType,
 				};
 			},
+			hideActions: true,
 			preventBack: true,
 		});
 	}
@@ -330,7 +359,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			const itemsInSubcategory = itemsBySubcategory.value[subcategory];
+			let itemsInSubcategory = itemsBySubcategory.value[subcategory];
+
+			const isAskAiEnabled = settingsStore.isAskAiEnabled;
+			if (!isAskAiEnabled) {
+				itemsInSubcategory = itemsInSubcategory.filter(
+					(item) => item.key !== AI_TRANSFORM_NODE_TYPE,
+				);
+			}
 			const sections = stack.sections;
 
 			if (sections) {
@@ -419,6 +455,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		activeViewStack,
 		activeViewStackMode,
 		globalSearchItemsDiff,
+		isAiSubcategoryView,
 		gotoCompatibleConnectionView,
 		resetViewStacks,
 		updateCurrentViewStack,

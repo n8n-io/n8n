@@ -1,3 +1,20 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+import type { BaseTextKey } from '@/plugins/i18n';
+
+type Props = {
+	titleLocaleKey: BaseTextKey;
+	descriptionLocaleKey: BaseTextKey;
+};
+
+withDefaults(defineProps<Props>(), {
+	titleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
+	descriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
+});
+
+const i18n = useI18n();
+</script>
+
 <template>
 	<div :class="$style.container">
 		<el-col class="notags" :span="16">
@@ -5,11 +22,11 @@
 			<div>
 				<div class="mb-s">
 					<n8n-heading size="large">
-						{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}
+						{{ i18n.baseText(titleLocaleKey) }}
 					</n8n-heading>
 				</div>
 				<div class="description">
-					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
+					{{ i18n.baseText(descriptionLocaleKey) }}
 				</div>
 			</div>
 			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />

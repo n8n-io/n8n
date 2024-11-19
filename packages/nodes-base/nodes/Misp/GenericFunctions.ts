@@ -8,7 +8,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, jsonParse } from 'n8n-workflow';
-
 import type { MispCredentials } from './types';
 
 export async function mispApiRequest(

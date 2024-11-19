@@ -7,13 +7,13 @@ import type {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 
-import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ConnectionsData,
 	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 import { LOCALHOST } from '@utils/constants';
 
 const getPostgresConfig = (
@@ -65,7 +65,13 @@ export async function configurePostgres(
 		// Always return dates as ISO strings
 		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 			pgp.pg.types.setTypeParser(type, (value: string) => {
-				return new Date(value).toISOString();
+				const parsedDate = new Date(value);
+
+				if (isNaN(parsedDate.getTime())) {
+					return value;
+				}
+
+				return parsedDate.toISOString();
 			});
 		});
 	}

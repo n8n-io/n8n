@@ -10,6 +10,8 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import uniqBy from 'lodash/uniqBy';
 
+import { SINGLE_EXECUTION_NODES } from './Constants';
+import { ApplicationError } from './errors/application.error';
 import { NodeConnectionType } from './Interfaces';
 import type {
 	FieldType,
@@ -35,8 +37,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	ResourceMapperValue,
-	ConnectionTypes,
 	INodeTypeDescription,
+	INodeTypeBaseDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
@@ -44,18 +46,15 @@ import type {
 	NodeHint,
 	INodeExecutionData,
 } from './Interfaces';
+import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
 	isFilterValue,
 	isResourceMapperValue,
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
-import { deepCopy } from './utils';
-
-import type { Workflow } from './Workflow';
-import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import { validateFieldType } from './TypeValidation';
-import { ApplicationError } from './errors/application.error';
-import { SINGLE_EXECUTION_NODES } from './Constants';
+import { deepCopy } from './utils';
+import type { Workflow } from './Workflow';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -260,7 +259,7 @@ const commonPollingParameters: INodeProperties[] = [
 	},
 ];
 
-const commonCORSParameters: INodeProperties[] = [
+export const commonCORSParameters: INodeProperties[] = [
 	{
 		displayName: 'Allowed Origins (CORS)',
 		name: 'allowedOrigins',
@@ -351,6 +350,101 @@ const declarativeNodeOptionParameters: INodeProperties = {
 		},
 	],
 };
+
+/**
+ * Modifies the description of the passed in object, such that it can be used
+ * as an AI Agent Tool.
+ * Returns the modified item (not copied)
+ */
+export function convertNodeToAiTool<
+	T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
+>(item: T): T {
+	// quick helper function for type-guard down below
+	function isFullDescription(obj: unknown): obj is INodeTypeDescription {
+		return typeof obj === 'object' && obj !== null && 'properties' in obj;
+	}
+
+	if (isFullDescription(item.description)) {
+		item.description.name += 'Tool';
+		item.description.inputs = [];
+		item.description.outputs = [NodeConnectionType.AiTool];
+		item.description.displayName += ' Tool';
+		delete item.description.usableAsTool;
+
+		const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
+		const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
+
+		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+			const descriptionType: INodeProperties = {
+				displayName: 'Tool Description',
+				name: 'descriptionType',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Set Automatically',
+						value: 'auto',
+						description: 'Automatically set based on resource and operation',
+					},
+					{
+						name: 'Set Manually',
+						value: 'manual',
+						description: 'Manually set the description',
+					},
+				],
+				default: 'auto',
+			};
+
+			const descProp: INodeProperties = {
+				displayName: 'Description',
+				name: 'toolDescription',
+				type: 'string',
+				default: item.description.description,
+				required: true,
+				typeOptions: { rows: 2 },
+				description:
+					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+				placeholder: `e.g. ${item.description.description}`,
+			};
+
+			const noticeProp: INodeProperties = {
+				displayName:
+					"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			};
+
+			item.description.properties.unshift(descProp);
+
+			// If node has resource or operation we can determine pre-populate tool description based on it
+			// so we add the descriptionType property as the first property
+			if (hasResource || hasOperation) {
+				item.description.properties.unshift(descriptionType);
+
+				descProp.displayOptions = {
+					show: {
+						descriptionType: ['manual'],
+					},
+				};
+			}
+
+			item.description.properties.unshift(noticeProp);
+		}
+	}
+
+	const resources = item.description.codex?.resources ?? {};
+
+	item.description.codex = {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+			Tools: ['Other Tools'],
+		},
+		resources,
+	};
+	return item;
+}
 
 /**
  * Determines if the provided node type has any output types other than the main connection type.
@@ -545,12 +639,13 @@ export function displayParameter(
 	parameter: INodeProperties | INodeCredentialDescription,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
-	if (!parameter.displayOptions) {
+	if (!parameter[displayKey]) {
 		return true;
 	}
 
-	const { show, hide } = parameter.displayOptions;
+	const { show, hide } = parameter[displayKey];
 
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
@@ -597,6 +692,7 @@ export function displayParameterPath(
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -609,7 +705,7 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot);
+	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot, displayKey);
 }
 
 /**
@@ -1245,8 +1341,8 @@ export function getNodeWebhookUrl(
 }
 
 export function getConnectionTypes(
-	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
-): ConnectionTypes[] {
+	connections: Array<NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
+): NodeConnectionType[] {
 	return connections
 		.map((connection) => {
 			if (typeof connection === 'string') {
@@ -1261,7 +1357,7 @@ export function getNodeInputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<NodeConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
 	}
@@ -1273,7 +1369,7 @@ export function getNodeInputs(
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		) || []) as ConnectionTypes[];
+		) || []) as NodeConnectionType[];
 	} catch (e) {
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
@@ -1353,8 +1449,8 @@ export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): Array<ConnectionTypes | INodeOutputConfiguration> {
-	let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+): Array<NodeConnectionType | INodeOutputConfiguration> {
+	let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 
 	if (Array.isArray(nodeTypeData.outputs)) {
 		outputs = nodeTypeData.outputs;
@@ -1366,7 +1462,7 @@ export function getNodeOutputs(
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as ConnectionTypes[];
+			) || []) as NodeConnectionType[];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
@@ -1389,7 +1485,7 @@ export function getNodeOutputs(
 			...outputs,
 			{
 				category: 'error',
-				type: 'main',
+				type: NodeConnectionType.Main,
 				displayName: 'Error',
 			},
 		];
@@ -1580,7 +1676,7 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		(nodeProperties.type === 'resourceLocator' &&
+		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
@@ -1654,7 +1750,10 @@ export function getParameterIssues(
 		}
 	}
 
-	if (nodeProperties.type === 'resourceLocator' && isDisplayed) {
+	if (
+		(nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		isDisplayed
+	) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 		if (isINodeParameterResourceLocator(value)) {
 			const mode = nodeProperties.modes?.find((option) => option.name === value.mode);

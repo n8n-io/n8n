@@ -143,9 +143,9 @@ export async function handleGetAll(
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { account_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const endpoint = `accounts/${oauthTokenData.account_key}/webinars`;
 
@@ -176,9 +176,9 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 }
 
 export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
 
@@ -208,9 +208,9 @@ export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
 
@@ -233,9 +233,9 @@ export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) 
 }
 
 export async function loadAnswers(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
 
@@ -262,9 +262,9 @@ export async function loadAnswers(this: ILoadOptionsFunctions) {
 }
 
 export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFunctions) {
-	const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+	const { oauthTokenData } = await this.getCredentials<{
 		oauthTokenData: { organizer_key: string };
-	};
+	}>('goToWebinarOAuth2Api');
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
 

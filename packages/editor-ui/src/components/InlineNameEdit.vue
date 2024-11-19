@@ -1,35 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<span v-if="readonly" :class="$style.headline">
-			{{ modelValue }}
-		</span>
-		<div
-			v-else
-			:class="[$style.headline, $style['headline-editable']]"
-			@keydown.stop
-			@click="enableNameEdit"
-		>
-			<div v-if="!isNameEdit">
-				<span>{{ modelValue }}</span>
-				<i><font-awesome-icon icon="pen" /></i>
-			</div>
-			<div v-else :class="$style.nameInput">
-				<n8n-input
-					ref="nameInput"
-					:model-value="modelValue"
-					size="xlarge"
-					:maxlength="64"
-					@update:model-value="onNameEdit"
-					@change="disableNameEdit"
-				/>
-			</div>
-		</div>
-		<div v-if="!isNameEdit && subtitle" :class="$style.subtitle">
-			{{ subtitle }}
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { nextTick, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
@@ -78,6 +46,38 @@ const disableNameEdit = () => {
 
 onClickOutside(nameInput, disableNameEdit);
 </script>
+
+<template>
+	<div :class="$style.container">
+		<span v-if="readonly" :class="$style.headline">
+			{{ modelValue }}
+		</span>
+		<div
+			v-else
+			:class="[$style.headline, $style['headline-editable']]"
+			@keydown.stop
+			@click="enableNameEdit"
+		>
+			<div v-if="!isNameEdit">
+				<span>{{ modelValue }}</span>
+				<i><font-awesome-icon icon="pen" /></i>
+			</div>
+			<div v-else :class="$style.nameInput">
+				<n8n-input
+					ref="nameInput"
+					:model-value="modelValue"
+					size="xlarge"
+					:maxlength="64"
+					@update:model-value="onNameEdit"
+					@change="disableNameEdit"
+				/>
+			</div>
+		</div>
+		<div v-if="!isNameEdit && subtitle" :class="$style.subtitle">
+			{{ subtitle }}
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .container {

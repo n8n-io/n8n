@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { Message } from './index';
+
 import type { ChatMessage } from '@n8n/chat/types';
+
+import { Message } from './index';
 
 const props = withDefaults(
 	defineProps<{
@@ -32,7 +34,12 @@ onMounted(() => {
 });
 </script>
 <template>
-	<Message ref="messageContainer" :class="classes" :message="message">
+	<Message
+		ref="messageContainer"
+		:class="classes"
+		:message="message"
+		data-test-id="chat-message-typing"
+	>
 		<div class="chat-message-typing-body">
 			<span class="chat-message-typing-circle"></span>
 			<span class="chat-message-typing-circle"></span>

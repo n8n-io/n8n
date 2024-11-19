@@ -9,7 +9,7 @@ import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
 import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
-import { googleApiRequest } from '../../transport';
+import { googleBigQueryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'If not set, all table names in the query string must be qualified in the format \'datasetId.tableId\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'If not set, all table names in the query string must be qualified in the format \'datasetId.tableId\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Dry Run',
@@ -108,18 +108,21 @@ const properties: INodeProperties[] = [
 					'Limits the bytes billed for this query. Queries with bytes billed above this limit will fail (without incurring a charge). String in <a href="https://developers.google.com/discovery/v1/type-format?utm_source=cloud.google.com&utm_medium=referral" target="_blank">Int64Value</a> format',
 			},
 			{
-				displayName: 'Max Results',
+				displayName: 'Max Results Per Page',
 				name: 'maxResults',
 				type: 'number',
 				default: 1000,
-				description: 'The maximum number of rows of data to return',
+				description:
+					'Maximum number of results to return per page of results. This is particularly useful when dealing with large datasets. It will not affect the total number of results returned, e.g. rows in a table. You can use LIMIT in your SQL query to limit the number of rows returned.',
 			},
 			{
 				displayName: 'Timeout',
 				name: 'timeoutMs',
 				type: 'number',
 				default: 10000,
-				description: 'How long to wait for the query to complete, in milliseconds',
+				hint: 'How long to wait for the query to complete, in milliseconds',
+				description:
+					'Specifies the maximum amount of time, in milliseconds, that the client is willing to wait for the query to complete. Be aware that the call is not guaranteed to wait for the specified timeout; it typically returns after around 200 seconds (200,000 milliseconds), even if the query is not complete.',
 			},
 			{
 				displayName: 'Raw Output',
@@ -140,6 +143,14 @@ const properties: INodeProperties[] = [
 				description:
 					"Whether to use BigQuery's legacy SQL dialect for this query. If set to false, the query will use BigQuery's standard SQL.",
 			},
+			{
+				displayName: 'Return Integers as Numbers',
+				name: 'returnAsNumbers',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether all integer values will be returned as numbers. If set to false, all integer values will be returned as strings.',
+			},
 		],
 	},
 ];
@@ -154,19 +165,32 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
-
 	const items = this.getInputData();
 	const length = items.length;
 
 	const returnData: INodeExecutionData[] = [];
 
 	let jobs = [];
+	let maxResults = 1000;
+	let timeoutMs = 10000;
 
 	for (let i = 0; i < length; i++) {
 		try {
 			let sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
-			const options = this.getNodeParameter('options', i);
+
+			const options = this.getNodeParameter('options', i) as {
+				defaultDataset?: string;
+				dryRun?: boolean;
+				includeSchema?: boolean;
+				location?: string;
+				maximumBytesBilled?: string;
+				maxResults?: number;
+				timeoutMs?: number;
+				rawOutput?: boolean;
+				useLegacySql?: boolean;
+				returnAsNumbers?: boolean;
+			};
+
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			});
@@ -179,13 +203,23 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			let includeSchema = false;
 
 			if (options.rawOutput !== undefined) {
-				rawOutput = options.rawOutput as boolean;
+				rawOutput = options.rawOutput;
 				delete options.rawOutput;
 			}
 
 			if (options.includeSchema !== undefined) {
-				includeSchema = options.includeSchema as boolean;
+				includeSchema = options.includeSchema;
 				delete options.includeSchema;
+			}
+
+			if (options.maxResults) {
+				maxResults = options.maxResults;
+				delete options.maxResults;
+			}
+
+			if (options.timeoutMs) {
+				timeoutMs = options.timeoutMs;
+				delete options.timeoutMs;
 			}
 
 			const body: IDataObject = { ...options };
@@ -203,7 +237,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.useLegacySql = false;
 			}
 
-			const response: ResponseWithJobReference = await googleApiRequest.call(
+			//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/insert
+			const response: ResponseWithJobReference = await googleBigQueryApiRequest.call(
 				this,
 				'POST',
 				`/v2/projects/${projectId}/jobs`,
@@ -222,13 +257,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			const jobId = response?.jobReference?.jobId;
-			const raw = rawOutput || (options.dryRun as boolean) || false;
+			const raw = rawOutput || options.dryRun || false;
 			const location = options.location || response.jobReference.location;
 
 			if (response.status?.state === 'DONE') {
-				const qs = { location };
+				const qs = { location, maxResults, timeoutMs };
 
-				const queryResponse: IDataObject = await googleApiRequest.call(
+				//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults
+				const queryResponse: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
 					`/v2/projects/${projectId}/queries/${jobId}`,
@@ -236,12 +272,35 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					qs,
 				);
 
+				if (body.returnAsNumbers === true) {
+					const numericDataTypes = ['INTEGER', 'NUMERIC', 'FLOAT', 'BIGNUMERIC']; // https://cloud.google.com/bigquery/docs/schemas#standard_sql_data_types
+					const schema: IDataObject = queryResponse?.schema as IDataObject;
+					const schemaFields: IDataObject[] = schema.fields as IDataObject[];
+					const schemaDataTypes: string[] = schemaFields?.map(
+						(field: IDataObject) => field.type as string,
+					);
+					const rows: IDataObject[] = queryResponse.rows as IDataObject[];
+
+					for (const row of rows) {
+						if (!row?.f || !Array.isArray(row.f)) continue;
+						row.f.forEach((entry: IDataObject, index: number) => {
+							if (entry && typeof entry === 'object' && 'v' in entry) {
+								// Skip this row if it's null or doesn't have 'f' as an array
+								const value = entry.v;
+								if (numericDataTypes.includes(schemaDataTypes[index])) {
+									entry.v = Number(value);
+								}
+							}
+						});
+					}
+				}
+
 				returnData.push(...prepareOutput.call(this, queryResponse, i, raw, includeSchema));
 			} else {
 				jobs.push({ jobId, projectId, i, raw, includeSchema, location });
 			}
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ error: error.message }),
 					{ itemData: { item: i } },
@@ -272,9 +331,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 		for (const job of jobs) {
 			try {
-				const qs = job.location ? { location: job.location } : {};
+				const qs: IDataObject = job.location ? { location: job.location } : {};
 
-				const response: IDataObject = await googleApiRequest.call(
+				qs.maxResults = maxResults;
+				qs.timeoutMs = timeoutMs;
+
+				//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults
+				const response: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
 					`/v2/projects/${job.projectId}/queries/${job.jobId}`,
@@ -297,7 +360,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },

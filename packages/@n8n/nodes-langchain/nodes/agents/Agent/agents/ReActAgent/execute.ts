@@ -1,3 +1,9 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -5,32 +11,29 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	getConnectedTools,
-	getOptionalOutputParsers,
 	getPromptInputByType,
 	isChatInstance,
 } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
+import { getTracingConfig } from '../../../../../utils/tracing';
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.verbose('Executing ReAct Agent');
+	this.logger.debug('Executing ReAct Agent');
 
 	const model = (await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0)) as
 		| BaseLanguageModel
 		| BaseChatModel;
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+
+	await checkForStructuredTools(tools, this.getNode(), 'ReAct Agent');
 
 	const outputParsers = await getOptionalOutputParsers(this);
 
@@ -103,18 +106,18 @@ export async function reActAgentAgentExecute(
 				input = (await prompt.invoke({ input })).value;
 			}
 
-			let response = await agentExecutor
+			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
+				response.output = await extractParsedOutput(this, outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });
 		} catch (error) {
 			throwIfToolSchema(this, error);
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}

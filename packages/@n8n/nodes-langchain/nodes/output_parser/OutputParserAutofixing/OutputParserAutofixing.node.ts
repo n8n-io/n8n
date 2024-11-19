@@ -1,15 +1,18 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
-import { OutputFixingParser } from 'langchain/output_parsers';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { logWrapper } from '../../../utils/logWrapper';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
+
+import { NAIVE_FIX_PROMPT } from './prompt';
+import {
+	N8nOutputFixingParser,
+	type N8nStructuredOutputParser,
+} from '../../../utils/output_parsers/N8nOutputParser';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class OutputParserAutofixing implements INodeType {
@@ -64,10 +67,31 @@ export class OutputParserAutofixing implements INodeType {
 				default: '',
 			},
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Retry Prompt',
+						name: 'prompt',
+						type: 'string',
+						default: NAIVE_FIX_PROMPT,
+						typeOptions: {
+							rows: 10,
+						},
+						hint: 'Should include "{error}", "{instructions}", and "{completion}" placeholders',
+						description:
+							'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
+					},
+				],
+			},
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			itemIndex,
@@ -75,12 +99,24 @@ export class OutputParserAutofixing implements INodeType {
 		const outputParser = (await this.getInputConnectionData(
 			NodeConnectionType.AiOutputParser,
 			itemIndex,
-		)) as BaseOutputParser;
+		)) as N8nStructuredOutputParser;
+		const prompt = this.getNodeParameter('options.prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
 
-		const parser = OutputFixingParser.fromLLM(model, outputParser);
+		if (prompt.length === 0 || !prompt.includes('{error}')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Auto-fixing parser prompt has to contain {error} placeholder',
+			);
+		}
+		const parser = new N8nOutputFixingParser(
+			this,
+			model,
+			outputParser,
+			PromptTemplate.fromTemplate(prompt),
+		);
 
 		return {
-			response: logWrapper(parser, this),
+			response: parser,
 		};
 	}
 }

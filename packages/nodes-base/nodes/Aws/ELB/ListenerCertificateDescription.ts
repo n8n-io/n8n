@@ -57,7 +57,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Listener ARN Name or ID',
@@ -76,7 +76,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Certificate ARN',
@@ -113,7 +113,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Listener ARN Name or ID',
@@ -132,7 +132,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -185,7 +185,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Listener ARN Name or ID',
@@ -204,7 +204,7 @@ export const listenerCertificateFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Unique identifier for a particular loadBalancer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Certificate ARN',

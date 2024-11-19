@@ -1,14 +1,14 @@
+import type { Component } from 'vue';
+import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { Connection } from '@jsplumb/core';
 import type {
-	AI_NODE_CREATOR_VIEW,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	SignInType,
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-	AI_OTHERS_NODE_CREATOR_VIEW,
-	ROLE,
-} from '@/constants';
-import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
+	FrontendSettings,
+	Iso8601DateTimeString,
+	IUserManagementSettings,
+	IVersionNotificationSettings,
+} from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
+import type { NodeCreatorTag } from 'n8n-design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -22,9 +22,7 @@ import type {
 	INodeTypeDescription,
 	IPinData,
 	IRunExecutionData,
-	IRun,
 	IRunData,
-	ITaskData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
@@ -38,25 +36,31 @@ import type {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
-	IN8nUISettings,
 	BannerName,
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
 	INodeCredentialsDetails,
 	StartNodeData,
+	IPersonalizationSurveyAnswersV4,
+	AnnotationVote,
 } from 'n8n-workflow';
+
+import type {
+	AI_NODE_CREATOR_VIEW,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	SignInType,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	ROLE,
+} from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
-import type { Component } from 'vue';
-import type { Scope } from '@n8n/permissions';
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { Connection } from '@jsplumb/core';
-import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
 
@@ -110,15 +114,8 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
-
-		Sentry?: {
-			captureException: (error: Error, metadata?: unknown) => void;
-		};
 	}
 }
-
-/** String that represents a timestamp in the ISO8601 format, i.e. YYYY-MM-DDTHH:MM:SS.sssZ */
-export type Iso8601String = string;
 
 export type EndpointStyle = {
 	width?: number;
@@ -185,6 +182,10 @@ export interface IAiDataContent {
 	metadata: {
 		executionTime: number;
 		startTime: number;
+		subExecution?: {
+			workflowId: string;
+			executionId: string;
+		};
 	};
 }
 
@@ -205,19 +206,10 @@ export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
-}
-
-export interface IVariableItemSelected {
-	variable: string;
-}
-
-export interface IVariableSelectorOption {
-	name: string;
-	key?: string;
-	value?: string;
-	options?: IVariableSelectorOption[] | null;
-	allowParentSelect?: boolean;
-	dataType?: string;
+	metadata: {
+		hasExecutionIds: boolean;
+		data: Array<INodeExecutionData['metadata'] | undefined>;
+	};
 }
 
 // Simple version of n8n-workflow.Workflow
@@ -347,8 +339,8 @@ export interface IShareWorkflowsPayload {
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
-	createdAt: Iso8601String;
-	updatedAt: Iso8601String;
+	createdAt: Iso8601DateTimeString;
+	updatedAt: Iso8601DateTimeString;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
@@ -357,8 +349,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 }
 
 export interface ICredentialsBase {
-	createdAt: Iso8601String;
-	updatedAt: Iso8601String;
+	createdAt: Iso8601DateTimeString;
+	updatedAt: Iso8601DateTimeString;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
@@ -398,23 +390,20 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
+export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+
 export interface IExecutionsListResponse {
 	count: number;
-	results: ExecutionSummary[];
+	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
 }
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
-	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
-	retryOf?: string | null;
-	retrySuccessId?: string | null;
 	startedAt: Date;
-	stoppedAt?: Date;
 	workflowId: string;
-	workflowName?: string;
 }
 
 export interface IExecutionsStopData {
@@ -429,197 +418,6 @@ export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
 	filters?: ExecutionsQueryFilter;
 	ids?: string[];
-}
-
-export type IPushData =
-	| PushDataExecutionFinished
-	| PushDataExecutionStarted
-	| PushDataExecuteAfter
-	| PushDataExecuteBefore
-	| PushDataNodeDescriptionUpdated
-	| PushDataConsoleMessage
-	| PushDataReloadNodeType
-	| PushDataRemoveNodeType
-	| PushDataTestWebhook
-	| PushDataExecutionRecovered
-	| PushDataWorkerStatusMessage
-	| PushDataActiveWorkflowAdded
-	| PushDataActiveWorkflowRemoved
-	| PushDataWorkflowFailedToActivate;
-
-export type PushDataActiveWorkflowAdded = {
-	data: IActiveWorkflowAdded;
-	type: 'workflowActivated';
-};
-
-export type PushDataActiveWorkflowRemoved = {
-	data: IActiveWorkflowRemoved;
-	type: 'workflowDeactivated';
-};
-
-export type PushDataWorkflowFailedToActivate = {
-	data: IWorkflowFailedToActivate;
-	type: 'workflowFailedToActivate';
-};
-
-export type PushDataExecutionRecovered = {
-	data: IPushDataExecutionRecovered;
-	type: 'executionRecovered';
-};
-
-export type PushDataExecutionFinished = {
-	data: IPushDataExecutionFinished;
-	type: 'executionFinished';
-};
-
-export type PushDataExecutionStarted = {
-	data: IPushDataExecutionStarted;
-	type: 'executionStarted';
-};
-
-export type PushDataExecuteAfter = {
-	data: IPushDataNodeExecuteAfter;
-	type: 'nodeExecuteAfter';
-};
-
-export type PushDataExecuteBefore = {
-	data: IPushDataNodeExecuteBefore;
-	type: 'nodeExecuteBefore';
-};
-
-export type PushDataNodeDescriptionUpdated = {
-	data: {};
-	type: 'nodeDescriptionUpdated';
-};
-
-export type PushDataConsoleMessage = {
-	data: IPushDataConsoleMessage;
-	type: 'sendConsoleMessage';
-};
-
-export type PushDataReloadNodeType = {
-	data: IPushDataReloadNodeType;
-	type: 'reloadNodeType';
-};
-
-export type PushDataRemoveNodeType = {
-	data: IPushDataRemoveNodeType;
-	type: 'removeNodeType';
-};
-
-export type PushDataTestWebhook = {
-	data: IPushDataTestWebhook;
-	type: 'testWebhookDeleted' | 'testWebhookReceived';
-};
-
-export type PushDataWorkerStatusMessage = {
-	data: IPushDataWorkerStatusMessage;
-	type: 'sendWorkerStatusMessage';
-};
-
-export interface IPushDataExecutionStarted {
-	executionId: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	retryOf?: string;
-	workflowId: string;
-	workflowName?: string;
-}
-export interface IPushDataExecutionRecovered {
-	executionId: string;
-}
-
-export interface IPushDataExecutionFinished {
-	data: IRun;
-	executionId: string;
-	retryOf?: string;
-}
-
-export interface IActiveWorkflowAdded {
-	workflowId: string;
-}
-
-export interface IActiveWorkflowRemoved {
-	workflowId: string;
-}
-
-export interface IWorkflowFailedToActivate {
-	workflowId: string;
-	errorMessage: string;
-}
-
-export interface IPushDataUnsavedExecutionFinished {
-	executionId: string;
-	data: { finished: true; stoppedAt: Date };
-}
-
-export interface IPushDataExecutionStarted {
-	executionId: string;
-}
-
-export interface IPushDataNodeExecuteAfter {
-	data: ITaskData;
-	executionId: string;
-	nodeName: string;
-}
-
-export interface IPushDataNodeExecuteBefore {
-	executionId: string;
-	nodeName: string;
-}
-
-export interface IPushDataReloadNodeType {
-	name: string;
-	version: number;
-}
-export interface IPushDataRemoveNodeType {
-	name: string;
-	version: number;
-}
-
-export interface IPushDataTestWebhook {
-	executionId: string;
-	workflowId: string;
-}
-
-export interface IPushDataConsoleMessage {
-	source: string;
-	messages: string[];
-}
-
-export interface WorkerJobStatusSummary {
-	jobId: string;
-	executionId: string;
-	retryOf?: string;
-	startedAt: Date;
-	mode: WorkflowExecuteMode;
-	workflowName: string;
-	workflowId: string;
-	status: ExecutionStatus;
-}
-
-export interface IPushDataWorkerStatusPayload {
-	workerId: string;
-	runningJobsSummary: WorkerJobStatusSummary[];
-	freeMem: number;
-	totalMem: number;
-	uptime: number;
-	loadAvg: number[];
-	cpus: string;
-	arch: string;
-	platform: NodeJS.Platform;
-	hostname: string;
-	interfaces: Array<{
-		family: 'IPv4' | 'IPv6';
-		address: string;
-		internal: boolean;
-	}>;
-	version: string;
-}
-
-export interface IPushDataWorkerStatusMessage {
-	workerId: string;
-	status: IPushDataWorkerStatusPayload;
 }
 
 export type IPersonalizationSurveyAnswersV1 = {
@@ -659,24 +457,6 @@ export type IPersonalizationSurveyAnswersV3 = {
 	email?: string | null;
 };
 
-export type IPersonalizationSurveyAnswersV4 = {
-	version: 'v4';
-	automationGoalDevops?: string[] | null;
-	automationGoalDevopsOther?: string | null;
-	companyIndustryExtended?: string[] | null;
-	otherCompanyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	automationGoalSm?: string[] | null;
-	automationGoalSmOther?: string | null;
-	usageModes?: string[] | null;
-	email?: string | null;
-	role?: string | null;
-	roleOther?: string | null;
-	reportedSource?: string | null;
-	reportedSourceOther?: string | null;
-};
-
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 
 export type IPersonalizationSurveyVersions =
@@ -714,12 +494,6 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
-}
-
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
 }
 
 export interface IUserListAction {
@@ -855,7 +629,6 @@ export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromA
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
 	maxExecutionTimeout?: number;
@@ -1069,14 +842,12 @@ export interface IUsedCredential {
 }
 
 export interface WorkflowsState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeWorkflowExecution: ExecutionSummary | null;
 	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
-	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
@@ -1097,6 +868,7 @@ export interface RootState {
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
 	pushConnectionActive: boolean;
 	timezone: string;
 	executionTimeout: number;
@@ -1110,57 +882,11 @@ export interface RootState {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	isNpmAvailable: boolean;
 	binaryDataMode: 'default' | 'filesystem' | 's3';
 }
 
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
-}
-export interface IRootState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
-	activeWorkflows: string[];
-	activeActions: string[];
-	activeCredentialType: string | null;
-	baseUrl: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	executionId: string | null;
-	executingNode: string[];
-	executionWaitingForWebhook: boolean;
-	pushConnectionActive: boolean;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
-	timezone: string;
-	stateIsDirty: boolean;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: object;
-	workflowExecutionData: IExecutionResponse | null;
-	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
-	lastSelectedNode: string | null;
-	lastSelectedNodeOutputIndex: number | null;
-	nodeViewOffsetPosition: XYPosition;
-	nodeViewMoveInProgress: boolean;
-	selectedNodes: INodeUi[];
-	pushRef: string;
-	urlBaseEditor: string;
-	urlBaseWebhook: string;
-	workflow: IWorkflowDb;
-	workflowsById: IWorkflowsMap;
-	sidebarMenuItems: IMenuItem[];
-	instanceId: string;
-	nodeMetadata: NodeMetadataMap;
-	isNpmAvailable: boolean;
-	subworkflowExecutionError: Error | null;
-	binaryDataMode: string;
 }
 
 export interface CommunityPackageMap {
@@ -1263,24 +989,6 @@ export interface NotificationOptions extends Partial<ElementNotificationOptions>
 	message: string | ElementNotificationOptions['message'];
 }
 
-export type IFakeDoor = {
-	id: FAKE_DOOR_FEATURES;
-	featureName: BaseTextKey;
-	icon?: string;
-	infoText?: BaseTextKey;
-	actionBoxTitle: BaseTextKey;
-	actionBoxDescription: BaseTextKey;
-	actionBoxButtonLabel?: BaseTextKey;
-	linkURL: string;
-	uiLocations: IFakeDoorLocation[];
-};
-
-export type IFakeDoorLocation =
-	| 'settings'
-	| 'settings/users'
-	| 'credentialsModal'
-	| 'workflowShareModal';
-
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
 	| typeof TRIGGER_NODE_CREATOR_VIEW
@@ -1310,7 +1018,7 @@ export interface INodeCreatorState {
 
 export interface ISettingsState {
 	initialized: boolean;
-	settings: IN8nUISettings;
+	settings: FrontendSettings;
 	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {
@@ -1376,11 +1084,6 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
-export interface IWorkflowsState {
-	currentWorkflowExecutions: ExecutionSummary[];
-	activeWorkflowExecution: ExecutionSummary | null;
-	finishedExecutionsCount: number;
-}
 export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
@@ -1416,12 +1119,13 @@ export interface IInviteResponse {
 		email: string;
 		emailSent: boolean;
 		inviteAcceptUrl: string;
+		role: IRole;
 	};
 	error?: string;
 }
 
-export interface ITab {
-	value: string | number;
+export interface ITab<Value extends string | number = string | number> {
+	value: Value;
 	label?: string;
 	href?: string;
 	icon?: string;
@@ -1522,7 +1226,7 @@ export type UsageState = {
 	loading: boolean;
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				limit: number; // -1 for unlimited, from license
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
@@ -1564,6 +1268,11 @@ export declare namespace DynamicNodeParameters {
 	interface ResourceMapperFieldsRequest extends BaseRequest {
 		methodName: string;
 	}
+
+	interface ActionResultRequest extends BaseRequest {
+		handler: string;
+		payload: IDataObject | string | undefined;
+	}
 }
 
 export interface EnvironmentVariable {
@@ -1577,23 +1286,30 @@ export type ExecutionFilterMetadata = {
 	value: string;
 };
 
+export type ExecutionFilterVote = AnnotationVote | 'all';
+
 export type ExecutionFilterType = {
 	status: string;
 	workflowId: string;
 	startDate: string | Date;
 	endDate: string | Date;
 	tags: string[];
+	annotationTags: string[];
+	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
 };
 
 export type ExecutionsQueryFilter = {
 	status?: ExecutionStatus[];
+	projectId?: string;
 	workflowId?: string;
 	finished?: boolean;
 	waitTill?: boolean;
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	annotationTags?: string[];
+	vote?: ExecutionFilterVote;
 };
 
 export type SamlAttributeMapping = {
@@ -1808,8 +1524,8 @@ export type AddedNode = {
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
-	from: { nodeIndex: number; outputIndex?: number };
-	to: { nodeIndex: number; inputIndex?: number };
+	from: { nodeIndex: number; outputIndex?: number; type?: NodeConnectionType };
+	to: { nodeIndex: number; inputIndex?: number; type?: NodeConnectionType };
 };
 
 export type AddedNodesAndConnections = {
@@ -1821,6 +1537,7 @@ export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
+	hasAddedNodes?: boolean;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
@@ -1851,8 +1568,57 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkerView'
 	| 'AdvancedPermissions';
 
-export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterprise'], 'projects'>;
+export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
+
+export type ApiKey = {
+	id: string;
+	label: string;
+	apiKey: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type InputPanel = {
+	displayMode: IRunDataDisplayMode;
+	nodeName?: string;
+	run?: number;
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+};
+
+export type OutputPanel = {
+	branch?: number;
+	displayMode: IRunDataDisplayMode;
+	data: {
+		isEmpty: boolean;
+	};
+	editMode: {
+		enabled: boolean;
+		value: string;
+	};
+};
+
+export type Draggable = {
+	isDragging: boolean;
+	type: string;
+	data: string;
+	dimensions: DOMRect | null;
+	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
+};
+
+export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
+
+export type MainPanelDimensions = Record<
+	MainPanelType,
+	{
+		relativeLeft: number;
+		relativeRight: number;
+		relativeWidth: number;
+	}
+>;

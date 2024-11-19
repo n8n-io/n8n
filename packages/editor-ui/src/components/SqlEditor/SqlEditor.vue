@@ -1,16 +1,3 @@
-<template>
-	<div :class="$style.sqlEditor">
-		<div ref="sqlEditor" :class="$style.codemirror" data-test-id="sql-editor-container"></div>
-		<slot name="suffix" />
-		<InlineExpressionEditorOutput
-			v-if="!fullscreen"
-			:segments="segments"
-			:is-read-only="isReadOnly"
-			:visible="hasFocus"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -47,8 +34,10 @@ import {
 	StandardSQL,
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { onClickOutside } from '@vueuse/core';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -80,7 +69,10 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const sqlEditor = ref<HTMLElement>();
+const container = ref<HTMLDivElement>();
+const sqlEditor = ref<HTMLDivElement>();
+const isFocused = ref(false);
+
 const extensions = computed(() => {
 	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
 	function sqlWithN8nLanguageSupport() {
@@ -124,6 +116,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
+			mappingDropCursor(),
 		]);
 	}
 	return baseExtensions;
@@ -133,7 +126,7 @@ const {
 	editor,
 	segments: { all: segments },
 	readEditorValue,
-	hasFocus,
+	hasFocus: editorHasFocus,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue,
@@ -149,12 +142,18 @@ watch(
 	},
 );
 
+watch(editorHasFocus, (focus) => {
+	if (focus) {
+		isFocused.value = true;
+	}
+});
+
 watch(segments, () => {
 	emit('update:model-value', readEditorValue());
 });
 
 onMounted(() => {
-	codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	codeNodeEditorEventBus.on('highlightLine', highlightLine);
 
 	if (props.fullscreen) {
 		focus();
@@ -162,8 +161,21 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	codeNodeEditorEventBus.off('error-line-number', highlightLine);
+	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
+
+onClickOutside(container, (event) => onBlur(event));
+
+function onBlur(event: FocusEvent | KeyboardEvent) {
+	if (
+		event?.target instanceof Element &&
+		Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
+	) {
+		return; // prevent blur on resizing
+	}
+
+	isFocused.value = false;
+}
 
 function line(lineNumber: number): Line | null {
 	try {
@@ -191,7 +203,37 @@ function highlightLine(lineNumber: number | 'final') {
 		selection: { anchor: lineToHighlight.from },
 	});
 }
+
+async function onDrop(value: string, event: MouseEvent) {
+	if (!editor.value) return;
+
+	await dropInExpressionEditor(toRaw(editor.value), event, value);
+}
 </script>
+
+<template>
+	<div ref="container" :class="$style.sqlEditor" @keydown.tab="onBlur">
+		<DraggableTarget type="mapping" :disabled="isReadOnly" @drop="onDrop">
+			<template #default="{ activeDrop, droppable }">
+				<div
+					ref="sqlEditor"
+					:class="[
+						$style.codemirror,
+						{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+					]"
+					data-test-id="sql-editor-container"
+				></div>
+			</template>
+		</DraggableTarget>
+		<slot name="suffix" />
+		<InlineExpressionEditorOutput
+			v-if="!fullscreen"
+			:segments="segments"
+			:is-read-only="isReadOnly"
+			:visible="isFocused"
+		/>
+	</div>
+</template>
 
 <style module lang="scss">
 .sqlEditor {
@@ -201,5 +243,22 @@ function highlightLine(lineNumber: number | 'final') {
 
 .codemirror {
 	height: 100%;
+}
+
+.codemirror.droppable {
+	:global(.cm-editor) {
+		border-color: var(--color-ndv-droppable-parameter);
+		border-style: dashed;
+		border-width: 1.5px;
+	}
+}
+
+.codemirror.activeDrop {
+	:global(.cm-editor) {
+		border-color: var(--color-success);
+		border-style: solid;
+		cursor: grabbing;
+		border-width: 1px;
+	}
 }
 </style>

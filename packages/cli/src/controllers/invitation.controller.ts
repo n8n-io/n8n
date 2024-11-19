@@ -3,28 +3,26 @@ import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UserRequest } from '@/requests';
-import { License } from '@/License';
-import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
-import { PasswordUtility } from '@/services/password.utility';
-import { PostHogClient } from '@/posthog';
-import type { User } from '@/databases/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { Post, GlobalScope, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalHooks } from '@/InternalHooks';
-import { ExternalHooks } from '@/ExternalHooks';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
+import { PostHogClient } from '@/posthog';
+import { UserRequest } from '@/requests';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserService } from '@/services/user.service';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 @RestController('/invitations')
 export class InvitationController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -168,11 +166,11 @@ export class InvitationController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserSignup(updatedUser, {
-			user_type: 'email',
-			was_disabled_ldap_user: false,
+		this.eventService.emit('user-signed-up', {
+			user: updatedUser,
+			userType: 'email',
+			wasDisabledLdapUser: false,
 		});
-		this.eventService.emit('user-signed-up', { user: updatedUser });
 
 		const publicInvitee = await this.userService.toPublic(invitee);
 

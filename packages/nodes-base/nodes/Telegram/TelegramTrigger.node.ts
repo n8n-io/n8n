@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -6,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 
@@ -25,7 +27,7 @@ export class TelegramTrigger implements INodeType {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -232,7 +234,11 @@ export class TelegramTrigger implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		if (nodeVersion > 1) {
 			const secret = getSecretToken.call(this);
-			if (secret !== headerData['x-telegram-bot-api-secret-token']) {
+			const secretBuffer = Buffer.from(secret);
+			const headerSecretBuffer = Buffer.from(
+				String(headerData['x-telegram-bot-api-secret-token'] ?? ''),
+			);
+			if (!crypto.timingSafeEqual(secretBuffer, headerSecretBuffer)) {
 				const res = this.getResponseObject();
 				res.status(403).json({ message: 'Provided secret is not valid' });
 				return {

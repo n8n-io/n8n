@@ -7,7 +7,7 @@ import { VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import type { IWorkflowDb } from '@/Interface';
 import { useRouter } from 'vue-router';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -40,13 +40,13 @@ describe('WorkflowCard', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let windowOpenSpy: MockInstance;
 	let router: ReturnType<typeof useRouter>;
-	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let projectsStore: ReturnType<typeof useProjectsStore>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		router = useRouter();
-		settingsStore = useSettingsStore();
+		projectsStore = useProjectsStore();
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -57,7 +57,7 @@ describe('WorkflowCard', () => {
 	it('should render a card with the workflow name and open workflow clicking on it', async () => {
 		const data = createWorkflow();
 		const { getByRole } = renderComponent({ props: { data } });
-		const cardTitle = getByRole('heading', { level: 2, name: data.name });
+		const cardTitle = getByRole('heading', { level: 2, name: new RegExp(data.name) });
 
 		expect(cardTitle).toBeInTheDocument();
 
@@ -143,8 +143,8 @@ describe('WorkflowCard', () => {
 		expect(badge).toHaveTextContent('John Doe');
 	});
 
-	it('should show Move action only if there is resource permission and not on community plan', async () => {
-		vi.spyOn(settingsStore, 'isCommunityPlan', 'get').mockReturnValue(false);
+	it('should show Move action only if there is resource permission and team projects available', async () => {
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
 
 		const data = createWorkflow({
 			scopes: ['workflow:move'],
@@ -165,5 +165,13 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).toHaveTextContent('Move');
+	});
+
+	it('should show Read only mode', async () => {
+		const data = createWorkflow();
+		const { getByRole } = renderComponent({ props: { data } });
+
+		const heading = getByRole('heading');
+		expect(heading).toHaveTextContent('Read only');
 	});
 });

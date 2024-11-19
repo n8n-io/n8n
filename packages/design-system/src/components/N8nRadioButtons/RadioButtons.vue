@@ -1,3 +1,41 @@
+<script lang="ts" setup generic="Value extends string">
+import RadioButton from './RadioButton.vue';
+
+interface RadioOption {
+	label: string;
+	value: Value;
+	disabled?: boolean;
+}
+
+interface RadioButtonsProps {
+	modelValue?: Value;
+	options?: RadioOption[];
+	/** @default medium */
+	size?: 'small' | 'medium';
+	disabled?: boolean;
+}
+
+const props = withDefaults(defineProps<RadioButtonsProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: Value, e: MouseEvent];
+}>();
+
+const onClick = (
+	option: { label: string; value: Value; disabled?: boolean },
+	event: MouseEvent,
+) => {
+	if (props.disabled || option.disabled) {
+		return;
+	}
+	emit('update:modelValue', option.value, event);
+};
+</script>
+
 <template>
 	<div
 		role="radiogroup"
@@ -14,44 +52,6 @@
 		/>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import RadioButton from './RadioButton.vue';
-
-interface RadioOption {
-	label: string;
-	value: string;
-	disabled?: boolean;
-}
-
-interface RadioButtonsProps {
-	modelValue?: string;
-	options?: RadioOption[];
-	/** @default medium */
-	size?: 'small' | 'medium';
-	disabled?: boolean;
-}
-
-const props = withDefaults(defineProps<RadioButtonsProps>(), {
-	active: false,
-	disabled: false,
-	size: 'medium',
-});
-
-const emit = defineEmits<{
-	'update:modelValue': [value: string, e: MouseEvent];
-}>();
-
-const onClick = (
-	option: { label: string; value: string; disabled?: boolean },
-	event: MouseEvent,
-) => {
-	if (props.disabled || option.disabled) {
-		return;
-	}
-	emit('update:modelValue', option.value, event);
-};
-</script>
 
 <style lang="scss" module>
 .radioGroup {

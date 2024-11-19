@@ -5,10 +5,12 @@ import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	IWorkflowBase,
-	IExecuteFunctions,
+	ISupplyDataFunctions,
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
+	INodeParameterResourceLocator,
+	ExecuteWorkflowData,
 } from 'n8n-workflow';
 
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
@@ -41,7 +43,7 @@ export class RetrieverWorkflow implements INodeType {
 		name: 'retrieverWorkflow',
 		icon: 'fa:box-open',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use an n8n Workflow as Retriever',
 		defaults: {
 			name: 'Workflow Retriever',
@@ -105,11 +107,25 @@ export class RetrieverWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
 				default: '',
 				required: true,
 				description: 'The workflow to execute',
+			},
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				default: '',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -277,15 +293,17 @@ export class RetrieverWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
 		class WorkflowRetriever extends BaseRetriever {
 			lc_namespace = ['n8n-nodes-langchain', 'retrievers', 'workflow'];
 
-			executeFunctions: IExecuteFunctions;
-
-			constructor(executeFunctions: IExecuteFunctions, fields: BaseRetrieverInput) {
+			constructor(
+				private executeFunctions: ISupplyDataFunctions,
+				fields: BaseRetrieverInput,
+			) {
 				super(fields);
-				this.executeFunctions = executeFunctions;
 			}
 
 			async _getRelevantDocuments(
@@ -301,11 +319,21 @@ export class RetrieverWorkflow implements INodeType {
 
 				const workflowInfo: IExecuteWorkflowInfo = {};
 				if (source === 'database') {
-					// Read workflow from database
-					workflowInfo.id = this.executeFunctions.getNodeParameter(
-						'workflowId',
-						itemIndex,
-					) as string;
+					const nodeVersion = this.executeFunctions.getNode().typeVersion;
+					if (nodeVersion === 1) {
+						workflowInfo.id = this.executeFunctions.getNodeParameter(
+							'workflowId',
+							itemIndex,
+						) as string;
+					} else {
+						const { value } = this.executeFunctions.getNodeParameter(
+							'workflowId',
+							itemIndex,
+							{},
+						) as INodeParameterResourceLocator;
+						workflowInfo.id = value as string;
+					}
+
 					baseMetadata.workflowId = workflowInfo.id;
 				} else if (source === 'parameter') {
 					// Read workflow from parameter
@@ -324,6 +352,9 @@ export class RetrieverWorkflow implements INodeType {
 							},
 						);
 					}
+
+					// same as current workflow
+					baseMetadata.workflowId = workflowProxy.$workflow.id;
 				}
 
 				const rawData: IDataObject = { query };
@@ -359,21 +390,29 @@ export class RetrieverWorkflow implements INodeType {
 
 				const items = [newItem] as INodeExecutionData[];
 
-				let receivedItems: INodeExecutionData[][];
+				let receivedData: ExecuteWorkflowData;
 				try {
-					receivedItems = (await this.executeFunctions.executeWorkflow(
+					receivedData = await this.executeFunctions.executeWorkflow(
 						workflowInfo,
 						items,
 						config?.getChild(),
-					)) as INodeExecutionData[][];
+						{
+							parentExecution: {
+								executionId: workflowProxy.$execution.id,
+								workflowId: workflowProxy.$workflow.id,
+							},
+						},
+					);
 				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will
 					// not show up in the frontend
 					throw new NodeOperationError(this.executeFunctions.getNode(), error as Error);
 				}
 
+				const receivedItems = receivedData.data?.[0] ?? [];
+
 				const returnData: Document[] = [];
-				for (const [index, itemData] of receivedItems[0].entries()) {
+				for (const [index, itemData] of receivedItems.entries()) {
 					const pageContent = objectToString(itemData.json);
 					returnData.push(
 						new Document({
@@ -381,6 +420,7 @@ export class RetrieverWorkflow implements INodeType {
 							metadata: {
 								...baseMetadata,
 								itemIndex: index,
+								executionId: receivedData.executionId,
 							},
 						}),
 					);

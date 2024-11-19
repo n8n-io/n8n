@@ -1,26 +1,10 @@
-<template>
-	<N8nResizeWrapper
-		:is-resizing-enabled="!readOnly"
-		:height="height"
-		:width="width"
-		:min-height="minHeight"
-		:min-width="minWidth"
-		:scale="scale"
-		:grid-size="gridSize"
-		@resizeend="onResizeEnd"
-		@resize="onResize"
-		@resizestart="onResizeStart"
-	>
-		<N8nSticky v-bind="stickyBindings" />
-	</N8nResizeWrapper>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref, useAttrs } from 'vue';
+
 import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
+import { defaultStickyProps } from '../N8nSticky/constants';
 import N8nSticky from '../N8nSticky/Sticky.vue';
 import type { StickyProps } from '../N8nSticky/types';
-import { defaultStickyProps } from '../N8nSticky/constants';
 
 type ResizeableStickyProps = StickyProps & {
 	scale?: number;
@@ -37,6 +21,7 @@ const emit = defineEmits<{
 	resize: [values: ResizeData];
 	resizestart: [];
 	resizeend: [];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 }>();
 
 const attrs = useAttrs();
@@ -58,4 +43,25 @@ const onResizeEnd = () => {
 	isResizing.value = false;
 	emit('resizeend');
 };
+
+const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {
+	emit('markdown-click', link, event);
+};
 </script>
+
+<template>
+	<N8nResizeWrapper
+		:is-resizing-enabled="!readOnly"
+		:height="height"
+		:width="width"
+		:min-height="minHeight"
+		:min-width="minWidth"
+		:scale="scale"
+		:grid-size="gridSize"
+		@resizeend="onResizeEnd"
+		@resize="onResize"
+		@resizestart="onResizeStart"
+	>
+		<N8nSticky v-bind="stickyBindings" @markdown-click="onMarkdownClick" />
+	</N8nResizeWrapper>
+</template>

@@ -21,7 +21,7 @@ import App from '@/App.vue';
 import router from './router';
 
 import { TelemetryPlugin } from './plugins/telemetry';
-import { I18nPlugin, i18nInstance } from './plugins/i18n';
+import { i18nInstance } from './plugins/i18n';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
@@ -29,14 +29,15 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
+import { SentryPlugin } from '@/plugins/sentry';
 
 const pinia = createPinia();
 
 const app = createApp(App);
 
+app.use(SentryPlugin);
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
-app.use(I18nPlugin);
 app.use(FontAwesomePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);

@@ -19,6 +19,14 @@
 		}
 	}
 
+	@include mixins.when(disabled) {
+		.el-tooltip__trigger {
+			opacity: 0.25;
+			cursor: not-allowed;
+			background: unset;
+		}
+	}
+
 	& .el-dropdown__caret-button {
 		padding-left: 5px;
 		padding-right: 5px;

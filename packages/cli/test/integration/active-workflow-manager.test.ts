@@ -1,27 +1,28 @@
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { ExternalHooks } from '@/ExternalHooks';
-import { Push } from '@/push';
-import { SecretsHelper } from '@/SecretsHelpers';
-import { WebhookService } from '@/services/webhook.service';
-import * as WebhookHelpers from '@/WebhookHelpers';
-import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
-import type { WebhookEntity } from '@db/entities/WebhookEntity';
-import { NodeTypes } from '@/NodeTypes';
+import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WebhookEntity } from '@/databases/entities/webhook-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionService } from '@/executions/execution.service';
+import { ExternalHooks } from '@/external-hooks';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { SecretsHelper } from '@/secrets-helpers';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { WebhookService } from '@/webhooks/webhook.service';
+import * as AdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { mockInstance } from '../shared/mocking';
-import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import * as testDb from './shared/test-db';
+import { mockInstance } from '../shared/mocking';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
@@ -276,5 +277,74 @@ describe('addWebhooks()', () => {
 		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('shouldAddWebhooks', () => {
+	describe('if leader', () => {
+		const activeWorkflowManager = new ActiveWorkflowManager(
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock<InstanceSettings>({ isLeader: true, isFollower: false }),
+			mock(),
+		);
+
+		test('should return `true` for `init`', () => {
+			// ensure webhooks are populated on init: https://github.com/n8n-io/n8n/pull/8830
+			const result = activeWorkflowManager.shouldAddWebhooks('init');
+			expect(result).toBe(true);
+		});
+
+		test('should return `false` for `leadershipChange`', () => {
+			const result = activeWorkflowManager.shouldAddWebhooks('leadershipChange');
+			expect(result).toBe(false);
+		});
+
+		test('should return `true` for `update` or `activate`', () => {
+			const modes = ['update', 'activate'] as WorkflowActivateMode[];
+			for (const mode of modes) {
+				const result = activeWorkflowManager.shouldAddWebhooks(mode);
+				expect(result).toBe(true);
+			}
+		});
+	});
+
+	describe('if follower', () => {
+		const activeWorkflowManager = new ActiveWorkflowManager(
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock<InstanceSettings>({ isLeader: false, isFollower: true }),
+			mock(),
+		);
+
+		test('should return `false` for `update` or `activate`', () => {
+			const modes = ['update', 'activate'] as WorkflowActivateMode[];
+			for (const mode of modes) {
+				const result = activeWorkflowManager.shouldAddWebhooks(mode);
+				expect(result).toBe(false);
+			}
+		});
 	});
 });

@@ -1,5 +1,6 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { nanoid } from 'nanoid';
+
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class AddConstraintToExecutionMetadata1720101653148 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -108,5 +109,15 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 		await context.runQuery(
 			`ALTER TABLE ${executionMetadataTableTemp} RENAME TO ${executionMetadataTable};`,
 		);
+
+		if (context.dbType === 'postgresdb') {
+			// Update sequence so that inserts continue with the next highest id.
+			const tableName = escape.tableName('execution_metadata');
+			const sequenceName = escape.tableName('execution_metadata_temp_id_seq1');
+
+			await context.runQuery(
+				`SELECT setval('${sequenceName}', (SELECT MAX(id) FROM ${tableName}));`,
+			);
+		}
 	}
 }

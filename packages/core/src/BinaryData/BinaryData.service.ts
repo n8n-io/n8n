@@ -1,14 +1,14 @@
+import { BINARY_ENCODING } from 'n8n-workflow';
+import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
-import Container, { Service } from 'typedi';
-import { BINARY_ENCODING } from 'n8n-workflow';
-import { InvalidModeError } from '../errors/invalid-mode.error';
-import { areConfigModes, binaryToBuffer } from './utils';
-
 import type { Readable } from 'stream';
+import Container, { Service } from 'typedi';
+
 import type { BinaryData } from './types';
-import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
+import { areConfigModes, binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
+import { InvalidModeError } from '../errors/invalid-mode.error';
 
 @Service()
 export class BinaryDataService {

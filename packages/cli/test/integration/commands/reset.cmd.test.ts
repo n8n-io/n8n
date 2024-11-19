@@ -1,26 +1,24 @@
 import { Container } from 'typedi';
 
 import { Reset } from '@/commands/user-management/reset';
-import { InternalHooks } from '@/InternalHooks';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/testDb';
+import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
+import { getPersonalProject } from '../shared/db/projects';
 import { createMember, createUser } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
-import { getPersonalProject } from '../shared/db/projects';
-import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
 import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 mockInstance(NodeTypes);
 const command = setupTestCommand(Reset);

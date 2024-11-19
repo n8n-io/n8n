@@ -13,7 +13,7 @@ module.exports = (tsconfigRootDir, mode) => {
 					vue: 'vue-eslint-parser',
 					template: 'vue-eslint-parser',
 				},
-		  }
+			}
 		: {};
 
 	const settings = {

@@ -1,11 +1,11 @@
-import { Container } from 'typedi';
-import convict from 'convict';
-import dotenv from 'dotenv';
-import { readFileSync } from 'fs';
-import { flatten } from 'flat';
-import merge from 'lodash/merge';
 import { GlobalConfig } from '@n8n/config';
+import convict from 'convict';
+import { flatten } from 'flat';
+import { readFileSync } from 'fs';
+import merge from 'lodash/merge';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import colors from 'picocolors';
+import { Container } from 'typedi';
 
 import { inTest, inE2ETests } from '@/constants';
 
@@ -21,8 +21,6 @@ if (inE2ETests) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	process.env.N8N_SECURE_COOKIE = 'false';
-} else {
-	dotenv.config();
 }
 
 // Load schema after process.env has been overwritten
@@ -96,14 +94,14 @@ config.validate({
 });
 const userManagement = config.get('userManagement');
 if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
-	console.warn(
-		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
-	);
+	if (!inTest)
+		console.warn(
+			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
+		);
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
 
-import colors from 'picocolors';
 const executionProcess = config.getEnv('executions.process');
 if (executionProcess) {
 	console.error(
@@ -124,7 +122,7 @@ if (executionProcess === 'own') {
 }
 
 setGlobalState({
-	defaultTimezone: config.getEnv('generic.timezone'),
+	defaultTimezone: Container.get(GlobalConfig).generic.timezone,
 });
 
 // eslint-disable-next-line import/no-default-export

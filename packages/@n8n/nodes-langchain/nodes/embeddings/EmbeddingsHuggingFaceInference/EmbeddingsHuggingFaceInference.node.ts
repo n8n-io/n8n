@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
@@ -81,8 +81,8 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings HF Inference');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supply data for embeddings HF Inference');
 		const model = this.getNodeParameter(
 			'modelName',
 			itemIndex,

@@ -78,7 +78,7 @@ export const sshTunnelProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Private Key',
-		name: 'sshPrivateKey',
+		name: 'privateKey', // TODO: Rename to sshPrivateKey
 		type: 'string',
 		typeOptions: {
 			rows: 4,
@@ -94,7 +94,7 @@ export const sshTunnelProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Passphrase',
-		name: 'sshPassphrase',
+		name: 'passphrase', // TODO: Rename to sshPassphrase
 		type: 'string',
 		default: '',
 		description: 'Passphrase used to create the key, if no passphrase was used leave empty',

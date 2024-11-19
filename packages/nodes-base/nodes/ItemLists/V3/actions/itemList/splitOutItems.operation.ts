@@ -172,7 +172,7 @@ export async function execute(
 					if (splited[elementIndex].binary === undefined) {
 						splited[elementIndex].binary = {};
 					}
-					splited[elementIndex].binary![Object.keys(element)[0]] = Object.values(
+					splited[elementIndex].binary[Object.keys(element)[0]] = Object.values(
 						element,
 					)[0] as IBinaryData;
 

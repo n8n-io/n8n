@@ -1,17 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ChatOllamaInput } from '@langchain/community/chat_models/ollama';
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
+import type { ChatOllamaInput } from '@langchain/ollama';
+import { ChatOllama } from '@langchain/ollama';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +29,8 @@ export class LmChatOllama implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -51,7 +53,7 @@ export class LmChatOllama implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('ollamaApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -63,6 +65,7 @@ export class LmChatOllama implements INodeType {
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

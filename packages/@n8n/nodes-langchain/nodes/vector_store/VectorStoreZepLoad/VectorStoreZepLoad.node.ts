@@ -1,8 +1,8 @@
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 import type { IZepConfig } from '@langchain/community/vectorstores/zep';
@@ -83,8 +83,8 @@ export class VectorStoreZepLoad implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for Zep Load Vector Store');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supplying data for Zep Load Vector Store');
 
 		const collectionName = this.getNodeParameter('collectionName', itemIndex) as string;
 
@@ -93,10 +93,10 @@ export class VectorStoreZepLoad implements INodeType {
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await this.getCredentials('zepApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
 			0,

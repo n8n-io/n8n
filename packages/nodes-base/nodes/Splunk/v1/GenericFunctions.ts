@@ -12,7 +12,6 @@ import { parseString } from 'xml2js';
 
 import {
 	SPLUNK,
-	type SplunkCredentials,
 	type SplunkError,
 	type SplunkFeedResponse,
 	type SplunkResultResponse,
@@ -115,9 +114,7 @@ export async function splunkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
-	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
-		'splunkApi',
-	)) as SplunkCredentials;
+	const { baseUrl, allowUnauthorizedCerts } = await this.getCredentials('splunkApi');
 
 	const options: IRequestOptions = {
 		headers: {

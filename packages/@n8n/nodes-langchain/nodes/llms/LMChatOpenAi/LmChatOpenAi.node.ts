@@ -1,14 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenAi implements INodeType {
@@ -26,7 +29,8 @@ export class LmChatOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -93,6 +97,8 @@ export class LmChatOpenAi implements INodeType {
 											// If the baseURL is not set or is set to api.openai.com, include only chat models
 											pass: `={{
 												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
+												$responseItem.id.startsWith('ft:') ||
+												$responseItem.id.startsWith('o1') ||
 												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
 											}}`,
 										},
@@ -121,7 +127,7 @@ export class LmChatOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'gpt-3.5-turbo',
+				default: 'gpt-4o-mini',
 			},
 			{
 				displayName:
@@ -235,7 +241,7 @@ export class LmChatOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -269,6 +275,7 @@ export class LmChatOpenAi implements INodeType {
 						response_format: { type: options.responseFormat },
 					}
 				: undefined,
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
 		return {

@@ -5,6 +5,7 @@ import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 type Props = {
 	schema: Schema;
@@ -95,7 +96,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 					:data-depth="level"
 					data-target="mappable"
 				>
-					<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
+					<FontAwesomeIcon :icon="getIconBySchemaType(schema.type)" size="sm" />
 					<TextWithHighlights
 						v-if="isSchemaParentTypeArray"
 						:content="props.parent?.key"
@@ -120,12 +121,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" inert checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
-			<font-awesome-icon icon="angle-right" />
+			<FontAwesomeIcon icon="angle-right" />
 		</label>
 
 		<div v-if="isSchemaValueArray" :class="$style.sub">
 			<div :class="$style.innerSub">
-				<run-data-schema-item
+				<RunDataSchemaItem
 					v-for="s in schemaArray"
 					:key="s.key ?? s.type"
 					:schema="s"
@@ -198,6 +199,8 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: baseline;
+	flex-grow: 1;
+	min-width: 0;
 }
 
 .sub {
@@ -212,6 +215,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: inline-flex;
 	flex-direction: column;
 	order: -1;
+	min-width: 0;
 
 	.innerSub > div:first-child {
 		margin-top: var(--spacing-2xs);
@@ -242,21 +246,14 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
 	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
+	max-width: 50%;
 
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-
-		svg {
-			path {
-				fill: var(--color-text-light);
-			}
-		}
+	path {
+		fill: var(--color-text-light);
 	}
 
 	&.mappable {
@@ -273,10 +270,25 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .label {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+
 	> span {
+		display: flex;
+		align-items: center;
+
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
+
+		overflow: hidden;
+
+		span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 
 		&.arrayIndex {
 			border: 0;

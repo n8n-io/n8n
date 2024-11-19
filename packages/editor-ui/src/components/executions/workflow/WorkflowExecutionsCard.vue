@@ -1,3 +1,67 @@
+<script setup lang="ts">
+import { computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useI18n } from '@/composables/useI18n';
+import type { PermissionsRecord } from '@/permissions';
+import { useSettingsStore } from '@/stores/settings.store';
+import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
+
+const props = defineProps<{
+	execution: ExecutionSummary;
+	highlight?: boolean;
+	showGap?: boolean;
+	workflowPermissions: PermissionsRecord['workflow'];
+}>();
+
+const emit = defineEmits<{
+	retryExecution: [{ execution: ExecutionSummary; command: string }];
+	mounted: [string];
+}>();
+
+const route = useRoute();
+const locale = useI18n();
+
+const executionHelpers = useExecutionHelpers();
+const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
+
+const isAdvancedExecutionFilterEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
+
+const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
+const retryExecutionActions = computed(() => [
+	{
+		id: 'current-workflow',
+		label: locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+	},
+	{
+		id: 'original-workflow',
+		label: locale.baseText('executionsList.retryWithOriginalWorkflow'),
+	},
+]);
+const executionUIDetails = computed<IExecutionUIData>(() =>
+	executionHelpers.getUIDetails(props.execution),
+);
+const isActive = computed(() => props.execution.id === route.params.executionId);
+const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
+
+onMounted(() => {
+	emit('mounted', props.execution.id);
+});
+
+function onRetryMenuItemSelect(action: string): void {
+	emit('retryExecution', { execution: props.execution, command: action });
+}
+</script>
+
 <template>
 	<div
 		:class="{
@@ -12,152 +76,107 @@
 		<router-link
 			:class="$style.executionLink"
 			:to="{
-				name: executionPreviewViewName,
+				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
 			<div :class="$style.description">
-				<n8n-text color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
+				<N8nText
+					v-if="executionUIDetails.name === 'new'"
+					color="text-dark"
+					:bold="true"
+					size="medium"
+					data-test-id="execution-time"
+				>
+					{{ toDayMonth(executionUIDetails.createdAt) }} -
+					{{ locale.baseText('executionDetails.startingSoon') }}
+				</N8nText>
+				<N8nText v-else color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
 					{{ executionUIDetails.startTime }}
-				</n8n-text>
+				</N8nText>
 				<div :class="$style.executionStatus">
-					<n8n-spinner
+					<N8nSpinner
 						v-if="executionUIDetails.name === 'running'"
 						size="small"
 						:class="[$style.spinner, 'mr-4xs']"
 					/>
-					<n8n-text :class="$style.statusLabel" size="small">{{
-						executionUIDetails.label
-					}}</n8n-text>
+					<N8nText :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</N8nText>
 					{{ ' ' }}
-					<n8n-text
+					<N8nText
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
-						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
+						{{ locale.baseText('executionDetails.runningTimeRunning') }}
 						<ExecutionsTime :start-time="execution.startedAt" />
-					</n8n-text>
-					<n8n-text
+					</N8nText>
+					<N8nText
+						v-if="executionUIDetails.name === 'new' && execution.createdAt"
+						:color="isActive ? 'text-dark' : 'text-base'"
+						size="small"
+					>
+						<span
+							>{{ locale.baseText('executionDetails.at') }} {{ toTime(execution.createdAt) }}</span
+						>
+					</N8nText>
+					<N8nText
 						v-else-if="executionUIDetails.runningTime !== ''"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
 						{{
-							$locale.baseText('executionDetails.runningTimeFinished', {
+							locale.baseText('executionDetails.runningTimeFinished', {
 								interpolate: { time: executionUIDetails?.runningTime },
 							})
 						}}
-					</n8n-text>
+					</N8nText>
 				</div>
 				<div v-if="execution.mode === 'retry'">
-					<n8n-text :color="isActive ? 'text-dark' : 'text-base'" size="small">
-						{{ $locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
-					</n8n-text>
+					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
+						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
+					</N8nText>
+				</div>
+				<div v-if="isAnnotationEnabled" :class="$style.annotation">
+					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
+						<FontAwesomeIcon
+							v-if="execution.annotation.vote == 'up'"
+							:class="$style.up"
+							icon="thumbs-up"
+						/>
+						<FontAwesomeIcon v-else :class="$style.down" icon="thumbs-down" />
+					</div>
+					<N8nTags
+						v-if="executionUIDetails.tags.length > 0"
+						:tags="executionUIDetails.tags"
+						:clickable="false"
+					></N8nTags>
 				</div>
 			</div>
 			<div :class="$style.icons">
-				<n8n-action-dropdown
+				<N8nActionDropdown
 					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
+					:disabled="!workflowPermissions.execute"
 					activator-icon="redo"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
-				<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+				<N8nTooltip v-if="execution.mode === 'manual'" placement="top">
 					<template #content>
-						<span>{{ $locale.baseText('executionsList.test') }}</span>
+						<span>{{ locale.baseText('executionsList.test') }}</span>
 					</template>
-					<font-awesome-icon
+					<FontAwesomeIcon
 						v-if="execution.mode === 'manual'"
 						:class="[$style.icon, $style.manual]"
 						icon="flask"
 					/>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</router-link>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { VIEWS } from '@/constants';
-import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
-import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import type { ExecutionSummary } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-
-export default defineComponent({
-	name: 'WorkflowExecutionsCard',
-	components: {
-		ExecutionsTime,
-	},
-	props: {
-		execution: {
-			type: Object as () => ExecutionSummary,
-			required: true,
-		},
-		highlight: {
-			type: Boolean,
-			default: false,
-		},
-		showGap: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	emits: ['retryExecution', 'mounted'],
-	setup() {
-		const executionHelpers = useExecutionHelpers();
-
-		return {
-			executionHelpers,
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-		currentWorkflow(): string {
-			return (this.$route.params.name as string) || this.workflowsStore.workflowId;
-		},
-		retryExecutionActions(): object[] {
-			return [
-				{
-					id: 'current-workflow',
-					label: this.$locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
-				},
-				{
-					id: 'original-workflow',
-					label: this.$locale.baseText('executionsList.retryWithOriginalWorkflow'),
-				},
-			];
-		},
-		executionUIDetails(): IExecutionUIData {
-			return this.executionHelpers.getUIDetails(this.execution);
-		},
-		isActive(): boolean {
-			return this.execution.id === this.$route.params.executionId;
-		},
-		isRetriable(): boolean {
-			return this.executionHelpers.isExecutionRetriable(this.execution);
-		},
-		executionPreviewViewName() {
-			return VIEWS.EXECUTION_PREVIEW;
-		},
-	},
-	mounted() {
-		this.$emit('mounted', this.execution.id);
-	},
-	methods: {
-		onRetryMenuItemSelect(action: string): void {
-			this.$emit('retryExecution', { execution: this.execution, command: action });
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 @import '@/styles/variables';
@@ -208,6 +227,16 @@ export default defineComponent({
 		}
 	}
 
+	&.new {
+		&,
+		& .executionLink {
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
+		}
+		.statusLabel {
+			color: var(--execution-card-text-waiting);
+		}
+	}
+
 	&.waiting {
 		&,
 		& .executionLink {
@@ -232,6 +261,23 @@ export default defineComponent({
 		&,
 		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-unknown);
+		}
+	}
+
+	.annotation {
+		display: flex;
+		flex-direction: row;
+		gap: var(--spacing-3xs);
+		align-items: center;
+		margin: var(--spacing-4xs) 0 0;
+
+		.ratingIcon {
+			.up {
+				color: var(--color-success);
+			}
+			.down {
+				color: var(--color-danger);
+			}
 		}
 	}
 }
@@ -282,6 +328,7 @@ export default defineComponent({
 		margin-left: var(--spacing-2xs);
 	}
 }
+
 .showGap {
 	margin-bottom: var(--spacing-2xs);
 	.executionLink {

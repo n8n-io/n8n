@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon';
+
 import { getValueDescription, validateFieldType } from '@/TypeValidation';
 
 describe('Type Validation', () => {
@@ -145,10 +146,14 @@ describe('Type Validation', () => {
 		);
 	});
 
-	it('should validate and cast JSON properly', () => {
+	it('should validate and cast JSON & JS objects properly', () => {
 		const VALID_OBJECTS = [
 			['{"a": 1}', { a: 1 }],
+			['{a: 1}', { a: 1 }],
+			["{'a': '1'}", { a: '1' }],
+			["{'\\'single quoted\\' \"double quoted\"': 1}", { '\'single quoted\' "double quoted"': 1 }],
 			['{"a": 1, "b": { "c": 10, "d": "test"}}', { a: 1, b: { c: 10, d: 'test' } }],
+			["{\"a\": 1, b: { 'c': 10, d: 'test'}}", { a: 1, b: { c: 10, d: 'test' } }],
 			[{ name: 'John' }, { name: 'John' }],
 			[
 				{ name: 'John', address: { street: 'Via Roma', city: 'Milano' } },
@@ -162,19 +167,18 @@ describe('Type Validation', () => {
 			}),
 		);
 
-		const INVALID_JSON = [
+		const INVALID_OBJECTS = [
 			['one', 'two'],
 			'1',
 			'[1]',
 			'1.1',
 			1.1,
 			'"a"',
-			'{a: 1}',
 			'["apples", "oranges"]',
 			[{ name: 'john' }, { name: 'bob' }],
 			'[ { name: "john" }, { name: "bob" } ]',
 		];
-		INVALID_JSON.forEach((value) =>
+		INVALID_OBJECTS.forEach((value) =>
 			expect(validateFieldType('json', value, 'object').valid).toEqual(false),
 		);
 	});

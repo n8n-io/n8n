@@ -1,3 +1,31 @@
+<script setup lang="ts">
+import Draggable from './Draggable.vue';
+import type { XYPosition } from '@/Interface';
+
+defineProps<{
+	canMoveRight: boolean;
+	canMoveLeft: boolean;
+}>();
+
+const emit = defineEmits<{
+	drag: [e: XYPosition];
+	dragstart: [];
+	dragend: [];
+}>();
+
+const onDrag = (e: XYPosition) => {
+	emit('drag', e);
+};
+
+const onDragEnd = () => {
+	emit('dragend');
+};
+
+const onDragStart = () => {
+	emit('dragstart');
+};
+</script>
+
 <template>
 	<Draggable
 		type="panel-resize"
@@ -7,7 +35,7 @@
 		@dragend="onDragEnd"
 	>
 		<template #default="{ isDragging }">
-			<div :class="{ [$style.dragButton]: true }">
+			<div :class="{ [$style.dragButton]: true }" data-test-id="panel-drag-button">
 				<span
 					v-if="canMoveLeft"
 					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
@@ -40,37 +68,6 @@
 		</template>
 	</Draggable>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import Draggable from './Draggable.vue';
-import type { XYPosition } from '@/Interface';
-
-export default defineComponent({
-	components: {
-		Draggable,
-	},
-	props: {
-		canMoveRight: {
-			type: Boolean,
-		},
-		canMoveLeft: {
-			type: Boolean,
-		},
-	},
-	methods: {
-		onDrag(e: XYPosition) {
-			this.$emit('drag', e);
-		},
-		onDragStart() {
-			this.$emit('dragstart');
-		},
-		onDragEnd() {
-			this.$emit('dragend');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .dragContainer {

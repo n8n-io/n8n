@@ -23,7 +23,6 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -36,11 +35,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 
-const { mergedNodes, actions } = useNodeCreatorStore();
+const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -57,10 +55,16 @@ function onSelected(item: INodeCreateElement) {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
 
+		// If the info message exists in locale, add it to the info field of the view
+		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
+		const info = i18n.baseText(infoKey);
+		const extendedInfo = info !== infoKey ? { info } : {};
+
 		pushViewStack({
 			subcategory: item.key,
-			title,
 			mode: 'nodes',
+			title,
+			...extendedInfo,
 			...(item.properties.icon
 				? {
 						nodeIcon: {
@@ -77,14 +81,15 @@ function onSelected(item: INodeCreateElement) {
 			sections: item.properties.sections,
 		});
 
-		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+		onSubcategorySelected({
 			subcategory: item.key,
 		});
 	}
 
 	if (item.type === 'node') {
 		const nodeActions = actions?.[item.key] || [];
-		if (nodeActions.length <= 1) {
+		// Only show actions if there are more than one or if the view is not an AI subcategory
+		if (nodeActions.length <= 1 || activeViewStack.value.hideActions) {
 			selectNodeType([item.key]);
 			return;
 		}
@@ -146,9 +151,6 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'link') {
 		window.open(item.properties.url, '_blank');
-		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
-			link: item.properties.url,
-		});
 	}
 }
 
@@ -220,7 +222,12 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer :elements="activeViewStack.items" :class="$style.items" @selected="onSelected">
+		<ItemsRenderer
+			v-memo="[activeViewStack.search]"
+			:elements="activeViewStack.items"
+			:class="$style.items"
+			@selected="onSelected"
+		>
 			<template
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
 				#empty
@@ -238,7 +245,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<CategorizedItemsRenderer
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
-			:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>

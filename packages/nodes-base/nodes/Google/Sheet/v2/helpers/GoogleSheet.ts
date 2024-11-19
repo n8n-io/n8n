@@ -485,8 +485,7 @@ export class GoogleSheet {
 		columnValuesList?: string[];
 	}) {
 		const decodedRange = this.getDecodedSheetRange(range);
-		// prettier-ignore
-		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
+		const keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
 
 		const sheetDatakeyRow = columnNamesList || (await this.getData(keyRowRange, valueRenderMode));
 

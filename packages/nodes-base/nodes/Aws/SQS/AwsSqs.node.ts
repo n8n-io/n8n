@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 import { awsApiRequestSOAP } from '../GenericFunctions';
@@ -27,8 +27,8 @@ export class AwsSqs implements INodeType {
 		defaults: {
 			name: 'AWS SQS',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -67,7 +67,7 @@ export class AwsSqs implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -132,7 +132,7 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Delay Seconds',
@@ -378,7 +378,7 @@ export class AwsSqs implements INodeType {
 				const result = responseData.SendMessageResponse.SendMessageResult;
 				returnData.push(result as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.description });
 					continue;
 				}

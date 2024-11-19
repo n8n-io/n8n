@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -75,7 +75,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
+const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 const actions = computed(() => {
 	const items = [
 		{
@@ -88,14 +88,14 @@ const actions = computed(() => {
 		},
 	];
 
-	if (!props.readOnly) {
+	if (workflowPermissions.value.create && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
 		});
 	}
 
-	if (workflowPermissions.value.move && !settingsStore.isCommunityPlan) {
+	if (workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
 		items.push({
 			label: locale.baseText('workflows.item.move'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
@@ -236,16 +236,19 @@ function moveResource() {
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }}
+					>{{ locale.baseText('workflows.item.updated') }}
 					<TimeAgo :date="String(data.updatedAt)" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
-					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 				<span
 					v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0"
@@ -274,6 +277,7 @@ function moveResource() {
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
+					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
 				/>
 

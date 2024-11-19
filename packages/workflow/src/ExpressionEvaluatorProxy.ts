@@ -1,6 +1,8 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import type { ReturnValue, TmplDifference } from '@n8n/tournament';
 import { Tournament } from '@n8n/tournament';
+import * as tmpl from '@n8n_io/riot-tmpl';
+
+import { PrototypeSanitizer } from './ExpressionSandboxing';
 import type { ExpressionEvaluatorType } from './Interfaces';
 import * as LoggerProxy from './LoggerProxy';
 
@@ -18,6 +20,7 @@ const differenceChecker = (diff: TmplDifference) => {
 		if (diff.same) {
 			return;
 		}
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		if (diff.has?.function || diff.has?.templateString) {
 			return;
 		}
@@ -30,7 +33,10 @@ const differenceChecker = (diff: TmplDifference) => {
 		LoggerProxy.error('Expression evaluator difference checker failed');
 	}
 };
-const tournamentEvaluator = new Tournament(errorHandler, undefined);
+const tournamentEvaluator = new Tournament(errorHandler, undefined, undefined, {
+	before: [],
+	after: [PrototypeSanitizer],
+});
 let evaluator: Evaluator = tmpl.tmpl;
 let currentEvaluatorType: ExpressionEvaluatorType = 'tmpl';
 let diffExpressions = false;

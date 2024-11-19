@@ -4,7 +4,7 @@ import { useI18n } from '@/composables/useI18n';
 const i18n = useI18n();
 </script>
 <template>
-	<n8n-icon-button
+	<N8nIconButton
 		class="stop-execution"
 		icon="stop"
 		size="large"

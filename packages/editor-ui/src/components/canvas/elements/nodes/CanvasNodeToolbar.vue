@@ -3,27 +3,38 @@ import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
+import { useCanvas } from '@/composables/useCanvas';
 
 const emit = defineEmits<{
 	delete: [];
 	toggle: [];
 	run: [];
+	update: [parameters: Record<string, unknown>];
 	'open:contextmenu': [event: MouseEvent];
+}>();
+
+const props = defineProps<{
+	readOnly?: boolean;
 }>();
 
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { render } = useCanvasNode();
+const { isExecuting } = useCanvas();
+const { isDisabled, render } = useCanvasNode();
 
-// @TODO
-const workflowRunning = false;
+const nodeDisabledTitle = computed(() => {
+	return isDisabled.value ? i18n.baseText('node.disable') : i18n.baseText('node.enable');
+});
 
-// @TODO
-const nodeDisabledTitle = 'Test';
+const classes = computed(() => ({
+	[$style.canvasNodeToolbar]: true,
+	[$style.readOnly]: props.readOnly,
+}));
 
 const isExecuteNodeVisible = computed(() => {
 	return (
+		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		!render.value.options.configuration
@@ -31,8 +42,14 @@ const isExecuteNodeVisible = computed(() => {
 });
 
 const isDisableNodeVisible = computed(() => {
-	return render.value.type === CanvasNodeRenderType.Default;
+	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
 });
+
+const isDeleteNodeVisible = computed(() => !props.readOnly);
+
+const isStickyNoteChangeColorVisible = computed(
+	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
+);
 
 function executeNode() {
 	emit('run');
@@ -46,13 +63,19 @@ function onDeleteNode() {
 	emit('delete');
 }
 
+function onChangeStickyColor(color: number) {
+	emit('update', {
+		color,
+	});
+}
+
 function onOpenContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
 </script>
 
 <template>
-	<div :class="$style.canvasNodeToolbar">
+	<div :class="classes">
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
 				v-if="isExecuteNodeVisible"
@@ -61,7 +84,7 @@ function onOpenContextMenu(event: MouseEvent) {
 				text
 				size="small"
 				icon="play"
-				:disabled="workflowRunning"
+				:disabled="isExecuting"
 				:title="i18n.baseText('node.testStep')"
 				@click="executeNode"
 			/>
@@ -76,6 +99,7 @@ function onOpenContextMenu(event: MouseEvent) {
 				@click="onToggleNode"
 			/>
 			<N8nIconButton
+				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
 				type="tertiary"
 				size="small"
@@ -83,6 +107,10 @@ function onOpenContextMenu(event: MouseEvent) {
 				icon="trash"
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
+			/>
+			<CanvasNodeStickyColorSelector
+				v-if="isStickyNoteChangeColorVisible"
+				@update="onChangeStickyColor"
 			/>
 			<N8nIconButton
 				data-test-id="overflow-node-button"
@@ -98,7 +126,10 @@ function onOpenContextMenu(event: MouseEvent) {
 
 <style lang="scss" module>
 .canvasNodeToolbar {
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing-xs);
+	display: flex;
+	justify-content: flex-end;
+	width: 100%;
 }
 
 .canvasNodeToolbarItems {
@@ -106,6 +137,7 @@ function onOpenContextMenu(event: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	background-color: var(--color-canvas-background);
+	border-radius: var(--border-radius-base);
 
 	:global(.button) {
 		--button-font-color: var(--color-text-light);

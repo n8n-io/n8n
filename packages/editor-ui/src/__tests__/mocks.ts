@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { mock } from 'vitest-mock-extended';
 
@@ -25,7 +25,8 @@ import {
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { CanvasNodeRenderType } from '@/types';
 
 export const mockNode = ({
 	id = uuid(),
@@ -48,31 +49,37 @@ export const mockNode = ({
 }) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
 
 export const mockNodeTypeDescription = ({
-	name,
+	name = SET_NODE_TYPE,
 	version = 1,
 	credentials = [],
-	inputs = ['main'],
-	outputs = ['main'],
+	inputs = [NodeConnectionType.Main],
+	outputs = [NodeConnectionType.Main],
+	codex = {},
+	properties = [],
 }: {
-	name: INodeTypeDescription['name'];
+	name?: INodeTypeDescription['name'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
 	inputs?: INodeTypeDescription['inputs'];
 	outputs?: INodeTypeDescription['outputs'];
-}) =>
+	codex?: INodeTypeDescription['codex'];
+	properties?: INodeTypeDescription['properties'];
+} = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		displayName: name,
+		description: '',
 		version,
 		defaults: {
 			name,
 		},
 		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
-		properties: [],
+		properties: properties as [],
 		maxNodes: Infinity,
 		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
 		inputs,
 		outputs,
+		codex,
 		credentials,
 		documentationUrl: 'https://docs',
 		webhooks: undefined,
@@ -94,6 +101,7 @@ export const mockNodes = [
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
+	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
 
@@ -147,11 +155,40 @@ export function createTestWorkflowObject({
 	});
 }
 
+export function createTestWorkflow({
+	id = uuid(),
+	name = 'Test Workflow',
+	nodes = [],
+	connections = {},
+	active = false,
+	settings = {
+		timezone: 'DEFAULT',
+		executionOrder: 'v1',
+	},
+	pinData = {},
+	...rest
+}: Partial<IWorkflowDb> = {}): IWorkflowDb {
+	return {
+		createdAt: '',
+		updatedAt: '',
+		id,
+		name,
+		nodes,
+		connections,
+		active,
+		settings,
+		versionId: '1',
+		meta: {},
+		pinData,
+		...rest,
+	};
+}
+
 export function createTestNode(node: Partial<INode> = {}): INode {
 	return {
 		id: uuid(),
 		name: 'Node',
-		type: 'n8n-nodes-base.test',
+		type: 'n8n-nodes-base.set',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},

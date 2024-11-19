@@ -1,3 +1,94 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRoute, useRouter } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@/composables/useI18n';
+import TemplatesView from './TemplatesView.vue';
+
+const externalHooks = useExternalHooks();
+const templatesStore = useTemplatesStore();
+const posthogStore = usePostHog();
+const nodeTypesStore = useNodeTypesStore();
+
+const route = useRoute();
+const router = useRouter();
+const telemetry = useTelemetry();
+const i18n = useI18n();
+const documentTitle = useDocumentTitle();
+
+const loading = ref(true);
+const showPreview = ref(true);
+const notFoundError = ref(false);
+
+const templateId = computed(() =>
+	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+);
+
+const template = computed(() => templatesStore.getFullTemplateById(templateId.value));
+
+const openTemplateSetup = async (id: string, e: PointerEvent) => {
+	await useTemplateWorkflow({
+		posthogStore,
+		router,
+		templateId: id,
+		inNewBrowserTab: e.metaKey || e.ctrlKey,
+		externalHooks,
+		nodeTypesStore,
+		telemetry,
+		templatesStore,
+		source: 'template_preview',
+	});
+};
+
+const onHidePreview = () => {
+	showPreview.value = false;
+};
+
+const scrollToTop = () => {
+	const contentArea = document.getElementById('content');
+
+	if (contentArea) {
+		contentArea.scrollTo({
+			top: 0,
+		});
+	}
+};
+
+watch(
+	() => template.value,
+	(newTemplate) => {
+		if (newTemplate) {
+			documentTitle.set(`Template template: ${newTemplate.name}`);
+		} else {
+			documentTitle.set('Templates');
+		}
+	},
+);
+
+onMounted(async () => {
+	scrollToTop();
+
+	if (template.value?.full) {
+		loading.value = false;
+		return;
+	}
+
+	try {
+		await templatesStore.fetchTemplateById(templateId.value);
+	} catch (e) {
+		notFoundError.value = true;
+	}
+
+	loading.value = false;
+});
+</script>
+
 <template>
 	<TemplatesView :go-back-enabled="true">
 		<template #header>
@@ -7,7 +98,7 @@
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('generic.workflow') }}
+						{{ i18n.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
@@ -15,7 +106,7 @@
 					<n8n-button
 						v-if="template"
 						data-test-id="use-template-button"
-						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
+						:label="i18n.baseText('template.buttons.useThisWorkflowButton')"
 						size="large"
 						@click="openTemplateSetup(templateId, $event)"
 					/>
@@ -23,7 +114,7 @@
 				</div>
 			</div>
 			<div v-else :class="$style.notFound">
-				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
+				<n8n-text color="text-base">{{ i18n.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
@@ -45,7 +136,7 @@
 				</div>
 				<div :class="$style.details">
 					<TemplateDetails
-						:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
+						:block-title="i18n.baseText('template.details.appsInTheWorkflow')"
 						:loading="loading"
 						:template="template"
 					/>
@@ -54,109 +145,6 @@
 		</template>
 	</TemplatesView>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
-import TemplateDetails from '@/components/TemplateDetails.vue';
-import TemplatesView from './TemplatesView.vue';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
-
-import type { ITemplatesWorkflowFull } from '@/Interface';
-import { setPageTitle } from '@/utils/htmlUtils';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useTemplateWorkflow } from '@/utils/templates/templateActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
-export default defineComponent({
-	name: 'TemplatesWorkflowView',
-	components: {
-		TemplateDetails,
-		TemplatesView,
-		WorkflowPreview,
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-		};
-	},
-	computed: {
-		...mapStores(useTemplatesStore, usePostHog),
-		template(): ITemplatesWorkflowFull | null {
-			return this.templatesStore.getFullTemplateById(this.templateId);
-		},
-		templateId() {
-			return Array.isArray(this.$route.params.id)
-				? this.$route.params.id[0]
-				: this.$route.params.id;
-		},
-	},
-	data() {
-		return {
-			loading: true,
-			showPreview: true,
-			notFoundError: false,
-		};
-	},
-	watch: {
-		template(template: ITemplatesWorkflowFull) {
-			if (template) {
-				setPageTitle(`n8n - Template template: ${template.name}`);
-			} else {
-				setPageTitle('n8n - Templates');
-			}
-		},
-	},
-	async mounted() {
-		this.scrollToTop();
-
-		if (this.template && this.template.full) {
-			this.loading = false;
-			return;
-		}
-
-		try {
-			await this.templatesStore.fetchTemplateById(this.templateId);
-		} catch (e) {
-			this.notFoundError = true;
-		}
-
-		this.loading = false;
-	},
-	methods: {
-		async openTemplateSetup(id: string, e: PointerEvent) {
-			await useTemplateWorkflow({
-				posthogStore: this.posthogStore,
-				router: this.$router,
-				templateId: id,
-				inNewBrowserTab: e.metaKey || e.ctrlKey,
-				externalHooks: this.externalHooks,
-				nodeTypesStore: useNodeTypesStore(),
-				telemetry: this.$telemetry,
-				templatesStore: useTemplatesStore(),
-				source: 'template_preview',
-			});
-		},
-		onHidePreview() {
-			this.showPreview = false;
-		},
-		scrollToTop() {
-			const contentArea = document.getElementById('content');
-
-			if (contentArea) {
-				contentArea.scrollTo({
-					top: 0,
-				});
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .wrapper {

@@ -9,6 +9,9 @@ import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
+import { useStyles } from './useStyles';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -16,11 +19,6 @@ export interface NotificationErrorWithNodeAndDescription extends ApplicationErro
 	};
 	description: string;
 }
-
-const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-	dangerouslyUseHTMLString: true,
-	position: 'bottom-right',
-};
 
 const stickyNotificationQueue: NotificationHandle[] = [];
 
@@ -30,30 +28,44 @@ export function useToast() {
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
+	const settingsStore = useSettingsStore();
+	const { APP_Z_INDEXES } = useStyles();
+	const canvasStore = useCanvasStore();
+
+	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
+		dangerouslyUseHTMLString: false,
+		position: 'bottom-right',
+		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
+		offset: settingsStore.isAiAssistantEnabled || workflowsStore.isChatPanelOpen ? 64 : 0,
+		appendTo: '#app-grid',
+		customClass: 'content-toast',
+	};
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
-		messageData = { ...messageDefaults, ...messageData };
+		const { message, title } = messageData;
+		const params = { ...messageDefaults, ...messageData };
 
-		Object.defineProperty(messageData, 'message', {
-			value:
-				typeof messageData.message === 'string'
-					? sanitizeHtml(messageData.message)
-					: messageData.message,
-			writable: true,
-			enumerable: true,
-		});
+		params.offset = +canvasStore.panelHeight;
 
-		const notification = Notification(messageData);
+		if (typeof message === 'string') {
+			params.message = sanitizeHtml(message);
+		}
 
-		if (messageData.duration === 0) {
+		if (typeof title === 'string') {
+			params.title = sanitizeHtml(title);
+		}
+
+		const notification = Notification(params);
+
+		if (params.duration === 0) {
 			stickyNotificationQueue.push(notification);
 		}
 
-		if (messageData.type === 'error' && track) {
+		if (params.type === 'error' && track) {
 			telemetry.track('Instance FE emitted error', {
-				error_title: messageData.title,
-				error_message: messageData.message,
-				caused_by_credential: causedByCredential(messageData.message as string),
+				error_title: params.title,
+				error_message: params.message,
+				caused_by_credential: causedByCredential(params.message as string),
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -133,6 +145,7 @@ export function useToast() {
 					${collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
+				dangerouslyUseHTMLString: true,
 			},
 			false,
 		);
@@ -153,11 +166,13 @@ export function useToast() {
 	}
 
 	function showAlert(config: NotificationOptions): NotificationHandle {
-		return Notification(config);
+		return Notification({
+			...config,
+		});
 	}
 
 	function causedByCredential(message: string | undefined) {
-		if (!message) return false;
+		if (!message || typeof message !== 'string') return false;
 
 		return message.includes('Credentials for') && message.includes('are not set');
 	}

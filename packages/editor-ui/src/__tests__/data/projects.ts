@@ -31,7 +31,7 @@ export function createTestProject(data: Partial<Project>): Project {
 		name: faker.lorem.words({ min: 1, max: 3 }),
 		createdAt: faker.date.past().toISOString(),
 		updatedAt: faker.date.recent().toISOString(),
-		type: 'team',
+		type: ProjectTypes.Team,
 		relations: [],
 		scopes: [],
 		...data,

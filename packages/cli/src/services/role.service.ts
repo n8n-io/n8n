@@ -1,10 +1,16 @@
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
+import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
+import { ApplicationError } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
 import type {
 	CredentialSharingRole,
 	SharedCredentials,
-} from '@/databases/entities/SharedCredentials';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
-import type { GlobalRole, User } from '@/databases/entities/User';
+} from '@/databases/entities/shared-credentials';
+import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
+import type { GlobalRole, User } from '@/databases/entities/user';
+import { License } from '@/license';
 import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
@@ -23,11 +29,6 @@ import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
 } from '@/permissions/resource-roles';
 import type { ListQuery } from '@/requests';
-import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
-import { Service } from 'typedi';
-import { ApplicationError } from 'n8n-workflow';
-import { License } from '@/License';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 

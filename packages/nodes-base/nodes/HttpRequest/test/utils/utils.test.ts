@@ -1,9 +1,17 @@
-import type { IRequestOptions } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	INodeExecutionData,
+	INodeProperties,
+	IRequestOptions,
+} from 'n8n-workflow';
+
 import {
 	REDACTED,
 	prepareRequestBody,
 	sanitizeUiMessage,
 	setAgentOptions,
+	replaceNullValues,
+	getSecrets,
 } from '../../GenericFunctions';
 import type { BodyParameter, BodyParametersReducer } from '../../GenericFunctions';
 
@@ -93,7 +101,7 @@ describe('HTTP Node Utils', () => {
 			);
 		});
 
-		it('should remove keys that contain sensitive data', async () => {
+		it('should remove keys that contain sensitive data and do not modify requestOptions', async () => {
 			const requestOptions: IRequestOptions = {
 				method: 'POST',
 				uri: 'https://example.com',
@@ -115,6 +123,14 @@ describe('HTTP Node Utils', () => {
 				method: 'POST',
 				uri: 'https://example.com',
 			});
+
+			expect(requestOptions).toEqual({
+				method: 'POST',
+				uri: 'https://example.com',
+				body: { sessionToken: 'secret', other: 'foo' },
+				headers: { authorization: 'secret', other: 'foo' },
+				auth: { user: 'user', password: 'secret' },
+			});
 		});
 
 		it('should remove secrets', async () => {
@@ -125,7 +141,9 @@ describe('HTTP Node Utils', () => {
 				headers: { authorization: 'secretAccessToken', other: 'foo' },
 			};
 
-			expect(sanitizeUiMessage(requestOptions, {}, ['secretAccessToken'])).toEqual({
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, {}, ['secretAccessToken']);
+
+			expect(sanitizedRequest).toEqual({
 				body: {
 					nested: {
 						secret: REDACTED,
@@ -135,6 +153,178 @@ describe('HTTP Node Utils', () => {
 				method: 'POST',
 				uri: 'https://example.com',
 			});
+		});
+
+		const headersToTest = [
+			'authorization',
+			'x-api-key',
+			'x-auth-token',
+			'cookie',
+			'proxy-authorization',
+			'sslclientcert',
+		];
+
+		headersToTest.forEach((header) => {
+			it(`should redact the ${header} header when the key is lowercase`, () => {
+				const requestOptions: IRequestOptions = {
+					method: 'POST',
+					uri: 'https://example.com',
+					body: { sessionToken: 'secret', other: 'foo' },
+					headers: { [header]: 'some-sensitive-token', other: 'foo' },
+					auth: { user: 'user', password: 'secret' },
+				};
+
+				const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
+
+				expect(sanitizedRequest.headers).toEqual({ [header]: REDACTED, other: 'foo' });
+			});
+
+			it(`should redact the ${header} header when the key is uppercase`, () => {
+				const requestOptions: IRequestOptions = {
+					method: 'POST',
+					uri: 'https://example.com',
+					body: { sessionToken: 'secret', other: 'foo' },
+					headers: { [header.toUpperCase()]: 'some-sensitive-token', other: 'foo' },
+					auth: { user: 'user', password: 'secret' },
+				};
+
+				const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
+
+				expect(sanitizedRequest.headers).toEqual({
+					[header.toUpperCase()]: REDACTED,
+					other: 'foo',
+				});
+			});
+		});
+
+		it('should leave headers unchanged if Authorization header is not present', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: { sessionToken: 'secret', other: 'foo' },
+				headers: { other: 'foo' },
+				auth: { user: 'user', password: 'secret' },
+			};
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
+
+			expect(sanitizedRequest.headers).toEqual({ other: 'foo' });
+		});
+
+		it('should handle case when headers are undefined', () => {
+			const requestOptions: IRequestOptions = {};
+
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, {});
+
+			expect(sanitizedRequest.headers).toBeUndefined();
+		});
+	});
+
+	describe('replaceNullValues', () => {
+		it('should replace null json with an empty object', () => {
+			const item: INodeExecutionData = {
+				json: {},
+			};
+			const result = replaceNullValues(item);
+			expect(result.json).toEqual({});
+		});
+
+		it('should not modify json if it is already an object', () => {
+			const jsonObject = { key: 'value' };
+			const item: INodeExecutionData = { json: jsonObject };
+			const result = replaceNullValues(item);
+			expect(result.json).toBe(jsonObject);
+		});
+	});
+
+	describe('getSecrets', () => {
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should return secrets for sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Api Key',
+					name: 'apiKey',
+					typeOptions: { password: true },
+					type: 'string',
+					default: undefined,
+				},
+				{
+					displayName: 'Username',
+					name: 'username',
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sensitive-api-key',
+				username: 'user123',
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual(['sensitive-api-key']);
+		});
+
+		it('should not return non-sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Username',
+					name: 'username',
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				username: 'user123',
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
+		});
+
+		it('should not include non-string values in sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'ApiKey',
+					name: 'apiKey',
+					typeOptions: { password: true },
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 12345,
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
+		});
+
+		it('should return an empty array if properties and credentials are empty', () => {
+			const properties: INodeProperties[] = [];
+			const credentials: ICredentialDataDecryptedObject = {};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
+		});
+
+		it('should not include null or undefined values in sensitive properties', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'ApiKey',
+					name: 'apiKey',
+					typeOptions: { password: true },
+					type: 'string',
+					default: undefined,
+				},
+			];
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: {},
+			};
+
+			const secrets = getSecrets(properties, credentials);
+			expect(secrets).toEqual([]);
 		});
 	});
 });

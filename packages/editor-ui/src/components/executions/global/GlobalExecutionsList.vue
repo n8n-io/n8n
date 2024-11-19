@@ -2,22 +2,26 @@
 import { watch, computed, ref, onMounted } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import { MODAL_CONFIRM } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import type { PermissionsRecord } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
+import { useSettingsStore } from '@/stores/settings.store';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
-		executions: ExecutionSummary[];
+		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
-		total: number;
-		estimated: boolean;
+		total?: number;
+		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
@@ -34,6 +38,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const settingsStore = useSettingsStore();
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -60,6 +65,10 @@ const workflows = computed<IWorkflowDb[]>(() => {
 		...workflowsStore.allWorkflows,
 	];
 });
+
+const isAnnotationEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
 
 watch(
 	() => props.executions,
@@ -107,10 +116,18 @@ function toggleSelectExecution(execution: ExecutionSummary) {
 }
 
 async function handleDeleteSelected() {
-	const deleteExecutions = await message.confirm(
+	// Prepend the message with a note about annotations if the feature is enabled
+	const confirmationText = [
+		isAnnotationEnabled.value && i18n.baseText('executionsList.confirmMessage.annotationsNote'),
 		i18n.baseText('executionsList.confirmMessage.message', {
 			interpolate: { count: selectedCount.value.toString() },
 		}),
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const deleteExecutions = await message.confirm(
+		confirmationText,
 		i18n.baseText('executionsList.confirmMessage.headline'),
 		{
 			type: 'warning',
@@ -127,7 +144,7 @@ async function handleDeleteSelected() {
 		await executionsStore.deleteExecutions({
 			filters: executionsStore.executionsFilters,
 			...(allExistingSelected.value
-				? { deleteBefore: props.executions[0].startedAt }
+				? { deleteBefore: new Date() }
 				: {
 						ids: Object.keys(selectedItems.value),
 					}),
@@ -160,6 +177,12 @@ function getExecutionWorkflowName(execution: ExecutionSummary): string {
 	return (
 		getWorkflowName(execution.workflowId ?? '') ?? i18n.baseText('executionsList.unsavedWorkflow')
 	);
+}
+
+function getExecutionWorkflowPermissions(
+	execution: ExecutionSummaryWithScopes,
+): PermissionsRecord['workflow'] {
+	return getResourcePermissions(execution.scopes).workflow;
 }
 
 function getWorkflowName(workflowId: string): string | undefined {
@@ -250,6 +273,26 @@ async function stopExecution(execution: ExecutionSummary) {
 }
 
 async function deleteExecution(execution: ExecutionSummary) {
+	const hasAnnotation =
+		!!execution.annotation && (execution.annotation.vote || execution.annotation.tags.length > 0);
+
+	// Show a confirmation dialog if the execution has an annotation
+	if (hasAnnotation) {
+		const deleteConfirmed = await message.confirm(
+			i18n.baseText('executionsList.confirmMessage.annotatedExecutionMessage'),
+			i18n.baseText('executionDetails.confirmMessage.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('executionDetails.confirmMessage.confirmButtonText'),
+				cancelButtonText: '',
+			},
+		);
+
+		if (deleteConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
 	try {
 		await executionsStore.deleteExecutions({ ids: [execution.id] });
 
@@ -273,11 +316,9 @@ async function onAutoRefreshToggle(value: boolean) {
 
 <template>
 	<div :class="$style.execListWrapper">
+		<ProjectHeader />
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<N8nHeading tag="h1" size="2xlarge">
-					{{ i18n.baseText('executionsList.workflowExecutions') }}
-				</N8nHeading>
 				<div :class="$style.execListHeaderControls">
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
@@ -292,6 +333,7 @@ async function onAutoRefreshToggle(value: boolean) {
 					<ExecutionsFilter
 						v-show="isMounted"
 						:workflows="workflows"
+						class="execFilter"
 						@filter-changed="onFilterChanged"
 					/>
 				</div>
@@ -344,7 +386,9 @@ async function onAutoRefreshToggle(value: boolean) {
 						:key="execution.id"
 						:execution="execution"
 						:workflow-name="getExecutionWorkflowName(execution)"
+						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"
@@ -411,27 +455,24 @@ async function onAutoRefreshToggle(value: boolean) {
 <style module lang="scss">
 .execListWrapper {
 	display: grid;
-	grid-template-rows: 1fr 0;
+	grid-template-rows: auto auto 1fr 0;
 	position: relative;
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
+	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .execList {
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-l) var(--spacing-l) 0;
-	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
-	}
 }
 
 .execListHeader {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-start;
 	margin-bottom: var(--spacing-s);
 }
 
@@ -542,5 +583,17 @@ async function onAutoRefreshToggle(value: boolean) {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+</style>
+
+<style lang="scss" scoped>
+.execFilter:deep(button) {
+	height: 40px;
+}
+
+:deep(.el-checkbox) {
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
 }
 </style>

@@ -209,7 +209,7 @@ export async function execute(
 				error.message = `The file selected in 'Input Binary Field' is not in ${fileFormat} format`;
 				errorDescription = `Try to change the operation or select a ${fileFormat} file in 'Input Binary Field'`;
 			}
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,

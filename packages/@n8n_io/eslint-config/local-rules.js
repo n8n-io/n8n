@@ -182,12 +182,14 @@ module.exports = {
 			messages: {
 				removeSkip: 'Remove `.skip()` call',
 				removeOnly: 'Remove `.only()` call',
+				removeXPrefix: 'Remove `x` prefix',
 			},
 			fixable: 'code',
 		},
 		create(context) {
 			const TESTING_FUNCTIONS = new Set(['test', 'it', 'describe']);
 			const SKIPPING_METHODS = new Set(['skip', 'only']);
+			const PREFIXED_TESTING_FUNCTIONS = new Set(['xtest', 'xit', 'xdescribe']);
 			const toMessageId = (s) => 'remove' + s.charAt(0).toUpperCase() + s.slice(1);
 
 			return {
@@ -205,6 +207,18 @@ module.exports = {
 								const [start, end] = node.property.range;
 								return fixer.removeRange([start - '.'.length, end]);
 							},
+						});
+					}
+				},
+				CallExpression(node) {
+					if (
+						node.callee.type === 'Identifier' &&
+						PREFIXED_TESTING_FUNCTIONS.has(node.callee.name)
+					) {
+						context.report({
+							messageId: 'removeXPrefix',
+							node,
+							fix: (fixer) => fixer.replaceText(node.callee, 'test'),
 						});
 					}
 				},
@@ -443,6 +457,59 @@ module.exports = {
 						!context.getFilename().includes('packages/cli/src/databases/')
 					) {
 						context.report({ node, messageId: 'moveImport' });
+					}
+				},
+			};
+		},
+	},
+
+	'no-type-unsafe-event-emitter': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Disallow extending from `EventEmitter`, which is not type-safe.',
+				recommended: 'error',
+			},
+			messages: {
+				noExtendsEventEmitter: 'Extend from the type-safe `TypedEmitter` class instead.',
+			},
+		},
+		create(context) {
+			return {
+				ClassDeclaration(node) {
+					if (
+						node.superClass &&
+						node.superClass.type === 'Identifier' &&
+						node.superClass.name === 'EventEmitter' &&
+						node.id.name !== 'TypedEmitter'
+					) {
+						context.report({
+							node: node.superClass,
+							messageId: 'noExtendsEventEmitter',
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-untyped-config-class-field': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Enforce explicit typing of config class fields',
+				recommended: 'error',
+			},
+			messages: {
+				noUntypedConfigClassField:
+					'Class field must have an explicit type annotation, e.g. `field: type = value`. See: https://github.com/n8n-io/n8n/pull/10433',
+			},
+		},
+		create(context) {
+			return {
+				PropertyDefinition(node) {
+					if (!node.typeAnnotation) {
+						context.report({ node: node.key, messageId: 'noUntypedConfigClassField' });
 					}
 				},
 			};

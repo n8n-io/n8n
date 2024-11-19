@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, defineProps } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
@@ -16,7 +16,7 @@ const time = computed(() => {
 		return '...';
 	}
 	const msPassed = nowTime.value - new Date(props.startTime).getTime();
-	return i18n.displayTimer(msPassed); // Note: Adjust for $locale usage in setup
+	return i18n.displayTimer(msPassed);
 });
 
 onMounted(() => {

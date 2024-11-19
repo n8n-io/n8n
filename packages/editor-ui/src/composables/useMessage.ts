@@ -1,5 +1,6 @@
 import type { ElMessageBoxOptions, Action, MessageBoxInputData } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
+import { sanitizeIfString } from '@/utils/htmlUtils';
 
 export type MessageBoxConfirmResult = 'confirm' | 'cancel';
 
@@ -28,11 +29,13 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.alert(message, configOrTitle, resolvedConfig).catch(
+			return await MessageBox.alert(sanitizeIfString(message), configOrTitle, resolvedConfig).catch(
 				handleCancelOrClose,
 			);
 		}
-		return await MessageBox.alert(message, resolvedConfig).catch(handleCancelOrClose);
+		return await MessageBox.alert(sanitizeIfString(message), resolvedConfig).catch(
+			handleCancelOrClose,
+		);
 	}
 
 	async function confirm(
@@ -50,12 +53,16 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.confirm(message, configOrTitle, resolvedConfig).catch(
-				handleCancelOrClose,
-			);
+			return await MessageBox.confirm(
+				sanitizeIfString(message),
+				sanitizeIfString(configOrTitle),
+				resolvedConfig,
+			).catch(handleCancelOrClose);
 		}
 
-		return await MessageBox.confirm(message, resolvedConfig).catch(handleCancelOrClose);
+		return await MessageBox.confirm(sanitizeIfString(message), resolvedConfig).catch(
+			handleCancelOrClose,
+		);
 	}
 
 	async function prompt(
@@ -70,11 +77,15 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.prompt(message, configOrTitle, resolvedConfig).catch(
-				handleCancelOrClosePrompt,
-			);
+			return await MessageBox.prompt(
+				sanitizeIfString(message),
+				sanitizeIfString(configOrTitle),
+				resolvedConfig,
+			).catch(handleCancelOrClosePrompt);
 		}
-		return await MessageBox.prompt(message, resolvedConfig).catch(handleCancelOrClosePrompt);
+		return await MessageBox.prompt(sanitizeIfString(message), resolvedConfig).catch(
+			handleCancelOrClosePrompt,
+		);
 	}
 
 	return {

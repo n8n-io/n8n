@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
-import type { Connection, EdgeProps } from '@vue-flow/core';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
-import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { computed, useCssModule } from 'vue';
 import type { CanvasConnectionData } from '@/types';
-import { NodeConnectionType } from 'n8n-workflow';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import type { Connection, EdgeProps } from '@vue-flow/core';
+import { useVueFlow, BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
+import { NodeConnectionType } from 'n8n-workflow';
+import { computed, useCssModule, ref, toRef } from 'vue';
+import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
+import { getCustomPath } from './utils/edgePath';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -14,10 +15,27 @@ const emit = defineEmits<{
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
+	readOnly?: boolean;
 	hovered?: boolean;
 };
 
 const props = defineProps<CanvasEdgeProps>();
+
+const data = toRef(props, 'data');
+
+const { onEdgeMouseEnter, onEdgeMouseLeave } = useVueFlow();
+
+const isHovered = ref(false);
+
+onEdgeMouseEnter(({ edge }) => {
+	if (edge.id !== props.id) return;
+	isHovered.value = true;
+});
+
+onEdgeMouseLeave(({ edge }) => {
+	if (edge.id !== props.id) return;
+	isHovered.value = false;
+});
 
 const $style = useCssModule();
 
@@ -27,18 +45,23 @@ const connectionType = computed(() =>
 		: NodeConnectionType.Main,
 );
 
-const isFocused = computed(() => props.selected || props.hovered);
+const renderToolbar = computed(() => isHovered.value && !props.readOnly);
+
+const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
 
 const status = computed(() => props.data.status);
-const statusColor = computed(() => {
-	if (props.selected) {
-		return 'var(--color-background-dark)';
-	} else if (status.value === 'success') {
+
+const edgeColor = computed(() => {
+	if (status.value === 'success') {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
 	} else if (status.value === 'running') {
 		return 'var(--color-primary)';
+	} else if (!isMainConnection.value) {
+		return 'var(--node-type-supplemental-color)';
+	} else if (props.selected) {
+		return 'var(--color-background-dark)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}
@@ -46,45 +69,37 @@ const statusColor = computed(() => {
 
 const edgeStyle = computed(() => ({
 	...props.style,
+	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
-	stroke: statusColor.value,
+	stroke: isHovered.value ? 'var(--color-primary)' : edgeColor.value,
 }));
 
-const edgeLabel = computed(() => {
-	if (isFocused.value) {
-		return '';
-	}
-
-	return props.label;
-});
+const edgeClasses = computed(() => ({
+	[$style.edge]: true,
+	hovered: isHovered.value,
+}));
 
 const edgeLabelStyle = computed(() => ({
-	fill: statusColor.value,
-	transform: 'translateY(calc(var(--spacing-xs) * -1))',
-	fontSize: 'var(--font-size-xs)',
+	color: edgeColor.value,
 }));
 
 const edgeToolbarStyle = computed(() => {
+	const [, labelX, labelY] = path.value;
 	return {
-		transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+		...(isHovered.value ? { zIndex: 1 } : {}),
 	};
 });
 
 const edgeToolbarClasses = computed(() => ({
-	[$style.edgeToolbar]: true,
-	[$style.edgeToolbarVisible]: isFocused.value,
-	nodrag: true,
-	nopan: true,
+	[$style.edgeLabelWrapper]: true,
+	'vue-flow__edge-label': true,
+	selected: props.selected,
 }));
 
 const path = computed(() =>
-	getBezierPath({
-		sourceX: props.sourceX,
-		sourceY: props.sourceY,
-		sourcePosition: props.sourcePosition,
-		targetX: props.targetX,
-		targetY: props.targetY,
-		targetPosition: props.targetPosition,
+	getCustomPath(props, {
+		connectionType: connectionType.value,
 	}),
 );
 
@@ -107,42 +122,54 @@ function onDelete() {
 <template>
 	<BaseEdge
 		:id="id"
-		:class="$style.edge"
+		:class="edgeClasses"
 		:style="edgeStyle"
 		:path="path[0]"
 		:marker-end="markerEnd"
-		:label="edgeLabel"
-		:label-x="path[1]"
-		:label-y="path[2]"
-		:label-style="edgeLabelStyle"
-		:label-show-bg="false"
+		:interaction-width="40"
 	/>
+
 	<EdgeLabelRenderer>
-		<CanvasEdgeToolbar
-			:type="connectionType"
-			:class="edgeToolbarClasses"
+		<div
+			data-test-id="edge-label-wrapper"
+			:data-source-node-name="sourceNode?.label"
+			:data-target-node-name="targetNode?.label"
+			:data-edge-status="status"
 			:style="edgeToolbarStyle"
-			@add="onAdd"
-			@delete="onDelete"
-		/>
+			:class="edgeToolbarClasses"
+			@mouseenter="isHovered = true"
+			@mouseleave="isHovered = false"
+		>
+			<CanvasEdgeToolbar
+				v-if="renderToolbar"
+				:type="connectionType"
+				@add="onAdd"
+				@delete="onDelete"
+			/>
+			<div v-else :style="edgeLabelStyle" :class="$style.edgeLabel">{{ label }}</div>
+		</div>
 	</EdgeLabelRenderer>
 </template>
 
 <style lang="scss" module>
 .edge {
-	transition: stroke 0.3s ease;
+	transition:
+		stroke 0.3s ease,
+		fill 0.3s ease;
 }
 
-.edgeToolbar {
+.edgeLabelWrapper {
+	transform: translateY(calc(var(--spacing-xs) * -1));
 	position: absolute;
-	opacity: 0;
+}
 
-	&.edgeToolbarVisible {
-		opacity: 1;
-	}
-
-	&:hover {
-		opacity: 1;
-	}
+.edgeLabel {
+	font-size: var(--font-size-xs);
+	background-color: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
 }
 </style>

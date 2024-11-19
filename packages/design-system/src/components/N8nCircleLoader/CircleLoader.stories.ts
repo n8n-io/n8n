@@ -1,5 +1,6 @@
-import N8nCircleLoader from './CircleLoader.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nCircleLoader from './CircleLoader.vue';
 
 export default {
 	title: 'Atoms/CircleLoader',

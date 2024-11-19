@@ -1,7 +1,7 @@
 import 'cypress-real-events';
+import type { FrontendSettings } from '@n8n/api-types';
 import FakeTimers from '@sinonjs/fake-timers';
-import type { IN8nUISettings } from 'n8n-workflow';
-import { WorkflowPage } from '../pages';
+
 import {
 	BACKEND_BASE_URL,
 	INSTANCE_ADMIN,
@@ -9,7 +9,8 @@ import {
 	INSTANCE_OWNER,
 	N8N_AUTH_COOKIE,
 } from '../constants';
-import { getUniqueWorkflowName } from '../utils/workflowUtils';
+import { WorkflowPage } from '../pages';
+import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -23,6 +24,10 @@ Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
+});
+
+Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
+	return isCanvasV2() ? getterV2() : getterV1();
 });
 
 Cypress.Commands.add(
@@ -59,14 +64,22 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	void Cypress.session.clearAllSavedSessions();
-	cy.session([email, password], () =>
-		cy.request({
-			method: 'POST',
-			url: `${BACKEND_BASE_URL}/rest/login`,
-			body: { email, password },
-			failOnStatusCode: false,
-		}),
-	);
+	cy.session([email, password], () => {
+		return cy
+			.request({
+				method: 'POST',
+				url: `${BACKEND_BASE_URL}/rest/login`,
+				body: { email, password },
+				failOnStatusCode: false,
+			})
+			.then((response) => {
+				Cypress.env('currentUserId', response.body.data.id);
+
+				cy.window().then((win) => {
+					win.localStorage.setItem('NodeView.switcher.discovered', 'true'); // @TODO Remove this once the switcher is removed
+				});
+			});
+	});
 });
 
 Cypress.Commands.add('signinAsOwner', () => cy.signin(INSTANCE_OWNER));
@@ -82,8 +95,8 @@ Cypress.Commands.add('signout', () => {
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
-export let settings: Partial<IN8nUISettings>;
-Cypress.Commands.add('overrideSettings', (value: Partial<IN8nUISettings>) => {
+export let settings: Partial<FrontendSettings>;
+Cypress.Commands.add('overrideSettings', (value: Partial<FrontendSettings>) => {
 	settings = value;
 });
 
@@ -164,6 +177,16 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				pageY: newPosition.y,
 				force: true,
 			});
+			if (options?.moveTwice) {
+				// first move like hover to trigger object to be visible
+				// like in main panel in ndv
+				element.trigger('mousemove', {
+					which: 1,
+					pageX: newPosition.x,
+					pageY: newPosition.y,
+					force: true,
+				});
+			}
 			if (options?.clickToFinish) {
 				// Click to finish the drag
 				// For some reason, mouseup isn't working when moving nodes
@@ -175,7 +198,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 	});
 });
 
-Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, options) => {
 	if (draggableSelector) {
 		cy.get(draggableSelector).should('exist');
 	}
@@ -197,7 +220,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
-			cy.get(droppableSelector).realMouseUp();
+			cy.get(droppableSelector).realMouseUp({ position: options?.position ?? 'top' });
 			if (draggableSelector) {
 				cy.get(draggableSelector).realMouseUp();
 			}

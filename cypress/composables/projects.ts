@@ -1,41 +1,68 @@
 import { CredentialsModal, WorkflowPage } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const credentialsModal = new CredentialsModal();
 
 export const getHomeButton = () => cy.getByTestId('project-home-menu-item');
 export const getMenuItems = () => cy.getByTestId('project-menu-item');
-export const getAddProjectButton = () => cy.getByTestId('add-project-menu-item');
+export const getAddProjectButton = () => {
+	cy.getByTestId('universal-add').should('be.visible').click();
+	cy.getByTestId('universal-add')
+		.find('.el-sub-menu__title')
+		.as('menuitem')
+		.should('have.attr', 'aria-describedby');
+
+	cy.get('@menuitem')
+		.invoke('attr', 'aria-describedby')
+		.then((el) => cy.get(`[id="${el}"]`))
+		.as('submenu');
+
+	cy.get('@submenu').within((submenu) =>
+		cy
+			.wrap(submenu)
+			.getByTestId('navigation-menu-item')
+			.should('be.visible')
+			.filter(':contains("Project")')
+			.as('button'),
+	);
+
+	return cy.get('@button');
+};
+
+// export const getAddProjectButton = () =>
+// 	cy.getByTestId('universal-add').should('contain', 'Add project').should('be.visible');
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
+export const getProjectTabExecutions = () => getProjectTabs().filter('a[href$="/executions"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
-export const getProjectSettingsNameInput = () => cy.getByTestId('project-settings-name-input');
+export const getProjectSettingsNameInput = () =>
+	cy.getByTestId('project-settings-name-input').find('input');
 export const getProjectSettingsSaveButton = () => cy.getByTestId('project-settings-save-button');
 export const getProjectSettingsCancelButton = () =>
 	cy.getByTestId('project-settings-cancel-button');
 export const getProjectSettingsDeleteButton = () =>
 	cy.getByTestId('project-settings-delete-button');
 export const getProjectMembersSelect = () => cy.getByTestId('project-members-select');
-export const addProjectMember = (email: string) => {
+export const addProjectMember = (email: string, role?: string) => {
 	getProjectMembersSelect().click();
 	getProjectMembersSelect().get('.el-select-dropdown__item').contains(email.toLowerCase()).click();
+
+	if (role) {
+		cy.getByTestId(`user-list-item-${email}`)
+			.find('[data-test-id="projects-settings-user-role-select"]')
+			.click();
+		getVisibleSelect().find('li').contains(role).click();
+	}
 };
-export const getProjectNameInput = () => cy.get('#projectName').find('input');
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
-export const getResourceMoveConfirmModal = () =>
-	cy.getByTestId('project-move-resource-confirm-modal');
 export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-modal-select');
 
 export function createProject(name: string) {
-	getAddProjectButton().should('be.visible').click();
+	getAddProjectButton().click();
 
-	getProjectNameInput()
-		.should('be.visible')
-		.should('be.focused')
-		.should('have.value', 'My project')
-		.clear()
-		.type(name);
+	getProjectSettingsNameInput().should('be.visible').clear().type(name);
 	getProjectSettingsSaveButton().click();
 }
 
@@ -46,7 +73,7 @@ export function createWorkflow(fixtureKey: string, name: string) {
 	workflowPage.actions.zoomToFit();
 }
 
-export function createCredential(name: string) {
+export function createCredential(name: string, closeModal = true) {
 	credentialsModal.getters.newCredentialModal().should('be.visible');
 	credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
 	credentialsModal.getters.newCredentialTypeOption('Notion API').click();
@@ -54,13 +81,8 @@ export function createCredential(name: string) {
 	credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 	credentialsModal.actions.setName(name);
 	credentialsModal.actions.save();
-	credentialsModal.actions.close();
-}
 
-export const actions = {
-	createProject: (name: string) => {
-		getAddProjectButton().click();
-		getProjectSettingsNameInput().type(name);
-		getProjectSettingsSaveButton().click();
-	},
-};
+	if (closeModal) {
+		credentialsModal.actions.close();
+	}
+}

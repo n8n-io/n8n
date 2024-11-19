@@ -1,4 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { messageFields, messageTypeFields } from './MessagesDescription';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
@@ -15,8 +16,8 @@ export class WhatsApp implements INodeType {
 		defaults: {
 			name: 'WhatsApp Business Cloud',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'whatsAppApi',

@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 import { pageFields, pageOperations } from './PageDescription';
@@ -28,8 +29,8 @@ export class Wordpress implements INodeType {
 		defaults: {
 			name: 'Wordpress',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'wordpressApi',
@@ -599,7 +600,7 @@ export class Wordpress implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

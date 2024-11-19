@@ -1,3 +1,139 @@
+<script setup lang="ts">
+import Modal from '@/components/Modal.vue';
+import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+import { useToast } from '@/composables/useToast';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { computed, ref } from 'vue';
+
+export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
+
+interface Props {
+	modalName: string;
+	activePackageName: string;
+	mode: CommunityPackageManageMode;
+}
+
+const props = defineProps<Props>();
+
+const communityNodesStore = useCommunityNodesStore();
+
+const modalBus = createEventBus();
+
+const toast = useToast();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const loading = ref(false);
+
+const activePackage = computed(
+	() => communityNodesStore.installedPackages[props.activePackageName],
+);
+
+const getModalContent = computed(() => {
+	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
+		return {
+			title: i18n.baseText('settings.communityNodes.confirmModal.uninstall.title'),
+			message: i18n.baseText('settings.communityNodes.confirmModal.uninstall.message', {
+				interpolate: {
+					packageName: props.activePackageName,
+				},
+			}),
+			buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
+			buttonLoadingLabel: i18n.baseText(
+				'settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel',
+			),
+		};
+	}
+	return {
+		title: i18n.baseText('settings.communityNodes.confirmModal.update.title', {
+			interpolate: {
+				packageName: props.activePackageName,
+			},
+		}),
+		description: i18n.baseText('settings.communityNodes.confirmModal.update.description'),
+		message: i18n.baseText('settings.communityNodes.confirmModal.update.message', {
+			interpolate: {
+				packageName: props.activePackageName,
+				version: activePackage.value.updateAvailable ?? '',
+			},
+		}),
+		buttonLabel: i18n.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
+		buttonLoadingLabel: i18n.baseText(
+			'settings.communityNodes.confirmModal.update.buttonLoadingLabel',
+		),
+	};
+});
+
+const onModalClose = () => {
+	return !loading.value;
+};
+
+const onConfirmButtonClick = async () => {
+	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
+		await onUninstall();
+	} else if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
+		await onUpdate();
+	}
+};
+
+const onUninstall = async () => {
+	try {
+		telemetry.track('user started cnr package deletion', {
+			package_name: activePackage.value.packageName,
+			package_node_names: activePackage.value.installedNodes.map((node) => node.name),
+			package_version: activePackage.value.installedVersion,
+			package_author: activePackage.value.authorName,
+			package_author_email: activePackage.value.authorEmail,
+		});
+		loading.value = true;
+		await communityNodesStore.uninstallPackage(props.activePackageName);
+		toast.showMessage({
+			title: i18n.baseText('settings.communityNodes.messages.uninstall.success.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.communityNodes.messages.uninstall.error'));
+	} finally {
+		loading.value = false;
+		modalBus.emit('close');
+	}
+};
+
+const onUpdate = async () => {
+	try {
+		telemetry.track('user started cnr package update', {
+			package_name: activePackage.value.packageName,
+			package_node_names: activePackage.value.installedNodes.map((node) => node.name),
+			package_version_current: activePackage.value.installedVersion,
+			package_version_new: activePackage.value.updateAvailable,
+			package_author: activePackage.value.authorName,
+			package_author_email: activePackage.value.authorEmail,
+		});
+		loading.value = true;
+		const updatedVersion = activePackage.value.updateAvailable;
+		await communityNodesStore.updatePackage(props.activePackageName);
+		toast.showMessage({
+			title: i18n.baseText('settings.communityNodes.messages.update.success.title'),
+			message: i18n.baseText('settings.communityNodes.messages.update.success.message', {
+				interpolate: {
+					packageName: props.activePackageName,
+					version: updatedVersion ?? '',
+				},
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.communityNodes.messages.update.error.title'));
+	} finally {
+		loading.value = false;
+		modalBus.emit('close');
+	}
+};
+</script>
+
 <template>
 	<Modal
 		width="540px"
@@ -31,168 +167,6 @@
 		</template>
 	</Modal>
 </template>
-
-<script>
-import { defineComponent } from 'vue';
-import Modal from '@/components/Modal.vue';
-import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
-import { useToast } from '@/composables/useToast';
-import { mapStores } from 'pinia';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { createEventBus } from 'n8n-design-system/utils';
-
-export default defineComponent({
-	name: 'CommunityPackageManageConfirmModal',
-	components: {
-		Modal,
-	},
-	props: {
-		modalName: {
-			type: String,
-			required: true,
-		},
-		activePackageName: {
-			type: String,
-			required: true,
-		},
-		mode: {
-			type: String,
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			loading: false,
-			modalBus: createEventBus(),
-			COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-			COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-		};
-	},
-	computed: {
-		...mapStores(useCommunityNodesStore),
-		activePackage() {
-			return this.communityNodesStore.installedPackages[this.activePackageName];
-		},
-		getModalContent() {
-			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
-				return {
-					title: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.title'),
-					message: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.message', {
-						interpolate: {
-							packageName: this.activePackageName,
-						},
-					}),
-					buttonLabel: this.$locale.baseText(
-						'settings.communityNodes.confirmModal.uninstall.buttonLabel',
-					),
-					buttonLoadingLabel: this.$locale.baseText(
-						'settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel',
-					),
-				};
-			}
-			return {
-				title: this.$locale.baseText('settings.communityNodes.confirmModal.update.title', {
-					interpolate: {
-						packageName: this.activePackageName,
-					},
-				}),
-				description: this.$locale.baseText(
-					'settings.communityNodes.confirmModal.update.description',
-				),
-				message: this.$locale.baseText('settings.communityNodes.confirmModal.update.message', {
-					interpolate: {
-						packageName: this.activePackageName,
-						version: this.activePackage.updateAvailable,
-					},
-				}),
-				buttonLabel: this.$locale.baseText(
-					'settings.communityNodes.confirmModal.update.buttonLabel',
-				),
-				buttonLoadingLabel: this.$locale.baseText(
-					'settings.communityNodes.confirmModal.update.buttonLoadingLabel',
-				),
-			};
-		},
-	},
-	methods: {
-		onModalClose() {
-			return !this.loading;
-		},
-		async onConfirmButtonClick() {
-			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
-				await this.onUninstall();
-			} else if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
-				await this.onUpdate();
-			}
-		},
-		async onUninstall() {
-			try {
-				this.$telemetry.track('user started cnr package deletion', {
-					package_name: this.activePackage.packageName,
-					package_node_names: this.activePackage.installedNodes.map((node) => node.name),
-					package_version: this.activePackage.installedVersion,
-					package_author: this.activePackage.authorName,
-					package_author_email: this.activePackage.authorEmail,
-				});
-				this.loading = true;
-				await this.communityNodesStore.uninstallPackage(this.activePackageName);
-				this.showMessage({
-					title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
-					type: 'success',
-				});
-			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('settings.communityNodes.messages.uninstall.error'),
-				);
-			} finally {
-				this.loading = false;
-				this.modalBus.emit('close');
-			}
-		},
-		async onUpdate() {
-			try {
-				this.$telemetry.track('user started cnr package update', {
-					package_name: this.activePackage.packageName,
-					package_node_names: this.activePackage.installedNodes.map((node) => node.name),
-					package_version_current: this.activePackage.installedVersion,
-					package_version_new: this.activePackage.updateAvailable,
-					package_author: this.activePackage.authorName,
-					package_author_email: this.activePackage.authorEmail,
-				});
-				this.loading = true;
-				const updatedVersion = this.activePackage.updateAvailable;
-				await this.communityNodesStore.updatePackage(this.activePackageName);
-				this.showMessage({
-					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
-					message: this.$locale.baseText(
-						'settings.communityNodes.messages.update.success.message',
-						{
-							interpolate: {
-								packageName: this.activePackageName,
-								version: updatedVersion,
-							},
-						},
-					),
-					type: 'success',
-				});
-			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('settings.communityNodes.messages.update.error.title'),
-				);
-			} finally {
-				this.loading = false;
-				this.modalBus.emit('close');
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .descriptionContainer {

@@ -5,11 +5,12 @@ import type {
 	ResourceMapperField,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type {
-	ISheetUpdateData,
-	SheetProperties,
-	ValueInputOption,
-	ValueRenderOption,
+import {
+	ROW_NUMBER,
+	type ISheetUpdateData,
+	type SheetProperties,
+	type ValueInputOption,
+	type ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
@@ -17,7 +18,12 @@ import {
 	checkForSchemaChanges,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
+import {
+	cellFormat,
+	handlingExtraData,
+	locationDefine,
+	useAppendOption,
+} from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -60,7 +66,7 @@ export const description: SheetProperties = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
@@ -126,7 +132,7 @@ export const description: SheetProperties = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value', 'columnToMatchOn'],
 							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
@@ -192,7 +198,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -211,14 +217,7 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
-			{
-				displayName: 'Use Append',
-				name: 'useAppend',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
-			},
+			useAppendOption,
 		],
 	},
 ];
@@ -258,7 +257,7 @@ export async function execute(
 		}
 	}
 
-	const dataMode =
+	let dataMode =
 		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
@@ -268,10 +267,14 @@ export async function execute(
 	const sheetData = (await sheet.getData(sheetName, 'FORMATTED_VALUE')) ?? [];
 
 	if (!sheetData[keyRowIndex] && dataMode !== 'autoMapInputData') {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Could not retrieve the column names from row ${keyRowIndex + 1}`,
-		);
+		if (!sheetData.length) {
+			dataMode = 'autoMapInputData';
+		} else {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Could not retrieve the column names from row ${keyRowIndex + 1}`,
+			);
+		}
 	}
 
 	columnNames = sheetData[keyRowIndex] ?? [];
@@ -312,7 +315,7 @@ export async function execute(
 	};
 
 	const addNewColumn = (key: string) => {
-		if (!columnNames.includes(key)) {
+		if (!columnNames.includes(key) && key !== ROW_NUMBER) {
 			newColumns.add(key);
 		}
 	};
@@ -339,8 +342,18 @@ export async function execute(
 		} else {
 			const valueToMatchOn =
 				nodeVersion < 4
-					? (this.getNodeParameter('valueToMatchOn', i) as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
+					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
+
+			if (valueToMatchOn === '') {
+				throw new NodeOperationError(
+					this.getNode(),
+					"The 'Column to Match On' parameter is required",
+					{
+						itemIndex: i,
+					},
+				);
+			}
 
 			if (nodeVersion < 4) {
 				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];

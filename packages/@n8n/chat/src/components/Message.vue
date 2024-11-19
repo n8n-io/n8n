@@ -1,18 +1,20 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
+import type MarkdownIt from 'markdown-it';
+import markdownLink from 'markdown-it-link-attributes';
 import { computed, ref, toRefs, onMounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
-import hljs from 'highlight.js/lib/core';
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import python from 'highlight.js/lib/languages/python';
-import xml from 'highlight.js/lib/languages/xml';
-import bash from 'highlight.js/lib/languages/bash';
-import markdownLink from 'markdown-it-link-attributes';
-import type MarkdownIt from 'markdown-it';
-import ChatFile from './ChatFile.vue';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+
 import { useOptions } from '@n8n/chat/composables';
+import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+
+import ChatFile from './ChatFile.vue';
 
 const props = defineProps<{
 	message: ChatMessage;
@@ -58,7 +60,7 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 const scrollToView = () => {
 	if (messageContainer.value?.scrollIntoView) {
 		messageContainer.value.scrollIntoView({
-			block: 'center',
+			block: 'start',
 		});
 	}
 };
@@ -130,14 +132,14 @@ onMounted(async () => {
 .chat-message {
 	display: block;
 	position: relative;
-	max-width: 80%;
+	max-width: fit-content;
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
-
+	scroll-margin: 100px;
 	.chat-message-actions {
 		position: absolute;
-		bottom: 100%;
+		bottom: calc(100% - 0.5rem);
 		left: 0;
 		opacity: 0;
 		transform: translateY(-0.25rem);
@@ -149,6 +151,9 @@ onMounted(async () => {
 		left: auto;
 		right: 0;
 	}
+	&.chat-message-from-bot .chat-message-actions {
+		bottom: calc(100% - 1rem);
+	}
 
 	&:hover {
 		.chat-message-actions {
@@ -157,7 +162,7 @@ onMounted(async () => {
 	}
 
 	p {
-		line-height: var(--chat--message-line-height, 1.8);
+		line-height: var(--chat--message-line-height, 1.5);
 		word-wrap: break-word;
 	}
 

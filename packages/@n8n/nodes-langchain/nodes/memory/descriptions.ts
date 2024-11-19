@@ -21,6 +21,20 @@ export const sessionIdOption: INodeProperties = {
 	default: 'fromInput',
 };
 
+export const expressionSessionKeyProperty = (fromVersion: number): INodeProperties => ({
+	displayName: 'Session Key From Previous Node',
+	name: 'sessionKey',
+	type: 'string',
+	default: '={{ $json.sessionId }}',
+	disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+	displayOptions: {
+		show: {
+			sessionIdType: ['fromInput'],
+			'@version': [{ _cnd: { gte: fromVersion } }],
+		},
+	},
+});
+
 export const sessionKeyProperty: INodeProperties = {
 	displayName: 'Key',
 	name: 'sessionKey',
@@ -32,4 +46,12 @@ export const sessionKeyProperty: INodeProperties = {
 			sessionIdType: ['customKey'],
 		},
 	},
+};
+
+export const contextWindowLengthProperty: INodeProperties = {
+	displayName: 'Context Window Length',
+	name: 'contextWindowLength',
+	type: 'number',
+	default: 5,
+	hint: 'How many past interactions the model receives as context',
 };

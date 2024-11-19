@@ -1,5 +1,5 @@
-import { ROUTES } from '../constants';
 import { getManualChatModal } from './modals/chat-modal';
+import { ROUTES } from '../constants';
 
 /**
  * Types
@@ -67,6 +67,21 @@ export function getNodeCreatorSearchBar() {
 
 export function getNodeCreatorPlusButton() {
 	return cy.getByTestId('node-creator-plus-button');
+}
+
+export function getCanvasNodes() {
+	return cy.ifCanvasVersion(
+		() => cy.getByTestId('canvas-node'),
+		() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
+	);
+}
+
+export function getSaveButton() {
+	return cy.getByTestId('workflow-save-button');
+}
+
+export function getZoomToFitButton() {
+	return cy.getByTestId('zoom-to-fit');
 }
 
 /**
@@ -144,6 +159,12 @@ export function addToolNodeToParent(nodeName: string, parentNodeName: string) {
 export function addOutputParserNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_outputParser', parentNodeName);
 }
+export function addVectorStoreNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_vectorStore', parentNodeName);
+}
+export function addRetrieverNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_retriever', parentNodeName);
+}
 
 export function clickExecuteWorkflowButton() {
 	getExecuteWorkflowButton().click();
@@ -156,4 +177,20 @@ export function clickManualChatButton() {
 
 export function openNode(nodeName: string) {
 	getNodeByName(nodeName).dblclick();
+}
+
+export function saveWorkflowOnButtonClick() {
+	cy.intercept('POST', '/rest/workflows').as('createWorkflow');
+	getSaveButton().should('contain', 'Save');
+	getSaveButton().click();
+	getSaveButton().should('contain', 'Saved');
+	cy.url().should('not.have.string', '/new');
+}
+
+export function pasteWorkflow(workflow: object) {
+	cy.get('body').paste(JSON.stringify(workflow));
+}
+
+export function clickZoomToFit() {
+	getZoomToFitButton().click();
 }

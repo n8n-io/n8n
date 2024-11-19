@@ -1,3 +1,91 @@
+<script lang="ts" setup>
+import { computed, ref, useCssModule } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
+import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
+import { getValueByPath } from '../../utils';
+import N8nOption from '../N8nOption';
+import N8nPagination from '../N8nPagination';
+import N8nSelect from '../N8nSelect';
+
+const ALL_ROWS = -1;
+
+interface DatatableProps {
+	columns: DatatableColumn[];
+	rows: DatatableRow[];
+	currentPage?: number;
+	pagination?: boolean;
+	rowsPerPage?: number;
+}
+
+defineOptions({ name: 'N8nDatatable' });
+const props = withDefaults(defineProps<DatatableProps>(), {
+	currentPage: 1,
+	pagination: true,
+	rowsPerPage: 10,
+});
+
+const emit = defineEmits<{
+	'update:currentPage': [value: number];
+	'update:rowsPerPage': [value: number];
+}>();
+
+const { t } = useI18n();
+const rowsPerPageOptions = ref([1, 10, 25, 50, 100]);
+
+const $style = useCssModule();
+
+const totalPages = computed(() => {
+	return Math.ceil(props.rows.length / props.rowsPerPage);
+});
+
+const totalRows = computed(() => {
+	return props.rows.length;
+});
+
+const visibleRows = computed(() => {
+	if (props.rowsPerPage === ALL_ROWS) return props.rows;
+
+	const start = (props.currentPage - 1) * props.rowsPerPage;
+	const end = start + props.rowsPerPage;
+
+	return props.rows.slice(start, end);
+});
+
+const classes = computed(() => ({
+	datatable: true,
+	[$style.datatableWrapper]: true,
+}));
+
+function onUpdateCurrentPage(value: number) {
+	emit('update:currentPage', value);
+}
+
+function onRowsPerPageChange(value: number) {
+	emit('update:rowsPerPage', value);
+
+	if (value === ALL_ROWS) {
+		onUpdateCurrentPage(1);
+		return;
+	}
+
+	const maxPage = Math.ceil(totalRows.value / value);
+	if (maxPage < props.currentPage) {
+		onUpdateCurrentPage(maxPage);
+	}
+}
+
+function getTdValue(row: DatatableRow, column: DatatableColumn) {
+	return getValueByPath<DatatableRowDataType>(row, column.path);
+}
+
+function getThStyle(column: DatatableColumn) {
+	return {
+		...(column.width ? { width: column.width } : {}),
+	};
+}
+</script>
+
 <template>
 	<div :class="classes" v-bind="$attrs">
 		<table :class="$style.datatable">
@@ -53,90 +141,12 @@
 						:label="`${size}`"
 						:value="size"
 					/>
-					<N8nOption :label="`All`" value="*"> </N8nOption>
+					<N8nOption :label="`All`" :value="ALL_ROWS"> </N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
 	</div>
 </template>
-
-<script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
-import N8nSelect from '../N8nSelect';
-import N8nOption from '../N8nOption';
-import N8nPagination from '../N8nPagination';
-import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
-import { useI18n } from '../../composables/useI18n';
-import { getValueByPath } from '../../utils';
-
-interface DatatableProps {
-	columns: DatatableColumn[];
-	rows: DatatableRow[];
-	currentPage?: number;
-	pagination?: boolean;
-	rowsPerPage?: number;
-}
-
-defineOptions({ name: 'N8nDatatable' });
-const props = withDefaults(defineProps<DatatableProps>(), {
-	currentPage: 1,
-	pagination: true,
-	rowsPerPage: 10,
-});
-
-const emit = defineEmits<{
-	'update:currentPage': [value: number];
-	'update:rowsPerPage': [value: number];
-}>();
-
-const { t } = useI18n();
-const rowsPerPageOptions = ref([10, 25, 50, 100]);
-
-const $style = useCssModule();
-
-const totalPages = computed(() => {
-	return Math.ceil(props.rows.length / props.rowsPerPage);
-});
-
-const totalRows = computed(() => {
-	return props.rows.length;
-});
-
-const visibleRows = computed(() => {
-	const start = (props.currentPage - 1) * props.rowsPerPage;
-	const end = start + props.rowsPerPage;
-
-	return props.rows.slice(start, end);
-});
-
-const classes = computed(() => ({
-	datatable: true,
-	[$style.datatableWrapper]: true,
-}));
-
-function onUpdateCurrentPage(value: number) {
-	emit('update:currentPage', value);
-}
-
-function onRowsPerPageChange(value: number) {
-	emit('update:rowsPerPage', value);
-
-	const maxPage = Math.ceil(totalRows.value / value);
-	if (maxPage < props.currentPage) {
-		onUpdateCurrentPage(maxPage);
-	}
-}
-
-function getTdValue(row: DatatableRow, column: DatatableColumn) {
-	return getValueByPath<DatatableRowDataType>(row, column.path);
-}
-
-function getThStyle(column: DatatableColumn) {
-	return {
-		...(column.width ? { width: column.width } : {}),
-	};
-}
-</script>
 
 <style lang="scss" module>
 .datatableWrapper {

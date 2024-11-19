@@ -21,6 +21,8 @@ import {
 	parseResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
+import { N8nIconButton, N8nInputLabel, N8nOption, N8nSelect, N8nTooltip } from 'n8n-design-system';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	parameter: INodeProperties;
@@ -28,16 +30,18 @@ interface Props {
 	nodeValues: INodeParameters | undefined;
 	fieldsToMap: ResourceMapperField[];
 	paramValue: ResourceMapperValue;
-	labelSize: string;
+	labelSize: 'small' | 'medium';
 	showMatchingColumnsSelector: boolean;
 	showMappingModeSelect: boolean;
 	loading: boolean;
 	refreshInProgress: boolean;
 	teleported?: boolean;
+	isReadOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
+	isReadOnly: false,
 });
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
@@ -48,6 +52,8 @@ const {
 	pluralFieldWord,
 	pluralFieldWordCapitalized,
 } = useNodeSpecificationValues(props.parameter.typeOptions);
+
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	fieldValueChanged: [value: IUpdateInformation];
@@ -285,7 +291,7 @@ defineExpose({
 
 <template>
 	<div class="mt-xs" data-test-id="mapping-fields-container">
-		<n8n-input-label
+		<N8nInputLabel
 			:label="valuesLabel"
 			:underline="true"
 			:size="labelSize"
@@ -300,14 +306,16 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
+					:is-read-only="isReadOnly"
+					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
-		</n8n-input-label>
+		</N8nInputLabel>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">
-			<n8n-text size="small">{{
-				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
-			}}</n8n-text>
+			<N8nText size="small">{{
+				i18n.baseText('fixedCollectionParameter.currentlyNoItemsExist')
+			}}</N8nText>
 		</div>
 		<div
 			v-for="field in orderedFields"
@@ -322,7 +330,7 @@ defineExpose({
 				v-if="resourceMapperMode === 'add' && field.required"
 				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
 			>
-				<n8n-tooltip placement="top">
+				<N8nTooltip placement="top">
 					<template #content>
 						<span>{{
 							locale.baseText('resourceMapper.mandatoryField.title', {
@@ -331,7 +339,7 @@ defineExpose({
 						}}</span>
 					</template>
 					<font-awesome-icon icon="question-circle" />
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 			<div
 				v-else-if="
@@ -343,7 +351,7 @@ defineExpose({
 				"
 				:class="['delete-option', 'mt-5xs']"
 			>
-				<n8n-icon-button
+				<N8nIconButton
 					type="tertiary"
 					text
 					size="mini"
@@ -356,8 +364,9 @@ defineExpose({
 							},
 						})
 					"
+					:disabled="isReadOnly"
 					@click="removeField(field.name)"
-				></n8n-icon-button>
+				></N8nIconButton>
 			</div>
 			<div :class="$style.parameterInput">
 				<ParameterInputFull
@@ -365,7 +374,7 @@ defineExpose({
 					:value="getParameterValue(field.name)"
 					:display-options="true"
 					:path="`${props.path}.${field.name}`"
-					:is-read-only="refreshInProgress || field.readOnly"
+					:is-read-only="refreshInProgress || field.readOnly || isReadOnly"
 					:hide-issues="true"
 					:node-values="nodeValues"
 					:class="$style.parameterInputFull"
@@ -379,7 +388,7 @@ defineExpose({
 			/>
 		</div>
 		<div :class="['add-option', $style.addOption]" data-test-id="add-fields-select">
-			<n8n-select
+			<N8nSelect
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
 						interpolate: { fieldWord: singularFieldWordCapitalized },
@@ -387,18 +396,18 @@ defineExpose({
 				"
 				size="small"
 				:teleported="teleported"
-				:disabled="addFieldOptions.length == 0"
+				:disabled="addFieldOptions.length == 0 || isReadOnly"
 				@update:model-value="addField"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="item in addFieldOptions"
 					:key="item.value"
 					:label="item.name"
 					:value="item.value"
 					:disabled="item.disabled"
 				>
-				</n8n-option>
-			</n8n-select>
+				</N8nOption>
+			</N8nSelect>
 		</div>
 	</div>
 </template>

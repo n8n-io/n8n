@@ -1,4 +1,4 @@
-import xss, { friendlyAttrValue } from 'xss';
+import xss, { escapeAttrValue } from 'xss';
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
 
 /*
@@ -18,7 +18,11 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
-				return `${name}="${friendlyAttrValue(value)}"`;
+				// href is allowed but we need to sanitize certain protocols
+				if (name === 'href' && !value.match(/^https?:\/\//gm)) {
+					return '';
+				}
+				return `${name}="${escapeAttrValue(value)}"`;
 			}
 
 			return;
@@ -33,9 +37,16 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export function setPageTitle(title: string) {
-	window.document.title = title;
-}
+/**
+ * Checks if the input is a string and sanitizes it by removing or escaping harmful characters,
+ * returning the original input if it's not a string.
+ */
+export const sanitizeIfString = <T>(message: T): string | T => {
+	if (typeof message === 'string') {
+		return sanitizeHtml(message);
+	}
+	return message;
+};
 
 export function convertRemToPixels(rem: string) {
 	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);

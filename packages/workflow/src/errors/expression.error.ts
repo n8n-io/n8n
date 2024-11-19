@@ -1,5 +1,5 @@
-import type { IDataObject } from '../Interfaces';
 import { ExecutionBaseError } from './abstract/execution-base.error';
+import type { IDataObject } from '../Interfaces';
 
 export interface ExpressionErrorOptions {
 	cause?: Error;
@@ -40,7 +40,6 @@ export class ExpressionError extends ExecutionBaseError {
 			'causeDetailed',
 			'descriptionTemplate',
 			'descriptionKey',
-			'functionality',
 			'itemIndex',
 			'messageTemplate',
 			'nodeCause',
@@ -48,7 +47,12 @@ export class ExpressionError extends ExecutionBaseError {
 			'runIndex',
 			'type',
 		];
+
 		if (options !== undefined) {
+			if (options.functionality !== undefined) {
+				this.functionality = options.functionality;
+			}
+
 			Object.keys(options as IDataObject).forEach((key) => {
 				if (allowedKeys.includes(key)) {
 					this.context[key] = (options as IDataObject)[key];

@@ -101,7 +101,7 @@ const properties: INodeProperties[] = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['worksheet.value', 'workbook.value', 'range'],
 			loadOptionsMethod: 'getWorksheetColumnRow',
@@ -150,7 +150,7 @@ const properties: INodeProperties[] = [
 						name: 'column',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['columnToMatchOn', 'range'],
 							loadOptionsMethod: 'getWorksheetColumnRowSkipColumnToMatchOn',
@@ -171,7 +171,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -372,7 +372,7 @@ export async function execute(
 			);
 		}
 	} catch (error) {
-		if (this.continueOnFail(error)) {
+		if (this.continueOnFail()) {
 			const itemData = generatePairedItemData(this.getInputData().length);
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),

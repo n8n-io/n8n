@@ -1,5 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
+
 import { settings } from './commands';
 
 before(() => {
@@ -17,6 +18,13 @@ beforeEach(() => {
 
 	cy.window().then((win): void => {
 		win.localStorage.setItem('N8N_THEME', 'light');
+		win.localStorage.setItem('N8N_AUTOCOMPLETE_ONBOARDED', 'true');
+		win.localStorage.setItem('N8N_MAPPING_ONBOARDED', 'true');
+
+		const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
+		if (nodeViewVersion) {
+			win.localStorage.setItem('NodeView.version', nodeViewVersion);
+		}
 	});
 
 	cy.intercept('GET', '/rest/settings', (req) => {

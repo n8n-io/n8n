@@ -1,12 +1,14 @@
 <script lang="ts" setup>
+import { useI18n } from '@/composables/useI18n';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
 defineProps<{
-	isReadOnly: boolean;
+	isReadOnly?: boolean;
 }>();
 
 const uiStore = useUIStore();
+const i18n = useI18n();
 
 function onImportCurlClicked() {
 	uiStore.openModal(IMPORT_CURL_MODAL_KEY);
@@ -17,7 +19,7 @@ function onImportCurlClicked() {
 	<div :class="$style.importSection">
 		<n8n-button
 			type="secondary"
-			:label="$locale.baseText('importCurlParameter.label')"
+			:label="i18n.baseText('importCurlParameter.label')"
 			:disabled="isReadOnly"
 			size="mini"
 			@click="onImportCurlClicked"

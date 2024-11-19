@@ -7,8 +7,8 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { formatPrivateKey } from '@utils/utilities';
 import type { Mysql2Pool, MysqlNodeCredentials } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 import { LOCALHOST } from '@utils/constants';
 
 export async function createPool(
@@ -24,6 +24,7 @@ export async function createPool(
 		password: credentials.password,
 		multipleStatements: true,
 		supportBigNumbers: true,
+		decimalNumbers: false,
 	};
 
 	if (credentials.ssl) {
@@ -55,11 +56,15 @@ export async function createPool(
 		connectionOptions.bigNumberStrings = true;
 	}
 
+	if (options?.decimalNumbers === true) {
+		connectionOptions.decimalNumbers = true;
+	}
+
 	if (!credentials.sshTunnel) {
 		return mysql2.createPool(connectionOptions);
 	} else {
 		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
-			credentials.privateKey = formatPrivateKey(credentials.privateKey as string);
+			credentials.privateKey = formatPrivateKey(credentials.privateKey);
 		}
 		const sshClient = await this.helpers.getSSHClient(credentials);
 

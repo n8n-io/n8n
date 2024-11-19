@@ -1,5 +1,6 @@
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
+
 import type { DatatableColumn, DatatableRow } from '../../../types';
 import N8nButton from '../../N8nButton';
 

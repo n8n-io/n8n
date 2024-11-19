@@ -16,7 +16,10 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnection } from '@/composables/usePushConnection';
+
+import GithubButton from 'vue-github-button';
 
 const router = useRouter();
 const route = useRoute();
@@ -27,6 +30,7 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const settingsStore = useSettingsStore();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
@@ -48,6 +52,7 @@ const workflowId = computed(() =>
 );
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+const showGitHubButton = computed(() => !settingsStore.settings.inE2ETests);
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -161,25 +166,51 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 </script>
 
 <template>
-	<div>
+	<div class="container">
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
-				<TabBar
-					v-if="onWorkflowPage"
-					:items="tabBarItems"
-					:model-value="activeHeaderTab"
-					@update:model-value="onTabSelected"
+				<WorkflowDetails
+					v-if="workflow?.name"
+					:id="workflow.id"
+					:tags="workflow.tags"
+					:name="workflow.name"
+					:meta="workflow.meta"
+					:scopes="workflow.scopes"
+					:active="workflow.active"
+					:read-only="readOnly"
 				/>
 			</div>
+			<TabBar
+				v-if="onWorkflowPage"
+				:items="tabBarItems"
+				:model-value="activeHeaderTab"
+				@update:model-value="onTabSelected"
+			/>
+		</div>
+		<div class="github-button" v-if="showGitHubButton">
+			<GithubButton
+				href="https://github.com/n8n-io/n8n"
+				:data-color-scheme="uiStore.appliedTheme"
+				data-size="large"
+				data-show-count="true"
+				aria-label="Star n8n-io/n8n on GitHub"
+			>
+				Star
+			</GithubButton>
 		</div>
 	</div>
 </template>
 
 <style lang="scss">
+.container {
+	display: flex;
+	position: relative;
+	width: 100%;
+	align-items: center;
+}
+
 .main-header {
 	background-color: var(--color-background-xlight);
-	height: $header-height;
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -190,8 +221,19 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	height: $header-height;
 	font-weight: 400;
-	padding: 0 var(--spacing-m) 0 var(--spacing-xs);
+	padding: var(--spacing-xs) var(--spacing-m);
+}
+
+.github-button {
+	display: flex;
+	position: relative;
+	align-items: center;
+	align-self: stretch;
+	padding-left: var(--spacing-m);
+	padding-right: var(--spacing-m);
+	background-color: var(--color-background-xlight);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 </style>

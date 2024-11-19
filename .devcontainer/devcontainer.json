@@ -9,7 +9,7 @@
 		"type=bind,source=${localEnv:HOME}/.n8n,target=/home/node/.n8n,consistency=cached"
 	],
 	"forwardPorts": [8080, 5678],
-	"postCreateCommand": "corepack prepare --activate && pnpm install ",
+	"postCreateCommand": "corepack prepare --activate && pnpm install",
 	"postAttachCommand": "pnpm build",
 	"customizations": {
 		"codespaces": {

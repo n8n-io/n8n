@@ -1,0 +1,23 @@
+{
+	"sessionId": "1",
+	"messages": [
+			{
+					"role": "assistant",
+					"type": "message",
+					"text": "Hi there! Here is my top solution to fix the error in your **Code** node 👇"
+			},
+			{
+					"type": "code-diff",
+					"description": "Fix the syntax error by changing '1asd' to a valid value. In this case, it seems like '1' was intended.",
+					"suggestionId": "1",
+					"codeDiff": "@@ -2,2 +2,2 @@\n   item.json.myNewField = 1asd;\n+  item.json.myNewField = 1;\n",
+					"role": "assistant",
+					"quickReplies": [
+							{
+									"text": "Give me another solution",
+									"type": "new-suggestion"
+							}
+					]
+			}
+	]
+}

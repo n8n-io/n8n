@@ -11,6 +11,8 @@ import merge from 'lodash/merge';
 import set from 'lodash/set';
 import url from 'node:url';
 
+import { NodeApiError } from './errors/node-api.error';
+import { NodeOperationError } from './errors/node-operation.error';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -39,15 +41,12 @@ import type {
 	PostReceiveAction,
 	JsonObject,
 	CloseFunction,
+	INodeCredentialDescription,
+	IExecutePaginationFunctions,
 } from './Interfaces';
-
 import * as NodeHelpers from './NodeHelpers';
-
-import type { Workflow } from './Workflow';
-
-import { NodeOperationError } from './errors/node-operation.error';
-import { NodeApiError } from './errors/node-api.error';
 import { sleep } from './utils';
+import type { Workflow } from './Workflow';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -91,11 +90,6 @@ export class RoutingNode {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
 
-		let credentialType: string | undefined;
-
-		if (nodeType.description.credentials?.length) {
-			credentialType = nodeType.description.credentials[0].name;
-		}
 		const closeFunctions: CloseFunction[] = [];
 		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
 			this.workflow,
@@ -111,22 +105,45 @@ export class RoutingNode {
 			abortSignal,
 		);
 
+		let credentialDescription: INodeCredentialDescription | undefined;
+
+		if (nodeType.description.credentials?.length) {
+			if (nodeType.description.credentials.length === 1) {
+				credentialDescription = nodeType.description.credentials[0];
+			} else {
+				const authenticationMethod = executeFunctions.getNodeParameter(
+					'authentication',
+					0,
+				) as string;
+				credentialDescription = nodeType.description.credentials.find((x) =>
+					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
+				);
+				if (!credentialDescription) {
+					throw new NodeOperationError(
+						this.node,
+						`Node type "${this.node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
+						{ level: 'warning' },
+					);
+				}
+			}
+		}
+
 		let credentials: ICredentialDataDecryptedObject | undefined;
 		if (credentialsDecrypted) {
 			credentials = credentialsDecrypted.data;
-		} else if (credentialType) {
+		} else if (credentialDescription) {
 			try {
-				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+				credentials =
+					(await executeFunctions.getCredentials<ICredentialDataDecryptedObject>(
+						credentialDescription.name,
+					)) || {};
 			} catch (error) {
-				if (
-					nodeType.description.credentials?.length &&
-					nodeType.description.credentials[0].required
-				) {
+				if (credentialDescription.required) {
 					// Only throw error if credential is mandatory
 					throw error;
 				} else {
 					// Do not request cred type since it doesn't exist
-					credentialType = undefined;
+					credentialDescription = undefined;
 				}
 			}
 		}
@@ -283,7 +300,7 @@ export class RoutingNode {
 					itemContext[itemIndex].thisArgs,
 					itemIndex,
 					runIndex,
-					credentialType,
+					credentialDescription?.name,
 					itemContext[itemIndex].requestData.requestOperations,
 					credentialsDecrypted,
 				),
@@ -607,26 +624,27 @@ export class RoutingNode {
 			);
 		}
 
-		const executePaginationFunctions = {
-			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
-				return await this.rawRoutingRequest(
-					executeSingleFunctions,
-					requestOptions,
-					credentialType,
-					credentialsDecrypted,
-				).then(
-					async (data) =>
-						await this.postProcessResponseData(
-							executeSingleFunctions,
-							data,
-							requestData,
-							itemIndex,
-							runIndex,
-						),
-				);
-			},
+		const makeRoutingRequest = async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
+			return await this.rawRoutingRequest(
+				executeSingleFunctions,
+				requestOptions,
+				credentialType,
+				credentialsDecrypted,
+			).then(
+				async (data) =>
+					await this.postProcessResponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
+			);
 		};
+
+		const executePaginationFunctions = Object.create(executeSingleFunctions, {
+			makeRoutingRequest: { value: makeRoutingRequest },
+		}) as IExecutePaginationFunctions;
 
 		if (requestData.paginate && requestOperations?.pagination) {
 			// Has pagination

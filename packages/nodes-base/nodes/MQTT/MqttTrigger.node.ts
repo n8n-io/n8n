@@ -8,7 +8,7 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';
 
@@ -42,7 +42,7 @@ export class MqttTrigger implements INodeType {
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mqtt',
@@ -62,7 +62,7 @@ export class MqttTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -107,7 +107,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		const options = this.getNodeParameter('options') as Options;
-		const credentials = (await this.getCredentials('mqtt')) as unknown as MqttCredential;
+		const credentials = await this.getCredentials<MqttCredential>('mqtt');
 		const client = await createClient(credentials);
 
 		const parsePayload = (topic: string, payload: Buffer) => {
@@ -140,11 +140,11 @@ export class MqttTrigger implements INodeType {
 
 		if (this.getMode() === 'trigger') {
 			const donePromise = !options.parallelProcessing
-				? await this.helpers.createDeferredPromise<IRun>()
+				? this.helpers.createDeferredPromise<IRun>()
 				: undefined;
 			client.on('message', async (topic, payload) => {
 				this.emit(parsePayload(topic, payload), undefined, donePromise);
-				await donePromise?.promise();
+				await donePromise?.promise;
 			});
 			await client.subscribeAsync(topicsQoS);
 		}

@@ -54,8 +54,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
 	const lastSelectedConnection = ref<Connection>();
-
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
+	const panelHeight = ref(0);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(() =>
@@ -74,11 +74,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 		() => lastSelectedConnection.value,
 	);
 
-	watch(readOnlyEnv, (readOnly) => {
+	const setReadOnly = (readOnly: boolean) => {
 		if (jsPlumbInstanceRef.value) {
 			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
+			jsPlumbInstanceRef.value.setDragConstrainFunction(((pos: PointXY) =>
+				readOnly ? null : pos) as ConstrainFunction);
 		}
-	});
+	};
 
 	const setLastSelectedConnection = (connection: Connection | undefined) => {
 		lastSelectedConnection.value = connection;
@@ -107,9 +109,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const manualTriggerNode = nodeTypesStore.getNodeType(MANUAL_TRIGGER_NODE_TYPE);
 
 		if (!manualTriggerNode) {
-			console.error('Could not find the manual trigger node');
 			return null;
 		}
+
 		return {
 			id: uuid(),
 			name: manualTriggerNode.defaults.name?.toString() ?? manualTriggerNode.displayName,
@@ -255,7 +257,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					const nodeData = workflowStore.getNodeByName(nodeName);
 					isDragging.value = false;
-					if (uiStore.isActionActive['dragActive'] && nodeData) {
+					if (uiStore.isActionActive.dragActive && nodeData) {
 						const moveNodes = uiStore.getSelectedNodes.slice();
 						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
 						if (!selectedNodeNames.includes(nodeData.name)) {
@@ -300,7 +302,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						if (moveNodes.length > 1) {
 							historyStore.stopRecordingUndo();
 						}
-						if (uiStore.isActionActive['dragActive']) {
+						if (uiStore.isActionActive.dragActive) {
 							uiStore.removeActiveAction('dragActive');
 						}
 					}
@@ -319,6 +321,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 	}
 
 	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value as BrowserJsPlumbInstance);
+
+	watch(readOnlyEnv, setReadOnly);
+
+	function setPanelHeight(height: number) {
+		panelHeight.value = height;
+	}
+
 	return {
 		isDemo,
 		nodeViewScale,
@@ -328,6 +337,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isLoading: loadingService.isLoading,
 		aiNodes,
 		lastSelectedConnection: lastSelectedConnectionComputed,
+		panelHeight: computed(() => panelHeight.value),
+		setPanelHeight,
+		setReadOnly,
 		setLastSelectedConnection,
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,

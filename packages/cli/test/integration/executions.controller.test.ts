@@ -1,18 +1,20 @@
-import type { User } from '@db/entities/User';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { User } from '@/databases/entities/user';
+import { WaitTracker } from '@/wait-tracker';
 
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
+import { createTeamProject, linkUserToProject } from './shared/db/projects';
 import { createMember, createOwner } from './shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { setupTestServer } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
 
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { WaitTracker } from '@/WaitTracker';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
-
 mockInstance(WaitTracker);
-mockInstance(ConcurrencyControlService, { isEnabled: false });
+mockInstance(ConcurrencyControlService, {
+	// @ts-expect-error Private property
+	isEnabled: false,
+});
 
 const testServer = setupTestServer({ endpointGroups: ['executions'] });
 
@@ -44,6 +46,16 @@ describe('GET /executions', () => {
 
 		const response2 = await testServer.authAgentFor(member).get('/executions').expect(200);
 		expect(response2.body.data.count).toBe(1);
+	});
+
+	test('should return a scopes array for each execution', async () => {
+		testServer.license.enable('feat:sharing');
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+		expect(response.body.data.results[0].scopes).toContain('workflow:execute');
 	});
 });
 

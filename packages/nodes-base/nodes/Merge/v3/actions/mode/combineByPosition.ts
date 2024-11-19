@@ -6,13 +6,12 @@ import {
 	type IPairedItemData,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
+import merge from 'lodash/merge';
 import type { ClashResolveOptions } from '../../helpers/interfaces';
+
 import { clashHandlingProperties, numberInputsProperty } from '../../helpers/descriptions';
 import { addSuffixToEntriesKeys, selectMergeMethod } from '../../helpers/utils';
-
-import merge from 'lodash/merge';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -20,7 +19,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

@@ -1,54 +1,54 @@
-import express from 'express';
-import { v4 as uuid } from 'uuid';
-import axios from 'axios';
-
-import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
-import type { IWorkflowResponse } from '@/Interfaces';
-import config from '@/config';
-import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { TagRepository } from '@db/repositories/tag.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { validateEntity } from '@/GenericHelpers';
-import { ExternalHooks } from '@/ExternalHooks';
-import { WorkflowService } from './workflow.service';
-import { License } from '@/License';
-import { InternalHooks } from '@/InternalHooks';
-import * as utils from '@/utils';
-import { listQueryMiddleware } from '@/middlewares';
-import { TagService } from '@/services/tag.service';
-import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
-import { Logger } from '@/Logger';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NamingService } from '@/services/naming.service';
-import { UserOnboardingService } from '@/services/userOnboarding.service';
-import { CredentialsService } from '../credentials/credentials.service';
-import { WorkflowRequest } from './workflow.request';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { WorkflowExecutionService } from './workflowExecution.service';
-import { UserManagementMailer } from '@/UserManagement/email';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
-import { ApplicationError } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import axios from 'axios';
+import express from 'express';
+import { ApplicationError } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-import { EventService } from '@/eventbus/event.service';
+
+import config from '@/config';
+import type { Project } from '@/databases/entities/project';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import * as Db from '@/db';
+import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { IWorkflowResponse } from '@/interfaces';
+import { License } from '@/license';
+import { Logger } from '@/logging/logger.service';
+import { listQueryMiddleware } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
+import { NamingService } from '@/services/naming.service';
+import { ProjectService } from '@/services/project.service';
+import { TagService } from '@/services/tag.service';
+import { UserOnboardingService } from '@/services/user-onboarding.service';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { CredentialsService } from '../credentials/credentials.service';
 
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly tagRepository: TagRepository,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
@@ -67,6 +67,7 @@ export class WorkflowsController {
 		private readonly projectService: ProjectService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	@Post('/')
@@ -177,8 +178,13 @@ export class WorkflowsController {
 		delete savedWorkflowWithMetaData.shared;
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
-		this.eventService.emit('workflow-created', { user: req.user, workflow: newWorkflow });
+		this.eventService.emit('workflow-created', {
+			user: req.user,
+			workflow: newWorkflow,
+			publicApi: false,
+			projectId: project!.id,
+			projectType: project!.type,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -204,12 +210,12 @@ export class WorkflowsController {
 
 	@Get('/new')
 	async getNewName(req: WorkflowRequest.NewName) {
-		const requestedName = req.query.name ?? config.getEnv('workflows.defaultName');
+		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
 
 		const onboardingFlowEnabled =
-			!config.getEnv('workflows.onboardingFlowDisabled') &&
+			!this.globalConfig.workflows.onboardingFlowDisabled &&
 			!req.user.settings?.isOnboarded &&
 			(await this.userOnboardingService.isBelowThreshold(req.user));
 
@@ -304,7 +310,7 @@ export class WorkflowsController {
 		);
 
 		if (!workflow) {
-			this.logger.verbose('User attempted to access a workflow without permissions', {
+			this.logger.warn('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -357,7 +363,7 @@ export class WorkflowsController {
 
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
-			this.logger.verbose('User attempted to delete a workflow without permissions', {
+			this.logger.warn('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -398,7 +404,10 @@ export class WorkflowsController {
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
-			req.headers['push-ref'] as string,
+			req.headers['push-ref'],
+			req.query.partialExecutionVersion === '-1'
+				? config.getEnv('featureFlags.partialExecutionVersionDefault')
+				: req.query.partialExecutionVersion,
 		);
 	}
 
@@ -452,7 +461,11 @@ export class WorkflowsController {
 			newShareeIds = toShare;
 		});
 
-		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
+		this.eventService.emit('workflow-sharing-updated', {
+			workflowId,
+			userIdSharer: req.user.id,
+			userIdList: shareWithIds,
+		});
 
 		const projectsRelations = await this.projectRelationRepository.findBy({
 			projectId: In(newShareeIds),

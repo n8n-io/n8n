@@ -14,9 +14,11 @@ const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
 	workflowId: 'all',
 	tags: [],
+	annotationTags: [],
 	startDate: '',
 	endDate: '',
 	metadata: [{ key: '', value: '' }],
+	vote: 'all',
 };
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({

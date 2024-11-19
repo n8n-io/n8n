@@ -1,21 +1,22 @@
-import { Container } from 'typedi';
-import { Flags } from '@oclif/core';
-import { Cipher } from 'n8n-core';
-import fs from 'fs';
-import glob from 'fast-glob';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
-
-import * as Db from '@/Db';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { BaseCommand } from '../BaseCommand';
+import { Flags } from '@oclif/core';
+import glob from 'fast-glob';
+import fs from 'fs';
+import { Cipher } from 'n8n-core';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
+
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { Project } from '@/databases/entities/project';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { Project } from '@/databases/entities/Project';
-import { User } from '@/databases/entities/User';
+import * as Db from '@/db';
+
+import { BaseCommand } from '../base-command';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';

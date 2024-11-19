@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import isEmpty from 'lodash/isEmpty';
 import omit from 'lodash/omit';
@@ -50,8 +50,8 @@ export class GoToWebinar implements INodeType {
 		defaults: {
 			name: 'GoToWebinar',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'goToWebinarOAuth2Api',
@@ -154,9 +154,9 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
 
-		const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		const { oauthTokenData } = await this.getCredentials<{
 			oauthTokenData: { account_key: string; organizer_key: string };
-		};
+		}>('goToWebinarOAuth2Api');
 
 		const accountKey = oauthTokenData.account_key;
 		const organizerKey = oauthTokenData.organizer_key;
@@ -630,7 +630,7 @@ export class GoToWebinar implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

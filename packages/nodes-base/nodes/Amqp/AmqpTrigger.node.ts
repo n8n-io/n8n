@@ -10,7 +10,7 @@ import type {
 	IDeferredPromise,
 	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +24,7 @@ export class AmqpTrigger implements INodeType {
 			name: 'AMQP Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'amqp',
@@ -64,7 +64,7 @@ export class AmqpTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -208,11 +208,11 @@ export class AmqpTrigger implements INodeType {
 
 			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
 			if (!parallelProcessing) {
-				responsePromise = await this.helpers.createDeferredPromise();
+				responsePromise = this.helpers.createDeferredPromise();
 			}
 			if (responsePromise) {
 				this.emit([this.helpers.returnJsonArray([data as any])], undefined, responsePromise);
-				await responsePromise.promise();
+				await responsePromise.promise;
 			} else {
 				this.emit([this.helpers.returnJsonArray([data as any])]);
 			}

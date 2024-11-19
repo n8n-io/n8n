@@ -1,66 +1,3 @@
-<template>
-	<div :class="$style.block">
-		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
-			<button :class="$style.blockToggle">
-				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
-			</button>
-			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
-			<el-switch
-				v-if="contentParsed"
-				v-model="isShowRaw"
-				:class="$style.rawSwitch"
-				active-text="RAW JSON"
-				@click.stop
-			/>
-		</header>
-		<main
-			:class="{
-				[$style.blockContent]: true,
-				[$style.blockContentExpanded]: isExpanded,
-			}"
-		>
-			<div
-				v-for="({ parsedContent, raw }, index) in parsedRun"
-				:key="index"
-				:class="$style.contentText"
-				:data-content-type="parsedContent?.type"
-			>
-				<template v-if="parsedContent && !isShowRaw">
-					<template v-if="parsedContent.type === 'json'">
-						<VueMarkdown
-							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
-							:class="$style.markdown"
-						/>
-					</template>
-					<template v-if="parsedContent.type === 'markdown'">
-						<VueMarkdown :source="parsedContent.data" :class="$style.markdown" />
-					</template>
-					<p
-						v-if="parsedContent.type === 'text'"
-						:class="$style.runText"
-						v-text="parsedContent.data"
-					/>
-				</template>
-				<!-- We weren't able to parse text or raw switch -->
-				<template v-else>
-					<div :class="$style.rawContent">
-						<n8n-icon-button
-							size="small"
-							:class="$style.copyToClipboard"
-							type="secondary"
-							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
-							icon="copy"
-							@click="onCopyToClipboard(raw)"
-						/>
-						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
-					</div>
-				</template>
-			</div>
-		</main>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
@@ -68,13 +5,16 @@ import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
+import hljs from 'highlight.js/lib/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeError, IDataObject } from 'n8n-workflow';
 
 const props = defineProps<{
 	runData: IAiDataContent;
+	error?: NodeError;
 }>();
 
 const i18n = useI18n();
@@ -84,7 +24,7 @@ const contentParsers = useAiContentParsers();
 
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
-const isShowRaw = ref(false);
+const renderType = ref<'rendered' | 'json'>('rendered');
 const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
 function getInitialExpandedState() {
@@ -100,6 +40,27 @@ function getInitialExpandedState() {
 
 	return !collapsedTypes[props.runData.inOut].includes(props.runData.type);
 }
+
+function isJsonString(text: string) {
+	try {
+		JSON.parse(text);
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+const markdownOptions = {
+	highlight(str: string, lang: string) {
+		if (lang && hljs.getLanguage(lang)) {
+			try {
+				return hljs.highlight(str, { language: lang }).value;
+			} catch {}
+		}
+
+		return ''; // use external default escaping
+	},
+};
 
 function parseAiRunData(run: IAiDataContent) {
 	if (!run.data) {
@@ -138,7 +99,13 @@ function jsonToMarkdown(data: JsonMarkdown): string {
 	}
 
 	if (typeof data === 'string') {
-		return formatToJsonMarkdown(data);
+		// If data is a valid JSON string – format it as JSON markdown
+		if (isJsonString(data)) {
+			return formatToJsonMarkdown(data);
+		}
+
+		// Return original string otherwise
+		return data;
 	}
 
 	return formatToJsonMarkdown(JSON.stringify(data, null, 2));
@@ -167,6 +134,10 @@ function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	} catch (err) {}
 }
 
+function onRenderTypeChange(value: 'rendered' | 'json') {
+	renderType.value = value;
+}
+
 onMounted(() => {
 	parsedRun.value = parseAiRunData(props.runData);
 	if (parsedRun.value) {
@@ -174,6 +145,79 @@ onMounted(() => {
 	}
 });
 </script>
+
+<template>
+	<div :class="$style.block">
+		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
+			<button :class="$style.blockToggle">
+				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
+			</button>
+			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
+			<n8n-radio-buttons
+				v-if="contentParsed && !error && isExpanded"
+				size="small"
+				:model-value="renderType"
+				:class="$style.rawSwitch"
+				:options="[
+					{ label: 'Rendered', value: 'rendered' },
+					{ label: 'JSON', value: 'json' },
+				]"
+				@update:model-value="onRenderTypeChange"
+			/>
+		</header>
+		<main
+			:class="{
+				[$style.blockContent]: true,
+				[$style.blockContentExpanded]: isExpanded,
+			}"
+		>
+			<NodeErrorView v-if="error" :error="error" :class="$style.error" />
+			<div
+				v-for="({ parsedContent, raw }, index) in parsedRun"
+				v-else
+				:key="index"
+				:class="$style.contentText"
+				:data-content-type="parsedContent?.type"
+			>
+				<template v-if="parsedContent && renderType === 'rendered'">
+					<template v-if="parsedContent.type === 'json'">
+						<VueMarkdown
+							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
+							:class="$style.markdown"
+							:options="markdownOptions"
+						/>
+					</template>
+					<template v-if="parsedContent.type === 'markdown'">
+						<VueMarkdown
+							:source="parsedContent.data"
+							:class="$style.markdown"
+							:options="markdownOptions"
+						/>
+					</template>
+					<p
+						v-if="parsedContent.type === 'text'"
+						:class="$style.runText"
+						v-text="parsedContent.data"
+					/>
+				</template>
+				<!-- We weren't able to parse text or raw switch -->
+				<template v-else>
+					<div :class="$style.rawContent">
+						<n8n-icon-button
+							size="small"
+							:class="$style.copyToClipboard"
+							type="secondary"
+							:title="i18n.baseText('nodeErrorView.copyToClipboard')"
+							icon="copy"
+							@click="onCopyToClipboard(raw)"
+						/>
+						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+					</div>
+				</template>
+			</div>
+		</main>
+	</div>
+</template>
 
 <style lang="scss" module>
 .copyToClipboard {
@@ -189,22 +233,22 @@ onMounted(() => {
 		white-space: pre-wrap;
 
 		h1 {
-			font-size: var(--font-size-xl);
+			font-size: var(--font-size-l);
 			line-height: var(--font-line-height-xloose);
 		}
 
 		h2 {
-			font-size: var(--font-size-l);
+			font-size: var(--font-size-m);
 			line-height: var(--font-line-height-loose);
 		}
 
 		h3 {
-			font-size: var(--font-size-m);
+			font-size: var(--font-size-s);
 			line-height: var(--font-line-height-regular);
 		}
 
 		pre {
-			background-color: var(--color-foreground-light);
+			background: var(--chat--message--pre--background);
 			border-radius: var(--border-radius-base);
 			line-height: var(--font-line-height-xloose);
 			padding: var(--spacing-s);
@@ -215,17 +259,16 @@ onMounted(() => {
 }
 .contentText {
 	padding-top: var(--spacing-s);
-	font-size: var(--font-size-xs);
-	// max-height: 100%;
+	padding-left: var(--spacing-m);
+	font-size: var(--font-size-s);
 }
 .block {
-	border: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
-	padding: var(--spacing-xs);
-	border-radius: 4px;
-	margin-bottom: var(--spacing-2xs);
+	padding: 0 0 var(--spacing-2xs) var(--spacing-2xs);
+	background: var(--color-foreground-light);
+	margin-top: var(--spacing-xl);
+	border-radius: var(--border-radius-base);
 }
-.blockContent {
+:root .blockContent {
 	height: 0;
 	overflow: hidden;
 
@@ -234,14 +277,17 @@ onMounted(() => {
 	}
 }
 .runText {
-	line-height: var(--font-line-height-regular);
+	line-height: var(--font-line-height-xloose);
 	white-space: pre-line;
 }
 .rawSwitch {
+	opacity: 0;
+	height: fit-content;
 	margin-left: auto;
+	margin-right: var(--spacing-2xs);
 
-	& * {
-		font-size: var(--font-size-2xs);
+	.block:hover & {
+		opacity: 1;
 	}
 }
 .blockHeader {
@@ -250,20 +296,27 @@ onMounted(() => {
 	cursor: pointer;
 	/* This hack is needed to make the whole surface of header clickable  */
 	margin: calc(-1 * var(--spacing-xs));
-	padding: var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	align-items: center;
 
 	& * {
 		user-select: none;
 	}
 }
 .blockTitle {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-s);
 	color: var(--color-text-dark);
+	margin: 0;
+	padding-bottom: var(--spacing-4xs);
 }
 .blockToggle {
 	border: none;
 	background: none;
 	padding: 0;
 	color: var(--color-text-base);
+	margin-top: calc(-1 * var(--spacing-3xs));
+}
+.error {
+	padding: var(--spacing-s) 0;
 }
 </style>

@@ -1,32 +1,10 @@
-<template>
-	<component
-		:is="element"
-		:class="classes"
-		:disabled="isDisabled"
-		:aria-disabled="ariaDisabled"
-		:aria-busy="ariaBusy"
-		:href="href"
-		aria-live="polite"
-		v-bind="{
-			...attrs,
-			...(props.nativeType ? { type: props.nativeType } : {}),
-		}"
-	>
-		<span v-if="loading || icon" :class="$style.icon">
-			<N8nSpinner v-if="loading" :size="size" />
-			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
-		</span>
-		<span v-if="label || $slots.default">
-			<slot>{{ label }}</slot>
-		</span>
-	</component>
-</template>
-
 <script setup lang="ts">
 import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
+
+import type { ButtonProps } from 'n8n-design-system/types/button';
+
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import type { ButtonProps } from 'n8n-design-system/types/button';
 
 const $style = useCssModule();
 const attrs = useAttrs();
@@ -56,6 +34,8 @@ const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
 
+const iconSize = computed(() => (props.size === 'mini' ? 'xsmall' : props.size));
+
 const classes = computed(() => {
 	return (
 		`button ${$style.button} ${$style[props.type]}` +
@@ -72,6 +52,30 @@ const classes = computed(() => {
 	);
 });
 </script>
+
+<template>
+	<component
+		:is="element"
+		:class="classes"
+		:disabled="isDisabled"
+		:aria-disabled="ariaDisabled"
+		:aria-busy="ariaBusy"
+		:href="href"
+		aria-live="polite"
+		v-bind="{
+			...attrs,
+			...(props.nativeType ? { type: props.nativeType } : {}),
+		}"
+	>
+		<span v-if="loading || icon" :class="$style.icon">
+			<N8nSpinner v-if="loading" :size="iconSize" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
+		</span>
+		<span v-if="label || $slots.default">
+			<slot>{{ label }}</slot>
+		</span>
+	</component>
+</template>
 
 <style lang="scss">
 @import './Button';

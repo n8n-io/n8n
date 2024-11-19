@@ -1,4 +1,10 @@
-import type { Project } from '@db/entities/Project';
+import { combineScopes } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, Not } from '@n8n/typeorm';
+
+import type { Project } from '@/databases/entities/project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import {
 	Get,
 	Post,
@@ -9,21 +15,16 @@ import {
 	ProjectScope,
 	Delete,
 } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { ProjectRequest } from '@/requests';
 import {
 	ProjectService,
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { combineScopes } from '@n8n/permissions';
-import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, Not } from '@n8n/typeorm';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/eventbus/event.service';
 
 @RestController('/projects')
 export class ProjectController {
@@ -48,7 +49,7 @@ export class ProjectController {
 	@GlobalScope('project:create')
 	// Using admin as all plans that contain projects should allow admins at the very least
 	@Licensed('feat:projectRole:admin')
-	async createProject(req: ProjectRequest.Create): Promise<Project> {
+	async createProject(req: ProjectRequest.Create) {
 		try {
 			const project = await this.projectsService.createTeamProject(req.body.name, req.user);
 
@@ -57,7 +58,16 @@ export class ProjectController {
 				role: req.user.role,
 			});
 
-			return project;
+			return {
+				...project,
+				role: 'project:admin',
+				scopes: [
+					...combineScopes({
+						global: this.roleService.getRoleScopes(req.user.role),
+						project: this.roleService.getRoleScopes('project:admin'),
+					}),
+				],
+			};
 		} catch (e) {
 			if (e instanceof TeamProjectOverQuotaError) {
 				throw new BadRequestError(e.message);

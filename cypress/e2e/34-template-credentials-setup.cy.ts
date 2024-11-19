@@ -1,3 +1,8 @@
+import * as setupCredsModal from '../composables/modals/workflow-credential-setup-modal';
+import * as formStep from '../composables/setup-template-form-step';
+import { getSetupWorkflowCredentialsButton } from '../composables/setup-workflow-credentials-button';
+import TestTemplate1 from '../fixtures/Test_Template_1.json';
+import TestTemplate2 from '../fixtures/Test_Template_2.json';
 import {
 	clickUseWorkflowButtonByTitle,
 	visitTemplateCollectionPage,
@@ -5,11 +10,6 @@ import {
 } from '../pages/template-collection';
 import * as templateCredentialsSetupPage from '../pages/template-credential-setup';
 import { WorkflowPage } from '../pages/workflow';
-import * as formStep from '../composables/setup-template-form-step';
-import { getSetupWorkflowCredentialsButton } from '../composables/setup-workflow-credentials-button';
-import * as setupCredsModal from '../composables/modals/workflow-credential-setup-modal';
-import TestTemplate1 from '../fixtures/Test_Template_1.json';
-import TestTemplate2 from '../fixtures/Test_Template_2.json';
 
 const workflowPage = new WorkflowPage();
 
@@ -56,10 +56,10 @@ describe('Template credentials setup', () => {
 	it('can be opened from template collection page', () => {
 		visitTemplateCollectionPage(testData.ecommerceStarterPack);
 		templateCredentialsSetupPage.enableTemplateCredentialSetupFeatureFlag();
-		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
+		clickUseWorkflowButtonByTitle('Promote new Shopify products');
 
 		templateCredentialsSetupPage.getters
-			.title("Set up 'Promote new Shopify products on Twitter and Telegram' template")
+			.title("Set up 'Promote new Shopify products' template")
 			.should('be.visible');
 	});
 
@@ -67,7 +67,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title("Set up 'Promote new Shopify products on Twitter and Telegram' template")
+			.title("Set up 'Promote new Shopify products' template")
 			.should('be.visible');
 
 		templateCredentialsSetupPage.getters

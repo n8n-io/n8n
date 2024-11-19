@@ -21,7 +21,7 @@ export async function dhlApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('dhlApi')) as { apiKey: string };
+	const credentials = await this.getCredentials<{ apiKey: string }>('dhlApi');
 
 	let options: IRequestOptions = {
 		headers: {

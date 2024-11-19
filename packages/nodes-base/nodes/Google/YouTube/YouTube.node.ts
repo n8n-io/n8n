@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -23,6 +23,7 @@ import { videoFields, videoOperations } from './VideoDescription';
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
+import { validateAndSetDate } from '../GenericFunctions';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
@@ -39,8 +40,8 @@ export class YouTube implements INodeType {
 		defaults: {
 			name: 'YouTube',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'youTubeOAuth2Api',
@@ -763,6 +764,14 @@ export class YouTube implements INodeType {
 
 						qs.forMine = true;
 
+						if (filters.publishedAfter) {
+							validateAndSetDate(filters, 'publishedAfter', this.getTimezone(), this);
+						}
+
+						if (filters.publishedBefore) {
+							validateAndSetDate(filters, 'publishedBefore', this.getTimezone(), this);
+						}
+
 						Object.assign(qs, options, filters);
 
 						if (Object.keys(filters).length > 0) {
@@ -1049,7 +1058,7 @@ export class YouTube implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

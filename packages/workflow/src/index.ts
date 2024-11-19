@@ -6,7 +6,6 @@ import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
 export * from './errors';
-export * from './Authentication';
 export * from './Constants';
 export * from './Cron';
 export * from './DeferredPromise';
@@ -19,9 +18,11 @@ export * from './NodeHelpers';
 export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
+export * from './WorkflowDataProxyEnvProvider';
 export * from './WorkflowHooks';
 export * from './VersionedNodeType';
 export * from './TypeValidation';
+export * from './result';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,

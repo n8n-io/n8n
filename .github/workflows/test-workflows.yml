@@ -73,6 +73,7 @@ jobs:
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
           SKIP_STATISTICS_EVENTS: true
+          DB_SQLITE_POOL_SIZE: 4
       # -
       #   name: Export credentials
       #   if: always()

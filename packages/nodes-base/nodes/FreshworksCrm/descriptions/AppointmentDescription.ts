@@ -138,7 +138,7 @@ export const appointmentFields: INodeProperties[] = [
 						name: 'userId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						displayOptions: {
 							show: {
 								type: ['user'],
@@ -186,7 +186,7 @@ export const appointmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				description:
-					'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Is All-Day',
@@ -225,7 +225,7 @@ export const appointmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOutcomes',
 				},
 				description:
-					'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Target ID',
@@ -451,7 +451,7 @@ export const appointmentFields: INodeProperties[] = [
 								name: 'userId',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								displayOptions: {
 									show: {
 										type: ['user'],
@@ -486,7 +486,7 @@ export const appointmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				description:
-					'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'End Date',
@@ -533,7 +533,7 @@ export const appointmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOutcomes',
 				},
 				description:
-					'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start Date',

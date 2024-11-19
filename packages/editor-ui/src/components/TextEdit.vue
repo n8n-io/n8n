@@ -1,36 +1,8 @@
-<template>
-	<div v-if="dialogVisible">
-		<el-dialog
-			:model-value="dialogVisible"
-			append-to-body
-			width="80%"
-			:title="`${$locale.baseText('textEdit.edit')} ${$locale
-				.nodeText()
-				.inputLabelDisplayName(parameter, path)}`"
-			:before-close="closeDialog"
-		>
-			<div class="ignore-key-press">
-				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
-					<div @keydown.stop @keydown.esc="onKeyDownEsc">
-						<n8n-input
-							ref="inputField"
-							v-model="tempValue"
-							type="textarea"
-							:placeholder="$locale.nodeText().placeholder(parameter, path)"
-							:read-only="isReadOnly"
-							:rows="15"
-							@update:model-value="valueChanged"
-						/>
-					</div>
-				</n8n-input-label>
-			</div>
-		</el-dialog>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	dialogVisible: boolean;
@@ -47,6 +19,8 @@ const emit = defineEmits<{
 
 const inputField = ref<HTMLInputElement | null>(null);
 const tempValue = ref('');
+
+const i18n = useI18n();
 
 watch(
 	() => props.dialogVisible,
@@ -85,3 +59,33 @@ const closeDialog = () => {
 	emit('closeDialog');
 };
 </script>
+
+<template>
+	<div v-if="dialogVisible">
+		<el-dialog
+			:model-value="dialogVisible"
+			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+			width="80%"
+			:title="`${i18n.baseText('textEdit.edit')} ${i18n
+				.nodeText()
+				.inputLabelDisplayName(parameter, path)}`"
+			:before-close="closeDialog"
+		>
+			<div class="ignore-key-press-canvas">
+				<n8n-input-label :label="i18n.nodeText().inputLabelDisplayName(parameter, path)">
+					<div @keydown.stop @keydown.esc="onKeyDownEsc">
+						<n8n-input
+							ref="inputField"
+							v-model="tempValue"
+							type="textarea"
+							:placeholder="i18n.nodeText().placeholder(parameter, path)"
+							:read-only="isReadOnly"
+							:rows="15"
+							@update:model-value="valueChanged"
+						/>
+					</div>
+				</n8n-input-label>
+			</div>
+		</el-dialog>
+	</div>
+</template>

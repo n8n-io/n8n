@@ -1,10 +1,11 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Service as Utility } from 'typedi';
 import { compare, hash } from 'bcryptjs';
+import { Service as Utility } from 'typedi';
+
 import {
 	MAX_PASSWORD_CHAR_LENGTH as maxLength,
 	MIN_PASSWORD_CHAR_LENGTH as minLength,
 } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const SALT_ROUNDS = 10;
 

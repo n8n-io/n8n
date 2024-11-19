@@ -44,7 +44,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export const VectorStoreZep = createVectorStoreNode({
+export class VectorStoreZep extends createVectorStoreNode({
 	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',
@@ -79,10 +79,10 @@ export const VectorStoreZep = createVectorStoreNode({
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await context.getCredentials('zepApi')) as {
+		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,
@@ -102,10 +102,10 @@ export const VectorStoreZep = createVectorStoreNode({
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await context.getCredentials('zepApi')) as {
+		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const zepConfig = {
 			apiUrl: credentials.apiUrl,
@@ -130,4 +130,4 @@ export const VectorStoreZep = createVectorStoreNode({
 			throw new NodeOperationError(context.getNode(), error as Error, { itemIndex });
 		}
 	},
-});
+}) {}

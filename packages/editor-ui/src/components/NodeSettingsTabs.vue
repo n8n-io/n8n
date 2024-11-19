@@ -1,12 +1,3 @@
-<template>
-	<N8nTabs
-		:options="options"
-		:model-value="modelValue"
-		@update:model-value="onTabSelect"
-		@tooltip-click="onTooltipClick"
-	/>
-</template>
-
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
 import {
@@ -162,6 +153,15 @@ function onTooltipClick(tab: string, event: MouseEvent) {
 	}
 }
 </script>
+
+<template>
+	<N8nTabs
+		:options="options"
+		:model-value="modelValue"
+		@update:model-value="onTabSelect"
+		@tooltip-click="onTooltipClick"
+	/>
+</template>
 
 <style lang="scss">
 #communityNode > div {

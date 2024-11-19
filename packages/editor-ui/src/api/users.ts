@@ -1,4 +1,9 @@
 import type {
+	PasswordUpdateRequestDto,
+	SettingsUpdateRequestDto,
+	UserUpdateRequestDto,
+} from '@n8n/api-types';
+import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
@@ -7,11 +12,6 @@ import type {
 } from '@/Interface';
 import type { IDataObject, IUserSettings } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-
-export interface IUpdateUserSettingsReqPayload {
-	allowSSOManualLogin?: boolean;
-	userActivated?: boolean;
-}
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
@@ -91,19 +91,14 @@ export async function changePassword(
 
 export async function updateCurrentUser(
 	context: IRestApiContext,
-	params: {
-		id?: string;
-		firstName?: string;
-		lastName?: string;
-		email: string;
-	},
+	params: UserUpdateRequestDto,
 ): Promise<IUserResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: IUpdateUserSettingsReqPayload,
+	settings: SettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
@@ -111,14 +106,14 @@ export async function updateCurrentUserSettings(
 export async function updateOtherUserSettings(
 	context: IRestApiContext,
 	userId: string,
-	settings: IUpdateUserSettingsReqPayload,
+	settings: SettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
 
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string },
+	params: PasswordUpdateRequestDto,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }

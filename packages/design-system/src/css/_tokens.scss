@@ -79,6 +79,13 @@
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-selected: var(--prim-gray-70);
+	--color-canvas-selected-transparent: hsla(var(--prim-gray-h), 47%, 30%, 0.1);
+	--color-canvas-label-background: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
 
 	// Nodes
 	--color-node-background: var(--color-background-xlight);
@@ -110,6 +117,39 @@
 	--color-sticky-background-7: var(--prim-gray-10);
 	--color-sticky-border-7: var(--prim-gray-120);
 
+	// AI Assistant
+	--color-askAssistant-button-background: var(--color-background-xlight);
+	--color-askAssistant-button-background-hover: var(--color-background-xlight);
+	--color-askAssistant-button-background-active: var(--color-background-xlight);
+
+	--color-assistant-highlight-1: #5b60e8;
+	--color-assistant-highlight-2: #aa7bec;
+	--color-assistant-highlight-3: #ec7b8e;
+	--color-assistant-highlight-gradient: linear-gradient(
+		105deg,
+		var(--color-assistant-highlight-1) 0%,
+		var(--color-assistant-highlight-2) 50%,
+		var(--color-assistant-highlight-3) 100%
+	);
+	--color-assistant-highlight-reverse: linear-gradient(
+		105deg,
+		var(--color-assistant-highlight-3) 0%,
+		var(--color-assistant-highlight-2) 50%,
+		var(--color-assistant-highlight-1) 100%
+	);
+	--color-assistant-inner-highlight-hover: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142, 0.12) 0%,
+		rgba(170, 123, 236, 0.12) 50.5%,
+		rgba(91, 96, 232, 0.12) 100%
+	);
+	--color-assistant-inner-highlight-active: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142, 0.25) 0%,
+		rgba(170, 123, 236, 0.25) 50.5%,
+		rgba(91, 96, 232, 0.25) 100%
+	);
+
 	// NodeIcon
 	--color-node-icon-gray: var(--prim-gray-420);
 	--color-node-icon-black: var(--prim-gray-780);
@@ -135,6 +175,7 @@
 	--color-pending-resolvable-foreground: var(--color-text-base);
 	--color-pending-resolvable-background: var(--prim-gray-40);
 	--color-expression-editor-background: var(--prim-gray-0);
+	--color-expression-editor-modal-background: var(--color-background-base);
 	--color-expression-syntax-example: var(--prim-gray-40);
 	--color-autocomplete-item-selected: var(--color-secondary);
 	--color-autocomplete-section-header-border: var(--color-foreground-light);
@@ -225,12 +266,14 @@
 	--color-notification-background: var(--color-background-xlight);
 
 	// Execution
+	--execution-card-border-new: var(--prim-gray-200);
 	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
 	--execution-card-border-error: var(--prim-color-alt-c-tint-250);
 	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
 	--execution-card-background-hover: var(--color-foreground-light);
+	--execution-card-text-waiting: var(--color-secondary);
 	--execution-selector-background: var(--color-background-dark);
 	--execution-selector-text: var(--color-text-xlight);
 	--execution-select-all-text: var(--color-danger);

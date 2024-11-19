@@ -36,7 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: ${{ inputs.ref }}
 
       - run: corepack enable
@@ -50,6 +49,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
+        if: inputs.collectCoverage != true
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Build

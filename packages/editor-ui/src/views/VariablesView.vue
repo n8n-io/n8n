@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -9,6 +9,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -17,8 +18,9 @@ import VariablesRow from '@/components/VariablesRow.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -28,6 +30,8 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
+const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
@@ -39,7 +43,10 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
 const loading = ref(false);
-const permissions = getVariablesPermissions(usersStore.currentUser);
+
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
 
 const isFeatureEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
@@ -49,7 +56,7 @@ const variablesToResources = computed((): IResource[] =>
 	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
 );
 
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
@@ -121,7 +128,7 @@ function resetNewVariablesList() {
 const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
 	id: data.id,
 	key: data.name,
-	value: 'value' in data ? data.value : '',
+	value: 'value' in data ? (data.value ?? '') : '',
 });
 
 const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
@@ -225,7 +232,7 @@ async function deleteVariable(data: IResource) {
 }
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('variables', 'upgrade-variables');
+	void pageRedirectionHelper.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: IResource) {
@@ -244,6 +251,10 @@ onBeforeMount(() => {
 
 onBeforeUnmount(() => {
 	sourceControlStoreUnsubscribe();
+});
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('variables.heading'));
 });
 </script>
 
@@ -281,7 +292,7 @@ onBeforeUnmount(() => {
 						data-test-id="resources-list-add"
 						@click="addTemporaryVariable"
 					>
-						{{ $locale.baseText(`variables.add`) }}
+						{{ i18n.baseText(`variables.add`) }}
 					</n8n-button>
 				</div>
 				<template #content>
@@ -298,15 +309,15 @@ onBeforeUnmount(() => {
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
 				"
 				:description="
-					$locale.baseText(
+					i18n.baseText(
 						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
 					)
 				"
 				:button-text="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
 				"
 				button-type="secondary"
 				@click:button="goToUpgrade"
@@ -318,15 +329,15 @@ onBeforeUnmount(() => {
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
 				"
 				:description="
-					$locale.baseText(
+					i18n.baseText(
 						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
 					)
 				"
 				:button-text="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
 				"
 				button-type="secondary"
 				@click:button="goToUpgrade"
@@ -336,11 +347,11 @@ onBeforeUnmount(() => {
 				data-test-id="cannot-create-variables"
 				emoji="👋"
 				:heading="
-					$locale.baseText('variables.empty.notAllowedToCreate.heading', {
+					i18n.baseText('variables.empty.notAllowedToCreate.heading', {
 						interpolate: { name: usersStore.currentUser?.firstName ?? '' },
 					})
 				"
-				:description="$locale.baseText('variables.empty.notAllowedToCreate.description')"
+				:description="i18n.baseText('variables.empty.notAllowedToCreate.description')"
 				@click="goToUpgrade"
 			/>
 		</template>

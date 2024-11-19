@@ -6,6 +6,7 @@
 
 import { extendTransform, extend } from '@/Extensions';
 import { joinExpression, splitExpression } from '@/Extensions/ExpressionParser';
+
 import { evaluate } from './Helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 
@@ -157,13 +158,11 @@ describe('tmpl Expression Parser', () => {
 		});
 
 		test('Multiple optional chains in an expression', () => {
-			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code)
-				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = $json.test) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test2)
 );`);
 
-			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code)
-				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = extendOptional($json.test, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1())
 );`);
 		});
@@ -250,10 +249,7 @@ describe('tmpl Expression Parser', () => {
 				extend(undefined, 'toDateTime', []);
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionExtensionError);
-				expect(error).toHaveProperty(
-					'message',
-					'toDateTime() could not be called on "undefined" type',
-				);
+				expect(error).toHaveProperty('message', "toDateTime can't be used on undefined value");
 			}
 		});
 		test('input is null', () => {
@@ -261,7 +257,7 @@ describe('tmpl Expression Parser', () => {
 				extend(null, 'startsWith', []);
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionExtensionError);
-				expect(error).toHaveProperty('message', 'startsWith() could not be called on "null" type');
+				expect(error).toHaveProperty('message', "startsWith can't be used on null value");
 			}
 		});
 		test('input should be converted to upper case', () => {

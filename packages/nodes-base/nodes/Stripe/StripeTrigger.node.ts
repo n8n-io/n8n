@@ -8,7 +8,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
 
@@ -24,7 +24,7 @@ export class StripeTrigger implements INodeType {
 			name: 'Stripe Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'stripeApi',
@@ -865,12 +865,15 @@ export class StripeTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
+				const webhookDescription = `Created by n8n for workflow ID: ${this.getWorkflow().id}`;
+
 				const events = this.getNodeParameter('events', []);
 
 				const endpoint = '/webhook_endpoints';
 
 				const body = {
 					url: webhookUrl,
+					description: webhookDescription,
 					enabled_events: events,
 				};
 

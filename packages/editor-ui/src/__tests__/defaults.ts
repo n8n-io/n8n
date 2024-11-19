@@ -1,6 +1,7 @@
-import type { IN8nUISettings } from 'n8n-workflow';
+import type { FrontendSettings } from '@n8n/api-types';
 
-export const defaultSettings: IN8nUISettings = {
+export const defaultSettings: FrontendSettings = {
+	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
 	pruning: {
@@ -16,6 +17,7 @@ export const defaultSettings: IN8nUISettings = {
 	endpointFormWaiting: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
+	endpointWebhookWaiting: '',
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -46,7 +48,6 @@ export const defaultSettings: IN8nUISettings = {
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
 	instanceId: '',
-	isNpmAvailable: false,
 	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
@@ -63,8 +64,8 @@ export const defaultSettings: IN8nUISettings = {
 	},
 	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 	pushBackend: 'websocket',
-	saveDataErrorExecution: 'DEFAULT',
-	saveDataSuccessExecution: 'DEFAULT',
+	saveDataErrorExecution: 'all',
+	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
@@ -111,7 +112,7 @@ export const defaultSettings: IN8nUISettings = {
 	mfa: {
 		enabled: false,
 	},
-	ai: {
+	askAi: {
 		enabled: false,
 	},
 	workflowHistory: {
@@ -121,4 +122,8 @@ export const defaultSettings: IN8nUISettings = {
 	security: {
 		blockFileAccessToN8nFiles: false,
 	},
+	aiAssistant: {
+		enabled: false,
+	},
+	betaFeatures: [],
 };

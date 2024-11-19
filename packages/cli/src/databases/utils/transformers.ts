@@ -1,7 +1,7 @@
-import { Container } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import type { ValueTransformer, FindOperator } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 export const idStringifier = {
 	from: (value?: number): string | undefined => value?.toString(),

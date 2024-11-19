@@ -41,7 +41,7 @@ export const profileFields: INodeProperties[] = [
 			loadOptionsMethod: 'getProfiles',
 		},
 		description:
-			'ID of the user profile to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the user profile to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['profile'],

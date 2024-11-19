@@ -46,6 +46,9 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
 			return node;
 		},
+		evaluateExpression(str: string, _: number) {
+			return str.replace('{{', '').replace('}}', '');
+		},
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
@@ -218,6 +221,97 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			items,
 			nodeOptions,
 		);
+	});
+
+	it('should call runQueries and insert enclosed placeholder into values', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'select $1;', values: ['$1'] }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries and not insert enclosed placeholder into values because queryReplacement is defined', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {
+				queryReplacement: 'my_table',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: "select '$1';", values: ['my_table'] }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries and insert enclosed placeholder into values because treatQueryParametersInSingleQuotesAsText is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {
+				queryReplacement: 'my_table',
+				treatQueryParametersInSingleQuotesAsText: true,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'select $2;', values: ['my_table', '$1'] }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries with falsy query replacements', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '={{ 0 }}, {{ null }}, {{ 0 }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
 	});
 });
 

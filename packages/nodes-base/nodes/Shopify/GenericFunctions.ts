@@ -38,7 +38,7 @@ export async function shopifyApiRequest(
 	const options: IRequestOptions = {
 		method,
 		qs: query,
-		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
+		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2024-07/${resource}`,
 		body,
 		json: true,
 	};

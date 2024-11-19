@@ -184,6 +184,16 @@ createChat({
 - **Type**: `string[]`
 - **Description**: The initial messages to be displayed in the Chat window.
 
+### `allowFileUploads`
+- **Type**: `Ref<boolean> | boolean`
+- **Default**: `false`
+- **Description**: Whether to allow file uploads in the chat. If set to `true`, users will be able to upload files through the chat interface.
+
+### `allowedFilesMimeTypes`
+- **Type**: `Ref<string> | string`
+- **Default**: `''`
+- **Description**: A comma-separated list of allowed MIME types for file uploads. Only applicable if `allowFileUploads` is set to `true`. If left empty, all file types are allowed. For example: `'image/*,application/pdf'`.
+
 ## Customization
 The Chat window is entirely customizable using CSS variables.
 
@@ -260,10 +270,5 @@ body,
 ```
 
 ## License
-n8n Chat is [fair-code](https://faircode.io) distributed under the
-[**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
-
-Additional information about the license model can be found in the
-[docs](https://docs.n8n.io/reference/license/).
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

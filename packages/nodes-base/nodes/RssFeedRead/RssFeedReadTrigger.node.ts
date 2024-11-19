@@ -5,9 +5,14 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
 import moment from 'moment-timezone';
+
+interface PollData {
+	lastItemDate?: string;
+	lastTimeChecked?: string;
+}
 
 export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +30,7 @@ export class RssFeedReadTrigger implements INodeType {
 		},
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Feed URL',
@@ -39,12 +44,12 @@ export class RssFeedReadTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const pollData = this.getWorkflowStaticData('node');
+		const pollData = this.getWorkflowStaticData('node') as PollData;
 		const feedUrl = this.getNodeParameter('feedUrl') as string;
 
-		const now = moment().utc().format();
-		const dateToCheck =
-			(pollData.lastItemDate as string) || (pollData.lastTimeChecked as string) || now;
+		const dateToCheck = Date.parse(
+			pollData.lastItemDate ?? pollData.lastTimeChecked ?? moment().utc().format(),
+		);
 
 		if (!feedUrl) {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -73,14 +78,16 @@ export class RssFeedReadTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(feed.items[0])];
 			}
 			feed.items.forEach((item) => {
-				if (Date.parse(item.isoDate as string) > Date.parse(dateToCheck)) {
+				if (item.isoDate && Date.parse(item.isoDate) > dateToCheck) {
 					returnData.push(item);
 				}
 			});
-			const maxIsoDate = feed.items.reduce((a, b) =>
-				new Date(a.isoDate as string) > new Date(b.isoDate as string) ? a : b,
-			).isoDate;
-			pollData.lastItemDate = maxIsoDate;
+
+			if (feed.items.length) {
+				pollData.lastItemDate = feed.items.reduce((a, b) =>
+					new Date(a.isoDate!) > new Date(b.isoDate!) ? a : b,
+				).isoDate;
+			}
 		}
 
 		if (Array.isArray(returnData) && returnData.length !== 0) {
