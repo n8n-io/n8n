@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
@@ -137,15 +137,13 @@ export class GoogleSheetsTrigger implements INodeType {
 						type: 'string',
 						extractValue: {
 							type: 'regex',
-							regex:
-								'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
+							regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
+									regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
 									errorMessage: 'Not a valid Sheet URL',
 								},
 							},

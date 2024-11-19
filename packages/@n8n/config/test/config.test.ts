@@ -211,7 +211,6 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 				},
-				queueRecoveryInterval: 60,
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
@@ -223,14 +222,20 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			disabled: true,
+			enabled: false,
+			mode: 'internal_childprocess',
 			path: '/runners',
 			authToken: '',
-			listen_address: '127.0.0.1',
+			listenAddress: '127.0.0.1',
+			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
-			useLauncher: false,
 			launcherPath: '',
 			launcherRunner: 'javascript',
+			maxOldSpaceSize: '',
+			maxConcurrency: 5,
+			assertDeduplicationOutput: false,
+			taskTimeout: 60,
+			heartbeatInterval: 30,
 		},
 		sentry: {
 			backendDsn: '',
@@ -245,6 +250,46 @@ describe('GlobalConfig', () => {
 				location: 'logs/n8n.log',
 			},
 			scopes: [],
+		},
+		multiMainSetup: {
+			enabled: false,
+			ttl: 10,
+			interval: 3,
+		},
+		generic: {
+			timezone: 'America/New_York',
+			releaseChannel: 'dev',
+			gracefulShutdownTimeout: 30,
+		},
+		license: {
+			serverUrl: 'https://license.n8n.io/v1',
+			autoRenewalEnabled: true,
+			autoRenewOffset: 60 * 60 * 72,
+			activationKey: '',
+			tenantId: 1,
+			cert: '',
+		},
+		security: {
+			restrictFileAccessTo: '',
+			blockFileAccessToN8nFiles: true,
+			daysAbandonedWorkflow: 90,
+		},
+		pruning: {
+			isEnabled: true,
+			maxAge: 336,
+			maxCount: 10_000,
+			hardDeleteBuffer: 1,
+			hardDeleteInterval: 15,
+			softDeleteInterval: 60,
+		},
+		diagnostics: {
+			enabled: false,
+			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
+			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
+			posthogConfig: {
+				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
+				apiHost: 'https://ph.n8n.io',
+			},
 		},
 	};
 

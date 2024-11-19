@@ -1,35 +1,36 @@
 import { getAdditionalKeys } from 'n8n-core';
-import {
-	WorkflowDataProxy,
-	// type IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-} from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
-	INode,
-	INodeType,
-	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
-	WorkflowParameters,
 	IDataObject,
-	IExecuteData,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	WorkflowExecuteMode,
+	WorkflowParameters,
+	ITaskDataConnections,
+	INode,
+	IRunExecutionData,
 	EnvProviderState,
+	IExecuteData,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
-import type { TaskResultData } from '@/runner-types';
+import type { MainConfig } from '@/config/main-config';
+import type { DataRequestResponse, PartialAdditionalData, TaskResultData } from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
+import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
+import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
 import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
+import { makeSerializable } from './errors/serializable-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
+import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
 export interface JSExecSettings {
 	code: string;
@@ -41,56 +42,24 @@ export interface JSExecSettings {
 	mode: WorkflowExecuteMode;
 }
 
-export interface PartialAdditionalData {
-	executionId?: string;
-	restartExecutionId?: string;
-	restApiUrl: string;
-	instanceBaseUrl: string;
-	formWaitingBaseUrl: string;
-	webhookBaseUrl: string;
-	webhookWaitingBaseUrl: string;
-	webhookTestBaseUrl: string;
-	currentNodeParameters?: INodeParameters;
-	executionTimeoutTimestamp?: number;
-	userId?: string;
-	variables: IDataObject;
-}
-
-export interface AllCodeTaskData {
+export interface JsTaskData {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
+	connectionInputData: INodeExecutionData[];
 	node: INode;
 
 	runExecutionData: IRunExecutionData;
 	runIndex: number;
 	itemIndex: number;
 	activeNodeName: string;
-	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
-	envProviderState?: EnvProviderState;
+	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
 	contextNodeName: string;
 	additionalData: PartialAdditionalData;
-}
-
-export interface JsTaskRunnerOpts {
-	wsUrl: string;
-	grantToken: string;
-	maxConcurrency: number;
-	name?: string;
-	/**
-	 * List of built-in nodejs modules that are allowed to be required in the
-	 * execution sandbox. Asterisk (*) can be used to allow all.
-	 */
-	allowedBuiltInModules?: string;
-	/**
-	 * List of npm modules that are allowed to be required in the execution
-	 * sandbox. Asterisk (*) can be used to allow all.
-	 */
-	allowedExternalModules?: string;
 }
 
 type CustomConsole = {
@@ -100,45 +69,49 @@ type CustomConsole = {
 export class JsTaskRunner extends TaskRunner {
 	private readonly requireResolver: RequireResolver;
 
-	constructor({
-		grantToken,
-		maxConcurrency,
-		wsUrl,
-		name = 'JS Task Runner',
-		allowedBuiltInModules,
-		allowedExternalModules,
-	}: JsTaskRunnerOpts) {
-		super('javascript', wsUrl, grantToken, maxConcurrency, name);
+	private readonly builtInsParser = new BuiltInsParser();
+
+	private readonly taskDataReconstruct = new DataRequestResponseReconstruct();
+
+	constructor(config: MainConfig, name = 'JS Task Runner') {
+		super({
+			taskType: 'javascript',
+			name,
+			...config.baseRunnerConfig,
+		});
+		const { jsRunnerConfig } = config;
 
 		const parseModuleAllowList = (moduleList: string) =>
 			moduleList === '*' ? null : new Set(moduleList.split(',').map((x) => x.trim()));
 
 		this.requireResolver = createRequireResolver({
-			allowedBuiltInModules: parseModuleAllowList(allowedBuiltInModules ?? ''),
-			allowedExternalModules: parseModuleAllowList(allowedExternalModules ?? ''),
+			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
+			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
 		});
 	}
 
 	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {
-		const allData = await this.requestData<AllCodeTaskData>(task.taskId, 'all');
-
 		const settings = task.settings;
 		a.ok(settings, 'JS Code not sent to runner');
 
-		const workflowParams = allData.workflow;
+		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
+		const neededBuiltIns = neededBuiltInsResult.ok
+			? neededBuiltInsResult.result
+			: BuiltInsParserState.newNeedsAllDataState();
+
+		const dataResponse = await this.requestData<DataRequestResponse>(
+			task.taskId,
+			neededBuiltIns.toDataRequestParams(),
+		);
+
+		const data = this.reconstructTaskData(dataResponse);
+
+		await this.requestNodeTypeIfNeeded(neededBuiltIns, data.workflow, task.taskId);
+
+		const workflowParams = data.workflow;
 		const workflow = new Workflow({
 			...workflowParams,
-			nodeTypes: {
-				getByNameAndVersion() {
-					return undefined as unknown as INodeType;
-				},
-				getByName() {
-					return undefined as unknown as INodeType;
-				},
-				getKnownTypes() {
-					return {};
-				},
-			},
+			nodeTypes: this.nodeTypes,
 		});
 
 		const customConsole = {
@@ -154,12 +127,36 @@ export class JsTaskRunner extends TaskRunner {
 
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
-				? await this.runForAllItems(task.taskId, settings, allData, workflow, customConsole)
-				: await this.runForEachItem(task.taskId, settings, allData, workflow, customConsole);
+				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole)
+				: await this.runForEachItem(task.taskId, settings, data, workflow, customConsole);
 
 		return {
 			result,
-			customData: allData.runExecutionData.resultData.metadata,
+			customData: data.runExecutionData.resultData.metadata,
+		};
+	}
+
+	private getNativeVariables() {
+		return {
+			// Exposed Node.js globals in vm2
+			Buffer,
+			Function,
+			eval,
+			setTimeout,
+			setInterval,
+			setImmediate,
+			clearTimeout,
+			clearInterval,
+			clearImmediate,
+
+			// Missing JS natives
+			btoa,
+			atob,
+			TextDecoder,
+			TextDecoderStream,
+			TextEncoder,
+			TextEncoderStream,
+			FormData,
 		};
 	}
 
@@ -169,26 +166,27 @@ export class JsTaskRunner extends TaskRunner {
 	private async runForAllItems(
 		taskId: string,
 		settings: JSExecSettings,
-		allData: AllCodeTaskData,
+		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
 	): Promise<INodeExecutionData[]> {
-		const dataProxy = this.createDataProxy(allData, workflow, allData.itemIndex);
-		const inputItems = allData.connectionInputData;
+		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
+		const inputItems = data.connectionInputData;
 
 		const context: Context = {
 			require: this.requireResolver,
 			module: {},
 			console: customConsole,
-
 			items: inputItems,
+
+			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
 		};
 
 		try {
 			const result = (await runInNewContext(
-				`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 				context,
 			)) as TaskResultData['result'];
 
@@ -215,22 +213,23 @@ export class JsTaskRunner extends TaskRunner {
 	private async runForEachItem(
 		taskId: string,
 		settings: JSExecSettings,
-		allData: AllCodeTaskData,
+		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
 	): Promise<INodeExecutionData[]> {
-		const inputItems = allData.connectionInputData;
+		const inputItems = data.connectionInputData;
 		const returnData: INodeExecutionData[] = [];
 
 		for (let index = 0; index < inputItems.length; index++) {
 			const item = inputItems[index];
-			const dataProxy = this.createDataProxy(allData, workflow, index);
+			const dataProxy = this.createDataProxy(data, workflow, index);
 			const context: Context = {
 				require: this.requireResolver,
 				module: {},
 				console: customConsole,
 				item,
 
+				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),
 			};
@@ -281,38 +280,42 @@ export class JsTaskRunner extends TaskRunner {
 		return returnData;
 	}
 
-	private createDataProxy(allData: AllCodeTaskData, workflow: Workflow, itemIndex: number) {
+	private createDataProxy(data: JsTaskData, workflow: Workflow, itemIndex: number) {
 		return new WorkflowDataProxy(
 			workflow,
-			allData.runExecutionData,
-			allData.runIndex,
+			data.runExecutionData,
+			data.runIndex,
 			itemIndex,
-			allData.activeNodeName,
-			allData.connectionInputData,
-			allData.siblingParameters,
-			allData.mode,
+			data.activeNodeName,
+			data.connectionInputData,
+			data.siblingParameters,
+			data.mode,
 			getAdditionalKeys(
-				allData.additionalData as IWorkflowExecuteAdditionalData,
-				allData.mode,
-				allData.runExecutionData,
+				data.additionalData as IWorkflowExecuteAdditionalData,
+				data.mode,
+				data.runExecutionData,
 			),
-			allData.executeData,
-			allData.defaultReturnRunIndex,
-			allData.selfData,
-			allData.contextNodeName,
+			data.executeData,
+			data.defaultReturnRunIndex,
+			data.selfData,
+			data.contextNodeName,
 			// Make sure that even if we don't receive the envProviderState for
 			// whatever reason, we don't expose the task runner's env to the code
-			allData.envProviderState ?? {
+			data.envProviderState ?? {
 				env: {},
 				isEnvAccessBlocked: false,
 				isProcessAvailable: true,
 			},
-		).getDataProxy();
+			// Because we optimize the needed data, it can be partially available.
+			// We assign the available built-ins to the execution context, which
+			// means we run the getter for '$json', and by default $json throws
+			// if there is no data available.
+		).getDataProxy({ throwOnMissingExecutionData: false });
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
 		if (error instanceof Error) {
-			return error;
+			return makeSerializable(error);
 		}
 
 		if (isErrorLike(error)) {
@@ -320,5 +323,44 @@ export class JsTaskRunner extends TaskRunner {
 		}
 
 		return new ExecutionError({ message: JSON.stringify(error) });
+	}
+
+	private reconstructTaskData(response: DataRequestResponse): JsTaskData {
+		return {
+			...response,
+			connectionInputData: this.taskDataReconstruct.reconstructConnectionInputData(
+				response.inputData,
+			),
+			executeData: this.taskDataReconstruct.reconstructExecuteData(response),
+		};
+	}
+
+	private async requestNodeTypeIfNeeded(
+		neededBuiltIns: BuiltInsParserState,
+		workflow: JsTaskData['workflow'],
+		taskId: string,
+	) {
+		/**
+		 * We request node types only when we know a task needs all nodes, because
+		 * needing all nodes means that the task relies on paired item functionality,
+		 * which is the same requirement for needing node types.
+		 */
+		if (neededBuiltIns.needsAllNodes) {
+			const uniqueNodeTypes = new Map(
+				workflow.nodes.map((node) => [
+					`${node.type}|${node.typeVersion}`,
+					{ name: node.type, version: node.typeVersion },
+				]),
+			);
+
+			const unknownNodeTypes = this.nodeTypes.onlyUnknown([...uniqueNodeTypes.values()]);
+
+			const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
+				taskId,
+				unknownNodeTypes,
+			);
+
+			this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
+		}
 	}
 }

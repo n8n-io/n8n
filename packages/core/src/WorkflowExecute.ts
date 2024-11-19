@@ -45,19 +45,20 @@ import {
 	NodeExecutionOutput,
 	sleep,
 	ErrorReporterProxy,
+	ExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
-	findCycles,
 	findStartNodes,
 	findSubgraph,
 	findTriggerForPartialExecution,
+	cleanRunData,
+	recreateNodeExecutionStack,
+	handleCycles,
 } from './PartialExecutionUtils';
-import { cleanRunData } from './PartialExecutionUtils/cleanRunData';
-import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -152,10 +153,6 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
-	}
-
-	static isAbortError(e?: ExecutionBaseError) {
-		return e?.message === 'AbortError';
 	}
 
 	forceInputNodeExecution(workflow: Workflow): boolean {
@@ -352,22 +349,18 @@ export class WorkflowExecute {
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		const startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
+		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
 
 		// 4. Detect Cycles
-		const cycles = findCycles(workflow);
-
 		// 5. Handle Cycles
-		if (cycles.length) {
-			// TODO: handle
-		}
+		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
 		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, startNodes, destination, runData, pinData ?? {});
+			recreateNodeExecutionStack(subgraph, new Set(startNodes), runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -415,7 +408,10 @@ export class WorkflowExecute {
 			let metaRunData: ITaskMetadata;
 			for (const nodeName of Object.keys(metadata)) {
 				for ([index, metaRunData] of metadata[nodeName].entries()) {
-					runData[nodeName][index].metadata = metaRunData;
+					runData[nodeName][index].metadata = {
+						...(runData[nodeName][index].metadata ?? {}),
+						...metaRunData,
+					};
 				}
 			}
 		}
@@ -920,7 +916,6 @@ export class WorkflowExecute {
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
 		let startTime: number;
-		let taskData: ITaskData;
 
 		if (this.runExecutionData.startData === undefined) {
 			this.runExecutionData.startData = {};
@@ -1250,7 +1245,7 @@ export class WorkflowExecute {
 											: [];
 
 										while (items.length) {
-											const item = items.pop();
+											const item = items.shift();
 											if (item === undefined) {
 												continue;
 											}
@@ -1450,12 +1445,13 @@ export class WorkflowExecute {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
 
-					taskData = {
+					const taskData: ITaskData = {
 						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
-						executionStatus: 'success',
+						metadata: executionData.metadata,
+						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 					};
 
 					if (executionError !== undefined) {
@@ -1483,7 +1479,7 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
-							if (!WorkflowExecute.isAbortError(executionError)) {
+							if (!this.isCancelled) {
 								await this.executeHook('nodeExecuteAfter', [
 									executionNode.name,
 									taskData,
@@ -1831,7 +1827,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new WorkflowOperationError('Workflow has been canceled or timed out'),
+							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
 							closeFunction,
 						);
 					}
@@ -1932,7 +1928,7 @@ export class WorkflowExecute {
 
 		this.moveNodeMetadata();
 		// Prevent from running the hook if the error is an abort error as it was already handled
-		if (!WorkflowExecute.isAbortError(executionError)) {
+		if (!this.isCancelled) {
 			await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 		}
 
@@ -1962,5 +1958,9 @@ export class WorkflowExecute {
 		};
 
 		return fullRunData;
+	}
+
+	private get isCancelled() {
+		return this.abortController.signal.aborted;
 	}
 }

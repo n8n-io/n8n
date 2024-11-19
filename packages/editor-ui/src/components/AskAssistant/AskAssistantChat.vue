@@ -106,7 +106,7 @@ function onClose() {
 .container {
 	height: 100%;
 	flex-basis: content;
-	z-index: 300;
+	z-index: var(--z-index-ask-assistant-chat);
 }
 
 .wrapper {

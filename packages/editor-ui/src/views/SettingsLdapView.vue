@@ -20,10 +20,10 @@ import { ElTable, ElTableColumn } from 'element-plus';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 import { createFormEventBus } from 'n8n-design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type TableRow = {
 	status: string;
@@ -67,9 +67,9 @@ const toast = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 
 const dataTable = ref<ILdapSyncTable[]>([]);
 const tableKey = ref(0);
@@ -89,7 +89,7 @@ const ldapConfigFormRef = ref<{ getValues: () => LDAPConfigForm }>();
 
 const isLDAPFeatureEnabled = computed(() => settingsStore.settings.enterprise.ldap);
 
-const goToUpgrade = async () => await uiStore.goToUpgrade('ldap', 'upgrade-ldap');
+const goToUpgrade = async () => await pageRedirectionHelper.goToUpgrade('ldap', 'upgrade-ldap');
 
 const cellClassStyle = ({ row, column }: CellClassStyleMethodParams<TableRow>): CSSProperties => {
 	if (column.property === 'status') {

@@ -55,7 +55,8 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS =
+		Container.get(GlobalConfig).generic.gracefulShutdownTimeout;
 
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
@@ -273,7 +274,7 @@ export abstract class BaseCommand extends Command {
 		this.license = Container.get(License);
 		await this.license.init();
 
-		const activationKey = config.getEnv('license.activationKey');
+		const { activationKey } = this.globalConfig.license;
 
 		if (activationKey) {
 			const hasCert = (await this.license.loadCertStr()).length > 0;

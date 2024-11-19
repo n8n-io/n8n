@@ -18,7 +18,6 @@ import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from './posthog.store';
-import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import * as mfaApi from '@/api/mfa';
@@ -29,6 +28,7 @@ import * as invitationsApi from '@/api/invitation';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -49,6 +49,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
+
 	const telemetry = useTelemetry();
 
 	// Composables
@@ -278,9 +279,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
 		const invitedUsers = await invitationsApi.inviteUsers(rootStore.restApiContext, params);
 		addUsers(
-			invitedUsers.map(({ user }, index) => ({
+			invitedUsers.map(({ user }) => ({
 				isPending: true,
-				globalRole: { name: params[index].role },
 				...user,
 			})),
 		);
@@ -320,6 +320,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await mfaApi.verifyMfaToken(rootStore.restApiContext, data);
 	};
 
+	const canEnableMFA = async () => {
+		return await mfaApi.canEnableMFA(rootStore.restApiContext);
+	};
+
 	const enableMfa = async (data: { token: string }) => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
@@ -347,8 +351,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const confirmEmail = async () => {
-		await cloudApi.confirmEmail(rootStore.restApiContext);
+	const sendConfirmationEmail = async () => {
+		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
@@ -403,8 +407,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		verifyMfaToken,
 		enableMfa,
 		disableMfa,
+		canEnableMFA,
 		fetchUserCloudAccount,
-		confirmEmail,
+		sendConfirmationEmail,
 		updateGlobalRole,
 		reset,
 	};

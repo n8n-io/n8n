@@ -21,7 +21,6 @@ declare module '@vue/runtime-core' {
 
 	interface ComponentCustomProperties {
 		$style: Record<string, string>;
-		$locale: I18nClass;
 		$telemetry: Telemetry;
 		$route: RouteLocation;
 		$router: Router;

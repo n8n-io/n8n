@@ -275,6 +275,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				: '';
 			throw new NodeOperationError(this.getNode(), `${failedMessage}${stoppedMessage}`, {
 				description: errors.join('\n, '),
+				itemIndex: i,
 			});
 		}
 

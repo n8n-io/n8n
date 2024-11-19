@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { GlobalConfig } from '@n8n/config';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -21,14 +22,12 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
-import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
-import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { PruningService } from '@/services/pruning.service';
+import { PruningService } from '@/services/pruning/pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -169,7 +168,7 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			const scopedLogger = this.logger.withScope('scaling');
+			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
@@ -198,7 +197,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
+		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -221,15 +220,11 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		if (!this.globalConfig.taskRunners.disabled) {
-			Container.set(TaskManager, new LocalTaskManager());
-			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
-			const taskRunnerServer = Container.get(TaskRunnerServer);
-			await taskRunnerServer.start();
-
-			const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-			const runnerProcess = Container.get(TaskRunnerProcess);
-			await runnerProcess.start();
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (taskRunnerConfig.enabled) {
+			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const taskRunnerModule = Container.get(TaskRunnerModule);
+			await taskRunnerModule.start();
 		}
 	}
 
@@ -240,7 +235,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (
-			config.getEnv('multiMainSetup.enabled') &&
+			Container.get(GlobalConfig).multiMainSetup.enabled &&
 			!Container.get(License).isMultipleMainInstancesLicensed()
 		) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
@@ -256,7 +251,7 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
 
-		this.logger.withScope('scaling').debug('Pubsub setup completed');
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

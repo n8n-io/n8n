@@ -38,6 +38,7 @@ export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
+export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
@@ -55,6 +56,8 @@ export const SCRIPTING_NODE_TYPES = [
 	CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ];
+
+export const ADD_FORM_NOTICE = 'addFormPage';
 
 /**
  * Nodes whose parameter values may refer to other nodes without expressions.
@@ -114,3 +117,5 @@ export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParam
 };
 
 export const SEND_AND_WAIT_OPERATION = 'sendAndWait';
+export const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
+export const AI_TRANSFORM_JS_CODE = 'jsCode';

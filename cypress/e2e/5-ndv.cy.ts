@@ -81,7 +81,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('1 item').should('exist');
+		ndv.getters.outputPanel().contains('2 items').should('exist');
 		cy.contains('span', 'zero').should('exist');
 	});
 
@@ -133,9 +133,10 @@ describe('NDV', () => {
 				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
 			);
 		ndv.getters.nodeRunErrorIndicator().should('be.visible');
+		ndv.getters.nodeRunTooltipIndicator().should('be.visible');
 		// The error details should be hidden behind a tooltip
-		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Start Time');
-		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Execution Time');
+		ndv.getters.nodeRunTooltipIndicator().should('not.contain', 'Start Time');
+		ndv.getters.nodeRunTooltipIndicator().should('not.contain', 'Execution Time');
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {
@@ -617,8 +618,10 @@ describe('NDV', () => {
 		// Should not show run info before execution
 		ndv.getters.nodeRunSuccessIndicator().should('not.exist');
 		ndv.getters.nodeRunErrorIndicator().should('not.exist');
+		ndv.getters.nodeRunTooltipIndicator().should('not.exist');
 		ndv.getters.nodeExecuteButton().click();
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		ndv.getters.nodeRunTooltipIndicator().should('exist');
 	});
 
 	it('should properly show node execution indicator for multiple nodes', () => {
@@ -630,6 +633,7 @@ describe('NDV', () => {
 		// Manual tigger node should show success indicator
 		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
+		ndv.getters.nodeRunTooltipIndicator().should('exist');
 		// Code node should show error
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Code');
@@ -790,5 +794,47 @@ describe('NDV', () => {
 			.inputPanel()
 			.find('[data-test-id=run-data-schema-item]')
 			.should('contain.text', 'onlyOnItem3');
+	});
+
+	it('should keep search expanded after Test step node run', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.getters.outputPanel().findChildByTestId('ndv-search').click().type('US');
+		ndv.getters.outputTableRow(1).find('mark').should('have.text', 'US');
+
+		ndv.actions.execute();
+		ndv.getters
+			.outputPanel()
+			.findChildByTestId('ndv-search')
+			.should('be.visible')
+			.should('have.value', 'US');
+	});
+
+	it('should not show items count when seaching in schema view', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		ndv.actions.switchOutputMode('Schema');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('US');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
+	});
+
+	it('should show additional tooltip when seaching in schema view if no matches', () => {
+		cy.createFixtureWorkflow('Test_ndv_search.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('Edit Fields');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		ndv.actions.switchOutputMode('Schema');
+		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
+		ndv.getters
+			.outputPanel()
+			.contains('To search field contents rather than just names, use Table or JSON view')
+			.should('exist');
 	});
 });

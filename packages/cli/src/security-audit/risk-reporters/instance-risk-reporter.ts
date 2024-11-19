@@ -103,7 +103,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		};
 
 		settings.telemetry = {
-			diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
+			diagnosticsEnabled: this.globalConfig.diagnostics.enabled,
 		};
 
 		return settings;

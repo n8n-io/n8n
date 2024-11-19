@@ -22,6 +22,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import { N8nIconButton, N8nInputLabel, N8nOption, N8nSelect, N8nTooltip } from 'n8n-design-system';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	parameter: INodeProperties;
@@ -51,6 +52,8 @@ const {
 	pluralFieldWord,
 	pluralFieldWordCapitalized,
 } = useNodeSpecificationValues(props.parameter.typeOptions);
+
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	fieldValueChanged: [value: IUpdateInformation];
@@ -304,13 +307,14 @@ defineExpose({
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
 					:is-read-only="isReadOnly"
+					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
 		</N8nInputLabel>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">
 			<N8nText size="small">{{
-				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
+				i18n.baseText('fixedCollectionParameter.currentlyNoItemsExist')
 			}}</N8nText>
 		</div>
 		<div

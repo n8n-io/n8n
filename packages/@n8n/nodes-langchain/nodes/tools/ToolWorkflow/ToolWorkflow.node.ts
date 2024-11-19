@@ -1,32 +1,35 @@
+import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import get from 'lodash/get';
+import isObject from 'lodash/isObject';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import type {
-	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWorkflowBase,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
+	ExecuteWorkflowData,
 	IDataObject,
 	INodeParameterResourceLocator,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
-import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
-import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import get from 'lodash/get';
-import isObject from 'lodash/isObject';
-import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
-import type { JSONSchema7 } from 'json-schema';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import type { DynamicZodObject } from '../../../types/zod.types';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
 import {
 	jsonSchemaExampleField,
 	schemaTypeField,
 	inputSchemaField,
 } from '../../../utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Call n8n Workflow Tool',
@@ -356,9 +359,14 @@ export class ToolWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
+
+		let subExecutionId: string | undefined;
+		let subWorkflowId: string | undefined;
 
 		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
@@ -395,11 +403,16 @@ export class ToolWorkflow implements INodeType {
 					) as INodeParameterResourceLocator;
 					workflowInfo.id = value as string;
 				}
+
+				subWorkflowId = workflowInfo.id;
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
 				try {
 					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+
+					// subworkflow is same as parent workflow
+					subWorkflowId = workflowProxy.$workflow.id;
 				} catch (error) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -439,13 +452,15 @@ export class ToolWorkflow implements INodeType {
 
 			const items = [newItem] as INodeExecutionData[];
 
-			let receivedData: INodeExecutionData;
+			let receivedData: ExecuteWorkflowData;
 			try {
-				receivedData = (await this.executeWorkflow(
-					workflowInfo,
-					items,
-					runManager?.getChild(),
-				)) as INodeExecutionData;
+				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
+					parentExecution: {
+						executionId: workflowProxy.$execution.id,
+						workflowId: workflowProxy.$workflow.id,
+					},
+				});
+				subExecutionId = receivedData.executionId;
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
@@ -453,6 +468,7 @@ export class ToolWorkflow implements INodeType {
 			}
 
 			const response: string | undefined = get(receivedData, [
+				'data',
 				0,
 				0,
 				'json',
@@ -502,10 +518,25 @@ export class ToolWorkflow implements INodeType {
 				response = `There was an error: "${executionError.message}"`;
 			}
 
+			let metadata: ITaskMetadata | undefined;
+			if (subExecutionId && subWorkflowId) {
+				metadata = {
+					subExecution: {
+						executionId: subExecutionId,
+						workflowId: subWorkflowId,
+					},
+				};
+			}
+
 			if (executionError) {
-				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+				void this.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 			} else {
-				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+				void this.addOutputData(
+					NodeConnectionType.AiTool,
+					index,
+					[[{ json: { response } }]],
+					metadata,
+				);
 			}
 			return response;
 		};
@@ -529,10 +560,9 @@ export class ToolWorkflow implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = await zodSchemaSandbox.runCode<DynamicZodObject>();
+				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool<typeof zodSchema>({
+				tool = new DynamicStructuredTool({
 					schema: zodSchema,
 					...functionBase,
 				});

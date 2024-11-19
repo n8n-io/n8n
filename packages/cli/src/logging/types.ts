@@ -6,7 +6,7 @@ export type LogLevel = (typeof LOG_LEVELS)[number];
 
 export type LogMetadata = {
 	[key: string]: unknown;
-	scope?: LogScope;
+	scopes?: LogScope[];
 	file?: string;
 	function?: string;
 };

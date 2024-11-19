@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	type ILoadOptionsFunctions,
 	type JsonObject,
@@ -17,6 +17,7 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { additionalOptions } from '../gemini-common/additional-options';
 import { makeErrorFromStatus } from './error-handling';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -124,7 +125,7 @@ export class LmChatGoogleVertex implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
 		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
@@ -170,7 +171,8 @@ export class LmChatGoogleVertex implements INodeType {
 				safetySettings,
 				callbacks: [new N8nLlmTracing(this)],
 				// Handle ChatVertexAI invocation errors to provide better error messages
-				onFailedAttempt: (error: any) => {
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: any) => {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					const customError = makeErrorFromStatus(Number(error?.response?.status), {
 						modelName,
 					});
@@ -180,7 +182,7 @@ export class LmChatGoogleVertex implements INodeType {
 					}
 
 					throw error;
-				},
+				}),
 			});
 
 			return {

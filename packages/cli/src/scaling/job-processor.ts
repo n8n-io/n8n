@@ -1,7 +1,12 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { InstanceSettings, WorkflowExecute } from 'n8n-core';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	ApplicationError,
+	Workflow,
+	ErrorReporterProxy as ErrorReporter,
+} from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 import { Service } from 'typedi';
 
@@ -35,7 +40,7 @@ export class JobProcessor {
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.logger = this.logger.withScope('scaling');
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
@@ -52,6 +57,13 @@ export class JobProcessor {
 				{ level: 'warning' },
 			);
 		}
+
+		/**
+		 * Bull's implicit retry mechanism and n8n's execution recovery mechanism may
+		 * cause a crashed execution to be enqueued. We refrain from processing it,
+		 * until we have reworked both mechanisms to prevent this scenario.
+		 */
+		if (execution.status === 'crashed') return { success: false };
 
 		const workflowId = execution.workflowData.id;
 
@@ -143,6 +155,7 @@ export class JobProcessor {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
+			ErrorReporter.info(`Worker found execution ${executionId} without data`);
 			// Execute all nodes
 			// Can execute without webhook so go on
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode);

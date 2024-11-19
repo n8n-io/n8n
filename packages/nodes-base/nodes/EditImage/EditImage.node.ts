@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, deepCopy } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import getSystemFonts from 'get-system-fonts';
@@ -849,9 +849,9 @@ export class EditImage implements INodeType {
 								typeOptions: {
 									loadOptionsMethod: 'getFonts',
 								},
-								default: 'default',
+								default: '',
 								description:
-									'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -890,9 +890,9 @@ export class EditImage implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getFonts',
 						},
-						default: 'default',
+						default: '',
 						description:
-							'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',
@@ -951,7 +951,6 @@ export class EditImage implements INodeType {
 	methods = {
 		loadOptions: {
 			async getFonts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// @ts-ignore
 				const files = await getSystemFonts();
 				const returnData: INodePropertyOptions[] = [];
 
@@ -975,11 +974,6 @@ export class EditImage implements INodeType {
 						return 1;
 					}
 					return 0;
-				});
-
-				returnData.unshift({
-					name: 'default',
-					value: 'default',
 				});
 
 				return returnData;
@@ -1234,15 +1228,23 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						const font = options.font || operationData.font;
+						let font = (options.font || operationData.font) as string | undefined;
+						if (!font) {
+							const fonts = await getSystemFonts();
+							font = fonts.find((_font) => _font.includes('Arial.'));
+						}
 
-						if (font && font !== 'default') {
-							gmInstance = gmInstance!.font(font as string);
+						if (!font) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Default font not found. Select a font from the options.',
+							);
 						}
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
+							.font(font as string)
 							.drawText(
 								operationData.positionX as number,
 								operationData.positionY as number,
