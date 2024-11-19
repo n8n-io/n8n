@@ -128,6 +128,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
+			endpoint?: string;
 		}>('azureOpenAiApi');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -144,9 +145,15 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
-			azureOpenAIApiInstanceName: credentials.resourceName,
+			// instance name only needed to set base url
+			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
 			azureOpenAIApiKey: credentials.apiKey,
 			azureOpenAIApiVersion: credentials.apiVersion,
+			// azureOpenAIEndpoint and configuration.baseURL are both ignored here
+			// only setting azureOpenAIBasePath worked
+			azureOpenAIBasePath: credentials.endpoint
+				? `${credentials.endpoint}/openai/deployments`
+				: undefined,
 			...options,
 		});
 
