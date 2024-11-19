@@ -723,7 +723,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				});
 			}
 		}
-
+		console.log('connectedNodes', connectedNodes);
 		if (connectedNodes) {
 			const { sourceNode, targetNode } = connectedNodes;
 			adjustNewNodes(sourceNode, targetNode, {
