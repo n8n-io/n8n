@@ -131,7 +131,7 @@ export function getEvents() {
 	];
 
 	return events.map((event: string) => ({
-		name: event === '*' ? '*' : capitalCase(event),
+		name: event === '*' ? '*' : capitalCase(event).replace('Linkedin', 'LinkedIn'),
 		value: event,
 	}));
 }

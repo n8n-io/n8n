@@ -12,7 +12,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';

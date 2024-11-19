@@ -1,7 +1,6 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore } from '@vueuse/core';
 import { useDebounce } from '@/composables/useDebounce';
-import { sanitizeIfString } from '@/utils/htmlUtils';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
@@ -15,7 +14,7 @@ export function useClipboard(
 	const { debounce } = useDebounce();
 	const { copy, copied, isSupported, text } = useClipboardCore({ legacy: true });
 
-	const ignoreClasses = ['el-messsage-box', 'ignore-key-press'];
+	const ignoreClasses = ['el-messsage-box', 'ignore-key-press-canvas'];
 	const initialized = ref(false);
 
 	const onPasteCallback = ref<ClipboardEventFn | null>(options.onPaste || null);
@@ -43,7 +42,7 @@ export function useClipboard(
 
 		const clipboardData = event.clipboardData;
 		if (clipboardData !== null) {
-			const clipboardValue = sanitizeIfString(clipboardData.getData('text/plain'));
+			const clipboardValue = clipboardData.getData('text/plain');
 			onPasteCallback.value(clipboardValue, event);
 		}
 	}

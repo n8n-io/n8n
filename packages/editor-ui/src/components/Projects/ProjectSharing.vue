@@ -4,6 +4,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import type { RoleMap } from '@/types/roles.types';
+import { sortByProperty } from '@/utils/sortUtils';
 
 const locale = useI18n();
 
@@ -26,7 +27,7 @@ const emit = defineEmits<{
 	projectRemoved: [value: ProjectSharingData];
 }>();
 
-const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');
+const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
 const filter = ref('');
 const selectPlaceholder = computed(
 	() => props.placeholder ?? locale.baseText('projects.sharing.select.placeholder'),
@@ -35,13 +36,14 @@ const noDataText = computed(
 	() => props.emptyOptionsText ?? locale.baseText('projects.sharing.noMatchingUsers'),
 );
 const filteredProjects = computed(() =>
-	props.projects
-		.filter(
+	sortByProperty(
+		'name',
+		props.projects.filter(
 			(project) =>
 				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
 				(Array.isArray(model.value) ? !model.value?.find((p) => p.id === project.id) : true),
-		)
-		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
+		),
+	),
 );
 
 const setFilter = (query: string) => {

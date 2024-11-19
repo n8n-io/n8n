@@ -11,6 +11,7 @@ export const getAddProjectButton = () =>
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
+export const getProjectTabExecutions = () => getProjectTabs().filter('a[href$="/executions"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
 export const getProjectSettingsNameInput = () =>
 	cy.getByTestId('project-settings-name-input').find('input');
@@ -32,8 +33,6 @@ export const addProjectMember = (email: string, role?: string) => {
 	}
 };
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
-export const getResourceMoveConfirmModal = () =>
-	cy.getByTestId('project-move-resource-confirm-modal');
 export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-modal-select');
 
 export function createProject(name: string) {

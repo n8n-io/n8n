@@ -11,7 +11,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
@@ -24,26 +23,21 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 	NEW_ASSISTANT_SESSION_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
-	CloudUpdateLinkSourceType,
-	IFakeDoorLocation,
 	INodeUi,
-	UTMCampaign,
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
@@ -51,16 +45,12 @@ import type {
 	NotificationOptions,
 	ModalState,
 	ModalKey,
-	IFakeDoor,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
 import * as curlParserApi from '@/api/curlHelper';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { hasPermission } from '@/utils/rbac/permissions';
-import { useTelemetryStore } from '@/stores/telemetry.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
@@ -75,6 +65,7 @@ import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 
 let savedTheme: ThemeOption = 'system';
+
 try {
 	const value = getThemeOverride();
 	if (isValidTheme(value)) {
@@ -112,7 +103,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 				NPS_SURVEY_MODAL_KEY,
 				VERSIONS_MODAL_KEY,
-				WORKFLOW_LM_CHAT_MODAL_KEY,
 				WORKFLOW_SETTINGS_MODAL_KEY,
 				WORKFLOW_SHARE_MODAL_KEY,
 				WORKFLOW_ACTIVE_MODAL_KEY,
@@ -126,8 +116,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_HISTORY_VERSION_RESTORE,
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
-				PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
+				COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -160,18 +150,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const modalStack = ref<string[]>([]);
 	const sidebarMenuCollapsed = ref<boolean>(true);
 	const currentView = ref<string>('');
-	const fakeDoorFeatures = ref<IFakeDoor[]>([
-		{
-			id: FAKE_DOOR_FEATURES.SSO,
-			featureName: 'fakeDoor.settings.sso.name',
-			icon: 'key',
-			actionBoxTitle: 'fakeDoor.settings.sso.actionBox.title',
-			actionBoxDescription: 'fakeDoor.settings.sso.actionBox.description',
-			linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sso',
-			uiLocations: ['settings/users'],
-		},
-	]);
-
 	const draggable = ref<Draggable>({
 		isDragging: false,
 		type: '',
@@ -192,21 +170,18 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannersHeight = ref<number>(0);
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const isCreateNodeActive = ref<boolean>(false);
 
 	const appGridWidth = ref<number>(0);
 
 	// Last interacted with - Canvas v2 specific
-	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
+	const lastInteractedWithNodeConnection = ref<Connection | undefined>();
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
-	const lastInteractedWithNodeId = ref<string | null>(null);
-	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
+	const lastInteractedWithNodeId = ref<string | undefined>();
+	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
-	const telemetryStore = useTelemetryStore();
-	const cloudPlanStore = useCloudPlanStore();
 	const userStore = useUsersStore();
 
 	const appliedTheme = computed(() => {
@@ -224,11 +199,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const contextBasedTranslationKeys = computed(() => {
 		const deploymentType = settingsStore.deploymentType;
 
-		let contextKey: '' | '.cloud' | '.desktop' = '';
+		let contextKey: '' | '.cloud' = '';
 		if (deploymentType === 'cloud') {
 			contextKey = '.cloud';
-		} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
-			contextKey = '.desktop';
 		}
 
 		return {
@@ -307,21 +280,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}, {}),
 	);
 
-	const fakeDoorsByLocation = computed(() =>
-		fakeDoorFeatures.value.reduce((acc: { [uiLocation: string]: IFakeDoor }, fakeDoor) => {
-			fakeDoor.uiLocations.forEach((uiLocation: IFakeDoorLocation) => {
-				acc[uiLocation] = fakeDoor;
-			});
-			return acc;
-		}, {}),
-	);
-
-	const fakeDoorsById = computed(() =>
-		fakeDoorFeatures.value.reduce((acc: { [id: string]: IFakeDoor }, fakeDoor) => {
-			acc[fakeDoor.id.toString()] = fakeDoor;
-			return acc;
-		}, {}),
-	);
+	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
 	const isReadOnlyView = computed(() => {
 		return ![
@@ -557,33 +516,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return parameters;
 	};
 
-	const goToUpgrade = async (
-		source: CloudUpdateLinkSourceType,
-		utm_campaign: UTMCampaign,
-		mode: 'open' | 'redirect' = 'open',
-	) => {
-		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;
-		const { executionsLeft, workflowsLeft } = usageLeft;
-		const deploymentType = settingsStore.deploymentType;
-
-		telemetryStore.track('User clicked upgrade CTA', {
-			source,
-			isTrial: userIsTrialing,
-			deploymentType,
-			trialDaysLeft,
-			executionsLeft,
-			workflowsLeft,
-		});
-
-		const upgradeLink = await generateUpgradeLinkUrl(source, utm_campaign, deploymentType);
-
-		if (mode === 'open') {
-			window.open(upgradeLink, '_blank');
-		} else {
-			location.href = upgradeLink;
-		}
-	};
-
 	const removeBannerFromStack = (name: BannerName) => {
 		bannerStack.value = bannerStack.value.filter((bannerName) => bannerName !== name);
 	};
@@ -622,10 +554,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	function resetLastInteractedWith() {
-		lastInteractedWithNodeConnection.value = null;
+		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
-		lastInteractedWithNodeId.value = null;
-		lastCancelledConnectionPosition.value = null;
+		lastInteractedWithNodeId.value = undefined;
+		lastCancelledConnectionPosition.value = undefined;
 	}
 
 	return {
@@ -636,7 +568,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActiveById,
-		fakeDoorsByLocation,
 		isReadOnlyView,
 		isActionActive,
 		activeActions,
@@ -659,16 +590,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewMoveInProgress,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
-		isCreateNodeActive,
 		sidebarMenuCollapsed,
-		fakeDoorFeatures,
 		bannerStack,
 		theme,
 		modalsById,
 		currentView,
 		isAnyModalOpen,
-		fakeDoorsById,
 		pendingNotificationsForViews,
+		activeModals,
 		setTheme,
 		setMode,
 		setActiveId,
@@ -695,7 +624,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setCurlCommand,
 		toggleSidebarMenuCollapse,
 		getCurlToJson,
-		goToUpgrade,
 		removeBannerFromStack,
 		dismissBanner,
 		updateBannersHeight,
@@ -746,35 +674,4 @@ export const listenForModalChanges = (opts: {
 			}
 		});
 	});
-};
-
-export const generateUpgradeLinkUrl = async (
-	source: string,
-	utm_campaign: string,
-	deploymentType: string,
-) => {
-	let linkUrl = '';
-
-	const searchParams = new URLSearchParams();
-
-	const cloudPlanStore = useCloudPlanStore();
-
-	if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
-		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-		const { code } = await cloudPlanStore.getAutoLoginCode();
-		linkUrl = `https://${adminPanelHost}/login`;
-		searchParams.set('code', code);
-		searchParams.set('returnPath', '/account/change-plan');
-	} else {
-		linkUrl = N8N_PRICING_PAGE_URL;
-	}
-
-	if (utm_campaign) {
-		searchParams.set('utm_campaign', utm_campaign);
-	}
-
-	if (source) {
-		searchParams.set('source', source);
-	}
-	return `${linkUrl}?${searchParams.toString()}`;
 };

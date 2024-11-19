@@ -1,12 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
-import { strict as assert } from 'node:assert';
 import { Service } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -18,7 +16,6 @@ type DenialPolicy = Exclude<Policy, 'any'>;
 export class SubworkflowPolicyChecker {
 	constructor(
 		private readonly logger: Logger,
-		private readonly license: License,
 		private readonly ownershipService: OwnershipService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly accessService: AccessService,
@@ -70,11 +67,9 @@ export class SubworkflowPolicyChecker {
 
 		const owner = await this.ownershipService.getPersonalProjectOwnerCached(subworkflowProject.id);
 
-		assert(owner !== null); // only `null` if not personal
-
 		return {
 			hasReadAccess,
-			ownerName: owner.firstName + ' ' + owner.lastName,
+			ownerName: owner ? owner.firstName + ' ' + owner.lastName : 'No owner (team project)',
 		};
 	}
 
@@ -82,10 +77,8 @@ export class SubworkflowPolicyChecker {
 	 * Find the subworkflow's caller policy.
 	 */
 	private findPolicy(subworkflow: Workflow): WorkflowSettings.CallerPolicy {
-		if (!this.license.isSharingEnabled()) return 'workflowsFromSameOwner';
-
 		return (
-			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
+			subworkflow.settings.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
 		);
 	}
 
@@ -139,7 +132,6 @@ export class SubworkflowPolicyChecker {
 			reason: this.denialReasons[policy],
 			parentWorkflowId,
 			subworkflowId,
-			isSharingEnabled: this.license.isSharingEnabled(),
 		});
 	}
 }

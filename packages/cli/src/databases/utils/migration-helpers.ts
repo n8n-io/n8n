@@ -9,7 +9,7 @@ import { Container } from 'typedi';
 import { inTest } from '@/constants';
 import { createSchemaBuilder } from '@/databases/dsl';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@/databases/types';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';

@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type { User } from '@/databases/entities/user';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { EventService } from '@/events/event.service';
-import type { UserRequest } from '@/requests';
+import type { AuthenticatedRequest } from '@/requests';
 import type { ProjectService } from '@/services/project.service';
 
 import { UsersController } from '../users.controller';
@@ -33,15 +33,18 @@ describe('UsersController', () => {
 
 	describe('changeGlobalRole', () => {
 		it('should emit event user-changed-role', async () => {
-			const request = mock<UserRequest.ChangeRole>({
+			const request = mock<AuthenticatedRequest>({
 				user: { id: '123' },
-				params: { id: '456' },
-				body: { newRoleName: 'global:member' },
 			});
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: '456' }));
+			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: '456' }));
 			projectService.getUserOwnedOrAdminProjects.mockResolvedValue([]);
 
-			await controller.changeGlobalRole(request);
+			await controller.changeGlobalRole(
+				request,
+				mock(),
+				mock({ newRoleName: 'global:member' }),
+				'456',
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('user-changed-role', {
 				userId: '123',

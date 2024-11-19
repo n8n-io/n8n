@@ -7,7 +7,7 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -33,6 +33,8 @@ export class ConcurrencyControlService {
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
 	) {
+		this.logger = this.logger.scoped('concurrency');
+
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 
 		if (this.productionLimit === 0) {
@@ -45,7 +47,6 @@ export class ConcurrencyControlService {
 
 		if (this.productionLimit === -1 || config.getEnv('executions.mode') === 'queue') {
 			this.isEnabled = false;
-			this.log('Service disabled');
 			return;
 		}
 
@@ -64,13 +65,12 @@ export class ConcurrencyControlService {
 		});
 
 		this.productionQueue.on('execution-throttled', ({ executionId }) => {
-			this.log('Execution throttled', { executionId });
+			this.logger.debug('Execution throttled', { executionId });
 			this.eventService.emit('execution-throttled', { executionId });
 		});
 
 		this.productionQueue.on('execution-released', async (executionId) => {
-			this.log('Execution released', { executionId });
-			await this.executionRepository.resetStartedAt(executionId);
+			this.logger.debug('Execution released', { executionId });
 		});
 	}
 
@@ -144,9 +144,9 @@ export class ConcurrencyControlService {
 	// ----------------------------------
 
 	private logInit() {
-		this.log('Enabled');
+		this.logger.debug('Enabled');
 
-		this.log(
+		this.logger.debug(
 			[
 				'Production execution concurrency is',
 				this.productionLimit === -1 ? 'unlimited' : 'limited to ' + this.productionLimit.toString(),
@@ -169,10 +169,6 @@ export class ConcurrencyControlService {
 		if (mode === 'webhook' || mode === 'trigger') return this.productionLimit === -1;
 
 		throw new UnknownExecutionModeError(mode);
-	}
-
-	private log(message: string, meta?: object) {
-		this.logger.debug(['[Concurrency Control]', message].join(' '), meta);
 	}
 
 	private shouldReport(capacity: number) {

@@ -1,15 +1,11 @@
 import { validate } from 'class-validator';
 
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type {
-	UserRoleChangePayload,
-	UserSettingsUpdatePayload,
-	UserUpdatePayload,
-} from '@/requests';
 
 import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
@@ -17,13 +13,11 @@ import { BadRequestError } from './errors/response-errors/bad-request.error';
 export async function validateEntity(
 	entity:
 		| WorkflowEntity
+		| TestDefinition
 		| CredentialsEntity
 		| TagEntity
 		| AnnotationTagEntity
 		| User
-		| UserUpdatePayload
-		| UserRoleChangePayload
-		| UserSettingsUpdatePayload
 		| PersonalizationSurveyAnswersV4,
 ): Promise<void> {
 	const errors = await validate(entity);

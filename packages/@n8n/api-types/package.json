@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.2.0",
+  "version": "0.6.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -20,6 +21,12 @@
     "dist/**/*"
   ],
   "devDependencies": {
+    "@n8n/config": "workspace:*",
     "n8n-workflow": "workspace:*"
+  },
+  "dependencies": {
+    "xss": "catalog:",
+    "zod": "catalog:",
+    "zod-class": "0.0.15"
   }
 }

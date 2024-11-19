@@ -78,14 +78,15 @@ export class RssFeedReadTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(feed.items[0])];
 			}
 			feed.items.forEach((item) => {
-				if (Date.parse(item.isoDate as string) > dateToCheck) {
+				if (item.isoDate && Date.parse(item.isoDate) > dateToCheck) {
 					returnData.push(item);
 				}
 			});
 
 			if (feed.items.length) {
-				const maxIsoDate = Math.max(...feed.items.map(({ isoDate }) => Date.parse(isoDate!)));
-				pollData.lastItemDate = new Date(maxIsoDate).toISOString();
+				pollData.lastItemDate = feed.items.reduce((a, b) =>
+					new Date(a.isoDate!) > new Date(b.isoDate!) ? a : b,
+				).isoDate;
 			}
 		}
 

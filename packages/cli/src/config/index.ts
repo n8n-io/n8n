@@ -1,6 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
-import dotenv from 'dotenv';
 import { flatten } from 'flat';
 import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
@@ -22,8 +21,6 @@ if (inE2ETests) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	process.env.N8N_SECURE_COOKIE = 'false';
-} else {
-	dotenv.config();
 }
 
 // Load schema after process.env has been overwritten
@@ -125,7 +122,7 @@ if (executionProcess === 'own') {
 }
 
 setGlobalState({
-	defaultTimezone: config.getEnv('generic.timezone'),
+	defaultTimezone: Container.get(GlobalConfig).generic.timezone,
 });
 
 // eslint-disable-next-line import/no-default-export

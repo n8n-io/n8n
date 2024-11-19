@@ -25,7 +25,6 @@ import {
 	TELECOMS_INDUSTRY,
 	OTHER_AUTOMATION_GOAL,
 	COMPANY_TYPE_KEY,
-	EMAIL_KEY,
 	SAAS_COMPANY_TYPE,
 	ECOMMERCE_COMPANY_TYPE,
 	MSP_INDUSTRY,
@@ -81,11 +80,11 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus, createFormEventBus } from 'n8n-design-system/utils';
@@ -93,6 +92,8 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
+import { useUIStore } from '@/stores/ui.store';
+import { getResourcePermissions } from '@/permissions';
 
 const SURVEY_VERSION = 'v4';
 
@@ -102,25 +103,18 @@ const formBus = createFormEventBus();
 const { showError } = useToast();
 const i18n = useI18n();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const posthogStore = usePostHog();
 const route = useRoute();
 const router = useRouter();
+const uiStore = useUIStore();
 
 const formValues = ref<Record<string, string>>({});
 const isSaving = ref(false);
-
+const userPermissions = computed(() =>
+	getResourcePermissions(usersStore.currentUser?.globalScopes),
+);
 const survey = computed<IFormInputs>(() => [
-	{
-		name: EMAIL_KEY,
-		properties: {
-			label: i18n.baseText('personalizationModal.yourEmailAddress'),
-			type: 'text',
-			placeholder: i18n.baseText('personalizationModal.email'),
-		},
-		shouldDisplay: () => settingsStore.isDesktopDeployment && !usersStore.currentUser?.firstName,
-	},
 	{
 		name: COMPANY_TYPE_KEY,
 		properties: {
@@ -557,8 +551,7 @@ const onSave = () => {
 	formBus.emit('submit');
 };
 
-const closeDialog = () => {
-	modalBus.emit('close');
+const closeCallback = () => {
 	const isPartOfOnboardingExperiment =
 		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
 		MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
@@ -566,6 +559,21 @@ const closeDialog = () => {
 	// we try again after closing the modal
 	if (route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
 		void router.replace({ name: VIEWS.HOMEPAGE });
+	}
+};
+
+const closeDialog = () => {
+	modalBus.emit('close');
+
+	if (userPermissions.value.community.register) {
+		uiStore.openModalWithData({
+			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: {
+				closeCallback,
+			},
+		});
+	} else {
+		closeCallback();
 	}
 };
 
@@ -597,8 +605,8 @@ const onSubmit = async (values: IPersonalizationLatestVersion) => {
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="$locale.baseText('personalizationModal.customizeN8n')"
-		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
+		:title="i18n.baseText('personalizationModal.customizeN8n')"
+		:subtitle="i18n.baseText('personalizationModal.theseQuestionsHelpUs')"
 		:center-title="true"
 		:show-close="false"
 		:event-bus="modalBus"
@@ -625,7 +633,7 @@ const onSubmit = async (values: IPersonalizationLatestVersion) => {
 			<div>
 				<n8n-button
 					:loading="isSaving"
-					:label="$locale.baseText('personalizationModal.getStarted')"
+					:label="i18n.baseText('personalizationModal.getStarted')"
 					float="right"
 					@click="onSave"
 				/>

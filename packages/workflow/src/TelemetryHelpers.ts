@@ -24,6 +24,8 @@ import type {
 	IWorkflowBase,
 	INodeTypes,
 	IDataObject,
+	IRunData,
+	ITaskData,
 } from './Interfaces';
 import { getNodeParameters } from './NodeHelpers';
 
@@ -131,6 +133,21 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	}
 }
 
+function getNumberOfItemsInRuns(runs: ITaskData[]): number {
+	return runs.reduce((total, run) => {
+		const data = run.data ?? {};
+		let count = 0;
+		Object.keys(data).forEach((type) => {
+			const conn = data[type] ?? [];
+			conn.forEach((branch) => {
+				count += (branch ?? []).length;
+			});
+		});
+
+		return total + count;
+	}, 0);
+}
+
 export function generateNodesGraph(
 	workflow: Partial<IWorkflowBase>,
 	nodeTypes: INodeTypes,
@@ -138,8 +155,10 @@ export function generateNodesGraph(
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
 		isCloudDeployment?: boolean;
+		runData?: IRunData;
 	},
 ): INodesGraphResult {
+	const { runData } = options ?? {};
 	const nodeGraph: INodesGraph = {
 		node_types: [],
 		node_connections: [],
@@ -199,6 +218,13 @@ export function generateNodesGraph(
 			version: node.typeVersion,
 			position: node.position,
 		};
+
+		if (runData?.[node.name]) {
+			const runs = runData[node.name] ?? [];
+			nodeItem.runs = runs.length;
+
+			nodeItem.items_total = getNumberOfItemsInRuns(runs);
+		}
 
 		if (options?.sourceInstanceId) {
 			nodeItem.src_instance_id = options.sourceInstanceId;

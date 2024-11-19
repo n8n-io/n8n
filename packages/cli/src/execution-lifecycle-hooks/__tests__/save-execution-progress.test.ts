@@ -9,7 +9,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { saveExecutionProgress } from '@/execution-lifecycle-hooks/save-execution-progress';
 import * as fnModule from '@/execution-lifecycle-hooks/to-save-settings';
 import type { IExecutionResponse } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { mockInstance } from '@test/mocking';
 
 mockInstance(Logger);
@@ -57,7 +57,7 @@ test('should ignore on leftover async call', async () => {
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 });
 
-test('should update execution', async () => {
+test('should update execution when saving progress is enabled', async () => {
 	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
 		...commonSettings,
 		progress: true,

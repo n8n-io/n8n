@@ -5,9 +5,9 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
+import type { DefaultEdge, Node, NodeProps, Position, OnConnectStartParams } from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
-import type { Ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
 import type { EventBus } from 'n8n-design-system';
 
@@ -26,13 +26,14 @@ export const canvasConnectionModes = [
 export type CanvasConnectionPort = {
 	type: CanvasConnectionPortType;
 	required?: boolean;
+	maxConnections?: number;
 	index: number;
 	label?: string;
 };
 
 export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
 	handleId: string;
-	isConnected: boolean;
+	connectionsCount: number;
 	isConnecting: boolean;
 	position: Position;
 	offset?: { top?: string; left?: string };
@@ -123,7 +124,9 @@ export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
 export type CanvasConnectionCreateData = {
 	source: string;
+	sourceHandle: string;
 	target: string;
+	targetHandle: string;
 	data: {
 		source: PartialBy<IConnection, 'node'>;
 		target: PartialBy<IConnection, 'node'>;
@@ -131,6 +134,7 @@ export type CanvasConnectionCreateData = {
 };
 
 export interface CanvasInjectionData {
+	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 }
 
@@ -165,13 +169,16 @@ export interface CanvasNodeHandleInjectionData {
 	mode: Ref<CanvasConnectionMode>;
 	type: Ref<NodeConnectionType>;
 	index: Ref<number>;
-	isConnected: Ref<boolean | undefined>;
+	isRequired: Ref<boolean | undefined>;
+	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 
-export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
+export type ConnectStartEvent = {
+	event?: MouseEvent | undefined;
+} & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
 
@@ -184,4 +191,11 @@ export type ExecutionOutputMap = {
 	[connectionType: string]: {
 		[outputIndex: string]: ExecutionOutputMapData;
 	};
+};
+
+export type BoundingBox = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 };

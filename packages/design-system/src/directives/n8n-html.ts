@@ -24,6 +24,7 @@ const configuredSanitize = (html: string) =>
 			input: ['type', 'id', 'checked'],
 			code: ['class'],
 			a: sanitize.defaults.allowedAttributes.a.concat(['data-*']),
+			div: ['class'],
 		},
 	});
 

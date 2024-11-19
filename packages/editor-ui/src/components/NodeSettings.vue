@@ -22,11 +22,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import {
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	CUSTOM_NODES_DOCS_URL,
-	SHOULD_CLEAR_NODE_OUTPUTS,
-} from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -47,10 +43,11 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
+import { ProjectTypes } from '@/types/projects.types';
+import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 
 const props = withDefaults(
 	defineProps<{
@@ -93,7 +90,6 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const { showMessage } = useToast();
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -117,17 +113,29 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
-const isReadOnly = computed(() => props.readOnly || props.foreignCredentials.length > 0);
-
+const currentWorkflowInstance = computed(() => workflowsStore.getCurrentWorkflow());
+const currentWorkflow = computed(() =>
+	workflowsStore.getWorkflowById(currentWorkflowInstance.value.id),
+);
+const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
+const isHomeProjectTeam = computed(
+	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
+);
+const isReadOnly = computed(
+	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+);
 const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = workflow.getNode(node.value.name);
-		const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, props.nodeType);
+		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
+		const inputs = NodeHelpers.getNodeInputs(
+			currentWorkflowInstance.value,
+			workflowNode!,
+			props.nodeType,
+		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
 		if (!inputNames.includes(NodeConnectionType.Main) && !isTriggerNode.value) {
@@ -194,8 +202,6 @@ const parametersNoneSetting = computed(() =>
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
-
-const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 
 const usedCredentials = computed(() =>
 	Object.values(workflowsStore.usedCredentials).filter((credential) =>
@@ -472,20 +478,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			return;
 		}
 
-		if (
-			parameterData.type &&
-			workflowsStore.nodeHasOutputConnection(_node.name) &&
-			SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
-			SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
-		) {
-			workflowsStore.removeAllNodeConnection(_node, { preserveInputConnections: true });
-			showMessage({
-				type: 'warning',
-				title: i18n.baseText('nodeSettings.outputCleared.title'),
-				message: i18n.baseText('nodeSettings.outputCleared.message'),
-			});
-		}
-
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType.properties,
@@ -554,6 +546,14 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			name: _node.name,
 			value: nodeParameters,
 		};
+
+		const connections = workflowsStore.allConnections;
+
+		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
+
+		if (updatedConnections) {
+			workflowsStore.setConnections(updatedConnections, true);
+		}
 
 		workflowsStore.setNodeParameters(updateInformation);
 
@@ -702,7 +702,8 @@ const populateSettings = () => {
 						},
 					],
 					default: 'stopWorkflow',
-					noDataExpression: i18n.baseText('nodeSettings.onError.description'),
+					description: i18n.baseText('nodeSettings.onError.description'),
+					noDataExpression: true,
 				},
 			] as INodeProperties[]),
 		);
@@ -962,6 +963,7 @@ onBeforeUnmount(() => {
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>
@@ -979,7 +981,7 @@ onBeforeUnmount(() => {
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
 				<n8n-text size="large" color="text-dark" bold>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
 				</n8n-text>
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
@@ -1002,7 +1004,7 @@ onBeforeUnmount(() => {
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
 					@click="onMissingNodeLearnMoreLinkClick"
 				>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
 			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
@@ -1010,16 +1012,16 @@ onBeforeUnmount(() => {
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
 						target="_blank"
-						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
 			</i18n-t>
 		</div>
 		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
 			<n8n-notice
-				v-if="hasForeignCredential"
+				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
-					$locale.baseText('nodeSettings.hasForeignCredential', {
+					i18n.baseText('nodeSettings.hasForeignCredential', {
 						interpolate: { owner: credentialOwnerName },
 					})
 				"
@@ -1051,7 +1053,7 @@ onBeforeUnmount(() => {
 				</ParameterInputList>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
 
@@ -1062,7 +1064,7 @@ onBeforeUnmount(() => {
 				>
 					<n8n-notice
 						:content="
-							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
+							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
 							})
 						"
@@ -1092,7 +1094,7 @@ onBeforeUnmount(() => {
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
-						$locale.baseText('nodeSettings.nodeVersion', {
+						i18n.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
 								version: (node.typeVersion ?? latestVersion).toString(),
@@ -1147,10 +1149,10 @@ onBeforeUnmount(() => {
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-s);
 		font-size: var(--font-size-l);
 		display: flex;
+		justify-content: space-between;
 
 		.node-name {
 			padding-top: var(--spacing-5xs);
-			flex-grow: 1;
 		}
 	}
 

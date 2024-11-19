@@ -46,6 +46,20 @@ describe('RssFeedReadTrigger', () => {
 			expect(pollData.lastItemDate).toEqual(newItemDate);
 		});
 
+		it('should gracefully handle missing timestamps', async () => {
+			const pollData = mock();
+			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
+			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
+			(Parser.prototype.parseURL as jest.Mock).mockResolvedValue({ items: [{}, {}] });
+
+			const result = await node.poll.call(pollFunctions);
+
+			expect(result).toEqual(null);
+			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
+			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
+			expect(Parser.prototype.parseURL).toHaveBeenCalledWith(feedUrl);
+		});
+
 		it('should return null if the feed is empty', async () => {
 			const pollData = mock({ lastItemDate });
 			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);

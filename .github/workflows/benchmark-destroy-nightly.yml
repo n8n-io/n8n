@@ -2,12 +2,16 @@ name: Destroy Benchmark Env
 
 on:
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 5 * * *'
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
+
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
 
 jobs:
   build:

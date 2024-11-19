@@ -22,3 +22,7 @@ export function convertToDisplayDate(fullDate: Date | string | number): {
 	const [date, time] = formattedDate.split('#');
 	return { date, time };
 }
+
+export const toDayMonth = (fullDate: Date | string) => dateformat(fullDate, 'd mmm');
+
+export const toTime = (fullDate: Date | string) => dateformat(fullDate, 'HH:MM:ss');

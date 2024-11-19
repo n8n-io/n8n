@@ -23,7 +23,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';

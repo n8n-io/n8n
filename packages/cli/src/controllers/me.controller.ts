@@ -1,43 +1,29 @@
+import {
+	PasswordUpdateRequestDto,
+	SettingsUpdateRequestDto,
+	UserUpdateRequestDto,
+} from '@n8n/api-types';
 import { plainToInstance } from 'class-transformer';
-import { randomBytes } from 'crypto';
-import { type RequestHandler, Response } from 'express';
-import validator from 'validator';
+import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Body, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { PublicUser } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
-import { isApiEnabled } from '@/public-api';
-import {
-	AuthenticatedRequest,
-	MeRequest,
-	UserSettingsUpdatePayload,
-	UserUpdatePayload,
-} from '@/requests';
+import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-
-export const API_KEY_PREFIX = 'n8n_api_';
-
-export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
-	if (isApiEnabled()) {
-		next();
-	} else {
-		res.status(404).end();
-	}
-};
-
 @RestController('/me')
 export class MeController {
 	constructor(
@@ -55,30 +41,14 @@ export class MeController {
 	 * Update the logged-in user's properties, except password.
 	 */
 	@Patch('/')
-	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
+	async updateCurrentUser(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body payload: UserUpdateRequestDto,
+	): Promise<PublicUser> {
 		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
 
-		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
-
 		const { email } = payload;
-		if (!email) {
-			this.logger.debug('Request to update user email failed because of missing email in payload', {
-				userId,
-				payload,
-			});
-			throw new BadRequestError('Email is mandatory');
-		}
-
-		if (!validator.isEmail(email)) {
-			this.logger.debug('Request to update user email failed because of invalid email in payload', {
-				userId,
-				invalidEmail: email,
-			});
-			throw new BadRequestError('Invalid email address');
-		}
-
-		await validateEntity(payload);
-
 		const isEmailBeingChanged = email !== currentEmail;
 
 		// If SAML is enabled, we don't allow the user to change their email address
@@ -134,9 +104,13 @@ export class MeController {
 	 * Update the logged-in user's password.
 	 */
 	@Patch('/password', { rateLimit: true })
-	async updatePassword(req: MeRequest.Password, res: Response) {
+	async updatePassword(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body payload: PasswordUpdateRequestDto,
+	) {
 		const { user } = req;
-		const { currentPassword, newPassword, mfaCode } = req.body;
+		const { currentPassword, newPassword, mfaCode } = payload;
 
 		// If SAML is enabled, we don't allow the user to change their password
 		if (isSamlLicensedAndEnabled()) {
@@ -232,51 +206,14 @@ export class MeController {
 	}
 
 	/**
-	 * Creates an API Key
-	 */
-	@Post('/api-key', { middlewares: [isApiEnabledMiddleware] })
-	async createAPIKey(req: AuthenticatedRequest) {
-		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
-
-		await this.userService.update(req.user.id, { apiKey });
-
-		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
-
-		return { apiKey };
-	}
-
-	/**
-	 * Get an API Key
-	 */
-	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
-	async getAPIKey(req: AuthenticatedRequest) {
-		const apiKey = this.redactApiKey(req.user.apiKey);
-		return { apiKey };
-	}
-
-	/**
-	 * Deletes an API Key
-	 */
-	@Delete('/api-key', { middlewares: [isApiEnabledMiddleware] })
-	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userService.update(req.user.id, { apiKey: null });
-
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
-
-		return { success: true };
-	}
-
-	/**
 	 * Update the logged-in user's settings.
 	 */
 	@Patch('/settings')
-	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
-			excludeExtraneousValues: true,
-		});
-
-		await validateEntity(payload);
-
+	async updateCurrentUserSettings(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: SettingsUpdateRequestDto,
+	): Promise<User['settings']> {
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);
@@ -287,15 +224,5 @@ export class MeController {
 		});
 
 		return user.settings;
-	}
-
-	private redactApiKey(apiKey: string | null) {
-		if (!apiKey) return;
-		const keepLength = 5;
-		return (
-			API_KEY_PREFIX +
-			apiKey.slice(API_KEY_PREFIX.length, API_KEY_PREFIX.length + keepLength) +
-			'*'.repeat(apiKey.length - API_KEY_PREFIX.length - keepLength)
-		);
 	}
 }

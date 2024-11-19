@@ -1,4 +1,5 @@
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type router from 'vue-router';
@@ -10,6 +11,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: () => ({
 			params: {},
 		}),
+		useRouter: vi.fn(),
 	};
 });
 
@@ -17,7 +19,8 @@ const renderComponent = createComponentRenderer(ResourcesListLayout);
 
 describe('ResourcesListLayout', () => {
 	beforeEach(() => {
-		setActivePinia(createPinia());
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
 	});
 
 	it('should render loading skeleton', () => {

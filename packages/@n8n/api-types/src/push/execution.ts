@@ -1,4 +1,4 @@
-import type { IRun, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 
 type ExecutionStarted = {
 	type: 'executionStarted';
@@ -12,12 +12,17 @@ type ExecutionStarted = {
 	};
 };
 
+type ExecutionWaiting = {
+	type: 'executionWaiting';
+	data: {
+		executionId: string;
+	};
+};
+
 type ExecutionFinished = {
 	type: 'executionFinished';
 	data: {
 		executionId: string;
-		data: IRun;
-		retryOf?: string;
 	};
 };
 
@@ -47,6 +52,7 @@ type NodeExecuteAfter = {
 
 export type ExecutionPushMessage =
 	| ExecutionStarted
+	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
 	| NodeExecuteBefore

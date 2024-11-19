@@ -25,6 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
+
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
 
@@ -100,6 +101,16 @@ async function fetchExecution() {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 	}
+
+	if (!currentExecution.value) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('openExecution.missingExeuctionId.title'),
+			message: i18n.baseText('openExecution.missingExeuctionId.message'),
+		});
+
+		return;
+	}
 }
 
 function onDocumentVisibilityChange() {
@@ -113,7 +124,7 @@ function onDocumentVisibilityChange() {
 async function initializeRoute() {
 	if (route.name === VIEWS.EXECUTION_HOME && executions.value.length > 0 && workflow.value) {
 		await router
-			.push({
+			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.value.id, executionId: executions.value[0].id },
 			})

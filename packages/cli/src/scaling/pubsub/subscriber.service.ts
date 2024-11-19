@@ -1,11 +1,15 @@
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
+import debounce from 'lodash/debounce';
+import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { Logger } from '@/logger';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logging/logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
-import type { ScalingPubSubChannel } from './pubsub.types';
+import type { PubSub } from './pubsub.types';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
@@ -14,18 +18,32 @@ import type { ScalingPubSubChannel } from './pubsub.types';
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
 
-	// #region Lifecycle
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
+		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
+		this.logger = this.logger.scoped(['scaling', 'pubsub']);
+
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
-		this.client.on('error', (error) => this.logger.error(error.message));
+		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
+			const eventName = 'command' in msg ? msg.command : msg.response;
+			this.eventService.emit(eventName, msg.payload);
+		};
+
+		const debouncedHandlerFn = debounce(handlerFn, 300);
+
+		this.client.on('message', (channel: PubSub.Channel, str) => {
+			const msg = this.parseMessage(str, channel);
+			if (!msg) return;
+			if (msg.debounce) debouncedHandlerFn(msg);
+			else handlerFn(msg);
+		});
 	}
 
 	getClient() {
@@ -37,24 +55,47 @@ export class Subscriber {
 		this.client.disconnect();
 	}
 
-	// #endregion
-
-	// #region Subscribing
-
-	async subscribe(channel: ScalingPubSubChannel) {
+	async subscribe(channel: PubSub.Channel) {
 		await this.client.subscribe(channel, (error) => {
 			if (error) {
-				this.logger.error('Failed to subscribe to channel', { channel, cause: error });
+				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
 				return;
 			}
 
-			this.logger.debug('Subscribed to channel', { channel });
+			this.logger.debug(`Subscribed to channel ${channel}`);
 		});
 	}
 
-	addMessageHandler(handlerFn: (channel: string, msg: string) => void) {
-		this.client.on('message', handlerFn);
-	}
+	private parseMessage(str: string, channel: PubSub.Channel) {
+		const msg = jsonParse<PubSub.Command | PubSub.WorkerResponse | null>(str, {
+			fallbackValue: null,
+		});
 
-	// #endregion
+		if (!msg) {
+			this.logger.error(`Received malformed message via channel ${channel}`, {
+				msg: str,
+				channel,
+			});
+			return null;
+		}
+
+		const { hostId } = this.instanceSettings;
+
+		if (
+			'command' in msg &&
+			!msg.selfSend &&
+			(msg.senderId === hostId || (msg.targets && !msg.targets.includes(hostId)))
+		) {
+			return null;
+		}
+
+		const msgName = 'command' in msg ? msg.command : msg.response;
+
+		this.logger.debug(`Received message ${msgName} via channel ${channel}`, {
+			msg,
+			channel,
+		});
+
+		return msg;
+	}
 }

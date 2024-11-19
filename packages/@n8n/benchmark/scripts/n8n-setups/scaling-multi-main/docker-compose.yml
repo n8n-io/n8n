@@ -7,7 +7,7 @@ services:
       - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
 
   redis:
-    image: redis:6-alpine
+    image: redis:6.2.14-alpine
     restart: always
     ports:
       - 6379:6379
@@ -17,7 +17,7 @@ services:
       timeout: 3s
 
   postgres:
-    image: postgres:16
+    image: postgres:16.4
     restart: always
     environment:
       - POSTGRES_DB=n8n
@@ -109,6 +109,7 @@ services:
       - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
       - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
       # Scaling mode config
+      - N8N_PROXY_HOPS=1
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis
       - N8N_MULTI_MAIN_SETUP_ENABLED=true
@@ -145,6 +146,7 @@ services:
       - N8N_LICENSE_ACTIVATION_KEY=${N8N_LICENSE_ACTIVATION_KEY}
       - N8N_LICENSE_TENANT_ID=${N8N_LICENSE_TENANT_ID}
       # Scaling mode config
+      - N8N_PROXY_HOPS=1
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis
       - N8N_MULTI_MAIN_SETUP_ENABLED=true
@@ -174,7 +176,7 @@ services:
 
   # Load balancer that acts as an entry point for n8n
   n8n:
-    image: nginx:latest
+    image: nginx:1.27.2
     ports:
       - '5678:80'
     volumes:

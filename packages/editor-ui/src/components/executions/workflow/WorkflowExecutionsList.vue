@@ -39,7 +39,7 @@ const router = useRouter();
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
 	props.executions.find((execution) => execution.id === props.execution?.id)
 		? undefined
-		: props.execution ?? undefined,
+		: (props.execution ?? undefined),
 );
 
 const hidePreview = computed(() => {

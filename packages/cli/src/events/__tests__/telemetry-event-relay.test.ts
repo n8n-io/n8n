@@ -2,15 +2,14 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/relay-event-map';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
@@ -37,6 +36,10 @@ describe('TelemetryEventRelay', () => {
 				includeQueueMetrics: false,
 			},
 		},
+		logging: {
+			level: 'info',
+			outputs: ['console'],
+		},
 	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
@@ -62,7 +65,7 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	beforeEach(() => {
-		config.set('diagnostics.enabled', true);
+		globalConfig.diagnostics.enabled = true;
 	});
 
 	afterEach(() => {
@@ -71,7 +74,7 @@ describe('TelemetryEventRelay', () => {
 
 	describe('init', () => {
 		it('with diagnostics enabled, should init telemetry and register listeners', async () => {
-			config.set('diagnostics.enabled', true);
+			globalConfig.diagnostics.enabled = true;
 			const telemetryEventRelay = new TelemetryEventRelay(
 				eventService,
 				telemetry,
@@ -92,7 +95,7 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('with diagnostics disabled, should neither init telemetry nor register listeners', async () => {
-			config.set('diagnostics.enabled', false);
+			globalConfig.diagnostics.enabled = false;
 			const telemetryEventRelay = new TelemetryEventRelay(
 				eventService,
 				telemetry,
@@ -1051,6 +1054,24 @@ describe('TelemetryEventRelay', () => {
 					public_api: false,
 				},
 			);
+		});
+	});
+
+	describe('Community+ registered', () => {
+		it('should track `license-community-plus-registered` event', () => {
+			const event: RelayEventMap['license-community-plus-registered'] = {
+				userId: 'user123',
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			};
+
+			eventService.emit('license-community-plus-registered', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User registered for license community plus', {
+				user_id: 'user123',
+				email: 'user@example.com',
+				licenseKey: 'license123',
+			});
 		});
 	});
 });

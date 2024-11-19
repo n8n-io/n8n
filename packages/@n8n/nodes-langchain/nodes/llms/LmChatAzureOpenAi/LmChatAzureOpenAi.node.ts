@@ -1,15 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
 import { ChatOpenAI } from '@langchain/openai';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 
 export class LmChatAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -162,7 +163,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<{
 			apiKey: string;
 			resourceName: string;
@@ -195,6 +196,7 @@ export class LmChatAzureOpenAi implements INodeType {
 						response_format: { type: options.responseFormat },
 					}
 				: undefined,
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

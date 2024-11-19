@@ -12,13 +12,12 @@ import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
-import { createUser } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import {
 	createManyWorkflows,
 	createWorkflow,
 	shareWorkflowWithUsers,
 } from '../shared/db/workflows';
-import { randomApiKey } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -36,9 +35,9 @@ mockInstance(Telemetry);
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner', apiKey: randomApiKey() });
-	user1 = await createUser({ role: 'global:member', apiKey: randomApiKey() });
-	user2 = await createUser({ role: 'global:member', apiKey: randomApiKey() });
+	owner = await createOwnerWithApiKey();
+	user1 = await createMemberWithApiKey();
+	user2 = await createMemberWithApiKey();
 
 	// TODO: mock BinaryDataService instead
 	await utils.initBinaryDataService();

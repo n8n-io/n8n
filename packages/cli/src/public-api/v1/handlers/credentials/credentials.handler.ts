@@ -53,7 +53,7 @@ export = {
 
 			await Container.get(EnterpriseCredentialsService).transferOne(
 				req.user,
-				req.params.workflowId,
+				req.params.id,
 				body.destinationProjectId,
 			);
 

@@ -4,7 +4,7 @@ import { Container } from 'typedi';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 

@@ -1,11 +1,11 @@
 {
   "name": "@n8n/chat",
-  "version": "0.26.0",
+  "version": "0.31.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
-    "build:vite": "vite build",
-    "build:bundle": "INCLUDE_VUE=true vite build",
+    "build:vite": "cross-env vite build",
+    "build:bundle": "cross-env INCLUDE_VUE=true vite build",
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run",
@@ -50,7 +50,7 @@
     "unplugin-icons": "^0.19.0",
     "vite": "catalog:frontend",
     "vitest": "catalog:frontend",
-    "vite-plugin-dts": "^3.9.1",
+    "vite-plugin-dts": "^4.2.3",
     "vue-tsc": "catalog:frontend"
   },
   "files": [

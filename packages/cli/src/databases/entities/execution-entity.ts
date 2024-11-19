@@ -12,7 +12,7 @@ import {
 } from '@n8n/typeorm';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
-import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 
 import { datetimeColumnType } from './abstract-entity';
 import type { ExecutionData } from './execution-data';
@@ -31,6 +31,11 @@ export class ExecutionEntity {
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
 
+	/**
+	 * Whether the execution finished sucessfully.
+	 *
+	 * @deprecated Use `status` instead
+	 */
 	@Column()
 	finished: boolean;
 
@@ -47,7 +52,14 @@ export class ExecutionEntity {
 	status: ExecutionStatus;
 
 	@Column(datetimeColumnType)
-	startedAt: Date;
+	createdAt: Date;
+
+	/**
+	 * Time when the processing of the execution actually started. This column
+	 * is `null` when an execution is enqueued but has not started yet.
+	 */
+	@Column({ type: datetimeColumnType, nullable: true })
+	startedAt: Date | null;
 
 	@Index()
 	@Column({ type: datetimeColumnType, nullable: true })

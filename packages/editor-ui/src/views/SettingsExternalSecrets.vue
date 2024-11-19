@@ -1,16 +1,18 @@
 <script lang="ts" setup>
-import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
 import type { ExternalSecretsProvider } from '@/Interface';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const i18n = useI18n();
-const uiStore = useUIStore();
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const sortedProviders = computed(() => {
 	return ([...externalSecretsStore.providers] as ExternalSecretsProvider[]).sort((a, b) => {
@@ -19,6 +21,7 @@ const sortedProviders = computed(() => {
 });
 
 onMounted(() => {
+	documentTitle.set(i18n.baseText('settings.externalSecrets.title'));
 	if (!externalSecretsStore.isEnterpriseExternalSecretsEnabled) return;
 	try {
 		void externalSecretsStore.fetchAllSecrets();
@@ -29,7 +32,7 @@ onMounted(() => {
 });
 
 function goToUpgrade() {
-	void uiStore.goToUpgrade('external-secrets', 'upgrade-external-secrets');
+	void pageRedirectionHelper.goToUpgrade('external-secrets', 'upgrade-external-secrets');
 }
 </script>
 

@@ -31,7 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const rowsPerPageOptions = ref([10, 25, 50, 100]);
+const rowsPerPageOptions = ref([1, 10, 25, 50, 100]);
 
 const $style = useCssModule();
 
