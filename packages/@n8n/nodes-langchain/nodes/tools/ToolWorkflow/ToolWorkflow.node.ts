@@ -36,7 +36,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Call n8n Workflow Tool',
@@ -200,6 +200,11 @@ export class ToolWorkflow implements INodeType {
 				hint: 'The field in the last-executed node of the workflow that contains the response',
 				description:
 					'Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Extra Workflow Inputs',
