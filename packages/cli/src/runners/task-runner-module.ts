@@ -4,6 +4,7 @@ import Container, { Service } from 'typedi';
 
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 
+import { MissingAuthTokenError } from './errors/missing-auth-token.error';
 import { TaskRunnerWsServer } from './runner-ws-server';
 import type { LocalTaskManager } from './task-managers/local-task-manager';
 import type { TaskRunnerServer } from './task-runner-server';
@@ -28,10 +29,14 @@ export class TaskRunnerModule {
 	async start() {
 		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
 
+		const { mode, authToken } = this.runnerConfig;
+
+		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
+
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
 
-		if (this.runnerConfig.mode === 'internal') {
+		if (mode === 'internal') {
 			await this.startInternalTaskRunner();
 		}
 	}
