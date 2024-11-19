@@ -151,7 +151,6 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIApiVersion: credentials.apiVersion,
 			// azureOpenAIEndpoint and configuration.baseURL are both ignored here
 			// only setting azureOpenAIBasePath worked
-			// https://github.com/langchain-ai/langchainjs/blob/029240abf4f60ff123af76d386c9f2f476ffca85/libs/langchain-openai/src/embeddings.ts#L105
 			azureOpenAIBasePath: credentials.endpoint
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
