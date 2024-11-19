@@ -537,13 +537,11 @@ code[class^='language-'] {
 }
 
 .inputWrapper {
-	position: absolute;
 	display: flex;
-	bottom: 0;
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
-	padding-top: 1px;
+	border-top: 0;
 
 	textarea {
 		border: none;
