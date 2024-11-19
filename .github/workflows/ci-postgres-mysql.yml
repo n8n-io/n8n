@@ -8,6 +8,7 @@ on:
     paths:
       - packages/cli/src/databases/**
       - .github/workflows/ci-postgres-mysql.yml
+      - .github/docker-compose.yml
   pull_request_review:
     types: [submitted]
 

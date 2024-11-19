@@ -1,8 +1,9 @@
-version: '3.9'
-
 services:
   mysql:
-    image: mysql:5.7
+    image: mysql:8
+    command:
+      - --skip-performance-schema
+      - --skip-name-resolve
     environment:
       - MYSQL_DATABASE=n8n
       - MYSQL_ROOT_PASSWORD=password
