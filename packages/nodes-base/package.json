@@ -319,6 +319,7 @@
       "dist/credentials/Sms77Api.credentials.js",
       "dist/credentials/Smtp.credentials.js",
       "dist/credentials/Snowflake.credentials.js",
+      "dist/credentials/SolarWindsIpamApi.credentials.js",
       "dist/credentials/SplunkApi.credentials.js",
       "dist/credentials/SpontitApi.credentials.js",
       "dist/credentials/SpotifyOAuth2Api.credentials.js",
