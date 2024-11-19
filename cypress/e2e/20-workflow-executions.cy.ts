@@ -101,7 +101,6 @@ describe('Workflow Executions', () => {
 		});
 
 		it('should show workflow data in executions tab after hard reload and modify name and tags', () => {
-			cy.viewport(1920, 1080);
 			executionsTab.actions.switchToExecutionsTab();
 			checkMainHeaderELements();
 			workflowPage.getters.saveButton().find('button').should('not.exist');
