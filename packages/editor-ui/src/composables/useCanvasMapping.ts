@@ -516,6 +516,7 @@ export function useCanvasMapping({
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
 
+		let handleSupportsMultipleConnections: CanvasConnectionData['handleSupportsMultipleConnections'];
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
@@ -534,10 +535,13 @@ export function useCanvasMapping({
 			} else if (runDataTotal > 0) {
 				status = 'success';
 			}
+
+			handleSupportsMultipleConnections = [NodeConnectionType.AiTool].includes(type);
 		}
 
 		return {
 			...(connection.data as CanvasConnectionData),
+			...(handleSupportsMultipleConnections ? { handleSupportsMultipleConnections } : {}),
 			status,
 		};
 	}

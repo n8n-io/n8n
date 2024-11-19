@@ -34,6 +34,7 @@ export type CanvasConnectionPort = {
 export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
 	handleId: string;
 	connectionsCount: number;
+	supportsMultipleConnections?: boolean;
 	isConnecting: boolean;
 	position: Position;
 	offset?: { top?: string; left?: string };
@@ -118,6 +119,7 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
 	status?: 'success' | 'error' | 'pinned' | 'running';
+	handleSupportsMultipleConnections?: boolean;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
@@ -173,6 +175,7 @@ export interface CanvasNodeHandleInjectionData {
 	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
+	supportsMultipleConnections: Ref<boolean | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 

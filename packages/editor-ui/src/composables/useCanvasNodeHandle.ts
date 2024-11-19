@@ -16,6 +16,7 @@ export function useCanvasNodeHandle() {
 	const isConnecting = computed(() => handle?.isConnecting.value ?? false);
 	const isReadOnly = computed(() => handle?.isReadOnly.value);
 	const isRequired = computed(() => handle?.isRequired.value);
+	const supportsMultipleConnections = computed(() => handle?.supportsMultipleConnections.value);
 	const type = computed(() => handle?.type.value ?? NodeConnectionType.Main);
 	const mode = computed(() => handle?.mode.value ?? CanvasConnectionMode.Input);
 	const index = computed(() => handle?.index.value ?? 0);
@@ -27,6 +28,7 @@ export function useCanvasNodeHandle() {
 		isConnecting,
 		isReadOnly,
 		isRequired,
+		supportsMultipleConnections,
 		type,
 		mode,
 		index,

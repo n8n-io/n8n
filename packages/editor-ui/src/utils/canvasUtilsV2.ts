@@ -183,11 +183,13 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 				.filter((e) => (typeof e === 'string' ? e : e.type) === type).length - 1;
 		const required = typeof endpoint === 'string' ? false : endpoint.required;
 		const maxConnections = typeof endpoint === 'string' ? undefined : endpoint.maxConnections;
+		const supportsMultipleConnections = [NodeConnectionType.AiTool].includes(type);
 
 		return {
 			type,
 			index,
 			label,
+			...(supportsMultipleConnections ? { supportsMultipleConnections } : {}),
 			...(maxConnections ? { maxConnections } : {}),
 			...(required ? { required } : {}),
 		};

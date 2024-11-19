@@ -18,6 +18,7 @@ const props = defineProps<
 		type: CanvasConnectionPort['type'];
 		required?: CanvasConnectionPort['required'];
 		maxConnections?: CanvasConnectionPort['maxConnections'];
+		supportsMultipleConnections?: CanvasElementPortWithRenderData['supportsMultipleConnections'];
 		index: CanvasConnectionPort['index'];
 		label?: CanvasConnectionPort['label'];
 		handleId: CanvasElementPortWithRenderData['handleId'];
@@ -126,6 +127,7 @@ const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
 const index = toRef(props, 'index');
 const isRequired = toRef(props, 'required');
+const supportsMultipleConnections = toRef(props, 'supportsMultipleConnections');
 
 provide(CanvasNodeHandleKey, {
 	label,
@@ -137,6 +139,7 @@ provide(CanvasNodeHandleKey, {
 	isConnected,
 	isConnecting,
 	isReadOnly,
+	supportsMultipleConnections,
 });
 </script>
 
@@ -155,6 +158,7 @@ provide(CanvasNodeHandleKey, {
 		<RenderType
 			:class="renderTypeClasses"
 			:is-connected="isConnected"
+			:supports-multiple-connections="supportsMultipleConnections"
 			:style="offset"
 			:label="label"
 			@add="onAdd"
