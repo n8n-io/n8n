@@ -1809,7 +1809,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function filterConnectionsByNodes(
-		connections: Record<string, IConnection[][]>,
+		connections: INodeConnections,
 		includeNodeNames: Set<string>,
 	): INodeConnections {
 		const filteredConnections: INodeConnections = {};
@@ -1886,6 +1886,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertDeleteConnection,
 		deleteConnectionsByNodeId,
 		isConnectionAllowed,
+		filterConnectionsByNodes,
 		importWorkflowData,
 		fetchWorkflowDataFromUrl,
 		resetWorkspace,
