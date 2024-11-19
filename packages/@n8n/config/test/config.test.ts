@@ -280,8 +280,8 @@ describe('GlobalConfig', () => {
 			pruneDataMaxCount: 10_000,
 			pruneDataHardDeleteBuffer: 1,
 			pruneDataIntervals: {
-				hardDeleteInterval: 15,
-				softDeleteInterval: 60,
+				hardDelete: 15,
+				softDelete: 60,
 			},
 		},
 	};

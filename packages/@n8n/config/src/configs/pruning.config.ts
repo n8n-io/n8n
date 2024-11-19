@@ -4,11 +4,11 @@ import { Config, Env, Nested } from '../decorators';
 class PruningIntervalsConfig {
 	/** How often (minutes) execution data should be hard-deleted. */
 	@Env('EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL')
-	hardDeleteInterval: number = 15;
+	hardDelete: number = 15;
 
 	/** How often (minutes) execution data should be soft-deleted */
 	@Env('EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL')
-	softDeleteInterval: number = 60;
+	softDelete: number = 60;
 }
 
 @Config
