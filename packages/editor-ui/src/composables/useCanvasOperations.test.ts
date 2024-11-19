@@ -4,8 +4,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookDescription,
 	Workflow,
+	INodeConnections,
 } from 'n8n-workflow';
-import { INodeConnections, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
