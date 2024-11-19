@@ -4,7 +4,7 @@ import {
 	type Node as SyntaxNode,
 	type ExpressionStatement,
 } from 'esprima-next';
-import FormData from 'form-data';
+import type FormData from 'form-data';
 import { merge } from 'lodash';
 
 import { ALPHABET } from './Constants';
@@ -22,7 +22,7 @@ BigInt.prototype.toJSON = function () {
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {
-		if (obj instanceof FormData) return obj.getLengthSync() === 0;
+		if (obj.constructor.name === 'FormData') return (obj as FormData).getLengthSync() === 0;
 		if (Array.isArray(obj)) return obj.length === 0;
 		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
 		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;

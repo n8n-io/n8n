@@ -1903,9 +1903,6 @@ importers:
       esprima-next:
         specifier: 5.8.4
         version: 5.8.4
-      form-data:
-        specifier: 'catalog:'
-        version: 4.0.0
       jmespath:
         specifier: 0.16.0
         version: 0.16.0
