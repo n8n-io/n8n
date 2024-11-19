@@ -229,7 +229,7 @@ const allToolsWereUnusedNotice = computed(() => {
 		1,
 	);
 	const toolsUsedInLatestRun = toolsAvailable.filter(
-		(x) => !!workflowRunData.value?.[x]?.[props.runIndex],
+		(tool) => !!workflowRunData.value?.[tool]?.[props.runIndex],
 	);
 	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0) {
 		return i18n.baseText('ndv.output.noToolUsedInfo');
@@ -327,7 +327,7 @@ const activatePane = () => {
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
-		:callout-message-key="allToolsWereUnusedNotice"
+		:callout-message="allToolsWereUnusedNotice"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"

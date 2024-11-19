@@ -120,7 +120,7 @@ type Props = {
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
 	hidePagination?: boolean;
-	calloutMessageKey?: string;
+	calloutMessage?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -134,7 +134,7 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	isExecuting: false,
 	hidePagination: false,
-	calloutMessageKey: undefined,
+	calloutMessage: undefined,
 });
 const emit = defineEmits<{
 	search: [search: string];
@@ -1427,9 +1427,9 @@ defineExpose({ enterEditMode });
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
-		<div v-if="props.calloutMessageKey" :class="$style.hintCallout">
-			<N8nCallout :key="props.calloutMessageKey" theme="secondary" data-test-id="run-data-callout">
-				<N8nText v-n8n-html="props.calloutMessageKey" size="small"></N8nText>
+		<div v-if="props.calloutMessage" :class="$style.hintCallout">
+			<N8nCallout theme="secondary" data-test-id="run-data-callout">
+				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
 			</N8nCallout>
 		</div>
 
