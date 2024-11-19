@@ -51,6 +51,35 @@ describe('TaskBroker', () => {
 			expect(offers).toHaveLength(1);
 			expect(offers[0]).toEqual(validOffer);
 		});
+
+		it('should not expire non-expiring task offers', () => {
+			const nonExpiringOffer: TaskOffer = {
+				offerId: 'nonExpiring',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: -1,
+				validUntil: 0n, // sentinel value for non-expiring offer
+			};
+
+			const expiredOffer: TaskOffer = {
+				offerId: 'expired',
+				runnerId: 'runner2',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(-1000), // 1 second in the past
+			};
+
+			taskBroker.setPendingTaskOffers([
+				nonExpiringOffer, // will not be removed
+				expiredOffer, // will be removed
+			]);
+
+			taskBroker.expireTasks();
+
+			const offers = taskBroker.getPendingTaskOffers();
+			expect(offers).toHaveLength(1);
+			expect(offers[0]).toEqual(nonExpiringOffer);
+		});
 	});
 
 	describe('registerRunner', () => {
@@ -589,6 +618,66 @@ describe('TaskBroker', () => {
 				taskId,
 				requestId,
 				requestParams,
+			});
+		});
+
+		it('should handle `runner:taskoffer` message with expiring offer', async () => {
+			const runnerId = 'runner1';
+			const validFor = 1000; // 1 second
+			const message: RunnerMessage.ToBroker.TaskOffer = {
+				type: 'runner:taskoffer',
+				offerId: 'offer1',
+				taskType: 'taskType1',
+				validFor,
+			};
+
+			const beforeTime = process.hrtime.bigint();
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			const afterTime = process.hrtime.bigint();
+
+			const offers = taskBroker.getPendingTaskOffers();
+			expect(offers).toHaveLength(1);
+
+			const expectedMinValidUntil = beforeTime + BigInt(validFor * 1_000_000);
+			const expectedMaxValidUntil = afterTime + BigInt(validFor * 1_000_000);
+
+			expect(offers[0].validUntil).toBeGreaterThanOrEqual(expectedMinValidUntil);
+			expect(offers[0].validUntil).toBeLessThanOrEqual(expectedMaxValidUntil);
+			expect(offers[0]).toEqual(
+				expect.objectContaining({
+					runnerId,
+					taskType: message.taskType,
+					offerId: message.offerId,
+					validFor,
+				}),
+			);
+		});
+
+		it('should handle `runner:taskoffer` message with non-expiring offer', async () => {
+			const runnerId = 'runner1';
+			const message: RunnerMessage.ToBroker.TaskOffer = {
+				type: 'runner:taskoffer',
+				offerId: 'offer1',
+				taskType: 'taskType1',
+				validFor: -1,
+			};
+
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+
+			await taskBroker.onRunnerMessage(runnerId, message);
+
+			const offers = taskBroker.getPendingTaskOffers();
+
+			expect(offers).toHaveLength(1);
+			expect(offers[0]).toEqual({
+				runnerId,
+				taskType: message.taskType,
+				offerId: message.offerId,
+				validFor: -1,
+				validUntil: 0n,
 			});
 		});
 	});

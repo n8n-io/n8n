@@ -10,7 +10,7 @@ import { Service } from 'typedi';
 
 import { Logger } from '@/logging/logger.service';
 
-import { TaskRejectError } from './errors';
+import { TaskDeferredError, TaskRejectError } from './errors';
 
 export interface TaskRunner {
 	id: string;
@@ -30,6 +30,8 @@ export interface TaskOffer {
 	offerId: string;
 	runnerId: TaskRunner['id'];
 	taskType: string;
+
+	/** How long (in milliseconds) the task offer is valid for. `-1` for non-expiring offer from launcher. */
 	validFor: number;
 	validUntil: bigint;
 }
@@ -51,7 +53,7 @@ type RunnerAcceptCallback = () => void;
 type RequesterAcceptCallback = (
 	settings: RequesterMessage.ToBroker.TaskSettings['settings'],
 ) => void;
-type TaskRejectCallback = (reason: TaskRejectError) => void;
+type TaskRejectCallback = (reason: TaskRejectError | TaskDeferredError) => void;
 
 @Service()
 export class TaskBroker {
@@ -83,7 +85,9 @@ export class TaskBroker {
 	expireTasks() {
 		const now = process.hrtime.bigint();
 		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
-			if (this.pendingTaskOffers[i].validUntil < now) {
+			const offer = this.pendingTaskOffers[i];
+			if (offer.validFor === -1) continue; // non-expiring offer
+			if (offer.validUntil < now) {
 				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
@@ -144,13 +148,19 @@ export class TaskBroker {
 			case 'runner:taskrejected':
 				this.handleRunnerReject(message.taskId, message.reason);
 				break;
+			case 'runner:taskdeferred':
+				this.handleRunnerDeferred(message.taskId);
+				break;
 			case 'runner:taskoffer':
 				this.taskOffered({
 					runnerId,
 					taskType: message.taskType,
 					offerId: message.offerId,
 					validFor: message.validFor,
-					validUntil: process.hrtime.bigint() + BigInt(message.validFor * 1_000_000),
+					validUntil:
+						message.validFor === -1
+							? 0n // sentinel value for non-expiring offer
+							: process.hrtime.bigint() + BigInt(message.validFor * 1_000_000),
 				});
 				break;
 			case 'runner:taskdone':
@@ -205,6 +215,14 @@ export class TaskBroker {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
 			acceptReject.reject(new TaskRejectError(reason));
+			this.runnerAcceptRejects.delete(taskId);
+		}
+	}
+
+	handleRunnerDeferred(taskId: Task['id']) {
+		const acceptReject = this.runnerAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new TaskDeferredError());
 			this.runnerAcceptRejects.delete(taskId);
 		}
 	}
@@ -465,6 +483,15 @@ export class TaskBroker {
 			request.acceptInProgress = false;
 			if (e instanceof TaskRejectError) {
 				this.logger.info(`Task (${taskId}) rejected by Runner with reason "${e.reason}"`);
+				return;
+			}
+			if (e instanceof TaskDeferredError) {
+				this.logger.info(`Task (${taskId}) deferred until runner is ready`);
+				this.pendingTaskRequests.push(request);
+				setTimeout(
+					() => this.settleTasks(),
+					3000 /* time for runner to go through handshake and send task offer */,
+				);
 				return;
 			}
 			throw e;
