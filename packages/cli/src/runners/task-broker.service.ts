@@ -487,11 +487,7 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskDeferredError) {
 				this.logger.info(`Task (${taskId}) deferred until runner is ready`);
-				this.pendingTaskRequests.push(request);
-				setTimeout(
-					() => this.settleTasks(),
-					3000 /* time for runner to go through handshake and send task offer */,
-				);
+				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
 			}
 			throw e;
