@@ -101,6 +101,7 @@
     "unplugin-icons": "^0.19.0",
     "unplugin-vue-components": "^0.27.2",
     "vite": "catalog:frontend",
+    "vite-svg-loader": "5.1.0",
     "vitest": "catalog:frontend",
     "vitest-mock-extended": "catalog:frontend",
     "vue-tsc": "catalog:frontend"

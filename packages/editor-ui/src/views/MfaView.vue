@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IFormInputs } from '@/Interface';
-import Logo from '../components/Logo.vue';
+import Logo from '@/components/Logo/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
@@ -165,9 +165,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.logoContainer">
-			<Logo />
-		</div>
+		<Logo location="authView" />
 		<n8n-card>
 			<div :class="$style.headerContainer">
 				<n8n-heading size="xlarge" color="text-dark">{{
@@ -245,14 +243,8 @@ body {
 	padding-top: var(--spacing-2xl);
 
 	> * {
-		margin-bottom: var(--spacing-l);
 		width: 352px;
 	}
-}
-
-.logoContainer {
-	display: flex;
-	justify-content: center;
 }
 
 .formContainer {

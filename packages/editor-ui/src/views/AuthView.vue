@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Logo from '@/components/Logo/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
 import type { IFormBoxConfig } from '@/Interface';
 
@@ -36,9 +37,7 @@ const onSecondaryClick = () => {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.logoContainer">
-			<Logo />
-		</div>
+		<Logo location="authView" />
 		<div v-if="subtitle" :class="$style.textContainer">
 			<n8n-text size="large">{{ subtitle }}</n8n-text>
 		</div>
@@ -69,14 +68,8 @@ body {
 	padding-top: var(--spacing-2xl);
 
 	> * {
-		margin-bottom: var(--spacing-l);
 		width: 352px;
 	}
-}
-
-.logoContainer {
-	display: flex;
-	justify-content: center;
 }
 
 .textContainer {
