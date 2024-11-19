@@ -771,8 +771,8 @@ export class TelemetryEventRelay extends EventRelay {
 				executions_data_save_manual_executions: config.getEnv(
 					'executions.saveDataManualExecutions',
 				),
-				executions_data_prune: this.globalConfig.pruning.isEnabled,
-				executions_data_max_age: this.globalConfig.pruning.maxAge,
+				executions_data_prune: this.globalConfig.pruning.pruneData,
+				executions_data_max_age: this.globalConfig.pruning.pruneDataMaxAge,
 			},
 			n8n_deployment_type: config.getEnv('deployment.type'),
 			n8n_binary_data_mode: binaryDataConfig.mode,

@@ -62,8 +62,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
 		beforeAll(() => {
-			pruningConfig.maxAge = 336;
-			pruningConfig.maxCount = 1;
+			pruningConfig.pruneDataMaxAge = 336;
+			pruningConfig.pruneDataMaxCount = 1;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
@@ -163,8 +163,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
 		beforeAll(() => {
-			pruningConfig.maxAge = 1;
-			pruningConfig.maxCount = 0;
+			pruningConfig.pruneDataMaxAge = 1;
+			pruningConfig.pruneDataMaxCount = 0;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {

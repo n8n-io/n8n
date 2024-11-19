@@ -26,8 +26,10 @@ export class PruningService {
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;
 
 	private readonly rates = {
-		softDeletion: this.pruningConfig.softDeleteInterval * Time.minutes.toMilliseconds,
-		hardDeletion: this.pruningConfig.hardDeleteInterval * Time.minutes.toMilliseconds,
+		softDeletion:
+			this.pruningConfig.pruneDataIntervals.softDeleteInterval * Time.minutes.toMilliseconds,
+		hardDeletion:
+			this.pruningConfig.pruneDataIntervals.hardDeleteInterval * Time.minutes.toMilliseconds,
 	};
 
 	/** Max number of executions to hard-delete in a cycle. */
@@ -59,7 +61,7 @@ export class PruningService {
 
 	get isEnabled() {
 		return (
-			this.pruningConfig.isEnabled &&
+			this.pruningConfig.pruneData &&
 			this.instanceSettings.instanceType === 'main' &&
 			this.instanceSettings.isLeader
 		);

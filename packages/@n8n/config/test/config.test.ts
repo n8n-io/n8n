@@ -275,12 +275,14 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 		},
 		pruning: {
-			isEnabled: true,
-			maxAge: 336,
-			maxCount: 10_000,
-			hardDeleteBuffer: 1,
-			hardDeleteInterval: 15,
-			softDeleteInterval: 60,
+			pruneData: true,
+			pruneDataMaxAge: 336,
+			pruneDataMaxCount: 10_000,
+			pruneDataHardDeleteBuffer: 1,
+			pruneDataIntervals: {
+				hardDeleteInterval: 15,
+				softDeleteInterval: 60,
+			},
 		},
 	};
 
