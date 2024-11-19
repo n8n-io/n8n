@@ -5,6 +5,7 @@ import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
 import { Time } from '@/constants';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { Logger } from '@/logging/logger.service';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
@@ -57,6 +58,7 @@ export class TaskRunnerWsServer {
 		}, heartbeatInterval * Time.seconds.toMilliseconds);
 	}
 
+	@OnShutdown()
 	async shutdown() {
 		if (this.heartbeatTimer) {
 			clearInterval(this.heartbeatTimer);

@@ -2,6 +2,7 @@ import { TaskRunnersConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
+import { OnShutdown } from '@/decorators/on-shutdown';
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
@@ -41,6 +42,7 @@ export class TaskRunnerModule {
 		}
 	}
 
+	@OnShutdown()
 	async stop() {
 		if (this.taskRunnerProcess) {
 			await this.taskRunnerProcess.stop();
