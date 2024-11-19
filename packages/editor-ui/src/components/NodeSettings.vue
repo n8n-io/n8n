@@ -981,7 +981,7 @@ onBeforeUnmount(() => {
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
 				<n8n-text size="large" color="text-dark" bold>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
 				</n8n-text>
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
@@ -1004,7 +1004,7 @@ onBeforeUnmount(() => {
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
 					@click="onMissingNodeLearnMoreLinkClick"
 				>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
 			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
@@ -1012,7 +1012,7 @@ onBeforeUnmount(() => {
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
 						target="_blank"
-						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
 			</i18n-t>
@@ -1021,7 +1021,7 @@ onBeforeUnmount(() => {
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
-					$locale.baseText('nodeSettings.hasForeignCredential', {
+					i18n.baseText('nodeSettings.hasForeignCredential', {
 						interpolate: { owner: credentialOwnerName },
 					})
 				"
@@ -1053,7 +1053,7 @@ onBeforeUnmount(() => {
 				</ParameterInputList>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
 
@@ -1064,7 +1064,7 @@ onBeforeUnmount(() => {
 				>
 					<n8n-notice
 						:content="
-							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
+							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
 							})
 						"
@@ -1094,7 +1094,7 @@ onBeforeUnmount(() => {
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
-						$locale.baseText('nodeSettings.nodeVersion', {
+						i18n.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
 								version: (node.typeVersion ?? latestVersion).toString(),

@@ -4,6 +4,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookDescription,
 	Workflow,
+	INodeConnections,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
@@ -2049,36 +2050,129 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.setNodes).toHaveBeenCalled();
 			expect(workflowsStore.setConnections).toHaveBeenCalled();
 		});
+
+		it('should initialize node data from node type description', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const type = SET_NODE_TYPE;
+			const version = 1;
+			const expectedDescription = mockNodeTypeDescription({
+				name: type,
+				version,
+				properties: [
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'boolean',
+						default: true,
+					},
+				],
+			});
+
+			nodeTypesStore.nodeTypes = { [type]: { [version]: expectedDescription } };
+
+			const workflow = createTestWorkflow({
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const { initializeWorkspace } = useCanvasOperations({ router });
+			initializeWorkspace(workflow);
+
+			expect(workflow.nodes[0].parameters).toEqual({ value: true });
+		});
 	});
 
-	it('should initialize node data from node type description', () => {
-		const nodeTypesStore = mockedStore(useNodeTypesStore);
-		const type = SET_NODE_TYPE;
-		const version = 1;
-		const expectedDescription = mockNodeTypeDescription({
-			name: type,
-			version,
-			properties: [
-				{
-					displayName: 'Value',
-					name: 'value',
-					type: 'boolean',
-					default: true,
-				},
-			],
+	describe('filterConnectionsByNodes', () => {
+		it('should return filtered connections when all nodes are included', () => {
+			const connections: INodeConnections = {
+				[NodeConnectionType.Main]: [
+					[
+						{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+						{ node: 'node2', type: NodeConnectionType.Main, index: 0 },
+					],
+					[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }],
+				],
+			};
+			const includeNodeNames = new Set<string>(['node1', 'node2', 'node3']);
+
+			const { filterConnectionsByNodes } = useCanvasOperations({ router });
+			const result = filterConnectionsByNodes(connections, includeNodeNames);
+
+			expect(result).toEqual(connections);
 		});
 
-		nodeTypesStore.nodeTypes = { [type]: { [version]: expectedDescription } };
+		it('should return empty connections when no nodes are included', () => {
+			const connections: INodeConnections = {
+				[NodeConnectionType.Main]: [
+					[
+						{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+						{ node: 'node2', type: NodeConnectionType.Main, index: 0 },
+					],
+					[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }],
+				],
+			};
+			const includeNodeNames = new Set<string>();
 
-		const workflow = createTestWorkflow({
-			nodes: [createTestNode()],
-			connections: {},
+			const { filterConnectionsByNodes } = useCanvasOperations({ router });
+			const result = filterConnectionsByNodes(connections, includeNodeNames);
+
+			expect(result).toEqual({
+				[NodeConnectionType.Main]: [[], []],
+			});
 		});
 
-		const { initializeWorkspace } = useCanvasOperations({ router });
-		initializeWorkspace(workflow);
+		it('should return partially filtered connections when some nodes are included', () => {
+			const connections: INodeConnections = {
+				[NodeConnectionType.Main]: [
+					[
+						{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+						{ node: 'node2', type: NodeConnectionType.Main, index: 0 },
+					],
+					[{ node: 'node3', type: NodeConnectionType.Main, index: 0 }],
+				],
+			};
+			const includeNodeNames = new Set<string>(['node1']);
 
-		expect(workflow.nodes[0].parameters).toEqual({ value: true });
+			const { filterConnectionsByNodes } = useCanvasOperations({ router });
+			const result = filterConnectionsByNodes(connections, includeNodeNames);
+
+			expect(result).toEqual({
+				[NodeConnectionType.Main]: [
+					[{ node: 'node1', type: NodeConnectionType.Main, index: 0 }],
+					[],
+				],
+			});
+		});
+
+		it('should handle empty connections input', () => {
+			const connections: INodeConnections = {};
+			const includeNodeNames = new Set<string>(['node1']);
+
+			const { filterConnectionsByNodes } = useCanvasOperations({ router });
+			const result = filterConnectionsByNodes(connections, includeNodeNames);
+
+			expect(result).toEqual({});
+		});
+
+		it('should handle connections with no valid nodes', () => {
+			const connections: INodeConnections = {
+				[NodeConnectionType.Main]: [
+					[
+						{ node: 'node4', type: NodeConnectionType.Main, index: 0 },
+						{ node: 'node5', type: NodeConnectionType.Main, index: 0 },
+					],
+					[{ node: 'node6', type: NodeConnectionType.Main, index: 0 }],
+				],
+			};
+			const includeNodeNames = new Set<string>(['node1', 'node2', 'node3']);
+
+			const { filterConnectionsByNodes } = useCanvasOperations({ router });
+			const result = filterConnectionsByNodes(connections, includeNodeNames);
+
+			expect(result).toEqual({
+				[NodeConnectionType.Main]: [[], []],
+			});
+		});
 	});
 });
 
