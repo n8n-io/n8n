@@ -10,6 +10,8 @@ import { getParentNodes, generateCodeForAiTransform } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from '@/stores/ui.store';
 
+import { propertyNameFromExpression } from '../../utils/mappingUtils';
+
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
 const emit = defineEmits<{
@@ -293,5 +295,12 @@ async function onDrop(value: string) {
 .warning-text {
 	color: var(--color-warning);
 	line-height: 1.2;
+}
+.droppable {
+	border: 1.5px dashed var(--color-ndv-droppable-parameter) !important;
+}
+.activeDrop {
+	border: 1.5px solid var(--color-success) !important;
+	cursor: grabbing;
 }
 </style>
