@@ -10,19 +10,17 @@ import type { Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+	ITaskMetadata,
+} from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { N8nJsonLoader } from './N8nJsonLoader';
-
-const errorsMap: { [key: string]: { message: string; description: string } } = {
-	'You exceeded your current quota, please check your plan and billing details.': {
-		message: 'OpenAI quota exceeded',
-		description: 'You exceeded your current quota, please check your plan and billing details.',
-	},
-};
 
 export async function callMethodAsync<T>(
 	this: T,
@@ -37,30 +35,25 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
-		// Propagate errors from sub-nodes
-		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
 
 		const error = new NodeOperationError(connectedNode, e, {
 			functionality: 'configuration-node',
 		});
 
-		if (errorsMap[error.message]) {
-			error.description = errorsMap[error.message].description;
-			error.message = errorsMap[error.message].message;
-		}
-
 		parameters.executeFunctions.addOutputData(
 			parameters.connectionType,
 			parameters.currentNodeRunIndex,
 			error,
 		);
+
 		if (error.message) {
 			if (!error.description) {
 				error.description = error.message;
 			}
 			throw error;
 		}
+
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
@@ -82,8 +75,6 @@ export function callMethodSync<T>(
 	try {
 		return parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
-		// Propagate errors from sub-nodes
-		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
 		const error = new NodeOperationError(connectedNode, e);
 		parameters.executeFunctions.addOutputData(
@@ -91,6 +82,7 @@ export function callMethodSync<T>(
 			parameters.currentNodeRunIndex,
 			error,
 		);
+
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
@@ -233,8 +225,24 @@ export function logWrapper(
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
+						const executionId: string | undefined = response[0]?.metadata?.executionId as string;
+						const workflowId: string | undefined = response[0]?.metadata?.workflowId as string;
+
+						const metadata: ITaskMetadata = {};
+						if (executionId && workflowId) {
+							metadata.subExecution = {
+								executionId,
+								workflowId,
+							};
+						}
+
 						logAiEvent(executeFunctions, 'ai-documents-retrieved', { query });
-						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(
+							connectionType,
+							index,
+							[[{ json: { response } }]],
+							metadata,
+						);
 						return response;
 					};
 				}

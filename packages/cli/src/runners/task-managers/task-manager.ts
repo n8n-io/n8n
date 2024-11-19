@@ -1,5 +1,6 @@
+import { TaskRunnersConfig } from '@n8n/config';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
-import { RPC_ALLOW_LIST } from '@n8n/task-runner';
+import { DataRequestResponseReconstruct, RPC_ALLOW_LIST } from '@n8n/task-runner';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -17,8 +18,13 @@ import type {
 } from 'n8n-workflow';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import * as a from 'node:assert/strict';
+import Container, { Service } from 'typedi';
+
+import { NodeTypes } from '@/node-types';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
+import { DataRequestResponseStripper } from './data-request-response-stripper';
 
 export type RequestAccept = (jobId: string) => void;
 export type RequestReject = (reason: string) => void;
@@ -43,7 +49,8 @@ interface ExecuteFunctionObject {
 	[name: string]: ((...args: unknown[]) => unknown) | ExecuteFunctionObject;
 }
 
-export class TaskManager {
+@Service()
+export abstract class TaskManager {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
@@ -51,6 +58,12 @@ export class TaskManager {
 	pendingRequests: Map<string, TaskRequest> = new Map();
 
 	tasks: Map<string, Task> = new Map();
+
+	private readonly runnerConfig = Container.get(TaskRunnersConfig);
+
+	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
+
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -173,6 +186,9 @@ export class TaskManager {
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
 				break;
+			case 'broker:nodetypesrequest':
+				this.sendNodeTypes(message.taskId, message.requestId, message.requestParams);
+				break;
 			case 'broker:rpc':
 				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
 				break;
@@ -228,14 +244,45 @@ export class TaskManager {
 			return;
 		}
 
-		const dataRequestResponseBuilder = new DataRequestResponseBuilder(job.data, requestParams);
-		const requestedData = dataRequestResponseBuilder.build();
+		const dataRequestResponse = this.dataResponseBuilder.buildFromTaskData(job.data);
+
+		if (this.runnerConfig.assertDeduplicationOutput) {
+			const reconstruct = new DataRequestResponseReconstruct();
+			a.deepStrictEqual(
+				reconstruct.reconstructConnectionInputData(dataRequestResponse.inputData),
+				job.data.connectionInputData,
+			);
+			a.deepStrictEqual(
+				reconstruct.reconstructExecuteData(dataRequestResponse),
+				job.data.executeData,
+			);
+		}
+
+		const strippedData = new DataRequestResponseStripper(
+			dataRequestResponse,
+			requestParams,
+		).strip();
 
 		this.sendMessage({
 			type: 'requester:taskdataresponse',
 			taskId,
 			requestId,
-			data: requestedData,
+			data: strippedData,
+		});
+	}
+
+	sendNodeTypes(
+		taskId: string,
+		requestId: string,
+		neededNodeTypes: BrokerMessage.ToRequester.NodeTypesRequest['requestParams'],
+	) {
+		const nodeTypes = this.nodeTypes.getNodeTypeDescriptions(neededNodeTypes);
+
+		this.sendMessage({
+			type: 'requester:nodetypesresponse',
+			taskId,
+			requestId,
+			nodeTypes,
 		});
 	}
 

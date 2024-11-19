@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nLoading } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
@@ -42,6 +43,8 @@ const emit = defineEmits<{
 	loadMore: [];
 	filter: [filter: string];
 }>();
+
+const i18n = useI18n();
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -145,7 +148,12 @@ function onKeyDown(e: KeyboardEvent) {
 			}
 		}
 	} else if (e.key === 'Enter') {
-		emit('update:modelValue', sortedResources.value[hoverIndex.value].value);
+		const selected = sortedResources.value[hoverIndex.value]?.value;
+
+		// Selected resource can be empty when loading or empty results
+		if (selected) {
+			emit('update:modelValue', selected);
+		}
 	}
 }
 
@@ -204,7 +212,7 @@ function onResultsEnd() {
 				ref="searchRef"
 				:model-value="filter"
 				:clearable="true"
-				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				:placeholder="i18n.baseText('resourceLocator.search.placeholder')"
 				data-test-id="rlc-search"
 				@update:model-value="onFilterInput"
 			>
@@ -214,13 +222,13 @@ function onResultsEnd() {
 			</N8nInput>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
-			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
+			{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
 			v-else-if="!errorView && sortedResources.length === 0 && !loading"
 			:class="$style.messageContainer"
 		>
-			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
+			{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
 		<div
 			v-else-if="!errorView"
@@ -249,7 +257,7 @@ function onResultsEnd() {
 					<font-awesome-icon
 						v-if="showHoverUrl && result.url && hoverIndex === i"
 						icon="external-link-alt"
-						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
+						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
 				</div>

@@ -21,10 +21,10 @@ import {
 	getCredentials,
 	getNodeParameter,
 	getNodeWebhookUrl,
+	getRequestHelperFunctions,
 	getWebhookDescription,
 } from '@/NodeExecuteFunctions';
 
-import { RequestHelpers } from './helpers/request-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
 export class HookContext extends NodeExecutionContext implements IHookFunctions {
@@ -40,7 +40,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 	) {
 		super(workflow, node, additionalData, mode);
 
-		this.helpers = new RequestHelpers(this, workflow, node, additionalData);
+		this.helpers = getRequestHelperFunctions(workflow, node, additionalData);
 	}
 
 	getActivationMode() {

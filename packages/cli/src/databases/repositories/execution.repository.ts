@@ -513,7 +513,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.execute();
 	}
 
-	async hardDeleteSoftDeletedExecutions() {
+	async findSoftDeletedExecutions() {
 		const date = new Date();
 		date.setHours(date.getHours() - this.globalConfig.pruning.hardDeleteBuffer);
 

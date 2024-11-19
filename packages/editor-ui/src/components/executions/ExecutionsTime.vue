@@ -16,7 +16,7 @@ const time = computed(() => {
 		return '...';
 	}
 	const msPassed = nowTime.value - new Date(props.startTime).getTime();
-	return i18n.displayTimer(msPassed); // Note: Adjust for $locale usage in setup
+	return i18n.displayTimer(msPassed);
 });
 
 onMounted(() => {

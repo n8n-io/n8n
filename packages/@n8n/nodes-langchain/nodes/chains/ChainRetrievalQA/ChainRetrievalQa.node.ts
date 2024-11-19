@@ -1,3 +1,12 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import {
+	ChatPromptTemplate,
+	SystemMessagePromptTemplate,
+	HumanMessagePromptTemplate,
+	PromptTemplate,
+} from '@langchain/core/prompts';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import { RetrievalQAChain } from 'langchain/chains';
 import {
 	NodeConnectionType,
 	type IExecuteFunctions,
@@ -7,20 +16,12 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { RetrievalQAChain } from 'langchain/chains';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
-import {
-	ChatPromptTemplate,
-	SystemMessagePromptTemplate,
-	HumanMessagePromptTemplate,
-	PromptTemplate,
-} from '@langchain/core/prompts';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
 import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getTracingConfig } from '../../../utils/tracing';
 
-const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question. 
+const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 ----------------
 {context}`;
@@ -31,7 +32,7 @@ export class ChainRetrievalQa implements INodeType {
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -108,30 +109,16 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Prompt',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
+				...promptTypeOptions,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
 					},
 				},
-				default: 'auto',
+			},
+			{
+				...textFromPreviousNode,
+				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
 			{
 				displayName: 'Text',

@@ -60,7 +60,6 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -155,8 +154,7 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution, stopWaitingForWebhook } =
-	useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -248,6 +246,8 @@ const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
+
+const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
 
 /**
  * Initialization
@@ -354,7 +354,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		await openWorkflow(workflowData);
+		openWorkflow(workflowData);
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
@@ -379,11 +379,11 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
  * Workflow
  */
 
-async function openWorkflow(data: IWorkflowDb) {
+function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
 
-	await initializeWorkspace(data);
+	initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -815,7 +815,8 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 	resetWorkspace();
 
 	await initializeData();
-	await initializeWorkspace({
+
+	initializeWorkspace({
 		...workflowData,
 		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
@@ -1009,11 +1010,7 @@ const workflowExecutionData = computed(() => workflowsStore.workflowExecutionDat
 async function onRunWorkflow() {
 	trackRunWorkflow();
 
-	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
-		void runWorkflowResolvePending({});
-	} else {
-		void runWorkflow({});
-	}
+	void runWorkflow({});
 }
 
 function trackRunWorkflow() {
@@ -1039,11 +1036,7 @@ async function onRunWorkflowToNode(id: string) {
 
 	trackRunWorkflowToNode(node);
 
-	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
-		void runWorkflowResolvePending({ destinationNode: node.name, source: 'Node.executeNode' });
-	} else {
-		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
-	}
+	void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1074,7 +1067,9 @@ async function openExecution(executionId: string) {
 	}
 
 	await initializeData();
-	await initializeWorkspace(data.workflowData);
+
+	initializeWorkspace(data.workflowData);
+
 	workflowsStore.setWorkflowExecutionData(data);
 
 	uiStore.stateIsDirty = false;
@@ -1204,7 +1199,7 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 async function onOpenChat() {
-	uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+	workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
 
 	const payload = {
 		workflow_id: workflowId.value,
@@ -1254,7 +1249,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
-				await openWorkflow(workflowData);
+				openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
@@ -1630,7 +1625,11 @@ onBeforeUnmount(() => {
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="onRunWorkflow"
 			/>
-			<CanvasChatButton v-if="containsChatTriggerNodes" @click="onOpenChat" />
+			<CanvasChatButton
+				v-if="containsChatTriggerNodes"
+				:outline="isChatOpen === false"
+				@click="onOpenChat"
+			/>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
 				:stopping="isStoppingExecution"

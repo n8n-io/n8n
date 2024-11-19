@@ -408,7 +408,10 @@ export class WorkflowExecute {
 			let metaRunData: ITaskMetadata;
 			for (const nodeName of Object.keys(metadata)) {
 				for ([index, metaRunData] of metadata[nodeName].entries()) {
-					runData[nodeName][index].metadata = metaRunData;
+					runData[nodeName][index].metadata = {
+						...(runData[nodeName][index].metadata ?? {}),
+						...metaRunData,
+					};
 				}
 			}
 		}
@@ -913,7 +916,6 @@ export class WorkflowExecute {
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
 		let startTime: number;
-		let taskData: ITaskData;
 
 		if (this.runExecutionData.startData === undefined) {
 			this.runExecutionData.startData = {};
@@ -1243,7 +1245,7 @@ export class WorkflowExecute {
 											: [];
 
 										while (items.length) {
-											const item = items.pop();
+											const item = items.shift();
 											if (item === undefined) {
 												continue;
 											}
@@ -1443,12 +1445,13 @@ export class WorkflowExecute {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
 
-					taskData = {
+					const taskData: ITaskData = {
 						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
-						executionStatus: 'success',
+						metadata: executionData.metadata,
+						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 					};
 
 					if (executionError !== undefined) {

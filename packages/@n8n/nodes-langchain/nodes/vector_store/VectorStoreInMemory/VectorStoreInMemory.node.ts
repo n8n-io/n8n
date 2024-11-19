@@ -54,6 +54,6 @@ export class VectorStoreInMemory extends createVectorStoreNode({
 		const workflowId = context.getWorkflow().id;
 		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
 
-		void vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
+		await vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
 	},
 }) {}

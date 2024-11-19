@@ -4,6 +4,7 @@ import Container, { Service } from 'typedi';
 
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 
+import { MissingAuthTokenError } from './errors/missing-auth-token.error';
 import { TaskRunnerWsServer } from './runner-ws-server';
 import type { LocalTaskManager } from './task-managers/local-task-manager';
 import type { TaskRunnerServer } from './task-runner-server';
@@ -26,15 +27,16 @@ export class TaskRunnerModule {
 	constructor(private readonly runnerConfig: TaskRunnersConfig) {}
 
 	async start() {
-		a.ok(!this.runnerConfig.disabled, 'Task runner is disabled');
+		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
+
+		const { mode, authToken } = this.runnerConfig;
+
+		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
 
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
 
-		if (
-			this.runnerConfig.mode === 'internal_childprocess' ||
-			this.runnerConfig.mode === 'internal_launcher'
-		) {
+		if (mode === 'internal_childprocess' || mode === 'internal_launcher') {
 			await this.startInternalTaskRunner();
 		}
 	}
@@ -54,7 +56,7 @@ export class TaskRunnerModule {
 	private async loadTaskManager() {
 		const { TaskManager } = await import('@/runners/task-managers/task-manager');
 		const { LocalTaskManager } = await import('@/runners/task-managers/local-task-manager');
-		this.taskManager = new LocalTaskManager();
+		this.taskManager = Container.get(LocalTaskManager);
 		Container.set(TaskManager, this.taskManager);
 	}
 

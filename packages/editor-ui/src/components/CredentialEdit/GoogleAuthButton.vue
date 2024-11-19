@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { useRootStore } from '@/stores/root.store';
+import { useI18n } from '@/composables/useI18n';
 
 const { baseUrl } = useRootStore();
 const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';
+const i18n = useI18n();
 const googleAuthButtons = {
 	'--google-auth-btn-normal': `url(${baseUrl}static/google-auth/normal${type}`,
 	'--google-auth-btn-focus': `url(${baseUrl}static/google-auth/focus${type}`,
@@ -15,7 +17,7 @@ const googleAuthButtons = {
 <template>
 	<button
 		:class="$style.googleAuthBtn"
-		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
+		:title="i18n.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
 		:style="googleAuthButtons"
 	/>
 </template>

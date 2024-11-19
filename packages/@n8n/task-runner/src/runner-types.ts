@@ -8,6 +8,7 @@ import type {
 	INodeParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
+	ITaskDataConnectionsSource,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
@@ -29,17 +30,16 @@ export interface TaskDataRequestParams {
 export interface DataRequestResponse {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
+	connectionInputSource: ITaskDataConnectionsSource | null;
 	node: INode;
 
 	runExecutionData: IRunExecutionData;
 	runIndex: number;
 	itemIndex: number;
 	activeNodeName: string;
-	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
 	envProviderState: EnvProviderState;
-	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
 	contextNodeName: string;
@@ -112,3 +112,6 @@ export const RPC_ALLOW_LIST = [
 	'helpers.httpRequest',
 	'logNodeOutput',
 ] as const;
+
+/** Node types needed for the runner to execute a task. */
+export type NeededNodeType = { name: string; version: number };

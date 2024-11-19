@@ -323,6 +323,12 @@ export class NDV extends BasePage {
 		addItemToFixedCollection: (paramName: string) => {
 			this.getters.fixedCollectionParameter(paramName).getByTestId('fixed-collection-add').click();
 		},
+		dragMainPanelToLeft: () => {
+			cy.drag('[data-test-id=panel-drag-button]', [-1000, 0], { moveTwice: true });
+		},
+		dragMainPanelToRight: () => {
+			cy.drag('[data-test-id=panel-drag-button]', [1000, 0], { moveTwice: true });
+		},
 	};
 }
 

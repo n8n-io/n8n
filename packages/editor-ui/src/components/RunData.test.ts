@@ -1,16 +1,38 @@
-import { waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
-import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
-import RunData from '@/components/RunData.vue';
-import { SET_NODE_TYPE, STORES, VIEWS } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import RunData from '@/components/RunData.vue';
+import { SET_NODE_TYPE, STORES } from '@/constants';
 import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
+import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { defaultNodeTypes } from '@/__tests__/mocks';
-import type { INodeExecutionData } from 'n8n-workflow';
+import { useNodeTypesStore } from '../stores/nodeTypes.store';
+
+const MOCK_EXECUTION_URL = 'execution.url/123';
+
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = vi.hoisted(() => ({
+	trackOpeningRelatedExecution: vi.fn(),
+	resolveRelatedExecutionUrl: vi.fn(),
+}));
+
+vi.mock('vue-router', () => {
+	return {
+		useRouter: () => ({}),
+		useRoute: () => ({ meta: {} }),
+		RouterLink: vi.fn(),
+	};
+});
+
+vi.mock('@/composables/useExecutionHelpers', () => ({
+	useExecutionHelpers: () => ({
+		trackOpeningRelatedExecution,
+		resolveRelatedExecutionUrl,
+	}),
+}));
 
 const nodes = [
 	{
@@ -24,50 +46,55 @@ const nodes = [
 ] as INodeUi[];
 
 describe('RunData', () => {
+	beforeAll(() => {
+		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
+	});
+
 	it("should render pin button in output panel disabled when there's binary data", () => {
-		const { getByTestId } = render(
-			[
+		const { getByTestId } = render({
+			defaultRunItems: [
 				{
 					json: {},
 					binary: {
 						data: {
 							fileName: 'test.xyz',
 							mimeType: 'application/octet-stream',
+							data: '',
 						},
 					},
 				},
 			],
-			'binary',
-		);
+			displayMode: 'binary',
+		});
 
 		expect(getByTestId('ndv-pin-data')).toBeInTheDocument();
 		expect(getByTestId('ndv-pin-data')).toHaveAttribute('disabled');
 	});
 
 	it("should not render pin button in input panel when there's binary data", () => {
-		const { queryByTestId } = render(
-			[
+		const { queryByTestId } = render({
+			defaultRunItems: [
 				{
 					json: {},
 					binary: {
 						data: {
 							fileName: 'test.xyz',
 							mimeType: 'application/octet-stream',
+							data: '',
 						},
 					},
 				},
 			],
-			'binary',
-			undefined,
-			'input',
-		);
+			displayMode: 'binary',
+			paneType: 'input',
+		});
 
 		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
 	});
 
 	it('should render data correctly even when "item.json" has another "json" key', async () => {
-		const { getByText, getAllByTestId, getByTestId } = render(
-			[
+		const { getByText, getAllByTestId, getByTestId } = render({
+			defaultRunItems: [
 				{
 					json: {
 						id: 1,
@@ -87,8 +114,8 @@ describe('RunData', () => {
 					},
 				},
 			],
-			'schema',
-		);
+			displayMode: 'schema',
+		});
 
 		await userEvent.click(getByTestId('ndv-pin-data'));
 		await waitFor(() => getAllByTestId('run-data-schema-item'), { timeout: 1000 });
@@ -97,8 +124,8 @@ describe('RunData', () => {
 	});
 
 	it('should render view and download buttons for PDFs', async () => {
-		const { getByTestId } = render(
-			[
+		const { getByTestId } = render({
+			defaultRunItems: [
 				{
 					json: {},
 					binary: {
@@ -106,57 +133,72 @@ describe('RunData', () => {
 							fileName: 'test.pdf',
 							fileType: 'pdf',
 							mimeType: 'application/pdf',
+							data: '',
 						},
 					},
 				},
 			],
-			'binary',
-		);
-		expect(getByTestId('ndv-view-binary-data')).toBeInTheDocument();
-		expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
-		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			displayMode: 'binary',
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('ndv-view-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+		});
 	});
 
 	it('should not render a view button for unknown content-type', async () => {
-		const { getByTestId, queryByTestId } = render(
-			[
+		const { getByTestId, queryByTestId } = render({
+			defaultRunItems: [
 				{
 					json: {},
 					binary: {
 						data: {
 							fileName: 'test.xyz',
 							mimeType: 'application/octet-stream',
+							data: '',
 						},
 					},
 				},
 			],
-			'binary',
-		);
-		expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
-		expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
-		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			displayMode: 'binary',
+		});
+
+		await waitFor(() => {
+			expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+		});
 	});
 
 	it('should not render pin data button when there is no output data', async () => {
-		const { queryByTestId } = render([], 'table');
+		const { queryByTestId } = render({ defaultRunItems: [], displayMode: 'table' });
 		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
 	});
 
 	it('should disable pin data button when data is pinned', async () => {
-		const { getByTestId } = render([], 'table', [{ json: { name: 'Test' } }]);
+		const { getByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+		});
 		const pinDataButton = getByTestId('ndv-pin-data');
 		expect(pinDataButton).toBeDisabled();
 	});
 
 	it('should enable pin data button when data is not pinned', async () => {
-		const { getByTestId } = render([{ json: { name: 'Test' } }], 'table');
+		const { getByTestId } = render({
+			defaultRunItems: [{ json: { name: 'Test' } }],
+			displayMode: 'table',
+		});
 		const pinDataButton = getByTestId('ndv-pin-data');
 		expect(pinDataButton).toBeEnabled();
 	});
 
 	it('should not render pagination on binary tab', async () => {
-		const { queryByTestId } = render(
-			Array.from({ length: 11 }).map((_, i) => ({
+		const { queryByTestId } = render({
+			defaultRunItems: Array.from({ length: 11 }).map((_, i) => ({
 				json: {
 					data: {
 						id: i,
@@ -166,17 +208,19 @@ describe('RunData', () => {
 				binary: {
 					data: {
 						a: 'b',
+						data: '',
+						mimeType: '',
 					},
 				},
 			})),
-			'binary',
-		);
+			displayMode: 'binary',
+		});
 		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
 	});
 
 	it('should render pagination with binary data on non-binary tab', async () => {
-		const { getByTestId } = render(
-			Array.from({ length: 11 }).map((_, i) => ({
+		const { getByTestId } = render({
+			defaultRunItems: Array.from({ length: 11 }).map((_, i) => ({
 				json: {
 					data: {
 						id: i,
@@ -186,25 +230,181 @@ describe('RunData', () => {
 				binary: {
 					data: {
 						a: 'b',
+						data: '',
+						mimeType: '',
 					},
 				},
 			})),
-			'json',
-		);
+			displayMode: 'json',
+		});
 		expect(getByTestId('ndv-data-pagination')).toBeInTheDocument();
 	});
 
-	const render = (
-		outputData: unknown[],
-		displayMode: IRunDataDisplayMode,
-		pinnedData?: INodeExecutionData[],
-		paneType: NodePanelType = 'output',
-	) => {
-		const pinia = createTestingPinia({
-			initialState: {
-				[STORES.SETTINGS]: {
-					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
+	it('should render sub-execution link in header', async () => {
+		const metadata: ITaskMetadata = {
+			subExecution: {
+				workflowId: 'xyz',
+				executionId: '123',
+			},
+			subExecutionsCount: 1,
+		};
+		const { getByTestId } = render({
+			defaultRunItems: [
+				{
+					json: {},
 				},
+			],
+			displayMode: 'table',
+			paneType: 'output',
+			metadata,
+		});
+
+		expect(getByTestId('related-execution-link')).toBeInTheDocument();
+		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
+
+		expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item, 1 sub-execution');
+
+		getByTestId('related-execution-link').click();
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
+	});
+
+	it('should render parent-execution link in header', async () => {
+		const metadata: ITaskMetadata = {
+			parentExecution: {
+				workflowId: 'xyz',
+				executionId: '123',
+			},
+		};
+		const { getByTestId } = render({
+			defaultRunItems: [
+				{
+					json: {},
+				},
+			],
+			displayMode: 'table',
+			paneType: 'output',
+			metadata,
+		});
+
+		expect(getByTestId('related-execution-link')).toBeInTheDocument();
+		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Parent Execution 123');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
+
+		expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item');
+
+		getByTestId('related-execution-link').click();
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'table');
+	});
+
+	it('should render sub-execution link in header with multiple items', async () => {
+		const metadata: ITaskMetadata = {
+			subExecution: {
+				workflowId: 'xyz',
+				executionId: '123',
+			},
+			subExecutionsCount: 3,
+		};
+		const { getByTestId } = render({
+			defaultRunItems: [
+				{
+					json: {},
+				},
+				{
+					json: {},
+				},
+			],
+			displayMode: 'json',
+			paneType: 'output',
+			metadata,
+		});
+
+		expect(getByTestId('related-execution-link')).toBeInTheDocument();
+		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
+		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
+
+		expect(getByTestId('ndv-items-count')).toHaveTextContent('2 items, 3 sub-executions');
+
+		getByTestId('related-execution-link').click();
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
+	});
+
+	it('should render sub-execution link in header with multiple runs', async () => {
+		const metadata: ITaskMetadata = {
+			subExecution: {
+				workflowId: 'xyz',
+				executionId: '123',
+			},
+			subExecutionsCount: 3,
+		};
+		const { getByTestId, queryByTestId } = render({
+			runs: [
+				{
+					startTime: new Date().getTime(),
+					executionTime: new Date().getTime(),
+					data: {
+						main: [[{ json: {} }]],
+					},
+					source: [null],
+					metadata,
+				},
+				{
+					startTime: new Date().getTime(),
+					executionTime: new Date().getTime(),
+					data: {
+						main: [[{ json: {} }]],
+					},
+					source: [null],
+					metadata,
+				},
+			],
+			displayMode: 'json',
+			paneType: 'output',
+			metadata,
+		});
+
+		expect(getByTestId('related-execution-link')).toBeInTheDocument();
+		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+
+		expect(queryByTestId('ndv-items-count')).not.toBeInTheDocument();
+		expect(getByTestId('run-selector')).toBeInTheDocument();
+
+		getByTestId('related-execution-link').click();
+		expect(trackOpeningRelatedExecution).toHaveBeenCalledWith(metadata, 'json');
+	});
+
+	const render = ({
+		defaultRunItems,
+		displayMode,
+		pinnedData,
+		paneType = 'output',
+		metadata,
+		runs,
+	}: {
+		defaultRunItems?: INodeExecutionData[];
+		displayMode: IRunDataDisplayMode;
+		pinnedData?: INodeExecutionData[];
+		paneType?: NodePanelType;
+		metadata?: ITaskMetadata;
+		runs?: ITaskData[];
+	}) => {
+		const defaultRun: ITaskData = {
+			startTime: new Date().getTime(),
+			executionTime: new Date().getTime(),
+			data: {
+				main: [defaultRunItems ?? [{ json: {} }]],
+			},
+			source: [null],
+			metadata,
+		};
+
+		const pinia = createTestingPinia({
+			stubActions: false,
+			initialState: {
+				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 				[STORES.NDV]: {
 					output: {
 						displayMode,
@@ -233,23 +433,11 @@ describe('RunData', () => {
 						data: {
 							resultData: {
 								runData: {
-									'Test Node': [
-										{
-											startTime: new Date().getTime(),
-											executionTime: new Date().getTime(),
-											data: {
-												main: [outputData],
-											},
-											source: [null],
-										},
-									],
+									'Test Node': runs ?? [defaultRun],
 								},
 							},
 						},
 					},
-				},
-				[STORES.NODE_TYPES]: {
-					nodeTypes: defaultNodeTypes,
 				},
 			},
 		});
@@ -257,7 +445,11 @@ describe('RunData', () => {
 		setActivePinia(pinia);
 
 		const workflowsStore = useWorkflowsStore();
+		const nodeTypesStore = useNodeTypesStore();
+
+		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+
 		if (pinnedData) {
 			vi.mocked(workflowsStore).pinDataByNodeName.mockReturnValue(pinnedData);
 		}
@@ -267,24 +459,13 @@ describe('RunData', () => {
 				node: {
 					name: 'Test Node',
 				},
-				workflow: {
+				workflow: createTestWorkflowObject({
 					nodes,
-				},
-			},
-			data() {
-				return {
-					canPinData: true,
-					showData: true,
-				};
+				}),
 			},
 			global: {
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
-				},
-				mocks: {
-					$route: {
-						name: VIEWS.WORKFLOW,
-					},
 				},
 			},
 		})({
@@ -292,6 +473,7 @@ describe('RunData', () => {
 				node: {
 					id: '1',
 					name: 'Test Node',
+					type: SET_NODE_TYPE,
 					position: [0, 0],
 				},
 				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
