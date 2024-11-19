@@ -239,6 +239,10 @@ export interface IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 }
 
+export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
+	projectId?: string;
+}
+
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
