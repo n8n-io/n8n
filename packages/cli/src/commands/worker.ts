@@ -151,7 +151,7 @@ export class Worker extends BaseCommand {
 
 		if (this.concurrency < 5) {
 			this.logger.warn(
-				'Concurrency is set to less than 5. Please consider increasing it to at least 5 to make best use of the worker.',
+				'Concurrency is set to less than 5. THIS CAN LEAD TO AN UNSTABLE ENVIRONMENT. Please consider increasing it to at least 5 to make best use of the worker.',
 			);
 		}
 	}
