@@ -43,6 +43,7 @@ export class ZabbixApi implements ICredentialType {
 		properties: {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiToken}}',
+				'Content-Type': 'application/json-rpc',
 			},
 		},
 	};
@@ -50,7 +51,7 @@ export class ZabbixApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
-			url: '/zabbix/api_jsonrpc.php',
+			url: '/api_jsonrpc.php',
 			method: 'POST',
 			body: {
 				jsonrpc: '2.0',
@@ -61,11 +62,16 @@ export class ZabbixApi implements ICredentialType {
 				},
 				id: 2,
 			},
-			headers: {
-				Authorization: 'Bearer {{$credentials.apiToken}}',
-				'Content-Type': 'application/json-rpc',
-			},
-			json: true,
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'error',
+					value: 'invalid_auth',
+					message: 'Invalid access token',
+				},
+			},
+		],
 	};
 }

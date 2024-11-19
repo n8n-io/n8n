@@ -381,7 +381,6 @@
       "dist/credentials/YourlsApi.credentials.js",
       "dist/credentials/YouTubeOAuth2Api.credentials.js",
       "dist/credentials/ZabbixApi.credentials.js",
-      "dist/credentials/ZabbixAuthApi.credentials.js",
       "dist/credentials/ZammadBasicAuthApi.credentials.js",
       "dist/credentials/ZammadTokenAuthApi.credentials.js",
       "dist/credentials/ZendeskApi.credentials.js",
