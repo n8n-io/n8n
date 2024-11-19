@@ -352,7 +352,7 @@ const activatePane = () => {
 
 		<template #node-waiting>
 			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
-			<N8nText v-n8n-html="waitingNodeTooltip()"></N8nText>
+			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
 		</template>
 
 		<template #no-output-data>
