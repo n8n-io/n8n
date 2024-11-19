@@ -223,7 +223,7 @@ describe('GlobalConfig', () => {
 		},
 		taskRunners: {
 			enabled: false,
-			mode: 'internal_childprocess',
+			mode: 'internal',
 			path: '/runners',
 			authToken: '',
 			listenAddress: '127.0.0.1',

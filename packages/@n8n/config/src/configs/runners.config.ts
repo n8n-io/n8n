@@ -2,10 +2,10 @@ import { Config, Env } from '../decorators';
 
 /**
  * Whether to enable task runners and how to run them
- * - internal_childprocess: Task runners are run as a child process and launched by n8n
+ * - internal: Task runners are run as a child process and launched by n8n
  * - external: Task runners are run as a separate program not launched by n8n
  */
-export type TaskRunnerMode = 'internal_childprocess' | 'external';
+export type TaskRunnerMode = 'internal' | 'external';
 
 @Config
 export class TaskRunnersConfig {
@@ -14,7 +14,7 @@ export class TaskRunnersConfig {
 
 	// Defaults to true for now
 	@Env('N8N_RUNNERS_MODE')
-	mode: TaskRunnerMode = 'internal_childprocess';
+	mode: TaskRunnerMode = 'internal';
 
 	/** Endpoint which task runners connect to */
 	@Env('N8N_RUNNERS_PATH')
