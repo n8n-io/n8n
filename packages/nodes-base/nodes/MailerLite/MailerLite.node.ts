@@ -12,7 +12,7 @@ export class MailerLite extends VersionedNodeType {
 			icon: 'file:MailerLite.svg',
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Consume Mailer Lite API',
+			description: 'Consume MailerLite API',
 			defaultVersion: 2,
 		};
 

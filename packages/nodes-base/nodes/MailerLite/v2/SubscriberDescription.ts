@@ -356,8 +356,8 @@ export const subscriberFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Type',
-				name: 'type',
+				displayName: 'Status',
+				name: 'status',
 				type: 'options',
 				options: [
 					{
@@ -365,12 +365,20 @@ export const subscriberFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Unsubscribed',
-						value: 'unsubscribed',
+						name: 'Bounced',
+						value: 'bounced',
+					},
+					{
+						name: 'Junk',
+						value: 'junk',
 					},
 					{
 						name: 'Unconfirmed',
 						value: 'unconfirmed',
+					},
+					{
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
 					},
 				],
 				default: '',

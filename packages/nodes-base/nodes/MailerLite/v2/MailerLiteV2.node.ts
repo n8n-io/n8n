@@ -116,6 +116,7 @@ export class MailerLiteV2 implements INodeType {
 						}
 
 						responseData = await mailerliteApiRequest.call(this, 'POST', '/subscribers', body);
+						responseData = responseData.data;
 					}
 					//https://developers.mailerlite.com/reference#single-subscriber
 					if (operation === 'get') {
@@ -126,6 +127,8 @@ export class MailerLiteV2 implements INodeType {
 							'GET',
 							`/subscribers/${subscriberId}`,
 						);
+
+						responseData = responseData.data;
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
@@ -133,7 +136,9 @@ export class MailerLiteV2 implements INodeType {
 
 						const filters = this.getNodeParameter('filters', i);
 
-						Object.assign(qs, filters);
+						if (filters.status) {
+							qs['filter[status]'] = filters.status as string;
+						}
 
 						if (returnAll) {
 							responseData = await mailerliteApiRequestAllItems.call(
@@ -147,6 +152,7 @@ export class MailerLiteV2 implements INodeType {
 							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
+							responseData = responseData.data;
 						}
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber

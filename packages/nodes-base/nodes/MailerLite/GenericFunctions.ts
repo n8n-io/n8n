@@ -4,7 +4,7 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
-	IRequestOptions,
+	IHttpRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -13,16 +13,15 @@ export async function mailerliteApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
 	path: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
-		uri:
+		url:
 			this.getNode().typeVersion === 1
 				? `https://api.mailerlite.com/api/v2${path}`
 				: `https://connect.mailerlite.com/api${path}`,
@@ -32,7 +31,7 @@ export async function mailerliteApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestWithAuthentication.call(this, 'mailerLiteApi', options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'mailerLiteApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -42,7 +41,6 @@ export async function mailerliteApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -53,10 +51,18 @@ export async function mailerliteApiRequestAllItems(
 	query.limit = 1000;
 	query.offset = 0;
 
-	do {
-		responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData as IDataObject[]);
-		query.offset = query.offset + query.limit;
-	} while (responseData.length !== 0);
+	if (this.getNode().typeVersion === 1) {
+		do {
+			responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
+			query.offset = query.offset + query.limit;
+		} while (responseData.length !== 0);
+	} else {
+		do {
+			responseData = await mailerliteApiRequest.call(this, method, endpoint, body, query);
+			returnData.push.apply(returnData, responseData.data as IDataObject[]);
+			query.cursor = responseData.meta.next_cursor;
+		} while (responseData.links.next !== null);
+	}
 	return returnData;
 }
