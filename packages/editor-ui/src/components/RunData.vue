@@ -200,12 +200,13 @@ const displayMode = computed(() =>
 );
 
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
-const isWaitNodeWaiting = computed(
-	() =>
-		workflowExecution.value?.status === 'waiting' &&
-		workflowExecution.value.data?.waitTill &&
-		workflowExecution.value?.data?.resultData?.lastNodeExecuted === node.value?.name,
-);
+const isWaitNodeWaiting = computed(() => {
+	return (
+		node.value?.name &&
+		workflowExecution.value?.data?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
+			?.executionStatus === 'waiting'
+	);
+});
 
 const { activeNode } = storeToRefs(ndvStore);
 const nodeType = computed(() => {
@@ -1508,7 +1509,11 @@ defineExpose({ enterEditMode });
 		</div>
 
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
-			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
+			<div
+				v-if="isExecuting && !isWaitNodeWaiting"
+				:class="$style.center"
+				data-test-id="ndv-executing"
+			>
 				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
 				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
