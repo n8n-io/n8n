@@ -197,6 +197,9 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 			>
 				Star
 			</GithubButton>
+			<div class="github-button__close">
+				<n8n-icon icon="times" color="text-light" class="mr-5xs" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -237,5 +240,61 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	background-color: var(--color-background-xlight);
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
+	/* // Style 1
+	&:hover {
+		.github-button__close {
+			display: block;
+		}
+	}
+
+	&__close {
+		position: absolute;
+		top: 3px;
+		right: 3px;
+		display: none;
+		cursor: pointer;
+		// color: white;
+		// background-color: red;
+
+		.n8n-text {
+			font-size: var(--font-size-2xs);
+		}
+
+		&:hover .n8n-text {
+			color: var(--color-primary);
+		}
+	} */
+
+	// Style 2
+	&:hover {
+		.github-button__close {
+			display: block;
+		}
+	}
+
+	&__close {
+		position: absolute;
+		top: 11px;
+		right: 11px;
+		display: none;
+		cursor: pointer;
+
+		.n8n-text {
+			display: flex;
+			justify-items: center;
+			align-items: center;
+			width: 14px;
+			height: 14px;
+			color: white;
+			font-size: var(--font-size-3xs);
+			background-color: var(--color-foreground-xdark);
+			border-radius: 7px;
+		}
+
+		&:hover .n8n-text {
+			background-color: var(--color-primary);
+		}
+	}
 }
 </style>
