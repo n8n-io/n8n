@@ -151,7 +151,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIApiVersion: credentials.apiVersion,
 			// azureOpenAIEndpoint and configuration.baseURL are both ignored here
 			// only setting azureOpenAIBasePath worked
-			azureOpenAIBasePath: `${credentials.endpoint}/openai/deployments`,
+			azureOpenAIBasePath: credentials.endpoint
+				? `${credentials.endpoint}/openai/deployments`
+				: undefined,
 			...options,
 		});
 
