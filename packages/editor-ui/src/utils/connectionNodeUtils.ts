@@ -32,7 +32,7 @@ function adjustNewSource(source: AddedNode, target: AddedNode) {
 		const { getCurrentWorkflow } = useWorkflowsStore();
 		const workflow = getCurrentWorkflow();
 
-		// If a memory node is added to an Agent, the memory node is actually a parent since it provides input
+		// If a memory node is added to an Agent, the memory node is actually the source since it provides input
 		// So we need to look for the Agent's (other) parents to determine if there is a sessionId provider
 		const ps = workflow.getParentNodesByDepth(target.name, 1);
 		if (
