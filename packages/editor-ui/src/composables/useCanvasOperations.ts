@@ -603,11 +603,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		workflowsStore.addNode(nodeData);
+		workflowsStore.addNode(nodeData);
+		workflowsStore.addNode(nodeData);
+		workflowsStore.addNode(nodeData);
 
 		if (options.trackHistory) {
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData));
 		}
-
+		console.log('options', options);
 		if (!options.isAutoAdd) {
 			createConnectionToLastInteractedWithNode(nodeData, options);
 		}
