@@ -541,8 +541,7 @@ code[class^='language-'] {
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
-	padding-top: 1px;
-	overflow: hidden;
+	border-top: 0;
 
 	textarea {
 		border: none;
