@@ -218,6 +218,11 @@ const canPinData = computed(() => {
 const allToolsWereUnusedNotice = computed(() => {
 	if (!node.value || runsCount.value === 0) return undefined;
 
+	// With pinned data there's no clear correct answer for whether
+	// we should use historic or current parents, so we don't show the notice,
+	// as it likely ends up unactionable noise to the user
+	if (pinnedData.hasData) return undefined;
+
 	const toolsAvailable = props.workflow.getParentNodes(
 		node.value.name,
 		NodeConnectionType.AiTool,
