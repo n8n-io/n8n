@@ -147,6 +147,11 @@ describe('copyByFilePath()', () => {
 });
 
 describe('deleteMany()', () => {
+	const rmOptions = {
+		force: true,
+		recursive: true,
+	};
+
 	it('should delete many files by workflow ID and execution ID', async () => {
 		const ids = [
 			{ workflowId, executionId },
@@ -160,6 +165,16 @@ describe('deleteMany()', () => {
 		await expect(promise).resolves.not.toThrow();
 
 		expect(fsp.rm).toHaveBeenCalledTimes(2);
+		expect(fsp.rm).toHaveBeenNthCalledWith(
+			1,
+			`${storagePath}/workflows/${workflowId}/executions/${executionId}`,
+			rmOptions,
+		);
+		expect(fsp.rm).toHaveBeenNthCalledWith(
+			2,
+			`${storagePath}/workflows/${otherWorkflowId}/executions/${otherExecutionId}`,
+			rmOptions,
+		);
 	});
 
 	it('should suppress error on non-existing filepath', async () => {
