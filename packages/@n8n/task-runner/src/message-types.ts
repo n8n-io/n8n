@@ -21,6 +21,7 @@ export namespace BrokerMessage {
 			type: 'broker:taskofferaccept';
 			taskId: string;
 			offerId: string;
+			requestId: string;
 		}
 
 		export interface TaskCancel {
@@ -188,6 +189,7 @@ export namespace RunnerMessage {
 		export interface TaskDeferred {
 			type: 'runner:taskdeferred';
 			taskId: string;
+			requestId: string;
 		}
 
 		export interface TaskDone {
