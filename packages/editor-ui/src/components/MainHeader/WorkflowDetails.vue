@@ -777,6 +777,10 @@ $--header-spacing: 20px;
 
 .name-container {
 	margin-right: $--header-spacing;
+
+	:deep(.el-input) {
+		padding: 0;
+	}
 }
 
 .name {
@@ -827,6 +831,7 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-m);
+	flex-wrap: wrap;
 }
 </style>
 
@@ -837,6 +842,7 @@ $--header-spacing: 20px;
 	width: 100%;
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 }
 
 .group {
