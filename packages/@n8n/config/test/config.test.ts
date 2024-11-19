@@ -229,8 +229,6 @@ describe('GlobalConfig', () => {
 			listenAddress: '127.0.0.1',
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
-			launcherPath: '',
-			launcherRunner: 'javascript',
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
 			assertDeduplicationOutput: false,
