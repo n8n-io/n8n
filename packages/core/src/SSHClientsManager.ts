@@ -1,7 +1,9 @@
 import type { SSHCredentials } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Client, type ConnectConfig } from 'ssh2';
+import type { Client, ConnectConfig } from 'ssh2';
 import { Service } from 'typedi';
+
+let ClientClass: typeof Client;
 
 @Service()
 export class SSHClientsManager {
@@ -39,8 +41,12 @@ export class SSHClientsManager {
 			return existing.client;
 		}
 
+		if (!ClientClass) {
+			ClientClass = (await import('ssh2')).Client;
+		}
+
 		return await new Promise((resolve, reject) => {
-			const sshClient = new Client();
+			const sshClient = new ClientClass();
 			sshClient.once('error', reject);
 			sshClient.once('ready', () => {
 				sshClient.off('error', reject);
