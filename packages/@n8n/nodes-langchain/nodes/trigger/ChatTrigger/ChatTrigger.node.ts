@@ -473,7 +473,6 @@ export class ChatTrigger implements INodeType {
 		try {
 			await validateAuth(this);
 		} catch (error) {
-			console.log('🚀 ~ ChatTrigger ~ webhook ~ error:', error);
 			if (error) {
 				res.writeHead((error as IDataObject).responseCode as number, {
 					'www-authenticate': 'Basic realm="Webhook"',
@@ -540,8 +539,6 @@ export class ChatTrigger implements INodeType {
 				} catch (error) {
 					webhookResponse.error = error.message;
 					this.logger.error(`Could not retrieve memory for loadPreviousSession: ${error.message}`);
-				} finally {
-					return { webhookResponse };
 				}
 			}
 

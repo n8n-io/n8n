@@ -6,6 +6,7 @@ import set from 'lodash/set';
 import { PollContext, returnJsonArray, type InstanceSettings } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
 import type {
+	FunctionsBase,
 	IBinaryData,
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -16,6 +17,7 @@ import type {
 	ITriggerFunctions,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
+	NodeConnectionType,
 	NodeTypeAndVersion,
 	VersionedNodeType,
 	Workflow,
@@ -37,6 +39,8 @@ type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
 	request?: MockDeepPartial<express.Request>;
 	bodyData?: IDataObject;
 	childNodes?: NodeTypeAndVersion[];
+	getInputConnectionData?: (type: NodeConnectionType) => Promise<unknown>;
+	logger?: Partial<FunctionsBase['logger']>;
 };
 
 type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {};
@@ -154,7 +158,13 @@ export async function testWebhookTriggerNode(
 		getInstanceId: () => 'instanceId',
 		getBodyData: () => options.bodyData ?? {},
 		getHeaderData: () => ({}),
-		getInputConnectionData: async () => ({}),
+		getInputConnectionData: options.getInputConnectionData ?? jest.fn(),
+		logger: options.logger ?? {
+			error: jest.fn(),
+			warn: jest.fn(),
+			info: jest.fn(),
+			debug: jest.fn(),
+		},
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
