@@ -649,6 +649,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
+		console.log('createConnectionToLastInteractedWithNode called');
 		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
 		if (!lastInteractedWithNode) {
 			return;
@@ -731,6 +732,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				targetIsNew: targetNode.id === node.id,
 			});
 		}
+		throw new Error('Is this thing on?');
 	}
 
 	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions) {
