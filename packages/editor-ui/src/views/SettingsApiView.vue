@@ -9,13 +9,15 @@ import CopyInput from '@/components/CopyInput.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+import { API_KEY_EDIT_MODAL_KEY, DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { createEventBus } from 'n8n-design-system';
+import { useUIStore } from '@/stores/ui.store';
 
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
 const { baseUrl } = useRootStore();
 
@@ -40,6 +42,13 @@ const isRedactedApiKey = computed((): boolean => {
 	if (!apiKeys.value) return false;
 	return apiKeys.value[0].apiKey.includes('*');
 });
+
+const onCreateApiKey = async () => {
+	uiStore.openModalWithData({
+		name: API_KEY_EDIT_MODAL_KEY,
+		data: { mode: 'new' },
+	});
+};
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
@@ -145,7 +154,7 @@ function onCopy() {
 		</template>
 
 		<div class="mt-m text-right">
-			<n8n-button size="large"> Create an API Key</n8n-button>
+			<n8n-button size="large" @click="onCreateApiKey"> Create an API Key</n8n-button>
 		</div>
 
 		<!-- <div v-if="apiKeys.length">
