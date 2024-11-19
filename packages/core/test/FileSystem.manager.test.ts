@@ -167,12 +167,12 @@ describe('deleteMany()', () => {
 		expect(fsp.rm).toHaveBeenCalledTimes(2);
 		expect(fsp.rm).toHaveBeenNthCalledWith(
 			1,
-			`${storagePath}/workflows/${workflowId}/executions/${executionId}/binary_data/`,
+			`${storagePath}/workflows/${workflowId}/executions/${executionId}`,
 			rmOptions,
 		);
 		expect(fsp.rm).toHaveBeenNthCalledWith(
 			2,
-			`${storagePath}/workflows/${otherWorkflowId}/executions/${otherExecutionId}/binary_data/`,
+			`${storagePath}/workflows/${otherWorkflowId}/executions/${otherExecutionId}`,
 			rmOptions,
 		);
 	});
