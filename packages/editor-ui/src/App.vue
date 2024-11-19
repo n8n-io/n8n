@@ -128,7 +128,8 @@ watch(defaultLocale, (newLocale) => {
 .container {
 	height: 100vh;
 	overflow: hidden;
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr auto;
 }
 
 // App grid is the main app layout including modals and other absolute positioned elements
@@ -136,13 +137,12 @@ watch(defaultLocale, (newLocale) => {
 	position: relative;
 	display: grid;
 	height: 100vh;
-	flex-basis: 100%;
 	grid-template-areas:
 		'banners banners'
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: minmax(0, max-content) 1fr;
-	grid-template-rows: auto fit-content($header-height) 1fr;
+	grid-template-columns: auto 1fr;
+	grid-template-rows: auto auto 1fr;
 }
 
 .banners {

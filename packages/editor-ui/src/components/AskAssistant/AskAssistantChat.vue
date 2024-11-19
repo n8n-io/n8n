@@ -103,12 +103,6 @@ function onClose() {
 </template>
 
 <style module>
-.container {
-	height: 100%;
-	flex-basis: content;
-	z-index: var(--z-index-ask-assistant-chat);
-}
-
 .wrapper {
 	height: 100%;
 }
