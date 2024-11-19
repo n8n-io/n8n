@@ -519,15 +519,10 @@ export class ToolWorkflow implements INodeType {
 			if (executionError) {
 				void this.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 			} else {
-				const parsedResponse = jsonParse<IDataObject>(response);
 				// Output always needs to be an object
 				// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
-				void this.addOutputData(
-					NodeConnectionType.AiTool,
-					index,
-					[[{ json: typeof parsedResponse === 'object' ? parsedResponse : { response } }]],
-					metadata,
-				);
+				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json }]], metadata);
 			}
 			return response;
 		};
