@@ -87,6 +87,36 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 							'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
 						type: 'number',
 					},
+					{
+						displayName: 'Dimensions',
+						name: 'dimensions',
+						default: undefined,
+						description:
+							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
+						type: 'options',
+						options: [
+							{
+								name: '256',
+								value: 256,
+							},
+							{
+								name: '512',
+								value: 512,
+							},
+							{
+								name: '1024',
+								value: 1024,
+							},
+							{
+								name: '1536',
+								value: 1536,
+							},
+							{
+								name: '3072',
+								value: 3072,
+							},
+						],
+					},
 				],
 			},
 		],
@@ -105,6 +135,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			batchSize?: number;
 			stripNewLines?: boolean;
 			timeout?: number;
+			dimensions?: number | undefined;
 		};
 
 		if (options.timeout === -1) {
