@@ -68,6 +68,12 @@ export class MemoryZep implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
+				displayName: 'Only works with Zep Cloud and Community edition <= v0.27.2',
+				name: 'supportedVersions',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Session ID',
 				name: 'sessionId',
 				type: 'string',
