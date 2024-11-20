@@ -1,6 +1,4 @@
-import { readFileSync } from 'fs';
 import { mockInstance } from 'n8n-core/test/utils';
-import path from 'path';
 import { Container } from 'typedi';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
