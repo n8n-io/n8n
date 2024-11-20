@@ -36,7 +36,7 @@ export class TaskRunnerModule {
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
 
-		if (mode === 'internal_childprocess' || mode === 'internal_launcher') {
+		if (mode === 'internal') {
 			await this.startInternalTaskRunner();
 		}
 	}

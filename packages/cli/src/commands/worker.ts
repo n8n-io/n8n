@@ -148,6 +148,12 @@ export class Worker extends BaseCommand {
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
 
 		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
+		if (this.concurrency < 5) {
+			this.logger.warn(
+				'Concurrency is set to less than 5. THIS CAN LEAD TO AN UNSTABLE ENVIRONMENT. Please consider increasing it to at least 5 to make best use of the worker.',
+			);
+		}
 	}
 
 	async initScalingService() {
