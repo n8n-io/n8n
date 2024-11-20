@@ -100,11 +100,12 @@ export function useDataSchema() {
 		}
 		const runData = executionData.resultData.runData;
 
-		if (!runData?.[node.name]?.[runIndex].data || runData[node.name][runIndex].data === undefined) {
+		const taskData = runData?.[node.name]?.[runIndex];
+		if (taskData?.data === undefined) {
 			return [];
 		}
 
-		return getMainInputData(runData[node.name][runIndex].data!, outputIndex);
+		return getMainInputData(taskData.data, outputIndex);
 	}
 
 	function getInputDataWithPinned(
