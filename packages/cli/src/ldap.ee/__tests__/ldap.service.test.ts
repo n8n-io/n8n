@@ -874,7 +874,19 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe.skip('runSync()', () => {});
+	describe('runSync()', () => {
+		it.todo('should search for users with expected parameters');
+		it.todo('should resolve binary attributes');
+		it.todo('should throw expected error if search fails');
+		it.todo('should process users if mode is "live"');
+		it.todo('should write expected data to the database');
+		it.todo(
+			'should write expected data to the database with an error message if processing users fails',
+		);
+		it.todo('should emit expected event if synchronization is enabled');
+		it.todo('should emit expected event if synchronization is disabled');
+	});
+
 	describe('stopSync()', () => {
 		it('should clear the scheduled timer', async () => {
 			const givenConfig = {
