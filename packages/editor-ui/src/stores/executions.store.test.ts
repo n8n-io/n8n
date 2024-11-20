@@ -58,10 +58,12 @@ describe('executions.store', () => {
 		});
 
 		it('should delete executions started before given date', async () => {
-			await executionsStore.deleteExecutions({ deleteBefore: mockExecutions[1].startedAt });
+			const deleteBefore = mockExecutions[1].startedAt;
+			await executionsStore.deleteExecutions({ deleteBefore });
 
-			expect(executionsStore.executions).toEqual(
-				expect.arrayContaining([mockExecutions[0], mockExecutions[1]]),
+			expect(executionsStore.executions.length).toBe(2);
+			executionsStore.executions.forEach(({ startedAt }) =>
+				expect(startedAt.getTime()).toBeGreaterThanOrEqual(deleteBefore.getTime()),
 			);
 		});
 
