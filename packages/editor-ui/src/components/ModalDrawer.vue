@@ -14,7 +14,7 @@ const props = withDefaults(
 		width: string;
 		wrapperClosable?: boolean;
 		closeOnClickModal?: boolean;
-		zIndex?: string;
+		zIndex?: number;
 	}>(),
 	{
 		modal: true,
