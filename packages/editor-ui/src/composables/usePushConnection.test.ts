@@ -61,6 +61,7 @@ describe('usePushConnection()', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+		pushConnection.pushMessageQueue.value = [];
 	});
 
 	describe('initialize()', () => {
@@ -225,9 +226,6 @@ describe('usePushConnection()', () => {
 		describe('nodeExecuteAfter', async () => {
 			it("enqueues messages if we don't have the active execution id yet", async () => {
 				uiStore.isActionActive.workflowRunning = true;
-				const queuePushMessageSpy = vi
-					.spyOn(pushConnection, 'queuePushMessage')
-					.mockImplementation(() => {});
 				const event: PushMessage = {
 					type: 'nodeExecuteAfter',
 					data: {
@@ -237,10 +235,18 @@ describe('usePushConnection()', () => {
 					},
 				};
 
+				expect(pushConnection.retryTimeout.value).toBeNull();
+				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
+
 				const result = await pushConnection.pushMessageReceived(event);
 
-				expect(queuePushMessageSpy).toHaveBeenCalledWith(event, 5);
 				expect(result).toBe(false);
+				expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
+				expect(pushConnection.pushMessageQueue.value).toContainEqual({
+					message: event,
+					retriesLeft: 5,
+				});
+				expect(pushConnection.retryTimeout).not.toBeNull();
 			});
 		});
 	});
