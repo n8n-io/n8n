@@ -44,15 +44,21 @@ export class TaskRunnerModule {
 
 	@OnShutdown()
 	async stop() {
-		if (this.taskRunnerProcess) {
-			await this.taskRunnerProcess.stop();
-			this.taskRunnerProcess = undefined;
-		}
+		const stopRunnerProcessTask = (async () => {
+			if (this.taskRunnerProcess) {
+				await this.taskRunnerProcess.stop();
+				this.taskRunnerProcess = undefined;
+			}
+		})();
 
-		if (this.taskRunnerHttpServer) {
-			await this.taskRunnerHttpServer.stop();
-			this.taskRunnerHttpServer = undefined;
-		}
+		const stopRunnerServerTask = (async () => {
+			if (this.taskRunnerHttpServer) {
+				await this.taskRunnerHttpServer.stop();
+				this.taskRunnerHttpServer = undefined;
+			}
+		})();
+
+		await Promise.all([stopRunnerProcessTask, stopRunnerServerTask]);
 	}
 
 	private async loadTaskManager() {
