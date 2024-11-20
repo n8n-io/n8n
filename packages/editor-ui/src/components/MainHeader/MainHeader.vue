@@ -5,6 +5,7 @@ import { useRouter, useRoute } from 'vue-router';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
+	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
 	MAIN_HEADER_TABS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
@@ -36,6 +37,7 @@ const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
 const executionToReturnTo = ref('');
 const dirtyState = ref(false);
+const githubButtonHidden = ref(localStorage.getItem(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON));
 
 const tabBarItems = computed(() => [
 	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
@@ -52,7 +54,15 @@ const workflowId = computed(() =>
 );
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
-const showGitHubButton = computed(() => !settingsStore.settings.inE2ETests);
+const isEnterprise = computed(
+	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
+);
+const showGitHubButton = computed(
+	() =>
+		!isEnterprise.value &&
+		!settingsStore.settings.inE2ETests &&
+		githubButtonHidden.value !== 'true',
+);
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -163,6 +173,11 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 		await router.push(routeToNavigateTo);
 	}
 }
+
+function hideGithubButton() {
+	githubButtonHidden.value = 'true';
+	localStorage.setItem(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, 'true');
+}
 </script>
 
 <template>
@@ -188,15 +203,23 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 			/>
 		</div>
 		<div class="github-button" v-if="showGitHubButton">
-			<GithubButton
-				href="https://github.com/n8n-io/n8n"
-				:data-color-scheme="uiStore.appliedTheme"
-				data-size="large"
-				data-show-count="true"
-				aria-label="Star n8n-io/n8n on GitHub"
-			>
-				Star
-			</GithubButton>
+			<div class="github-button-container">
+				<GithubButton
+					href="https://github.com/n8n-io/n8n"
+					:data-color-scheme="uiStore.appliedTheme"
+					data-size="large"
+					data-show-count="true"
+					aria-label="Star n8n-io/n8n on GitHub"
+				>
+					Star
+				</GithubButton>
+				<N8nIcon
+					class="close-github-button"
+					icon="times-circle"
+					size="medium"
+					@click="hideGithubButton"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -230,10 +253,34 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	position: relative;
 	align-items: center;
 	align-self: stretch;
+	padding-top: 2px;
 	padding-left: var(--spacing-m);
 	padding-right: var(--spacing-m);
 	background-color: var(--color-background-xlight);
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+}
+
+.close-github-button {
+	display: none;
+	position: absolute;
+	right: 0;
+	top: 0;
+	transform: translate(50%, -46%);
+	color: var(--color-foreground-xdark);
+	background-color: var(--color-background-xlight);
+	border-radius: 100%;
+	cursor: pointer;
+
+	&:hover {
+		color: var(--prim-color-primary-shade-100);
+	}
+}
+.github-button-container {
+	position: relative;
+}
+
+.github-button:hover .close-github-button {
+	display: block;
 }
 </style>
