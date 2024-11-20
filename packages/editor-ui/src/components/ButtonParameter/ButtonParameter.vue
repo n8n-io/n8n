@@ -162,10 +162,65 @@ onMounted(() => {
 	parentNodes.value = getParentNodes();
 });
 
-async function onDrop(value: string) {
+async function onDrop(value: string, event: MouseEvent) {
 	value = propertyNameFromExpression(value);
+	const textarea = event.target as HTMLTextAreaElement;
 
-	prompt.value = `${prompt.value} ${value}`;
+	const rect = textarea.getBoundingClientRect();
+	const x = event.clientX - rect.left;
+	const y = event.clientY - rect.top;
+
+	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
+	const row = Math.floor(y / rowHeight);
+
+	const textArray = textarea.value.split('\n');
+
+	if (!textArray[row]) {
+		prompt.value = `${prompt.value} ${value}`;
+		emit('valueChanged', {
+			name: getPath(props.parameter.name),
+			value: prompt.value,
+		});
+		return;
+	}
+
+	const rowText = textArray[row];
+
+	const span = document.createElement('span');
+	span.style.font = window.getComputedStyle(textarea).font;
+	span.style.visibility = 'hidden';
+	span.style.position = 'absolute';
+	span.style.whiteSpace = 'pre';
+	document.body.appendChild(span);
+
+	let left = 0;
+	let right = rowText.length;
+	let col = 0;
+
+	while (left <= right) {
+		const mid = Math.floor((left + right) / 2);
+		span.textContent = rowText.substring(0, mid);
+		const width = span.getBoundingClientRect().width;
+
+		if (width <= x) {
+			col = mid;
+			left = mid + 1;
+		} else {
+			right = mid - 1;
+		}
+	}
+
+	document.body.removeChild(span);
+
+	col = textArray[row].length === col ? col : col - 1;
+
+	textArray[row] = [
+		textArray[row].slice(0, col).trim(),
+		value,
+		textArray[row].slice(col).trim(),
+	].join(' ');
+
+	prompt.value = textArray.join('\n');
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
