@@ -15,18 +15,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 	}
 
 	toTableName(name: string) {
-		const tablePrefix = this.globalConfig.database.tablePrefix;
-
-		let tableName =
-			this.globalConfig.database.type === 'mysqldb'
-				? `\`${tablePrefix}${name}\``
-				: `"${tablePrefix}${name}"`;
-
-		const pgSchema = this.globalConfig.database.postgresdb.schema;
-
-		if (pgSchema !== 'public') tableName = [pgSchema, tablePrefix + name].join('.');
-
-		return tableName;
+		const { tablePrefix } = this.globalConfig.database;
+		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
 	}
 
 	async getLicenseRenewalMetrics() {
