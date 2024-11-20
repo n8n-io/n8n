@@ -382,27 +382,61 @@ class AIParametersParser {
 			description,
 			schema,
 			func: async (functionArgs: z.infer<typeof schema>) => {
+				// How can we pair this index with the index in that in WorkflowDataProxy.handleFromAi?
 				const { index } = this.ctx.addInputData(NodeConnectionType.AiTool, [
 					[{ json: functionArgs }],
 				]);
 
+				console.log('\n\x1b%s\x1b', '🔹 Starting node-tool func execution');
+				console.log(
+					'\x1b[33m%s\x1b',
+					'  Input data(functionArgs):',
+					JSON.stringify(functionArgs, null, 2),
+				);
+
 				try {
 					// Execute the node with the proxied context
-					const result = await node.execute?.bind(this.ctx)();
+					console.log('\x1b%s\x1b', '🔹 Executing node');
+					console.log('\n%s', '🔹 Getting input data for index: ', index);
+
+					// Hacky way to only execute input data once(per each item?)
+					const proxiedContext = new Proxy(this.ctx, {
+						get: (target, prop: keyof IExecuteFunctions) => {
+							if (prop === 'getInputData') {
+								console.log('Returning modified input data');
+								return () => [{ json: functionArgs }];
+							}
+							return target[prop];
+						},
+					});
+					const result = await node.execute?.bind(proxiedContext)();
+
+					console.log('\x1b[32m%s\x1b', '✅ Node execution successful');
+					console.log('\x1b[33m%s\x1b', '  Raw result:', JSON.stringify(result, null, 2));
 
 					// Process and map the results
 					const mappedResults = result?.[0]?.flatMap((item) => item.json);
+
+					console.log('\x1b%s\x1b', '🔹 Mapped results:');
+					console.log('\x1b[33m%s\x1b', JSON.stringify(mappedResults, null, 2));
 
 					// Add output data to the context
 					this.ctx.addOutputData(NodeConnectionType.AiTool, index, [
 						[{ json: { response: mappedResults } }],
 					]);
 
+					console.log('\x1b%s\x1b', '🔹 Output data added to context');
+
 					// Return the stringified results
 					return JSON.stringify(mappedResults);
 				} catch (error) {
+					console.log('\x1b[31m%s\x1b', '❌ Error during node execution:');
+					console.error(error);
+
 					const nodeError = new NodeOperationError(this.ctx.getNode(), error as Error);
 					this.ctx.addOutputData(NodeConnectionType.AiTool, index, nodeError);
+
+					console.log('\x1b[31m%s\x1b', '  Error added to context output');
 					return 'Error during node execution: ' + nodeError.description;
 				}
 			},

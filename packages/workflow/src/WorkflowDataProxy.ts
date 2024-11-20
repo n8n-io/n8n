@@ -945,14 +945,25 @@ export class WorkflowDataProxy {
 			_type: string = 'string',
 			defaultValue?: unknown,
 		) => {
+			console.time('⏱️ fromAI execution');
+
+			console.log(
+				'\n🔹 Starting fromAI function, that.runIndex: ',
+				that.runIndex,
+				', that.itemIndex: ',
+				that.itemIndex,
+			);
 			if (!name || name === '') {
+				console.error('\n❌ Error: Missing key');
 				throw new ExpressionError("Add a key, e.g. $fromAI('placeholder_name')", {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
 			}
+
 			const nameValidationRegex = /^[a-zA-Z0-9_-]{0,64}$/;
 			if (!nameValidationRegex.test(name)) {
+				console.error('\n❌ Error: Invalid parameter key');
 				throw new ExpressionError(
 					'Invalid parameter key, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
 					{
@@ -961,19 +972,35 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
+
+			console.log('\n🔹 Fetching placeholders data');
+			const nodeRunData = that.runExecutionData?.resultData.runData[that.activeNodeName] ?? [];
+			const lastInputOverride = nodeRunData[nodeRunData.length - 1]?.inputOverride;
 			const placeholdersDataInputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[0].inputOverride?.[
-					NodeConnectionType.AiTool
-				]?.[0]?.[0].json;
+				lastInputOverride?.[NodeConnectionType.AiTool]?.[0]?.[0].json;
+
+			console.log('\n📝 Placeholders data:');
+			console.log(`  ${JSON.stringify(placeholdersDataInputData, null, 2)}`);
 
 			if (Boolean(!placeholdersDataInputData)) {
+				console.error('\n❌ Error: No execution data available');
 				throw new ExpressionError('No execution data available', {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 					type: 'no_execution_data',
 				});
 			}
-			return placeholdersDataInputData?.[name] ?? defaultValue;
+
+			const result = placeholdersDataInputData?.[name] ?? defaultValue;
+			console.log(`\n✅ Success: Returning value for key "${name}"`);
+			console.log(`  Value: ${result}`);
+			console.log(`\n🔹 Resolving placeholder for itemIndex: ${that.itemIndex}`);
+			console.log(
+				`  Fetched placeholdersDataInputData: ${JSON.stringify(placeholdersDataInputData, null, 2)}`,
+			);
+
+			console.timeEnd('⏱️ fromAI execution');
+			return result;
 		};
 
 		const base = {
