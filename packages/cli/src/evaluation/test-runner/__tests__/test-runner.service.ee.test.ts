@@ -85,12 +85,14 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 		);
 
-		testDefinitionService.findOne.calledWith('some-test-id').mockResolvedValueOnce({
-			id: 'some-test-id',
-			workflowId: 'workflow-under-test-id',
-			evaluationWorkflowId: 'evaluation-workflow-id',
-			annotationTagId: 'some-annotation-tag-id',
-		});
+		testDefinitionService.findOne.calledWith('some-test-id', []).mockResolvedValueOnce(
+			mock<TestDefinition>({
+				id: 'some-test-id',
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				annotationTagId: 'some-annotation-tag-id',
+			}),
+		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
 			id: 'workflow-under-test-id',
