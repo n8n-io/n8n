@@ -167,11 +167,11 @@ async function onDrop(value: string, event: MouseEvent) {
 	const textarea = event.target as HTMLTextAreaElement;
 
 	const rect = textarea.getBoundingClientRect();
-	const x = event.clientX - rect.left;
-	const y = event.clientY - rect.top;
+	const textareaX = event.clientX - rect.left;
+	const textareaY = event.clientY - rect.top;
 
 	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
-	const row = Math.floor(y / rowHeight);
+	const row = Math.floor(textareaY / rowHeight);
 
 	const textArray = textarea.value.split('\n');
 
@@ -202,7 +202,7 @@ async function onDrop(value: string, event: MouseEvent) {
 		span.textContent = rowText.substring(0, mid);
 		const width = span.getBoundingClientRect().width;
 
-		if (width <= x) {
+		if (width <= textareaX) {
 			col = mid;
 			left = mid + 1;
 		} else {
