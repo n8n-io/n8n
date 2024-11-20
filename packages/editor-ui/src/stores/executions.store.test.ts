@@ -69,4 +69,37 @@ describe('executions.store', () => {
 			expect(executionsStore.executions).toEqual([]);
 		});
 	});
+
+	it('should sort execution by createdAt', () => {
+		const mockExecutions: ExecutionSummaryWithScopes[] = [
+			{
+				id: '1',
+				mode: 'manual',
+				status: 'success',
+				createdAt: new Date('2021-01-03T00:00:00Z'),
+				workflowId: '1',
+				scopes: [],
+			},
+			{
+				id: '2',
+				mode: 'manual',
+				status: 'success',
+				createdAt: new Date('2021-01-02T00:00:00Z'),
+				workflowId: '1',
+				scopes: [],
+			},
+			{
+				id: '3',
+				mode: 'manual',
+				status: 'success',
+				createdAt: new Date('2021-01-01T00:00:00Z'),
+				workflowId: '1',
+				scopes: [],
+			},
+		];
+
+		mockExecutions.forEach(executionsStore.addExecution);
+
+		expect(executionsStore.executions.at(-1)).toEqual(expect.objectContaining({ id: '3' }));
+	});
 });
