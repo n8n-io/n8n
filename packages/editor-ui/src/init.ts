@@ -8,6 +8,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from './stores/roles.store';
+import { useToast } from '@/composables/useToast';
 
 let coreInitialized = false;
 let authenticatedFeaturesInitialized = false;
@@ -51,6 +52,7 @@ export async function initializeAuthenticatedFeatures() {
 		return;
 	}
 
+	const toast = useToast();
 	const sourceControlStore = useSourceControlStore();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
@@ -63,6 +65,7 @@ export async function initializeAuthenticatedFeatures() {
 		try {
 			await sourceControlStore.getPreferences();
 		} catch (e) {
+			toast.showError(e, 'Source control store failed to initialize');
 			console.error('Failed to initialize source control store ', e);
 		}
 	}
