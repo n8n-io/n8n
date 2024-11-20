@@ -76,7 +76,9 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 				<N8nText color="text-light">
 					<slot name="subtitle">
-						{{ i18n.baseText('projects.header.subtitle') }}
+						<span v-if="!projectsStore.currentProject">{{
+							i18n.baseText('projects.header.subtitle')
+						}}</span>
 					</slot>
 				</N8nText>
 			</div>
