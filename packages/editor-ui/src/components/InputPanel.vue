@@ -145,7 +145,7 @@ const isExecutingPrevious = computed(() => {
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		!workflowsStore.isNodeExecuting(activeNode.value.name)
+		workflowsStore.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
