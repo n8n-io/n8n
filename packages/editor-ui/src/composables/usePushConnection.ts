@@ -155,7 +155,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The data is not for the currently active execution or
 				// we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as PushMessage, retryAttempts);
+					queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
@@ -200,7 +200,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The workflow which did finish execution did either not get started
 				// by this session or we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as PushMessage, retryAttempts);
+					queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
@@ -446,13 +446,14 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				runDataExecutedStartData: iRunExecutionData.startData,
 				resultDataError: iRunExecutionData.resultData.error,
 			});
+		} else if (receivedData.type === 'executionWaiting') {
+			// Nothing to do
 		} else if (receivedData.type === 'executionStarted') {
 			// Nothing to do
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;
-			workflowsStore.addNodeExecutionData(pushData);
-			workflowsStore.removeExecutingNode(pushData.nodeName);
+			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.

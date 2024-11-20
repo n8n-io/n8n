@@ -7,6 +7,7 @@ const ignoredErrors = [
 	{ instanceof: AxiosError },
 	{ instanceof: ResponseError, message: /ECONNREFUSED/ },
 	{ instanceof: ResponseError, message: "Can't connect to n8n." },
+	{ instanceof: ResponseError, message: 'Unauthorized' },
 	{ instanceof: Error, message: /ResizeObserver/ },
 ] as const;
 

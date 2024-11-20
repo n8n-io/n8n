@@ -1,7 +1,6 @@
-import type { Plugin } from 'vue';
 import axios from 'axios';
 import { createI18n } from 'vue-i18n';
-import { locale, type N8nLocaleTranslateFn } from 'n8n-design-system';
+import { locale } from 'n8n-design-system';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 import type { INodeTranslationHeaders } from '@/Interface';
@@ -436,17 +435,6 @@ export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 }
 
 export const i18n: I18nClass = new I18nClass();
-
-export const I18nPlugin: Plugin = {
-	async install(app) {
-		locale.i18n(((key: string, options?: BaseTextOptions) =>
-			i18nInstance.global.t(key, options?.interpolate ?? {})) as N8nLocaleTranslateFn);
-
-		app.config.globalProperties.$locale = i18n;
-
-		await locale.use('en');
-	},
-};
 
 // ----------------------------------
 //             typings

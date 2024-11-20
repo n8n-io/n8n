@@ -19,6 +19,11 @@ import * as usersApi from '@/api/users';
 vi.mock('@/api/projects.api');
 vi.mock('@/api/users');
 vi.mock('@/api/sourceControl');
+vi.mock('@/composables/useGlobalEntityCreation', () => ({
+	useGlobalEntityCreation: () => ({
+		menu: [],
+	}),
+}));
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -143,55 +148,6 @@ describe('WorkflowsView', () => {
 			const { getAllByTestId } = renderComponent({ pinia });
 
 			expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-		});
-	});
-
-	describe('workflow creation button', () => {
-		it('should create global workflow', async () => {
-			const pushSpy = vi.spyOn(router, 'push');
-			const pinia = createTestingPinia({ initialState });
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.allWorkflows = [{ id: '1' } as IWorkflowDb];
-
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.fetchProject.mockResolvedValue({} as Project);
-			projectsStore.personalProject = { scopes: ['workflow:create'] } as Project;
-
-			const { getByTestId } = renderComponent({ pinia });
-			expect(getByTestId('resources-list-add')).toBeInTheDocument();
-
-			expect(getByTestId('resources-list-add').textContent).toBe('Add workflow');
-
-			await userEvent.click(getByTestId('resources-list-add'));
-
-			expect(pushSpy).toHaveBeenCalledWith({ name: VIEWS.NEW_WORKFLOW, query: { projectId: '' } });
-		});
-
-		it('should create a project specific workflow', async () => {
-			await router.replace({ path: '/project-id' });
-			const pushSpy = vi.spyOn(router, 'push');
-
-			const pinia = createTestingPinia({ initialState });
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.allWorkflows = [{ id: '1' } as IWorkflowDb];
-
-			const projectsStore = mockedStore(useProjectsStore);
-
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const { getByTestId } = renderComponent({ pinia });
-			expect(router.currentRoute.value.params.projectId).toBe('project-id');
-
-			expect(getByTestId('resources-list-add')).toBeInTheDocument();
-
-			expect(getByTestId('resources-list-add').textContent).toBe('Add workflow to project');
-
-			await userEvent.click(getByTestId('resources-list-add'));
-
-			expect(pushSpy).toHaveBeenCalledWith({
-				name: VIEWS.NEW_WORKFLOW,
-				query: { projectId: 'project-id' },
-			});
 		});
 	});
 
