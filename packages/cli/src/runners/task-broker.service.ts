@@ -1,3 +1,4 @@
+import { TaskRunnersConfig } from '@n8n/config';
 import type {
 	BrokerMessage,
 	RequesterMessage,
@@ -8,9 +9,13 @@ import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
+import config from '@/config';
+import { Time } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
-import { TaskRejectError } from './errors';
+import { TaskDeferredError, TaskRejectError } from './errors';
+import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';
+import { RunnerLifecycleEvents } from './runner-lifecycle-events';
 
 export interface TaskRunner {
 	id: string;
@@ -24,12 +29,15 @@ export interface Task {
 	runnerId: TaskRunner['id'];
 	requesterId: string;
 	taskType: string;
+	timeout?: NodeJS.Timeout;
 }
 
 export interface TaskOffer {
 	offerId: string;
 	runnerId: TaskRunner['id'];
 	taskType: string;
+
+	/** How long (in milliseconds) the task offer is valid for. `-1` for non-expiring offer from launcher. */
 	validFor: number;
 	validUntil: bigint;
 }
@@ -51,7 +59,7 @@ type RunnerAcceptCallback = () => void;
 type RequesterAcceptCallback = (
 	settings: RequesterMessage.ToBroker.TaskSettings['settings'],
 ) => void;
-type TaskRejectCallback = (reason: TaskRejectError) => void;
+type TaskRejectCallback = (reason: TaskRejectError | TaskDeferredError) => void;
 
 @Service()
 export class TaskBroker {
@@ -78,12 +86,22 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
+	) {
+		if (this.taskRunnersConfig.taskTimeout <= 0) {
+			throw new ApplicationError('Task timeout must be greater than 0');
+		}
+	}
 
 	expireTasks() {
 		const now = process.hrtime.bigint();
 		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
-			if (this.pendingTaskOffers[i].validUntil < now) {
+			const offer = this.pendingTaskOffers[i];
+			if (offer.validFor === -1) continue; // non-expiring offer
+			if (offer.validUntil < now) {
 				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
@@ -144,13 +162,19 @@ export class TaskBroker {
 			case 'runner:taskrejected':
 				this.handleRunnerReject(message.taskId, message.reason);
 				break;
+			case 'runner:taskdeferred':
+				this.handleRunnerDeferred(message.taskId);
+				break;
 			case 'runner:taskoffer':
 				this.taskOffered({
 					runnerId,
 					taskType: message.taskType,
 					offerId: message.offerId,
 					validFor: message.validFor,
-					validUntil: process.hrtime.bigint() + BigInt(message.validFor * 1_000_000),
+					validUntil:
+						message.validFor === -1
+							? 0n // sentinel value for non-expiring offer
+							: process.hrtime.bigint() + BigInt(message.validFor * 1_000_000),
 				});
 				break;
 			case 'runner:taskdone':
@@ -205,6 +229,14 @@ export class TaskBroker {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
 			acceptReject.reject(new TaskRejectError(reason));
+			this.runnerAcceptRejects.delete(taskId);
+		}
+	}
+
+	handleRunnerDeferred(taskId: Task['id']) {
+		const acceptReject = this.runnerAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new TaskDeferredError());
 			this.runnerAcceptRejects.delete(taskId);
 		}
 	}
@@ -408,6 +440,14 @@ export class TaskBroker {
 
 	async sendTaskSettings(taskId: Task['id'], settings: unknown) {
 		const runner = await this.getRunnerOrFailTask(taskId);
+
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		task.timeout = setTimeout(async () => {
+			await this.handleTaskTimeout(taskId);
+		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
+
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
 			taskId,
@@ -415,11 +455,27 @@ export class TaskBroker {
 		});
 	}
 
+	private async handleTaskTimeout(taskId: Task['id']) {
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+
+		await this.taskErrorHandler(
+			taskId,
+			new TaskRunnerTimeoutError(
+				this.taskRunnersConfig.taskTimeout,
+				config.getEnv('deployment.type') !== 'cloud',
+			),
+		);
+	}
+
 	async taskDoneHandler(taskId: Task['id'], data: TaskResultData) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
+		if (!task) return;
+
+		clearTimeout(task.timeout);
+
 		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskdone',
 			taskId: task.id,
@@ -430,9 +486,10 @@ export class TaskBroker {
 
 	async taskErrorHandler(taskId: Task['id'], error: unknown) {
 		const task = this.tasks.get(taskId);
-		if (!task) {
-			return;
-		}
+		if (!task) return;
+
+		clearTimeout(task.timeout);
+
 		await this.requesters.get(task.requesterId)?.({
 			type: 'broker:taskerror',
 			taskId: task.id,
@@ -465,6 +522,11 @@ export class TaskBroker {
 			request.acceptInProgress = false;
 			if (e instanceof TaskRejectError) {
 				this.logger.info(`Task (${taskId}) rejected by Runner with reason "${e.reason}"`);
+				return;
+			}
+			if (e instanceof TaskDeferredError) {
+				this.logger.info(`Task (${taskId}) deferred until runner is ready`);
+				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
 			}
 			throw e;
