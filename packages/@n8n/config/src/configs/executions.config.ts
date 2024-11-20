@@ -12,7 +12,7 @@ class PruningIntervalsConfig {
 }
 
 @Config
-export class PruningConfig {
+export class ExecutionsConfig {
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
 	pruneData: boolean = true;

@@ -459,7 +459,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.pruning;
+		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -515,7 +515,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - this.globalConfig.pruning.pruneDataHardDeleteBuffer);
+		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
