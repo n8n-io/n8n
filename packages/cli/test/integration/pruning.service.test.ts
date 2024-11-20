@@ -1,4 +1,4 @@
-import { PruningConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
@@ -27,19 +27,19 @@ describe('softDeleteOnPruningCycle()', () => {
 	const now = new Date();
 	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
 	let workflow: WorkflowEntity;
-	let pruningConfig: PruningConfig;
+	let executionsConfig: ExecutionsConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 
-		pruningConfig = Container.get(PruningConfig);
+		executionsConfig = Container.get(ExecutionsConfig);
 		pruningService = new PruningService(
 			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			mock(),
-			pruningConfig,
+			executionsConfig,
 		);
 
 		workflow = await createWorkflow();
@@ -62,8 +62,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
 		beforeAll(() => {
-			pruningConfig.pruneDataMaxAge = 336;
-			pruningConfig.pruneDataMaxCount = 1;
+			executionsConfig.pruneDataMaxAge = 336;
+			executionsConfig.pruneDataMaxCount = 1;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
@@ -163,8 +163,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
 		beforeAll(() => {
-			pruningConfig.pruneDataMaxAge = 1;
-			pruningConfig.pruneDataMaxCount = 0;
+			executionsConfig.pruneDataMaxAge = 1;
+			executionsConfig.pruneDataMaxCount = 0;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {
