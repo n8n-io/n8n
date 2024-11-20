@@ -2,7 +2,7 @@
 	"task-runners": [
 		{
 			"runner-type": "javascript",
-			"workdir": "/home/task-runner",
+			"workdir": "/home/node",
 			"command": "/usr/local/bin/node",
 			"args": ["/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"],
 			"allowed-env": [
@@ -18,9 +18,7 @@
 				"N8N_VERSION",
 				"ENVIRONMENT",
 				"DEPLOYMENT_NAME"
-			],
-			"uid": 2000,
-			"gid": 2000
+			]
 		}
 	]
 }

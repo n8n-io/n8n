@@ -29,6 +29,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
+			N8nNavigationDropdown: true,
 		},
 	},
 });
@@ -41,6 +42,8 @@ describe('ProjectHeader', () => {
 		createTestingPinia();
 		route = useRoute();
 		projectsStore = mockedStore(useProjectsStore);
+
+		projectsStore.teamProjectsLimit = -1;
 	});
 
 	afterEach(() => {

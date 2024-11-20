@@ -988,6 +988,7 @@
 	"ndv.output.tooMuchData.showDataAnyway": "Show data",
 	"ndv.output.tooMuchData.title": "Display data?",
 	"ndv.output.waitingToRun": "Waiting to execute...",
+	"ndv.output.noToolUsedInfo": "None of your tools were used in this run. Try giving your tools clearer names and descriptions to help the AI",
 	"ndv.title.cancel": "Cancel",
 	"ndv.title.rename": "Rename",
 	"ndv.title.renameNode": "Rename node",
@@ -2707,5 +2708,7 @@
 	"communityPlusModal.features.third.description": "Search and organize past workflow executions for easier review",
 	"communityPlusModal.input.email.label": "Enter email to receive your license key",
 	"communityPlusModal.button.skip": "Skip",
-	"communityPlusModal.button.confirm": "Send me a free license key"
+	"communityPlusModal.button.confirm": "Send me a free license key",
+	"executeWorkflowTrigger.createNewSubworkflow": "Create a sub-workflow in {projectName}",
+	"executeWorkflowTrigger.createNewSubworkflow.noProject": "Create a new sub-workflow"
 }

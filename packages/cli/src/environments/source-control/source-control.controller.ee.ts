@@ -29,6 +29,7 @@ export class SourceControlController {
 
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
 	async getPreferences(): Promise<SourceControlPreferences> {
+		throw new BadRequestError('ERROR: Repository not found', 404);
 		// returns the settings with the privateKey property redacted
 		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
 		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };

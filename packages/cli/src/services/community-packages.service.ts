@@ -354,6 +354,7 @@ export class CommunityPackagesService {
 
 		let loader: PackageDirectoryLoader;
 		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
 			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 		} catch (error) {
 			// Remove this package since loading it failed

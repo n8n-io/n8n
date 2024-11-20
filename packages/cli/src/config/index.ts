@@ -21,6 +21,7 @@ if (inE2ETests) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	process.env.N8N_SECURE_COOKIE = 'false';
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
 }
 
 // Load schema after process.env has been overwritten
