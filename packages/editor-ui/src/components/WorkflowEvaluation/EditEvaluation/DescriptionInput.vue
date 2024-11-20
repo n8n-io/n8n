@@ -15,7 +15,7 @@ const locale = useI18n();
 </script>
 
 <template>
-	<div :class="[$style.formGroup, $style.description]">
+	<div :class="[$style.description]">
 		<n8n-input-label label="Description" :bold="false" size="small" :class="$style.field">
 			<N8nInput
 				:model-value="modelValue"
@@ -28,14 +28,6 @@ const locale = useI18n();
 </template>
 
 <style module lang="scss">
-.formGroup {
-	margin-bottom: var(--spacing-l);
-
-	:global(.n8n-input-label) {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-
 .field {
 	width: 100%;
 	margin-top: var(--spacing-xs);

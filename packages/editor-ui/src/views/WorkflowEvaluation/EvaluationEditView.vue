@@ -3,15 +3,17 @@ import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import EvaluationHeader from '@/components/WorkflowEvaluation/EditEvaluation/EvaluationHeader.vue';
-import DescriptionInput from '@/components/WorkflowEvaluation/EditEvaluation/DescriptionInput.vue';
-import TagsInput from '@/components/WorkflowEvaluation/EditEvaluation/TagsInput.vue';
-import WorkflowSelector from '@/components/WorkflowEvaluation/EditEvaluation/WorkflowSelector.vue';
-import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/MetricsInput.vue';
-import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
 import { useI18n } from '@/composables/useI18n';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useDebounce } from '@/composables/useDebounce';
+import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
+
+import EvaluationHeader from '@/components/WorkflowEvaluation/EditEvaluation/EvaluationHeader.vue';
+import DescriptionInput from '@/components/WorkflowEvaluation/EditEvaluation/DescriptionInput.vue';
+import EvaluationStep from '@/components/WorkflowEvaluation/EditEvaluation/EvaluationStep.vue';
+import TagsInput from '@/components/WorkflowEvaluation/EditEvaluation/TagsInput.vue';
+import WorkflowSelector from '@/components/WorkflowEvaluation/EditEvaluation/WorkflowSelector.vue';
+import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/MetricsInput.vue';
 
 const props = defineProps<{
 	testId?: number;
@@ -21,15 +23,16 @@ const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 const { debounce } = useDebounce();
+const toast = useToast();
+const { isLoading, allTags, tagsById, fetchAll } = useAnnotationTagsStore();
 
 const testId = computed(() => props.testId ?? (route.params.testId as unknown as number));
 const buttonLabel = computed(() =>
-	// No testId means we're creating a new one
 	testId.value
 		? locale.baseText('workflowEvaluation.edit.updateTest')
 		: locale.baseText('workflowEvaluation.edit.saveTest'),
 );
-const toast = useToast();
+
 const {
 	state,
 	fieldsIssues,
@@ -42,8 +45,6 @@ const {
 	handleKeydown,
 } = useEvaluationForm();
 
-const { isLoading, allTags, tagsById, fetchAll } = useAnnotationTagsStore();
-
 onMounted(async () => {
 	await fetchAll();
 	if (testId.value) {
@@ -55,7 +56,6 @@ async function onSaveTest() {
 	try {
 		const newTest = await saveTest(testId.value);
 		if (newTest) {
-			// Update the URL to reflect the new test ID
 			await router.replace({
 				name: VIEWS.WORKFLOW_EVALUATION_EDIT,
 				params: { testId: newTest.id },
@@ -71,83 +71,166 @@ async function onSaveTest() {
 }
 
 function hasIssues(key: string) {
-	const result = fieldsIssues.value.some((issue) => issue.field === key);
-
-	return result;
+	return fieldsIssues.value.some((issue) => issue.field === key);
 }
 
 watch(
 	() => state.value,
 	debounce(
 		async () => {
-			// We only want to auto-save the test if the workflow is selected
 			if (state.value.evaluationWorkflow.value) {
 				await onSaveTest();
 			}
 		},
 		{ debounceTime: 1000 },
 	),
-	{
-		deep: true,
-	},
+	{ deep: true },
 );
 </script>
 
 <template>
 	<div :class="$style.container">
-		<EvaluationHeader
-			v-model="state.name"
-			:class="{ 'has-issues': hasIssues('name') }"
-			:start-editing="startEditing"
-			:save-changes="saveChanges"
-			:handle-keydown="handleKeydown"
-		/>
-
-		<DescriptionInput v-model="state.description" />
-
-		<TagsInput
-			v-model="state.tags"
-			:class="{ 'has-issues': hasIssues('tags') }"
-			:all-tags="allTags"
-			:tags-by-id="tagsById"
-			:is-loading="isLoading"
-			:start-editing="startEditing"
-			:save-changes="saveChanges"
-			:cancel-editing="cancelEditing"
-		/>
-
-		<WorkflowSelector
-			v-model="state.evaluationWorkflow"
-			:class="{ 'has-issues': hasIssues('evaluationWorkflow') }"
-		/>
-
-		<MetricsInput v-model="state.metrics" :class="{ 'has-issues': hasIssues('metrics') }" />
-
-		<div :class="$style.footer">
-			<n8n-button
-				type="primary"
-				data-test-id="run-test-button"
-				:label="buttonLabel"
-				:loading="isSaving"
-				@click="onSaveTest"
+		<div :class="$style.content">
+			<EvaluationHeader
+				v-model="state.name"
+				:class="{ 'has-issues': hasIssues('name') }"
+				:start-editing="startEditing"
+				:save-changes="saveChanges"
+				:handle-keydown="handleKeydown"
 			/>
+
+			<DescriptionInput v-model="state.description" />
+
+			<div :class="$style.panelBlock">
+				<EvaluationStep :title="'Fetch 5 past executions'">
+					<template #icon>🏷️</template>
+					<template #cardContent>
+						<TagsInput
+							v-model="state.tags"
+							:class="{ 'has-issues': hasIssues('tags') }"
+							:all-tags="allTags"
+							:tags-by-id="tagsById"
+							:is-loading="isLoading"
+							:start-editing="startEditing"
+							:save-changes="saveChanges"
+							:cancel-editing="cancelEditing"
+						/>
+					</template>
+				</EvaluationStep>
+				<EvaluationStep :title="'Mock nodes'" :small="true">
+					<template #icon>🎭</template>
+					<template #cardContent> 1 node mocked </template>
+				</EvaluationStep>
+
+				<EvaluationStep :title="'Re-run executions'" :small="true">
+					<template #icon>🔄</template>
+					<template #cardContent>
+						Re-run executions functionality Re-run executions functionality Re-run executions
+						functionality
+					</template>
+				</EvaluationStep>
+				<EvaluationStep :title="'Compare each past and new execution'">
+					<template #icon>🔄</template>
+					<template #cardContent>
+						<WorkflowSelector
+							v-model="state.evaluationWorkflow"
+							:class="{ 'has-issues': hasIssues('evaluationWorkflow') }"
+						/>
+					</template>
+				</EvaluationStep>
+
+				<EvaluationStep :title="'Summarise metrics'">
+					<template #icon>📊</template>
+					<template #cardContent>
+						<MetricsInput v-model="state.metrics" :class="{ 'has-issues': hasIssues('metrics') }" />
+					</template>
+				</EvaluationStep>
+			</div>
+
+			<div :class="$style.footer">
+				<n8n-button
+					type="primary"
+					data-test-id="run-test-button"
+					:label="buttonLabel"
+					:loading="isSaving"
+					@click="onSaveTest"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .container {
-	width: var(--evaluation-edit-panel-width, 24rem);
+	width: 100%;
 	height: 100%;
 	padding: var(--spacing-s);
-	border-right: 1px solid var(--color-foreground-base);
-	background: var(--color-background-xlight);
-	margin-right: auto;
+	display: grid;
+	grid-template-columns: minmax(auto, 24rem) 1fr;
+	gap: var(--spacing-2xl);
+}
+
+.content {
+	min-width: 0;
+	width: 100%;
+}
+
+.panelBlock {
+	max-width: var(--evaluation-edit-panel-width, 24rem);
+	display: grid;
+	gap: var(--spacing-m);
+	justify-items: end;
 }
 
 .footer {
 	margin-top: var(--spacing-xl);
 	display: flex;
 	justify-content: flex-start;
+}
+
+.workflow {
+	padding: var(--spacing-l);
+	background-color: var(--color-background-light);
+	border-radius: var(--border-radius-large);
+	border: var(--border-base);
+}
+
+.workflowSteps {
+	display: grid;
+	gap: var(--spacing-2xs);
+	max-width: 42rem;
+	margin: 0 auto;
+}
+
+.sideBySide {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	gap: var(--spacing-2xs);
+	justify-items: end;
+	align-items: start;
+}
+
+.connector {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing-2xs) 0;
+
+	&::before {
+		content: '';
+		width: 2px;
+		height: 1.5rem;
+		background-color: var(--color-warning-tint-2);
+	}
+
+	&.horizontal {
+		padding: 0 var(--spacing-2xs);
+		align-self: center;
+
+		&::before {
+			width: 1.5rem;
+			height: 2px;
+		}
+	}
 }
 </style>

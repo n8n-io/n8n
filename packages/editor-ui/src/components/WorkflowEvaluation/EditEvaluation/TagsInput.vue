@@ -42,7 +42,7 @@ function updateTags(tags: string[]) {
 </script>
 
 <template>
-	<div :class="$style.formGroup" data-test-id="workflow-tags-field">
+	<div data-test-id="workflow-tags-field">
 		<n8n-input-label label="Tag name" :bold="false" size="small">
 			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
 				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">
@@ -84,14 +84,6 @@ function updateTags(tags: string[]) {
 </template>
 
 <style module lang="scss">
-.formGroup {
-	margin-bottom: var(--spacing-l);
-
-	:global(.n8n-input-label) {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-
 .tagsRead {
 	&:hover .editInputButton {
 		opacity: 1;

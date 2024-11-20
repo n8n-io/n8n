@@ -20,7 +20,7 @@ function updateMetric(index: number, value: string) {
 </script>
 
 <template>
-	<div :class="[$style.formGroup, $style.metrics]">
+	<div :class="[$style.metrics]">
 		<n8n-text color="text-dark">{{
 			locale.baseText('workflowEvaluation.edit.metricsTitle')
 		}}</n8n-text>
@@ -56,14 +56,6 @@ function updateMetric(index: number, value: string) {
 </template>
 
 <style module lang="scss">
-.formGroup {
-	margin-bottom: var(--spacing-l);
-
-	:global(.n8n-input-label) {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-
 .metricsContainer {
 	display: flex;
 	flex-direction: column;

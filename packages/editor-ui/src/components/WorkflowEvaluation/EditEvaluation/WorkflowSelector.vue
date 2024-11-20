@@ -17,7 +17,7 @@ defineEmits<{ 'update:modelValue': [value: WorkflowSelectorProps['modelValue']] 
 const locale = useI18n();
 </script>
 <template>
-	<div :class="$style.formGroup">
+	<div>
 		<n8n-input-label
 			:label="locale.baseText('workflowEvaluation.edit.workflowSelectorLabel')"
 			:bold="false"
@@ -46,12 +46,4 @@ const locale = useI18n();
 	</div>
 </template>
 
-<style module lang="scss">
-.formGroup {
-	margin-bottom: var(--spacing-l);
-
-	:global(.n8n-input-label) {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-</style>
+<style module lang="scss"></style>
