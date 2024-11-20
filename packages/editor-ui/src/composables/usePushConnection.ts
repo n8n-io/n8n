@@ -155,7 +155,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The data is not for the currently active execution or
 				// we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as PushMessage, retryAttempts);
+					queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
@@ -200,7 +200,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The workflow which did finish execution did either not get started
 				// by this session or we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as PushMessage, retryAttempts);
+					queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
