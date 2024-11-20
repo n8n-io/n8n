@@ -224,8 +224,6 @@ describe('usePushConnection()', () => {
 
 		describe('nodeExecuteAfter', async () => {
 			it("enqueues messages if we don't have the active execution id yet", async () => {
-				//const spy = vi.spyOn(orchestrationStore, 'updateWorkerStatus').mockImplementation(() => {});
-
 				uiStore.isActionActive.workflowRunning = true;
 				const queuePushMessageSpy = vi
 					.spyOn(pushConnection, 'queuePushMessage')
