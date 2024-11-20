@@ -272,13 +272,15 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
 		},
-		pruning: {
-			isEnabled: true,
-			maxAge: 336,
-			maxCount: 10_000,
-			hardDeleteBuffer: 1,
-			hardDeleteInterval: 15,
-			softDeleteInterval: 60,
+		executions: {
+			pruneData: true,
+			pruneDataMaxAge: 336,
+			pruneDataMaxCount: 10_000,
+			pruneDataHardDeleteBuffer: 1,
+			pruneDataIntervals: {
+				hardDelete: 15,
+				softDelete: 60,
+			},
 		},
 		diagnostics: {
 			enabled: false,
