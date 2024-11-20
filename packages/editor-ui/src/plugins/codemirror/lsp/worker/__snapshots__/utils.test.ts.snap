@@ -1,0 +1,108 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`typescript worker utils > generateExtensionTypes > should work 1`] = `
+"export {}
+declare global {
+	interface Array {
+removeDuplicates(fieldNames: any): any;
+unique(fieldNames: any): any;
+first(): any;
+last(): any;
+pluck(fieldNames: string): Array;
+randomItem(): any;
+sum(): number;
+min(): number;
+max(): number;
+average(): number;
+isNotEmpty(): boolean;
+isEmpty(): boolean;
+compact(): Array;
+smartJoin(keyField: string,nameField: string): Object;
+chunk(length: number): Array;
+renameKeys(from: string,to: string): Array;
+merge(otherArray: Array): Object;
+union(otherArray: Array): Array;
+difference(otherArray: Array): Array;
+intersection(otherArray: Array): Array;
+append(elements: any): Array;
+toJsonString(): string;
+}
+interface Date {
+beginningOf(unit?: DurationUnit): DateTime;
+endOfMonth(): DateTime;
+extract(unit?: string): number;
+isBetween(date1: string | DateTime,date2: string | DateTime): boolean;
+isDst(): boolean;
+isInLast(n: number,unit?: DurationUnit): boolean;
+isWeekend(): boolean;
+minus(n: number | object,unit?: string): DateTime;
+plus(n: number | object,unit?: string): DateTime;
+format(fmt: string): string;
+toDateTime(): DateTime;
+diffTo(otherDateTime: string | DateTime,unit: string | string[]): number | Record<DurationUnit, number>;
+diffToNow(unit: string | string[]): number | Record<DurationUnit, number>;
+isEmpty(): boolean;
+isNotEmpty(): boolean;
+}
+interface Number {
+ceil(): number;
+floor(): number;
+format(locale?: string,options?: object): string;
+round(decimalPlaces?: number): number;
+abs(): number;
+isInteger(): boolean;
+isEven(): boolean;
+isOdd(): boolean;
+toBoolean(): boolean;
+toDateTime(format?: string): DateTime;
+}
+interface Object {
+isEmpty(): boolean;
+isNotEmpty(): boolean;
+hasField(name: string): boolean;
+removeField(key: string): Object;
+removeFieldsContaining(value: string): Object;
+keepFieldsContaining(value: string): Object;
+compact(): Object;
+urlEncode(): string;
+keys(): Array;
+values(): Array;
+toJsonString(): string;
+}
+interface String {
+hash(algo?: string): string;
+removeMarkdown(): string;
+removeTags(): string;
+toDate(): Date;
+toDateTime(format?: string): DateTime;
+toBoolean(): boolean;
+toNumber(): number;
+toFloat(): number;
+toInt(radix?: number): number;
+toSentenceCase(): string;
+toSnakeCase(): string;
+toTitleCase(): string;
+urlDecode(allChars?: boolean): string;
+urlEncode(allChars?: boolean): string;
+quote(mark?: string): string;
+replaceSpecialChars(): string;
+length(): number;
+isDomain(): boolean;
+isEmail(): boolean;
+isNumeric(): boolean;
+isUrl(): boolean;
+isEmpty(): boolean;
+isNotEmpty(): boolean;
+extractEmail(): string;
+extractDomain(): string;
+extractUrl(): string;
+extractUrlPath(): string;
+parseJson(): any;
+base64Encode(): string;
+base64Decode(): string;
+}
+interface Boolean {
+toNumber(): number;
+}
+}"
+`;

@@ -1,8 +1,8 @@
-import type { Diagnostic } from '@codemirror/lint';
-import ts from 'typescript';
 import type { Schema } from '@/Interface';
-import { type DocMetadata, type DocMetadataArgument } from 'n8n-workflow';
+import type { Diagnostic } from '@codemirror/lint';
 import { capitalize } from 'lodash-es';
+import { type DocMetadata, type DocMetadataArgument } from 'n8n-workflow';
+import ts from 'typescript';
 
 export const FILE_NAME = 'index.js';
 const FN_PREFIX = '(() => {\n';
@@ -109,8 +109,7 @@ function processSchema(schema: Schema): string {
 			if (Array.isArray(schema.value)) {
 				// Handle tuple type if array has different types
 				if (schema.value.length > 0) {
-					const arrayTypes = schema.value.map((item) => processSchema(item)).join(', ');
-					return `[${arrayTypes}]`;
+					return `Array<${schema.value[0].type}>`;
 				}
 				return '[]';
 			}

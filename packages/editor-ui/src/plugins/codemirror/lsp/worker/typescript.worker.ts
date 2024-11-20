@@ -1,24 +1,26 @@
-import ts, { type DiagnosticWithLocation } from 'typescript';
+import type { Completion } from '@codemirror/autocomplete';
 import * as tsvfs from '@typescript/vfs';
 import * as Comlink from 'comlink';
+import ts, { type DiagnosticWithLocation } from 'typescript';
 import type { LanguageServiceWorker } from '../types';
 import { indexedDbCache } from './cache';
 import {
-	isDiagnosticWithLocation,
-	convertTSDiagnosticToCM,
-	wrapInFunction,
 	FILE_NAME,
 	cmPosToTs,
+	convertTSDiagnosticToCM,
 	generateExtensionTypes,
+	isDiagnosticWithLocation,
+	schemaToTypescriptTypes,
+	wrapInFunction,
 } from './utils';
-import type { Completion } from '@codemirror/autocomplete';
 
 // eslint-disable-next-line import/extensions
 import globalTypes from './type-declarations/globals.d.ts?raw';
 // eslint-disable-next-line import/extensions
-import n8nTypes from './type-declarations/n8n.d.ts?raw';
+import { pascalCase } from 'change-case';
+import type { Schema } from '../../../../Interface';
 import luxonTypes from './type-declarations/luxon.d.ts?raw';
-import type { IDataObject } from 'n8n-workflow';
+import n8nTypes from './type-declarations/n8n.d.ts?raw';
 
 self.process = { env: {} } as NodeJS.Process;
 
@@ -26,10 +28,78 @@ const TS_COMPLETE_BLOCKLIST: ts.ScriptElementKind[] = [ts.ScriptElementKind.warn
 
 const worker = (): LanguageServiceWorker => {
 	let env: tsvfs.VirtualTypeScriptEnvironment;
-	let nodeJsonFetcher: (nodeName: string) => IDataObject = () => ({});
+	let nodeJsonFetcher: (nodeName: string) => Promise<Schema | undefined> = async () => undefined;
+
+	function updateFile(fileName: string, content: string) {
+		const exists = env.getSourceFile(fileName);
+		if (exists) {
+			env.updateFile(fileName, wrapInFunction(content));
+		} else {
+			env.createFile(fileName, wrapInFunction(content));
+		}
+	}
+
+	async function loadTypesIfNeeded(pos: number) {
+		function findNode(node: ts.Node, check: (node: ts.Node) => boolean): ts.Node | undefined {
+			if (check(node)) {
+				return node;
+			}
+
+			return ts.forEachChild(node, (n) => findNode(n, check));
+		}
+
+		const file = env.getSourceFile(FILE_NAME);
+		// If we are completing a N8nJson type -> fetch types first
+		// $('Node A').item.json.
+		if (file) {
+			const node = findNode(
+				file,
+				(n) =>
+					n.getStart() <= pos - 1 && n.getEnd() >= pos - 1 && n.kind === ts.SyntaxKind.Identifier,
+			);
+
+			if (!node) return;
+
+			const callExpression = findNode(
+				node.parent,
+				(n) =>
+					n.kind === ts.SyntaxKind.CallExpression &&
+					(n as ts.CallExpression).expression.getText() === '$',
+			);
+
+			if (!callExpression) return;
+
+			const nodeName = ((callExpression as ts.CallExpression).arguments.at(0) as ts.StringLiteral)
+				.text;
+
+			const schema = await nodeJsonFetcher(nodeName);
+
+			if (schema) {
+				const typeName = pascalCase(nodeName);
+				console.log(schema);
+				const type = schemaToTypescriptTypes(schema, typeName);
+				updateFile(
+					'n8n-dynamic.d.ts',
+					`export {}
+	declare global {
+	${type}
+	const myVar: ${typeName};
+	}`,
+				);
+				console.log(`export {}
+	declare global {
+	${type}
+	const myVar: ${typeName};
+	}`);
+			}
+		}
+	}
 
 	return {
-		async init(content: string, nodeJsonFetcherArg: (nodeName: string) => IDataObject) {
+		async init(
+			content: string,
+			nodeJsonFetcherArg: (nodeName: string) => Promise<Schema | undefined>,
+		) {
 			nodeJsonFetcher = nodeJsonFetcherArg;
 
 			const compilerOptions: ts.CompilerOptions = {
@@ -68,53 +138,11 @@ const worker = (): LanguageServiceWorker => {
 				compilerOptions,
 			);
 		},
-		updateFile(content) {
-			const exists = env.getSourceFile(FILE_NAME);
-			if (exists) {
-				env.updateFile(FILE_NAME, wrapInFunction(content));
-			} else {
-				env.createFile(FILE_NAME, wrapInFunction(content));
-			}
-		},
-		getCompletionsAtPos(pos) {
+		updateFile: (content) => updateFile(FILE_NAME, content),
+		async getCompletionsAtPos(pos) {
 			const tsPos = cmPosToTs(pos);
 
-			function findNode(node: ts.Node, check: (node: ts.Node) => boolean): ts.Node | undefined {
-				if (check(node)) {
-					return node;
-				}
-
-				return ts.forEachChild(node, (n) => findNode(n, check));
-			}
-
-			const file = env.getSourceFile(FILE_NAME);
-			// If we are completing a N8nJson type -> fetch types first
-			// $('Node A').item.json.
-			if (file) {
-				const node = findNode(
-					file,
-					(n) =>
-						n.getStart() <= tsPos - 1 &&
-						n.getEnd() >= tsPos - 1 &&
-						n.kind === ts.SyntaxKind.Identifier,
-				);
-
-				const callExpression = findNode(
-					node!.parent,
-					(n) =>
-						n.kind === ts.SyntaxKind.CallExpression &&
-						(n as ts.CallExpression).expression.getText() === '$',
-				);
-
-				const nodeName = ((callExpression as ts.CallExpression).arguments.at(0) as ts.StringLiteral)
-					.text;
-
-				const data = nodeJsonFetcher(nodeName);
-			}
-
-			// const jsonData = nodeJsonFetcher(nodeName)
-			// const type = jsonDataToTypescriptType()
-			// env.updateFile('n8n-variables.d.ts', type);
+			await loadTypesIfNeeded(tsPos);
 
 			const completionInfo = env.languageService.getCompletionsAtPosition(FILE_NAME, tsPos, {}, {});
 

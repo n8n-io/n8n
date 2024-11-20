@@ -5,6 +5,10 @@ import { combineConfig, Facet, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import type { LanguageServiceWorker } from './types';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import type { INodeExecutionData } from 'n8n-workflow';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -74,8 +78,24 @@ function webWorker(path: string) {
 
 export async function typescript(initialValue: string): Promise<Extension> {
 	const worker = Comlink.wrap<LanguageServiceWorker>(webWorker('./worker/typescript.worker.ts'));
+	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 
-	await worker.init(initialValue);
+	await worker.init(
+		initialValue,
+		Comlink.proxy(async (nodeName) => {
+			const node = useWorkflowsStore().getNodeByName(nodeName);
+
+			if (node) {
+				const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
+				const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
+
+				console.log(schema);
+				return schema;
+			}
+
+			return undefined;
+		}),
+	);
 
 	return [
 		tsFacet.of({ worker }),

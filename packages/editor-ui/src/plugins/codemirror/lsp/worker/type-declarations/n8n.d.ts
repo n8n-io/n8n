@@ -38,18 +38,12 @@ declare global {
 	const $execution: N8nExecution;
 	const $workflow: N8nWorkflow;
 
-	type NodeName = 'Node A' | 'Node B';
-
 	interface NodeData<C, J extends N8nJson, B extends string, P> {
 		context: C;
 		item: N8nItem<J, B>;
 		params: P;
 	}
 
-	interface NodeDataMap {
-		'Node A': NodeData<{}, { a: string }, 'data', {}>;
-		'Node B': NodeData<{}, { b: string }, never, {}>;
-	}
-
+	// @ts-expect-error NodeName and NodeDataMap are created dynamically
 	function $<K extends NodeName>(nodeName: K): NodeDataMap[K];
 }
