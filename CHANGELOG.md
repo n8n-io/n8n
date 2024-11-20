@@ -1,3 +1,49 @@
+# [1.69.0](https://github.com/n8n-io/n8n/compare/n8n@1.68.0...n8n@1.69.0) (2024-11-20)
+
+
+### Bug Fixes
+
+* Add supported versions warning to Zep memory node ([#11803](https://github.com/n8n-io/n8n/issues/11803)) ([9cc5bc1](https://github.com/n8n-io/n8n/commit/9cc5bc1aef974fe6c2511c1597b90c8b54ba6b9c))
+* **AI Agent Node:** Escape curly brackets in tools description for non Tool agents ([#11772](https://github.com/n8n-io/n8n/issues/11772)) ([83abdfa](https://github.com/n8n-io/n8n/commit/83abdfaf027a0533824a3ac3e4bab3cad971821a))
+* **Anthropic Chat Model Node:** Update credentials test endpoint ([#11756](https://github.com/n8n-io/n8n/issues/11756)) ([6cf0aba](https://github.com/n8n-io/n8n/commit/6cf0abab5bcddb407571271b9f174e66bb209790))
+* **core:** Add missing env vars to task runner config ([#11810](https://github.com/n8n-io/n8n/issues/11810)) ([870c576](https://github.com/n8n-io/n8n/commit/870c576ed9d7ce4ef005db9c8bedd78e91084c9c))
+* **core:** Allow Azure's SAML metadata XML containing WS-Federation nodes to pass validation ([#11724](https://github.com/n8n-io/n8n/issues/11724)) ([3b62bd5](https://github.com/n8n-io/n8n/commit/3b62bd58c264be0225a74ae0eb35c4761c419b79))
+* **core:** Delete binary data parent folder when pruning executions ([#11790](https://github.com/n8n-io/n8n/issues/11790)) ([17ef2c6](https://github.com/n8n-io/n8n/commit/17ef2c63f69b811bdd28006df3b6edd446837971))
+* **core:** Fix `diagnostics.enabled` default value ([#11809](https://github.com/n8n-io/n8n/issues/11809)) ([5fa72b0](https://github.com/n8n-io/n8n/commit/5fa72b0512b00bdc6a1065b7b604c9640f469454))
+* **core:** Improve the security on OAuth callback endpoints  ([#11593](https://github.com/n8n-io/n8n/issues/11593)) ([274fcf4](https://github.com/n8n-io/n8n/commit/274fcf45d393d8db1d2fb5ae1e774a4c9198a178))
+* **core:** Restore old names for pruning config keys ([#11782](https://github.com/n8n-io/n8n/issues/11782)) ([d15b8d0](https://github.com/n8n-io/n8n/commit/d15b8d05092d2ed9dd45fcfa34b4177f60469ebd))
+* **core:** Unload any existing version of a community nodes package before upgrading it ([#11727](https://github.com/n8n-io/n8n/issues/11727)) ([1d8fd13](https://github.com/n8n-io/n8n/commit/1d8fd13d841b73466ba5f8044d17d7199da7e856))
+* **editor:** Add documentation link to insufficient quota message ([#11777](https://github.com/n8n-io/n8n/issues/11777)) ([1987363](https://github.com/n8n-io/n8n/commit/1987363f7941285c51fda849a4ac92832368b25a))
+* **editor:** Add project header subtitle ([#11797](https://github.com/n8n-io/n8n/issues/11797)) ([ff4261c](https://github.com/n8n-io/n8n/commit/ff4261c16845c7de1790fdf0eaa9f57b37822289))
+* **editor:** Change Home label to Overview ([#11736](https://github.com/n8n-io/n8n/issues/11736)) ([1a78360](https://github.com/n8n-io/n8n/commit/1a783606b4ef22d85e173a2a780d5c49ff208932))
+* **editor:** Fix executions sorting ([#11808](https://github.com/n8n-io/n8n/issues/11808)) ([cd5ad65](https://github.com/n8n-io/n8n/commit/cd5ad65e90a3be4d67b51521772e0fceb7f4abc7))
+* **editor:** Fix partial executions not working due to broken push message queue and race conditions ([#11798](https://github.com/n8n-io/n8n/issues/11798)) ([b05d435](https://github.com/n8n-io/n8n/commit/b05d43519994abdd34a65462d14184c779d0b667))
+* **editor:** Fix reordered switch connections when copying nodes on new canvas ([#11788](https://github.com/n8n-io/n8n/issues/11788)) ([6c2dad7](https://github.com/n8n-io/n8n/commit/6c2dad79143f5b0c255ab8c97c3255314834c458))
+* **editor:** Fix the issue with RMC Values to Send collection disappears  ([#11710](https://github.com/n8n-io/n8n/issues/11710)) ([7bb9002](https://github.com/n8n-io/n8n/commit/7bb9002cbc10cf58550f53a30c6fd7151f8e7355))
+* **editor:** Improve formatting of expired trial error message ([#11708](https://github.com/n8n-io/n8n/issues/11708)) ([8a0ad0f](https://github.com/n8n-io/n8n/commit/8a0ad0f910feeada6d0c63e81c3e97a1a6e44de7))
+* **editor:** Optimize application layout ([#11769](https://github.com/n8n-io/n8n/issues/11769)) ([91f9390](https://github.com/n8n-io/n8n/commit/91f9390b90a68d064ea00d10505bf3767ddec1d4))
+* **Google Sheets Trigger Node:** Fix issue with regex showing correct sheet as invalid ([#11770](https://github.com/n8n-io/n8n/issues/11770)) ([d5ba1a0](https://github.com/n8n-io/n8n/commit/d5ba1a059b7a67154f17f8ad3fcfe66c5c031059))
+* **HTTP Request Node:** Continue using error ([#11733](https://github.com/n8n-io/n8n/issues/11733)) ([d1bae1a](https://github.com/n8n-io/n8n/commit/d1bae1ace062dd5b64087e0313e78599b5994355))
+* **n8n Form Node:** Support expressions in completion page ([#11781](https://github.com/n8n-io/n8n/issues/11781)) ([1099167](https://github.com/n8n-io/n8n/commit/10991675fe2e6913e8f03d565b670257941f18e5))
+* Prevent workflow to run if active and single webhook service ([#11752](https://github.com/n8n-io/n8n/issues/11752)) ([bcb9a20](https://github.com/n8n-io/n8n/commit/bcb9a2078186ff80e03ca3b8532d3585c307d86b))
+* **Read/Write Files from Disk Node:** Escape parenthesis when reading file ([#11753](https://github.com/n8n-io/n8n/issues/11753)) ([285534e](https://github.com/n8n-io/n8n/commit/285534e6d0ceb60290bd0a928054e494252148fe))
+* **YouTube Node:** Issue in published before and after dates filters ([#11741](https://github.com/n8n-io/n8n/issues/11741)) ([7381c28](https://github.com/n8n-io/n8n/commit/7381c28af00148b329690021b921267a48a6eaa3))
+
+
+### Features
+
+* **core:** Improve debugging of sub-workflows ([#11602](https://github.com/n8n-io/n8n/issues/11602)) ([fd3254d](https://github.com/n8n-io/n8n/commit/fd3254d5874a03b57421246b77a519787536a93e))
+* **core:** Improve handling of manual executions with wait nodes ([#11750](https://github.com/n8n-io/n8n/issues/11750)) ([61696c3](https://github.com/n8n-io/n8n/commit/61696c3db313cdc97925af728ff5c68415f9b6b2))
+* **editor:** Add Info Note to NDV Output Panel if no existing Tools were used during Execution ([#11672](https://github.com/n8n-io/n8n/issues/11672)) ([de0e861](https://github.com/n8n-io/n8n/commit/de0e86150f4d0615481e5ec3869465cfd1ce822f))
+* **editor:** Add option to create sub workflow from workflows list in `Execute Workflow` node ([#11706](https://github.com/n8n-io/n8n/issues/11706)) ([c265d44](https://github.com/n8n-io/n8n/commit/c265d44841eb147115563ce24c56666b1e321433))
+* **editor:** Add selection navigation using the keyboard on new canvas ([#11679](https://github.com/n8n-io/n8n/issues/11679)) ([6cd9b99](https://github.com/n8n-io/n8n/commit/6cd9b996af0406caf65941503276524de9e2add4))
+* **editor:** Add universal Create Resource Menu ([#11564](https://github.com/n8n-io/n8n/issues/11564)) ([b38ce14](https://github.com/n8n-io/n8n/commit/b38ce14ec94d74aa1c9780a0572804ff6266588d))
+* **Embeddings Azure OpenAI Node, Azure OpenAI Chat Model Node:** Add support for basePath url in Azure Open AI nodes ([#11784](https://github.com/n8n-io/n8n/issues/11784)) ([e298ebe](https://github.com/n8n-io/n8n/commit/e298ebe90d69f466ee897855472eaa7be1d96aba))
+* **Embeddings OpenAI Node, Embeddings Azure OpenAI Node:** Add dimensions option ([#11773](https://github.com/n8n-io/n8n/issues/11773)) ([de01a8a](https://github.com/n8n-io/n8n/commit/de01a8a01d37f33ab8bcbc65588cafebda969922))
+* GitHub stars dismiss button ([#11794](https://github.com/n8n-io/n8n/issues/11794)) ([8fbad74](https://github.com/n8n-io/n8n/commit/8fbad74ab685c2ba0395c30cee0ddf9498fb8984))
+
+
+
 # [1.68.0](https://github.com/n8n-io/n8n/compare/n8n@1.67.0...n8n@1.68.0) (2024-11-13)
 
 
