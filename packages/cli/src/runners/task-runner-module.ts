@@ -2,6 +2,7 @@ import { TaskRunnersConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
+import { OnShutdown } from '@/decorators/on-shutdown';
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
@@ -41,16 +42,23 @@ export class TaskRunnerModule {
 		}
 	}
 
+	@OnShutdown()
 	async stop() {
-		if (this.taskRunnerProcess) {
-			await this.taskRunnerProcess.stop();
-			this.taskRunnerProcess = undefined;
-		}
+		const stopRunnerProcessTask = (async () => {
+			if (this.taskRunnerProcess) {
+				await this.taskRunnerProcess.stop();
+				this.taskRunnerProcess = undefined;
+			}
+		})();
 
-		if (this.taskRunnerHttpServer) {
-			await this.taskRunnerHttpServer.stop();
-			this.taskRunnerHttpServer = undefined;
-		}
+		const stopRunnerServerTask = (async () => {
+			if (this.taskRunnerHttpServer) {
+				await this.taskRunnerHttpServer.stop();
+				this.taskRunnerHttpServer = undefined;
+			}
+		})();
+
+		await Promise.all([stopRunnerProcessTask, stopRunnerServerTask]);
 	}
 
 	private async loadTaskManager() {
