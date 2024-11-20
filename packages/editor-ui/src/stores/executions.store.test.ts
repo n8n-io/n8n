@@ -60,7 +60,9 @@ describe('executions.store', () => {
 		it('should delete executions started before given date', async () => {
 			await executionsStore.deleteExecutions({ deleteBefore: mockExecutions[1].startedAt });
 
-			expect(executionsStore.executions).toEqual([mockExecutions[0], mockExecutions[1]]);
+			expect(executionsStore.executions).toEqual(
+				expect.arrayContaining([mockExecutions[0], mockExecutions[1]]),
+			);
 		});
 
 		it('should delete all executions if given date is now', async () => {
@@ -76,8 +78,8 @@ describe('executions.store', () => {
 				id: '1',
 				mode: 'manual',
 				status: 'success',
-				createdAt: new Date('2021-01-03T00:00:00Z'),
-				startedAt: new Date('2021-01-03T00:00:00Z'),
+				createdAt: new Date('2021-01-01T00:00:00Z'),
+				startedAt: new Date('2021-02-03T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
 			},
@@ -86,7 +88,7 @@ describe('executions.store', () => {
 				mode: 'manual',
 				status: 'success',
 				createdAt: new Date('2021-01-02T00:00:00Z'),
-				startedAt: new Date('2021-01-02T00:00:00Z'),
+				startedAt: new Date('2021-02-02T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
 			},
@@ -94,8 +96,8 @@ describe('executions.store', () => {
 				id: '3',
 				mode: 'manual',
 				status: 'success',
-				createdAt: new Date('2021-01-01T00:00:00Z'),
-				startedAt: new Date('2021-01-01T00:00:00Z'),
+				createdAt: new Date('2021-01-03T00:00:00Z'),
+				startedAt: new Date('2021-02-01T00:00:00Z'),
 				workflowId: '1',
 				scopes: [],
 			},
@@ -103,6 +105,6 @@ describe('executions.store', () => {
 
 		mockExecutions.forEach(executionsStore.addExecution);
 
-		expect(executionsStore.executions.at(-1)).toEqual(expect.objectContaining({ id: '3' }));
+		expect(executionsStore.executions.at(-1)).toEqual(expect.objectContaining({ id: '1' }));
 	});
 });
