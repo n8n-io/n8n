@@ -835,7 +835,6 @@ describe('useCanvasMapping', () => {
 				{
 					data: {
 						fromNodeName: manualTriggerNode.name,
-						maxConnections: 1,
 						source: {
 							index: 0,
 							type: NodeConnectionType.AiDocument,

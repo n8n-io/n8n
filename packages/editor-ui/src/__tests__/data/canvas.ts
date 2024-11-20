@@ -167,7 +167,7 @@ export function createCanvasHandleProvide({
 			isConnecting: ref(isConnecting),
 			isReadOnly: ref(isReadOnly),
 			isRequired: ref(isRequired),
-			supportsMultipleConnections: ref(maxConnections),
+			maxConnections: ref(maxConnections),
 			runData: ref(runData),
 		} satisfies CanvasNodeHandleInjectionData,
 	};

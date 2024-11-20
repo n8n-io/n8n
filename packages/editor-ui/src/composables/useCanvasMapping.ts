@@ -514,32 +514,36 @@ export function useCanvasMapping({
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
-		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
+		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
+		const runDataTotal =
+			nodeExecutionRunDataOutputMapById.value[connection.source]?.[type]?.[index]?.total ?? 0;
 
-		let maxConnections: CanvasConnectionData['maxConnections'];
 		let status: CanvasConnectionData['status'];
-		if (fromNode) {
-			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-			const runDataTotal =
-				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
-
-			if (nodeExecutionRunningById.value[fromNode.id]) {
-				status = 'running';
-			} else if (
-				nodePinnedDataById.value[fromNode.id] &&
-				nodeExecutionRunDataById.value[fromNode.id]
-			) {
-				status = 'pinned';
-			} else if (nodeHasIssuesById.value[fromNode.id]) {
-				status = 'error';
-			} else if (runDataTotal > 0) {
-				status = 'success';
-			}
-
-			maxConnections = [NodeConnectionType.Main, NodeConnectionType.AiTool].includes(type)
-				? undefined
-				: 1;
+		if (nodeExecutionRunningById.value[connection.source]) {
+			status = 'running';
+		} else if (
+			nodePinnedDataById.value[connection.source] &&
+			nodeExecutionRunDataById.value[connection.source]
+		) {
+			status = 'pinned';
+		} else if (nodeHasIssuesById.value[connection.source]) {
+			status = 'error';
+		} else if (runDataTotal > 0) {
+			status = 'success';
 		}
+
+		const maxConnections = [
+			...nodeInputsById.value[connection.source],
+			...nodeInputsById.value[connection.target],
+		]
+			.filter((port) => port.type === type)
+			.reduce<number | undefined>((acc, port) => {
+				if (port.maxConnections === undefined) {
+					return acc;
+				}
+
+				return Math.min(acc ?? Infinity, port.maxConnections);
+			}, undefined);
 
 		return {
 			...(connection.data as CanvasConnectionData),
