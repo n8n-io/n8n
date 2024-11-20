@@ -13,10 +13,13 @@ const props = withDefaults(
 		modal?: boolean;
 		width: string;
 		wrapperClosable?: boolean;
+		closeOnClickModal?: boolean;
+		zIndex?: string;
 	}>(),
 	{
 		modal: true,
 		wrapperClosable: true,
+		closeOnClickModal: false,
 	},
 );
 
@@ -77,6 +80,8 @@ onBeforeUnmount(() => {
 		:before-close="close"
 		:modal="modal"
 		:wrapper-closable="wrapperClosable"
+		:close-on-click-modal="closeOnClickModal"
+		:z-index="zIndex"
 	>
 		<template #header>
 			<slot name="header" />
