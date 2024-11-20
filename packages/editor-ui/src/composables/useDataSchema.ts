@@ -72,12 +72,13 @@ export function useDataSchema() {
 		if (
 			!connectionsData?.hasOwnProperty(NodeConnectionType.Main) ||
 			connectionsData.main === undefined ||
-			connectionsData.main.length < outputIndex ||
+			outputIndex < 0 ||
+			outputIndex >= connectionsData.main.length ||
 			connectionsData.main[outputIndex] === null
 		) {
 			return [];
 		}
-		return connectionsData.main[outputIndex] as INodeExecutionData[];
+		return connectionsData.main[outputIndex];
 	}
 
 	function getNodeInputData(
