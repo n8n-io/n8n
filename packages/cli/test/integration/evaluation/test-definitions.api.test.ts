@@ -1,9 +1,13 @@
+import { readFileSync } from 'fs';
+import { mockInstance } from 'n8n-core/test/utils';
+import path from 'path';
 import { Container } from 'typedi';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
+import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
 import { createAnnotationTags } from '@test-integration/db/executions';
 
 import { createUserShell } from './../shared/db/users';
@@ -11,6 +15,8 @@ import { createWorkflow } from './../shared/db/workflows';
 import * as testDb from './../shared/test-db';
 import type { SuperAgentTest } from './../shared/types';
 import * as utils from './../shared/utils/';
+
+const testRunner = mockInstance(TestRunnerService);
 
 let authOwnerAgent: SuperAgentTest;
 let workflowUnderTest: WorkflowEntity;
@@ -384,5 +390,26 @@ describe('DELETE /evaluation/test-definitions/:id', () => {
 
 		expect(resp.statusCode).toBe(404);
 		expect(resp.body.message).toBe('Test definition not found');
+	});
+});
+
+describe('POST /evaluation/test-definitions/:id/run', () => {
+	test('should trigger the test run', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.post(`/evaluation/test-definitions/${newTest.id}/run`);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual(
+			expect.objectContaining({
+				success: true,
+			}),
+		);
+
+		expect(testRunner.runTest).toHaveBeenCalledTimes(1);
 	});
 });
