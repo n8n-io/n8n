@@ -1,3 +1,4 @@
+import type { Response, Request } from 'express';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -7,7 +8,7 @@ import type {
 	IWebhookFunctions,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import type { Response, Request } from 'express';
+
 import { Form } from '../Form.node';
 
 describe('Form Node', () => {
@@ -15,6 +16,8 @@ describe('Form Node', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 	let mockWebhookFunctions: MockProxy<IWebhookFunctions>;
 
+	const formCompletionNodeName = 'Form Completion';
+	const testExecutionId = 'test_execution_id';
 	beforeEach(() => {
 		form = new Form();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
@@ -68,7 +71,12 @@ describe('Form Node', () => {
 			]);
 			mockExecuteFunctions.getChildNodes.mockReturnValue([]);
 			mockExecuteFunctions.getInputData.mockReturnValue(inputData);
-			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ name: formCompletionNodeName }));
+			mockExecuteFunctions.getExecutionId.mockReturnValue(testExecutionId);
+
+			mockExecuteFunctions.getWorkflowStaticData.mockReturnValue({
+				[`${testExecutionId}-${formCompletionNodeName}`]: { redirectUrl: 'test' },
+			});
 
 			const result = await form.execute(mockExecuteFunctions);
 
@@ -172,11 +180,16 @@ describe('Form Node', () => {
 
 			const mockResponseObject = {
 				render: jest.fn(),
+				redirect: jest.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
 			);
-			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: formCompletionNodeName }));
+			mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+				[`${testExecutionId}-${formCompletionNodeName}`]: { redirectUrl: '' },
+			});
 
 			const result = await form.webhook(mockWebhookFunctions);
 
