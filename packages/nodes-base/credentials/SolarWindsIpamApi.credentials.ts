@@ -32,8 +32,8 @@ export class SolarWindsIpamApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'API Key',
-			name: 'apiKey',
+			displayName: 'API Token',
+			name: 'apiToken',
 			required: true,
 			type: 'string',
 			typeOptions: { password: true },
@@ -45,8 +45,8 @@ export class SolarWindsIpamApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'x-api-key': '={{$credentials.apiKey}}',
-				Accept: 'application/json',
+				Authorization: '=Bearer {{$credentials.apiToken}}',
+				'Content-Type': 'application/json-rpc',
 			},
 		},
 	};
@@ -54,8 +54,18 @@ export class SolarWindsIpamApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
-			url: '/v1/metrics',
+			url: '/v1/logs',
 			method: 'GET',
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'error',
+					value: 'invalid_auth',
+					message: 'Invalid access token',
+				},
+			},
+		],
 	};
 }
