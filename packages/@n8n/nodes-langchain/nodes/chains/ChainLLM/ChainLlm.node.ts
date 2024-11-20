@@ -254,7 +254,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -319,7 +319,16 @@ export class ChainLlm implements INodeType {
 				...promptTypeOptions,
 				displayOptions: {
 					hide: {
-						'@version': [1, 1.1, 1.2, 1.3],
+						'@version': [{ _cnd: { lte: 1.4 } }],
+					},
+				},
+			},
+			{
+				...promptTypeOptions,
+				default: 'auto',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1.4, gte: 1.6 } }],
 					},
 				},
 			},
