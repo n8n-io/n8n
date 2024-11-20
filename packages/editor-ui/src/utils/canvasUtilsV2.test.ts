@@ -811,7 +811,7 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 				type: NodeConnectionType.AiTool,
 				index: 0,
 				label: undefined,
-				supportsMultipleConnections: true,
+				maxConnections: undefined,
 			},
 		]);
 	});
@@ -830,7 +830,7 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 				index: 0,
 				label: 'AI Tool',
 				required: true,
-				supportsMultipleConnections: true,
+				maxConnections: undefined,
 			},
 		]);
 	});
@@ -849,7 +849,7 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 				type: NodeConnectionType.AiTool,
 				index: 0,
 				label: 'AI Tool',
-				supportsMultipleConnections: true,
+				maxConnections: undefined,
 			},
 			{ type: NodeConnectionType.Main, index: 1, label: undefined },
 		]);
@@ -894,7 +894,7 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 				type: NodeConnectionType.AiTool,
 				index: 0,
 				label: 'Optional Tool',
-				supportsMultipleConnections: true,
+				maxConnections: undefined,
 			},
 		]);
 	});

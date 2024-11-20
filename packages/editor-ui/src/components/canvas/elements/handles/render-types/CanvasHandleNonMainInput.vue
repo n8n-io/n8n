@@ -9,8 +9,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { label, isConnected, isConnecting, isRequired, supportsMultipleConnections } =
-	useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isRequired, maxConnections } = useCanvasNodeHandle();
 
 const handleClasses = 'target';
 
@@ -21,11 +20,11 @@ const classes = computed(() => ({
 }));
 
 const isHandlePlusAvailable = computed(
-	() => !isConnected.value || supportsMultipleConnections.value,
+	() => !isConnected.value || !maxConnections.value || maxConnections.value > 1,
 );
 
 const isHandlePlusVisible = computed(
-	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
+	() => !isConnecting.value || isHovered.value || !maxConnections.value || maxConnections.value > 1,
 );
 
 const isHovered = ref(false);

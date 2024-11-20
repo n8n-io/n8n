@@ -33,6 +33,7 @@ import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
+import { NodeConnectionType } from 'n8n-workflow';
 
 const $style = useCssModule();
 
@@ -359,8 +360,13 @@ onEdgeMouseEnter(({ edge }) => {
 
 onEdgeMouseMove(
 	useThrottleFn(({ edge, event }) => {
-		const projectedPosition = getProjectedPosition(event);
-		if (edge.data.handleSupportsMultipleConnections) {
+		const type = edge.data.source.type;
+		if (type !== NodeConnectionType.AiTool) {
+			return;
+		}
+
+		if (!edge.data.maxConnections || edge.data.maxConnections > 1) {
+			const projectedPosition = getProjectedPosition(event);
 			const yDiff = projectedPosition.y - edge.targetY;
 			if (yDiff < 4 * GRID_SIZE) {
 				edgesBringToFrontById.value = { [edge.id]: false };

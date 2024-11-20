@@ -516,7 +516,7 @@ export function useCanvasMapping({
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
 
-		let handleSupportsMultipleConnections: CanvasConnectionData['handleSupportsMultipleConnections'];
+		let maxConnections: CanvasConnectionData['maxConnections'];
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
@@ -536,12 +536,14 @@ export function useCanvasMapping({
 				status = 'success';
 			}
 
-			handleSupportsMultipleConnections = [NodeConnectionType.AiTool].includes(type);
+			maxConnections = [NodeConnectionType.Main, NodeConnectionType.AiTool].includes(type)
+				? undefined
+				: 1;
 		}
 
 		return {
 			...(connection.data as CanvasConnectionData),
-			...(handleSupportsMultipleConnections ? { handleSupportsMultipleConnections } : {}),
+			...(maxConnections ? { maxConnections } : {}),
 			status,
 		};
 	}

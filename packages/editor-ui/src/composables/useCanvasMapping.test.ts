@@ -813,7 +813,6 @@ describe('useCanvasMapping', () => {
 				{
 					data: {
 						fromNodeName: manualTriggerNode.name,
-						handleSupportsMultipleConnections: true,
 						source: {
 							index: 0,
 							type: NodeConnectionType.AiTool,
@@ -836,6 +835,7 @@ describe('useCanvasMapping', () => {
 				{
 					data: {
 						fromNodeName: manualTriggerNode.name,
+						maxConnections: 1,
 						source: {
 							index: 0,
 							type: NodeConnectionType.AiDocument,
