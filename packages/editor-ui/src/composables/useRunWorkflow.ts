@@ -240,6 +240,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				finished: false,
 				mode: 'manual',
 				status: 'running',
+				createdAt: new Date(),
 				startedAt: new Date(),
 				stoppedAt: undefined,
 				workflowId: workflow.id,
