@@ -2,6 +2,7 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
+import { mockInstance } from 'n8n-core/test/utils';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -10,6 +11,7 @@ import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { TestDefinitionService } from '@/evaluation/test-definition.service.ee';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { TestRunnerService } from '../test-runner.service.ee';
@@ -64,6 +66,7 @@ describe('TestRunnerService', () => {
 
 	test('should create an instance of TestRunnerService', async () => {
 		const testRunnerService = new TestRunnerService(
+			testDefinitionService,
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
@@ -75,11 +78,19 @@ describe('TestRunnerService', () => {
 
 	test('should create and run test cases from past executions', async () => {
 		const testRunnerService = new TestRunnerService(
+			testDefinitionService,
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
 			activeExecutions,
 		);
+
+		testDefinitionService.findOne.calledWith('some-test-id').mockResolvedValueOnce({
+			id: 'some-test-id',
+			workflowId: 'workflow-under-test-id',
+			evaluationWorkflowId: 'evaluation-workflow-id',
+			annotationTagId: 'some-annotation-tag-id',
+		});
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
 			id: 'workflow-under-test-id',
