@@ -623,7 +623,8 @@
 	--spacing-5xl: 16rem;
 
 	//Params
-	--color-icon-base: var(--prim-gray-420);
+	--color-icon-base: var(--color-text-light);
+	--color-icon-hover: var(--prim-color-primary);
 }
 
 :root {

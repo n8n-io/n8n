@@ -244,8 +244,19 @@ const onDragChange = (optionName: string) => {
 										text
 										size="mini"
 										icon="grip-vertical"
-										:title="locale.baseText('fixedCollectionParameter.moveUp')"
+										:title="locale.baseText('fixedCollectionParameter.dragItem')"
 										class="drag-handle"
+									></N8nIconButton>
+								</div>
+								<div v-if="!isReadOnly" class="delete-option">
+									<N8nIconButton
+										type="tertiary"
+										text
+										size="mini"
+										icon="trash"
+										data-test-id="fixed-collection-delete"
+										:title="locale.baseText('fixedCollectionParameter.deleteItem')"
+										@click="deleteOption(property.name, index)"
 									></N8nIconButton>
 								</div>
 								<Suspense>
@@ -258,17 +269,6 @@ const onDragChange = (optionName: string) => {
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
-								<div v-if="!isReadOnly" class="delete-option">
-									<N8nIconButton
-										type="tertiary"
-										text
-										size="mini"
-										icon="trash"
-										data-test-id="fixed-collection-delete"
-										:title="locale.baseText('fixedCollectionParameter.deleteItem')"
-										@click="deleteOption(property.name, index)"
-									></N8nIconButton>
-								</div>
 							</div>
 						</div>
 					</template>
@@ -398,9 +398,6 @@ const onDragChange = (optionName: string) => {
 	margin: var(--spacing-xs) 0;
 }
 
-.chosen {
-	// background-color: var(--color-background-base);
-}
 .ghost {
 	background-color: var(--color-background-base);
 }

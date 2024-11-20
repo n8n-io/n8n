@@ -152,6 +152,15 @@ const onBlur = (): void => {
 		}"
 		data-test-id="filter-condition"
 	>
+		<N8nIconButton
+			v-if="true"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:title="i18n.baseText('filter.dragCondition')"
+			:class="$style.drag"
+		></N8nIconButton>
 		<n8n-icon-button
 			v-if="canRemove && !readOnly"
 			type="tertiary"
@@ -248,7 +257,8 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.remove,
+		.drag {
 			opacity: 1;
 		}
 	}
@@ -261,12 +271,20 @@ const onBlur = (): void => {
 
 .statusIcon {
 	padding-left: var(--spacing-4xs);
+	padding-right: var(--spacing-4xs);
 }
 
 .remove {
 	position: absolute;
 	left: 0;
-	top: var(--spacing-l);
+	top: calc(14px + var(--spacing-m));
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+}
+.drag {
+	position: absolute;
+	left: 0;
+	top: var(--spacing-m);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
 }

@@ -23,6 +23,7 @@ import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
+import Draggable from 'vuedraggable';
 
 interface Props {
 	parameter: INodeProperties;
@@ -161,30 +162,42 @@ function getIssues(index: number): string[] {
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
-				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
-					<CombinatorSelect
-						v-if="index !== 0"
-						:read-only="index !== 1 || readOnly"
-						:options="allowedCombinators"
-						:selected="state.paramValue.combinator"
-						:class="$style.combinator"
-						@combinator-change="onCombinatorChange"
-					/>
+				<Draggable
+					:key="JSON.stringify(state.paramValue.conditions.map((c) => c.id))"
+					v-model="state.paramValue.conditions"
+					:options="{
+						handle: '.drag-handle',
+					}"
+					:drag-class="$style.dragging"
+					:ghost-class="$style.ghost"
+				>
+					<template #item="{ index, element: condition }">
+						<div>
+							<CombinatorSelect
+								v-if="index !== 0"
+								:read-only="index !== 1 || readOnly"
+								:options="allowedCombinators"
+								:selected="state.paramValue.combinator"
+								:class="$style.combinator"
+								@combinator-change="onCombinatorChange"
+							/>
 
-					<Condition
-						:condition="condition"
-						:index="index"
-						:options="state.paramValue.options"
-						:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
-						:read-only="readOnly"
-						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
-						:path="`${path}.${index}`"
-						:issues="getIssues(index)"
-						:class="$style.condition"
-						@update="(value) => onConditionUpdate(index, value)"
-						@remove="() => onConditionRemove(index)"
-					></Condition>
-				</div>
+							<Condition
+								:condition="condition"
+								:index="index"
+								:options="state.paramValue.options"
+								:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
+								:read-only="readOnly"
+								:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
+								:path="`${path}.${index}`"
+								:issues="getIssues(index)"
+								:class="$style.condition"
+								@update="(value) => onConditionUpdate(index, value)"
+								@remove="() => onConditionRemove(index)"
+							></Condition>
+						</div>
+					</template>
+				</Draggable>
 			</div>
 			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<n8n-button
@@ -224,6 +237,7 @@ function getIssues(index: number): string[] {
 
 .condition {
 	padding-left: var(--spacing-l);
+	padding-bottom: var(--spacing-xs);
 }
 
 .single {
@@ -265,5 +279,11 @@ function getIssues(index: number): string[] {
 	&:active {
 		outline: none;
 	}
+}
+.ghost {
+	background-color: var(--color-background-base);
+}
+.dragging {
+	background-color: var(--color-background-xlight);
 }
 </style>

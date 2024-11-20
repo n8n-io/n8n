@@ -653,22 +653,24 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	.drag-option {
 		position: absolute;
 		opacity: 0;
-		top: 28px;
-		left: calc(-1 * var(--spacing-2xs));
+		top: 0;
+		left: calc(-0.5 * var(--spacing-2xs));
 		transition: opacity 100ms ease-in;
 		color: var(--color-icon-base);
 	}
 	.delete-option {
 		position: absolute;
 		opacity: 0;
-		top: 28px;
-		right: calc(-1 * var(--spacing-2xs));
+		left: calc(-0.5 * var(--spacing-2xs));
 		transition: opacity 100ms ease-in;
 		color: var(--color-icon-base);
 	}
+	.drag-option + .delete-option {
+		top: 14px;
+	}
 	.drag-option > Button:hover,
 	.delete-option > Button:hover {
-		color: var(--color-primary);
+		color: var(--color-icon-hover);
 	}
 
 	.indent > div {
