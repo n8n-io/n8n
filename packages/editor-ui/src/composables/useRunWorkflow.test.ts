@@ -191,7 +191,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toBeUndefined();
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				title: i18n.baseText('workflowRun.showError.deactivate'),
-				message: i18n.baseText('workflowRun.showError.prodactionActive', {
+				message: i18n.baseText('workflowRun.showError.productionActive', {
 					interpolate: { nodeName: 'Webhook' },
 				}),
 				type: 'error',
