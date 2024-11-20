@@ -25,7 +25,6 @@ import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
-import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = defineProps<{
@@ -72,12 +71,6 @@ const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.al
 
 const credentialTypesById = computed<ICredentialTypeMap>(
 	() => credentialsStore.credentialTypesById,
-);
-
-const addCredentialButtonText = computed(() =>
-	projectsStore.currentProject
-		? i18n.baseText('credentials.project.add')
-		: i18n.baseText('credentials.add'),
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -191,19 +184,6 @@ onMounted(() => {
 	>
 		<template #header>
 			<ProjectHeader />
-		</template>
-		<template #add-button="{ disabled }">
-			<div>
-				<N8nButton
-					size="large"
-					block
-					:disabled="disabled"
-					data-test-id="resources-list-add"
-					@click="addCredential"
-				>
-					{{ addCredentialButtonText }}
-				</N8nButton>
-			</div>
 		</template>
 		<template #default="{ data }">
 			<CredentialCard
