@@ -613,8 +613,16 @@ describe('useDataSchema', () => {
 							resultData: {
 								runData: {
 									[name]: [
-										null,
-										null,
+										{
+											startTime: 0,
+											executionTime: 0,
+											source: [],
+										},
+										{
+											startTime: 0,
+											executionTime: 0,
+											source: [],
+										},
 										{
 											data: { [Main]: [null, mockExecutionDataMarker] },
 											startTime: 0,
