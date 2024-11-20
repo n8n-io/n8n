@@ -10,6 +10,8 @@ import type { IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useToast } from './useToast';
+import { useI18n } from '@/composables/useI18n';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
@@ -162,6 +164,38 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(response).toEqual(mockResponse);
 			expect(workflowsStore.executionWaitingForWebhook).toBe(true);
+		});
+		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const router = useRouter();
+			const workflowsStore = useWorkflowsStore();
+			const toast = useToast();
+			const i18n = useI18n();
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(workflowsStore).isWorkflowActive = true;
+
+			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [
+					{
+						name: 'Slack',
+						type: 'n8n-nodes-base.slackTrigger',
+						disabled: false,
+					},
+				],
+			} as unknown as IWorkflowData);
+
+			const result = await runWorkflow({});
+
+			expect(result).toBeUndefined();
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: i18n.baseText('workflowRun.showError.deactivate'),
+				message: i18n.baseText('workflowRun.showError.productionActive', {
+					interpolate: { nodeName: 'Webhook' },
+				}),
+				type: 'error',
+			});
 		});
 	});
 
