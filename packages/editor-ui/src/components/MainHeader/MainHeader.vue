@@ -216,7 +216,7 @@ function hideGithubButton() {
 				<N8nIcon
 					class="close-github-button"
 					icon="times-circle"
-					size="large"
+					size="medium"
 					@click="hideGithubButton"
 				/>
 			</div>
@@ -253,6 +253,7 @@ function hideGithubButton() {
 	position: relative;
 	align-items: center;
 	align-self: stretch;
+	padding-top: 2px;
 	padding-left: var(--spacing-m);
 	padding-right: var(--spacing-m);
 	background-color: var(--color-background-xlight);
@@ -261,22 +262,25 @@ function hideGithubButton() {
 }
 
 .close-github-button {
+	display: none;
 	position: absolute;
 	right: 0;
 	top: 0;
 	transform: translate(50%, -46%);
-	color: var(--prim-color-primary-shade-100);
+	color: var(--color-foreground-xdark);
 	background-color: var(--color-background-xlight);
 	border-radius: 100%;
 	cursor: pointer;
+
+	&:hover {
+		color: var(--prim-color-primary-shade-100);
+	}
 }
 .github-button-container {
 	position: relative;
 }
-.github-button-container > .close-github-button {
-	display: none;
-}
-.github-button-container:hover > .close-github-button {
+
+.github-button:hover .close-github-button {
 	display: block;
 }
 </style>
