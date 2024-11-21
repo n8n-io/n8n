@@ -23,17 +23,18 @@ export class ZabbixApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Token',
-			name: 'apiToken',
+			displayName: 'URL',
+			name: 'url',
+			required: true,
 			type: 'string',
-			typeOptions: { password: true },
 			default: '',
 		},
 		{
-			displayName: 'URL',
-			name: 'url',
-			type: 'string',
+			displayName: 'API Token',
+			name: 'apiToken',
 			required: true,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -67,8 +68,8 @@ export class ZabbixApi implements ICredentialType {
 			{
 				type: 'responseSuccessBody',
 				properties: {
-					key: 'error',
-					value: 'invalid_auth',
+					key: 'result',
+					value: undefined,
 					message: 'Invalid access token',
 				},
 			},
