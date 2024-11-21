@@ -285,9 +285,9 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 						</div>
 					</div>
 				</div>
-			</div>
-			<div v-if="loadingMessage" :class="$style.messages">
-				<AssistantLoadingMessage :message="loadingMessage" />
+				<div :class="[$style.message, $style.loading]">
+					<AssistantLoadingMessage v-if="loadingMessage" :message="loadingMessage" />
+				</div>
 			</div>
 			<div
 				v-else-if="showPlaceholder"
@@ -405,6 +405,10 @@ p {
 	margin-bottom: var(--spacing-xs);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
+
+	&.loading {
+		margin-top: var(--spacing-m);
+	}
 }
 
 .roleName {
