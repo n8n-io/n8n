@@ -4,7 +4,7 @@ describe('TaskRunnerDisconnectedError', () => {
 	it('should have the correct default error message', () => {
 		const error = new TaskRunnerDisconnectedError('test-runner-id', false);
 
-		expect(error.message).toBe('Node execution crashed');
+		expect(error.message).toBe('Node execution failed');
 	});
 
 	it('should have the error level set to "error"', () => {
