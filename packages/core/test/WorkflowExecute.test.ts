@@ -6,12 +6,12 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { DirectedGraph } from '@/PartialExecutionUtils';
+import { createNodeData, toITaskData } from '@/PartialExecutionUtils/__tests__/helpers';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from './helpers/constants';
-import { DirectedGraph } from '@/PartialExecutionUtils';
-import { createNodeData, toITaskData } from '@/PartialExecutionUtils/__tests__/helpers';
 
 const nodeTypes = Helpers.NodeTypes();
 

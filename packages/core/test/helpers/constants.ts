@@ -7,11 +7,11 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { If } from '../../../nodes-base/dist/nodes/If/If.node';
+import { ManualTrigger } from '../../../nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
 import { Merge } from '../../../nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from '../../../nodes-base/dist/nodes/NoOp/NoOp.node';
 import { Set } from '../../../nodes-base/dist/nodes/Set/Set.node';
 import { Start } from '../../../nodes-base/dist/nodes/Start/Start.node';
-import { ManualTrigger } from '../../../nodes-base/dist/nodes/ManualTrigger/ManualTrigger.node';
 
 export const predefinedNodesTypes: INodeTypeData = {
 	'n8n-nodes-base.if': {
