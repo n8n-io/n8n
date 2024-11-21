@@ -15,6 +15,7 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import { TestRun } from '@/databases/entities/test-run.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -77,6 +78,8 @@ describe('TestRunnerService', () => {
 		executionRepository.findOne
 			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id-2' } }))
 			.mockResolvedValueOnce(executionMocks[1]);
+
+		testRunRepository.create.mockReturnValue(mock<TestRun>());
 	});
 
 	afterEach(() => {
