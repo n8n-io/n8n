@@ -112,7 +112,7 @@ export class ChainRetrievalQa implements INodeType {
 				...promptTypeOptions,
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.2 } }],
+						'@version': [{ _cnd: { lte: 1.4 } }],
 					},
 				},
 			},
@@ -121,7 +121,7 @@ export class ChainRetrievalQa implements INodeType {
 				default: 'auto',
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.2, gte: 1.5 } }],
+						'@version': [{ _cnd: { lte: 1.2 } }, { _cnd: { gte: 1.5 } }],
 					},
 				},
 			},

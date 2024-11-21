@@ -21,6 +21,7 @@ function adjustNewTarget(source: AddedNode, target: AddedNode) {
 		PROMPT_PROVIDER_NODE_NAMES.includes(source.type)
 	) {
 		// Need to re-set text to support disabled parameter value for prompt text.
+		// try: text: undefined or delete
 		Object.assign<AddedNode, Partial<INode>>(target, {
 			parameters: { ...target.parameters, promptType: 'auto', text: '={{ $json.chatInput }}' },
 		});

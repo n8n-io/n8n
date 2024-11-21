@@ -29,6 +29,21 @@ const properties: INodeProperties[] = [
 	{
 		...promptTypeOptions,
 		name: 'prompt',
+		default: 'auto',
+		displayOptions: {
+			hide: {
+				'@version': [{ _cnd: { gte: 1.8 } }],
+			},
+		},
+	},
+	{
+		...promptTypeOptions,
+		name: 'prompt',
+		displayOptions: {
+			hide: {
+				'@version': [{ _cnd: { lte: 1.7 } }],
+			},
+		},
 	},
 	{
 		...textFromPreviousNode,

@@ -110,9 +110,21 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 	},
 	{
 		...promptTypeOptions,
+		default: 'auto',
 		displayOptions: {
 			hide: {
-				'@version': [{ _cnd: { lte: 1.2 } }],
+				'@version': [{ _cnd: { lte: 1.2 } }, { _cnd: { gte: 1.8 } }],
+			},
+			show: {
+				agent: ['sqlAgent'],
+			},
+		},
+	},
+	{
+		...promptTypeOptions,
+		displayOptions: {
+			hide: {
+				'@version': [{ _cnd: { lte: 1.7 } }],
 			},
 			show: {
 				agent: ['sqlAgent'],

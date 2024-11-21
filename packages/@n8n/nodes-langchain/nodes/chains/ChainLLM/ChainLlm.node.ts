@@ -319,7 +319,7 @@ export class ChainLlm implements INodeType {
 				...promptTypeOptions,
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.4 } }],
+						'@version': [{ _cnd: { lte: 1.5 } }],
 					},
 				},
 			},
@@ -328,7 +328,7 @@ export class ChainLlm implements INodeType {
 				default: 'auto',
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.4, gte: 1.6 } }],
+						'@version': [{ _cnd: { lte: 1.4 } }, { _cnd: { gte: 1.6 } }],
 					},
 				},
 			},

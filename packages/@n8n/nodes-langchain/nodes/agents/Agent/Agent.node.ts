@@ -337,7 +337,7 @@ export class Agent implements INodeType {
 				default: 'auto',
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.2, gte: 1.8 } }],
+						'@version': [{ _cnd: { lte: 1.2 } }, { _cnd: { gte: 1.8 } }],
 						agent: ['sqlAgent'],
 					},
 				},
@@ -346,7 +346,7 @@ export class Agent implements INodeType {
 				...promptTypeOptions,
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.2 } }],
+						'@version': [{ _cnd: { lte: 1.7 } }],
 						agent: ['sqlAgent'],
 					},
 				},
