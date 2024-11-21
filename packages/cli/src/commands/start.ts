@@ -286,10 +286,6 @@ export class Start extends BaseCommand {
 		}
 
 		if (flags.tunnel) {
-			this.logger.warn(
-				'The --tunnel flag is deprecated and will be removed in an upcoming version of n8n.',
-			);
-
 			this.log('\nWaiting for tunnel ...');
 
 			let tunnelSubdomain =
