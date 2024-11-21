@@ -29,13 +29,13 @@ export class PublicApiKeyService {
 	 * @param user - The user for whom the API key is being created.
 	 * @returns A promise that resolves to the newly created API key.
 	 */
-	async createPublicApiKeyForUser(user: User) {
+	async createPublicApiKeyForUser(user: User, { withLabel }: { withLabel?: string } = {}) {
 		const apiKey = this.generateApiKey(user);
 		await this.apiKeyRepository.upsert(
 			this.apiKeyRepository.create({
 				userId: user.id,
 				apiKey,
-				label: 'My API Key',
+				label: withLabel,
 			}),
 			['apiKey'],
 		);

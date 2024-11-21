@@ -186,6 +186,7 @@ export declare namespace CredentialRequest {
 
 export declare namespace ApiKeysRequest {
 	export type DeleteAPIKey = AuthenticatedRequest<{ id: string }>;
+	export type createAPIKey = AuthenticatedRequest<{}, {}, { label: string }>;
 }
 
 // ----------------------------------

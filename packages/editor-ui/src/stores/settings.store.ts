@@ -321,9 +321,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return await publicApiApi.getApiKeys(rootStore.restApiContext);
 	};
 
-	const createApiKey = async () => {
+	const createApiKey = async (label: string) => {
 		const rootStore = useRootStore();
-		return await publicApiApi.createApiKey(rootStore.restApiContext);
+		return await publicApiApi.createApiKey(rootStore.restApiContext, { label });
 	};
 
 	const deleteApiKey = async (id: string) => {

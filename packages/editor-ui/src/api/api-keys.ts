@@ -5,8 +5,11 @@ export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys');
 }
 
-export async function createApiKey(context: IRestApiContext): Promise<ApiKey> {
-	return await makeRestApiRequest(context, 'POST', '/api-keys');
+export async function createApiKey(
+	context: IRestApiContext,
+	{ label }: { label: string },
+): Promise<ApiKey> {
+	return await makeRestApiRequest(context, 'POST', '/api-keys', { label });
 }
 
 export async function deleteApiKey(

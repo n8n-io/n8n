@@ -85,6 +85,7 @@ import type { EventBus } from 'n8n-design-system';
 				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
 			</template>
 		</ModalRoot>
+
 		<ModalRoot :name="API_KEY_EDIT_MODAL_KEY">
 			<template #default="{ modalName, mode }">
 				<ApiKeyEditModal :modal-name="modalName" :mode="mode" />

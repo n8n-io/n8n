@@ -1,110 +1,82 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import { API_KEY_EDIT_MODAL_KEY } from '@/constants';
 import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
-import { useImportCurlCommand } from '@/composables/useImportCurlCommand';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import type { ApiKey } from '@/Interface';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 
-const curlCommand = ref('');
+const label = ref('');
 const modalBus = createEventBus();
+const newApiKey = ref<ApiKey | null>(null);
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
-const { importCurlCommand } = useImportCurlCommand({
-	onImportSuccess,
-	onImportFailure,
-	onAfterImport,
+onMounted(() => {
+	setTimeout(() => {
+		inputRef.value?.focus();
+	});
 });
 
-// onMounted(() => {
-// 	curlCommand.value = (uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommand as string) ?? '';
-
-// 	setTimeout(() => {
-// 		inputRef.value?.focus();
-// 	});
-// });
-
 function onInput(value: string): void {
-	curlCommand.value = value;
+	label.value = value;
 }
 
-function closeDialog(): void {
-	modalBus.emit('close');
-}
+const onSave = async () => {
+	if (!label.value) {
+		return;
+	}
 
-function onImportSuccess() {
-	sendTelemetry();
-	closeDialog();
-}
-
-function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) {
-	sendTelemetry({ success: false, ...data });
-}
-
-function onAfterImport() {
-	uiStore.setModalData({
-		name: IMPORT_CURL_MODAL_KEY,
-		data: { curlCommand: curlCommand.value },
-	});
-}
-
-function sendTelemetry(
-	data: { success: boolean; invalidProtocol: boolean; protocol?: string } = {
-		success: true,
-		invalidProtocol: false,
-		protocol: '',
-	},
-): void {
-	telemetry.track('User imported curl command', {
-		success: data.success,
-		invalidProtocol: data.invalidProtocol,
-		protocol: data.protocol,
-	});
-}
-
-async function onImport() {
-	await importCurlCommand(curlCommand);
-}
+	newApiKey.value = await settingsStore.createApiKey(label.value);
+};
 </script>
 
 <template>
-	<Modal title="Create API Key" :event-bus="modalBus" :name="IMPORT_CURL_MODAL_KEY" :center="true">
+	<Modal
+		title="Create API Key"
+		:event-bus="modalBus"
+		:name="API_KEY_EDIT_MODAL_KEY"
+		width="600px"
+		:lock-scroll="false"
+	>
 		<template #content>
 			<div :class="$style.container">
-				<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
+				<n8n-card v-if="newApiKey" class="mb-4xs" :class="$style.card">
+					<CopyInput
+						:label="newApiKey.label"
+						:value="newApiKey.apiKey"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
+						:hint="i18n.baseText('settings.api.view.copy')"
+					/>
+				</n8n-card>
+
+				<N8nInputLabel v-else label="Label" color="text-dark">
 					<N8nInput
 						ref="inputRef"
-						:model-value="curlCommand"
-						type="textarea"
-						:rows="5"
-						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
+						required
+						:model-value="label"
+						type="text"
+						placeholder="e.g Internal Project"
 						@update:model-value="onInput"
-						@focus="$event.target.select()"
 					/>
 				</N8nInputLabel>
 			</div>
 		</template>
 		<template #footer>
-			<div :class="$style.modalFooter">
-				<N8nNotice
-					:class="$style.notice"
-					:content="i18n.baseText('ImportCurlModal.notice.content')"
-				/>
-				<div>
-					<N8nButton
-						float="right"
-						:label="i18n.baseText('importCurlModal.button.label')"
-						@click="onImport"
-					/>
-				</div>
+			<div>
+				<N8nButton float="right" :label="newApiKey ? 'Close' : 'Save'" @click="onSave" />
 			</div>
 		</template>
 	</Modal>

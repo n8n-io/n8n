@@ -25,8 +25,10 @@ export class ApiKeysController {
 	 * Create an API Key
 	 */
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
-	async createAPIKey(req: AuthenticatedRequest) {
-		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user);
+	async createAPIKey(req: ApiKeysRequest.createAPIKey) {
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
+			withLabel: req.body.label,
+		});
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 

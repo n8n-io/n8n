@@ -232,16 +232,11 @@ function onCopy() {
 </template>
 
 <style lang="scss" module>
-.container {
-	> * {
-		margin-bottom: var(--spacing-2xl);
-	}
-}
-
 .header {
 	display: flex;
 	align-items: center;
 	white-space: nowrap;
+	margin-bottom: var(--spacing-2xl);
 
 	*:first-child {
 		flex-grow: 1;
@@ -250,6 +245,10 @@ function onCopy() {
 
 .card {
 	position: relative;
+}
+
+.destinationItem {
+	margin-bottom: 0.5em;
 }
 
 .delete {
