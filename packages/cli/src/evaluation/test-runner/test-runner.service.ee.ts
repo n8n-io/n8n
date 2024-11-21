@@ -87,7 +87,9 @@ export class TestRunnerService {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 		assert(lastNodeExecuted, 'Could not find the last node executed in evaluation workflow');
 
-		return execution.data.resultData.runData[lastNodeExecuted]?.[0].data?.main[0]?.[0]?.json ?? {};
+		// Extract the output of the last node executed in the evaluation workflow
+		// We use only the first main output
+		return execution.data.resultData.runData[lastNodeExecuted]?.[0]?.data?.main[0]?.[0]?.json ?? {};
 	}
 
 	/**
