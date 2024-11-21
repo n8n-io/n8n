@@ -162,6 +162,48 @@ onMounted(() => {
 	parentNodes.value = getParentNodes();
 });
 
+function splitText(textarea: HTMLTextAreaElement) {
+	const rows: string[] = [];
+	const style = window.getComputedStyle(textarea);
+
+	const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+	const border = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+	const textareaWidth = textarea.clientWidth - padding - border;
+
+	const context = createTextContext(style);
+
+	const lines = textarea.value.split('\n');
+	lines.forEach((line) => {
+		let currentLine = '';
+		const words = line.split(/(\s+)/);
+
+		words.forEach((word) => {
+			const testLine = currentLine + word;
+			const testWidth = context.measureText(testLine).width;
+
+			if (testWidth <= textareaWidth) {
+				currentLine = testLine;
+			} else {
+				rows.push(currentLine.trimEnd());
+				currentLine = word;
+			}
+		});
+
+		if (currentLine) {
+			rows.push(currentLine.trimEnd());
+		}
+	});
+
+	return rows;
+}
+
+function createTextContext(style: CSSStyleDeclaration): CanvasRenderingContext2D {
+	const canvas = document.createElement('canvas');
+	const context = canvas.getContext('2d')!;
+	context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+	return context;
+}
+
 async function onDrop(value: string, event: MouseEvent) {
 	value = propertyNameFromExpression(value);
 	const textarea = event.target as HTMLTextAreaElement;
@@ -173,7 +215,7 @@ async function onDrop(value: string, event: MouseEvent) {
 	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
 	const row = Math.floor(textareaY / rowHeight);
 
-	const textArray = textarea.value.split('\n');
+	const textArray = splitText(textarea);
 
 	if (!textArray[row]) {
 		prompt.value = `${prompt.value} ${value}`;
@@ -220,7 +262,7 @@ async function onDrop(value: string, event: MouseEvent) {
 		textArray[row].slice(col).trim(),
 	].join(' ');
 
-	prompt.value = textArray.join('\n');
+	prompt.value = textArray.join(' ');
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
