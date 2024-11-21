@@ -1,4 +1,5 @@
 // eslint-disable-next-line import/no-cycle
+export { ExecuteContext } from './execute-context';
 export { ExecuteSingleContext } from './execute-single-context';
 export { HookContext } from './hook-context';
 export { LoadOptionsContext } from './load-options-context';
