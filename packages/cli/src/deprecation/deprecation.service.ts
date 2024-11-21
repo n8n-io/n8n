@@ -16,7 +16,7 @@ type Deprecation = {
 	checkValue?: (value: string) => boolean;
 };
 
-const SAFE_TO_REMOVE = 'This can be safely removed.';
+const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
 
 /** Responsible for warning about use of deprecated env vars. */
 @Service()
