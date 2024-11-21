@@ -1,4 +1,4 @@
-import type { IRun, WorkflowTestData } from 'n8n-workflow';
+import type { IRun, IRunData, WorkflowTestData } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
@@ -10,13 +10,16 @@ import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from './helpers/constants';
+import { DirectedGraph } from '@/PartialExecutionUtils';
+import { createNodeData, toITaskData } from '@/PartialExecutionUtils/__tests__/helpers';
+
+const nodeTypes = Helpers.NodeTypes();
 
 describe('WorkflowExecute', () => {
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
 		const executionMode = 'manual';
-		const nodeTypes = Helpers.NodeTypes();
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
@@ -216,5 +219,40 @@ describe('WorkflowExecute', () => {
 		expect(nodeExecutionOutput).toBeInstanceOf(NodeExecutionOutput);
 		expect(nodeExecutionOutput[0][0].json.data).toEqual(123);
 		expect(nodeExecutionOutput.getHints()[0].message).toEqual('TEXT HINT');
+	});
+
+	describe('runPartialWorkflow2', () => {
+		test('executes the deleteRunData hook with the names of the nodes that have stale run data', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }])],
+				[node1.name]: [toITaskData([{ data: { name: node1.name } }])],
+				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
+			};
+
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			const executeHookSpy = jest
+				.spyOn(workflowExecute, 'executeHook')
+				.mockImplementation(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(workflow, runData, 'node1');
+
+			// ASSERT
+			expect(executeHookSpy).toHaveBeenCalledTimes(1);
+			expect(executeHookSpy).toHaveBeenCalledWith('deleteRunData', [[node1.name, node2.name]]);
+		});
 	});
 });

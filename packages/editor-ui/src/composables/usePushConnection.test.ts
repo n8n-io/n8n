@@ -236,5 +236,58 @@ describe('usePushConnection()', () => {
 				expect(pushConnection.retryTimeout).not.toBeNull();
 			});
 		});
+
+		describe('deleteRunData', async () => {
+			it("enqueues messages if we don't have the active execution id yet", async () => {
+				uiStore.isActionActive.workflowRunning = true;
+				const event: PushMessage = {
+					type: 'deleteRunData',
+					data: {
+						executionId: '1',
+						nodeNamesToPurge: ['foo'],
+					},
+				};
+
+				expect(pushConnection.retryTimeout.value).toBeNull();
+				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
+
+				const result = await pushConnection.pushMessageReceived(event);
+
+				expect(result).toBe(false);
+				expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
+				expect(pushConnection.pushMessageQueue.value).toContainEqual({
+					message: event,
+					retriesLeft: 5,
+				});
+				expect(pushConnection.retryTimeout).not.toBeNull();
+			});
+
+			it('clears the execution data for all nodes in the event', async () => {
+				// ARRANGE
+				uiStore.isActionActive.workflowRunning = true;
+				const event: PushMessage = {
+					type: 'deleteRunData',
+					data: {
+						executionId: '1',
+						nodeNamesToPurge: ['foo', 'bar'],
+					},
+				};
+				workflowsStore.activeExecutionId = event.data.executionId;
+
+				expect(pushConnection.retryTimeout.value).toBeNull();
+				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
+
+				vi.spyOn(workflowsStore, 'clearNodeExecutionData').mockReturnValueOnce();
+
+				// ACT
+				const result = await pushConnection.pushMessageReceived(event);
+
+				// ASSERT
+				expect(result).toBe(true);
+				expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledTimes(2);
+				expect(workflowsStore.clearNodeExecutionData).toHaveBeenNthCalledWith(1, 'foo');
+				expect(workflowsStore.clearNodeExecutionData).toHaveBeenNthCalledWith(2, 'bar');
+			});
+		});
 	});
 });

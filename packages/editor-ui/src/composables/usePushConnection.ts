@@ -146,7 +146,11 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return false;
 		}
 
-		if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
+		if (
+			receivedData.type === 'nodeExecuteAfter' ||
+			receivedData.type === 'nodeExecuteBefore' ||
+			receivedData.type === 'deleteRunData'
+		) {
 			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
@@ -456,6 +460,10 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			// Nothing to do
 		} else if (receivedData.type === 'executionStarted') {
 			// Nothing to do
+		} else if (receivedData.type === 'deleteRunData') {
+			for (const nodeName of receivedData.data.nodeNamesToPurge) {
+				workflowsStore.clearNodeExecutionData(nodeName);
+			}
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;

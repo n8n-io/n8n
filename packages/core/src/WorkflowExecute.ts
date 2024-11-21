@@ -355,8 +355,15 @@ export class WorkflowExecute {
 		// 5. Handle Cycles
 		startNodes = handleCycles(graph, startNodes, trigger);
 
-		// 6. Clean Run Data
+		// 6.1 Clean Run Data
 		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
+
+		// 6.2 Inform FE about what run data to purge from the workflow store
+		const nodeNamesToPurge = new Set(Object.keys(runData));
+		for (const nodeName of Object.keys(newRunData)) {
+			nodeNamesToPurge.delete(nodeName);
+		}
+		void this.executeHook('deleteRunData', [[...nodeNamesToPurge]]);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =

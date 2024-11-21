@@ -245,6 +245,17 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
 	return {
+		deleteRunData: [
+			async function (this: WorkflowHooks, nodeNamesToPurge: string[]) {
+				const { pushRef, executionId } = this;
+
+				if (pushRef === undefined) {
+					return;
+				}
+
+				pushInstance.send('deleteRunData', { nodeNamesToPurge, executionId }, pushRef);
+			},
+		],
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { pushRef, executionId } = this;
@@ -372,6 +383,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	const eventService = Container.get(EventService);
 	return {
+		deleteRunData: [],
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
