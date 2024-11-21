@@ -36,7 +36,10 @@ export class DeprecationService {
 			message: 'MySQL and MariaDB are deprecated. Please migrate to PostgreSQL.',
 			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
 		},
-		{ envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', message: SAFE_TO_REMOVE },
+		{
+			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
+			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
+		},
 	];
 
 	/** Runtime state of deprecated env vars. */
