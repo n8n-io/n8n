@@ -14,7 +14,7 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError } from 'n8n-workflow';
+import { ApplicationError, ExpressionError, NodeConnectionType } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
@@ -92,7 +92,7 @@ describe('ExecuteContext', () => {
 
 	describe('getInputData', () => {
 		const inputIndex = 0;
-		const inputName = 'main';
+		const inputName = NodeConnectionType.Main;
 
 		afterEach(() => {
 			inputData[inputName] = [[{ json: { test: 'data' } }]];
@@ -106,7 +106,7 @@ describe('ExecuteContext', () => {
 
 		it('should return an empty array if the input name does not exist', () => {
 			const inputName = 'nonExistent';
-			expect(executeContext.getInputData(inputIndex, inputName)).toEqual([]);
+			expect(executeContext.getInputData(inputIndex, inputName as NodeConnectionType)).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {

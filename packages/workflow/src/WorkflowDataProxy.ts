@@ -961,10 +961,11 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
+
+			const taskDataConnections =
+				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[that.runIndex];
 			const placeholdersDataInputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[0].inputOverride?.[
-					NodeConnectionType.AiTool
-				]?.[0]?.[0].json;
+				taskDataConnections?.inputOverride?.[NodeConnectionType.AiTool]?.[0]?.[that.itemIndex].json;
 
 			if (Boolean(!placeholdersDataInputData)) {
 				throw new ExpressionError('No execution data available', {

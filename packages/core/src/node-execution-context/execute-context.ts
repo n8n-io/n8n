@@ -12,11 +12,10 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
 
 import { createAgentStartJob } from '@/Agent';
 // eslint-disable-next-line import/no-cycle
@@ -156,7 +155,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		);
 	}
 
-	getInputData(inputIndex = 0, inputName = 'main') {
+	getInputData(inputIndex = 0, inputName = NodeConnectionType.Main) {
 		if (!this.inputData.hasOwnProperty(inputName)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
