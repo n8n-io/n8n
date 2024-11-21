@@ -6,7 +6,7 @@ type Deprecation = {
 	/** Deprecated env var. */
 	env: string;
 
-	/** Message to display when the deprecated env var is in use. */
+	/** Message to display when the deprecated env var is currently in use. */
 	message: string;
 
 	/** Whether the deprecated env var is currently in use. */
