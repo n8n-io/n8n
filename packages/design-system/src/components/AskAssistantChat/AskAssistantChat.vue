@@ -136,7 +136,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="messages?.length" :class="$style.messages">
+			<div v-if="messages?.length || loadingMessage" :class="$style.messages">
 				<div
 					v-for="(message, i) in messages"
 					:key="i"
@@ -285,7 +285,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 						</div>
 					</div>
 				</div>
-				<div :class="[$style.message, $style.loading]">
+				<div :class="{ [$style.message]: true, [$style.loading]: messages?.length }">
 					<AssistantLoadingMessage v-if="loadingMessage" :message="loadingMessage" />
 				</div>
 			</div>

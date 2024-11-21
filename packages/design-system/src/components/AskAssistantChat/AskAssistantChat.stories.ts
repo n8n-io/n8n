@@ -246,15 +246,6 @@ AssistantThinkingChat.args = {
 		firstName: 'Max',
 		lastName: 'Test',
 	},
-	messages: getMessages([
-		{
-			id: '29083188',
-			role: 'user',
-			type: 'text',
-			content: 'Hey',
-			read: true,
-		},
-	]),
 	loadingMessage: 'Thinking...',
 };
 

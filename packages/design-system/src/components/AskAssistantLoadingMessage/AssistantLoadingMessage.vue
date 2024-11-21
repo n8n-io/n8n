@@ -29,7 +29,7 @@ withDefaults(
 .container {
 	display: flex;
 	gap: var(--spacing-3xs);
-	align-items: flex-start;
+	align-items: center;
 	user-select: none;
 }
 
