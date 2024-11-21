@@ -2881,18 +2881,16 @@ export async function getInputConnectionData(
 				connectedNode.type,
 				connectedNode.typeVersion,
 			);
-
-			// eslint-disable-next-line @typescript-eslint/no-use-before-define
-			const context = getSupplyDataFunctions(
+			const context = new SupplyDataContext(
 				workflow,
+				connectedNode,
+				additionalData,
+				mode,
 				runExecutionData,
 				runIndex,
 				connectionInputData,
 				inputData,
-				connectedNode,
-				additionalData,
 				executeData,
-				mode,
 				closeFunctions,
 				abortSignal,
 			);
@@ -3941,34 +3939,6 @@ export function getExecuteFunctions(
 			),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
-}
-
-export function getSupplyDataFunctions(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData,
-	runIndex: number,
-	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	executeData: IExecuteData,
-	mode: WorkflowExecuteMode,
-	closeFunctions: CloseFunction[],
-	abortSignal?: AbortSignal,
-): ISupplyDataFunctions {
-	return new SupplyDataContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		runExecutionData,
-		runIndex,
-		connectionInputData,
-		inputData,
-		executeData,
-		closeFunctions,
-		abortSignal,
-	);
 }
 
 /**
