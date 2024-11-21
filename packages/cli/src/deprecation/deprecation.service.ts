@@ -28,7 +28,6 @@ export class DeprecationService {
 			message: 'MySQL and MariaDB are deprecated. Please migrate to PostgreSQL.',
 			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
 		},
-		{ env: 'N8N_PATH', message: 'Please use N8N_BASE_URL instead.' },
 		{ env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', message: SAFE_TO_REMOVE },
 	];
 
