@@ -35,7 +35,7 @@ export class TestRunnerService {
 
 		for (const triggerNode of triggerNodes) {
 			const triggerData = executionData.resultData.runData[triggerNode.name];
-			if (triggerData[0]?.data?.main?.[0]) {
+			if (triggerData?.[0]?.data?.main?.[0]) {
 				pinData[triggerNode.name] = triggerData[0]?.data?.main?.[0];
 			}
 		}
