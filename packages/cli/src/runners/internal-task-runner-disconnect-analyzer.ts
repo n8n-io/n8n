@@ -16,10 +16,6 @@ import { TaskRunnerProcess } from './task-runner-process';
  */
 @Service()
 export class InternalTaskRunnerDisconnectAnalyzer extends DefaultTaskRunnerDisconnectAnalyzer {
-	private get isCloudDeployment() {
-		return config.get('deployment.type') === 'cloud';
-	}
-
 	private readonly exitReasonSignal: SlidingWindowSignal<TaskRunnerProcessEventMap, 'exit'>;
 
 	constructor(
