@@ -3,6 +3,7 @@ import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
+import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
@@ -24,17 +25,21 @@ jest.mock('ws');
 const defaultConfig = new MainConfig();
 
 describe('JsTaskRunner', () => {
-	const createRunnerWithOpts = (opts: Partial<JsRunnerConfig> = {}) =>
+	const createRunnerWithOpts = (
+		jsRunnerOpts: Partial<JsRunnerConfig> = {},
+		baseRunnerOpts: Partial<BaseRunnerConfig> = {},
+	) =>
 		new JsTaskRunner({
 			baseRunnerConfig: {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
 				n8nUri: 'localhost',
+				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
 				...defaultConfig.jsRunnerConfig,
-				...opts,
+				...jsRunnerOpts,
 			},
 			sentryConfig: {
 				sentryDsn: '',
@@ -823,6 +828,97 @@ describe('JsTaskRunner', () => {
 					lineNumber: 1,
 				},
 			});
+		});
+	});
+
+	describe('idle timeout', () => {
+		beforeEach(() => {
+			jest.useFakeTimers();
+			jest.spyOn(process, 'exit').mockReturnValue(undefined as never);
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		it('should set idle timer when instantiated', () => {
+			const idleTimeout = 5;
+			createRunnerWithOpts({}, { idleTimeout });
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(process.exit).not.toHaveBeenCalled();
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(process.exit).toHaveBeenCalledWith(0);
+		});
+
+		it('should reset idle timer when accepting a task', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const offerId = 'offer123';
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(process.exit).not.toHaveBeenCalled();
+
+			runner.openOffers.set(offerId, {
+				offerId,
+				validUntil: process.hrtime.bigint() + BigInt(idleTimeout * 1000 * 1_000_000),
+			});
+			runner.offerAccepted(offerId, taskId);
+
+			jest.advanceTimersByTime(200);
+			expect(process.exit).not.toHaveBeenCalled(); // because timer was reset
+
+			runner.runningTasks.clear();
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(process.exit).toHaveBeenCalledWith(0);
+		});
+
+		it('should reset idle timer when finishing a task', async () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+
+			runner.runningTasks.set(taskId, {
+				taskId,
+				active: true,
+				cancelled: false,
+			});
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(process.exit).not.toHaveBeenCalled();
+
+			runner.taskDone(taskId, { result: [] });
+
+			jest.advanceTimersByTime(200);
+			expect(process.exit).not.toHaveBeenCalled(); // because timer was reset
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(process.exit).toHaveBeenCalledWith(0);
+		});
+
+		it('should never exit if idle timeout is set to 0', () => {
+			createRunnerWithOpts({}, { idleTimeout: 0 });
+
+			jest.advanceTimersByTime(999999);
+			expect(process.exit).not.toHaveBeenCalled();
+		});
+
+		it('should not exit if there are running tasks', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+
+			runner.runningTasks.set(taskId, {
+				taskId,
+				active: true,
+				cancelled: false,
+			});
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(process.exit).not.toHaveBeenCalled();
 		});
 	});
 });

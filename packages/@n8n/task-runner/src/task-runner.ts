@@ -76,10 +76,15 @@ export abstract class TaskRunner {
 
 	name: string;
 
+	private idleTimer: NodeJS.Timeout | undefined;
+
+	private readonly idleTimeout: number;
+
 	constructor(opts: TaskRunnerOpts) {
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
+		this.idleTimeout = opts.idleTimeout;
 
 		const wsUrl = `ws://${opts.n8nUri}/runners/_ws?id=${this.id}`;
 		this.ws = new WebSocket(wsUrl, {
@@ -108,6 +113,17 @@ export abstract class TaskRunner {
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
+		this.resetIdleTimer();
+	}
+
+	private resetIdleTimer() {
+		if (this.idleTimeout === 0) return;
+
+		this.clearIdleTimer();
+
+		this.idleTimer = setTimeout(() => {
+			if (this.runningTasks.size === 0) process.exit(0);
+		}, this.idleTimeout * 1000);
 	}
 
 	private receiveMessage = (message: MessageEvent) => {
@@ -244,6 +260,7 @@ export abstract class TaskRunner {
 			this.openOffers.delete(offerId);
 		}
 
+		this.resetIdleTimer();
 		this.runningTasks.set(taskId, {
 			taskId,
 			active: false,
@@ -276,6 +293,7 @@ export abstract class TaskRunner {
 			taskId,
 			error,
 		});
+		console.error(`Runner failed to complete task ${taskId}`);
 		this.runningTasks.delete(taskId);
 		this.sendOffers();
 	}
@@ -287,6 +305,8 @@ export abstract class TaskRunner {
 			data,
 		});
 		this.runningTasks.delete(taskId);
+		console.log(`Runner completed task ${taskId}`);
+		this.resetIdleTimer();
 		this.sendOffers();
 	}
 
@@ -432,11 +452,17 @@ export abstract class TaskRunner {
 
 	/** Close the connection gracefully and wait until has been closed */
 	async stop() {
+		this.clearIdleTimer();
+
 		this.stopTaskOffers();
 
 		await this.waitUntilAllTasksAreDone();
 
 		await this.closeConnection();
+	}
+
+	clearIdleTimer() {
+		if (this.idleTimer) clearTimeout(this.idleTimer);
 	}
 
 	private async closeConnection() {
