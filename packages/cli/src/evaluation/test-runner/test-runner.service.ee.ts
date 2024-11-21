@@ -151,6 +151,7 @@ export class TestRunnerService {
 			const executionId = await this.workflowRunner.run(data);
 			assert(executionId);
 
+			// Wait for the execution to finish
 			const executePromise = this.activeExecutions.getPostExecutePromise(
 				executionId,
 			);
