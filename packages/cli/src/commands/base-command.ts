@@ -96,7 +96,7 @@ export abstract class BaseCommand extends Command {
 			this.globalConfig.database.type === 'sqlite'
 		) {
 			this.logger.warn(
-				'Queue mode is not officially supported with sqlite. Please switch to PostgreSQL.',
+				'Scaling mode is not officially supported with sqlite. Please use PostgreSQL instead.',
 			);
 		}
 
