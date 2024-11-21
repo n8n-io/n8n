@@ -834,7 +834,6 @@ describe('JsTaskRunner', () => {
 	describe('idle timeout', () => {
 		beforeEach(() => {
 			jest.useFakeTimers();
-			jest.spyOn(process, 'exit').mockReturnValue(undefined as never);
 		});
 
 		afterEach(() => {
@@ -843,13 +842,14 @@ describe('JsTaskRunner', () => {
 
 		it('should set idle timer when instantiated', () => {
 			const idleTimeout = 5;
-			createRunnerWithOpts({}, { idleTimeout });
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const emitSpy = jest.spyOn(runner, 'emit');
 
 			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
-			expect(process.exit).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
 			jest.advanceTimersByTime(idleTimeout * 1000);
-			expect(process.exit).toHaveBeenCalledWith(0);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
 		it('should reset idle timer when accepting a task', () => {
@@ -857,9 +857,10 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
 			const offerId = 'offer123';
+			const emitSpy = jest.spyOn(runner, 'emit');
 
 			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
-			expect(process.exit).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
 			runner.openOffers.set(offerId, {
 				offerId,
@@ -868,18 +869,20 @@ describe('JsTaskRunner', () => {
 			runner.offerAccepted(offerId, taskId);
 
 			jest.advanceTimersByTime(200);
-			expect(process.exit).not.toHaveBeenCalled(); // because timer was reset
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
 
 			runner.runningTasks.clear();
 
 			jest.advanceTimersByTime(idleTimeout * 1000);
-			expect(process.exit).toHaveBeenCalledWith(0);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
 		it('should reset idle timer when finishing a task', async () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+			jest.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
 
 			runner.runningTasks.set(taskId, {
 				taskId,
@@ -888,28 +891,30 @@ describe('JsTaskRunner', () => {
 			});
 
 			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
-			expect(process.exit).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
-			runner.taskDone(taskId, { result: [] });
+			await runner.receivedSettings(taskId, {});
 
 			jest.advanceTimersByTime(200);
-			expect(process.exit).not.toHaveBeenCalled(); // because timer was reset
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
 
 			jest.advanceTimersByTime(idleTimeout * 1000);
-			expect(process.exit).toHaveBeenCalledWith(0);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
-		it('should never exit if idle timeout is set to 0', () => {
-			createRunnerWithOpts({}, { idleTimeout: 0 });
+		it('should never reach idle timeout if idle timeout is set to 0', () => {
+			const runner = createRunnerWithOpts({}, { idleTimeout: 0 });
+			const emitSpy = jest.spyOn(runner, 'emit');
 
 			jest.advanceTimersByTime(999999);
-			expect(process.exit).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
-		it('should not exit if there are running tasks', () => {
+		it('should not reach idle timeout if there are running tasks', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
+			const emitSpy = jest.spyOn(runner, 'emit');
 
 			runner.runningTasks.set(taskId, {
 				taskId,
@@ -918,7 +923,7 @@ describe('JsTaskRunner', () => {
 			});
 
 			jest.advanceTimersByTime(idleTimeout * 1000);
-			expect(process.exit).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 	});
 });
