@@ -1,5 +1,6 @@
 import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
 
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
@@ -49,7 +50,7 @@ export interface TaskRunnerOpts extends BaseRunnerConfig {
 	name?: string;
 }
 
-export abstract class TaskRunner {
+export abstract class TaskRunner extends EventEmitter {
 	id: string = nanoid();
 
 	ws: WebSocket;
@@ -82,6 +83,7 @@ export abstract class TaskRunner {
 	private readonly idleTimeout: number;
 
 	constructor(opts: TaskRunnerOpts) {
+		super();
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
@@ -123,7 +125,7 @@ export abstract class TaskRunner {
 		this.clearIdleTimer();
 
 		this.idleTimer = setTimeout(() => {
-			if (this.runningTasks.size === 0) process.exit(0);
+			if (this.runningTasks.size === 0) this.emit('runner:reached-idle-timeout');
 		}, this.idleTimeout * 1000);
 	}
 
