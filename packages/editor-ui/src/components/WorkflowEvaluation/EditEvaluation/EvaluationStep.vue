@@ -1,18 +1,38 @@
 <script setup lang="ts">
+import { ElCollapseTransition } from 'element-plus';
+import { ref, computed, nextTick } from 'vue';
+
 interface EvaluationStep {
 	title: string;
 	warning?: boolean;
 	small?: boolean;
+	expanded?: boolean;
 }
 
-withDefaults(defineProps<EvaluationStep>(), {
+const props = withDefaults(defineProps<EvaluationStep>(), {
 	description: '',
 	warning: false,
 	small: false,
+	expanded: true,
 });
+
+const isExpanded = ref(props.expanded);
+const contentRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
+
+const toggleExpand = async () => {
+	isExpanded.value = !isExpanded.value;
+	if (isExpanded.value) {
+		await nextTick();
+		if (containerRef.value) {
+			containerRef.value.style.height = 'auto';
+		}
+	}
+};
 </script>
+
 <template>
-	<div :class="[$style.workflowStep, small && $style.small]">
+	<div :class="[$style.evaluationStep, small && $style.small]" ref="containerRef">
 		<div :class="$style.content">
 			<div :class="$style.header">
 				<div :class="[$style.icon, warning && $style.warning]">
@@ -20,39 +40,58 @@ withDefaults(defineProps<EvaluationStep>(), {
 				</div>
 				<h3 :class="$style.title">{{ title }}</h3>
 				<span v-if="warning" :class="$style.warningIcon">⚠</span>
+				<button
+					v-if="$slots.cardContent"
+					:class="$style.collapseButton"
+					:aria-expanded="isExpanded"
+					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
+					@click="toggleExpand"
+				>
+					{{ isExpanded ? 'Collapse' : 'Expand' }}
+					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
+				</button>
 			</div>
-			<div :class="$style.cardContent">
-				<slot name="cardContent" />
-			</div>
+			<ElCollapseTransition v-if="$slots.cardContent">
+				<div v-show="isExpanded" :class="$style.cardContentWrapper">
+					<div ref="contentRef" :class="$style.cardContent">
+						<slot name="cardContent" />
+					</div>
+				</div>
+			</ElCollapseTransition>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-.workflowStep {
+.evaluationStep {
 	display: grid;
-	grid-template-columns: auto 1fr;
+	grid-template-columns: 1fr;
 	gap: var(--spacing-m);
 	background: var(--color-background-light);
 	padding: var(--spacing-s);
 	border-radius: var(--border-radius-xlarge);
 	box-shadow: var(--box-shadow-base);
 	border: var(--border-base);
-	width: fit-content;
+	width: 100%;
 	color: var(--color-text-dark);
-	max-width: 100%;
+
 	&.small {
 		width: 80%;
 	}
 }
-
 .icon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: var(--border-radius-small);
-	background-color: var(--color-background-light);
-
+	border-radius: var(--border-radius-base);
+	// padding: var(--spacing-2xs);
+	overflow: hidden;
+	background-color: var(--color-primary);
+	width: 2rem;
+	height: 2rem;
+	& > * {
+		color: white;
+	}
 	&.warning {
 		background-color: var(--color-warning-tint-2);
 	}
@@ -70,8 +109,9 @@ withDefaults(defineProps<EvaluationStep>(), {
 }
 
 .title {
-	font-weight: var(--font-weight-regular);
-	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-s);
+	line-height: 1.125rem;
 }
 
 .warningIcon {
@@ -81,5 +121,20 @@ withDefaults(defineProps<EvaluationStep>(), {
 .cardContent {
 	font-size: var(--font-size-s);
 	margin-top: var(--spacing-xs);
+}
+.collapseButton {
+	cursor: pointer;
+	border: none;
+	background: none;
+	padding: 0;
+	font-size: var(--font-size-3xs);
+	color: var(--color-text-base);
+	margin-left: auto;
+	text-wrap: none;
+	overflow: hidden;
+	min-width: fit-content;
+}
+.cardContentWrapper {
+	height: max-content;
 }
 </style>

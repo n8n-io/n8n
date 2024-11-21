@@ -21,7 +21,6 @@ const locale = useI18n();
 		<n8n-input-label
 			:label="locale.baseText('workflowEvaluation.edit.workflowSelectorLabel')"
 			:bold="false"
-			size="small"
 		>
 			<WorkflowSelectorParameterInput
 				ref="workflowInput"
@@ -40,9 +39,9 @@ const locale = useI18n();
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>
-		<n8n-text size="small" color="text-light">
+		<!-- <n8n-text size="small" color="text-light">
 			{{ locale.baseText('workflowEvaluation.edit.workflowSelectorHelpText') }}
-		</n8n-text>
+		</n8n-text> -->
 	</div>
 </template>
 

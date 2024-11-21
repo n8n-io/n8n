@@ -21,17 +21,16 @@ function updateMetric(index: number, value: string) {
 
 <template>
 	<div :class="[$style.metrics]">
-		<n8n-text color="text-dark">{{
+		<!-- <n8n-text color="text-dark">{{
 			locale.baseText('workflowEvaluation.edit.metricsTitle')
 		}}</n8n-text>
 		<hr :class="$style.metricsDivider" />
 		<n8n-text size="small" color="text-light">
 			{{ locale.baseText('workflowEvaluation.edit.metricsHelpText') }}
-		</n8n-text>
+		</n8n-text> -->
 		<n8n-input-label
 			:label="locale.baseText('workflowEvaluation.edit.metricsFields')"
 			:bold="false"
-			size="small"
 			:class="$style.metricField"
 		>
 			<div :class="$style.metricsContainer">

@@ -101,9 +101,11 @@ watch(
 
 			<DescriptionInput v-model="state.description" />
 
+			<div :class="$style.panelIntro">When running a test</div>
+			<BlockArrow :class="$style.introArrow" />
 			<div :class="$style.panelBlock">
-				<EvaluationStep :title="'Fetch 5 past executions'">
-					<template #icon>🏷️</template>
+				<EvaluationStep :class="$style.step" :title="'Fetch 5 past executions'">
+					<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 					<template #cardContent>
 						<TagsInput
 							v-model="state.tags"
@@ -117,20 +119,21 @@ watch(
 						/>
 					</template>
 				</EvaluationStep>
-				<EvaluationStep :title="'Mock nodes'" :small="true">
-					<template #icon>🎭</template>
+				<div :class="$style.evaluationArrows">
+					<BlockArrow />
+					<BlockArrow />
+				</div>
+				<EvaluationStep :class="$style.step" :title="'Mock nodes'" :small="true" :expanded="false">
+					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 					<template #cardContent> 1 node mocked </template>
 				</EvaluationStep>
 
-				<EvaluationStep :title="'Re-run executions'" :small="true">
-					<template #icon>🔄</template>
-					<template #cardContent>
-						Re-run executions functionality Re-run executions functionality Re-run executions
-						functionality
-					</template>
+				<EvaluationStep :class="$style.step" :title="'Re-run executions'" :small="true">
+					<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 				</EvaluationStep>
-				<EvaluationStep :title="'Compare each past and new execution'">
-					<template #icon>🔄</template>
+
+				<EvaluationStep :class="$style.step" :title="'Compare each past and new execution'">
+					<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 					<template #cardContent>
 						<WorkflowSelector
 							v-model="state.evaluationWorkflow"
@@ -139,8 +142,8 @@ watch(
 					</template>
 				</EvaluationStep>
 
-				<EvaluationStep :title="'Summarise metrics'">
-					<template #icon>📊</template>
+				<EvaluationStep :class="$style.step" :title="'Summarise metrics'">
+					<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 					<template #cardContent>
 						<MetricsInput v-model="state.metrics" :class="{ 'has-issues': hasIssues('metrics') }" />
 					</template>
@@ -178,10 +181,38 @@ watch(
 .panelBlock {
 	max-width: var(--evaluation-edit-panel-width, 24rem);
 	display: grid;
-	gap: var(--spacing-m);
+	// gap: var(--spacing-m);
 	justify-items: end;
 }
+.panelIntro {
+	font-size: var(--font-size-m);
+	color: var(--color-text-dark);
+	margin-top: var(--spacing-s);
+	justify-self: center;
+	position: relative;
+	display: block;
+}
+.step {
+	position: relative;
 
+	&:not(:first-child) {
+		margin-top: var(--spacing-m);
+	}
+}
+.introArrow {
+	--arrow-height: 1.5rem;
+	justify-self: center;
+}
+.evaluationArrows {
+	--arrow-height: 11rem;
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	max-width: 80%;
+	margin: 0 auto;
+	margin-bottom: -100%;
+	z-index: 0;
+}
 .footer {
 	margin-top: var(--spacing-xl);
 	display: flex;
@@ -208,29 +239,5 @@ watch(
 	gap: var(--spacing-2xs);
 	justify-items: end;
 	align-items: start;
-}
-
-.connector {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing-2xs) 0;
-
-	&::before {
-		content: '';
-		width: 2px;
-		height: 1.5rem;
-		background-color: var(--color-warning-tint-2);
-	}
-
-	&.horizontal {
-		padding: 0 var(--spacing-2xs);
-		align-self: center;
-
-		&::before {
-			width: 1.5rem;
-			height: 2px;
-		}
-	}
 }
 </style>

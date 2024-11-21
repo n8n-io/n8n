@@ -33,7 +33,6 @@ interface Props {
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
 	parameter: INodeProperties;
-	allowNew?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -44,7 +43,6 @@ const props = withDefaults(defineProps<Props>(), {
 	forceShowExpression: false,
 	expressionDisplayValue: '',
 	parameterIssues: () => [],
-	allowNew: false,
 });
 
 const emit = defineEmits<{
@@ -140,11 +138,6 @@ function setWidth() {
 function onInputChange(value: NodeParameterValue): void {
 	if (typeof value !== 'string') return;
 
-	if (value === NEW_WORKFLOW_VALUE && props.allowNew) {
-		const route = router.resolve({ name: VIEWS.NEW_WORKFLOW });
-		window.open(route.href, '_blank');
-		return;
-	}
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = workflowsStore.getWorkflowById(value);
@@ -254,7 +247,7 @@ const onAddResourceClicked = () => {
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="resourcesWithNew"
+			:resources="filteredResources"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
@@ -264,7 +257,6 @@ const onAddResourceClicked = () => {
 			}"
 			:width="width"
 			:event-bus="eventBus"
-			:allow-new="allowNew"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
