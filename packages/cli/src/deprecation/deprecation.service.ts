@@ -53,7 +53,7 @@ export class DeprecationService {
 
 		if (inUse.length === 0) return;
 
-		const header = `Found deprecated feature${inUse.length === 1 ? '' : 's'} in use, to be removed in an upcoming version of n8n`;
+		const header = `The following environment variable${inUse.length === 1 ? ' is' : 's are'} deprecated and will be removed in an upcoming version of n8n. Please take the recommended actions to update your configuration:`;
 		const deprecations = inUse.map(({ env, message }) => ` - ${env} -> ${message}\n`).join('');
 
 		this.logger.warn(`\n${header}:\n${deprecations}`);
