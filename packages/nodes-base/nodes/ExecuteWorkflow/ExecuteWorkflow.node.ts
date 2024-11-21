@@ -6,8 +6,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { generatePairedItemData } from '../../utils/utilities';
+
 import { getWorkflowInfo } from './GenericFunctions';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,7 +17,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -67,6 +68,27 @@ export class ExecuteWorkflow implements INodeType {
 				],
 				default: 'database',
 				description: 'Where to get the workflow to execute from',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+			},
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				options: [
+					{
+						name: 'Database',
+						value: 'database',
+						description: 'Load the workflow from the database by ID',
+					},
+					{
+						name: 'Define Below',
+						value: 'parameter',
+						description: 'Pass the JSON code of a workflow',
+					},
+				],
+				default: 'database',
+				description: 'Where to get the workflow to execute from',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
 			},
 
 			// ----------------------------------
@@ -163,6 +185,7 @@ export class ExecuteWorkflow implements INodeType {
 				name: 'executeWorkflowNotice',
 				type: 'notice',
 				default: '',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
 			},
 			{
 				displayName: 'Mode',
