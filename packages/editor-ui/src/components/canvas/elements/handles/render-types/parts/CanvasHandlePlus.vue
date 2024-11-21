@@ -156,18 +156,18 @@ function onClick(event: MouseEvent) {
 			stroke: var(--color-success);
 		}
 	}
-}
 
-.plus {
-	&:hover {
-		cursor: pointer;
+	.plus {
+		&:hover {
+			cursor: pointer;
 
-		path {
-			fill: var(--color-primary);
-		}
+			path {
+				fill: var(--color-primary);
+			}
 
-		rect {
-			stroke: var(--color-primary);
+			rect {
+				stroke: var(--color-primary);
+			}
 		}
 	}
 }
