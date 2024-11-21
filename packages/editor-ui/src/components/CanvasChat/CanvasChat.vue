@@ -240,7 +240,7 @@ watchEffect(() => {
 </script>
 
 <template>
-	<n8n-resize-wrapper
+	<N8nResizeWrapper
 		v-if="chatTriggerNode"
 		:is-resizing-enabled="isChatOpen || isLogsOpen"
 		:supported-directions="['top']"
@@ -282,7 +282,7 @@ watchEffect(() => {
 				</div>
 			</div>
 		</div>
-	</n8n-resize-wrapper>
+	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>

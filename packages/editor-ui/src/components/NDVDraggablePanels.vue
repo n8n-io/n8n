@@ -368,7 +368,7 @@ function onDragEnd() {
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
-			<n8n-resize-wrapper
+			<N8nResizeWrapper
 				:is-resizing-enabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
 				:min-width="MIN_PANEL_WIDTH"
@@ -391,7 +391,7 @@ function onDragEnd() {
 				<div :class="{ [$style.mainPanelInner]: true, [$style.dragging]: isDragging }">
 					<slot name="main" />
 				</div>
-			</n8n-resize-wrapper>
+			</N8nResizeWrapper>
 		</div>
 	</div>
 </template>
