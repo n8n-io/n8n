@@ -7,7 +7,7 @@ import { useVueFlow, BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
 import { computed, useCssModule, ref, toRef } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { getCustomPath } from './utils/edgePath';
+import { getEdgeRenderData } from './utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -84,9 +84,8 @@ const edgeLabelStyle = computed(() => ({
 }));
 
 const edgeToolbarStyle = computed(() => {
-	const [, labelX, labelY] = path.value;
 	return {
-		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+		transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px,${labelPosition.value[1]}px)`,
 		...(isHovered.value ? { zIndex: 1 } : {}),
 	};
 });
@@ -97,11 +96,15 @@ const edgeToolbarClasses = computed(() => ({
 	selected: props.selected,
 }));
 
-const path = computed(() =>
-	getCustomPath(props, {
+const renderData = computed(() =>
+	getEdgeRenderData(props, {
 		connectionType: connectionType.value,
 	}),
 );
+
+const segments = computed(() => renderData.value.segments);
+
+const labelPosition = computed(() => renderData.value.labelPosition);
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
@@ -121,12 +124,12 @@ function onDelete() {
 
 <template>
 	<BaseEdge
-		v-for="(segment, index) in path"
+		v-for="(segment, index) in segments"
 		:id="`${id}-${index}`"
-		:key="segment"
+		:key="segment[0]"
 		:class="edgeClasses"
 		:style="edgeStyle"
-		:path="segment"
+		:path="segment[0]"
 		:marker-end="markerEnd"
 		:interaction-width="40"
 	/>

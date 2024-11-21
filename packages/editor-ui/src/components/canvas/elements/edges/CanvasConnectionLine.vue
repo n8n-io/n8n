@@ -3,7 +3,7 @@
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { BaseEdge } from '@vue-flow/core';
 import { computed, useCssModule } from 'vue';
-import { getCustomPath } from './utils/edgePath';
+import { getEdgeRenderData } from './utils';
 import { useCanvas } from '@/composables/useCanvas';
 import { NodeConnectionType } from 'n8n-workflow';
 import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
@@ -32,16 +32,20 @@ const edgeStyle = computed(() => ({
 	stroke: edgeColor.value,
 }));
 
-const path = computed(() => getCustomPath(props, { connectionType: connectionType.value }));
+const renderData = computed(() =>
+	getEdgeRenderData(props, { connectionType: connectionType.value }),
+);
+
+const segments = computed(() => renderData.value.segments);
 </script>
 
 <template>
 	<BaseEdge
-		v-for="segment in path"
-		:key="segment"
+		v-for="segment in segments"
+		:key="segment[0]"
 		:class="$style.edge"
 		:style="edgeStyle"
-		:path="segment"
+		:path="segment[0]"
 		:marker-end="markerEnd"
 	/>
 </template>

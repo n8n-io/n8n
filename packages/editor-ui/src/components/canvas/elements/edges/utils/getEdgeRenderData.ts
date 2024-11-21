@@ -9,7 +9,7 @@ const HANDLE_SIZE = 20; // Required to avoid connection line glitching when init
 
 const isRightOfSourceHandle = (sourceX: number, targetX: number) => sourceX - HANDLE_SIZE > targetX;
 
-export function getCustomPath(
+export function getEdgeRenderData(
 	props: Pick<
 		EdgeProps,
 		'sourceX' | 'sourceY' | 'sourcePosition' | 'targetX' | 'targetY' | 'targetPosition'
@@ -19,19 +19,22 @@ export function getCustomPath(
 	}: {
 		connectionType?: NodeConnectionType;
 	} = {},
-): string[] {
+) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 
 	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionType.Main) {
-		const [segment] = getBezierPath(props);
-		return [segment];
+		const segment = getBezierPath(props);
+		return {
+			segments: [segment],
+			labelPosition: [segment[1], segment[2]],
+		};
 	}
 
 	// Connection is backwards and the source is on the right side
 	// -> We need to avoid overlapping the source node
-	const firstSegmentTargetX = sourceX;
+	const firstSegmentTargetX = (sourceX + targetX) / 2;
 	const firstSegmentTargetY = sourceY + EDGE_PADDING_BOTTOM;
-	const [firstSegmentPath] = getSmoothStepPath({
+	const firstSegment = getSmoothStepPath({
 		sourceX,
 		sourceY,
 		targetX: firstSegmentTargetX,
@@ -42,7 +45,7 @@ export function getCustomPath(
 		offset: EDGE_PADDING_X,
 	});
 
-	const [secondSegmentPath] = getSmoothStepPath({
+	const secondSegment = getSmoothStepPath({
 		sourceX: firstSegmentTargetX,
 		sourceY: firstSegmentTargetY,
 		targetX,
@@ -53,5 +56,8 @@ export function getCustomPath(
 		offset: EDGE_PADDING_X,
 	});
 
-	return [firstSegmentPath, secondSegmentPath];
+	return {
+		segments: [firstSegment, secondSegment],
+		labelPosition: [firstSegmentTargetX, firstSegmentTargetY],
+	};
 }
