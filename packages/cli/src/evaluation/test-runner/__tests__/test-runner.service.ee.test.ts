@@ -11,6 +11,7 @@ import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestDefinitionService } from '@/evaluation/test-definition.service.ee';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -74,6 +75,21 @@ describe('TestRunnerService', () => {
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
+	});
+
+	test('should return an error if test definition is not found', async () => {
+		const testRunnerService = new TestRunnerService(
+			testDefinitionService,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+		);
+
+		testDefinitionService.findOne.mockResolvedValueOnce(null);
+
+		await expect(testRunnerService.runTest(mock<User>(), 'some-test-id', [])).rejects.toThrowError(
+			NotFoundError,
+		);
 	});
 
 	test('should create and run test cases from past executions', async () => {
