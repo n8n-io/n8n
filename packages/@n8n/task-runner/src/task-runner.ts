@@ -78,6 +78,7 @@ export abstract class TaskRunner {
 
 	private idleTimer: NodeJS.Timeout | undefined;
 
+	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
 
 	constructor(opts: TaskRunnerOpts) {
