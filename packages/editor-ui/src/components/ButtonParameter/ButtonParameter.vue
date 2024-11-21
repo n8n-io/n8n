@@ -164,6 +164,7 @@ onMounted(() => {
 
 function splitText(textarea: HTMLTextAreaElement) {
 	const rows: string[] = [];
+	const linesToRowsMap: number[][] = [];
 	const style = window.getComputedStyle(textarea);
 
 	const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
@@ -173,7 +174,16 @@ function splitText(textarea: HTMLTextAreaElement) {
 	const context = createTextContext(style);
 
 	const lines = textarea.value.split('\n');
-	lines.forEach((line) => {
+
+	lines.forEach((_) => {
+		linesToRowsMap.push([]);
+	});
+	lines.forEach((line, index) => {
+		if (line === '') {
+			rows.push(line);
+			linesToRowsMap[index].push(rows.length - 1);
+			return;
+		}
 		let currentLine = '';
 		const words = line.split(/(\s+)/);
 
@@ -185,16 +195,18 @@ function splitText(textarea: HTMLTextAreaElement) {
 				currentLine = testLine;
 			} else {
 				rows.push(currentLine.trimEnd());
+				linesToRowsMap[index].push(rows.length - 1);
 				currentLine = word;
 			}
 		});
 
 		if (currentLine) {
 			rows.push(currentLine.trimEnd());
+			linesToRowsMap[index].push(rows.length - 1);
 		}
 	});
 
-	return rows;
+	return { rows, linesToRowsMap };
 }
 
 function createTextContext(style: CSSStyleDeclaration): CanvasRenderingContext2D {
@@ -215,9 +227,9 @@ async function onDrop(value: string, event: MouseEvent) {
 	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
 	const row = Math.floor(textareaY / rowHeight);
 
-	const textArray = splitText(textarea);
+	const { rows, linesToRowsMap } = splitText(textarea);
 
-	if (!textArray[row]) {
+	if (rows[row] === undefined) {
 		prompt.value = `${prompt.value} ${value}`;
 		emit('valueChanged', {
 			name: getPath(props.parameter.name),
@@ -226,7 +238,7 @@ async function onDrop(value: string, event: MouseEvent) {
 		return;
 	}
 
-	const rowText = textArray[row];
+	const rowText = rows[row];
 
 	const span = document.createElement('span');
 	span.style.font = window.getComputedStyle(textarea).font;
@@ -254,15 +266,18 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	document.body.removeChild(span);
 
-	col = textArray[row].length === col ? col : col - 1;
+	if (rows[row] === '') {
+		rows[row] = ' ' + value;
+	} else {
+		col = rows[row].length === col ? col : col - 1;
+		rows[row] = [rows[row].slice(0, col).trim(), value, rows[row].slice(col).trim()].join(' ');
+	}
 
-	textArray[row] = [
-		textArray[row].slice(0, col).trim(),
-		value,
-		textArray[row].slice(col).trim(),
-	].join(' ');
+	const lines = linesToRowsMap.map((lineMap) => {
+		return lineMap.map((index) => rows[index]).join(' ');
+	});
 
-	prompt.value = textArray.join(' ');
+	prompt.value = lines.join('\n');
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
