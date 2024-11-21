@@ -14,6 +14,15 @@ import { TestDefinitionService } from '@/evaluation/test-definition.service.ee';
 import type { IExecutionDb, IExecutionResponse } from '@/interfaces';
 import { WorkflowRunner } from '@/workflow-runner';
 
+/**
+ * This service orchestrates the running of test cases.
+ * It uses the test definitions to find
+ * past executions, creates pin data from them,
+ * and runs the workflow-under-test with the pin data.
+ * TODO: Evaluation workflows
+ * TODO: Node pinning
+ * TODO: Collect metrics
+ */
 @Service()
 export class TestRunnerService {
 	constructor(
@@ -23,6 +32,14 @@ export class TestRunnerService {
 		private readonly executionRepository: ExecutionRepository,
 	) {}
 
+	/**
+	 * Creates a pin data object from the past execution data
+	 * for the given workflow.
+	 * For now, it only pins trigger nodes.
+	 * @param workflow
+	 * @param execution
+	 * @private
+	 */
 	private createPinDataFromExecution(
 		workflow: WorkflowEntity,
 		execution: ExecutionEntity,
@@ -43,6 +60,14 @@ export class TestRunnerService {
 		return pinData;
 	}
 
+	/**
+	 * Runs a test case with the given pin data.
+	 * Waits for the workflow under test to finish execution.
+	 * @param workflow
+	 * @param testCase
+	 * @param userId
+	 * @private
+	 */
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		testCase: IPinData,
@@ -57,11 +82,11 @@ export class TestRunnerService {
 			userId,
 		};
 
-		// 2.1 Trigger the workflow under test with mocked data
+		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
-
 		assert(executionId);
 
+		// Wait for the workflow to finish execution
 		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
 			executionId,
 		) as Promise<IExecutionDb | undefined>;
@@ -69,6 +94,12 @@ export class TestRunnerService {
 		return await executePromise;
 	}
 
+	/**
+	 * Creates a new test run for the given test definition.
+	 * @param user
+	 * @param testId
+	 * @param accessibleWorkflowIds
+	 */
 	public async runTest(user: User, testId: string, accessibleWorkflowIds: string[]): Promise<any> {
 		const test = await this.testDefinitionsService.findOne(testId, accessibleWorkflowIds);
 
