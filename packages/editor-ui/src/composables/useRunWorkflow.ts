@@ -259,7 +259,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				executedNode,
 				data: {
 					resultData: {
-						runData: newRunData ?? {},
+						runData: startRunData.runData ?? {},
 						pinData: workflowData.pinData,
 						workflowData,
 					},
