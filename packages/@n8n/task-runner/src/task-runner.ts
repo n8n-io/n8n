@@ -305,7 +305,6 @@ export abstract class TaskRunner {
 			data,
 		});
 		this.runningTasks.delete(taskId);
-		this.resetIdleTimer();
 		this.sendOffers();
 	}
 
@@ -326,6 +325,7 @@ export abstract class TaskRunner {
 		} catch (error) {
 			this.taskErrored(taskId, error);
 		}
+		this.resetIdleTimer();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
