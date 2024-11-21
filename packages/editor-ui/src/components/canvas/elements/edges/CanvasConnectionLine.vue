@@ -37,11 +37,11 @@ const path = computed(() => getCustomPath(props, { connectionType: connectionTyp
 
 <template>
 	<BaseEdge
-		v-for="part in path"
-		:key="part"
+		v-for="segment in path"
+		:key="segment"
 		:class="$style.edge"
 		:style="edgeStyle"
-		:path="part"
+		:path="segment"
 		:marker-end="markerEnd"
 	/>
 </template>
