@@ -462,6 +462,7 @@ export abstract class TaskRunner {
 
 	clearIdleTimer() {
 		if (this.idleTimer) clearTimeout(this.idleTimer);
+		this.idleTimer = undefined;
 	}
 
 	private async closeConnection() {
