@@ -8,7 +8,7 @@ export class TaskRunnerDisconnectedError extends ApplicationError {
 		public readonly runnerId: TaskRunner['id'],
 		isCloudDeployment: boolean,
 	) {
-		super('Node execution crashed', { level: 'error' });
+		super('Node execution failed');
 
 		const fixSuggestions = {
 			reduceItems:
