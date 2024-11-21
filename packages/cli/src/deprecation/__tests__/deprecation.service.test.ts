@@ -17,7 +17,6 @@ describe('DeprecationService', () => {
 		['N8N_PERSISTED_BINARY_DATA_TTL', '1', true],
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
-		['N8N_PATH', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 	])('should detect when %s is in use', (envVar, value, inUse) => {
 		toTest(envVar, value, inUse);
