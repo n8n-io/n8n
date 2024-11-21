@@ -656,6 +656,7 @@ function generateMockExecutionEvents() {
 		finished: false,
 		mode: 'cli',
 		startedAt: new Date(),
+		createdAt: new Date(),
 		status: 'new',
 		data: {
 			resultData: {
