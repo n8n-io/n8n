@@ -2899,7 +2899,7 @@ export async function getInputConnectionData(
 
 			if (!nodeType.supplyData) {
 				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
-					nodeType.supplyData = async function (this: IExecuteFunctions) {
+					nodeType.supplyData = async function (this: ISupplyDataFunctions) {
 						return createNodeAsTool(this, nodeType, this.getNode().parameters);
 					};
 				} else {
