@@ -36,7 +36,14 @@ const path = computed(() => getCustomPath(props, { connectionType: connectionTyp
 </script>
 
 <template>
-	<BaseEdge :class="$style.edge" :style="edgeStyle" :path="path[0]" :marker-end="markerEnd" />
+	<BaseEdge
+		v-for="part in path"
+		:key="part"
+		:class="$style.edge"
+		:style="edgeStyle"
+		:path="part"
+		:marker-end="markerEnd"
+	/>
 </template>
 
 <style lang="scss" module>

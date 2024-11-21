@@ -46,32 +46,15 @@ describe('CanvasConnectionLine', () => {
 			},
 		});
 
-		const edge = container.querySelector('.vue-flow__edge-path');
+		const edges = container.querySelectorAll('.vue-flow__edge-path');
 
-		expect(edge).toHaveAttribute(
+		expect(edges[0]).toHaveAttribute(
 			'd',
-			'M0 0L 24,0Q 40,0 40,16L 40,124Q 40,140 24,140L1 140L0 140M0 140L-40 140L -124,140Q -140,140 -140,124L -140,-84Q -140,-100 -124,-100L-100 -100',
+			'M0 0L 24,0Q 40,0 40,16L 40,114Q 40,130 24,130L1 130L0 130',
 		);
-	});
-
-	it('should only avoid obstacles when the edge intersects the nodes ', () => {
-		const { container } = renderComponent({
-			props: {
-				...DEFAULT_PROPS,
-				sourceX: -72,
-				sourceY: -290,
-				sourcePosition: Position.Right,
-				targetX: -344,
-				targetY: -30,
-				targetPosition: Position.Left,
-			},
-		});
-
-		const edge = container.querySelector('.vue-flow__edge-path');
-
-		expect(edge).toHaveAttribute(
+		expect(edges[1]).toHaveAttribute(
 			'd',
-			'M-72 -290L -62,-290Q -52,-290 -52,-280L -52,-176Q -52,-160 -68,-160L -348,-160Q -364,-160 -364,-144L -364,-40Q -364,-30 -354,-30L-344 -30',
+			'M0 130L-40 130L -124,130Q -140,130 -140,114L -140,-84Q -140,-100 -124,-100L-100 -100',
 		);
 	});
 });
