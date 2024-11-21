@@ -86,11 +86,11 @@ const toggleExpand = async () => {
 	border-radius: var(--border-radius-base);
 	// padding: var(--spacing-2xs);
 	overflow: hidden;
-	background-color: var(--color-primary);
+	// background-color: var(--color-primary);
 	width: 2rem;
 	height: 2rem;
 	& > * {
-		color: white;
+		// color: white;
 	}
 	&.warning {
 		background-color: var(--color-warning-tint-2);

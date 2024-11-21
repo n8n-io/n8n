@@ -99,7 +99,12 @@ watch(
 				:handle-keydown="handleKeydown"
 			/>
 
-			<DescriptionInput v-model="state.description" />
+			<EvaluationStep :class="$style.step" :title="'Description'" :expanded="false">
+				<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
+				<template #cardContent>
+					<DescriptionInput v-model="state.description" />
+				</template>
+			</EvaluationStep>
 
 			<div :class="$style.panelIntro">When running a test</div>
 			<BlockArrow :class="$style.introArrow" />
