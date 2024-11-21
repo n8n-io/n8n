@@ -3,14 +3,22 @@ import { Service } from 'typedi';
 import { Logger } from '@/logging/logger.service';
 
 type Deprecation = {
+	/** Deprecated env var. */
 	env: string;
+
+	/** Message to display when the deprecated env var is in use. */
 	message: string;
+
+	/** Whether the deprecated env var is currently in use. */
 	inUse?: boolean;
+
+	/** Function to identify the specific value in the env var that is deprecated. */
 	checkValue?: (value: string) => boolean;
 };
 
 const SAFE_TO_REMOVE = 'This can be safely removed.';
 
+/** Responsible for warning about use of deprecated env vars. */
 @Service()
 export class DeprecationService {
 	private readonly deprecations: Deprecation[] = [
