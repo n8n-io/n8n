@@ -22,7 +22,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import { CHAT_TRIGGER_NODE_TYPE, SINGLE_WEBHOOK_TRIGGERS } from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -95,8 +95,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		if (uiStore.isActionActive['workflowRunning']) {
 			return;
 		}
-
-		workflowHelpers.setDocumentTitle(workflow.name as string, 'EXECUTING');
 
 		toast.clearAllStickyNotifications();
 
@@ -172,6 +170,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				}
 			}
 
+			const triggers = workflowData.nodes.filter(
+				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
+			);
+
 			//if no destination node is specified
 			//and execution is not triggered from chat
 			//and there are other triggers in the workflow
@@ -181,12 +183,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				options.source !== 'RunData.ManualChatMessage' &&
 				workflowData.nodes.some((node) => node.type === CHAT_TRIGGER_NODE_TYPE)
 			) {
-				const otherTriggers = workflowData.nodes.filter(
-					(node) =>
-						node.type !== CHAT_TRIGGER_NODE_TYPE &&
-						node.type.toLowerCase().includes('trigger') &&
-						!node.disabled,
-				);
+				const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
 
 				if (otherTriggers.length) {
 					const chatTriggerNode = workflowData.nodes.find(
@@ -217,6 +214,21 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				};
 			});
 
+			const singleWebhookTrigger = triggers.find((node) =>
+				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
+			);
+
+			if (singleWebhookTrigger && workflowsStore.isWorkflowActive) {
+				toast.showMessage({
+					title: i18n.baseText('workflowRun.showError.deactivate'),
+					message: i18n.baseText('workflowRun.showError.productionActive', {
+						interpolate: { nodeName: singleWebhookTrigger.name },
+					}),
+					type: 'error',
+				});
+				return undefined;
+			}
+
 			// -1 means the backend chooses the default
 			// 0 is the old flow
 			// 1 is the new flow
@@ -240,6 +252,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				finished: false,
 				mode: 'manual',
 				status: 'running',
+				createdAt: new Date(),
 				startedAt: new Date(),
 				stoppedAt: undefined,
 				workflowId: workflow.id,
@@ -263,6 +276,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			workflowsStore.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
+			workflowHelpers.setDocumentTitle(workflow.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 

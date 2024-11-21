@@ -79,13 +79,5 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.projectTabs">
-		<N8nTabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
-	</div>
+	<N8nTabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
 </template>
-
-<style module lang="scss">
-.projectTabs {
-	padding: var(--spacing-2xs) 0 var(--spacing-l);
-}
-</style>
