@@ -294,7 +294,6 @@ export abstract class TaskRunner {
 			taskId,
 			error,
 		});
-		console.error(`Runner failed to complete task ${taskId}`);
 		this.runningTasks.delete(taskId);
 		this.sendOffers();
 	}
@@ -306,7 +305,6 @@ export abstract class TaskRunner {
 			data,
 		});
 		this.runningTasks.delete(taskId);
-		console.log(`Runner completed task ${taskId}`);
 		this.resetIdleTimer();
 		this.sendOffers();
 	}
