@@ -122,8 +122,8 @@ function onDelete() {
 <template>
 	<BaseEdge
 		v-for="(segment, index) in path"
-		:key="segment"
 		:id="`${id}-${index}`"
+		:key="segment"
 		:class="edgeClasses"
 		:style="edgeStyle"
 		:path="segment"
