@@ -8,10 +8,10 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import { useDebounce } from '@/composables/useDebounce';
 import type { MainPanelType, XYPosition } from '@/Interface';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
+import { useThrottleFn } from '@vueuse/core';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -34,7 +34,8 @@ interface Props {
 	nodeType: INodeTypeDescription | null;
 }
 
-const { callDebounced } = useDebounce();
+const throttledOnResize = useThrottleFn(onResize, 100);
+
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 
@@ -292,9 +293,9 @@ function onResizeEnd() {
 	storePositionData();
 }
 
-function onResizeDebounced(data: { direction: string; x: number; width: number }) {
+function onResizeThrottle(data: { direction: string; x: number; width: number }) {
 	if (initialized.value) {
-		void callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
+		void throttledOnResize(data);
 	}
 }
 
@@ -374,7 +375,7 @@ function onDragEnd() {
 				:min-width="MIN_PANEL_WIDTH"
 				:grid-size="20"
 				:supported-directions="supportedResizeDirections"
-				@resize="onResizeDebounced"
+				@resize="onResizeThrottle"
 				@resizeend="onResizeEnd"
 			>
 				<div :class="$style.dragButtonContainer">
