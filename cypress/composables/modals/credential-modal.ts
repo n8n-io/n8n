@@ -35,7 +35,9 @@ export function setCredentialConnectionParameterInputByName(name: string, value:
 }
 
 export function saveCredential() {
+	cy.intercept('POST', '/rest/credentials').as('credentialSave');
 	getCredentialSaveButton().click({ force: true });
+	cy.wait('@credentialSave');
 }
 
 export function closeCredentialModal() {
