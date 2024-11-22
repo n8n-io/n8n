@@ -1,5 +1,5 @@
 import { parse } from 'flatted';
-import type { IDataObject, IPinData, IRun, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { IDataObject, IPinData, IRun, IRunData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
@@ -78,6 +78,42 @@ export class TestRunnerService {
 		assert(executionId);
 
 		// Wait for the execution to finish
+		const executePromise = this.activeExecutions.getPostExecutePromise(
+			executionId,
+		);
+
+		return await executePromise;
+	}
+
+	/**
+	 * Run the evaluation workflow with the expected and actual run data.
+	 * @param evaluationWorkflow
+	 * @param expectedData
+	 * @param actualData
+	 * @private
+	 */
+	private async runTestCaseEvaluation(
+		evaluationWorkflow: WorkflowEntity,
+		expectedData: IRunData,
+		actualData: IRunData,
+	) {
+		// Prepare the evaluation wf input data.
+		// Provide both the expected data and the actual data
+		const evaluationInputData = {
+			json: {
+				originalExecution: expectedData,
+				newExecution: actualData,
+			},
+		};
+
+		// Prepare the data to run the evaluation workflow
+		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
+
+		// Trigger the evaluation workflow
+		const executionId = await this.workflowRunner.run(data);
+		assert(executionId);
+
+		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		return await executePromise;
@@ -126,9 +162,10 @@ export class TestRunnerService {
 			assert(pastExecution, 'Execution not found');
 
 			const testCase = this.createPinDataFromExecution(workflow, pastExecution);
+			const { pinData, executionData } = testCase;
 
 			// Run the test case and wait for it to finish
-			const execution = await this.runTestCase(workflow, testCase.pinData, user.id);
+			const execution = await this.runTestCase(workflow, pinData, user.id);
 
 			if (!execution) {
 				continue;
@@ -137,28 +174,15 @@ export class TestRunnerService {
 			// Collect the results of the test case execution
 			const testCaseRunData = execution.data.resultData.runData;
 
-			// Prepare the evaluation wf input data.
-			// Provide both the expected data and the actual data
-			const evaluationInputData = {
-				json: {
-					expected: testCase.executionData.resultData.runData,
-					actual: testCaseRunData,
-				},
-			};
+			// Get the original runData from the test case execution data
+			const originalRunData = executionData.resultData.runData;
 
-			// Prepare the data to run the evaluation workflow
-			const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
-
-			// Trigger the workflow under test with mocked data
-			const executionId = await this.workflowRunner.run(data);
-			assert(executionId);
-
-			// Wait for the execution to finish
-			const executePromise = this.activeExecutions.getPostExecutePromise(
-				executionId,
+			// Run the evaluation workflow with the original and new run data
+			const evalExecution = await this.runTestCaseEvaluation(
+				evaluationWorkflow,
+				originalRunData,
+				testCaseRunData,
 			);
-
-			const evalExecution = await executePromise;
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
