@@ -35,7 +35,11 @@ export function setCredentialConnectionParameterInputByName(name: string, value:
 }
 
 export function saveCredential() {
-	getCredentialSaveButton().click({ force: true });
+	getCredentialSaveButton()
+		.click({ force: true })
+		.within(() => {
+			cy.get('button').should('not.exist');
+		});
 }
 
 export function closeCredentialModal() {
