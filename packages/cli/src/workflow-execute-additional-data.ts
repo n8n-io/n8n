@@ -392,7 +392,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 				const isManualMode = this.mode === 'manual';
-				const executionStatus = determineFinalExecutionStatus(fullRunData);
 
 				try {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -410,6 +409,9 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 							);
 						}
 					}
+
+					const executionStatus = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = executionStatus;
 
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
@@ -570,6 +572,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = workflowStatusFinal;
 
 					if (workflowStatusFinal !== 'success' && workflowStatusFinal !== 'waiting') {
 						executeErrorWorkflow(
@@ -1115,6 +1118,8 @@ export function getWorkflowHooksWorkerMain(
 			if (!fullRunData.finished) return;
 
 			const executionStatus = determineFinalExecutionStatus(fullRunData);
+			fullRunData.status = executionStatus;
+
 			const saveSettings = toSaveSettings(this.workflowData.settings);
 
 			const shouldNotSave =

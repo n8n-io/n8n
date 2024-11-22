@@ -23,7 +23,6 @@ describe('determineFinalExecutionStatus', () => {
 		} as IRun;
 
 		expect(determineFinalExecutionStatus(runData)).toBe('error');
-		expect(runData.status).toBe('error');
 	});
 
 	it('should return "waiting" when waitTill is defined', () => {
