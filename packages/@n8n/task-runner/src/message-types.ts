@@ -184,6 +184,12 @@ export namespace RunnerMessage {
 			reason: string;
 		}
 
+		/** Message where launcher (impersonating runner) requests broker to hold task until runner is ready. */
+		export interface TaskDeferred {
+			type: 'runner:taskdeferred';
+			taskId: string;
+		}
+
 		export interface TaskDone {
 			type: 'runner:taskdone';
 			taskId: string;
@@ -243,6 +249,7 @@ export namespace RunnerMessage {
 			| TaskError
 			| TaskAccepted
 			| TaskRejected
+			| TaskDeferred
 			| TaskOffer
 			| RPC
 			| TaskDataRequest

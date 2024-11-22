@@ -42,10 +42,6 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		return this._runPromise;
 	}
 
-	private get useLauncher() {
-		return this.runnerConfig.mode === 'internal_launcher';
-	}
-
 	private process: ChildProcess | null = null;
 
 	private _runPromise: Promise<void> | null = null;
@@ -99,9 +95,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		const grantToken = await this.authService.createGrantToken();
 
 		const n8nUri = `127.0.0.1:${this.runnerConfig.port}`;
-		this.process = this.useLauncher
-			? this.startLauncher(grantToken, n8nUri)
-			: this.startNode(grantToken, n8nUri);
+		this.process = this.startNode(grantToken, n8nUri);
 
 		forwardToLogger(this.logger, this.process, '[Task Runner]: ');
 
@@ -116,16 +110,6 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		});
 	}
 
-	startLauncher(grantToken: string, n8nUri: string) {
-		return spawn(this.runnerConfig.launcherPath, ['launch', this.runnerConfig.launcherRunner], {
-			env: {
-				...this.getProcessEnvVars(grantToken, n8nUri),
-				// For debug logging if enabled
-				RUST_LOG: process.env.RUST_LOG,
-			},
-		});
-	}
-
 	@OnShutdown()
 	async stop() {
 		if (!this.process) return;
@@ -133,11 +117,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		this.isShuttingDown = true;
 
 		// TODO: Timeout & force kill
-		if (this.useLauncher) {
-			await this.killLauncher();
-		} else {
-			this.killNode();
-		}
+		this.killNode();
 		await this._runPromise;
 
 		this.isShuttingDown = false;
@@ -147,11 +127,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	async forceRestart() {
 		if (!this.process) return;
 
-		if (this.useLauncher) {
-			await this.killLauncher(); // @TODO: Implement SIGKILL in launcher
-		} else {
-			this.process.kill('SIGKILL');
-		}
+		this.process.kill('SIGKILL');
 
 		await this._runPromise;
 	}
@@ -160,24 +136,6 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		if (!this.process) return;
 
 		this.process.kill();
-	}
-
-	async killLauncher() {
-		if (!this.process?.pid) {
-			return;
-		}
-
-		const killProcess = spawn(this.runnerConfig.launcherPath, [
-			'kill',
-			this.runnerConfig.launcherRunner,
-			this.process.pid.toString(),
-		]);
-
-		await new Promise<void>((resolve) => {
-			killProcess.on('exit', () => {
-				resolve();
-			});
-		});
 	}
 
 	private monitorProcess(taskRunnerProcess: ChildProcess) {
