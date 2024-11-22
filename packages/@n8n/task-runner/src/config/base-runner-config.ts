@@ -26,6 +26,14 @@ export class BaseRunnerConfig {
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 5;
 
+	/**
+	 * How long (in seconds) a runner may be idle for before exit. Intended
+	 * for use in `external` mode - launcher must pass the env var when launching
+	 * the runner. Disabled with `0` on `internal` mode.
+	 */
+	@Env('N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT')
+	idleTimeout: number = 0;
+
 	@Nested
 	healthcheckServer!: HealthcheckServerConfig;
 }

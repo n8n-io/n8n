@@ -807,7 +807,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: undefined },
-			{ type: NodeConnectionType.AiTool, index: 0, label: undefined },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: undefined,
+				maxConnections: undefined,
+			},
 		]);
 	});
 
@@ -820,7 +825,13 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input' },
-			{ type: NodeConnectionType.AiTool, index: 0, label: 'AI Tool', required: true },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: 'AI Tool',
+				required: true,
+				maxConnections: undefined,
+			},
 		]);
 	});
 
@@ -834,7 +845,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: undefined },
-			{ type: NodeConnectionType.AiTool, index: 0, label: 'AI Tool' },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: 'AI Tool',
+				maxConnections: undefined,
+			},
 			{ type: NodeConnectionType.Main, index: 1, label: undefined },
 		]);
 	});
@@ -874,7 +890,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input', required: true },
-			{ type: NodeConnectionType.AiTool, index: 0, label: 'Optional Tool' },
+			{
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				label: 'Optional Tool',
+				maxConnections: undefined,
+			},
 		]);
 	});
 
