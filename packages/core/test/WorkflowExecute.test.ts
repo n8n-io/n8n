@@ -11,13 +11,12 @@ import { WorkflowExecute } from '@/WorkflowExecute';
 import * as Helpers from './helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from './helpers/constants';
 
-const nodeTypes = Helpers.NodeTypes();
-
 describe('WorkflowExecute', () => {
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
 		const executionMode = 'manual';
+		const nodeTypes = Helpers.NodeTypes();
 
 		for (const testData of tests) {
 			test(testData.description, async () => {

@@ -1338,7 +1338,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const { [nodeName]: removedRunData, ...remainingRunData } =
 			workflowExecutionData.value.data.resultData.runData;
-
 		workflowExecutionData.value = {
 			...workflowExecutionData.value,
 			data: {
