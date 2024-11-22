@@ -29,10 +29,11 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
+import { NodeConnectionType } from 'n8n-workflow';
 
 const $style = useCssModule();
 
@@ -115,6 +116,11 @@ const {
 	onPaneReady,
 	findNode,
 	viewport,
+	onEdgeMouseLeave,
+	onEdgeMouseEnter,
+	onEdgeMouseMove,
+	onNodeMouseEnter,
+	onNodeMouseLeave,
 } = vueFlow;
 const {
 	getIncomingNodes,
@@ -297,7 +303,7 @@ function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>)
 }
 
 /**
- * Connections
+ * Connections / Edges
  */
 
 const connectionCreated = ref(false);
@@ -340,6 +346,55 @@ function onClickConnectionAdd(connection: Connection) {
 const arrowHeadMarkerId = ref('custom-arrow-head');
 
 /**
+ * Edge and Nodes Hovering
+ */
+
+const edgesHoveredById = ref<Record<string, boolean>>({});
+const edgesBringToFrontById = ref<Record<string, boolean>>({});
+const nodesHoveredById = ref<Record<string, boolean>>({});
+
+onEdgeMouseEnter(({ edge }) => {
+	edgesBringToFrontById.value = { [edge.id]: true };
+	edgesHoveredById.value = { [edge.id]: true };
+});
+
+onEdgeMouseMove(
+	useThrottleFn(({ edge, event }) => {
+		const type = edge.data.source.type;
+		if (type !== NodeConnectionType.AiTool) {
+			return;
+		}
+
+		if (!edge.data.maxConnections || edge.data.maxConnections > 1) {
+			const projectedPosition = getProjectedPosition(event);
+			const yDiff = projectedPosition.y - edge.targetY;
+			if (yDiff < 4 * GRID_SIZE) {
+				edgesBringToFrontById.value = { [edge.id]: false };
+			} else {
+				edgesBringToFrontById.value = { [edge.id]: true };
+			}
+		}
+	}, 100),
+);
+
+onEdgeMouseLeave(({ edge }) => {
+	edgesBringToFrontById.value = { [edge.id]: false };
+	edgesHoveredById.value = { [edge.id]: false };
+});
+
+onNodeMouseEnter(({ node }) => {
+	nodesHoveredById.value = { [node.id]: true };
+});
+
+onNodeMouseLeave(({ node }) => {
+	nodesHoveredById.value = { [node.id]: false };
+});
+
+function onUpdateEdgeHovered(id: string, hovered: boolean) {
+	edgesHoveredById.value[id] = hovered;
+}
+
+/**
  * Executions
  */
 
@@ -375,7 +430,7 @@ const defaultZoom = 1;
 const zoom = ref(defaultZoom);
 const isPaneMoving = ref(false);
 
-function getProjectedPosition(event?: MouseEvent) {
+function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
 	const offsetX = event?.clientX ?? 0;
 	const offsetY = event?.clientY ?? 0;
@@ -590,11 +645,13 @@ provide(CanvasKey, {
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
 	>
-		<template #node-canvas-node="canvasNodeProps">
+		<template #node-canvas-node="nodeProps">
 			<Node
-				v-bind="canvasNodeProps"
+				v-bind="nodeProps"
 				:read-only="readOnly"
 				:event-bus="eventBus"
+				:hovered="nodesHoveredById[nodeProps.id]"
+				:bring-to-front="nodesHoveredById[nodeProps.id]"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
@@ -607,13 +664,16 @@ provide(CanvasKey, {
 			/>
 		</template>
 
-		<template #edge-canvas-edge="canvasEdgeProps">
+		<template #edge-canvas-edge="edgeProps">
 			<Edge
-				v-bind="canvasEdgeProps"
+				v-bind="edgeProps"
 				:marker-end="`url(#${arrowHeadMarkerId})`"
 				:read-only="readOnly"
+				:hovered="edgesHoveredById[edgeProps.id]"
+				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
+				@update:hovered="onUpdateEdgeHovered(edgeProps.id, $event)"
 			/>
 		</template>
 

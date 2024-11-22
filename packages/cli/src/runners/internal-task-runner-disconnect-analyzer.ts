@@ -1,8 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from 'typedi';
 
-import config from '@/config';
-
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';
 import type { DisconnectErrorOptions } from './runner-types';
@@ -16,10 +14,6 @@ import { TaskRunnerProcess } from './task-runner-process';
  */
 @Service()
 export class InternalTaskRunnerDisconnectAnalyzer extends DefaultTaskRunnerDisconnectAnalyzer {
-	private get isCloudDeployment() {
-		return config.get('deployment.type') === 'cloud';
-	}
-
 	private readonly exitReasonSignal: SlidingWindowSignal<TaskRunnerProcessEventMap, 'exit'>;
 
 	constructor(
