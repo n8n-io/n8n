@@ -15,7 +15,7 @@ import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { TestRunRepository } from '@/databases/repositories/test-run.repository';
+import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IExecutionResponse } from '@/interfaces';
 import { getRunData } from '@/workflow-execute-additional-data';
