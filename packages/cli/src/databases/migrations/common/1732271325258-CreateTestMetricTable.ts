@@ -6,7 +6,7 @@ export class CreateTestMetricTable1732271325258 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(testMetricEntityTableName)
 			.withColumns(
-				column('id').int.notNull.primary.autoGenerate,
+				column('id').varchar(36).primary.notNull,
 				column('name').varchar(255).notNull,
 				column('testDefinitionId').varchar(36).notNull,
 			)
