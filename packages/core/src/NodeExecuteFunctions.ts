@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -33,39 +32,28 @@ import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
 	CloseFunction,
-	FieldType,
 	FileSystemHelperFunctions,
-	FunctionsBase,
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
-	ICredentialsExpressionResolveValues,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
-	IGetNodeParameterOptions,
 	IHookFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INode,
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeInputConfiguration,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeType,
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions,
@@ -83,14 +71,11 @@ import type {
 	NodeExecutionWithMetadata,
 	NodeHelperFunctions,
 	NodeParameterValueType,
-	NodeTypeAndVersion,
 	PaginationOptions,
 	RequestHelperFunctions,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-	INodeParameters,
-	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	DeduplicationHelperFunctions,
 	IDeduplicationOutput,
@@ -105,7 +90,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
-	ExpressionError,
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeHelpers,
@@ -114,8 +98,6 @@ import {
 	deepCopy,
 	fileTypeFromMimeType,
 	isObjectEmpty,
-	isResourceMapperValue,
-	validateFieldType,
 	ExecutionBaseError,
 	jsonParse,
 	ApplicationError,
@@ -137,24 +119,14 @@ import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
 	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
 import { createNodeAsTool } from './CreateNodeAsTool';
 import { DataDeduplicationService } from './data-deduplication-service';
-import {
-	getAllWorkflowExecutionMetadata,
-	getWorkflowExecutionMetadata,
-	setAllWorkflowExecutionMetadata,
-	setWorkflowExecutionMetadata,
-} from './ExecutionMetadata';
-import { extractValue } from './ExtractValue';
 import { InstanceSettings } from './InstanceSettings';
-import type { ExtendedValidationResult, IResponseError } from './Interfaces';
+import type { IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
 import {
 	ExecuteContext,
@@ -166,7 +138,6 @@ import {
 	WebhookContext,
 } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
-import { getSecretsProxy } from './Secrets';
 import { SSHClientsManager } from './SSHClientsManager';
 
 axios.defaults.timeout = 300000;
@@ -2012,629 +1983,7 @@ export async function requestWithAuthentication(
 }
 
 /**
- * Returns the additional keys for Expressions and Function-Nodes
- *
- */
-export function getAdditionalKeys(
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	runExecutionData: IRunExecutionData | null,
-	options?: { secretsEnabled?: boolean },
-): IWorkflowDataProxyAdditionalKeys {
-	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
-	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
-	return {
-		$execution: {
-			id: executionId,
-			mode: mode === 'manual' ? 'test' : 'production',
-			resumeUrl,
-			resumeFormUrl,
-			customData: runExecutionData
-				? {
-						set(key: string, value: string): void {
-							try {
-								setWorkflowExecutionMetadata(runExecutionData, key, value);
-							} catch (e) {
-								if (mode === 'manual') {
-									throw e;
-								}
-								Logger.debug(e.message);
-							}
-						},
-						setAll(obj: Record<string, string>): void {
-							try {
-								setAllWorkflowExecutionMetadata(runExecutionData, obj);
-							} catch (e) {
-								if (mode === 'manual') {
-									throw e;
-								}
-								Logger.debug(e.message);
-							}
-						},
-						get(key: string): string {
-							return getWorkflowExecutionMetadata(runExecutionData, key);
-						},
-						getAll(): Record<string, string> {
-							return getAllWorkflowExecutionMetadata(runExecutionData);
-						},
-					}
-				: undefined,
-		},
-		$vars: additionalData.variables,
-		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
-
-		// deprecated
-		$executionId: executionId,
-		$resumeWebhookUrl: resumeUrl,
-	};
-}
-
-/**
- * Returns the requested decrypted credentials if the node has access to them.
- *
- * @param {Workflow} workflow Workflow which requests the data
- * @param {INode} node Node which request the data
- * @param {string} type The credential type to return
- */
-export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
-	workflow: Workflow,
-	node: INode,
-	type: string,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	executeData?: IExecuteData,
-	runExecutionData?: IRunExecutionData | null,
-	runIndex?: number,
-	connectionInputData?: INodeExecutionData[],
-	itemIndex?: number,
-): Promise<T> {
-	// Get the NodeType as it has the information if the credentials are required
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-	if (nodeType === undefined) {
-		throw new NodeOperationError(
-			node,
-			`Node type "${node.type}" is not known so can not get credentials`,
-		);
-	}
-
-	// Hardcode for now for security reasons that only a single node can access
-	// all credentials
-	const fullAccess = [HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE].includes(node.type);
-
-	let nodeCredentialDescription: INodeCredentialDescription | undefined;
-	if (!fullAccess) {
-		if (nodeType.description.credentials === undefined) {
-			throw new NodeOperationError(
-				node,
-				`Node type "${node.type}" does not have any credentials defined`,
-				{ level: 'warning' },
-			);
-		}
-
-		nodeCredentialDescription = nodeType.description.credentials.find(
-			(credentialTypeDescription) => credentialTypeDescription.name === type,
-		);
-		if (nodeCredentialDescription === undefined) {
-			throw new NodeOperationError(
-				node,
-				`Node type "${node.type}" does not have any credentials of type "${type}" defined`,
-				{ level: 'warning' },
-			);
-		}
-
-		if (
-			!NodeHelpers.displayParameter(
-				additionalData.currentNodeParameters || node.parameters,
-				nodeCredentialDescription,
-				node,
-				node.parameters,
-			)
-		) {
-			// Credentials should not be displayed even if they would be defined
-			throw new NodeOperationError(node, 'Credentials not found');
-		}
-	}
-
-	// Check if node has any credentials defined
-	if (!fullAccess && !node.credentials?.[type]) {
-		// If none are defined check if the credentials are required or not
-
-		if (nodeCredentialDescription?.required === true) {
-			// Credentials are required so error
-			if (!node.credentials) {
-				throw new NodeOperationError(node, 'Node does not have any credentials set', {
-					level: 'warning',
-				});
-			}
-			if (!node.credentials[type]) {
-				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"`, {
-					level: 'warning',
-				});
-			}
-		} else {
-			// Credentials are not required
-			throw new NodeOperationError(node, 'Node does not require credentials');
-		}
-	}
-
-	if (fullAccess && !node.credentials?.[type]) {
-		// Make sure that fullAccess nodes still behave like before that if they
-		// request access to credentials that are currently not set it returns undefined
-		throw new NodeOperationError(node, 'Credentials not found');
-	}
-
-	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
-	if (connectionInputData && runExecutionData && runIndex !== undefined) {
-		expressionResolveValues = {
-			connectionInputData,
-			itemIndex: itemIndex || 0,
-			node,
-			runExecutionData,
-			runIndex,
-			workflow,
-		} as ICredentialsExpressionResolveValues;
-	}
-
-	const nodeCredentials = node.credentials
-		? node.credentials[type]
-		: ({} as INodeCredentialsDetails);
-
-	// TODO: solve using credentials via expression
-	// if (name.charAt(0) === '=') {
-	// 	// If the credential name is an expression resolve it
-	// 	const additionalKeys = getAdditionalKeys(additionalData, mode);
-	// 	name = workflow.expression.getParameterValue(
-	// 		name,
-	// 		runExecutionData || null,
-	// 		runIndex || 0,
-	// 		itemIndex || 0,
-	// 		node.name,
-	// 		connectionInputData || [],
-	// 		mode,
-	// 		additionalKeys,
-	// 	) as string;
-	// }
-
-	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-		additionalData,
-		nodeCredentials,
-		type,
-		mode,
-		executeData,
-		false,
-		expressionResolveValues,
-	);
-
-	return decryptedDataObject as T;
-}
-
-/**
- * Clean up parameter data to make sure that only valid data gets returned
- * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
- */
-export function cleanupParameterData(inputData: NodeParameterValueType): void {
-	if (typeof inputData !== 'object' || inputData === null) {
-		return;
-	}
-
-	if (Array.isArray(inputData)) {
-		inputData.forEach((value) => cleanupParameterData(value as NodeParameterValueType));
-		return;
-	}
-
-	if (typeof inputData === 'object') {
-		Object.keys(inputData).forEach((key) => {
-			const value = (inputData as INodeParameters)[key];
-			if (typeof value === 'object') {
-				if (DateTime.isDateTime(value)) {
-					// Is a special luxon date so convert to string
-					(inputData as INodeParameters)[key] = value.toString();
-				} else {
-					cleanupParameterData(value);
-				}
-			}
-		});
-	}
-}
-
-const validateResourceMapperValue = (
-	parameterName: string,
-	paramValues: { [key: string]: unknown },
-	node: INode,
-	skipRequiredCheck = false,
-): ExtendedValidationResult => {
-	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
-	const paramNameParts = parameterName.split('.');
-	if (paramNameParts.length !== 2) {
-		return result;
-	}
-	const resourceMapperParamName = paramNameParts[0];
-	const resourceMapperField = node.parameters[resourceMapperParamName];
-	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
-		return result;
-	}
-	const schema = resourceMapperField.schema;
-	const paramValueNames = Object.keys(paramValues);
-	for (let i = 0; i < paramValueNames.length; i++) {
-		const key = paramValueNames[i];
-		const resolvedValue = paramValues[key];
-		const schemaEntry = schema.find((s) => s.id === key);
-
-		if (
-			!skipRequiredCheck &&
-			schemaEntry?.required === true &&
-			schemaEntry.type !== 'boolean' &&
-			!resolvedValue
-		) {
-			return {
-				valid: false,
-				errorMessage: `The value "${String(key)}" is required but not set`,
-				fieldName: key,
-			};
-		}
-
-		if (schemaEntry?.type) {
-			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
-				valueOptions: schemaEntry.options,
-			});
-			if (!validationResult.valid) {
-				return { ...validationResult, fieldName: key };
-			} else {
-				// If it's valid, set the casted value
-				paramValues[key] = validationResult.newValue;
-			}
-		}
-	}
-	return result;
-};
-
-const validateCollection = (
-	node: INode,
-	runIndex: number,
-	itemIndex: number,
-	propertyDescription: INodeProperties,
-	parameterPath: string[],
-	validationResult: ExtendedValidationResult,
-): ExtendedValidationResult => {
-	let nestedDescriptions: INodeProperties[] | undefined;
-
-	if (propertyDescription.type === 'fixedCollection') {
-		nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
-			(entry) => entry.name === parameterPath[1],
-		)?.values;
-	}
-
-	if (propertyDescription.type === 'collection') {
-		nestedDescriptions = propertyDescription.options as INodeProperties[];
-	}
-
-	if (!nestedDescriptions) {
-		return validationResult;
-	}
-
-	const validationMap: {
-		[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
-	} = {};
-
-	for (const prop of nestedDescriptions) {
-		if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
-
-		validationMap[prop.name] = {
-			type: prop.validateType,
-			displayName: prop.displayName,
-			options:
-				prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
-		};
-	}
-
-	if (!Object.keys(validationMap).length) {
-		return validationResult;
-	}
-
-	if (validationResult.valid) {
-		for (const value of Array.isArray(validationResult.newValue)
-			? (validationResult.newValue as IDataObject[])
-			: [validationResult.newValue as IDataObject]) {
-			for (const key of Object.keys(value)) {
-				if (!validationMap[key]) continue;
-
-				const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
-					valueOptions: validationMap[key].options,
-				});
-
-				if (!fieldValidationResult.valid) {
-					throw new ExpressionError(
-						`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
-						{
-							description: fieldValidationResult.errorMessage,
-							runIndex,
-							itemIndex,
-							nodeCause: node.name,
-						},
-					);
-				}
-				value[key] = fieldValidationResult.newValue;
-			}
-		}
-	}
-
-	return validationResult;
-};
-
-export const validateValueAgainstSchema = (
-	node: INode,
-	nodeType: INodeType,
-	parameterValue: string | number | boolean | object | null | undefined,
-	parameterName: string,
-	runIndex: number,
-	itemIndex: number,
-) => {
-	const parameterPath = parameterName.split('.');
-
-	const propertyDescription = nodeType.description.properties.find(
-		(prop) =>
-			parameterPath[0] === prop.name && NodeHelpers.displayParameter(node.parameters, prop, node),
-	);
-
-	if (!propertyDescription) {
-		return parameterValue;
-	}
-
-	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
-
-	if (
-		parameterPath.length === 1 &&
-		propertyDescription.validateType &&
-		!propertyDescription.ignoreValidationDuringExecution
-	) {
-		validationResult = validateFieldType(
-			parameterName,
-			parameterValue,
-			propertyDescription.validateType,
-		);
-	} else if (
-		propertyDescription.type === 'resourceMapper' &&
-		parameterPath[1] === 'value' &&
-		typeof parameterValue === 'object'
-	) {
-		validationResult = validateResourceMapperValue(
-			parameterName,
-			parameterValue as { [key: string]: unknown },
-			node,
-			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
-		);
-	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
-		validationResult = validateCollection(
-			node,
-			runIndex,
-			itemIndex,
-			propertyDescription,
-			parameterPath,
-			validationResult,
-		);
-	}
-
-	if (!validationResult.valid) {
-		throw new ExpressionError(
-			`Invalid input for '${
-				validationResult.fieldName
-					? String(validationResult.fieldName)
-					: propertyDescription.displayName
-			}' [item ${itemIndex}]`,
-			{
-				description: validationResult.errorMessage,
-				runIndex,
-				itemIndex,
-				nodeCause: node.name,
-			},
-		);
-	}
-	return validationResult.newValue;
-};
-
-export function ensureType(
-	toType: EnsureTypeOptions,
-	parameterValue: any,
-	parameterName: string,
-	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
-): string | number | boolean | object {
-	let returnData = parameterValue;
-
-	if (returnData === null) {
-		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
-	}
-
-	if (returnData === undefined) {
-		throw new ExpressionError(
-			`Parameter '${parameterName}' could not be 'undefined'`,
-			errorOptions,
-		);
-	}
-
-	if (['object', 'array', 'json'].includes(toType)) {
-		if (typeof returnData !== 'object') {
-			// if value is not an object and is string try to parse it, else throw an error
-			if (typeof returnData === 'string' && returnData.length) {
-				try {
-					const parsedValue = JSON.parse(returnData);
-					returnData = parsedValue;
-				} catch (error) {
-					throw new ExpressionError(`Parameter '${parameterName}' could not be parsed`, {
-						...errorOptions,
-						description: error.message,
-					});
-				}
-			} else {
-				throw new ExpressionError(
-					`Parameter '${parameterName}' must be an ${toType}, but we got '${String(parameterValue)}'`,
-					errorOptions,
-				);
-			}
-		} else if (toType === 'json') {
-			// value is an object, make sure it is valid JSON
-			try {
-				JSON.stringify(returnData);
-			} catch (error) {
-				throw new ExpressionError(`Parameter '${parameterName}' is not valid JSON`, {
-					...errorOptions,
-					description: error.message,
-				});
-			}
-		}
-
-		if (toType === 'array' && !Array.isArray(returnData)) {
-			// value is not an array, but has to be
-			throw new ExpressionError(
-				`Parameter '${parameterName}' must be an array, but we got object`,
-				errorOptions,
-			);
-		}
-	}
-
-	try {
-		if (toType === 'string') {
-			if (typeof returnData === 'object') {
-				returnData = JSON.stringify(returnData);
-			} else {
-				returnData = String(returnData);
-			}
-		}
-
-		if (toType === 'number') {
-			returnData = Number(returnData);
-			if (Number.isNaN(returnData)) {
-				throw new ExpressionError(
-					`Parameter '${parameterName}' must be a number, but we got '${parameterValue}'`,
-					errorOptions,
-				);
-			}
-		}
-
-		if (toType === 'boolean') {
-			returnData = Boolean(returnData);
-		}
-	} catch (error) {
-		if (error instanceof ExpressionError) throw error;
-
-		throw new ExpressionError(`Parameter '${parameterName}' could not be converted to ${toType}`, {
-			...errorOptions,
-			description: error.message,
-		});
-	}
-
-	return returnData;
-}
-
-/**
- * Returns the requested resolved (all expressions replaced) node parameters.
- *
- * @param {(IRunExecutionData | null)} runExecutionData
- */
-export function getNodeParameter(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData | null,
-	runIndex: number,
-	connectionInputData: INodeExecutionData[],
-	node: INode,
-	parameterName: string,
-	itemIndex: number,
-	mode: WorkflowExecuteMode,
-	additionalKeys: IWorkflowDataProxyAdditionalKeys,
-	executeData?: IExecuteData,
-	fallbackValue?: any,
-	options?: IGetNodeParameterOptions,
-): NodeParameterValueType | object {
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-	if (nodeType === undefined) {
-		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
-			tags: { nodeType: node.type },
-		});
-	}
-
-	const value = get(node.parameters, parameterName, fallbackValue);
-
-	if (value === undefined) {
-		throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
-	}
-
-	if (options?.rawExpressions) {
-		return value;
-	}
-
-	let returnData;
-
-	try {
-		returnData = workflow.expression.getParameterValue(
-			value,
-			runExecutionData,
-			runIndex,
-			itemIndex,
-			node.name,
-			connectionInputData,
-			mode,
-			additionalKeys,
-			executeData,
-			false,
-			{},
-			options?.contextNode?.name,
-		);
-		cleanupParameterData(returnData);
-	} catch (e) {
-		if (e instanceof ExpressionError && node.continueOnFail && node.type === 'n8n-nodes-base.set') {
-			// https://linear.app/n8n/issue/PAY-684
-			returnData = [{ name: undefined, value: undefined }];
-		} else {
-			if (e.context) e.context.parameter = parameterName;
-			e.cause = value;
-			throw e;
-		}
-	}
-
-	// This is outside the try/catch because it throws errors with proper messages
-	if (options?.extractValue) {
-		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
-	}
-
-	// Make sure parameter value is the type specified in the ensureType option, if needed convert it
-	if (options?.ensureType) {
-		returnData = ensureType(options.ensureType, returnData, parameterName, {
-			itemIndex,
-			runIndex,
-			nodeCause: node.name,
-		});
-	}
-
-	// Validate parameter value if it has a schema defined(RMC) or validateType defined
-	returnData = validateValueAgainstSchema(
-		node,
-		nodeType,
-		returnData,
-		parameterName,
-		runIndex,
-		itemIndex,
-	);
-
-	return returnData;
-}
-
-/**
- * Returns if execution should be continued even if there was an error.
- *
- */
-export function continueOnFail(node: INode): boolean {
-	const onError = get(node, 'onError', undefined);
-
-	if (onError === undefined) {
-		return get(node, 'continueOnFail', false);
-	}
-
-	return ['continueRegularOutput', 'continueErrorOutput'].includes(onError);
-}
-
-/**
  * Returns the webhook URL of the webhook with the given name
- *
  */
 export function getNodeWebhookUrl(
 	name: WebhookType,
@@ -2679,7 +2028,6 @@ export function getNodeWebhookUrl(
 
 /**
  * Returns the full webhook description of the webhook with the given name
- *
  */
 export function getWebhookDescription(
 	name: WebhookType,
@@ -2960,71 +2308,6 @@ export async function getInputConnectionData(
 		? (nodes || [])[0]?.response
 		: nodes.map((node) => node.response);
 }
-
-const getCommonWorkflowFunctions = (
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-): Omit<FunctionsBase, 'getCredentials'> => ({
-	logger: Logger,
-	getExecutionId: () => additionalData.executionId!,
-	getNode: () => deepCopy(node),
-	getWorkflow: () => ({
-		id: workflow.id,
-		name: workflow.name,
-		active: workflow.active,
-	}),
-	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
-	getChildNodes: (nodeName: string) => {
-		const output: NodeTypeAndVersion[] = [];
-		const nodes = workflow.getChildNodes(nodeName);
-
-		for (const nodeName of nodes) {
-			const node = workflow.nodes[nodeName];
-			output.push({
-				name: node.name,
-				type: node.type,
-				typeVersion: node.typeVersion,
-			});
-		}
-		return output;
-	},
-	getParentNodes: (nodeName: string) => {
-		const output: NodeTypeAndVersion[] = [];
-		const nodes = workflow.getParentNodes(nodeName);
-
-		for (const nodeName of nodes) {
-			const node = workflow.nodes[nodeName];
-			output.push({
-				name: node.name,
-				type: node.type,
-				typeVersion: node.typeVersion,
-			});
-		}
-		return output;
-	},
-	getKnownNodeTypes: () => workflow.nodeTypes.getKnownTypes(),
-	getRestApiUrl: () => additionalData.restApiUrl,
-	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
-	getInstanceId: () => Container.get(InstanceSettings).instanceId,
-	getTimezone: () => workflow.timezone,
-	getCredentialsProperties: (type: string) =>
-		additionalData.credentialsHelper.getCredentialsProperties(type),
-	prepareOutputData: async (outputData) => [outputData],
-});
-
-const executionCancellationFunctions = (
-	abortSignal?: AbortSignal,
-): Pick<IExecuteFunctions, 'onExecutionCancellation' | 'getExecutionCancelSignal'> => ({
-	getExecutionCancelSignal: () => abortSignal,
-	onExecutionCancellation: (handler) => {
-		const fn = () => {
-			abortSignal?.removeEventListener('abort', fn);
-			handler();
-		};
-		abortSignal?.addEventListener('abort', fn);
-	},
-});
 
 export const getRequestHelperFunctions = (
 	workflow: Workflow,

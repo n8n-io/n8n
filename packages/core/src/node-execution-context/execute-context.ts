@@ -1,52 +1,31 @@
 import type {
-	AiEvent,
 	CallbackManager,
 	CloseFunction,
-	ContextType,
 	ExecutionBaseError,
-	IContextObject,
-	ICredentialDataDecryptedObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
-	IExecuteWorkflowInfo,
 	IGetNodeParameterOptions,
 	INode,
 	INodeExecutionData,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
 	IRunExecutionData,
-	ISourceData,
 	ITaskDataConnections,
 	ITaskMetadata,
-	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
-	RelatedExecution,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	createDeferredPromise,
-	NodeHelpers,
-	WorkflowDataProxy,
-} from 'n8n-workflow';
-import Container from 'typedi';
+import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 import { createAgentStartJob } from '@/Agent';
-import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 // eslint-disable-next-line import/no-cycle
 import {
 	returnJsonArray,
 	copyInputItems,
 	normalizeItems,
 	constructExecutionMetaData,
-	continueOnFail,
-	getCredentials,
-	getAdditionalKeys,
 	getInputConnectionData,
-	getNodeParameter,
 	addExecutionDataFunctions,
 	assertBinaryData,
 	getBinaryDataBuffer,
@@ -58,9 +37,9 @@ import {
 	getCheckProcessedHelperFunctions,
 } from '@/NodeExecuteFunctions';
 
-import { NodeExecutionContext } from './node-execution-context';
+import { BaseExecuteContext } from './base-execution-context';
 
-export class ExecuteContext extends NodeExecutionContext implements IExecuteFunctions {
+export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
 	readonly helpers: IExecuteFunctions['helpers'];
 
 	readonly nodeHelpers: IExecuteFunctions['nodeHelpers'];
@@ -74,15 +53,26 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
-		private readonly runExecutionData: IRunExecutionData,
-		private readonly runIndex: number,
-		private readonly connectionInputData: INodeExecutionData[],
-		private readonly inputData: ITaskDataConnections,
-		private readonly executeData: IExecuteData,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
-		private readonly abortSignal?: AbortSignal,
+		abortSignal?: AbortSignal,
 	) {
-		super(workflow, node, additionalData, mode);
+		super(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			abortSignal,
+		);
 
 		this.helpers = {
 			createDeferredPromise,
@@ -126,17 +116,9 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 			fallbackValue?: any,
 			options?: IGetNodeParameterOptions,
 		) =>
-			getNodeParameter(
-				this.workflow,
-				this.runExecutionData,
-				this.runIndex,
-				this.connectionInputData,
-				this.node,
+			this._getNodeParameter(
 				parameterName,
 				itemIndex,
-				this.mode,
-				getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
-				this.executeData,
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
@@ -156,99 +138,6 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 		);
 	}
 
-	getExecutionCancelSignal() {
-		return this.abortSignal;
-	}
-
-	onExecutionCancellation(handler: () => unknown) {
-		const fn = () => {
-			this.abortSignal?.removeEventListener('abort', fn);
-			handler();
-		};
-		this.abortSignal?.addEventListener('abort', fn);
-	}
-
-	continueOnFail() {
-		return continueOnFail(this.node);
-	}
-
-	async getCredentials<T extends object = ICredentialDataDecryptedObject>(
-		type: string,
-		itemIndex: number,
-	) {
-		return await getCredentials<T>(
-			this.workflow,
-			this.node,
-			type,
-			this.additionalData,
-			this.mode,
-			this.executeData,
-			this.runExecutionData,
-			this.runIndex,
-			this.connectionInputData,
-			itemIndex,
-		);
-	}
-
-	getExecuteData() {
-		return this.executeData;
-	}
-
-	setMetadata(metadata: ITaskMetadata): void {
-		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
-			...metadata,
-		};
-	}
-
-	evaluateExpression(expression: string, itemIndex: number) {
-		return this.workflow.expression.resolveSimpleParameterValue(
-			`=${expression}`,
-			{},
-			this.runExecutionData,
-			this.runIndex,
-			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
-			this.executeData,
-		);
-	}
-
-	async executeWorkflow(
-		workflowInfo: IExecuteWorkflowInfo,
-		inputData?: INodeExecutionData[],
-		parentCallbackManager?: CallbackManager,
-		options?: {
-			doNotWaitToFinish?: boolean;
-			parentExecution?: RelatedExecution;
-		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	): Promise<any> {
-		return await this.additionalData
-			.executeWorkflow(workflowInfo, this.additionalData, {
-				...options,
-				parentWorkflowId: this.workflow.id?.toString(),
-				inputData,
-				parentWorkflowSettings: this.workflow.settings,
-				node: this.node,
-				parentCallbackManager,
-			})
-			.then(async (result) => {
-				const data = await Container.get(BinaryDataService).duplicateBinaryData(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					result.data,
-				);
-				return { ...result, data };
-			});
-	}
-
-	getContext(type: ContextType): IContextObject {
-		return NodeHelpers.getContext(this.runExecutionData, type, this.node);
-	}
-
 	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
@@ -264,26 +153,6 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 			inputName,
 			itemIndex,
 			this.abortSignal,
-		);
-	}
-
-	getNodeInputs(): INodeInputConfiguration[] {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
-			this.node.type,
-			this.node.typeVersion,
-		);
-		return NodeHelpers.getNodeInputs(this.workflow, this.node, nodeType.description).map((input) =>
-			typeof input === 'string' ? { type: input } : input,
-		);
-	}
-
-	getNodeOutputs(): INodeOutputConfiguration[] {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
-			this.node.type,
-			this.node.typeVersion,
-		);
-		return NodeHelpers.getNodeOutputs(this.workflow, this.node, nodeType.description).map(
-			(output) => (typeof output === 'string' ? { type: output } : output),
 		);
 	}
 
@@ -310,29 +179,6 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 		return inputData[inputIndex];
 	}
 
-	getInputSourceData(inputIndex = 0, inputName = 'main') {
-		if (this.executeData?.source === null) {
-			// Should never happen as n8n sets it automatically
-			throw new ApplicationError('Source data is missing');
-		}
-		return this.executeData.source[inputName][inputIndex] as ISourceData;
-	}
-
-	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {
-		return new WorkflowDataProxy(
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			{},
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
-			this.executeData,
-		).getDataProxy();
-	}
-
 	async putExecutionToWait(waitTill: Date): Promise<void> {
 		this.runExecutionData.waitTill = waitTill;
 		if (this.additionalData.setExecutionStatus) {
@@ -348,38 +194,6 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
 			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
-		}
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	sendMessageToUI(...args: any[]): void {
-		if (this.mode !== 'manual') {
-			return;
-		}
-		try {
-			if (this.additionalData.sendDataToUI) {
-				args = args.map((arg) => {
-					// prevent invalid dates from being logged as null
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-					if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };
-
-					// log valid dates in human readable format, as in browser
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-					if (arg.isLuxonDateTime) return new Date(arg.ts).toString();
-					if (arg instanceof Date) return arg.toString();
-
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-					return arg;
-				});
-
-				this.additionalData.sendDataToUI('sendConsoleMessage', {
-					source: `[Node: "${this.node.name}"]`,
-					messages: args,
-				});
-			}
-		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			this.logger.warn(`There was a problem sending message to UI: ${error.message}`);
 		}
 	}
 
@@ -440,17 +254,6 @@ export class ExecuteContext extends NodeExecutionContext implements IExecuteFunc
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`There was a problem logging output data of node "${nodeName}": ${error.message}`,
 			);
-		});
-	}
-
-	logAiEvent(eventName: AiEvent, msg: string) {
-		return this.additionalData.logAiEvent(eventName, {
-			executionId: this.additionalData.executionId ?? 'unsaved-execution',
-			nodeName: this.node.name,
-			workflowName: this.workflow.name ?? 'Unnamed workflow',
-			nodeType: this.node.type,
-			workflowId: this.workflow.id ?? 'unsaved-workflow',
-			msg,
 		});
 	}
 
