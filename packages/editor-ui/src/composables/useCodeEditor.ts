@@ -41,13 +41,22 @@ import {
 	type Ref,
 } from 'vue';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
+import type { CodeExecutionMode } from 'n8n-workflow';
 
 export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
 
-export const useCodeEditor = ({
+export type CodeEditorLanguageParamsMap = {
+	json: {};
+	html: {};
+	javaScript: { mode: CodeExecutionMode };
+	python: { mode: CodeExecutionMode };
+};
+
+export const useCodeEditor = <L extends CodeEditorLanguage>({
 	editorRef,
 	editorValue,
 	language,
+	languageParams,
 	placeholder,
 	extensions = [],
 	isReadOnly = false,
@@ -55,7 +64,7 @@ export const useCodeEditor = ({
 	onChange = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
-	language: MaybeRefOrGetter<CodeEditorLanguage>;
+	language: MaybeRefOrGetter<L>;
 	editorValue?: MaybeRefOrGetter<string>;
 	placeholder?: MaybeRefOrGetter<string>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
@@ -65,6 +74,7 @@ export const useCodeEditor = ({
 		minHeight?: string;
 		rows?: number;
 	}>;
+	languageParams?: MaybeRefOrGetter<CodeEditorLanguageParamsMap[L]>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const editor = ref<EditorView>();
@@ -78,6 +88,7 @@ export const useCodeEditor = ({
 	const themeExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
+	const onUpdateMode = ref<(mode: CodeExecutionMode) => void>(() => {});
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
@@ -88,10 +99,15 @@ export const useCodeEditor = ({
 		}
 	}
 
-	async function getFullLanguageExtensions(lang: CodeEditorLanguage): Promise<Extension[]> {
+	async function getFullLanguageExtensions(): Promise<Extension[]> {
+		const lang = toValue(language);
 		switch (lang) {
 			case 'javaScript':
-				return [await typescript(readEditorValue())];
+				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
+				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
+				const { extension, updateMode } = await typescript(readEditorValue(), mode);
+				onUpdateMode.value = updateMode;
+				return [extension];
 			case 'python':
 				return [python()];
 			case 'json':
@@ -99,6 +115,7 @@ export const useCodeEditor = ({
 			case 'html':
 				return [html()];
 		}
+		return [];
 	}
 
 	function readEditorValue(): string {
@@ -153,9 +170,7 @@ export const useCodeEditor = ({
 		}
 
 		editor.value.dispatch({
-			effects: languageExtensions.value.reconfigure(
-				await getFullLanguageExtensions(toValue(language)),
-			),
+			effects: languageExtensions.value.reconfigure(await getFullLanguageExtensions()),
 		});
 	}
 
@@ -260,9 +275,7 @@ export const useCodeEditor = ({
 		});
 
 		editor.value.dispatch({
-			effects: languageExtensions.value.reconfigure(
-				await getFullLanguageExtensions(toValue(language)),
-			),
+			effects: languageExtensions.value.reconfigure(await getFullLanguageExtensions()),
 		});
 	});
 
@@ -275,6 +288,12 @@ export const useCodeEditor = ({
 	});
 
 	watch(toRef(language), setLanguageExtensions);
+
+	watch(toRef(languageParams), (params) => {
+		if ('mode' in params) {
+			onUpdateMode.value((params as CodeEditorLanguageParamsMap['javaScript']).mode);
+		}
+	});
 
 	watch(toRef(isReadOnly), setReadOnlyExtensions);
 

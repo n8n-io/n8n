@@ -18,12 +18,8 @@ declare global {
 		binary: Record<B, N8nBinary>;
 	}
 
-	interface N8nInput {
-		all(branchIndex?: number, runIndex?: number): Array<N8nItem>;
-		first(branchIndex?: number, runIndex?: number): N8nItem;
-		last(branchIndex?: number, runIndex?: number): N8nItem;
-		item: N8nItem;
-	}
+	// Will be populated dynamically
+	interface N8nInput {}
 
 	interface N8nExecution {
 		id: string;
@@ -37,12 +33,6 @@ declare global {
 	const $input: N8nInput;
 	const $execution: N8nExecution;
 	const $workflow: N8nWorkflow;
-
-	interface NodeData<C, J extends N8nJson, B extends string, P> {
-		context: C;
-		item: N8nItem<J, B>;
-		params: P;
-	}
 
 	// @ts-expect-error NodeName and NodeDataMap are created dynamically
 	function $<K extends NodeName>(nodeName: K): NodeDataMap[K];

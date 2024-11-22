@@ -1,3 +1,7 @@
 export {};
 
-declare global {}
+declare module 'luxon' {}
+
+declare global {
+	const DateTime: typeof luxon.DateTime;
+}

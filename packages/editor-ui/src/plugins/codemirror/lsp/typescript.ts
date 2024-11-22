@@ -1,14 +1,16 @@
 import { autocompletion, type CompletionSource } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { linter, type LintSource } from '@codemirror/lint';
-import { combineConfig, Facet, type Extension } from '@codemirror/state';
+import { combineConfig, Facet } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import type { LanguageServiceWorker } from './types';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import type { INodeExecutionData } from 'n8n-workflow';
+import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
+import { autocompletableNodeNames } from '../completions/utils';
+import { useNDVStore } from '../../../stores/ndv.store';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -51,8 +53,6 @@ const tsHover: HoverSource = async (view, pos) => {
 
 	const info = await worker.getHoverTooltip(pos);
 
-	console.log('hover?', info);
-
 	if (!info) return null;
 
 	return {
@@ -76,9 +76,10 @@ function webWorker(path: string) {
 	return new Worker(new URL(path, import.meta.url), { type: 'module' });
 }
 
-export async function typescript(initialValue: string): Promise<Extension> {
+export async function typescript(initialValue: string, mode: CodeExecutionMode) {
 	const worker = Comlink.wrap<LanguageServiceWorker>(webWorker('./worker/typescript.worker.ts'));
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
+	const activeNodeName = useNDVStore().activeNodeName;
 
 	await worker.init(
 		initialValue,
@@ -89,27 +90,38 @@ export async function typescript(initialValue: string): Promise<Extension> {
 				const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
 				const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
 
-				console.log(schema);
 				return schema;
 			}
 
 			return undefined;
 		}),
+		autocompletableNodeNames(),
+		activeNodeName
+			? useWorkflowsStore()
+					.getCurrentWorkflow()
+					.getParentNodes(activeNodeName, NodeConnectionType.Main, 1)
+			: [],
+		mode,
 	);
 
-	return [
-		tsFacet.of({ worker }),
-		javascriptLanguage,
-		autocompletion({
-			icons: false,
-			defaultKeymap: false,
-			override: [tsCompletions],
-		}),
-		linter(tsLint),
-		hoverTooltip(tsHover),
-		EditorView.updateListener.of(async (update) => {
-			if (!update.docChanged) return;
-			await worker.updateFile(update.state.doc.toString());
-		}),
-	];
+	return {
+		extension: [
+			tsFacet.of({ worker }),
+			javascriptLanguage,
+			autocompletion({
+				icons: false,
+				defaultKeymap: false,
+				override: [tsCompletions],
+			}),
+			linter(tsLint),
+			hoverTooltip(tsHover),
+			EditorView.updateListener.of(async (update) => {
+				if (!update.docChanged) return;
+				await worker.updateFile(update.state.doc.toString());
+			}),
+		],
+		updateMode: (newMode: CodeExecutionMode) => {
+			void worker.updateMode(newMode);
+		},
+	};
 }

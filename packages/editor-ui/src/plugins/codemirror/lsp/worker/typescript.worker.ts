@@ -21,6 +21,9 @@ import { pascalCase } from 'change-case';
 import type { Schema } from '../../../../Interface';
 import luxonTypes from './type-declarations/luxon.d.ts?raw';
 import n8nTypes from './type-declarations/n8n.d.ts?raw';
+import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
+import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
+import type { CodeExecutionMode } from 'n8n-workflow';
 
 self.process = { env: {} } as NodeJS.Process;
 
@@ -29,14 +32,75 @@ const TS_COMPLETE_BLOCKLIST: ts.ScriptElementKind[] = [ts.ScriptElementKind.warn
 const worker = (): LanguageServiceWorker => {
 	let env: tsvfs.VirtualTypeScriptEnvironment;
 	let nodeJsonFetcher: (nodeName: string) => Promise<Schema | undefined> = async () => undefined;
+	const loadedNodeTypesMap: Record<string, { type: string; typeName: string }> = {};
+	let inputNodeNames: string[];
 
 	function updateFile(fileName: string, content: string) {
 		const exists = env.getSourceFile(fileName);
 		if (exists) {
-			env.updateFile(fileName, wrapInFunction(content));
+			env.updateFile(fileName, content);
 		} else {
-			env.createFile(fileName, wrapInFunction(content));
+			env.createFile(fileName, content);
 		}
+	}
+
+	async function loadNodeTypes(nodeName: string) {
+		if (loadedNodeTypesMap[nodeName]) return;
+
+		const schema = await nodeJsonFetcher(nodeName);
+
+		if (schema) {
+			const typeName = pascalCase(nodeName);
+			const type = schemaToTypescriptTypes(schema, typeName);
+			loadedNodeTypesMap[nodeName] = { type, typeName };
+			updateFile(
+				'n8n-dynamic.d.ts',
+				`export {};
+
+declare global {
+	type NodeName = ${Object.keys(loadedNodeTypesMap)
+		.map((name) => `'${name}'`)
+		.join(' | ')};
+
+    ${Object.values(loadedNodeTypesMap)
+			.map(({ type }) => type)
+			.join(';\n')}
+
+	interface NodeDataMap {
+	  ${Object.entries(loadedNodeTypesMap)
+			.map(([nodeName, { typeName }]) => `'${nodeName}': NodeData<{}, ${typeName}, {}, {}>`)
+			.join(';\n')}
+	}
+}`,
+			);
+
+			console.log(env.getSourceFile('n8n-dynamic.d.ts')?.getText());
+		}
+	}
+
+	async function setInputNodeTypes(nodeName: string, mode: CodeExecutionMode) {
+		const typeName = pascalCase(nodeName);
+		updateFile(
+			'n8n-dynamic-input.d.ts',
+			`export {};
+
+declare global {
+    type N8nInputItem = N8nItem<${typeName}, {}>;
+
+	interface N8nInput {
+	${
+		mode === 'runOnceForAllItems'
+			? `all(branchIndex?: number, runIndex?: number): Array<N8nInputItem>;
+first(branchIndex?: number, runIndex?: number): N8nInputItem;
+last(branchIndex?: number, runIndex?: number): N8nInputItem;
+itemMatching(itemIndex: number): N8nInputItem;`
+			: 'item: N8nInputItem;'
+	}
+	}
+}`,
+		);
+
+		console.log(env.getSourceFile('n8n-dynamic-input.d.ts')?.getText());
 	}
 
 	async function loadTypesIfNeeded(pos: number) {
@@ -72,26 +136,7 @@ const worker = (): LanguageServiceWorker => {
 			const nodeName = ((callExpression as ts.CallExpression).arguments.at(0) as ts.StringLiteral)
 				.text;
 
-			const schema = await nodeJsonFetcher(nodeName);
-
-			if (schema) {
-				const typeName = pascalCase(nodeName);
-				console.log(schema);
-				const type = schemaToTypescriptTypes(schema, typeName);
-				updateFile(
-					'n8n-dynamic.d.ts',
-					`export {}
-	declare global {
-	${type}
-	const myVar: ${typeName};
-	}`,
-				);
-				console.log(`export {}
-	declare global {
-	${type}
-	const myVar: ${typeName};
-	}`);
-			}
+			await loadNodeTypes(nodeName);
 		}
 	}
 
@@ -99,8 +144,12 @@ const worker = (): LanguageServiceWorker => {
 		async init(
 			content: string,
 			nodeJsonFetcherArg: (nodeName: string) => Promise<Schema | undefined>,
+			allNodeNames: string[],
+			inputNodeNamesArg: string[],
+			mode: CodeExecutionMode,
 		) {
 			nodeJsonFetcher = nodeJsonFetcherArg;
+			inputNodeNames = inputNodeNamesArg;
 
 			const compilerOptions: ts.CompilerOptions = {
 				allowJs: true,
@@ -128,7 +177,29 @@ const worker = (): LanguageServiceWorker => {
 			fsMap.set('n8n.d.ts', n8nTypes);
 			fsMap.set('luxon.d.ts', luxonTypes);
 			fsMap.set('n8n-extensions.d.ts', await generateExtensionTypes());
+			fsMap.set('n8n-dynamic.d.ts', 'export {}');
+			fsMap.set(
+				'n8n-dynamic-input.d.ts',
+				`export {};
+declare global {
+  interface N8nInput {
+	${
+		mode === 'runOnceForAllItems'
+			? `all(branchIndex?: number, runIndex?: number): Array<N8nItem>;
+	first(branchIndex?: number, runIndex?: number): N8nItem;
+	last(branchIndex?: number, runIndex?: number): N8nItem;
+	itemMatching(itemIndex: number): N8nItem;`
+			: 'item: N8nItem;'
+	}
+  }
+}`,
+			);
 			fsMap.set(FILE_NAME, wrapInFunction(content));
+
+			fsMap.set(
+				'n8n-mode-specific.d.ts',
+				mode === 'runOnceForAllItems' ? runOnceForAllItemsTypes : runOnceForEachItemTypes,
+			);
 
 			const system = tsvfs.createSystem(fsMap);
 			env = tsvfs.createVirtualTypeScriptEnvironment(
@@ -137,8 +208,13 @@ const worker = (): LanguageServiceWorker => {
 				ts,
 				compilerOptions,
 			);
+
+			await Promise.all(allNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)));
+			await Promise.all(
+				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
+			);
 		},
-		updateFile: (content) => updateFile(FILE_NAME, content),
+		updateFile: (content) => updateFile(FILE_NAME, wrapInFunction(content)),
 		async getCompletionsAtPos(pos) {
 			const tsPos = cmPosToTs(pos);
 
@@ -192,12 +268,23 @@ const worker = (): LanguageServiceWorker => {
 				env.languageService.getTypeDefinitionAtPosition(FILE_NAME, cmPosToTs(pos)) ??
 				env.languageService.getDefinitionAtPosition(FILE_NAME, cmPosToTs(pos));
 
+			console.log(quickInfo, typeDef);
 			return {
 				start,
 				end: start + quickInfo.textSpan.length,
 				typeDef,
 				quickInfo,
 			};
+		},
+		async updateMode(mode) {
+			console.log('worker updating mode', mode);
+			updateFile(
+				'n8n-mode-specific.d.ts',
+				mode === 'runOnceForAllItems' ? runOnceForAllItemsTypes : runOnceForEachItemTypes,
+			);
+			await Promise.all(
+				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
+			);
 		},
 	};
 };

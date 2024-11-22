@@ -67,6 +67,7 @@ const dragAndDropEnabled = computed(() => {
 const { highlightLine, readEditorValue, editor } = useCodeEditor({
 	editorRef: codeNodeEditorRef,
 	language: () => props.language,
+	languageParams: () => ({ mode: props.mode }),
 	editorValue: () => props.modelValue,
 	placeholder,
 	extensions,
