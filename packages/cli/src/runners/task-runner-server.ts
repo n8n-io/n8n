@@ -163,6 +163,9 @@ export class TaskRunnerServer {
 			authEndpoint,
 			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
 		);
+
+		const healthEndpoint = `${this.getEndpointBasePath()}/healthz`;
+		this.app.get(healthEndpoint, (_, res) => res.sendStatus(200));
 	}
 
 	private handleUpgradeRequest = (

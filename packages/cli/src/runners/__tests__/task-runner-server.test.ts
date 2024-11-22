@@ -9,6 +9,38 @@ import { TaskRunnerServer } from '@/runners/task-runner-server';
 import type { TaskRunnerServerInitRequest } from '../runner-types';
 
 describe('TaskRunnerServer', () => {
+	describe('health endpoint', () => {
+		it('should send 200 status code', async () => {
+			const server = new TaskRunnerServer(
+				mock(),
+				mock<GlobalConfig>({ taskRunners: { path: '/runners' } }),
+				mock(),
+				mock(),
+			);
+
+			const mockResponse = { sendStatus: jest.fn() };
+
+			// @ts-expect-error Test
+			server.app = {
+				get: jest.fn().mockImplementation((path, handler) => {
+					if (path === '/runners/healthz') {
+						handler({}, mockResponse);
+					}
+				}),
+				post: jest.fn(),
+				stop: jest.fn().mockResolvedValue(undefined),
+				disable: jest.fn(),
+				use: jest.fn(),
+			};
+
+			await server.start();
+
+			expect(mockResponse.sendStatus).toHaveBeenCalledWith(200);
+
+			await server.stop(); // allow Jest to exit cleanly
+		});
+	});
+
 	describe('handleUpgradeRequest', () => {
 		it('should close WebSocket when response status code is > 200', () => {
 			const ws = mock<WebSocket>();
