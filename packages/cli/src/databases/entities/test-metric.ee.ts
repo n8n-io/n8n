@@ -24,6 +24,6 @@ export class TestMetric extends WithTimestampsAndStringId {
 	/**
 	 * Relation to test definition
 	 */
-	@ManyToOne('TestDefinition')
+	@ManyToOne('TestDefinition', 'metrics')
 	testDefinition: TestDefinition;
 }
