@@ -1,5 +1,10 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type { IExecuteFunctions, INodeParameters, INodeType } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeParameters,
+	INodeType,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -18,13 +23,13 @@ interface FromAIArgument {
  * generating Zod schemas, and creating LangChain tools.
  */
 class AIParametersParser {
-	private ctx: IExecuteFunctions;
+	private ctx: ISupplyDataFunctions;
 
 	/**
 	 * Constructs an instance of AIParametersParser.
 	 * @param ctx The execution context.
 	 */
-	constructor(ctx: IExecuteFunctions) {
+	constructor(ctx: ISupplyDataFunctions) {
 		this.ctx = ctx;
 	}
 
@@ -388,7 +393,7 @@ class AIParametersParser {
 
 				try {
 					// Execute the node with the proxied context
-					const result = await node.execute?.bind(this.ctx)();
+					const result = await node.execute?.bind(this.ctx as IExecuteFunctions)();
 
 					// Process and map the results
 					const mappedResults = result?.[0]?.flatMap((item) => item.json);
@@ -423,7 +428,7 @@ class AIParametersParser {
  * @returns An object containing the DynamicStructuredTool instance.
  */
 export function createNodeAsTool(
-	ctx: IExecuteFunctions,
+	ctx: ISupplyDataFunctions,
 	node: INodeType,
 	nodeParameters: INodeParameters,
 ) {
