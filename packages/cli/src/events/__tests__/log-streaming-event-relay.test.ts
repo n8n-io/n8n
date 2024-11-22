@@ -3,8 +3,8 @@ import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
-import type { RelayEventMap } from '@/events/relay-event-map';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { IWorkflowDb } from '@/interfaces';
 
 describe('LogStreamingEventRelay', () => {

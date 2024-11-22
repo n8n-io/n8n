@@ -143,6 +143,14 @@ const properties: INodeProperties[] = [
 				description:
 					"Whether to use BigQuery's legacy SQL dialect for this query. If set to false, the query will use BigQuery's standard SQL.",
 			},
+			{
+				displayName: 'Return Integers as Numbers',
+				name: 'returnAsNumbers',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether all integer values will be returned as numbers. If set to false, all integer values will be returned as strings.',
+			},
 		],
 	},
 ];
@@ -180,6 +188,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				timeoutMs?: number;
 				rawOutput?: boolean;
 				useLegacySql?: boolean;
+				returnAsNumbers?: boolean;
 			};
 
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
@@ -262,6 +271,29 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					undefined,
 					qs,
 				);
+
+				if (body.returnAsNumbers === true) {
+					const numericDataTypes = ['INTEGER', 'NUMERIC', 'FLOAT', 'BIGNUMERIC']; // https://cloud.google.com/bigquery/docs/schemas#standard_sql_data_types
+					const schema: IDataObject = queryResponse?.schema as IDataObject;
+					const schemaFields: IDataObject[] = schema.fields as IDataObject[];
+					const schemaDataTypes: string[] = schemaFields?.map(
+						(field: IDataObject) => field.type as string,
+					);
+					const rows: IDataObject[] = queryResponse.rows as IDataObject[];
+
+					for (const row of rows) {
+						if (!row?.f || !Array.isArray(row.f)) continue;
+						row.f.forEach((entry: IDataObject, index: number) => {
+							if (entry && typeof entry === 'object' && 'v' in entry) {
+								// Skip this row if it's null or doesn't have 'f' as an array
+								const value = entry.v;
+								if (numericDataTypes.includes(schemaDataTypes[index])) {
+									entry.v = Number(value);
+								}
+							}
+						});
+					}
+				}
 
 				returnData.push(...prepareOutput.call(this, queryResponse, i, raw, includeSchema));
 			} else {

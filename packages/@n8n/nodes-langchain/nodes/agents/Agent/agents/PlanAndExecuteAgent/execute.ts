@@ -1,3 +1,8 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -5,18 +10,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
-import {
-	getConnectedTools,
-	getOptionalOutputParsers,
-	getPromptInputByType,
-} from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getConnectedTools, getPromptInputByType } from '../../../../../utils/helpers';
+import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
+import { getTracingConfig } from '../../../../../utils/tracing';
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
@@ -28,8 +26,9 @@ export async function planAndExecuteAgentExecute(
 		0,
 	)) as BaseChatModel;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
+	await checkForStructuredTools(tools, this.getNode(), 'Plan & Execute Agent');
 	const outputParsers = await getOptionalOutputParsers(this);
 
 	const options = this.getNodeParameter('options', 0, {}) as {
@@ -82,12 +81,12 @@ export async function planAndExecuteAgentExecute(
 				input = (await prompt.invoke({ input })).value;
 			}
 
-			let response = await agentExecutor
+			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
+				response.output = await extractParsedOutput(this, outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

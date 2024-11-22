@@ -1,6 +1,5 @@
 import type { Scope } from '@n8n/permissions';
 import type { Application } from 'express';
-import type { WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -14,7 +13,6 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
-	Workflow,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionSummary,
@@ -22,11 +20,13 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IWorkflowExecutionDataProcess,
+	DeduplicationMode,
+	DeduplicationItemTypes,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
@@ -46,6 +46,20 @@ export interface ICredentialsTypeData {
 
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
+}
+
+// ----------------------------------
+//               ProcessedData
+// ----------------------------------
+
+export interface IProcessedDataLatest {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes[];
 }
 
 // ----------------------------------
@@ -115,9 +129,14 @@ export type SaveExecutionDataType = 'all' | 'none';
 export interface IExecutionBase {
 	id: string;
 	mode: WorkflowExecuteMode;
+	createdAt: Date; // set by DB
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId: string;
+
+	/**
+	 * @deprecated Use `status` instead
+	 */
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
@@ -131,10 +150,11 @@ export interface IExecutionDb extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-/**
- * Payload for creating or updating an execution.
- */
-export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
+/** Payload for creating an execution. */
+export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+
+/** Payload for updating an execution. */
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
@@ -278,12 +298,6 @@ export interface IWorkflowErrorData {
 	};
 }
 
-export interface IWorkflowExecuteProcess {
-	startedAt: Date;
-	workflow: Workflow;
-	workflowExecute: WorkflowExecute;
-}
-
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
 }
@@ -337,7 +351,7 @@ export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {
-		executions: {
+		activeWorkflowTriggers: {
 			limit: number;
 			value: number;
 			warningThreshold: number;

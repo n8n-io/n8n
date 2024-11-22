@@ -56,6 +56,7 @@ export type IFormInput = {
 		focusInitially?: boolean;
 		disabled?: boolean;
 		labelSize?: 'small' | 'medium' | 'large';
+		tagSize?: 'small' | 'medium' | 'large';
 		labelAlignment?: 'left' | 'right' | 'center';
 		tooltipText?: string;
 	};

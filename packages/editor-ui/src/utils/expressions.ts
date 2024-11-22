@@ -16,8 +16,8 @@ export const unwrapExpression = (expr: string) => {
 	return expr.replace(/\{\{(.*)\}\}/, '$1').trim();
 };
 
-export const removeExpressionPrefix = (expr: string) => {
-	return expr.startsWith('=') ? expr.slice(1) : expr;
+export const removeExpressionPrefix = (expr: string | null | undefined) => {
+	return expr?.startsWith('=') ? expr.slice(1) : (expr ?? '');
 };
 
 export const isTestableExpression = (expr: string) => {
@@ -60,7 +60,7 @@ export const isNoInputConnectionError = (error: unknown): error is ExpressionErr
 };
 
 export const isAnyPairedItemError = (error: unknown): error is ExpressionError => {
-	return error instanceof ExpressionError && error.context.functionality === 'pairedItem';
+	return error instanceof ExpressionError && error.functionality === 'pairedItem';
 };
 
 export const getResolvableState = (error: unknown, ignoreError = false): ResolvableState => {

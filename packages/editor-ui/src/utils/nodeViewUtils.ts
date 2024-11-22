@@ -2,6 +2,7 @@ import { isNumber, isValidNodeConnectionType } from '@/utils/typeGuards';
 import {
 	LIST_LIKE_NODE_OPERATIONS,
 	NODE_OUTPUT_DEFAULT_KEY,
+	NODE_POSITION_CONFLICT_ALLOWLIST,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -582,6 +583,11 @@ export const getNewNodePosition = (
 		conflictFound = false;
 		for (i = 0; i < nodes.length; i++) {
 			node = nodes[i];
+
+			if (NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
+				continue;
+			}
+
 			if (!canUsePosition(node.position, targetPosition)) {
 				conflictFound = true;
 				break;
@@ -1288,4 +1294,35 @@ export function getGenericHints({
 	}
 
 	return nodeHints;
+}
+
+/**
+ * Generate vertical insertion offsets for the given node count
+ *
+ * 2 nodes -> [-nodeSize, nodeSize],
+ * 3 nodes -> [-nodeSize - 2 * gridSize, 0, nodeSize + 2 * gridSize],
+ * 4 nodes ->	[-2 * nodeSize - 2 * gridSize, -nodeSize, nodeSize, 2 * nodeSize + 2 * gridSize]
+ * 5 nodes ->	[-2 * nodeSize - 2 * gridSize, -nodeSize, 0, nodeSize, 2 * nodeSize + 2 * gridSize]
+ */
+export function generateOffsets(nodeCount: number, nodeSize: number, gridSize: number) {
+	const offsets = [];
+	const half = Math.floor(nodeCount / 2);
+	const isOdd = nodeCount % 2 === 1;
+
+	if (nodeCount === 0) {
+		return [];
+	}
+
+	for (let i = -half; i <= half; i++) {
+		if (i === 0) {
+			if (isOdd) {
+				offsets.push(0);
+			}
+		} else {
+			const offset = i * nodeSize + Math.sign(i) * (Math.abs(i) - (isOdd ? 0 : 1)) * gridSize;
+			offsets.push(offset);
+		}
+	}
+
+	return offsets;
 }

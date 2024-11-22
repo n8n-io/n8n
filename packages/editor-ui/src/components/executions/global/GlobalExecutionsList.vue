@@ -2,11 +2,7 @@
 import { watch, computed, ref, onMounted } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import {
-	EnterpriseEditionFeature,
-	EXECUTION_ANNOTATION_EXPERIMENT,
-	MODAL_CONFIRM,
-} from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
@@ -17,8 +13,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -42,7 +38,6 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
-const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 
 const isMounted = ref(false);
@@ -72,9 +67,7 @@ const workflows = computed<IWorkflowDb[]>(() => {
 });
 
 const isAnnotationEnabled = computed(
-	() =>
-		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters] &&
-		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 
 watch(
@@ -151,7 +144,7 @@ async function handleDeleteSelected() {
 		await executionsStore.deleteExecutions({
 			filters: executionsStore.executionsFilters,
 			...(allExistingSelected.value
-				? { deleteBefore: props.executions[0].startedAt }
+				? { deleteBefore: new Date() }
 				: {
 						ids: Object.keys(selectedItems.value),
 					}),
@@ -323,11 +316,9 @@ async function onAutoRefreshToggle(value: boolean) {
 
 <template>
 	<div :class="$style.execListWrapper">
+		<ProjectHeader />
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<N8nHeading tag="h1" size="2xlarge">
-					{{ i18n.baseText('executionsList.workflowExecutions') }}
-				</N8nHeading>
 				<div :class="$style.execListHeaderControls">
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
@@ -342,6 +333,7 @@ async function onAutoRefreshToggle(value: boolean) {
 					<ExecutionsFilter
 						v-show="isMounted"
 						:workflows="workflows"
+						class="execFilter"
 						@filter-changed="onFilterChanged"
 					/>
 				</div>
@@ -463,27 +455,24 @@ async function onAutoRefreshToggle(value: boolean) {
 <style module lang="scss">
 .execListWrapper {
 	display: grid;
-	grid-template-rows: 1fr 0;
+	grid-template-rows: auto auto 1fr 0;
 	position: relative;
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
+	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .execList {
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-l) var(--spacing-l) 0;
-	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
-	}
 }
 
 .execListHeader {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-start;
 	margin-bottom: var(--spacing-s);
 }
 
@@ -594,5 +583,17 @@ async function onAutoRefreshToggle(value: boolean) {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+</style>
+
+<style lang="scss" scoped>
+.execFilter:deep(button) {
+	height: 40px;
+}
+
+:deep(.el-checkbox) {
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
 }
 </style>

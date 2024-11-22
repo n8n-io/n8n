@@ -1,9 +1,17 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
 import {
-	ApplicationError,
-	NodeApiError,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+	AIMessagePromptTemplate,
+	PromptTemplate,
+	SystemMessagePromptTemplate,
+	HumanMessagePromptTemplate,
+	ChatPromptTemplate,
+} from '@langchain/core/prompts';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOllama } from '@langchain/ollama';
+import { LLMChain } from 'langchain/chains';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -12,33 +20,23 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import {
-	AIMessagePromptTemplate,
-	PromptTemplate,
-	SystemMessagePromptTemplate,
-	HumanMessagePromptTemplate,
-	ChatPromptTemplate,
-} from '@langchain/core/prompts';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { CombiningOutputParser } from 'langchain/output_parsers';
-import { LLMChain } from 'langchain/chains';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatOllama } from '@langchain/ollama';
+import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
+import type { N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParsers } from '../../../utils/output_parsers/N8nOutputParser';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import {
-	getOptionalOutputParsers,
-	getPromptInputByType,
-	isChatInstance,
-} from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
 } from '../../vendors/OpenAi/helpers/error-handling';
+import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
 
 interface MessagesTemplate {
 	type: string;
@@ -189,7 +187,7 @@ async function getChain(
 	itemIndex: number,
 	query: string,
 	llm: BaseLanguageModel,
-	outputParsers: BaseOutputParser[],
+	outputParsers: N8nOutputParser[],
 	messages?: MessagesTemplate[],
 ): Promise<unknown[]> {
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = await getChainPromptTemplate(
@@ -256,7 +254,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -318,30 +316,16 @@ export class ChainLlm implements INodeType {
 				},
 			},
 			{
-				displayName: 'Prompt',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
+				...promptTypeOptions,
 				displayOptions: {
 					hide: {
 						'@version': [1, 1.1, 1.2, 1.3],
 					},
 				},
-				default: 'auto',
+			},
+			{
+				...textFromPreviousNode,
+				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 			},
 			{
 				displayName: 'Text',

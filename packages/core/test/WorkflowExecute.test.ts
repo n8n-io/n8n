@@ -5,6 +5,7 @@ import {
 	NodeExecutionOutput,
 	Workflow,
 } from 'n8n-workflow';
+
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './helpers';
@@ -187,7 +188,11 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
-						return nodeData.data.main[0];
+						return nodeData.data.main[0]!.map((entry) => {
+							// remove pairedItem from entry if it is an error output test
+							if (testData.description.includes('error_outputs')) delete entry.pairedItem;
+							return entry;
+						});
 					});
 
 					expect(resultData).toEqual(testData.output.nodeData[nodeName]);

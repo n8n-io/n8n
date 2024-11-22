@@ -1,7 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
+import { AxiosError } from 'axios';
 import { createHash } from 'crypto';
+import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -29,7 +31,7 @@ export const initErrorHandling = async () => {
 		DEPLOYMENT_NAME: serverName,
 	} = process.env;
 
-	const { init, captureException } = await import('@sentry/node');
+	const { init, captureException, setTag } = await import('@sentry/node');
 
 	const { RewriteFrames } = await import('@sentry/integrations');
 	const { Integrations } = await import('@sentry/node');
@@ -64,8 +66,14 @@ export const initErrorHandling = async () => {
 				},
 			}),
 		],
-		beforeSend(event, { originalException }) {
+		async beforeSend(event, { originalException }) {
 			if (!originalException) return null;
+
+			if (originalException instanceof Promise) {
+				originalException = await originalException.catch((error) => error as Error);
+			}
+
+			if (originalException instanceof AxiosError) return null;
 
 			if (
 				originalException instanceof QueryFailedError &&
@@ -91,6 +99,8 @@ export const initErrorHandling = async () => {
 			return event;
 		},
 	});
+
+	setTag('server_type', Container.get(InstanceSettings).instanceType);
 
 	ErrorReporterProxy.init({
 		report: (error, options) => captureException(error, options),

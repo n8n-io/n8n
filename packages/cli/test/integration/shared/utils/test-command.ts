@@ -4,7 +4,7 @@ import type { Class } from 'n8n-core';
 
 import type { BaseCommand } from '@/commands/base-command';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { mockInstance } from '@test/mocking';
 
 import * as testDb from '../test-db';

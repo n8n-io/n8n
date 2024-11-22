@@ -5,6 +5,7 @@ import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 type Props = {
 	schema: Schema;
@@ -95,7 +96,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 					:data-depth="level"
 					data-target="mappable"
 				>
-					<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
+					<FontAwesomeIcon :icon="getIconBySchemaType(schema.type)" size="sm" />
 					<TextWithHighlights
 						v-if="isSchemaParentTypeArray"
 						:content="props.parent?.key"
@@ -120,12 +121,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" inert checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
-			<font-awesome-icon icon="angle-right" />
+			<FontAwesomeIcon icon="angle-right" />
 		</label>
 
 		<div v-if="isSchemaValueArray" :class="$style.sub">
 			<div :class="$style.innerSub">
-				<run-data-schema-item
+				<RunDataSchemaItem
 					v-for="s in schemaArray"
 					:key="s.key ?? s.type"
 					:schema="s"

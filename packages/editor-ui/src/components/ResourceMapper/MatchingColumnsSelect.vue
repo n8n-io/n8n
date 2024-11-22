@@ -187,6 +187,7 @@ defineExpose({
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
 					:is-read-only="isReadOnly"
+					:value="state.selected"
 					@update:model-value="onParameterActionSelected"
 				/>
 			</template>

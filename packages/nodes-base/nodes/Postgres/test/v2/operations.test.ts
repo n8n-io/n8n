@@ -46,6 +46,9 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
 			return node;
 		},
+		evaluateExpression(str: string, _: number) {
+			return str.replace('{{', '').replace('}}', '');
+		},
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
@@ -289,6 +292,26 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			items,
 			nodeOptions,
 		);
+	});
+
+	it('should call runQueries with falsy query replacements', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '={{ 0 }}, {{ null }}, {{ 0 }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
 	});
 });
 

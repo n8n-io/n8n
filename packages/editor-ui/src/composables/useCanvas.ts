@@ -5,8 +5,10 @@ export function useCanvas() {
 	const canvas = inject(CanvasKey);
 
 	const connectingHandle = computed(() => canvas?.connectingHandle.value);
+	const isExecuting = computed(() => canvas?.isExecuting.value);
 
 	return {
+		isExecuting,
 		connectingHandle,
 	};
 }

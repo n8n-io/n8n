@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
@@ -8,6 +7,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@/composables/useI18n';
 import TemplatesView from './TemplatesView.vue';
 
@@ -20,6 +20,7 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const documentTitle = useDocumentTitle();
 
 const loading = ref(true);
 const showPreview = ref(true);
@@ -63,9 +64,9 @@ watch(
 	() => template.value,
 	(newTemplate) => {
 		if (newTemplate) {
-			setPageTitle(`n8n - Template template: ${newTemplate.name}`);
+			documentTitle.set(`Template template: ${newTemplate.name}`);
 		} else {
-			setPageTitle('n8n - Templates');
+			documentTitle.set('Templates');
 		}
 	},
 );

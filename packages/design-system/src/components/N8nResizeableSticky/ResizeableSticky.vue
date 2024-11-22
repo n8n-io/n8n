@@ -21,6 +21,7 @@ const emit = defineEmits<{
 	resize: [values: ResizeData];
 	resizestart: [];
 	resizeend: [];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 }>();
 
 const attrs = useAttrs();
@@ -42,6 +43,10 @@ const onResizeEnd = () => {
 	isResizing.value = false;
 	emit('resizeend');
 };
+
+const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {
+	emit('markdown-click', link, event);
+};
 </script>
 
 <template>
@@ -57,6 +62,6 @@ const onResizeEnd = () => {
 		@resize="onResize"
 		@resizestart="onResizeStart"
 	>
-		<N8nSticky v-bind="stickyBindings" />
+		<N8nSticky v-bind="stickyBindings" @markdown-click="onMarkdownClick" />
 	</N8nResizeWrapper>
 </template>

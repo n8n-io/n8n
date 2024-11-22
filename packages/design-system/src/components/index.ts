@@ -28,6 +28,7 @@ export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
 export { default as N8nMenu } from './N8nMenu';
 export { default as N8nMenuItem } from './N8nMenuItem';
+export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
 export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';

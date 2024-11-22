@@ -75,7 +75,6 @@ function onClose() {
 			v-show="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
-			:class="$style.container"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
@@ -103,12 +102,6 @@ function onClose() {
 </template>
 
 <style module>
-.container {
-	height: 100%;
-	flex-basis: content;
-	z-index: 300;
-}
-
 .wrapper {
 	height: 100%;
 }

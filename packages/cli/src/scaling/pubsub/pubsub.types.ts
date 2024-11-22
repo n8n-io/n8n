@@ -1,96 +1,133 @@
-import type { PushType, WorkerStatus } from '@n8n/api-types';
-
-import type { IWorkflowDb } from '@/interfaces';
+import type {
+	PubSubCommandMap,
+	PubSubEventMap,
+	PubSubWorkerResponseMap,
+} from '@/events/maps/pub-sub.event-map';
+import type { Resolve } from '@/utlity.types';
 
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 
-/** Pubsub channel used by scaling mode. */
-export type PubSubChannel = typeof COMMAND_PUBSUB_CHANNEL | typeof WORKER_RESPONSE_PUBSUB_CHANNEL;
+export namespace PubSub {
+	// ----------------------------------
+	//             channels
+	// ----------------------------------
 
-/** Handler function for every message received via a `PubSubChannel`. */
-export type PubSubHandlerFn = (msg: string) => void;
+	/** Pubsub channel used by scaling mode. */
+	export type Channel = typeof COMMAND_PUBSUB_CHANNEL | typeof WORKER_RESPONSE_PUBSUB_CHANNEL;
 
-export type PubSubMessageMap = {
-	// #region Lifecycle
+	/** Handler function for every message received via a pubsub channel. */
+	export type HandlerFn = (msg: string) => void;
 
-	'reload-license': never;
+	// ----------------------------------
+	//            commands
+	// ----------------------------------
 
-	'restart-event-bus': {
-		result: 'success' | 'error';
-		error?: string;
-	};
+	type _ToCommand<CommandKey extends keyof PubSubCommandMap> = {
+		senderId: string;
+		targets?: string[];
+		command: CommandKey;
 
-	'reload-external-secrets-providers': {
-		result: 'success' | 'error';
-		error?: string;
-	};
+		/** Whether the command should be sent to the sender as well. */
+		selfSend?: boolean;
 
-	'stop-worker': never;
+		/** Whether the command should be debounced when received. */
+		debounce?: boolean;
+	} & (PubSubCommandMap[CommandKey] extends never
+		? { payload?: never } // some commands carry no payload
+		: { payload: PubSubCommandMap[CommandKey] });
 
-	// #endregion
+	type ToCommand<CommandKey extends keyof PubSubCommandMap> = Resolve<_ToCommand<CommandKey>>;
 
-	// #region Community packages
+	namespace Commands {
+		export type ReloadLicense = ToCommand<'reload-license'>;
+		export type RestartEventBus = ToCommand<'restart-event-bus'>;
+		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
+		export type CommunityPackageInstall = ToCommand<'community-package-install'>;
+		export type CommunityPackageUpdate = ToCommand<'community-package-update'>;
+		export type CommunityPackageUninstall = ToCommand<'community-package-uninstall'>;
+		export type GetWorkerId = ToCommand<'get-worker-id'>;
+		export type GetWorkerStatus = ToCommand<'get-worker-status'>;
+		export type AddWebhooksTriggersAndPollers = ToCommand<'add-webhooks-triggers-and-pollers'>;
+		export type RemoveTriggersAndPollers = ToCommand<'remove-triggers-and-pollers'>;
+		export type DisplayWorkflowActivation = ToCommand<'display-workflow-activation'>;
+		export type DisplayWorkflowDeactivation = ToCommand<'display-workflow-deactivation'>;
+		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
+		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
+		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
+	}
 
-	'community-package-install': {
-		packageName: string;
-		packageVersion: string;
-	};
+	/** Command sent via the `n8n.commands` pubsub channel. */
+	export type Command =
+		| Commands.ReloadLicense
+		| Commands.RestartEventBus
+		| Commands.ReloadExternalSecretsProviders
+		| Commands.CommunityPackageInstall
+		| Commands.CommunityPackageUpdate
+		| Commands.CommunityPackageUninstall
+		| Commands.GetWorkerId
+		| Commands.GetWorkerStatus
+		| Commands.AddWebhooksTriggersAndPollers
+		| Commands.RemoveTriggersAndPollers
+		| Commands.DisplayWorkflowActivation
+		| Commands.DisplayWorkflowDeactivation
+		| Commands.DisplayWorkflowActivationError
+		| Commands.RelayExecutionLifecycleEvent
+		| Commands.ClearTestWebhooks;
 
-	'community-package-update': {
-		packageName: string;
-		packageVersion: string;
-	};
+	// ----------------------------------
+	//         worker responses
+	// ----------------------------------
 
-	'community-package-uninstall': {
-		packageName: string;
-		packageVersion: string;
-	};
+	type _ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = {
+		/** ID of worker sending the response. */
+		senderId: string;
 
-	// #endregion
+		/** IDs of processes to send the response to. */
+		targets?: string[];
 
-	// #region Worker view
+		/** Content of worker response. */
+		response: WorkerResponseKey;
 
-	'get-worker-id': never;
+		/** Whether the worker response should be debounced when received. */
+		debounce?: boolean;
+	} & (PubSubWorkerResponseMap[WorkerResponseKey] extends never
+		? { payload?: never } // some responses carry no payload
+		: { payload: PubSubWorkerResponseMap[WorkerResponseKey] });
 
-	'get-worker-status': WorkerStatus;
+	type ToWorkerResponse<WorkerResponseKey extends keyof PubSubWorkerResponseMap> = Resolve<
+		_ToWorkerResponse<WorkerResponseKey>
+	>;
 
-	// #endregion
+	/** Response sent via the `n8n.worker-response` pubsub channel. */
+	export type WorkerResponse = ToWorkerResponse<'response-to-get-worker-status'>;
 
-	// #region Multi-main setup
+	// ----------------------------------
+	//              events
+	// ----------------------------------
 
-	'add-webhooks-triggers-and-pollers': {
-		workflowId: string;
-	};
+	/**
+	 * Of all events emitted from pubsub messages, those whose handlers
+	 * are all present in main, worker, and webhook processes.
+	 */
+	export type CommonEvents = Pick<
+		PubSubEventMap,
+		| 'reload-license'
+		| 'restart-event-bus'
+		| 'reload-external-secrets-providers'
+		| 'community-package-install'
+		| 'community-package-update'
+		| 'community-package-uninstall'
+	>;
 
-	'remove-triggers-and-pollers': {
-		workflowId: string;
-	};
-
-	'display-workflow-activation': {
-		workflowId: string;
-	};
-
-	'display-workflow-deactivation': {
-		workflowId: string;
-	};
-
-	// currently 'workflow-failed-to-activate'
-	'display-workflow-activation-error': {
-		workflowId: string;
-		errorMessage: string;
-	};
-
-	'relay-execution-lifecycle-event': {
-		type: PushType;
-		args: Record<string, unknown>;
-		pushRef: string;
-	};
-
-	'clear-test-webhooks': {
-		webhookKey: string;
-		workflowEntity: IWorkflowDb;
-		pushRef: string;
-	};
-
-	// #endregion
-};
+	/** Multi-main events emitted from pubsub messages. */
+	export type MultiMainEvents = Pick<
+		PubSubEventMap,
+		| 'add-webhooks-triggers-and-pollers'
+		| 'remove-triggers-and-pollers'
+		| 'display-workflow-activation'
+		| 'display-workflow-deactivation'
+		| 'display-workflow-activation-error'
+		| 'relay-execution-lifecycle-event'
+		| 'clear-test-webhooks'
+	>;
+}

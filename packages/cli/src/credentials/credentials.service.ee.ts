@@ -157,14 +157,6 @@ export class EnterpriseCredentialsService {
 				"You can't transfer a credential into the project that's already owning it.",
 			);
 		}
-		if (sourceProject.type !== 'team' && sourceProject.type !== 'personal') {
-			throw new TransferCredentialError(
-				'You can only transfer credentials out of personal or team projects.',
-			);
-		}
-		if (destinationProject.type !== 'team') {
-			throw new TransferCredentialError('You can only transfer credentials into team projects.');
-		}
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
 			// 6. transfer the credential

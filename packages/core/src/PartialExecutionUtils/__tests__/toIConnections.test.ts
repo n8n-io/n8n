@@ -1,4 +1,5 @@
 import { NodeConnectionType } from 'n8n-workflow';
+
 import { createNodeData, toIConnections } from './helpers';
 
 test('toIConnections', () => {

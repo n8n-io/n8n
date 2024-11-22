@@ -120,9 +120,9 @@ defineExpose({
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
 			ref="innerSelect"
-			:model-value="modelValue ?? undefined"
+			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
-			:popper-class="popperClass"
+			:popper-class="props.popperClass"
 			:class="$style[classes]"
 		>
 			<template v-if="$slots.prefix" #prefix>

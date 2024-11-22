@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const $style = useCssModule();
 
-const isSuccessStatus = computed(
-	() => false,
-	// @TODO Implement this
-	// () => !['unknown'].includes(node.status) && workflowDataItems > 0,
-);
+const { hasRunData } = useCanvasNode();
 
 const classes = computed(() => {
 	return {
 		[$style.disabledStrikeThrough]: true,
-		[$style.success]: isSuccessStatus.value,
+		[$style.success]: hasRunData.value,
 	};
 });
 </script>

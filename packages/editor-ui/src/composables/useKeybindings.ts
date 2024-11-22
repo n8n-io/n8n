@@ -1,12 +1,12 @@
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from 'n8n-design-system';
-import type { MaybeRef } from 'vue';
-import { computed, toValue, type MaybeRefOrGetter, unref } from 'vue';
+import type { MaybeRef, Ref } from 'vue';
+import { computed, unref } from 'vue';
 
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
 export const useKeybindings = (
-	keymap: MaybeRefOrGetter<KeyMap>,
+	keymap: Ref<KeyMap>,
 	options?: {
 		disabled: MaybeRef<boolean>;
 	},
@@ -22,14 +22,14 @@ export const useKeybindings = (
 		const active = activeElement.value;
 		const isInput = ['INPUT', 'TEXTAREA'].includes(active.tagName);
 		const isContentEditable = active.closest('[contenteditable]') !== null;
-		const isIgnoreClass = active.closest('.ignore-key-press') !== null;
+		const isIgnoreClass = active.closest('.ignore-key-press-canvas') !== null;
 
 		return isInput || isContentEditable || isIgnoreClass;
 	});
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
-			Object.entries(toValue(keymap))
+			Object.entries(keymap.value)
 				.map(([shortcut, handler]) => {
 					const shortcuts = shortcut.split('|');
 					return shortcuts.map((s) => [normalizeShortcutString(s), handler]);

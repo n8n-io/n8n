@@ -13,7 +13,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { setPageTitle } from '@/utils/htmlUtils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@/composables/useI18n';
 
 const externalHooks = useExternalHooks();
@@ -25,6 +25,7 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const documentTitle = useDocumentTitle();
 
 const loading = ref(true);
 const notFoundError = ref(false);
@@ -34,14 +35,14 @@ const collectionId = computed(() => {
 	return Array.isArray(id) ? id[0] : id;
 });
 
-const collection = computed(() => templatesStore.getCollectionById(collectionId.value));
+const collection = computed(() => templatesStore.getCollectionById[collectionId.value]);
 
 const collectionWorkflows = computed(() => {
 	if (!collection.value || loading.value) {
 		return [];
 	}
 	return collection.value.workflows
-		.map(({ id }) => templatesStore.getTemplateById(id.toString()))
+		.map(({ id }) => templatesStore.getTemplatesById(id.toString()))
 		.filter((workflow): workflow is ITemplatesWorkflow => !!workflow);
 });
 
@@ -57,15 +58,15 @@ const scrollToTop = () => {
 	}, 50);
 };
 
-const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: string }) => {
-	navigateTo(event, VIEWS.TEMPLATE, id);
+const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: number }) => {
+	navigateTo(event, VIEWS.TEMPLATE, `${id}`);
 };
 
-const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: string }) => {
+const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: number }) => {
 	await useTemplateWorkflow({
 		posthogStore,
 		router,
-		templateId: id,
+		templateId: `${id}`,
 		inNewBrowserTab: event.metaKey || event.ctrlKey,
 		templatesStore,
 		externalHooks,
@@ -89,9 +90,9 @@ watch(
 	() => collection.value,
 	() => {
 		if (collection.value && 'full' in collection.value && collection.value.full) {
-			setPageTitle(`n8n - Template collection: ${collection.value.name}`);
+			documentTitle.set(`Template collection: ${collection.value.name}`);
 		} else {
-			setPageTitle('n8n - Templates');
+			documentTitle.set('Templates');
 		}
 	},
 );

@@ -3,8 +3,10 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
+import { useI18n } from '@/composables/useI18n';
 
 const nodeCreatorStore = useNodeCreatorStore();
+const i18n = useI18n();
 
 const isTooltipVisible = ref(false);
 
@@ -45,10 +47,10 @@ function onClick() {
 				<FontAwesomeIcon icon="plus" size="lg" />
 			</button>
 			<template #content>
-				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
+				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
 		</N8nTooltip>
-		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
+		<p :class="$style.label" v-text="i18n.baseText('nodeView.canvasAddButton.addFirstStep')" />
 	</div>
 </template>
 

@@ -5,7 +5,7 @@ import { Service } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 
 @Service()
 export class CredentialsOverwrites {

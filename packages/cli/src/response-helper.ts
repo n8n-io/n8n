@@ -10,9 +10,9 @@ import picocolors from 'picocolors';
 import Container from 'typedi';
 
 import { inDevelopment } from '@/constants';
+import { Logger } from '@/logging/logger.service';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
-import { Logger } from './logger';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -101,6 +101,14 @@ export function sendErrorResponse(res: Response, error: Error) {
 				res.status(404);
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
+		}
+
+		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
+			//codes other than 200  breaks redirection to form-waiting page from form trigger
+			//render form page instead of json
+			return res.render('form-trigger-409', {
+				message: error.message,
+			});
 		}
 
 		httpStatusCode = error.httpStatusCode;

@@ -90,8 +90,8 @@ const allIssues = computed(() => {
 const now = computed(() => DateTime.now().toISO());
 
 const leftParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
+	name: 'left',
+	displayName: 'Left',
 	default: '',
 	placeholder:
 		operator.value.type === 'dateTime'
@@ -103,8 +103,8 @@ const leftParameter = computed<INodeProperties>(() => ({
 const rightParameter = computed<INodeProperties>(() => {
 	const type = operator.value.rightType ?? operator.value.type;
 	return {
-		name: '',
-		displayName: '',
+		name: 'right',
+		displayName: 'Right',
 		default: '',
 		placeholder:
 			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),

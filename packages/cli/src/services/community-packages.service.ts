@@ -22,10 +22,9 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
-
-import { OrchestrationService } from './orchestration.service';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
@@ -60,7 +59,7 @@ export class CommunityPackagesService {
 		private readonly logger: Logger,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly orchestrationService: OrchestrationService,
+		private readonly publisher: Publisher,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 	) {}
@@ -322,7 +321,10 @@ export class CommunityPackagesService {
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
 		await this.removeNpmPackage(packageName);
 		await this.removePackageFromDatabase(installedPackage);
-		await this.orchestrationService.publish('community-package-uninstall', { packageName });
+		void this.publisher.publishCommand({
+			command: 'community-package-uninstall',
+			payload: { packageName },
+		});
 	}
 
 	private getNpmRegistry() {
@@ -352,6 +354,7 @@ export class CommunityPackagesService {
 
 		let loader: PackageDirectoryLoader;
 		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
 			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 		} catch (error) {
 			// Remove this package since loading it failed
@@ -368,10 +371,10 @@ export class CommunityPackagesService {
 					await this.removePackageFromDatabase(options.installedPackage);
 				}
 				const installedPackage = await this.persistInstalledPackage(loader);
-				await this.orchestrationService.publish(
-					isUpdate ? 'community-package-update' : 'community-package-install',
-					{ packageName, packageVersion },
-				);
+				void this.publisher.publishCommand({
+					command: isUpdate ? 'community-package-update' : 'community-package-install',
+					payload: { packageName, packageVersion },
+				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;

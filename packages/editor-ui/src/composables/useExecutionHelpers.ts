@@ -1,10 +1,15 @@
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary, RelatedExecution } from 'n8n-workflow';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { useI18n } from '@/composables/useI18n';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+import { useTelemetry } from './useTelemetry';
+import type { IRunDataDisplayMode } from '@/Interface';
 
 export interface IExecutionUIData {
 	name: string;
 	label: string;
+	createdAt: string;
 	startTime: string;
 	runningTime: string;
 	showTimestamp: boolean;
@@ -13,10 +18,13 @@ export interface IExecutionUIData {
 
 export function useExecutionHelpers() {
 	const i18n = useI18n();
+	const router = useRouter();
+	const telemetry = useTelemetry();
 
 	function getUIDetails(execution: ExecutionSummary): IExecutionUIData {
 		const status = {
 			name: 'unknown',
+			createdAt: execution.createdAt?.toString() ?? '',
 			startTime: formatDate(execution.startedAt),
 			label: 'Status unknown',
 			runningTime: '',
@@ -67,9 +75,57 @@ export function useExecutionHelpers() {
 		return ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId;
 	}
 
+	function openExecutionInNewTab(executionId: string, workflowId: string): void {
+		const route = router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { name: workflowId, executionId },
+		});
+
+		window.open(route.href, '_blank');
+	}
+
+	function resolveRelatedExecutionUrl(metadata: {
+		parentExecution?: RelatedExecution;
+		subExecution?: RelatedExecution;
+	}): string {
+		const info = metadata.parentExecution || metadata.subExecution;
+		if (!info) {
+			return '';
+		}
+
+		const { workflowId, executionId } = info;
+
+		return router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { name: workflowId, executionId },
+		}).fullPath;
+	}
+
+	function trackOpeningRelatedExecution(
+		metadata: { parentExecution?: RelatedExecution; subExecution?: RelatedExecution },
+		view: IRunDataDisplayMode,
+	) {
+		const info = metadata.parentExecution || metadata.subExecution;
+		if (!info) {
+			return;
+		}
+
+		telemetry.track(
+			metadata.parentExecution
+				? 'User clicked parent execution button'
+				: 'User clicked inspect sub-workflow',
+			{
+				view,
+			},
+		);
+	}
+
 	return {
 		getUIDetails,
 		formatDate,
 		isExecutionRetriable,
+		openExecutionInNewTab,
+		trackOpeningRelatedExecution,
+		resolveRelatedExecutionUrl,
 	};
 }

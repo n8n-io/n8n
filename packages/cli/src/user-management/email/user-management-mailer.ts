@@ -11,7 +11,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 

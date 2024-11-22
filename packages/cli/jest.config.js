@@ -14,4 +14,5 @@ module.exports = {
 	],
 	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
 	testTimeout: 10_000,
+	prettierPath: null,
 };

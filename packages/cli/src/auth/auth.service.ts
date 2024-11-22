@@ -12,7 +12,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
-import { Logger } from '@/logger';
+import { Logger } from '@/logging/logger.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -44,6 +44,10 @@ const skipBrowserIdCheckEndpoints = [
 
 	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
 	`/${restEndpoint}/binary-data/`,
+
+	// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+	`/${restEndpoint}/oauth1-credential/callback`,
+	`/${restEndpoint}/oauth2-credential/callback`,
 ];
 
 @Service()
