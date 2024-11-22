@@ -5,6 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { stringify } from 'flatted';
 import { WorkflowExecute } from 'n8n-core';
 import {
 	ApplicationError,
@@ -318,9 +319,17 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 
-				const pushType =
-					fullRunData.status === 'waiting' ? 'executionWaiting' : 'executionFinished';
-				pushInstance.send(pushType, { executionId }, pushRef);
+				const { status } = fullRunData;
+				if (status === 'waiting') {
+					pushInstance.send('executionWaiting', { executionId }, pushRef);
+				} else {
+					const rawData = stringify(fullRunData.data);
+					pushInstance.send(
+						'executionFinished',
+						{ executionId, workflowId, status, rawData },
+						pushRef,
+					);
+				}
 			},
 		],
 	};
