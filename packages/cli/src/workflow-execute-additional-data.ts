@@ -392,6 +392,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
 				const isManualMode = this.mode === 'manual';
+				const executionStatus = determineFinalExecutionStatus(fullRunData);
 
 				try {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -427,7 +428,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						return;
 					}
 
-					const executionStatus = determineFinalExecutionStatus(fullRunData);
 					const shouldNotSave =
 						(executionStatus === 'success' && !saveSettings.success) ||
 						(executionStatus !== 'success' && !saveSettings.error);
