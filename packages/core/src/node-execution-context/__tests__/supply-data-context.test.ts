@@ -13,17 +13,13 @@ import type {
 	INodeType,
 	INodeTypes,
 	OnError,
-	ContextType,
-	IContextObject,
 	ICredentialDataDecryptedObject,
-	ISourceData,
-	ITaskMetadata,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
-import { ExecuteSingleContext } from '../execute-single-context';
+import { SupplyDataContext } from '../supply-data-context';
 
-describe('ExecuteSingleContext', () => {
+describe('SupplyDataContext', () => {
 	const testCredentialType = 'testCredential';
 	const nodeType = mock<INodeType>({
 		description: {
@@ -62,10 +58,10 @@ describe('ExecuteSingleContext', () => {
 	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const itemIndex = 0;
+	const closeFn = jest.fn();
 	const abortSignal = mock<AbortSignal>();
 
-	const executeSingleContext = new ExecuteSingleContext(
+	const supplyDataContext = new SupplyDataContext(
 		workflow,
 		node,
 		additionalData,
@@ -74,8 +70,8 @@ describe('ExecuteSingleContext', () => {
 		runIndex,
 		connectionInputData,
 		inputData,
-		itemIndex,
 		executeData,
+		[closeFn],
 		abortSignal,
 	);
 
@@ -86,7 +82,7 @@ describe('ExecuteSingleContext', () => {
 
 	describe('getExecutionCancelSignal', () => {
 		it('should return the abort signal', () => {
-			expect(executeSingleContext.getExecutionCancelSignal()).toBe(abortSignal);
+			expect(supplyDataContext.getExecutionCancelSignal()).toBe(abortSignal);
 		});
 	});
 
@@ -97,12 +93,12 @@ describe('ExecuteSingleContext', () => {
 		});
 
 		it('should return false for nodes by default', () => {
-			expect(executeSingleContext.continueOnFail()).toEqual(false);
+			expect(supplyDataContext.continueOnFail()).toEqual(false);
 		});
 
 		it('should return true if node has continueOnFail set to true', () => {
 			node.continueOnFail = true;
-			expect(executeSingleContext.continueOnFail()).toEqual(true);
+			expect(supplyDataContext.continueOnFail()).toEqual(true);
 		});
 
 		test.each([
@@ -111,7 +107,7 @@ describe('ExecuteSingleContext', () => {
 			['stopWorkflow', false],
 		])('if node has onError set to %s, it should return %s', (onError, expected) => {
 			node.onError = onError as OnError;
-			expect(executeSingleContext.continueOnFail()).toEqual(expected);
+			expect(supplyDataContext.continueOnFail()).toEqual(expected);
 		});
 	});
 
@@ -125,16 +121,14 @@ describe('ExecuteSingleContext', () => {
 			);
 			resolveSimpleParameterValueSpy.mockReturnValue(expectedResult);
 
-			expect(executeSingleContext.evaluateExpression(expression, itemIndex)).toEqual(
-				expectedResult,
-			);
+			expect(supplyDataContext.evaluateExpression(expression, 0)).toEqual(expectedResult);
 
 			expect(resolveSimpleParameterValueSpy).toHaveBeenCalledWith(
 				`=${expression}`,
 				{},
 				runExecutionData,
 				runIndex,
-				itemIndex,
+				0,
 				node.name,
 				connectionInputData,
 				mode,
@@ -143,21 +137,6 @@ describe('ExecuteSingleContext', () => {
 			);
 
 			resolveSimpleParameterValueSpy.mockRestore();
-		});
-	});
-
-	describe('getContext', () => {
-		it('should return the context object', () => {
-			const contextType: ContextType = 'node';
-			const expectedContext = mock<IContextObject>();
-			const getContextSpy = jest.spyOn(NodeHelpers, 'getContext');
-			getContextSpy.mockReturnValue(expectedContext);
-
-			expect(executeSingleContext.getContext(contextType)).toEqual(expectedContext);
-
-			expect(getContextSpy).toHaveBeenCalledWith(runExecutionData, contextType, node);
-
-			getContextSpy.mockRestore();
 		});
 	});
 
@@ -170,46 +149,26 @@ describe('ExecuteSingleContext', () => {
 		});
 
 		it('should return the input data correctly', () => {
-			const expectedData = { json: { test: 'data' } };
+			const expectedData = [{ json: { test: 'data' } }];
 
-			expect(executeSingleContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(supplyDataContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
 		});
 
-		it('should return an empty object if the input name does not exist', () => {
+		it('should return an empty array if the input name does not exist', () => {
 			const inputName = 'nonExistent';
-			const expectedData = { json: {} };
-
-			expect(executeSingleContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(supplyDataContext.getInputData(inputIndex, inputName)).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
-			const inputIndex = 1;
+			const inputIndex = 2;
 
-			expect(() => executeSingleContext.getInputData(inputIndex, inputName)).toThrow(
-				ApplicationError,
-			);
+			expect(() => supplyDataContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
 		});
 
 		it('should throw an error if the input index was not set', () => {
 			inputData.main[inputIndex] = null;
 
-			expect(() => executeSingleContext.getInputData(inputIndex, inputName)).toThrow(
-				ApplicationError,
-			);
-		});
-
-		it('should throw an error if the value of input with given index was not set', () => {
-			delete inputData.main[inputIndex]![itemIndex];
-
-			expect(() => executeSingleContext.getInputData(inputIndex, inputName)).toThrow(
-				ApplicationError,
-			);
-		});
-	});
-
-	describe('getItemIndex', () => {
-		it('should return the item index correctly', () => {
-			expect(executeSingleContext.getItemIndex()).toEqual(itemIndex);
+			expect(() => supplyDataContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
 		});
 	});
 
@@ -220,13 +179,13 @@ describe('ExecuteSingleContext', () => {
 		});
 
 		it('should return parameter value when it exists', () => {
-			const parameter = executeSingleContext.getNodeParameter('testParameter');
+			const parameter = supplyDataContext.getNodeParameter('testParameter', 0);
 
 			expect(parameter).toBe('testValue');
 		});
 
 		it('should return the fallback value when the parameter does not exist', () => {
-			const parameter = executeSingleContext.getNodeParameter('otherParameter', 'fallback');
+			const parameter = supplyDataContext.getNodeParameter('otherParameter', 0, 'fallback');
 
 			expect(parameter).toBe('fallback');
 		});
@@ -237,24 +196,18 @@ describe('ExecuteSingleContext', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
 
-			const credentials =
-				await executeSingleContext.getCredentials<ICredentialDataDecryptedObject>(
-					testCredentialType,
-				);
+			const credentials = await supplyDataContext.getCredentials<ICredentialDataDecryptedObject>(
+				testCredentialType,
+				0,
+			);
 
 			expect(credentials).toEqual({ secret: 'token' });
 		});
 	});
 
-	describe('getExecuteData', () => {
-		it('should return the execute data correctly', () => {
-			expect(executeSingleContext.getExecuteData()).toEqual(executeData);
-		});
-	});
-
 	describe('getWorkflowDataProxy', () => {
 		it('should return the workflow data proxy correctly', () => {
-			const workflowDataProxy = executeSingleContext.getWorkflowDataProxy();
+			const workflowDataProxy = supplyDataContext.getWorkflowDataProxy(0);
 			expect(workflowDataProxy.isProxy).toBe(true);
 			expect(Object.keys(workflowDataProxy.$input)).toEqual([
 				'all',
@@ -267,27 +220,12 @@ describe('ExecuteSingleContext', () => {
 		});
 	});
 
-	describe('getInputSourceData', () => {
-		it('should return the input source data correctly', () => {
-			const inputSourceData = mock<ISourceData>();
-			executeData.source = { main: [inputSourceData] };
-
-			expect(executeSingleContext.getInputSourceData()).toEqual(inputSourceData);
-		});
-
-		it('should throw an error if the source data is missing', () => {
-			executeData.source = null;
-
-			expect(() => executeSingleContext.getInputSourceData()).toThrow(ApplicationError);
-		});
-	});
-
 	describe('logAiEvent', () => {
 		it('should log the AI event correctly', () => {
 			const eventName = 'ai-tool-called';
 			const msg = 'test message';
 
-			executeSingleContext.logAiEvent(eventName, msg);
+			supplyDataContext.logAiEvent(eventName, msg);
 
 			expect(additionalData.logAiEvent).toHaveBeenCalledWith(eventName, {
 				executionId: additionalData.executionId,
@@ -297,23 +235,6 @@ describe('ExecuteSingleContext', () => {
 				workflowId: workflow.id,
 				msg,
 			});
-		});
-	});
-
-	describe('setMetadata', () => {
-		it('sets metadata on execution data', () => {
-			const metadata: ITaskMetadata = {
-				subExecution: {
-					workflowId: '123',
-					executionId: 'xyz',
-				},
-			};
-
-			expect(executeSingleContext.getExecuteData().metadata?.subExecution).toEqual(undefined);
-			executeSingleContext.setMetadata(metadata);
-			expect(executeSingleContext.getExecuteData().metadata?.subExecution).toEqual(
-				metadata.subExecution,
-			);
 		});
 	});
 });
