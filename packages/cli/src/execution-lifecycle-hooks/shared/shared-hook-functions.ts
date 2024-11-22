@@ -21,6 +21,7 @@ export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 	if (workflowWasCanceled) workflowStatusFinal = 'canceled';
 	if (runData.waitTill) workflowStatusFinal = 'waiting';
+	runData.status = workflowStatusFinal;
 	return workflowStatusFinal;
 }
 
