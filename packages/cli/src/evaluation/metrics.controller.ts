@@ -104,7 +104,8 @@ export class TestMetricsController {
 
 		await this.testMetricRepository.update(metricId, bodyParseResult.data);
 
-		return { success: true };
+		// Respond with the updated metric
+		return await this.testMetricRepository.findOneBy({ id: metricId });
 	}
 
 	@Delete('/:testDefinitionId/metrics/:id')
