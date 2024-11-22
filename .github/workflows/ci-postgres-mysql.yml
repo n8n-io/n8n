@@ -8,6 +8,7 @@ on:
     paths:
       - packages/cli/src/databases/**
       - .github/workflows/ci-postgres-mysql.yml
+      - .github/docker-compose.yml
   pull_request_review:
     types: [submitted]
 
@@ -71,8 +72,8 @@ jobs:
         working-directory: packages/cli
         run: pnpm jest
 
-  mysql:
-    name: MySQL
+  mariadb:
+    name: MariaDB
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 20
@@ -96,16 +97,16 @@ jobs:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
 
-      - name: Start MySQL
+      - name: Start MariaDB
         uses: isbang/compose-action@v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
-            mysql
+            mariadb
 
-      - name: Test MySQL
+      - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 20000
+        run: pnpm test:mariadb --testTimeout 20000
 
   postgres:
     name: Postgres
@@ -147,7 +148,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [mysql, postgres]
+    needs: [mariadb, postgres]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
@@ -156,4 +157,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#alerts-build'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Postgres or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message: Postgres or MariaDB tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
