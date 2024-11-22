@@ -326,8 +326,9 @@ export abstract class TaskRunner extends EventEmitter {
 			this.taskDone(taskId, data);
 		} catch (error) {
 			this.taskErrored(taskId, error);
+		} finally {
+			this.resetIdleTimer();
 		}
-		this.resetIdleTimer();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
