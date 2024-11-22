@@ -51,6 +51,9 @@ void (async function start() {
 	}
 
 	runner = new JsTaskRunner(config);
+	runner.on('runner:reached-idle-timeout', () => {
+		void createSignalHandler('IDLE_TIMEOUT')();
+	});
 
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
 
