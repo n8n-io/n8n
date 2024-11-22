@@ -410,6 +410,9 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						}
 					}
 
+					const executionStatus = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = executionStatus;
+
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
@@ -427,7 +430,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						return;
 					}
 
-					const executionStatus = determineFinalExecutionStatus(fullRunData);
 					const shouldNotSave =
 						(executionStatus === 'success' && !saveSettings.success) ||
 						(executionStatus !== 'success' && !saveSettings.error);
@@ -570,6 +572,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = workflowStatusFinal;
 
 					if (workflowStatusFinal !== 'success' && workflowStatusFinal !== 'waiting') {
 						executeErrorWorkflow(
@@ -1115,6 +1118,8 @@ export function getWorkflowHooksWorkerMain(
 			if (!fullRunData.finished) return;
 
 			const executionStatus = determineFinalExecutionStatus(fullRunData);
+			fullRunData.status = executionStatus;
+
 			const saveSettings = toSaveSettings(this.workflowData.settings);
 
 			const shouldNotSave =
