@@ -1474,6 +1474,7 @@ export interface ExternalSecretsProvider {
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'
 	| 'canvas-nav'
+	| 'concurrency'
 	| 'custom-data-filter'
 	| 'workflow_sharing'
 	| 'credential_sharing'
@@ -1496,6 +1497,7 @@ export type CloudUpdateLinkSourceType =
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
+	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
 	| 'upgrade-api'

@@ -15,6 +15,7 @@ import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -69,6 +70,10 @@ const workflows = computed<IWorkflowDb[]>(() => {
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
+
+const runningExecutionsCount = computed(() => {
+	return props.executions.filter((execution) => execution.status === 'running').length;
+});
 
 watch(
 	() => props.executions,
@@ -321,6 +326,12 @@ async function onAutoRefreshToggle(value: boolean) {
 			<div :class="$style.execListHeader">
 				<div :class="$style.execListHeaderControls">
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
+					<ConcurrentExecutionsHeader
+						v-if="settingsStore.isConcurrencyEnabled"
+						class="mr-xl"
+						:running-executions-count="runningExecutionsCount"
+						:concurrency-cap="settingsStore.concurrency"
+					/>
 					<ElCheckbox
 						v-else
 						v-model="executionsStore.autoRefresh"
@@ -388,6 +399,7 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-name="getExecutionWorkflowName(execution)"
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						:concurrency-cap="settingsStore.concurrency"
 						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"

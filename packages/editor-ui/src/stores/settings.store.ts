@@ -70,6 +70,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
+	const isConcurrencyEnabled = computed(() => settings.value.concurrency !== -1);
+
 	const isPublicApiEnabled = computed(() => api.value.enabled);
 
 	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
@@ -384,6 +386,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		security,
 		nodeJsVersion,
 		concurrency,
+		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
