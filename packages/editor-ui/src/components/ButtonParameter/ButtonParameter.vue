@@ -225,6 +225,41 @@ function createTextContext(style: CSSStyleDeclaration): CanvasRenderingContext2D
 	return context;
 }
 
+const getRowIndex = (textareaY: number, lineHeight: string) => {
+	const rowHeight = parseInt(lineHeight, 10);
+	return Math.floor(textareaY / rowHeight);
+};
+
+const getColumnIndex = (rowText: string, textareaX: number, font: string) => {
+	const span = document.createElement('span');
+	span.style.font = font;
+	span.style.visibility = 'hidden';
+	span.style.position = 'absolute';
+	span.style.whiteSpace = 'pre';
+	document.body.appendChild(span);
+
+	let left = 0;
+	let right = rowText.length;
+	let col = 0;
+
+	while (left <= right) {
+		const mid = Math.floor((left + right) / 2);
+		span.textContent = rowText.substring(0, mid);
+		const width = span.getBoundingClientRect().width;
+
+		if (width <= textareaX) {
+			col = mid;
+			left = mid + 1;
+		} else {
+			right = mid - 1;
+		}
+	}
+
+	document.body.removeChild(span);
+
+	return rowText.length === col ? col : col - 1;
+};
+
 async function onDrop(value: string, event: MouseEvent) {
 	value = propertyNameFromExpression(value);
 	const textarea = event.target as HTMLTextAreaElement;
@@ -232,13 +267,13 @@ async function onDrop(value: string, event: MouseEvent) {
 	const rect = textarea.getBoundingClientRect();
 	const textareaX = event.clientX - rect.left;
 	const textareaY = event.clientY - rect.top;
+	const { lineHeight, font } = window.getComputedStyle(textarea);
 
-	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
-	const row = Math.floor(textareaY / rowHeight);
+	const rowIndex = getRowIndex(textareaY, lineHeight);
 
 	const { rows, linesToRowsMap } = splitText(textarea);
 
-	if (rows[row] === undefined) {
+	if (rows[rowIndex] === undefined) {
 		prompt.value = `${prompt.value} ${value}`;
 		emit('valueChanged', {
 			name: getPath(props.parameter.name),
@@ -247,101 +282,54 @@ async function onDrop(value: string, event: MouseEvent) {
 		return;
 	}
 
-	const rowText = rows[row];
+	const rowText = rows[rowIndex];
 
-	const span = document.createElement('span');
-	span.style.font = window.getComputedStyle(textarea).font;
-	span.style.visibility = 'hidden';
-	span.style.position = 'absolute';
-	span.style.whiteSpace = 'pre';
-	document.body.appendChild(span);
-
-	let left = 0;
-	let right = rowText.length;
-	let col = 0;
-
-	while (left <= right) {
-		const mid = Math.floor((left + right) / 2);
-		span.textContent = rowText.substring(0, mid);
-		const width = span.getBoundingClientRect().width;
-
-		if (width <= textareaX) {
-			col = mid;
-			left = mid + 1;
-		} else {
-			right = mid - 1;
-		}
-	}
-
-	document.body.removeChild(span);
-
-	if (rows[row] === '') {
-		rows[row] = value;
+	if (rowText === '') {
+		rows[rowIndex] = value;
 	} else {
-		col = rows[row].length === col ? col : col - 1;
-		rows[row] = [rows[row].slice(0, col).trim(), value, rows[row].slice(col).trim()].join(' ');
+		const col = getColumnIndex(rowText, textareaX, font);
+		rows[rowIndex] = [
+			rows[rowIndex].slice(0, col).trim(),
+			value,
+			rows[rowIndex].slice(col).trim(),
+		].join(' ');
 	}
 
-	const lines = linesToRowsMap.map((lineMap) => {
-		return lineMap.map((index) => rows[index]).join(' ');
-	});
+	const newText = linesToRowsMap
+		.map((lineMap) => {
+			return lineMap.map((index) => rows[index]).join(' ');
+		})
+		.join('\n');
 
-	prompt.value = lines.join('\n');
+	prompt.value = newText;
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
 	});
 }
 
-async function onMouse(event: MouseEvent, activeDrop: boolean) {
+async function highlightCursorPosition(event: MouseEvent, activeDrop: boolean) {
 	if (!activeDrop) return;
 
 	const textarea = event.target as HTMLTextAreaElement;
 	const rect = textarea.getBoundingClientRect();
-
 	const textareaX = event.clientX - rect.left;
 	const textareaY = event.clientY - rect.top;
+	const { lineHeight, font } = window.getComputedStyle(textarea);
 
-	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
-	const row = Math.floor(textareaY / rowHeight);
-
+	const rowIndex = getRowIndex(textareaY, lineHeight);
 	const { rows } = splitText(textarea);
 
-	if (row < 0 || row >= rows.length) {
+	if (rowIndex < 0 || rowIndex >= rows.length) {
 		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 		return;
 	}
 
-	const rowText = rows[row];
+	const rowText = rows[rowIndex];
 
-	const span = document.createElement('span');
-	span.style.font = window.getComputedStyle(textarea).font;
-	span.style.visibility = 'hidden';
-	span.style.position = 'absolute';
-	span.style.whiteSpace = 'pre';
-	document.body.appendChild(span);
+	const col = getColumnIndex(rowText, textareaX, font);
 
-	let left = 0;
-	let right = rowText.length;
-	let col = 0;
-
-	while (left <= right) {
-		const mid = Math.floor((left + right) / 2);
-		span.textContent = rowText.substring(0, mid);
-		const width = span.getBoundingClientRect().width;
-
-		if (width <= textareaX) {
-			col = mid;
-			left = mid + 1;
-		} else {
-			right = mid - 1;
-		}
-	}
-
-	document.body.removeChild(span);
-	col = rows[row].length === col ? col : col - 1;
-
-	const position = rows.slice(0, row).reduce((acc, curr) => acc + curr.length + 1, 0) + col;
+	const position = rows.slice(0, rowIndex).reduce((acc, curr) => acc + curr.length + 1, 0) + col;
 
 	textarea.focus();
 	textarea.setSelectionRange(position, position);
@@ -387,7 +375,7 @@ async function onMouse(event: MouseEvent, activeDrop: boolean) {
 						:maxlength="inputFieldMaxLength"
 						:placeholder="parameter.placeholder"
 						@input="onPromptInput"
-						@mousemove="onMouse($event, activeDrop)"
+						@mousemove="highlightCursorPosition($event, activeDrop)"
 						@mouseleave="cleanTextareaRowsData"
 					/>
 				</template>
