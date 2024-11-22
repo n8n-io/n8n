@@ -8,7 +8,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVersionsStore } from '@/stores/versions.store';
-import { useToast } from '@/composables/useToast';
 import { AxiosError } from 'axios';
 
 const showMessage = vi.fn();
@@ -123,7 +122,6 @@ describe('Init', () => {
 		});
 
 		it('should handle source control initialization error', async () => {
-			const toast = useToast();
 			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
 				typeof useUsersStore
 			>);
