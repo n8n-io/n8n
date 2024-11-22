@@ -909,8 +909,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			projectId,
 		} = query;
 
-		console.log(query);
-
 		const fields = Object.keys(this.summaryFields)
 			.concat(['waitTill', 'retrySuccessId'])
 			.map((key) => `execution.${key} AS "${key}"`)
