@@ -264,7 +264,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
 	if (hasBinaryData && passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(this);
-		messages.push(binaryMessage);
+		messages.splice(3, 0, binaryMessage);
 	}
 	const prompt = ChatPromptTemplate.fromMessages(messages);
 
