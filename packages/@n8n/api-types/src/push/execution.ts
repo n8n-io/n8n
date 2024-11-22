@@ -9,6 +9,7 @@ type ExecutionStarted = {
 		workflowId: string;
 		workflowName?: string;
 		retryOf?: string;
+		flattedRunData?: string;
 	};
 };
 
@@ -54,19 +55,10 @@ type NodeExecuteAfter = {
 	};
 };
 
-type DeleteRunData = {
-	type: 'deleteRunData';
-	data: {
-		executionId: string;
-		nodeNamesToPurge: string[];
-	};
-};
-
 export type ExecutionPushMessage =
 	| ExecutionStarted
 	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
 	| NodeExecuteBefore
-	| NodeExecuteAfter
-	| DeleteRunData;
+	| NodeExecuteAfter;
