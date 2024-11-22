@@ -126,7 +126,7 @@ export class TaskRunnerWsServer {
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
 
-					this.logger.info(`Runner "${message.name}" (${id}) has been registered`);
+					this.logger.info(`Registered runner "${message.name}" (${id}) `);
 					return;
 				}
 
@@ -166,6 +166,7 @@ export class TaskRunnerWsServer {
 				heartbeatInterval: this.taskTunnersConfig.heartbeatInterval,
 			});
 			this.taskBroker.deregisterRunner(id, disconnectError);
+			this.logger.debug(`Deregistered runner "${id}"`);
 			connection.close(code);
 			this.runnerConnections.delete(id);
 		}
