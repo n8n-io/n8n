@@ -11,15 +11,10 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
 
 const showMessage = vi.fn();
-vi.mock('@/composables/useToast', () => {
-	return {
-		useToast: () => {
-			return {
-				showMessage,
-			};
-		},
-	};
-});
+
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
+}));
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({ initialize: vi.fn() }),
