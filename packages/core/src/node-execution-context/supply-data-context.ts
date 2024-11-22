@@ -314,7 +314,7 @@ export class SupplyDataContext extends NodeExecutionContext implements ISupplyDa
 		connectionType: NodeConnectionType,
 		data: INodeExecutionData[][],
 	): { index: number } {
-		const nodeName = this.getNode().name;
+		const nodeName = this.node.name;
 		let currentNodeRunIndex = 0;
 		if (this.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 			currentNodeRunIndex = this.runExecutionData.resultData.runData[nodeName].length;
@@ -322,17 +322,17 @@ export class SupplyDataContext extends NodeExecutionContext implements ISupplyDa
 
 		addExecutionDataFunctions(
 			'input',
-			this.node.name,
+			nodeName,
 			data,
 			this.runExecutionData,
 			connectionType,
 			this.additionalData,
-			this.node.name,
+			nodeName,
 			this.runIndex,
 			currentNodeRunIndex,
 		).catch((error) => {
 			this.logger.warn(
-				`There was a problem logging input data of node "${this.node.name}": ${
+				`There was a problem logging input data of node "${nodeName}": ${
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					error.message
 				}`,
@@ -348,20 +348,21 @@ export class SupplyDataContext extends NodeExecutionContext implements ISupplyDa
 		data: INodeExecutionData[][],
 		metadata?: ITaskMetadata,
 	): void {
+		const nodeName = this.node.name;
 		addExecutionDataFunctions(
 			'output',
-			this.node.name,
+			nodeName,
 			data,
 			this.runExecutionData,
 			connectionType,
 			this.additionalData,
-			this.node.name,
+			nodeName,
 			this.runIndex,
 			currentNodeRunIndex,
 			metadata,
 		).catch((error) => {
 			this.logger.warn(
-				`There was a problem logging output data of node "${this.node.name}": ${
+				`There was a problem logging output data of node "${nodeName}": ${
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					error.message
 				}`,
