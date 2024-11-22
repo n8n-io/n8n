@@ -31,6 +31,10 @@ const i18n = useI18n();
 const isLoading = ref(false);
 const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
+const textareaRowsData = ref<{
+	rows: string[];
+	linesToRowsMap: number[][];
+} | null>(null);
 
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
@@ -162,7 +166,12 @@ onMounted(() => {
 	parentNodes.value = getParentNodes();
 });
 
+function cleanTextareaRowsData() {
+	textareaRowsData.value = null;
+}
+
 function splitText(textarea: HTMLTextAreaElement) {
+	if (textareaRowsData.value) return textareaRowsData.value;
 	const rows: string[] = [];
 	const linesToRowsMap: number[][] = [];
 	const style = window.getComputedStyle(textarea);
@@ -267,7 +276,7 @@ async function onDrop(value: string, event: MouseEvent) {
 	document.body.removeChild(span);
 
 	if (rows[row] === '') {
-		rows[row] = ' ' + value;
+		rows[row] = value;
 	} else {
 		col = rows[row].length === col ? col : col - 1;
 		rows[row] = [rows[row].slice(0, col).trim(), value, rows[row].slice(col).trim()].join(' ');
@@ -282,6 +291,60 @@ async function onDrop(value: string, event: MouseEvent) {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
 	});
+}
+
+async function onMouse(event: MouseEvent, activeDrop: boolean) {
+	if (!activeDrop) return;
+
+	const textarea = event.target as HTMLTextAreaElement;
+	const rect = textarea.getBoundingClientRect();
+
+	const textareaX = event.clientX - rect.left;
+	const textareaY = event.clientY - rect.top;
+
+	const rowHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
+	const row = Math.floor(textareaY / rowHeight);
+
+	const { rows } = splitText(textarea);
+
+	if (row < 0 || row >= rows.length) {
+		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+		return;
+	}
+
+	const rowText = rows[row];
+
+	const span = document.createElement('span');
+	span.style.font = window.getComputedStyle(textarea).font;
+	span.style.visibility = 'hidden';
+	span.style.position = 'absolute';
+	span.style.whiteSpace = 'pre';
+	document.body.appendChild(span);
+
+	let left = 0;
+	let right = rowText.length;
+	let col = 0;
+
+	while (left <= right) {
+		const mid = Math.floor((left + right) / 2);
+		span.textContent = rowText.substring(0, mid);
+		const width = span.getBoundingClientRect().width;
+
+		if (width <= textareaX) {
+			col = mid;
+			left = mid + 1;
+		} else {
+			right = mid - 1;
+		}
+	}
+
+	document.body.removeChild(span);
+	col = rows[row].length === col ? col : col - 1;
+
+	const position = rows.slice(0, row).reduce((acc, curr) => acc + curr.length + 1, 0) + col;
+
+	textarea.focus();
+	textarea.setSelectionRange(position, position);
 }
 </script>
 
@@ -324,6 +387,8 @@ async function onDrop(value: string, event: MouseEvent) {
 						:maxlength="inputFieldMaxLength"
 						:placeholder="parameter.placeholder"
 						@input="onPromptInput"
+						@mousemove="onMouse($event, activeDrop)"
+						@mouseleave="cleanTextareaRowsData"
 					/>
 				</template>
 			</DraggableTarget>
