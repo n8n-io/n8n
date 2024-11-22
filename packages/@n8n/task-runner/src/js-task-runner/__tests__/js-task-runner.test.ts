@@ -3,6 +3,7 @@ import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
+import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
@@ -24,17 +25,21 @@ jest.mock('ws');
 const defaultConfig = new MainConfig();
 
 describe('JsTaskRunner', () => {
-	const createRunnerWithOpts = (opts: Partial<JsRunnerConfig> = {}) =>
+	const createRunnerWithOpts = (
+		jsRunnerOpts: Partial<JsRunnerConfig> = {},
+		baseRunnerOpts: Partial<BaseRunnerConfig> = {},
+	) =>
 		new JsTaskRunner({
 			baseRunnerConfig: {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
 				n8nUri: 'localhost',
+				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
 				...defaultConfig.jsRunnerConfig,
-				...opts,
+				...jsRunnerOpts,
 			},
 			sentryConfig: {
 				sentryDsn: '',
@@ -823,6 +828,102 @@ describe('JsTaskRunner', () => {
 					lineNumber: 1,
 				},
 			});
+		});
+	});
+
+	describe('idle timeout', () => {
+		beforeEach(() => {
+			jest.useFakeTimers();
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		it('should set idle timer when instantiated', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should reset idle timer when accepting a task', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const offerId = 'offer123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+
+			runner.openOffers.set(offerId, {
+				offerId,
+				validUntil: process.hrtime.bigint() + BigInt(idleTimeout * 1000 * 1_000_000),
+			});
+			runner.offerAccepted(offerId, taskId);
+
+			jest.advanceTimersByTime(200);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
+
+			runner.runningTasks.clear();
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should reset idle timer when finishing a task', async () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+			jest.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
+
+			runner.runningTasks.set(taskId, {
+				taskId,
+				active: true,
+				cancelled: false,
+			});
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+
+			await runner.receivedSettings(taskId, {});
+
+			jest.advanceTimersByTime(200);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should never reach idle timeout if idle timeout is set to 0', () => {
+			const runner = createRunnerWithOpts({}, { idleTimeout: 0 });
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			jest.advanceTimersByTime(999999);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should not reach idle timeout if there are running tasks', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			runner.runningTasks.set(taskId, {
+				taskId,
+				active: true,
+				cancelled: false,
+			});
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 	});
 });
