@@ -325,13 +325,13 @@ async function onAutoRefreshToggle(value: boolean) {
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<div :class="$style.execListHeaderControls">
-					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ConcurrentExecutionsHeader
 						v-if="settingsStore.isConcurrencyEnabled"
 						class="mr-xl"
 						:running-executions-count="runningExecutionsCount"
 						:concurrency-cap="settingsStore.concurrency"
 					/>
+					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
 						v-else
 						v-model="executionsStore.autoRefresh"
