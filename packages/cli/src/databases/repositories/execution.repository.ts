@@ -909,6 +909,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			projectId,
 		} = query;
 
+		console.log(query);
+
 		const fields = Object.keys(this.summaryFields)
 			.concat(['waitTill', 'retrySuccessId'])
 			.map((key) => `execution.${key} AS "${key}"`)
@@ -981,7 +983,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (projectId) {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
-				.where('sw.projectId = :projectId', { projectId });
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;
