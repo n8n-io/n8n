@@ -181,8 +181,6 @@ describe('useRunWorkflow({ router })', () => {
 		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
-			const router = useRouter();
-			const workflowsStore = useWorkflowsStore();
 			const toast = useToast();
 			const i18n = useI18n();
 			const { runWorkflow } = useRunWorkflow({ router });
