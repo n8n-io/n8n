@@ -18,6 +18,9 @@ import { useRouter } from 'vue-router';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL, SAMPLE_SUBWORKFLOW_WORKFLOW_ID } from '@/constants';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -50,11 +53,14 @@ const emit = defineEmits<{
 	blur: [];
 }>();
 
-const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const projectStore = useProjectsStore();
+
+const router = useRouter();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
+const telemetry = useTelemetry();
 
 const width = ref(0);
 const inputRef = ref<HTMLInputElement | undefined>();
@@ -73,13 +79,34 @@ const {
 	hasMoreWorkflowsToLoad,
 	isLoadingResources,
 	filteredResources,
-	onSearchFilter,
 	searchFilter,
+	onSearchFilter,
 	getWorkflowName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
+	reloadWorkflows,
 	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
+
+const currentProjectName = computed(() => {
+	if (!projectStore.isTeamProjectFeatureEnabled) return '';
+
+	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
+		return `'${i18n.baseText('projects.menu.personal')}'`;
+	}
+
+	return `'${projectStore.currentProject?.name}'`;
+});
+
+const getCreateResourceLabel = computed(() => {
+	if (!currentProjectName.value) {
+		return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow.noProject');
+	}
+
+	return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
+		interpolate: { projectName: currentProjectName.value },
+	});
+});
 
 const valueToDisplay = computed<NodeParameterValue>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -122,13 +149,13 @@ function onInputChange(value: NodeParameterValue): void {
 }
 
 function onListItemSelected(value: NodeParameterValue) {
+	telemetry.track('User chose sub-workflow', {}, { withPostHog: true });
 	onInputChange(value);
 	hideDropdown();
 }
 
 function onInputFocus(): void {
 	setWidth();
-	showDropdown();
 	emit('focus');
 }
 
@@ -176,8 +203,39 @@ watch(
 onClickOutside(dropdown, () => {
 	isDropdownVisible.value = false;
 });
-</script>
 
+const onAddResourceClicked = () => {
+	const subWorkflowNameRegex = /My\s+Sub-Workflow\s+\d+/;
+
+	const urlSearchParams = new URLSearchParams();
+
+	if (projectStore.currentProjectId) {
+		urlSearchParams.set('projectId', projectStore.currentProjectId);
+	}
+
+	const sampleSubWorkflows = workflowsStore.allWorkflows.filter(
+		(w) => w.name && subWorkflowNameRegex.test(w.name),
+	);
+
+	urlSearchParams.set('sampleSubWorkflows', sampleSubWorkflows.length.toString());
+
+	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
+
+	const sampleSubworkflowChannel = new BroadcastChannel(NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL);
+
+	sampleSubworkflowChannel.onmessage = async (event: MessageEvent<{ workflowId: string }>) => {
+		const workflowId = event.data.workflowId;
+		await reloadWorkflows();
+		onInputChange(workflowId);
+		hideDropdown();
+	};
+
+	window.open(
+		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW_ID}?${urlSearchParams.toString()}`,
+		'_blank',
+	);
+};
+</script>
 <template>
 	<div
 		ref="container"
@@ -194,11 +252,15 @@ onClickOutside(dropdown, () => {
 			:filter="searchFilter"
 			:has-more="hasMoreWorkflowsToLoad"
 			:error-view="false"
+			:allow-new-resources="{
+				label: getCreateResourceLabel,
+			}"
 			:width="width"
 			:event-bus="eventBus"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">

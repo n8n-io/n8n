@@ -19,6 +19,7 @@ import { useUIStore } from '@/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
 import { useNDVStore } from '@/stores/ndv.store';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: vi.fn(() => ({
@@ -523,20 +524,24 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('addNodeExecutionData', () => {
-		const { successEvent, errorEvent, executionReponse } = generateMockExecutionEvents();
-		it('should throw error if not initalized', () => {
-			expect(() => workflowsStore.addNodeExecutionData(successEvent)).toThrowError();
+	describe('updateNodeExecutionData', () => {
+		const { successEvent, errorEvent, executionResponse } = generateMockExecutionEvents();
+		it('should throw error if not initialized', () => {
+			expect(() => workflowsStore.updateNodeExecutionData(successEvent)).toThrowError();
 		});
 
 		it('should add node success run data', () => {
-			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.setWorkflowExecutionData(executionResponse);
+
+			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
+				type: 'n8n-nodes-base.manualTrigger',
+			});
 
 			// ACT
-			workflowsStore.addNodeExecutionData(successEvent);
+			workflowsStore.updateNodeExecutionData(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
-				...executionReponse,
+				...executionResponse,
 				data: {
 					resultData: {
 						runData: {
@@ -548,7 +553,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
-			workflowsStore.setWorkflowExecutionData(executionReponse);
+			workflowsStore.setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -561,11 +566,11 @@ describe('useWorkflowsStore', () => {
 			getNodeType.mockReturnValue(getMockEditFieldsNode());
 
 			// ACT
-			workflowsStore.addNodeExecutionData(errorEvent);
+			workflowsStore.updateNodeExecutionData(errorEvent);
 			await flushPromises();
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
-				...executionReponse,
+				...executionResponse,
 				data: {
 					resultData: {
 						runData: {
@@ -636,7 +641,7 @@ function getMockEditFieldsNode() {
 }
 
 function generateMockExecutionEvents() {
-	const executionReponse: IExecutionResponse = {
+	const executionResponse: IExecutionResponse = {
 		id: '1',
 		workflowData: {
 			id: '1',
@@ -651,6 +656,7 @@ function generateMockExecutionEvents() {
 		finished: false,
 		mode: 'cli',
 		startedAt: new Date(),
+		createdAt: new Date(),
 		status: 'new',
 		data: {
 			resultData: {
@@ -737,5 +743,5 @@ function generateMockExecutionEvents() {
 		},
 	};
 
-	return { executionReponse, errorEvent, successEvent };
+	return { executionResponse, errorEvent, successEvent };
 }

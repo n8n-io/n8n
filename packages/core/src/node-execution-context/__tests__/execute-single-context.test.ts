@@ -302,20 +302,6 @@ describe('ExecuteSingleContext', () => {
 
 	describe('setMetadata', () => {
 		it('sets metadata on execution data', () => {
-			const context = new ExecuteSingleContext(
-				workflow,
-				node,
-				additionalData,
-				mode,
-				runExecutionData,
-				runIndex,
-				connectionInputData,
-				inputData,
-				itemIndex,
-				executeData,
-				abortSignal,
-			);
-
 			const metadata: ITaskMetadata = {
 				subExecution: {
 					workflowId: '123',
@@ -323,9 +309,11 @@ describe('ExecuteSingleContext', () => {
 				},
 			};
 
-			expect(context.getExecuteData().metadata?.subExecution).toEqual(undefined);
-			context.setMetadata(metadata);
-			expect(context.getExecuteData().metadata?.subExecution).toEqual(metadata.subExecution);
+			expect(executeSingleContext.getExecuteData().metadata?.subExecution).toEqual(undefined);
+			executeSingleContext.setMetadata(metadata);
+			expect(executeSingleContext.getExecuteData().metadata?.subExecution).toEqual(
+				metadata.subExecution,
+			);
 		});
 	});
 });

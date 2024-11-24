@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
+
 const i18n = useI18n();
 
 defineProps<{
@@ -10,7 +11,8 @@ defineProps<{
 
 <template>
 	<div>
-		{{ errorMessage }}<br />
+		<span v-n8n-html="errorMessage" data-test-id="sanitized-error-message"></span>
+		<br />
 		<a data-action="openNodeDetail" :data-action-parameter-node="nodeName">{{
 			i18n.baseText('node.executionError.openNode')
 		}}</a>

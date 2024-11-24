@@ -1,4 +1,4 @@
-import type { PruningConfig } from '@n8n/config';
+import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -92,7 +92,7 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			expect(pruningService.isEnabled).toBe(true);
@@ -108,7 +108,7 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: false }),
+				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
 			expect(pruningService.isEnabled).toBe(false);
@@ -124,7 +124,7 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			expect(pruningService.isEnabled).toBe(false);
@@ -140,7 +140,7 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			expect(pruningService.isEnabled).toBe(false);
@@ -158,7 +158,7 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: false }),
+				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
 			const scheduleRollingSoftDeletionsSpy = jest.spyOn(
@@ -186,7 +186,7 @@ describe('PruningService', () => {
 					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			const scheduleRollingSoftDeletionsSpy = jest

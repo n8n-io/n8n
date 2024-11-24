@@ -75,12 +75,13 @@ export function useDataSchema() {
 		if (
 			!connectionsData?.hasOwnProperty(NodeConnectionType.Main) ||
 			connectionsData.main === undefined ||
-			connectionsData.main.length < outputIndex ||
+			outputIndex < 0 ||
+			outputIndex >= connectionsData.main.length ||
 			connectionsData.main[outputIndex] === null
 		) {
 			return [];
 		}
-		return connectionsData.main[outputIndex] as INodeExecutionData[];
+		return connectionsData.main[outputIndex];
 	}
 
 	function getNodeInputData(
@@ -103,11 +104,12 @@ export function useDataSchema() {
 		}
 		const runData = executionData.resultData.runData;
 
-		if (!runData?.[node.name]?.[runIndex].data || runData[node.name][runIndex].data === undefined) {
+		const taskData = runData?.[node.name]?.[runIndex];
+		if (taskData?.data === undefined) {
 			return [];
 		}
 
-		return getMainInputData(runData[node.name][runIndex].data!, outputIndex);
+		return getMainInputData(taskData.data, outputIndex);
 	}
 
 	function getInputDataWithPinned(
