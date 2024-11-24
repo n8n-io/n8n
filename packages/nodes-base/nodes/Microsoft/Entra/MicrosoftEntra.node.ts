@@ -17,7 +17,10 @@ export class MicrosoftEntra implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Entra ID',
 		name: 'microsoftEntra',
-		icon: 'file:microsoftEntra.svg',
+		icon: {
+			light: 'file:microsoftEntra.svg',
+			dark: 'file:microsoftEntra.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
