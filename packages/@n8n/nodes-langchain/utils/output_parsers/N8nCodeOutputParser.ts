@@ -6,15 +6,15 @@ import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import { getSandboxContext, Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 
 export class N8nCodeOutputParser extends BaseOutputParser<string[]> {
-	lc_namespace = ['n8n-nodes-langchain', 'output_parsers', 'code'];
+    lc_namespace = ['n8n-nodes-langchain', 'output_parsers', 'code'];
 
-	private itemIndex: number;
+    private itemIndex: number;
     private code: string;
     private language: string;
     private instructions: string;
     private nodeContext: ISupplyDataFunctions;
 
-	constructor(
+    constructor(
         config: {
             itemIndex: number,
             code: string,
@@ -23,7 +23,7 @@ export class N8nCodeOutputParser extends BaseOutputParser<string[]> {
             nodeContext: ISupplyDataFunctions,
         }
     ) {
-		super();
+        super();
 
         this.itemIndex = config.itemIndex;
         this.code = config.code;
@@ -43,11 +43,11 @@ export class N8nCodeOutputParser extends BaseOutputParser<string[]> {
 	}
 
 	getFormatInstructions(): string {
-		return this.instructions;
+        return this.instructions;
 	}
 
 	getSchema() {
-		return;
+        return;
 	}
 
     getSandbox(query: string) {
