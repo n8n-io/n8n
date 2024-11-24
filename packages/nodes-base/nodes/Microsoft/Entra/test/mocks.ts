@@ -12,8 +12,8 @@ export const microsoftEntraApiResponse = {
 		description: null,
 		displayName: 'Group Display Name',
 		expirationDateTime: null,
-		groupTypes: [],
-		isAssignableToRole: null,
+		groupTypes: ['DynamicMembership', 'Unified'],
+		isAssignableToRole: true,
 		mail: null,
 		mailEnabled: true,
 		mailNickname: 'MailNickname',
@@ -629,8 +629,8 @@ export const microsoftEntraNodeResponse = {
 				creationOptions: [],
 				displayName: 'Group Display Name',
 				expirationDateTime: null,
-				groupTypes: [],
-				isAssignableToRole: null,
+				groupTypes: ['DynamicMembership', 'Unified'],
+				isAssignableToRole: true,
 				mail: null,
 				mailEnabled: true,
 				mailNickname: 'MailNickname',
@@ -664,6 +664,22 @@ export const microsoftEntraNodeResponse = {
 				visibility: 'Public',
 				allowExternalSenders: true,
 				autoSubscribeNewMembers: true,
+			},
+		},
+	],
+
+	deleteGroup: [
+		{
+			json: {
+				deleted: true,
+			},
+		},
+	],
+
+	updateGroup: [
+		{
+			json: {
+				updated: true,
 			},
 		},
 	],
@@ -795,10 +811,10 @@ export const microsoftEntraNodeResponse = {
 				name: 'hideFromOutlookClients',
 				value: 'hideFromOutlookClients',
 			},
-			{
-				name: 'id',
-				value: 'id',
-			},
+			// {
+			// 	name: 'id',
+			// 	value: 'id',
+			// },
 			{
 				name: 'isAssignableToRole',
 				value: 'isAssignableToRole',

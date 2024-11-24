@@ -150,6 +150,7 @@ describe('Gong Node', () => {
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.groups),
 				},
+				getCurrentNodeParameter: jest.fn(),
 			} as unknown as ILoadOptionsFunctions;
 			const node = new MicrosoftEntra();
 

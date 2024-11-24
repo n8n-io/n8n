@@ -86,8 +86,26 @@ export class MicrosoftEntra implements INodeType {
 					.flatMap((x: any) => x['Property'])
 					.map((x: any) => x['$']['Name']) as string[];
 				properties = properties.filter(
-					(x) => !['isArchived', 'hasMembersWithLicenseErrors'].includes(x),
+					(x) => !['id', 'isArchived', 'hasMembersWithLicenseErrors'].includes(x),
 				);
+
+				const resource = this.getCurrentNodeParameter('resource');
+				const operation = this.getCurrentNodeParameter('operation');
+				if (resource === 'group' && operation === 'getAll') {
+					// Not all groups support these properties
+					properties = properties.filter(
+						(x) =>
+							![
+								'allowExternalSenders',
+								'autoSubscribeNewMembers',
+								'hideFromAddressLists',
+								'hideFromOutlookClients',
+								'isSubscribedByMail',
+								'unseenCount',
+							].includes(x),
+					);
+				}
+
 				properties = properties.sort();
 				/* eslint-enable */
 				for (const property of properties) {

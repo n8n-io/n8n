@@ -49,7 +49,15 @@ export const groupOperations: INodeProperties[] = [
 						url: '=/groups/{{ $parameter["group"] }}',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "deleted": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Delete group',
@@ -105,7 +113,15 @@ export const groupOperations: INodeProperties[] = [
 						url: '=/groups/{{ $parameter["group"] }}',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "updated": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Update group',
@@ -117,7 +133,51 @@ export const groupOperations: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'Display Name',
+		displayName: 'Group Type',
+		name: 'groupType',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['create'],
+			},
+		},
+		options: [
+			{
+				name: 'Microsoft 365',
+				value: 'Unified',
+			},
+			{
+				name: 'Security',
+				value: '',
+			},
+		],
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const groupType = this.getNodeParameter('groupType') as string;
+						const body = requestOptions.body as IDataObject;
+						if (groupType) {
+							body.groupTypes ??= [] as string[];
+							(body.groupTypes as string[]).push(groupType);
+						} else {
+							// Properties mailEnabled and securityEnabled are not visible for Security group, but are required. So we add them here.
+							body.mailEnabled = false;
+							body.securityEnabled = true;
+						}
+						return requestOptions;
+					},
+				],
+			},
+		},
+		type: 'options',
+	},
+	{
+		displayName: 'Group Name',
 		name: 'displayName',
 		default: '',
 		description: 'The name to display in the address book for the group',
@@ -153,6 +213,55 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
+		displayName: 'Group Email Address',
+		name: 'mailNickname',
+		default: '',
+		description: 'The mail alias for the group. Only enter the local-part without the domain.',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['create'],
+			},
+		},
+		placeholder: 'e.g. alias',
+		required: true,
+		routing: {
+			send: {
+				property: 'mailNickname',
+				type: 'body',
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const mailNickname = this.getNodeParameter('mailNickname') as string;
+						if (mailNickname?.includes('@')) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`'Group Email Address' should only include the local-part of the email address, without ${mailNickname.slice(mailNickname.indexOf('@'))}`,
+							);
+						}
+						if (mailNickname?.length > 64) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"'Group Email Address' should have a maximum length of 64",
+							);
+						}
+						if (mailNickname && !/^((?![@()\[\]"\\;:<> ,])[\x00-\x7F])*$/.test(mailNickname)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"'Group Email Address' should only contain characters in the ASCII character set 0 - 127 except the following: @ () \\ [] \" ; : <> , SPACE",
+							);
+						}
+						return requestOptions;
+					},
+				],
+			},
+		},
+		type: 'string',
+		validateType: 'string',
+	},
+	{
 		displayName: 'Mail Enabled',
 		name: 'mailEnabled',
 		default: false,
@@ -161,6 +270,7 @@ const createFields: INodeProperties[] = [
 			show: {
 				resource: ['group'],
 				operation: ['create'],
+				groupType: ['Unified'],
 			},
 		},
 		required: true,
@@ -174,46 +284,44 @@ const createFields: INodeProperties[] = [
 		validateType: 'boolean',
 	},
 	{
-		displayName: 'Mail Nickname',
-		name: 'mailNickname',
+		displayName: 'Membership Type',
+		name: 'membershipType',
 		default: '',
-		description: 'The mail alias for the group',
 		displayOptions: {
 			show: {
 				resource: ['group'],
 				operation: ['create'],
 			},
 		},
-		required: true,
+		options: [
+			{
+				name: 'Assigned',
+				value: '',
+			},
+			{
+				name: 'Dynamic',
+				value: 'DynamicMembership',
+			},
+		],
 		routing: {
 			send: {
-				property: 'mailNickname',
-				type: 'body',
 				preSend: [
 					async function (
 						this: IExecuteSingleFunctions,
 						requestOptions: IHttpRequestOptions,
 					): Promise<IHttpRequestOptions> {
-						const mailNickname = this.getNodeParameter('mailNickname') as string;
-						if (mailNickname?.length > 64) {
-							throw new NodeOperationError(
-								this.getNode(),
-								"'Mail Nickname' should have a maximum length of 64",
-							);
-						}
-						if (mailNickname && !/^((?![@()\[\]"\\;:<> ,])[\x00-\x7F])*$/.test(mailNickname)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								"'Mail Nickname' should only contain characters in the ASCII character set 0 - 127 except the following: @ () \\ [] \" ; : <> , SPACE",
-							);
+						const membershipType = this.getNodeParameter('membershipType') as string;
+						if (membershipType) {
+							const body = requestOptions.body as IDataObject;
+							body.groupTypes ??= [] as string[];
+							(body.groupTypes as string[]).push(membershipType);
 						}
 						return requestOptions;
 					},
 				],
 			},
 		},
-		type: 'string',
-		validateType: 'string',
+		type: 'options',
 	},
 	{
 		displayName: 'Security Enabled',
@@ -224,6 +332,7 @@ const createFields: INodeProperties[] = [
 			show: {
 				resource: ['group'],
 				operation: ['create'],
+				groupType: ['Unified'],
 			},
 		},
 		routing: {
@@ -251,6 +360,20 @@ const createFields: INodeProperties[] = [
 				name: 'allowExternalSenders',
 				default: false,
 				description: 'Whether people external to the organization can send messages to the group',
+				type: 'boolean',
+				validateType: 'boolean',
+			},
+			{
+				displayName: 'Assignable to Role',
+				name: 'isAssignableToRole',
+				default: false,
+				description: 'Whether Microsoft Entra roles can be assigned to the grou',
+				routing: {
+					send: {
+						property: 'isAssignableToRole',
+						type: 'body',
+					},
+				},
 				type: 'boolean',
 				validateType: 'boolean',
 			},
@@ -304,7 +427,8 @@ const createFields: INodeProperties[] = [
 				displayName: 'Preferred Data Location',
 				name: 'preferredDataLocation',
 				default: '',
-				description: 'The preferred data location for the group',
+				description:
+					'A property set for the group that Office 365 services use to provision the corresponding data-at-rest resources (mailbox, OneDrive, groups sites, and so on)',
 				type: 'string',
 				validateType: 'string',
 			},
@@ -348,6 +472,7 @@ const createFields: INodeProperties[] = [
 						for (const item of items) {
 							const groupId = item.json.id as string;
 							const fields = this.getNodeParameter('additionalFields', item.index) as IDataObject;
+							delete fields.isAssignableToRole;
 							if (Object.keys(fields).length) {
 								const body: IDataObject = {
 									...fields,
@@ -475,6 +600,66 @@ const getFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
+		displayName: 'Output',
+		name: 'output',
+		default: 'simple',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
+		options: [
+			{
+				name: 'Simplified',
+				value: 'simple',
+				routing: {
+					send: {
+						property: '$select',
+						type: 'query',
+						value:
+							'id,createdDateTime,description,displayName,mail,mailEnabled,mailNickname,securityEnabled,securityIdentifier,visibility',
+					},
+				},
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'fields',
+			},
+		],
+		type: 'options',
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Fields',
+		name: 'select',
+		default: [],
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+		description: 'The fields to add to the output',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+				output: ['fields'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$select',
+				type: 'query',
+				value: '={{ $value.concat("id").join(",") }}',
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getGroupProperties',
+		},
+		type: 'multiOptions',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		default: {},
@@ -486,25 +671,6 @@ const getFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields',
-				name: 'select',
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'The fields to add to the output',
-				routing: {
-					send: {
-						property: '$select',
-						type: 'query',
-						value: '={{ $value?.join(",") }}',
-					},
-				},
-				typeOptions: {
-					loadOptionsMethod: 'getGroupProperties',
-				},
-				type: 'multiOptions',
-			},
-			{
 				displayName: 'Include Members',
 				name: 'includeMembers',
 				default: false,
@@ -512,7 +678,8 @@ const getFields: INodeProperties[] = [
 					send: {
 						property: '$expand',
 						type: 'query',
-						value: '={{ $value ? "members" : undefined }}',
+						value:
+							'={{ $value ? "members($select=id,accountEnabled,createdDateTime,displayName,employeeId,mail,securityIdentifier,userPrincipalName,userType)" : undefined }}',
 					},
 				},
 				type: 'boolean',
@@ -586,40 +753,33 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
-		default: {},
+		displayName: 'Filter',
+		name: 'filter',
+		default: '',
+		description:
+			'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 		displayOptions: {
 			show: {
 				resource: ['group'],
 				operation: ['getAll'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Filter Query Parameter',
-				name: 'filter',
-				default: '',
-				description:
-					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
-				placeholder: "startswith(displayName, 'a')",
-				routing: {
-					send: {
-						property: '$filter',
-						type: 'query',
-					},
-				},
-				type: 'string',
-				validateType: 'string',
+		hint: 'If empty, all the groups will be returned',
+		placeholder: "e.g. startswith(displayName, 'a')",
+		routing: {
+			send: {
+				property: '$filter',
+				type: 'query',
+				value: '={{ $value ? $value : undefined }}',
 			},
-		],
-		placeholder: 'Add Filter',
-		type: 'collection',
+		},
+		type: 'string',
+		validateType: 'string',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		default: {},
+		displayName: 'Output',
+		name: 'output',
+		default: 'simple',
 		displayOptions: {
 			show: {
 				resource: ['group'],
@@ -628,27 +788,53 @@ const getAllFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields',
-				name: 'select',
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'The fields to add to the output',
+				name: 'Simplified',
+				value: 'simple',
 				routing: {
 					send: {
 						property: '$select',
 						type: 'query',
-						value: '={{ $value?.join(",") }}',
+						value:
+							'id,createdDateTime,description,displayName,mail,mailEnabled,mailNickname,securityEnabled,securityIdentifier,visibility',
 					},
 				},
-				typeOptions: {
-					loadOptionsMethod: 'getGroupProperties',
-				},
-				type: 'multiOptions',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'fields',
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
+		type: 'options',
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Fields',
+		name: 'select',
+		default: [],
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+		description: 'The fields to add to the output',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['getAll'],
+				output: ['fields'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$select',
+				type: 'query',
+				value: '={{ $value.concat("id").join(",") }}',
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getGroupProperties',
+		},
+		type: 'multiOptions',
 	},
 ];
 
@@ -770,7 +956,7 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Display Name',
+				displayName: 'Group Name',
 				name: 'displayName',
 				default: '',
 				description: 'The name to display in the address book for the group',
@@ -799,10 +985,11 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'Mail Nickname',
+				displayName: 'Group Email Address',
 				name: 'mailNickname',
 				default: '',
-				description: 'The mail alias for the group',
+				description: 'The mail alias for the group. Only enter the local-part without the domain.',
+				placeholder: 'e.g. alias',
 				routing: {
 					send: {
 						property: 'mailNickname',
@@ -813,16 +1000,22 @@ const updateFields: INodeProperties[] = [
 								requestOptions: IHttpRequestOptions,
 							): Promise<IHttpRequestOptions> {
 								const mailNickname = this.getNodeParameter('updateFields.mailNickname') as string;
+								if (mailNickname?.includes('@')) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`'Group Email Address' should only include the local-part of the email address, without ${mailNickname.slice(mailNickname.indexOf('@'))}`,
+									);
+								}
 								if (mailNickname?.length > 64) {
 									throw new NodeOperationError(
 										this.getNode(),
-										'Mail Nickname should have a maximum length of 64',
+										"'Group Email Address' should have a maximum length of 64",
 									);
 								}
 								if (mailNickname && !/^((?![@()\[\]"\\;:<> ,])[\x00-\x7F])*$/.test(mailNickname)) {
 									throw new NodeOperationError(
 										this.getNode(),
-										"'Mail Nickname' should only contain characters in the ASCII character set 0 - 127 except the following: @ () \\ [] \" ; : <> , SPACE",
+										"'Group Email Address' should only contain characters in the ASCII character set 0 - 127 except the following: @ () \\ [] \" ; : <> , SPACE",
 									);
 								}
 								return requestOptions;
@@ -837,7 +1030,8 @@ const updateFields: INodeProperties[] = [
 				displayName: 'Preferred Data Location',
 				name: 'preferredDataLocation',
 				default: '',
-				description: 'The preferred data location for the group',
+				description:
+					'A property set for the group that Office 365 services use to provision the corresponding data-at-rest resources (mailbox, OneDrive, groups sites, and so on)',
 				routing: {
 					send: {
 						property: 'preferredDataLocation',
