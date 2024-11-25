@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { handlePagination, presendFilter, presendTest } from '../GenericFunctions';
+import { handleErrorPostReceive, presendFilter } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -12,12 +12,79 @@ export const userOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['user'] } },
 		options: [
 			{
+				name: 'Add to Group',
+				value: 'addToGroup',
+				description: 'Add an existing user to a group',
+				action: 'Add user to group',
+				routing: {
+					request: {
+						method: 'POST',
+						headers: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AddUserToGroup',
+						},
+					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
+				},
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new user',
+				action: 'Create user',
+				routing: {
+					request: {
+						method: 'POST',
+						headers: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.CreateUser',
+						},
+					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
+				},
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a user',
+				action: 'Delete user',
+				routing: {
+					request: {
+						method: 'POST',
+						headers: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteUser',
+						},
+					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
+				},
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Retrieve information of a user',
+				action: 'Get user',
+				routing: {
+					request: {
+						method: 'POST',
+						headers: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
+						},
+					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
+				},
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'List the existing users',
+				action: 'Get many users',
 				routing: {
 					send: {
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
 						paginate: true,
 					},
 					// ToDo: Test with pagination (ideally we need 4+ users in the user pool)
@@ -32,22 +99,209 @@ export const userOperations: INodeProperties[] = [
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
 						},
 					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
+				},
+			},
+			{
+				name: 'Remove From Group',
+				value: 'removeFromGroup',
+				description: 'Remove a user from a group',
+				action: 'Remove user from group',
+				routing: {
+					request: {
+						method: 'POST',
+						headers: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.RemoveUserFromGroup',
+						},
+					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
+				},
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a user',
+				action: 'Update user',
+				routing: {
+					request: {
+						method: 'POST',
+						headers: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.UpdateUser',
+						},
+					},
+					output: {
+						postReceive: [handleErrorPostReceive],
+					},
 				},
 			},
 		],
 	},
 ];
 
-export const userFields: INodeProperties[] = [
+const createFields: INodeProperties[] = [
 	{
 		displayName: 'User Pool ID',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		description: 'The user pool ID that the users are in', // ToDo: Improve description
-		displayOptions: { show: { resource: ['user'], operation: ['getAll'] } },
-		routing: { send: { type: 'body', property: 'UserPoolId' } },
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool ID where the users are managed',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		default: '',
+		description: 'The name of the new user to create',
+		placeholder: 'e.g. JohnSmith',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		required: true,
+		routing: {
+			send: {
+				property: 'name',
+				type: 'body',
+			},
+		},
+		type: 'string',
+		validateType: 'string',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Path',
+				name: 'path',
+				type: 'string',
+				validateType: 'string',
+				default: '/',
+				placeholder: 'e.g. /division_abc/engineering/',
+				description:
+					'The path for the user name, if it is not included, it defaults to a slash (/)',
+				routing: {
+					send: {
+						property: 'path',
+						type: 'body',
+					},
+				},
+			},
+			{
+				displayName: 'Permissions Boundary',
+				name: 'permissionsBoundary',
+				type: 'string',
+				validateType: 'string',
+				default: '',
+				placeholder: 'e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy',
+				description: 'Enter the ARN of a policy to set as the Permissions Boundary',
+				routing: {
+					send: {
+						property: 'permissionsBoundary',
+						type: 'body',
+					},
+				},
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'multiOptions',
+				placeholder: 'Add Tags',
+				default: [],
+				description: 'A list of tags that you want to attach to the new user',
+				//TO-DO-GET TAGS LIST
+				options: [],
+				routing: {
+					send: {
+						property: 'tags',
+						type: 'body',
+					},
+				},
+			},
+		],
+	},
+];
+
+const getFields: INodeProperties[] = [
+	{
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool ID where the users are managed',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
 		modes: [
 			{
 				displayName: 'From list', // ToDo: Fix error when selecting this option
@@ -77,24 +331,161 @@ export const userFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'User',
+		name: 'user',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to retrieve',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+];
+
+const getAllFields: INodeProperties[] = [
+	{
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool ID that the users are in', // ToDo: Improve description
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: { show: { resource: ['user'], operation: ['getAll'] } },
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		routing: {
+			send: {
+				paginate: '={{ $value }}',
+			},
+			operations: {
+				pagination: {
+					type: 'generic',
+					properties: {
+						continue: '={{ !!$response.body?.["@odata.nextLink"] }}',
+						request: {
+							url: '={{ $response.body?.["@odata.nextLink"] ?? $request.url }}',
+							qs: {
+								$filter:
+									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$filter }}',
+								$select:
+									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$select }}',
+							},
+						},
+					},
+				},
+			},
+		},
 		type: 'boolean',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
+		default: 50,
+		description: 'Max number of results to return',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		routing: {
+			send: {
+				property: '$top',
+				type: 'query',
+				value: '={{ $value }}',
+			},
+		},
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
-			maxValue: 60,
 		},
-		default: 60,
-		description: 'Max number of results to return',
-		displayOptions: { show: { resource: ['user'], operation: ['getAll'], returnAll: [false] } },
+		validateType: 'number',
 	},
 	{
 		displayName: 'Additional Fields', // ToDo: Test additional parameters with the API
@@ -183,4 +574,562 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
+];
+
+const deleteFields: INodeProperties[] = [
+	{
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool ID where the users are managed',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['delete'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to delete',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['delete'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+];
+
+const updateFields: INodeProperties[] = [
+	{
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool ID where the users are managed',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['update'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+			},
+		],
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to update',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['update'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		default: '',
+		description: 'The name of the new user to create',
+		placeholder: 'e.g. JohnSmith',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['update'],
+			},
+		},
+		required: true,
+		routing: {
+			send: {
+				property: 'name',
+				type: 'body',
+			},
+		},
+		type: 'string',
+		validateType: 'string',
+	},
+	{
+		displayName: 'Options',
+		name: 'option',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Path',
+				name: 'path',
+				type: 'string',
+				validateType: 'string',
+				default: '/',
+				placeholder: 'e.g. /division_abc/engineering/',
+				description:
+					'The path for the user name, if it is not included, it defaults to a slash (/)',
+			},
+			{
+				displayName: 'Permissions Boundary',
+				name: 'permissionsBoundary',
+				type: 'string',
+				validateType: 'string',
+				default: '',
+				placeholder: 'e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy',
+				description: 'Enter the ARN of a policy to set as the Permissions Boundary',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'multiOptions',
+				placeholder: 'Add Tags',
+				default: [],
+				description: 'A list of tags that you want to attach to the new user',
+				//TO-DO-GET TAGS LIST
+				options: [],
+			},
+		],
+	},
+];
+
+const addToGroupFields: INodeProperties[] = [
+	{
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The ID of the user pool',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['addToGroup'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to add to the group',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['addToGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+	{
+		displayName: 'Group',
+		name: 'group',
+		description: 'Select the group you want to add the user to',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['addToGroup'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'GroupId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getGroups',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+];
+
+const removeFromGroupFields: INodeProperties[] = [
+	{
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The ID of the user pool',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['removeFromGroup'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to remove from the group',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['removeFromGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+	{
+		displayName: 'Group',
+		name: 'group',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the group you want to remove the user from',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['removeFromGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getGroups',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+];
+
+export const userFields: INodeProperties[] = [
+	...getAllFields,
+	...createFields,
+	...deleteFields,
+	...getFields,
+	...updateFields,
+	...addToGroupFields,
+	...removeFromGroupFields,
 ];
