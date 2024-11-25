@@ -45,7 +45,7 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 					id: In(accessibleWorkflowIds),
 				},
 			},
-			relations: ['annotationTag'],
+			relations: ['annotationTag', 'metrics'],
 		});
 	}
 
