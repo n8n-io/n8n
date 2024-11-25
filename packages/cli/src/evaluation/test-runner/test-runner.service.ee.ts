@@ -1,7 +1,7 @@
 import { parse } from 'flatted';
-import type { IPinData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { IPinData, IRun, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import assert from 'node:assert';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
@@ -10,7 +10,7 @@ import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IExecutionDb, IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import { WorkflowRunner } from '@/workflow-runner';
 
 /**
@@ -28,6 +28,7 @@ export class TestRunnerService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly activeExecutions: ActiveExecutions,
 	) {}
 
 	/**
@@ -63,7 +64,7 @@ export class TestRunnerService {
 		workflow: WorkflowEntity,
 		testCase: IPinData,
 		userId: string,
-	): Promise<IExecutionDb | undefined> {
+	): Promise<IRun | undefined> {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode: 'evaluation',
 			runData: {},
@@ -78,9 +79,7 @@ export class TestRunnerService {
 		assert(executionId);
 
 		// Wait for the workflow to finish execution
-		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-			executionId,
-		) as Promise<IExecutionDb | undefined>;
+		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		return await executePromise;
 	}

@@ -2,10 +2,9 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { mockInstance } from 'n8n-core/test/utils';
 import path from 'path';
 
-import { ActiveExecutions } from '@/active-executions';
+import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
@@ -22,8 +21,6 @@ const wfUnderTestJson = JSON.parse(
 const executionDataJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.json'), { encoding: 'utf-8' }),
 );
-
-mockInstance(ActiveExecutions);
 
 const executionMocks = [
 	mock<ExecutionEntity>({
@@ -48,6 +45,7 @@ describe('TestRunnerService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
+	const activeExecutions = mock<ActiveExecutions>();
 
 	beforeEach(() => {
 		const executionsQbMock = mockDeep<SelectQueryBuilder<ExecutionEntity>>({
@@ -69,6 +67,7 @@ describe('TestRunnerService', () => {
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
+			activeExecutions,
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
@@ -79,6 +78,7 @@ describe('TestRunnerService', () => {
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
+			activeExecutions,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
