@@ -11,8 +11,6 @@ import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { TestDefinitionService } from '@/evaluation/test-definition.service.ee';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { TestRunnerService } from '../test-runner.service.ee';
@@ -24,6 +22,25 @@ const wfUnderTestJson = JSON.parse(
 const executionDataJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.json'), { encoding: 'utf-8' }),
 );
+
+const executionMocks = [
+	mock<ExecutionEntity>({
+		id: 'some-execution-id',
+		workflowId: 'workflow-under-test-id',
+		status: 'success',
+		executionData: {
+			data: stringify(executionDataJson),
+		},
+	}),
+	mock<ExecutionEntity>({
+		id: 'some-execution-id-2',
+		workflowId: 'workflow-under-test-id',
+		status: 'success',
+		executionData: {
+			data: stringify(executionDataJson),
+		},
+	}),
+];
 
 const executionMocks = [
 	mock<ExecutionEntity>({
@@ -67,7 +84,6 @@ describe('TestRunnerService', () => {
 
 	test('should create an instance of TestRunnerService', async () => {
 		const testRunnerService = new TestRunnerService(
-			testDefinitionService,
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
@@ -77,40 +93,13 @@ describe('TestRunnerService', () => {
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
 	});
 
-	test('should return an error if test definition is not found', async () => {
-		const testRunnerService = new TestRunnerService(
-			testDefinitionService,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-		);
-
-		testDefinitionService.findOne.mockResolvedValueOnce(null);
-
-		await expect(testRunnerService.runTest(mock<User>(), 'some-test-id', [])).rejects.toThrowError(
-			NotFoundError,
-		);
-	});
-
 	test('should create and run test cases from past executions', async () => {
 		const testRunnerService = new TestRunnerService(
-			testDefinitionService,
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
 			activeExecutions,
 		);
-
-		testDefinitionService.findOne
-			.calledWith('some-test-id', expect.anything())
-			.mockResolvedValueOnce(
-				mock<TestDefinition>({
-					id: 'some-test-id',
-					workflowId: 'workflow-under-test-id',
-					evaluationWorkflowId: 'evaluation-workflow-id',
-					annotationTagId: 'some-annotation-tag-id',
-				}),
-			);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
 			id: 'workflow-under-test-id',
