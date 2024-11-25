@@ -246,7 +246,7 @@ describe('NDV', () => {
 			ndv.getters
 				.outputPanel()
 				.find('[data-test-id=run-data-schema-item] [data-test-id=run-data-schema-item]')
-				.should('have.length.above', 20);
+				.should('have.length', 20);
 		});
 	});
 
