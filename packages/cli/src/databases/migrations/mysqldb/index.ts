@@ -71,6 +71,7 @@ import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from '../comm
 import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
 import { AddDescriptionToTestDefinition1731404028106 } from '../common/1731404028106-AddDescriptionToTestDefinition';
+import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -144,4 +145,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateTestDefinitionTable1730386903556,
 	AddDescriptionToTestDefinition1731404028106,
 	MigrateTestDefinitionKeyToString1731582748663,
+	CreateTestMetricTable1732271325258,
 ];
