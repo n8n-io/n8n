@@ -250,6 +250,11 @@ export class Summarize implements INodeType {
 						default: false,
 						description:
 							"Whether to continue if field to summarize can't be found in any items and return single empty item, otherwise an error would be thrown",
+						displayOptions: {
+							hide: {
+								'@version': [1.1],
+							},
+						},
 					},
 					{
 						displayName: 'Disable Dot Notation',
