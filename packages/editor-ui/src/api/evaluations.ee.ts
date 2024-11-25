@@ -32,21 +32,13 @@ export interface UpdateTestResponse {
 	annotationTagId: string | null;
 }
 
-export interface ITestDefinitionsQueryOptions {
-	includeScopes?: boolean;
-}
-
 const endpoint = '/evaluation/test-definitions';
 
-export async function getTestDefinitions(
-	context: IRestApiContext,
-	options?: ITestDefinitionsQueryOptions,
-) {
+export async function getTestDefinitions(context: IRestApiContext) {
 	return await makeRestApiRequest<{ count: number; testDefinitions: TestDefinitionRecord[] }>(
 		context,
 		'GET',
 		endpoint,
-		options,
 	);
 }
 

@@ -72,10 +72,9 @@ export const useEvaluationsStore = defineStore(
 		/**
 		 * Fetches all test definitions from the API.
 		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
-		 * @param {boolean} includeScopes - If true, includes the scopes in the fetched definitions.
 		 */
-		const fetchAll = async (params?: { force?: boolean; includeScopes?: boolean }) => {
-			const { force = false, includeScopes = false } = params ?? {};
+		const fetchAll = async (params?: { force?: boolean }) => {
+			const { force = false } = params ?? {};
 			if (!force && fetchedAll.value) {
 				const testDefinitions = Object.values(testDefinitionsById.value);
 				return {
@@ -88,7 +87,6 @@ export const useEvaluationsStore = defineStore(
 			try {
 				const retrievedDefinitions = await testDefinitionsApi.getTestDefinitions(
 					rootStore.restApiContext,
-					{ includeScopes },
 				);
 
 				setAllTestDefinitions(retrievedDefinitions.testDefinitions);

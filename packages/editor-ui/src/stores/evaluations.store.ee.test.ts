@@ -77,9 +77,7 @@ describe('evaluations.store.ee', () => {
 
 		const result = await store.fetchAll();
 
-		expect(getTestDefinitions).toHaveBeenCalledWith(rootStoreMock.restApiContext, {
-			includeScopes: false,
-		});
+		expect(getTestDefinitions).toHaveBeenCalledWith(rootStoreMock.restApiContext);
 		expect(store.testDefinitionsById).toEqual({
 			'1': TEST_DEF_A,
 			'2': TEST_DEF_B,
@@ -96,9 +94,7 @@ describe('evaluations.store.ee', () => {
 
 		const result = await store.fetchAll({ force: true });
 
-		expect(getTestDefinitions).toHaveBeenCalledWith(rootStoreMock.restApiContext, {
-			includeScopes: false,
-		});
+		expect(getTestDefinitions).toHaveBeenCalledWith(rootStoreMock.restApiContext);
 		expect(store.testDefinitionsById).toEqual({
 			'1': TEST_DEF_A,
 			'2': TEST_DEF_B,
