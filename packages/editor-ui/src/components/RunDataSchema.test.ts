@@ -410,4 +410,27 @@ describe('RunDataSchema.vue', () => {
 			),
 		);
 	});
+
+	it('should expand all nodes when searching', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [{ json: { name: 'John' } }],
+		});
+		useWorkflowsStore().pinData({
+			node: mockNode2,
+			data: [{ json: { name: 'John' } }],
+		});
+
+		const { getAllByTestId, queryAllByTestId, rerender } = renderComponent();
+		const headers = getAllByTestId('run-data-schema-header');
+		expect(headers.length).toBe(2);
+		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+
+		// Collapse all nodes
+		await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
+
+		expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
+		await rerender({ search: 'John' });
+		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+	});
 });

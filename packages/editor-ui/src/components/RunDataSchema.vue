@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import type { INodeUi } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import RunDataSchemaHeader from '@/components/RunDataSchemaHeader.vue';
@@ -58,6 +58,14 @@ const { getNodeInputData } = useNodeHelpers();
 const emit = defineEmits<{
 	'clear:search': [];
 }>();
+
+watch(
+	() => props.search,
+	(newSearch) => {
+		if (!newSearch) return;
+		closedNodes.value.clear();
+	},
+);
 
 const getNodeSchema = (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
