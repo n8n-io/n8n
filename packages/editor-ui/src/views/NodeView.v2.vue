@@ -1627,7 +1627,8 @@ onBeforeUnmount(() => {
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
-				:outline="isChatOpen === false"
+				:outline="isChatOpen"
+				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 				@click="onOpenChat"
 			/>
 			<CanvasStopCurrentExecutionButton

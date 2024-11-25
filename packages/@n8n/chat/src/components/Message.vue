@@ -136,7 +136,8 @@ onMounted(async () => {
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
-	scroll-margin: 100px;
+	scroll-margin: 3rem;
+
 	.chat-message-actions {
 		position: absolute;
 		bottom: calc(100% - 0.5rem);

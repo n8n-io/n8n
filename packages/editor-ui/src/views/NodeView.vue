@@ -4626,11 +4626,11 @@ export default defineComponent({
 
 				<n8n-button
 					v-if="containsChatNodes"
-					label="Chat"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 					size="large"
 					icon="comment"
 					type="primary"
-					:outline="isChatOpen === false"
+					:outline="isChatOpen"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>

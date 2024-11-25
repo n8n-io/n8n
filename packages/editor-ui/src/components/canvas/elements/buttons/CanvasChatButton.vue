@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 export interface Props {
 	outline?: boolean;
+	label: string;
 }
-
 defineProps<Props>();
 </script>
 <template>
 	<N8nButton
-		label="Chat"
+		:label="label"
 		size="large"
 		icon="comment"
 		type="primary"

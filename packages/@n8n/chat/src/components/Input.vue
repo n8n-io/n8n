@@ -194,10 +194,13 @@ function adjustHeight(event: Event) {
 <template>
 	<div class="chat-input" :style="styleVars" @keydown.stop="onKeyDown">
 		<div class="chat-inputs">
+			<div v-if="$slots.leftPanel" class="chat-input-left-panel">
+				<slot name="leftPanel" />
+			</div>
 			<textarea
 				ref="chatTextArea"
-				data-test-id="chat-input"
 				v-model="input"
+				data-test-id="chat-input"
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
@@ -251,7 +254,7 @@ function adjustHeight(event: Event) {
 	width: 100%;
 	display: flex;
 	justify-content: center;
-	align-items: center;
+	align-items: flex-end;
 
 	textarea {
 		font-family: inherit;
@@ -259,8 +262,7 @@ function adjustHeight(event: Event) {
 		width: 100%;
 		border: var(--chat--input--border, 0);
 		border-radius: var(--chat--input--border-radius, 0);
-		padding: 0.8rem;
-		padding-right: calc(0.8rem + (var(--controls-count, 1) * var(--chat--textarea--height)));
+		padding: var(--chat--input--padding, 0.8rem);
 		min-height: var(--chat--textarea--height, 2.5rem); // Set a smaller initial height
 		max-height: var(--chat--textarea--max-height, 30rem);
 		height: var(--chat--textarea--height, 2.5rem); // Set initial height same as min-height
@@ -271,6 +273,9 @@ function adjustHeight(event: Event) {
 		outline: none;
 		line-height: var(--chat--input--line-height, 1.5);
 
+		&::placeholder {
+			font-size: var(--chat--input--placeholder--font-size, var(--chat--input--font-size, inherit));
+		}
 		&:focus,
 		&:hover {
 			border-color: var(--chat--input--border-active, 0);
@@ -279,9 +284,6 @@ function adjustHeight(event: Event) {
 }
 .chat-inputs-controls {
 	display: flex;
-	position: absolute;
-	right: 0.5rem;
-	bottom: 0;
 }
 .chat-input-send-button,
 .chat-input-file-button {
@@ -339,5 +341,10 @@ function adjustHeight(event: Event) {
 	flex-wrap: wrap;
 	gap: 0.5rem;
 	padding: var(--chat--files-spacing, 0.25rem);
+}
+
+.chat-input-left-panel {
+	width: var(--chat--input--left--panel--width, 2rem);
+	margin-left: 0.4rem;
 }
 </style>

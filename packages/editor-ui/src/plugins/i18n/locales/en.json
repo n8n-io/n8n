@@ -169,6 +169,7 @@
 	"binaryDataDisplay.backToOverviewPage": "Back to overview page",
 	"binaryDataDisplay.noDataFoundToDisplay": "No data found to display",
 	"binaryDataDisplay.yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version.",
+	"chat.hide": "Hide chat",
 	"chat.window.title": "Chat",
 	"chat.window.logs": "Latest Logs",
 	"chat.window.logsFromNode": "from {nodeName} node",
