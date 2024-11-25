@@ -17,6 +17,7 @@ interface Props {
 	pastChatMessages: string[];
 	messages: ChatMessage[];
 	sessionId: string;
+	showCloseButton?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
 	refreshSession: [];
+	close: [];
 }>();
 
 const messageComposable = useMessage();
@@ -154,14 +156,23 @@ function copySessionId() {
 					}}</span>
 				</n8n-tooltip>
 				<n8n-icon-button
-					:class="$style.refreshSession"
+					:class="$style.headerButton"
 					data-test-id="refresh-session-button"
-					type="tertiary"
-					text
+					outline
+					type="secondary"
 					size="mini"
 					icon="undo"
 					:title="locale.baseText('chat.window.session.reset.confirm')"
 					@click="onRefreshSession"
+				/>
+				<n8n-icon-button
+					v-if="showCloseButton"
+					:class="$style.headerButton"
+					outline
+					type="secondary"
+					size="mini"
+					icon="times"
+					@click="emit('close')"
 				/>
 			</div>
 		</header>
@@ -281,8 +292,9 @@ function copySessionId() {
 
 	cursor: pointer;
 }
-.refreshSession {
+.headerButton {
 	max-height: 1.1rem;
+	border: none;
 }
 .chatBody {
 	display: flex;
