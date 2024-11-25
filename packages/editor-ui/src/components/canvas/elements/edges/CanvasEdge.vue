@@ -7,7 +7,7 @@ import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
 import { computed, useCssModule, toRef } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { getCustomPath } from './utils/edgePath';
+import { getEdgeRenderData } from './utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -73,9 +73,8 @@ const edgeLabelStyle = computed(() => ({
 }));
 
 const edgeToolbarStyle = computed(() => {
-	const [, labelX, labelY] = path.value;
 	return {
-		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+		transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px,${labelPosition.value[1]}px)`,
 		...(props.hovered ? { zIndex: 1 } : {}),
 	};
 });
@@ -86,11 +85,15 @@ const edgeToolbarClasses = computed(() => ({
 	selected: props.selected,
 }));
 
-const path = computed(() =>
-	getCustomPath(props, {
+const renderData = computed(() =>
+	getEdgeRenderData(props, {
 		connectionType: connectionType.value,
 	}),
 );
+
+const segments = computed(() => renderData.value.segments);
+
+const labelPosition = computed(() => renderData.value.labelPosition);
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
@@ -118,10 +121,12 @@ function onEdgeLabelMouseLeave() {
 
 <template>
 	<BaseEdge
-		:id="id"
+		v-for="(segment, index) in segments"
+		:id="`${id}-${index}`"
+		:key="segment[0]"
 		:class="edgeClasses"
 		:style="edgeStyle"
-		:path="path[0]"
+		:path="segment[0]"
 		:marker-end="markerEnd"
 		:interaction-width="40"
 	/>
