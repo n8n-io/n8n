@@ -259,7 +259,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 .container {
 	display: flex;
 	flex-flow: row nowrap;
-	gap: var(--spacing-s);
+	gap: var(--spacing-2xs);
 	height: 100%;
 }
 
