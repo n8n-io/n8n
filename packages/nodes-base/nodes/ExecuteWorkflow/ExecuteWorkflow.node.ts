@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
+import { getWorkflowInputs } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../utils/utilities';
 
 export class ExecuteWorkflow implements INodeType {
@@ -188,6 +189,40 @@ export class ExecuteWorkflow implements INodeType {
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
 			},
 			{
+				displayName: 'Workflow Inputs',
+				name: 'workflowInputs',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: {
+					mappingMode: 'defineBelow',
+					value: null,
+				},
+				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['workflowId.value'],
+					resourceMapper: {
+						resourceMapperMethod: 'getWorkflowInputs',
+						mode: 'upsert',
+						fieldWords: {
+							singular: 'workflow input',
+							plural: 'workflow inputs',
+						},
+						addAllFields: true,
+						multiKeyMatch: false,
+						supportAutoMap: false,
+					},
+				},
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+					hide: {
+						workflowId: [''],
+					},
+				},
+			},
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -226,6 +261,12 @@ export class ExecuteWorkflow implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		resourceMapping: {
+			getWorkflowInputs,
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
