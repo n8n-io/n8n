@@ -3,23 +3,25 @@ import { createTestingPinia } from '@pinia/testing';
 import { useEvaluationForm } from '../composables/useEvaluationForm';
 import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
 import { mockedStore } from '@/__tests__/utils';
-import type { ITestDefinition } from '@/api/evaluations.ee';
+import type { TestDefinitionRecord } from '@/api/evaluations.ee';
 
-const TEST_DEF_A: ITestDefinition = {
-	id: 1,
+const TEST_DEF_A: TestDefinitionRecord = {
+	id: '1',
 	name: 'Test Definition A',
 	description: 'Description A',
 	evaluationWorkflowId: '456',
 	workflowId: '123',
 	annotationTagId: '789',
 };
-const TEST_DEF_B: ITestDefinition = {
-	id: 2,
+const TEST_DEF_B: TestDefinitionRecord = {
+	id: '2',
 	name: 'Test Definition B',
+	workflowId: '123',
 	description: 'Description B',
 };
-const TEST_DEF_NEW: ITestDefinition = {
-	id: 3,
+const TEST_DEF_NEW: TestDefinitionRecord = {
+	id: '3',
+	workflowId: '123',
 	name: 'New Test Definition',
 	description: 'New Description',
 };
@@ -66,7 +68,7 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should save a new test', async () => {
-		const { saveTest, state } = useEvaluationForm();
+		const { createTest, state } = useEvaluationForm();
 		const createSpy = vi.fn().mockResolvedValue(TEST_DEF_NEW);
 		const evaluationsStore = mockedStore(useEvaluationsStore);
 
@@ -75,17 +77,17 @@ describe('useEvaluationForm', async () => {
 		state.value.name.value = TEST_DEF_NEW.name;
 		state.value.description = TEST_DEF_NEW.description ?? '';
 
-		const newTest = await saveTest();
+		const newTest = await createTest('123');
 		expect(createSpy).toBeCalledWith({
 			name: TEST_DEF_NEW.name,
 			description: TEST_DEF_NEW.description,
-			workflowId: state.value.evaluationWorkflow.value,
+			workflowId: '123',
 		});
 		expect(newTest).toEqual(TEST_DEF_NEW);
 	});
 
 	it('should update an existing test', async () => {
-		const { saveTest, state } = useEvaluationForm();
+		const { updateTest, state } = useEvaluationForm();
 		const updateSpy = vi.fn().mockResolvedValue(TEST_DEF_B);
 		const evaluationsStore = mockedStore(useEvaluationsStore);
 
@@ -94,7 +96,7 @@ describe('useEvaluationForm', async () => {
 		state.value.name.value = TEST_DEF_B.name;
 		state.value.description = TEST_DEF_B.description ?? '';
 
-		const updatedTest = await saveTest(TEST_DEF_A.id);
+		const updatedTest = await updateTest(TEST_DEF_A.id);
 		expect(updateSpy).toBeCalledWith({
 			id: TEST_DEF_A.id,
 			name: TEST_DEF_B.name,

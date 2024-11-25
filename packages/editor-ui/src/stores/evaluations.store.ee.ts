@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/evaluations.ee';
-import type { ITestDefinition } from '@/api/evaluations.ee';
+import type { TestDefinitionRecord } from '@/api/evaluations.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
@@ -10,7 +10,7 @@ export const useEvaluationsStore = defineStore(
 	STORES.EVALUATIONS,
 	() => {
 		// State
-		const testDefinitionsById = ref<Record<string, Partial<ITestDefinition>>>({});
+		const testDefinitionsById = ref<Record<string, TestDefinitionRecord>>({});
 		const loading = ref(false);
 		const fetchedAll = ref(false);
 
@@ -35,9 +35,9 @@ export const useEvaluationsStore = defineStore(
 		const hasTestDefinitions = computed(() => Object.keys(testDefinitionsById.value).length > 0);
 
 		// Methods
-		const setAllTestDefinitions = (definitions: ITestDefinition[]) => {
+		const setAllTestDefinitions = (definitions: TestDefinitionRecord[]) => {
 			testDefinitionsById.value = definitions.reduce(
-				(acc: Record<number, ITestDefinition>, def: ITestDefinition) => {
+				(acc: Record<string, TestDefinitionRecord>, def: TestDefinitionRecord) => {
 					acc[def.id] = def;
 					return acc;
 				},
@@ -49,7 +49,7 @@ export const useEvaluationsStore = defineStore(
 		 * Upserts test definitions in the store.
 		 * @param toUpsertDefinitions - An array of test definitions to upsert.
 		 */
-		const upsertTestDefinitions = (toUpsertDefinitions: Array<Partial<ITestDefinition>>) => {
+		const upsertTestDefinitions = (toUpsertDefinitions: TestDefinitionRecord[]) => {
 			toUpsertDefinitions.forEach((toUpsertDef) => {
 				const defId = toUpsertDef.id;
 				if (!defId) throw Error('ID is required for upserting');
@@ -105,7 +105,7 @@ export const useEvaluationsStore = defineStore(
 		 * @param {Object} params - An object containing the necessary parameters to create a test definition.
 		 * @param {string} params.name - The name of the new test definition.
 		 * @param {string} params.workflowId - The ID of the workflow associated with the test definition.
-		 * @returns {Promise<ITestDefinition>} A promise that resolves to the newly created test definition.
+		 * @returns {Promise<TestDefinitionRecord>} A promise that resolves to the newly created test definition.
 		 * @throws {Error} Throws an error if there is a problem creating the test definition.
 		 */
 		const create = async (params: {
@@ -120,7 +120,7 @@ export const useEvaluationsStore = defineStore(
 			return createdDefinition;
 		};
 
-		const update = async (params: Partial<Omit<ITestDefinition, 'id'>> & { id: string }) => {
+		const update = async (params: Partial<TestDefinitionRecord>) => {
 			if (!params.id) throw new Error('ID is required to update a test definition');
 
 			const { id, ...updateParams } = params;

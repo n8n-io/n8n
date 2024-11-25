@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useEvaluationsStore } from '@/stores/evaluations.store.ee'; // Adjust the import path as necessary
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
+import type { TestDefinitionRecord } from '@/api/evaluations.ee';
 
 const { createTestDefinition, deleteTestDefinition, getTestDefinitions, updateTestDefinition } =
 	vi.hoisted(() => ({
@@ -24,9 +25,24 @@ vi.mock('@/stores/root.store', () => ({
 	})),
 }));
 
-const TEST_DEF_A = { id: 1, name: 'Test Definition A', description: 'Description A' };
-const TEST_DEF_B = { id: 2, name: 'Test Definition B', description: 'Description B' };
-const TEST_DEF_NEW = { id: 3, name: 'New Test Definition', description: 'New Description' };
+const TEST_DEF_A: TestDefinitionRecord = {
+	id: '1',
+	name: 'Test Definition A',
+	workflowId: '123',
+	description: 'Description A',
+};
+const TEST_DEF_B: TestDefinitionRecord = {
+	id: '2',
+	name: 'Test Definition B',
+	workflowId: '123',
+	description: 'Description B',
+};
+const TEST_DEF_NEW: TestDefinitionRecord = {
+	id: '3',
+	name: 'New Test Definition',
+	workflowId: '123',
+	description: 'New Description',
+};
 
 describe('evaluations.store.ee', () => {
 	let store: ReturnType<typeof useEvaluationsStore>;
@@ -65,8 +81,8 @@ describe('evaluations.store.ee', () => {
 			includeScopes: false,
 		});
 		expect(store.testDefinitionsById).toEqual({
-			1: TEST_DEF_A,
-			2: TEST_DEF_B,
+			'1': TEST_DEF_A,
+			'2': TEST_DEF_B,
 		});
 		expect(store.isLoading).toBe(false);
 		expect(result).toEqual({
@@ -84,8 +100,8 @@ describe('evaluations.store.ee', () => {
 			includeScopes: false,
 		});
 		expect(store.testDefinitionsById).toEqual({
-			1: TEST_DEF_A,
-			2: TEST_DEF_B,
+			'1': TEST_DEF_A,
+			'2': TEST_DEF_B,
 		});
 		expect(store.isLoading).toBe(false);
 		expect(result).toEqual({
@@ -113,19 +129,20 @@ describe('evaluations.store.ee', () => {
 		store.upsertTestDefinitions([newDefinition]);
 
 		expect(store.testDefinitionsById).toEqual({
-			3: TEST_DEF_NEW,
+			'3': TEST_DEF_NEW,
 		});
 	});
 
 	test('Upserting Test Definitions - Existing Definition', () => {
 		store.testDefinitionsById = {
-			1: TEST_DEF_A,
+			'1': TEST_DEF_A,
 		};
 
 		const updatedDefinition = {
-			id: 1,
+			id: '1',
 			name: 'Updated Test Definition A',
 			description: 'Updated Description A',
+			workflowId: '123',
 		};
 
 		store.upsertTestDefinitions([updatedDefinition]);
@@ -137,14 +154,14 @@ describe('evaluations.store.ee', () => {
 
 	test('Deleting Test Definitions', () => {
 		store.testDefinitionsById = {
-			1: TEST_DEF_A,
-			2: TEST_DEF_B,
+			'1': TEST_DEF_A,
+			'2': TEST_DEF_B,
 		};
 
-		store.deleteTestDefinition(1);
+		store.deleteTestDefinition('1');
 
 		expect(store.testDefinitionsById).toEqual({
-			2: TEST_DEF_B,
+			'2': TEST_DEF_B,
 		});
 	});
 
@@ -160,19 +177,19 @@ describe('evaluations.store.ee', () => {
 
 		expect(createTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
 		expect(store.testDefinitionsById).toEqual({
-			3: TEST_DEF_NEW,
+			'3': TEST_DEF_NEW,
 		});
 		expect(result).toEqual(TEST_DEF_NEW);
 	});
 
 	test('Updating a Test Definition', async () => {
 		store.testDefinitionsById = {
-			1: TEST_DEF_A,
-			2: TEST_DEF_B,
+			'1': TEST_DEF_A,
+			'2': TEST_DEF_B,
 		};
 
 		const params = {
-			id: 1,
+			id: '1',
 			name: 'Updated Test Definition A',
 			description: 'Updated Description A',
 		};
@@ -185,18 +202,18 @@ describe('evaluations.store.ee', () => {
 			description: 'Updated Description A',
 		});
 		expect(store.testDefinitionsById).toEqual({
-			1: params,
-			2: TEST_DEF_B,
+			'1': params,
+			'2': TEST_DEF_B,
 		});
 		expect(result).toEqual(params);
 	});
 
 	test('Deleting a Test Definition by ID', async () => {
 		store.testDefinitionsById = {
-			1: TEST_DEF_A,
+			'1': TEST_DEF_A,
 		};
 
-		const result = await store.deleteById(1);
+		const result = await store.deleteById('1');
 
 		expect(deleteTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, 1);
 		expect(store.testDefinitionsById).toEqual({});
@@ -208,7 +225,7 @@ describe('evaluations.store.ee', () => {
 
 		expect(store.hasTestDefinitions).toBe(false);
 		store.testDefinitionsById = {
-			1: TEST_DEF_A,
+			'1': TEST_DEF_A,
 		};
 
 		expect(store.hasTestDefinitions).toBe(true);
@@ -234,7 +251,7 @@ describe('evaluations.store.ee', () => {
 	test('Error Handling - update', async () => {
 		updateTestDefinition.mockRejectedValue(new Error('Update failed'));
 
-		await expect(store.update({ id: 1, name: 'Updated Test Definition A' })).rejects.toThrow(
+		await expect(store.update({ id: '1', name: 'Updated Test Definition A' })).rejects.toThrow(
 			'Update failed',
 		);
 	});
@@ -242,7 +259,7 @@ describe('evaluations.store.ee', () => {
 	test('Error Handling - deleteById', async () => {
 		deleteTestDefinition.mockResolvedValue({ success: false });
 
-		const result = await store.deleteById(1);
+		const result = await store.deleteById('1');
 
 		expect(result).toBe(false);
 	});

@@ -11,10 +11,10 @@ const props = defineProps<TestItemProps>();
 const locale = useI18n();
 
 const emit = defineEmits<{
-	'run-test': [testId: number];
-	'view-details': [testId: number];
-	'edit-test': [testId: number];
-	'delete-test': [testId: number];
+	'run-test': [testId: string];
+	'view-details': [testId: string];
+	'edit-test': [testId: string];
+	'delete-test': [testId: string];
 }>();
 
 const actions = [

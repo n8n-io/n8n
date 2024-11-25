@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElCollapseTransition } from 'element-plus';
-import { ref, computed, nextTick } from 'vue';
+import { ref, nextTick } from 'vue';
 
 interface EvaluationStep {
 	title: string;

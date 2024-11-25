@@ -4,21 +4,21 @@ export interface TestDefinitionRecord {
 	id: string;
 	name: string;
 	workflowId: string;
-	evaluationWorkflowId?: string;
-	annotationTagId?: string;
-	description?: string;
+	evaluationWorkflowId?: string | null;
+	annotationTagId?: string | null;
+	description?: string | null;
 }
 interface CreateTestDefinitionParams {
 	name: string;
 	workflowId: string;
-	evaluationWorkflowId?: string;
+	evaluationWorkflowId?: string | null;
 }
 
 export interface UpdateTestDefinitionParams {
 	name?: string;
-	evaluationWorkflowId?: string;
-	annotationTagId?: string;
-	description?: string;
+	evaluationWorkflowId?: string | null;
+	annotationTagId?: string | null;
+	description?: string | null;
 }
 export interface UpdateTestResponse {
 	createdAt: string;

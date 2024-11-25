@@ -9,7 +9,7 @@ import EmptyState from '@/components/WorkflowEvaluation/ListEvaluation/EmptyStat
 import TestsList from '@/components/WorkflowEvaluation/ListEvaluation/TestsList.vue';
 import type { TestExecution, TestListItem } from '@/components/WorkflowEvaluation/types';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import type { ITestDefinition } from '@/api/evaluations.ee';
+import type { TestDefinitionRecord } from '@/api/evaluations.ee';
 
 const router = useRouter();
 const tagsStore = useAnnotationTagsStore();
@@ -20,7 +20,7 @@ const locale = useI18n();
 
 const tests = computed<TestListItem[]>(() => {
 	return evaluationsStore.allTestDefinitions
-		.filter((test): test is ITestDefinition => test.id !== undefined)
+		.filter((test): test is TestDefinitionRecord => test.id !== undefined)
 		.map((test) => ({
 			id: test.id,
 			name: test.name ?? '',
@@ -39,7 +39,7 @@ function getTagName(tagId: string) {
 }
 
 // TODO: Replace with actual API call once implemented
-function getTestExecution(_testId: number): TestExecution {
+function getTestExecution(_testId: string): TestExecution {
 	const mockExecutions = {
 		lastRun: 'an hour ago',
 		errorRate: 0,
@@ -60,7 +60,7 @@ function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_WORKFLOW_EVALUATION });
 }
 
-function onRunTest(_testId: number) {
+function onRunTest(_testId: string) {
 	// TODO: Implement test run logic
 	toast.showMessage({
 		title: locale.baseText('workflowEvaluation.notImplemented'),
@@ -68,7 +68,7 @@ function onRunTest(_testId: number) {
 	});
 }
 
-function onViewDetails(_testId: number) {
+function onViewDetails(_testId: string) {
 	// TODO: Implement test details view
 	toast.showMessage({
 		title: locale.baseText('workflowEvaluation.notImplemented'),
@@ -80,7 +80,7 @@ function onEditTest(testId: number) {
 	void router.push({ name: VIEWS.WORKFLOW_EVALUATION_EDIT, params: { testId } });
 }
 
-async function onDeleteTest(testId: number) {
+async function onDeleteTest(testId: string) {
 	await evaluationsStore.deleteById(testId);
 
 	toast.showMessage({

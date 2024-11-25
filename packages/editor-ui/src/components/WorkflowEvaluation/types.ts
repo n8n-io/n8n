@@ -5,7 +5,7 @@ export interface TestExecution {
 }
 
 export interface TestListItem {
-	id: number;
+	id: string;
 	name: string;
 	tagName: string;
 	testCases: number;
