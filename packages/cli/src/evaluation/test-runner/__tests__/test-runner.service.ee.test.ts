@@ -2,7 +2,6 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { mockInstance } from 'n8n-core/test/utils';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -22,25 +21,6 @@ const wfUnderTestJson = JSON.parse(
 const executionDataJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/execution-data.json'), { encoding: 'utf-8' }),
 );
-
-const executionMocks = [
-	mock<ExecutionEntity>({
-		id: 'some-execution-id',
-		workflowId: 'workflow-under-test-id',
-		status: 'success',
-		executionData: {
-			data: stringify(executionDataJson),
-		},
-	}),
-	mock<ExecutionEntity>({
-		id: 'some-execution-id-2',
-		workflowId: 'workflow-under-test-id',
-		status: 'success',
-		executionData: {
-			data: stringify(executionDataJson),
-		},
-	}),
-];
 
 const executionMocks = [
 	mock<ExecutionEntity>({
