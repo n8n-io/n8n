@@ -401,8 +401,8 @@ describe('POST /evaluation/test-definitions/:id/run', () => {
 
 		const resp = await authOwnerAgent.post(`/evaluation/test-definitions/${newTest.id}/run`);
 
-		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data).toEqual(
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual(
 			expect.objectContaining({
 				success: true,
 			}),

@@ -131,14 +131,18 @@ export class TestDefinitionsController {
 	}
 
 	@Post('/:id/run')
-	async runTest(req: TestDefinitionsRequest.Run) {
+	async runTest(req: TestDefinitionsRequest.Run, res: express.Response) {
 		const { id: testDefinitionId } = req.params;
 
 		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
+		// Check test definition exists
+		const testDefinition = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
+		if (!testDefinition) throw new NotFoundError('Test definition not found');
+
 		// We do not await for the test run to complete
 		void this.testRunnerService.runTest(req.user, testDefinitionId, workflowIds);
 
-		return { success: true };
+		res.status(202).json({ success: true });
 	}
 }

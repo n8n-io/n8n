@@ -36,9 +36,6 @@ export class TestRunnerService {
 	 * Creates a pin data object from the past execution data
 	 * for the given workflow.
 	 * For now, it only pins trigger nodes.
-	 * @param workflow
-	 * @param execution
-	 * @private
 	 */
 	private createPinDataFromExecution(
 		workflow: WorkflowEntity,
@@ -63,10 +60,6 @@ export class TestRunnerService {
 	/**
 	 * Runs a test case with the given pin data.
 	 * Waits for the workflow under test to finish execution.
-	 * @param workflow
-	 * @param testCase
-	 * @param userId
-	 * @private
 	 */
 	private async runTestCase(
 		workflow: WorkflowEntity,
@@ -96,11 +89,8 @@ export class TestRunnerService {
 
 	/**
 	 * Creates a new test run for the given test definition.
-	 * @param user
-	 * @param testId
-	 * @param accessibleWorkflowIds
 	 */
-	public async runTest(user: User, testId: string, accessibleWorkflowIds: string[]): Promise<any> {
+	public async runTest(user: User, testId: string, accessibleWorkflowIds: string[]): Promise<void> {
 		const test = await this.testDefinitionsService.findOne(testId, accessibleWorkflowIds);
 
 		if (!test) {
@@ -140,7 +130,5 @@ export class TestRunnerService {
 
 			// TODO: 2.3 Collect the run data
 		}
-
-		return { success: true };
 	}
 }
