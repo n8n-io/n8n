@@ -8,6 +8,7 @@ import {
 	FILE_NAME,
 	cmPosToTs,
 	convertTSDiagnosticToCM,
+	fnPrefix,
 	generateExtensionTypes,
 	isDiagnosticWithLocation,
 	schemaToTypescriptTypes,
@@ -18,12 +19,13 @@ import {
 import globalTypes from './type-declarations/globals.d.ts?raw';
 // eslint-disable-next-line import/extensions
 import { pascalCase } from 'change-case';
-import type { Schema } from '../../../../Interface';
+import type { Schema } from '@/Interface';
 import luxonTypes from './type-declarations/luxon.d.ts?raw';
 import n8nTypes from './type-declarations/n8n.d.ts?raw';
 import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
 import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
 import type { CodeExecutionMode } from 'n8n-workflow';
+import { loadTypes } from './typesLoader';
 
 self.process = { env: {} } as NodeJS.Process;
 
@@ -34,6 +36,7 @@ const worker = (): LanguageServiceWorker => {
 	let nodeJsonFetcher: (nodeName: string) => Promise<Schema | undefined> = async () => undefined;
 	const loadedNodeTypesMap: Record<string, { type: string; typeName: string }> = {};
 	let inputNodeNames: string[];
+	let mode: CodeExecutionMode;
 
 	function updateFile(fileName: string, content: string) {
 		const exists = env.getSourceFile(fileName);
@@ -73,8 +76,6 @@ declare global {
 	}
 }`,
 			);
-
-			console.log(env.getSourceFile('n8n-dynamic.d.ts')?.getText());
 		}
 	}
 
@@ -99,8 +100,6 @@ itemMatching(itemIndex: number): N8nInputItem;`
 	}
 }`,
 		);
-
-		console.log(env.getSourceFile('n8n-dynamic-input.d.ts')?.getText());
 	}
 
 	async function loadTypesIfNeeded(pos: number) {
@@ -146,10 +145,11 @@ itemMatching(itemIndex: number): N8nInputItem;`
 			nodeJsonFetcherArg: (nodeName: string) => Promise<Schema | undefined>,
 			allNodeNames: string[],
 			inputNodeNamesArg: string[],
-			mode: CodeExecutionMode,
+			modeArg: CodeExecutionMode,
 		) {
 			nodeJsonFetcher = nodeJsonFetcherArg;
 			inputNodeNames = inputNodeNamesArg;
+			mode = modeArg;
 
 			const compilerOptions: ts.CompilerOptions = {
 				allowJs: true,
@@ -163,6 +163,7 @@ itemMatching(itemIndex: number): N8nInputItem;`
 				noEmit: true,
 			};
 
+			const cache = await indexedDbCache('typescript-cache', 'fs-map');
 			const fsMap = await tsvfs.createDefaultMapFromCDN(
 				compilerOptions,
 				ts.version,
@@ -170,7 +171,7 @@ itemMatching(itemIndex: number): N8nInputItem;`
 				ts,
 				undefined,
 				undefined,
-				await indexedDbCache('typescript-cache', 'fs-map'),
+				cache,
 			);
 
 			fsMap.set('globals.d.ts', globalTypes);
@@ -194,7 +195,7 @@ declare global {
   }
 }`,
 			);
-			fsMap.set(FILE_NAME, wrapInFunction(content));
+			fsMap.set(FILE_NAME, wrapInFunction(content, mode));
 
 			fsMap.set(
 				'n8n-mode-specific.d.ts',
@@ -209,14 +210,27 @@ declare global {
 				compilerOptions,
 			);
 
+			if (cache.getItem('/node_modules/@types/luxon/package.json')) {
+				const fileMap = await cache.getAllWithPrefix('/node_modules/@types/luxon');
+
+				for (const [path, content] of Object.entries(fileMap)) {
+					env.createFile(path, content);
+				}
+			} else {
+				await loadTypes('luxon', '3.2.0', (path, types) => {
+					cache.setItem(path, types);
+					env.createFile(path, types);
+				});
+			}
+
 			await Promise.all(allNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)));
 			await Promise.all(
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
 			);
 		},
-		updateFile: (content) => updateFile(FILE_NAME, wrapInFunction(content)),
+		updateFile: (content) => updateFile(FILE_NAME, wrapInFunction(content, mode)),
 		async getCompletionsAtPos(pos) {
-			const tsPos = cmPosToTs(pos);
+			const tsPos = cmPosToTs(pos, fnPrefix(mode));
 
 			await loadTypesIfNeeded(tsPos);
 
@@ -256,19 +270,23 @@ declare global {
 				isDiagnosticWithLocation(diagnostic),
 			);
 
-			return diagnostics.map((d) => convertTSDiagnosticToCM(d));
+			return diagnostics.map((d) => convertTSDiagnosticToCM(d, fnPrefix(mode)));
 		},
 		getHoverTooltip(pos) {
-			const quickInfo = env.languageService.getQuickInfoAtPosition(FILE_NAME, cmPosToTs(pos));
+			const quickInfo = env.languageService.getQuickInfoAtPosition(
+				FILE_NAME,
+				cmPosToTs(pos, fnPrefix(mode)),
+			);
 			if (!quickInfo) return null;
 
 			const start = quickInfo.textSpan.start;
 
 			const typeDef =
-				env.languageService.getTypeDefinitionAtPosition(FILE_NAME, cmPosToTs(pos)) ??
-				env.languageService.getDefinitionAtPosition(FILE_NAME, cmPosToTs(pos));
+				env.languageService.getTypeDefinitionAtPosition(
+					FILE_NAME,
+					cmPosToTs(pos, fnPrefix(mode)),
+				) ?? env.languageService.getDefinitionAtPosition(FILE_NAME, cmPosToTs(pos, fnPrefix(mode)));
 
-			console.log(quickInfo, typeDef);
 			return {
 				start,
 				end: start + quickInfo.textSpan.length,
@@ -276,8 +294,8 @@ declare global {
 				quickInfo,
 			};
 		},
-		async updateMode(mode) {
-			console.log('worker updating mode', mode);
+		async updateMode(newMode) {
+			mode = newMode;
 			updateFile(
 				'n8n-mode-specific.d.ts',
 				mode === 'runOnceForAllItems' ? runOnceForAllItemsTypes : runOnceForEachItemTypes,

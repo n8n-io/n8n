@@ -1,4 +1,5 @@
 export {};
+export type N8nReturn = Promise<Object> | Object;
 
 declare global {
 	interface NodeData<C, J extends N8nJson, B extends string, P> {

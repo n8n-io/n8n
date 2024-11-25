@@ -1,6 +1,6 @@
 export {};
 
-declare module 'luxon' {}
+import luxon from 'luxon';
 
 declare global {
 	const DateTime: typeof luxon.DateTime;

@@ -58,20 +58,46 @@ export async function indexedDbCache(dbName: string, storeName: string) {
 		void clearIndexedDB();
 	}
 
-	async function transaction(
+	async function getAllWithPrefix(prefix: string) {
+		const keyRange = IDBKeyRange.bound(prefix, prefix + '\uffff', false, false);
+
+		const results: Record<string, string> = {};
+		return await transaction('readonly', async (store) => {
+			return await new Promise<Record<string, string>>((resolve, reject) => {
+				const request = store.openCursor(keyRange);
+
+				request.onsuccess = (event) => {
+					const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+
+					if (cursor) {
+						results[cursor.key as string] = cursor.value.value;
+						cursor.continue();
+					} else {
+						resolve(results);
+					}
+				};
+
+				request.onerror = () => {
+					reject(request.error);
+				};
+			});
+		});
+	}
+
+	async function transaction<T>(
 		mode: 'readonly' | 'readwrite',
-		action: (store: IDBObjectStore, db: IDBDatabase) => Promise<void> | void,
-	): Promise<void> {
+		action: (store: IDBObjectStore, db: IDBDatabase) => Promise<T> | T,
+	): Promise<T> {
 		const db = await openDb();
 		const tx = db.transaction(storeName, mode);
 		const store = tx.objectStore(storeName);
 
-		await action(store, db);
+		const result = await action(store, db);
 
-		return await new Promise<void>((resolve, reject) => {
+		return await new Promise<T>((resolve, reject) => {
 			tx.oncomplete = () => {
 				db.close();
-				resolve();
+				resolve(result);
 			};
 			tx.onerror = () => {
 				db.close();
@@ -98,5 +124,5 @@ export async function indexedDbCache(dbName: string, storeName: string) {
 		});
 	}
 
-	return { getItem, removeItem, setItem, clear };
+	return { getItem, removeItem, setItem, clear, getAllWithPrefix };
 }

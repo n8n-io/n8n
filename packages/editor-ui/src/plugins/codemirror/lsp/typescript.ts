@@ -1,16 +1,17 @@
+import { useDataSchema } from '@/composables/useDataSchema';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { autocompletion, type CompletionSource } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { linter, type LintSource } from '@codemirror/lint';
 import { combineConfig, Facet } from '@codemirror/state';
-import { EditorView, hoverTooltip } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import * as Comlink from 'comlink';
-import type { LanguageServiceWorker } from './types';
-import { useDataSchema } from '@/composables/useDataSchema';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
-import { autocompletableNodeNames } from '../completions/utils';
 import { useNDVStore } from '../../../stores/ndv.store';
+import { autocompletableNodeNames, stripExcessParens } from '../completions/utils';
+import type { LanguageServiceWorker } from './types';
+import { dollarOptions } from '../completions/dollar.completions';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -25,12 +26,17 @@ const tsCompletions: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(tsFacet);
 	const { pos, explicit } = context;
 
-	let word = context.matchBefore(/\w*/);
+	let word = context.matchBefore(/[\$\w]*/);
 	if (!word?.text) {
 		word = context.matchBefore(/\./);
 	}
 
-	if (!word?.text && !explicit) return null;
+	if (!word?.text && explicit) {
+		return {
+			from: pos,
+			options: dollarOptions().map(stripExcessParens(context)),
+		};
+	}
 
 	const result = await worker.getCompletionsAtPos(context.pos);
 
@@ -47,30 +53,30 @@ const tsLint: LintSource = async (view) => {
 	return await worker.getDiagnostics();
 };
 
-type HoverSource = Parameters<typeof hoverTooltip>[0];
-const tsHover: HoverSource = async (view, pos) => {
-	const { worker } = view.state.facet(tsFacet);
+// type HoverSource = Parameters<typeof hoverTooltip>[0];
+// const tsHover: HoverSource = async (view, pos) => {
+// 	const { worker } = view.state.facet(tsFacet);
 
-	const info = await worker.getHoverTooltip(pos);
+// 	const info = await worker.getHoverTooltip(pos);
 
-	if (!info) return null;
+// 	if (!info) return null;
 
-	return {
-		pos: info.start,
-		end: info.end,
-		create: () => {
-			const div = document.createElement('div');
-			if (info.quickInfo?.displayParts) {
-				for (const part of info.quickInfo.displayParts) {
-					const span = div.appendChild(document.createElement('span'));
-					span.className = `quick-info-${part.kind}`;
-					span.innerText = part.text;
-				}
-			}
-			return { dom: div };
-		},
-	};
-};
+// 	return {
+// 		pos: info.start,
+// 		end: info.end,
+// 		create: () => {
+// 			const div = document.createElement('div');
+// 			if (info.quickInfo?.displayParts) {
+// 				for (const part of info.quickInfo.displayParts) {
+// 					const span = div.appendChild(document.createElement('span'));
+// 					span.className = `quick-info-${part.kind}`;
+// 					span.innerText = part.text;
+// 				}
+// 			}
+// 			return { dom: div };
+// 		},
+// 	};
+// };
 
 function webWorker(path: string) {
 	return new Worker(new URL(path, import.meta.url), { type: 'module' });
@@ -114,7 +120,7 @@ export async function typescript(initialValue: string, mode: CodeExecutionMode) 
 				override: [tsCompletions],
 			}),
 			linter(tsLint),
-			hoverTooltip(tsHover),
+			// hoverTooltip(tsHover),
 			EditorView.updateListener.of(async (update) => {
 				if (!update.docChanged) return;
 				await worker.updateFile(update.state.doc.toString());

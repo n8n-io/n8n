@@ -1,7 +1,7 @@
 import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
 import { typescript } from '@/plugins/codemirror/lsp/typescript';
-import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
+import { closeCursorInfoBox, infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import { closeBrackets, closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
@@ -261,6 +261,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 						light: 'var(--color-code-indentation-marker)',
 					},
 				}),
+				infoBoxTooltips(),
 				Prec.highest(keymap.of(editorKeymap)),
 			],
 		});

@@ -1,11 +1,3 @@
-.code-node-editor .cm-tooltip-autocomplete:after {
-	padding: var(--spacing-2xs) var(--spacing-s);
-	border: var(--border-base);
-	border-bottom-left-radius: var(--border-radius-base);
-	display: block;
-	content: 'n8n supports all JavaScript functions, including those not listed.';
-}
-
 .code-node-editor .cm-editor .cm-tooltip-autocomplete > ul[role='listbox'] {
 	border-bottom: none;
 	border-bottom-left-radius: 0;

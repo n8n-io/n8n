@@ -1,22 +1,26 @@
 import type { Schema } from '@/Interface';
 import type { Diagnostic } from '@codemirror/lint';
 import { capitalize } from 'lodash-es';
-import { type DocMetadata, type DocMetadataArgument } from 'n8n-workflow';
+import { type CodeExecutionMode, type DocMetadata, type DocMetadataArgument } from 'n8n-workflow';
 import ts from 'typescript';
 
 export const FILE_NAME = 'index.js';
-const FN_PREFIX = '(() => {\n';
+export const fnPrefix = (returnType: string) => `(
+/**
+ * @returns {${returnType}}
+*/
+() => {\n`;
 
-export function wrapInFunction(script: string): string {
-	return `${FN_PREFIX}${script}\n})()`;
+export function wrapInFunction(script: string, mode: CodeExecutionMode): string {
+	return `${fnPrefix(returnTypeForMode(mode))}${script}\n})()`;
 }
 
-export function cmPosToTs(pos: number) {
-	return pos + FN_PREFIX.length;
+export function cmPosToTs(pos: number, prefix: string) {
+	return pos + prefix.length;
 }
 
-export function tsPosToCm(pos: number) {
-	return pos - FN_PREFIX.length;
+export function tsPosToCm(pos: number, prefix: string) {
+	return pos - prefix.length;
 }
 
 /**
@@ -77,10 +81,10 @@ export function tsDiagnosticMessage(diagnostic: Pick<ts.Diagnostic, 'messageText
  * ways of representing diagnostics. This converts
  * from one to the other.
  */
-export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation): Diagnostic {
+export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation, prefix: string): Diagnostic {
 	// We add some code at the end of the document, but we can't have a
 	// diagnostic in an invalid range
-	const start = tsPosToCm(d.start);
+	const start = tsPosToCm(d.start, prefix);
 	const message = tsDiagnosticMessage(d);
 
 	return {
@@ -165,4 +169,12 @@ ${Object.entries(functions)
 declare global {
 	${types}
 }`;
+}
+
+function returnTypeForMode(mode: CodeExecutionMode): string {
+	if (mode === 'runOnceForAllItems') {
+		return 'Promise<Array<Object>> | Array<Object>';
+	}
+
+	return 'Promise<Object> | Object';
 }
