@@ -30,7 +30,11 @@ beforeEach(() => {
 
 describe('CanvasEdge', () => {
 	it('should emit delete event when toolbar delete is clicked', async () => {
-		const { emitted, getByTestId } = renderComponent();
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				hovered: true,
+			},
+		});
 		await userEvent.hover(getByTestId('edge-label-wrapper'));
 		const deleteButton = getByTestId('delete-connection-button');
 
@@ -40,7 +44,11 @@ describe('CanvasEdge', () => {
 	});
 
 	it('should emit add event when toolbar add is clicked', async () => {
-		const { emitted, getByTestId } = renderComponent();
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				hovered: true,
+			},
+		});
 		await userEvent.hover(getByTestId('edge-label-wrapper'));
 
 		const addButton = getByTestId('add-connection-button');

@@ -1829,7 +1829,7 @@ export default defineComponent({
 						return;
 					}
 				} else {
-					// Pasted data is is possible workflow data
+					// Pasted data is possible workflow data
 					try {
 						// Check first if it is valid JSON
 						workflowData = JSON.parse(plainTextData);

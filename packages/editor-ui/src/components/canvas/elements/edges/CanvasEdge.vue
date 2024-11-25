@@ -3,39 +3,27 @@
 import type { CanvasConnectionData } from '@/types';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
-import { useVueFlow, BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
+import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed, useCssModule, ref, toRef } from 'vue';
+import { computed, useCssModule, toRef } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
 	delete: [connection: Connection];
+	'update:hovered': [hovered: boolean];
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
 	readOnly?: boolean;
 	hovered?: boolean;
+	bringToFront?: boolean; // Determines if entire edges layer should be brought to front
 };
 
 const props = defineProps<CanvasEdgeProps>();
 
 const data = toRef(props, 'data');
-
-const { onEdgeMouseEnter, onEdgeMouseLeave } = useVueFlow();
-
-const isHovered = ref(false);
-
-onEdgeMouseEnter(({ edge }) => {
-	if (edge.id !== props.id) return;
-	isHovered.value = true;
-});
-
-onEdgeMouseLeave(({ edge }) => {
-	if (edge.id !== props.id) return;
-	isHovered.value = false;
-});
 
 const $style = useCssModule();
 
@@ -45,7 +33,7 @@ const connectionType = computed(() =>
 		: NodeConnectionType.Main,
 );
 
-const renderToolbar = computed(() => isHovered.value && !props.readOnly);
+const renderToolbar = computed(() => props.hovered && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
 
@@ -71,12 +59,13 @@ const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
-	stroke: isHovered.value ? 'var(--color-primary)' : edgeColor.value,
+	stroke: props.hovered ? 'var(--color-primary)' : edgeColor.value,
 }));
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
-	hovered: isHovered.value,
+	hovered: props.hovered,
+	'bring-to-front': props.bringToFront,
 }));
 
 const edgeLabelStyle = computed(() => ({
@@ -86,7 +75,7 @@ const edgeLabelStyle = computed(() => ({
 const edgeToolbarStyle = computed(() => {
 	return {
 		transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px,${labelPosition.value[1]}px)`,
-		...(isHovered.value ? { zIndex: 1 } : {}),
+		...(props.hovered ? { zIndex: 1 } : {}),
 	};
 });
 
@@ -120,6 +109,14 @@ function onAdd() {
 function onDelete() {
 	emit('delete', connection.value);
 }
+
+function onEdgeLabelMouseEnter() {
+	emit('update:hovered', true);
+}
+
+function onEdgeLabelMouseLeave() {
+	emit('update:hovered', false);
+}
 </script>
 
 <template>
@@ -142,8 +139,8 @@ function onDelete() {
 			:data-edge-status="status"
 			:style="edgeToolbarStyle"
 			:class="edgeToolbarClasses"
-			@mouseenter="isHovered = true"
-			@mouseleave="isHovered = false"
+			@mouseenter="onEdgeLabelMouseEnter"
+			@mouseleave="onEdgeLabelMouseLeave"
 		>
 			<CanvasEdgeToolbar
 				v-if="renderToolbar"
