@@ -103,26 +103,29 @@ export class TestRunnerService {
 		// 1. Make test cases from previous executions
 
 		// Select executions with the annotation tag and workflow ID of the test.
-		// Join with the execution data and metadata
-		const executions = await this.executionRepository
+		// Fetch only ids to reduce the data transfer.
+		const pastExecutions = await this.executionRepository
 			.createQueryBuilder('execution')
+			.select('execution.id')
 			.leftJoin('execution.annotation', 'annotation')
 			.leftJoin('annotation.tags', 'annotationTag')
-			.leftJoinAndSelect('execution.executionData', 'executionData')
-			.leftJoinAndSelect('execution.metadata', 'metadata')
 			.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
 			.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 			.getMany();
 
-		const testCases = executions.map((execution) =>
-			this.createPinDataFromExecution(workflow, execution),
-		);
-
 		// 2. Run the test cases
 
-		for (const testCase of testCases) {
+		for (const { id: pastExecutionId } of pastExecutions) {
+			const pastExecution = await this.executionRepository.findOne({
+				where: { id: pastExecutionId },
+				relations: ['executionData', 'metadata'],
+			});
+			assert(pastExecution, 'Execution not found');
+
+			const pinData = this.createPinDataFromExecution(workflow, pastExecution);
+
 			// Run the test case and wait for it to finish
-			const execution = await this.runTestCase(workflow, testCase, user.id);
+			const execution = await this.runTestCase(workflow, pinData, user.id);
 
 			if (!execution) {
 				continue;
