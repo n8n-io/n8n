@@ -10,6 +10,13 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
+	public async createTestRun(testDefinitionId: string) {
+		const testRun = new TestRun();
+		testRun.testDefinitionId = testDefinitionId;
+		testRun.status = 'new';
+		return await this.save(testRun);
+	}
+
 	public async markAsRunning(id: string) {
 		console.log('markAsRunning');
 		return await this.update(id, { status: 'running', runAt: new Date() });

@@ -147,12 +147,8 @@ export class TestRunnerService {
 		assert(evaluationWorkflow, 'Evaluation workflow not found');
 
 		// 0. Create new Test Run
-		const insertResult = await this.testRunRepository.insert({
-			testDefinition: { id: test.id },
-			status: 'new',
-		});
-		const testRunId = insertResult.identifiers[0].id as string;
-		assert(testRunId, 'Unable to create a test run');
+		const testRun = await this.testRunRepository.createTestRun(test.id);
+		assert(testRun, 'Unable to create a test run');
 
 		// 1. Make test cases from previous executions
 
@@ -170,7 +166,7 @@ export class TestRunnerService {
 
 		// 2. Run over all the test cases
 
-		await this.testRunRepository.markAsRunning(testRunId);
+		await this.testRunRepository.markAsRunning(testRun.id);
 
 		const metrics = [];
 
@@ -216,6 +212,6 @@ export class TestRunnerService {
 		// Now we just set success to true if all the test cases passed
 		const aggregatedMetrics = { success: metrics.every((metric) => metric.success) };
 
-		await this.testRunRepository.markAsCompleted(testRunId, aggregatedMetrics);
+		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 	}
 }
