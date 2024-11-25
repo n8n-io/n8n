@@ -222,9 +222,7 @@ const onDragChange = (optionName: string) => {
 			<div v-if="multipleValues">
 				<Draggable
 					v-model="mutableValues[property.name]"
-					:options="{
-						handle: '.drag-handle',
-					}"
+					handle=".drag-handle"
 					drag-class="dragging"
 					ghost-class="ghost"
 					chosen-class="chosen"

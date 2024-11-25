@@ -165,9 +165,7 @@ function getIssues(index: number): string[] {
 				<Draggable
 					:key="JSON.stringify(state.paramValue.conditions.map((c) => c.id))"
 					v-model="state.paramValue.conditions"
-					:options="{
-						handle: '.drag-handle',
-					}"
+					handle=".drag-handle"
 					:drag-class="$style.dragging"
 					:ghost-class="$style.ghost"
 				>
@@ -189,6 +187,7 @@ function getIssues(index: number): string[] {
 								:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
 								:read-only="readOnly"
 								:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
+								:can-drag="index !== 0 || state.paramValue.conditions.length > 1"
 								:path="`${path}.${index}`"
 								:issues="getIssues(index)"
 								:class="$style.condition"

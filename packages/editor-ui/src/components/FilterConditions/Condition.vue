@@ -33,6 +33,7 @@ interface Props {
 	canRemove?: boolean;
 	readOnly?: boolean;
 	index?: number;
+	canDrag?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	fixedLeftValue: false,
 	readOnly: false,
 	index: 0,
+	canDrag: true,
 });
 
 const emit = defineEmits<{
@@ -153,13 +155,13 @@ const onBlur = (): void => {
 		data-test-id="filter-condition"
 	>
 		<N8nIconButton
-			v-if="true"
+			v-if="canDrag && !readOnly"
 			type="tertiary"
 			text
 			size="mini"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
-			:class="$style.drag"
+			:class="[$style.drag, 'drag-handle']"
 		></N8nIconButton>
 		<n8n-icon-button
 			v-if="canRemove && !readOnly"
