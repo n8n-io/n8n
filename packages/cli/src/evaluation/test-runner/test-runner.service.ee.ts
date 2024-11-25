@@ -147,12 +147,12 @@ export class TestRunnerService {
 		assert(evaluationWorkflow, 'Evaluation workflow not found');
 
 		// 0. Create new Test Run
-		const testRun = this.testRunRepository.create({
+		const insertResult = await this.testRunRepository.insert({
 			testDefinition: { id: test.id },
 			status: 'new',
 		});
-
-		await this.testRunRepository.save(testRun);
+		const testRunId = insertResult.identifiers[0].id as string;
+		assert(testRunId, 'Unable to create a test run');
 
 		// 1. Make test cases from previous executions
 
@@ -170,13 +170,12 @@ export class TestRunnerService {
 
 		// 2. Run over all the test cases
 
-		testRun.status = 'running';
-		testRun.runAt = new Date();
-		await this.testRunRepository.save(testRun);
+		await this.testRunRepository.markAsRunning(testRunId);
 
 		const metrics = [];
 
 		for (const { id: pastExecutionId } of pastExecutions) {
+			// Fetch past execution with data
 			const pastExecution = await this.executionRepository.findOne({
 				where: { id: pastExecutionId },
 				relations: ['executionData', 'metadata'],
@@ -210,9 +209,8 @@ export class TestRunnerService {
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
-			this.extractEvaluationResult(evalExecution);
+			const evalResult = this.extractEvaluationResult(evalExecution);
 
-			// TODO: collect metrics
 			metrics.push(evalResult);
 		}
 
@@ -220,9 +218,6 @@ export class TestRunnerService {
 		// Now we just set success to true if all the test cases passed
 		const aggregatedMetrics = { success: metrics.every((metric) => metric.success) };
 
-		testRun.status = 'completed';
-		testRun.completedAt = new Date();
-		testRun.metrics = aggregatedMetrics;
-		await this.testRunRepository.save(testRun);
+		await this.testRunRepository.markAsCompleted(testRunId, aggregatedMetrics);
 	}
 }

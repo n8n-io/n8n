@@ -1,5 +1,4 @@
 import { Column, Entity, Index, ManyToOne, RelationId } from '@n8n/typeorm';
-import { IDataObject } from 'n8n-workflow';
 
 import {
 	datetimeColumnType,
@@ -9,6 +8,8 @@ import {
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 
 type TestRunStatus = 'new' | 'running' | 'completed' | 'error';
+
+export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
 /**
  * Entity representing a Test Run.
@@ -26,12 +27,12 @@ export class TestRun extends WithTimestampsAndStringId {
 	@Column('varchar')
 	status: TestRunStatus;
 
-	@Column(datetimeColumnType)
-	runAt: Date;
+	@Column({ type: datetimeColumnType, nullable: true })
+	runAt: Date | null;
 
-	@Column(datetimeColumnType)
-	completedAt: Date;
+	@Column({ type: datetimeColumnType, nullable: true })
+	completedAt: Date | null;
 
 	@Column(jsonColumnType, { nullable: true })
-	metrics: IDataObject;
+	metrics: AggregatedTestRunMetrics;
 }
