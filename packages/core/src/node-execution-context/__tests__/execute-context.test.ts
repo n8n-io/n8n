@@ -19,7 +19,7 @@ import type {
 	ISourceData,
 	ITaskMetadata,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, ExpressionError, NodeHelpers } from 'n8n-workflow';
 
 import { ExecuteContext } from '../execute-context';
 
@@ -53,6 +53,7 @@ describe('ExecuteContext', () => {
 	});
 	node.parameters = {
 		testParameter: 'testValue',
+		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
@@ -197,6 +198,18 @@ describe('ExecuteContext', () => {
 			expression.getParameterValue.mockImplementation((value) => value);
 		});
 
+		it('should throw if parameter is not defined on the node.parameters', () => {
+			expect(() => executeContext.getNodeParameter('invalidParameter', 0)).toThrow(
+				'Could not get parameter',
+			);
+		});
+
+		it('should return null if the parameter exists but has a null value', () => {
+			const parameter = executeContext.getNodeParameter('nullParameter', 0);
+
+			expect(parameter).toBeNull();
+		});
+
 		it('should return parameter value when it exists', () => {
 			const parameter = executeContext.getNodeParameter('testParameter', 0);
 
@@ -207,6 +220,28 @@ describe('ExecuteContext', () => {
 			const parameter = executeContext.getNodeParameter('otherParameter', 0, 'fallback');
 
 			expect(parameter).toBe('fallback');
+		});
+
+		it('should handle expression evaluation errors', () => {
+			const error = new ExpressionError('Invalid expression');
+			expression.getParameterValue.mockImplementationOnce(() => {
+				throw error;
+			});
+
+			expect(() => executeContext.getNodeParameter('testParameter', 0)).toThrow(error);
+			expect(error.context.parameter).toEqual('testParameter');
+		});
+
+		it('should handle expression errors on Set nodes (Ticket #PAY-684)', () => {
+			node.type = 'n8n-nodes-base.set';
+			node.continueOnFail = true;
+
+			expression.getParameterValue.mockImplementationOnce(() => {
+				throw new ExpressionError('Invalid expression');
+			});
+
+			const parameter = executeContext.getNodeParameter('testParameter', 0);
+			expect(parameter).toEqual([{ name: undefined, value: undefined }]);
 		});
 	});
 

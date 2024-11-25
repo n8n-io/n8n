@@ -140,12 +140,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (nodeType === undefined) {
-			throw new NodeOperationError(
-				node,
-				`Node type "${node.type}" is not known so can not get credentials`,
-			);
-		}
 
 		// Hardcode for now for security reasons that only a single node can access
 		// all credentials
@@ -290,11 +284,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			this;
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (nodeType === undefined) {
-			throw new ApplicationError('Node type is unknown so cannot return parameter value', {
-				tags: { nodeType: node.type },
-			});
-		}
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const value = get(node.parameters, parameterName, fallbackValue);
