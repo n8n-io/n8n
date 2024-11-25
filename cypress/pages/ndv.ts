@@ -227,6 +227,9 @@ export class NDV extends BasePage {
 			this.getters.inputSelect().find('.el-select').click();
 			this.getters.inputOption().contains(nodeName).click();
 		},
+		expandSchemaViewNode: (nodeName: string) => {
+			this.getters.schemaViewNodeName().contains(nodeName).click();
+		},
 		addDefaultPinnedData: () => {
 			this.actions.editPinnedData();
 			this.actions.savePinnedData();

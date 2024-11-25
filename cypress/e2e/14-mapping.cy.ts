@@ -185,6 +185,7 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.executePrevious();
+		ndv.actions.expandSchemaViewNode(SCHEDULE_TRIGGER_NODE_NAME);
 
 		const dataPill = ndv.getters
 			.inputDataContainer()
