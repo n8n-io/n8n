@@ -1,6 +1,6 @@
-import type { IExecuteData, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteData, INodeExecutionData, ITaskDataConnections } from 'n8n-workflow';
 
-import type { DataRequestResponse } from '@/runner-types';
+import type { DataRequestResponse, InputDataChunkDefinition } from '@/runner-types';
 
 /**
  * Reconstructs data from a DataRequestResponse to the initial
@@ -10,18 +10,41 @@ export class DataRequestResponseReconstruct {
 	/**
 	 * Reconstructs `connectionInputData` from a DataRequestResponse
 	 */
-	reconstructConnectionInputData(
+	reconstructConnectionInputItems(
 		inputData: DataRequestResponse['inputData'],
+		chunk?: InputDataChunkDefinition,
 	): INodeExecutionData[] {
-		return inputData?.main?.[0] ?? [];
+		const inputItems = inputData?.main?.[0] ?? [];
+		if (!chunk) {
+			return inputItems;
+		}
+
+		// Only a chunk of the input items was requested. We reconstruct
+		// the array by filling in the missing items with `undefined`.
+		let sparseInputItems: Array<INodeExecutionData | undefined> = [];
+
+		sparseInputItems = sparseInputItems
+			.concat(Array.from({ length: chunk.startIndex }))
+			.concat(inputItems)
+			.concat(Array.from({ length: inputItems.length - chunk.startIndex - chunk.count }));
+
+		return sparseInputItems as INodeExecutionData[];
 	}
 
 	/**
 	 * Reconstruct `executeData` from a DataRequestResponse
 	 */
-	reconstructExecuteData(response: DataRequestResponse): IExecuteData {
+	reconstructExecuteData(
+		response: DataRequestResponse,
+		inputItems: INodeExecutionData[],
+	): IExecuteData {
+		const inputData: ITaskDataConnections = {
+			...response.inputData,
+			main: [inputItems],
+		};
+
 		return {
-			data: response.inputData,
+			data: inputData,
 			node: response.node,
 			source: response.connectionInputSource,
 		};

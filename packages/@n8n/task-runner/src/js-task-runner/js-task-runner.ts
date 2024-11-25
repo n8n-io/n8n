@@ -19,7 +19,12 @@ import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
-import type { DataRequestResponse, PartialAdditionalData, TaskResultData } from '@/runner-types';
+import type {
+	DataRequestResponse,
+	InputDataChunkDefinition,
+	PartialAdditionalData,
+	TaskResultData,
+} from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
@@ -37,9 +42,8 @@ export interface JSExecSettings {
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
-
-	// For workflow data proxy
-	mode: WorkflowExecuteMode;
+	// For executing partial input data
+	chunk?: InputDataChunkDefinition;
 }
 
 export interface JsTaskData {
@@ -94,6 +98,8 @@ export class JsTaskRunner extends TaskRunner {
 		const settings = task.settings;
 		a.ok(settings, 'JS Code not sent to runner');
 
+		this.validateTaskSettings(settings);
+
 		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
 		const neededBuiltIns = neededBuiltInsResult.ok
 			? neededBuiltInsResult.result
@@ -101,10 +107,10 @@ export class JsTaskRunner extends TaskRunner {
 
 		const dataResponse = await this.requestData<DataRequestResponse>(
 			task.taskId,
-			neededBuiltIns.toDataRequestParams(),
+			neededBuiltIns.toDataRequestParams(settings.chunk),
 		);
 
-		const data = this.reconstructTaskData(dataResponse);
+		const data = this.reconstructTaskData(dataResponse, settings.chunk);
 
 		await this.requestNodeTypeIfNeeded(neededBuiltIns, data.workflow, task.taskId);
 
@@ -134,6 +140,15 @@ export class JsTaskRunner extends TaskRunner {
 			result,
 			customData: data.runExecutionData.resultData.metadata,
 		};
+	}
+
+	/** Validates that task settings are valid */
+	private validateTaskSettings(settings: JSExecSettings) {
+		a.ok(settings.code, 'No code to execute');
+
+		if (settings.nodeMode === 'runOnceForAllItems') {
+			a.ok(settings.chunk === undefined, 'Chunking is not supported for runOnceForAllItems');
+		}
 	}
 
 	private getNativeVariables() {
@@ -220,7 +235,13 @@ export class JsTaskRunner extends TaskRunner {
 		const inputItems = data.connectionInputData;
 		const returnData: INodeExecutionData[] = [];
 
-		for (let index = 0; index < inputItems.length; index++) {
+		// If a chunk was requested, only process the items in the chunk
+		const chunkStartIdx = settings.chunk ? settings.chunk.startIndex : 0;
+		const chunkEndIdx = settings.chunk
+			? settings.chunk.startIndex + settings.chunk.count
+			: inputItems.length;
+
+		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
 			const context: Context = {
@@ -325,13 +346,19 @@ export class JsTaskRunner extends TaskRunner {
 		return new ExecutionError({ message: JSON.stringify(error) });
 	}
 
-	private reconstructTaskData(response: DataRequestResponse): JsTaskData {
+	private reconstructTaskData(
+		response: DataRequestResponse,
+		chunk?: InputDataChunkDefinition,
+	): JsTaskData {
+		const inputData = this.taskDataReconstruct.reconstructConnectionInputItems(
+			response.inputData,
+			chunk,
+		);
+
 		return {
 			...response,
-			connectionInputData: this.taskDataReconstruct.reconstructConnectionInputData(
-				response.inputData,
-			),
-			executeData: this.taskDataReconstruct.reconstructExecuteData(response),
+			connectionInputData: inputData,
+			executeData: this.taskDataReconstruct.reconstructExecuteData(response, inputData),
 		};
 	}
 
