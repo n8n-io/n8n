@@ -11,8 +11,6 @@ import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { TestDefinitionService } from '@/evaluation/test-definition.service.ee';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { TestRunnerService } from '../test-runner.service.ee';
@@ -27,9 +25,27 @@ const executionDataJson = JSON.parse(
 
 mockInstance(ActiveExecutions);
 
+const executionMocks = [
+	mock<ExecutionEntity>({
+		id: 'some-execution-id',
+		workflowId: 'workflow-under-test-id',
+		status: 'success',
+		executionData: {
+			data: stringify(executionDataJson),
+		},
+	}),
+	mock<ExecutionEntity>({
+		id: 'some-execution-id-2',
+		workflowId: 'workflow-under-test-id',
+		status: 'success',
+		executionData: {
+			data: stringify(executionDataJson),
+		},
+	}),
+];
+
 describe('TestRunnerService', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const testDefinitionService = mock<TestDefinitionService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
 
@@ -38,31 +54,18 @@ describe('TestRunnerService', () => {
 			fallbackMockImplementation: jest.fn().mockReturnThis(),
 		});
 
-		executionsQbMock.getMany.mockResolvedValueOnce([
-			mock<ExecutionEntity>({
-				id: 'some-execution-id',
-				workflowId: 'workflow-under-test-id',
-				status: 'success',
-				executionData: {
-					data: stringify(executionDataJson),
-				},
-			}),
-			mock<ExecutionEntity>({
-				id: 'some-execution-id-2',
-				workflowId: 'workflow-under-test-id',
-				status: 'success',
-				executionData: {
-					data: stringify(executionDataJson),
-				},
-			}),
-		]);
-
+		executionsQbMock.getMany.mockResolvedValueOnce(executionMocks);
 		executionRepository.createQueryBuilder.mockReturnValueOnce(executionsQbMock);
+		executionRepository.findOne
+			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id' } }))
+			.mockResolvedValueOnce(executionMocks[0]);
+		executionRepository.findOne
+			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id-2' } }))
+			.mockResolvedValueOnce(executionMocks[1]);
 	});
 
 	test('should create an instance of TestRunnerService', async () => {
 		const testRunnerService = new TestRunnerService(
-			testDefinitionService,
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
@@ -71,39 +74,12 @@ describe('TestRunnerService', () => {
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
 	});
 
-	test('should return an error if test definition is not found', async () => {
-		const testRunnerService = new TestRunnerService(
-			testDefinitionService,
-			workflowRepository,
-			workflowRunner,
-			executionRepository,
-		);
-
-		testDefinitionService.findOne.mockResolvedValueOnce(null);
-
-		await expect(testRunnerService.runTest(mock<User>(), 'some-test-id', [])).rejects.toThrowError(
-			NotFoundError,
-		);
-	});
-
 	test('should create and run test cases from past executions', async () => {
 		const testRunnerService = new TestRunnerService(
-			testDefinitionService,
 			workflowRepository,
 			workflowRunner,
 			executionRepository,
 		);
-
-		testDefinitionService.findOne
-			.calledWith('some-test-id', expect.anything())
-			.mockResolvedValueOnce(
-				mock<TestDefinition>({
-					id: 'some-test-id',
-					workflowId: 'workflow-under-test-id',
-					evaluationWorkflowId: 'evaluation-workflow-id',
-					annotationTagId: 'some-annotation-tag-id',
-				}),
-			);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
 			id: 'workflow-under-test-id',
@@ -112,9 +88,15 @@ describe('TestRunnerService', () => {
 
 		workflowRunner.run.mockResolvedValue('test-execution-id');
 
-		await testRunnerService.runTest(mock<User>(), 'some-test-id', []);
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+			}),
+		);
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
 });

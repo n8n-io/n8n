@@ -141,7 +141,7 @@ export class TestDefinitionsController {
 		if (!testDefinition) throw new NotFoundError('Test definition not found');
 
 		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, testDefinitionId, workflowIds);
+		void this.testRunnerService.runTest(req.user, testDefinition);
 
 		res.status(202).json({ success: true });
 	}

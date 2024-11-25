@@ -5,12 +5,11 @@ import { Container, Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
+import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TestDefinitionService } from '@/evaluation/test-definition.service.ee';
 import type { IExecutionDb, IExecutionResponse } from '@/interfaces';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -26,7 +25,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 @Service()
 export class TestRunnerService {
 	constructor(
-		private readonly testDefinitionsService: TestDefinitionService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly executionRepository: ExecutionRepository,
@@ -90,13 +88,7 @@ export class TestRunnerService {
 	/**
 	 * Creates a new test run for the given test definition.
 	 */
-	public async runTest(user: User, testId: string, accessibleWorkflowIds: string[]): Promise<void> {
-		const test = await this.testDefinitionsService.findOne(testId, accessibleWorkflowIds);
-
-		if (!test) {
-			throw new NotFoundError('Test definition not found');
-		}
-
+	public async runTest(user: User, test: TestDefinition): Promise<void> {
 		const workflow = await this.workflowRepository.findById(test.workflowId);
 		assert(workflow, 'Workflow not found');
 
@@ -104,14 +96,15 @@ export class TestRunnerService {
 
 		// Select executions with the annotation tag and workflow ID of the test.
 		// Fetch only ids to reduce the data transfer.
-		const pastExecutions = await this.executionRepository
-			.createQueryBuilder('execution')
-			.select('execution.id')
-			.leftJoin('execution.annotation', 'annotation')
-			.leftJoin('annotation.tags', 'annotationTag')
-			.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
-			.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
-			.getMany();
+		const pastExecutions: ReadonlyArray<Pick<ExecutionEntity, 'id'>> =
+			await this.executionRepository
+				.createQueryBuilder('execution')
+				.select('execution.id')
+				.leftJoin('execution.annotation', 'annotation')
+				.leftJoin('annotation.tags', 'annotationTag')
+				.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
+				.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
+				.getMany();
 
 		// 2. Run the test cases
 
