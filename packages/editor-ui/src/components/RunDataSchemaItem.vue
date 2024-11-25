@@ -123,12 +123,14 @@ const emit = defineEmits<{
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	line-height: 1.5;
 }
 
 .text {
 	font-weight: var(--font-weight-normal);
 	font-size: var(--font-size-2xs);
 	margin-left: var(--spacing-2xs);
+	word-break: break-word;
 }
 
 .collapse-icon {
