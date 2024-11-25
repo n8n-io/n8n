@@ -317,7 +317,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<div :class="$style.logo">
-			<Logo location="sidebar" :collapsed="isCollapsed" />
+			<Logo
+				location="sidebar"
+				:collapsed="isCollapsed"
+				:release-channel="settingsStore.settings.releaseChannel"
+			/>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"

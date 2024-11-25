@@ -1,14 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import Logo from '../Logo.vue';
 
-const { useSettingsStore } = vi.hoisted(() => ({
-	useSettingsStore: vi.fn(() => ({
-		settings: { releaseChannel: 'stable' },
-	})),
-}));
-
-vi.mock('@/stores/settings.store', () => ({ useSettingsStore }));
-
 vi.stubGlobal('URL', {
 	createObjectURL: vi.fn(),
 });
@@ -18,31 +10,28 @@ describe('Logo', () => {
 
 	it('renders the logo for authView location', () => {
 		const wrapper = renderComponent({
-			props: { location: 'authView' },
+			props: { location: 'authView', releaseChannel: 'stable' },
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
 	it('renders the logo for sidebar location when sidebar is expanded', () => {
 		const wrapper = renderComponent({
-			props: { location: 'sidebar', collapsed: false },
+			props: { location: 'sidebar', collapsed: false, releaseChannel: 'stable' },
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
 	it('renders the logo for sidebar location when sidebar is collapsed', () => {
 		const wrapper = renderComponent({
-			props: { location: 'sidebar', collapsed: true },
+			props: { location: 'sidebar', collapsed: true, releaseChannel: 'stable' },
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
 	it('renders the releaseChannelTag for non-stable releaseChannel', async () => {
-		useSettingsStore.mockReturnValue({
-			settings: { releaseChannel: 'dev' },
-		});
 		const wrapper = renderComponent({
-			props: { location: 'authView' },
+			props: { location: 'authView', releaseChannel: 'dev' },
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});

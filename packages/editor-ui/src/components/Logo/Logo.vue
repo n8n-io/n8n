@@ -1,39 +1,41 @@
 <script setup lang="ts">
+import type { FrontendSettings } from '@n8n/api-types';
 import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 import { useFavicon } from '@vueuse/core';
 
-import { useSettingsStore } from '@/stores/settings.store';
 import LogoIcon from './logo-icon.svg';
 import LogoText from './logo-text.svg';
 
 const props = defineProps<
-	| {
-			location: 'authView';
-	  }
-	| {
-			location: 'sidebar';
-			collapsed: boolean;
-	  }
+	(
+		| {
+				location: 'authView';
+		  }
+		| {
+				location: 'sidebar';
+				collapsed: boolean;
+		  }
+	) & {
+		releaseChannel: FrontendSettings['releaseChannel'];
+	}
 >();
 
-const {
-	settings: { releaseChannel },
-} = useSettingsStore();
+const { location, releaseChannel } = props;
 
 const showReleaseChannelTag = computed(() => {
 	if (releaseChannel === 'stable') return false;
-	if (props.location === 'authView') return true;
+	if (location === 'authView') return true;
 	return !props.collapsed;
 });
 
 const showLogoText = computed(() => {
-	if (props.location === 'authView') return true;
+	if (location === 'authView') return true;
 	return !props.collapsed;
 });
 
 const $style = useCssModule();
 const containerClasses = computed(() => {
-	if (props.location === 'authView') {
+	if (location === 'authView') {
 		return [$style.logoContainer, $style.authView];
 	}
 	return [
@@ -45,7 +47,7 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	if (releaseChannel === 'stable') return;
+	if (releaseChannel === 'stable' || !('createObjectURL' in URL)) return;
 
 	const logoEl = svg.value!.$el;
 

@@ -2,6 +2,7 @@
 import Logo from '@/components/Logo/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
 import type { IFormBoxConfig } from '@/Interface';
+import { useSettingsStore } from '@/stores/settings.store';
 
 withDefaults(
 	defineProps<{
@@ -33,11 +34,15 @@ const onSubmit = (values: { [key: string]: string }) => {
 const onSecondaryClick = () => {
 	emit('secondaryClick');
 };
+
+const {
+	settings: { releaseChannel },
+} = useSettingsStore();
 </script>
 
 <template>
 	<div :class="$style.container">
-		<Logo location="authView" />
+		<Logo location="authView" :release-channel="releaseChannel" />
 		<div v-if="subtitle" :class="$style.textContainer">
 			<n8n-text size="large">{{ subtitle }}</n8n-text>
 		</div>

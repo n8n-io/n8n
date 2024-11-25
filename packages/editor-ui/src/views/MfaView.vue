@@ -10,6 +10,7 @@ import { mfaEventBus } from '@/event-bus';
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { toRefs } from '@vueuse/core';
+import { useSettingsStore } from '@/stores/settings.store';
 
 // ---------------------------------------------------------------------------
 // #region Props
@@ -152,6 +153,10 @@ const onSaveClick = () => {
 
 // #endregion
 
+const {
+	settings: { releaseChannel },
+} = useSettingsStore();
+
 // ---------------------------------------------------------------------------
 // #region Lifecycle hooks
 // ---------------------------------------------------------------------------
@@ -165,7 +170,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.container">
-		<Logo location="authView" />
+		<Logo location="authView" :release-channel="releaseChannel" />
 		<n8n-card>
 			<div :class="$style.headerContainer">
 				<n8n-heading size="xlarge" color="text-dark">{{
