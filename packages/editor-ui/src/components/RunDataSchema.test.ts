@@ -2,26 +2,23 @@ import { createComponentRenderer } from '@/__tests__/render';
 import RunDataJsonSchema from '@/components/RunDataSchema.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { userEvent } from '@testing-library/user-event';
-import { cleanup, waitFor } from '@testing-library/vue';
+import { cleanup, within, waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import {
 	createTestNode,
 	defaultNodeDescriptions,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { IF_NODE_TYPE, SET_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import { IF_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
-import { NodeConnectionType, type IDataObject, type INodeExecutionData } from 'n8n-workflow';
+import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
-import { useNDVStore } from '@/stores/ndv.store';
-import { fireEvent } from '@testing-library/dom';
-import { useTelemetry } from '@/composables/useTelemetry';
 
 const mockNode1 = createTestNode({
-	name: 'Manual Trigger',
-	type: MANUAL_TRIGGER_NODE_TYPE,
+	name: 'Set1',
+	type: SET_NODE_TYPE,
 	typeVersion: 1,
 	disabled: false,
 });
@@ -54,23 +51,13 @@ const aiTool = createTestNode({
 	disabled: false,
 });
 
-const unknownNodeType = createTestNode({
-	name: 'Unknown Node Type',
-	type: 'unknown',
-});
-
-const defaultNodes = [
-	{ name: 'Manual Trigger', indicies: [], depth: 1 },
-	{ name: 'Set2', indicies: [], depth: 2 },
-];
-
 async function setupStore() {
 	const workflow = mock<IWorkflowDb>({
 		id: '123',
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool, unknownNodeType],
+		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool],
 	});
 
 	const pinia = createPinia();
@@ -81,10 +68,6 @@ async function setupStore() {
 
 	nodeTypesStore.setNodeTypes([
 		...defaultNodeDescriptions,
-		mockNodeTypeDescription({
-			name: MANUAL_TRIGGER_NODE_TYPE,
-			outputs: [NodeConnectionType.Main],
-		}),
 		mockNodeTypeDescription({
 			name: IF_NODE_TYPE,
 			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
@@ -113,27 +96,11 @@ function mockNodeOutputData(nodeName: string, data: IDataObject[], outputIndex =
 describe('RunDataSchema.vue', () => {
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
 
-	const DynamicScrollerStub = {
-		props: {
-			items: Array,
-		},
-		template:
-			'<div><template v-for="item in items"><slot v-bind="{ item }"></slot></template></div>',
-	};
-
-	const DynamicScrollerItemStub = {
-		template: '<slot></slot>',
-	};
-
 	beforeEach(async () => {
 		cleanup();
 		renderComponent = createComponentRenderer(RunDataJsonSchema, {
 			global: {
-				stubs: {
-					DynamicScroller: DynamicScrollerStub,
-					DynamicScrollerItem: DynamicScrollerItemStub,
-					FontAwesomeIcon: true,
-				},
+				stubs: ['font-awesome-icon'],
 			},
 			pinia: await setupStore(),
 			props: {
@@ -144,19 +111,21 @@ describe('RunDataSchema.vue', () => {
 				paneType: 'input',
 				connectionType: 'main',
 				search: '',
-				nodes: defaultNodes,
+				nodes: [
+					{ name: 'Set1', indicies: [], depth: 1 },
+					{ name: 'Set2', indicies: [], depth: 2 },
+				],
 			},
 		});
 	});
 
 	it('renders schema for empty data', async () => {
-		const { getAllByText, getAllByTestId } = renderComponent();
+		const { getAllByTestId } = renderComponent();
+		expect(getAllByTestId('run-data-schema-empty').length).toBe(1);
 
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2);
-
-		// Collapse second node
-		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+		// Expand second node
+		await userEvent.click(getAllByTestId('run-data-schema-node-name')[1]);
+		expect(getAllByTestId('run-data-schema-empty').length).toBe(2);
 	});
 
 	it('renders schema for data', async () => {
@@ -176,19 +145,22 @@ describe('RunDataSchema.vue', () => {
 		});
 
 		const { getAllByTestId } = renderComponent();
-		const headers = getAllByTestId('run-data-schema-header');
-		expect(headers.length).toBe(2);
-		expect(headers[0]).toHaveTextContent('Manual Trigger');
-		expect(headers[0]).toHaveTextContent('2 items');
-		expect(headers[1]).toHaveTextContent('Set2');
+		const nodes = getAllByTestId('run-data-schema-node');
+		expect(nodes.length).toBe(2);
+		const firstNodeName = await within(nodes[0]).findByTestId('run-data-schema-node-name');
+		const firstNodeItemCount = await within(nodes[0]).findByTestId(
+			'run-data-schema-node-item-count',
+		);
+		expect(firstNodeName).toHaveTextContent('Set1');
+		expect(firstNodeItemCount).toHaveTextContent('2 items');
+		expect(within(nodes[0]).getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 
-		const items = getAllByTestId('run-data-schema-item');
+		const secondNodeName = await within(nodes[1]).findByTestId('run-data-schema-node-name');
+		expect(secondNodeName).toHaveTextContent('Set2');
 
-		expect(items[0]).toHaveTextContent('nameJohn');
-		expect(items[1]).toHaveTextContent('age22');
-		expect(items[2]).toHaveTextContent('hobbies');
-		expect(items[3]).toHaveTextContent('hobbies[0]surfing');
-		expect(items[4]).toHaveTextContent('hobbies[1]traveling');
+		// Expand second node
+		await userEvent.click(secondNodeName);
+		expect(within(nodes[1]).getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 	});
 
 	it('renders schema in output pane', async () => {
@@ -236,19 +208,8 @@ describe('RunDataSchema.vue', () => {
 			data: [{ json: {} }, { json: {} }],
 		});
 
-		const { getAllByText } = renderComponent();
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2);
-	});
-
-	// this can happen when setting the output to [{}]
-	it('renders empty state to show for empty data', () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{} as INodeExecutionData],
-		});
-
-		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+		const { getAllByTestId } = renderComponent();
+		expect(getAllByTestId('run-data-schema-empty').length).toBe(1);
 	});
 
 	it('renders disabled nodes correctly', () => {
@@ -257,7 +218,8 @@ describe('RunDataSchema.vue', () => {
 				nodes: [{ name: disabledNode.name, indicies: [], depth: 1 }],
 			},
 		});
-		expect(getByTestId('run-data-schema-header')).toHaveTextContent(
+		expect(getByTestId('run-data-schema-disabled')).toBeInTheDocument();
+		expect(getByTestId('run-data-schema-node-name')).toHaveTextContent(
 			`${disabledNode.name} (Deactivated)`,
 		);
 	});
@@ -278,9 +240,9 @@ describe('RunDataSchema.vue', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
+			expect(getByTestId('run-data-schema-node-name')).toHaveTextContent('If');
+			expect(getByTestId('run-data-schema-node-item-count')).toHaveTextContent('2 items');
+			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 		});
 	});
 
@@ -307,9 +269,9 @@ describe('RunDataSchema.vue', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
+			expect(getByTestId('run-data-schema-node-name')).toHaveTextContent('If');
+			expect(getByTestId('run-data-schema-node-item-count')).toHaveTextContent('2 items');
+			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
 		});
 	});
 
@@ -322,7 +284,9 @@ describe('RunDataSchema.vue', () => {
 			},
 		});
 
-		expect(getByTestId('run-data-schema-item')).toHaveTextContent('AI tool output');
+		await waitFor(() => {
+			expect(getByTestId('run-data-schema-node-schema')).toMatchSnapshot();
+		});
 	});
 
 	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(
@@ -333,104 +297,8 @@ describe('RunDataSchema.vue', () => {
 				data: data.map((item) => ({ json: item })),
 			});
 
-			const { getAllByTestId } = renderComponent();
-			expect(getAllByTestId('run-data-schema-item')[0]).toHaveTextContent('tx');
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('run-data-schema-empty')).not.toBeInTheDocument();
 		},
 	);
-
-	it('should filter invalid connections', () => {
-		const { pinData } = useWorkflowsStore();
-		pinData({
-			node: mockNode1,
-			data: [{ json: { tx: 1 } }],
-		});
-		pinData({
-			node: mockNode2,
-			data: [{ json: { tx: 2 } }],
-		});
-
-		const { getAllByTestId } = renderComponent({
-			props: {
-				nodes: [
-					{ name: mockNode1.name, indicies: [], depth: 1 },
-					{ name: 'unknown', indicies: [], depth: 1 },
-					{ name: mockNode2.name, indicies: [], depth: 1 },
-					{ name: unknownNodeType.name, indicies: [], depth: 1 },
-				],
-			},
-		});
-
-		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
-	});
-
-	it('should show connections', () => {
-		const ndvStore = useNDVStore();
-		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
-			[defaultNodes[0].name]: [0],
-			[defaultNodes[1].name]: [0, 1, 2],
-		});
-
-		const { getAllByTestId } = renderComponent();
-		const headers = getAllByTestId('run-data-schema-header');
-		expect(headers.length).toBe(2);
-		expect(headers[0]).toHaveTextContent('Input 0');
-		expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
-	});
-
-	it('should handle drop event', async () => {
-		const ndvStore = useNDVStore();
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
-		});
-		const telemetry = useTelemetry();
-		const trackSpy = vi.spyOn(telemetry, 'track');
-		const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
-		const { getAllByTestId } = renderComponent();
-
-		const items = getAllByTestId('run-data-schema-item');
-		expect(items.length).toBe(6);
-
-		expect(items[0].className).toBe('schema-item draggable');
-		expect(items[0]).toHaveTextContent('nameJohn');
-
-		const pill = items[0].querySelector('.pill') as Element;
-
-		fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
-		fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
-		expect(reset).toHaveBeenCalled();
-
-		fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
-
-		await waitFor(() =>
-			expect(trackSpy).toHaveBeenCalledWith(
-				'User dragged data for mapping',
-				expect.any(Object),
-				expect.any(Object),
-			),
-		);
-	});
-
-	it('should expand all nodes when searching', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: { name: 'John' } }],
-		});
-		useWorkflowsStore().pinData({
-			node: mockNode2,
-			data: [{ json: { name: 'John' } }],
-		});
-
-		const { getAllByTestId, queryAllByTestId, rerender } = renderComponent();
-		const headers = getAllByTestId('run-data-schema-header');
-		expect(headers.length).toBe(2);
-		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
-
-		// Collapse all nodes
-		await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
-
-		expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
-		await rerender({ search: 'John' });
-		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
-	});
 });
