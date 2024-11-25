@@ -1,5 +1,11 @@
 import { parse } from 'flatted';
-import type { IDataObject, IPinData, IRun, IRunData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IPinData,
+	IRun,
+	IRunData,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
@@ -33,11 +39,12 @@ export class TestRunnerService {
 	) {}
 
 	/**
+	 * Extracts the execution data from the past execution.
 	 * Creates a pin data object from the past execution data
 	 * for the given workflow.
 	 * For now, it only pins trigger nodes.
 	 */
-	private createPinDataFromExecution(workflow: WorkflowEntity, execution: ExecutionEntity) {
+	private createTestDataFromExecution(workflow: WorkflowEntity, execution: ExecutionEntity) {
 		const executionData = parse(execution.executionData.data) as IExecutionResponse['data'];
 
 		const triggerNodes = workflow.nodes.filter((node) => /trigger$/i.test(node.type));
@@ -78,9 +85,7 @@ export class TestRunnerService {
 		assert(executionId);
 
 		// Wait for the execution to finish
-		const executePromise = this.activeExecutions.getPostExecutePromise(
-			executionId,
-		);
+		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		return await executePromise;
 	}
@@ -161,8 +166,8 @@ export class TestRunnerService {
 			});
 			assert(pastExecution, 'Execution not found');
 
-			const testCase = this.createPinDataFromExecution(workflow, pastExecution);
-			const { pinData, executionData } = testCase;
+			const testData = this.createTestDataFromExecution(workflow, pastExecution);
+			const { pinData, executionData } = testData;
 
 			// Run the test case and wait for it to finish
 			const execution = await this.runTestCase(workflow, pinData, user.id);
