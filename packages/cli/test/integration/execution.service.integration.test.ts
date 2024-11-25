@@ -327,6 +327,36 @@ describe('ExecutionService', () => {
 			});
 		});
 
+		test('should filter executions by `projectId` and expected `status`', async () => {
+			const firstProject = await createTeamProject();
+			const secondProject = await createTeamProject();
+
+			const firstWorkflow = await createWorkflow(undefined, firstProject);
+			const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'error' }, firstWorkflow);
+			await createExecution({ status: 'success' }, secondWorkflow);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [firstWorkflow.id],
+				projectId: firstProject.id,
+				status: ['error'],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 1,
+				estimated: false,
+				results: expect.arrayContaining([
+					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
+				]),
+			});
+		});
+
 		test('should exclude executions by inaccessible `workflowId`', async () => {
 			const accessibleWorkflow = await createWorkflow();
 			const inaccessibleWorkflow = await createWorkflow();
