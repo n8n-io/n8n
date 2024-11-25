@@ -2997,6 +2997,7 @@ const getCommonWorkflowFunctions = (
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				disabled: node.disabled ?? false,
 			});
 		}
 		return output;
@@ -3011,6 +3012,7 @@ const getCommonWorkflowFunctions = (
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				disabled: node.disabled ?? false,
 			});
 		}
 		return output;

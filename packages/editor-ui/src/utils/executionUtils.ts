@@ -131,7 +131,9 @@ export function displayForm({
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-			if (testUrl && source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);
+			if (testUrl && source !== 'RunData.ManualChatMessage') {
+				useWorkflowsStore().formPopupWindow = openPopUpWindow(testUrl);
+			}
 		}
 	}
 }

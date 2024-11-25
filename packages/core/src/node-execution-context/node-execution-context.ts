@@ -57,6 +57,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				disabled: node.disabled ?? false,
 			});
 		}
 		return output;
@@ -72,6 +73,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				disabled: node.disabled ?? false,
 			});
 		}
 		return output;

@@ -902,6 +902,7 @@ export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
 	typeVersion: number;
+	disabled: boolean;
 };
 
 export interface FunctionsBase {
