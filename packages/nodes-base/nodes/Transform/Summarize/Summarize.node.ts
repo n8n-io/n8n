@@ -18,7 +18,6 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
-// import type { IPairedItemData } from '../../../../workflow/src/Interfaces'; // [ria] this is an interface but cannot import it as such!
 
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,7 +26,7 @@ export class Summarize implements INodeType {
 		icon: 'file:summarize.svg',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Sum, count, max, etc. across items',
 		defaults: {
 			name: 'Summarize',
@@ -244,7 +243,6 @@ export class Summarize implements INodeType {
 				placeholder: 'Add option',
 				default: {},
 				options: [
-					// [ria] potentially delete this option??
 					{
 						displayName: 'Continue if Field Not Found',
 						name: 'continueIfFieldNotFound',
@@ -317,23 +315,18 @@ export class Summarize implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 
-		if (nodeVersion < 2.1) {
-			const fieldNotFound: string | undefined = checkIfFieldExists.call(
-				this,
-				newItems,
-				fieldsToSummarize,
-				getValue,
-			);
-			if (options.continueIfFieldNotFound || fieldNotFound) {
-				// const itemData: IPairedItemData[] = generatePairedItemData(items.length); // [ria] had to delete type because i was getting compilation errors
+		try {
+			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+		} catch (error) {
+			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
 				const itemData = generatePairedItemData(items.length);
 				const fieldNotFoundHint: NodeExecutionHint = {
-					message: `The field '${fieldNotFound}' does not exist in any items.`,
+					message: error.message,
 					location: 'outputPane',
 				};
 				return new NodeExecutionOutput([[{ json: {}, pairedItem: itemData }]], [fieldNotFoundHint]);
 			} else {
-				// throw error; // [ria] show hints instead
+				throw error;
 			}
 		}
 
