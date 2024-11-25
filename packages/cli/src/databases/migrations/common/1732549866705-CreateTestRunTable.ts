@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 const testRunTableName = 'test_run';
 
-export class CreateTestRun1731682242905 implements ReversibleMigration {
+export class CreateTestRun1732549866705 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(testRunTableName)
 			.withColumns(
