@@ -22,7 +22,7 @@ import {
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
-import { BaseExecuteContext } from './base-execution-context';
+import { BaseExecuteContext } from './base-execute-context';
 
 export class ExecuteSingleContext extends BaseExecuteContext implements IExecuteSingleFunctions {
 	readonly helpers: IExecuteSingleFunctions['helpers'];

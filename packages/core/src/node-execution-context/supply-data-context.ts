@@ -32,7 +32,7 @@ import {
 	addExecutionDataFunctions,
 } from '@/NodeExecuteFunctions';
 
-import { BaseExecuteContext } from './base-execution-context';
+import { BaseExecuteContext } from './base-execute-context';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];

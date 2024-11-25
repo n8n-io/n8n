@@ -37,7 +37,7 @@ import {
 	getCheckProcessedHelperFunctions,
 } from '@/NodeExecuteFunctions';
 
-import { BaseExecuteContext } from './base-execution-context';
+import { BaseExecuteContext } from './base-execute-context';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
 	readonly helpers: IExecuteFunctions['helpers'];
