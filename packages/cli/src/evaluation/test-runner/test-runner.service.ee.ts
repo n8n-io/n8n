@@ -209,9 +209,7 @@ export class TestRunnerService {
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
-			const evalResult = this.extractEvaluationResult(evalExecution);
-
-			metrics.push(evalResult);
+			metrics.push(this.extractEvaluationResult(evalExecution));
 		}
 
 		// TODO: 3. Aggregate the results
