@@ -10,7 +10,7 @@ export const useEvaluationsStore = defineStore(
 	STORES.EVALUATIONS,
 	() => {
 		// State
-		const testDefinitionsById = ref<Record<number, Partial<ITestDefinition>>>({});
+		const testDefinitionsById = ref<Record<string, Partial<ITestDefinition>>>({});
 		const loading = ref(false);
 		const fetchedAll = ref(false);
 
@@ -43,7 +43,6 @@ export const useEvaluationsStore = defineStore(
 				},
 				{},
 			);
-			fetchedAll.value = true;
 		};
 
 		/**
@@ -55,24 +54,17 @@ export const useEvaluationsStore = defineStore(
 				const defId = toUpsertDef.id;
 				if (!defId) throw Error('ID is required for upserting');
 				const currentDef = testDefinitionsById.value[defId];
-				if (currentDef) {
-					testDefinitionsById.value = {
-						...testDefinitionsById.value,
-						[defId]: {
-							...currentDef,
-							...toUpsertDef,
-						},
-					};
-				} else {
-					testDefinitionsById.value = {
-						...testDefinitionsById.value,
-						[defId]: toUpsertDef,
-					};
-				}
+				testDefinitionsById.value = {
+					...testDefinitionsById.value,
+					[defId]: {
+						...currentDef,
+						...toUpsertDef,
+					},
+				};
 			});
 		};
 
-		const deleteTestDefinition = (id: number) => {
+		const deleteTestDefinition = (id: string) => {
 			const { [id]: deleted, ...rest } = testDefinitionsById.value;
 			testDefinitionsById.value = rest;
 		};
@@ -100,6 +92,7 @@ export const useEvaluationsStore = defineStore(
 				);
 
 				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
+				fetchedAll.value = true;
 				return retrievedDefinitions;
 			} finally {
 				loading.value = false;
@@ -112,16 +105,12 @@ export const useEvaluationsStore = defineStore(
 		 * @param {Object} params - An object containing the necessary parameters to create a test definition.
 		 * @param {string} params.name - The name of the new test definition.
 		 * @param {string} params.workflowId - The ID of the workflow associated with the test definition.
-		 * @param {string} [params.evaluationWorkflowId] - The optional ID of the evaluation workflow associated with the test definition.
-		 * @param {string} [params.description] - An optional description for the new test definition.
 		 * @returns {Promise<ITestDefinition>} A promise that resolves to the newly created test definition.
 		 * @throws {Error} Throws an error if there is a problem creating the test definition.
 		 */
 		const create = async (params: {
 			name: string;
 			workflowId: string;
-			evaluationWorkflowId?: string;
-			description?: string;
 		}) => {
 			const createdDefinition = await testDefinitionsApi.createTestDefinition(
 				rootStore.restApiContext,
@@ -131,7 +120,7 @@ export const useEvaluationsStore = defineStore(
 			return createdDefinition;
 		};
 
-		const update = async (params: Partial<Omit<ITestDefinition, 'id'>> & { id: number }) => {
+		const update = async (params: Partial<Omit<ITestDefinition, 'id'>> & { id: string }) => {
 			if (!params.id) throw new Error('ID is required to update a test definition');
 
 			const { id, ...updateParams } = params;
@@ -150,7 +139,7 @@ export const useEvaluationsStore = defineStore(
 		 * @param {number} id - The ID of the test definition to delete.
 		 * @returns {Promise<boolean>} A promise that resolves to true if the test definition was successfully deleted, false otherwise.
 		 */
-		const deleteById = async (id: number) => {
+		const deleteById = async (id: string) => {
 			const result = await testDefinitionsApi.deleteTestDefinition(rootStore.restApiContext, id);
 
 			if (result.success) {

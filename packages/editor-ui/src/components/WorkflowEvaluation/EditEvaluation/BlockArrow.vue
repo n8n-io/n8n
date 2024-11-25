@@ -32,8 +32,8 @@
 		bottom: 0;
 		width: 0;
 		height: 0;
-		border-left: $arrow-width / 2 solid transparent;
-		border-right: $arrow-width / 2 solid transparent;
+		border-left: calc($arrow-width / 2) solid transparent;
+		border-right: calc($arrow-width / 2) solid transparent;
 		border-top: $arrow-height solid $color;
 	}
 }

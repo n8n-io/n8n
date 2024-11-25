@@ -4,6 +4,7 @@ import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from 'n8n-design-system';
+import type { UpdateTestDefinitionParams } from '@/api/evaluations.ee';
 
 interface EditableField {
 	value: string;
@@ -59,7 +60,7 @@ export function useEvaluationForm() {
 	const fields = ref<FormRefs>({} as FormRefs);
 
 	// Methods
-	const loadTestData = async (testId: number) => {
+	const loadTestData = async (testId: string) => {
 		try {
 			await evaluationsStore.fetchAll({ force: true });
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
@@ -90,67 +91,63 @@ export function useEvaluationForm() {
 		}
 	};
 
-	const saveTest = async (testId?: number) => {
+	const createTest = async (workflowId: string) => {
 		if (isSaving.value) return;
 
 		isSaving.value = true;
 		fieldsIssues.value = [];
 
-		// const _addFieldIssue = (field: string, message: string) => {
-		// 	fieldsIssues.value.push({ field, message });
-		// };
-
 		try {
-			// Validate that an evaluation workflow is selected
-			// if (!state.value.evaluationWorkflow.value) {
-			// 	addFieldIssue('evaluationWorkflow', 'Evaluation workflow is required');
-			// 	throw new Error('Validation failed');
-			// }
-
-			// Prepare the base parameters for creating or updating a test
-			const params: Record<string, string> = {
+			// Prepare parameters for creating a new test
+			const params = {
 				name: state.value.name.value,
+				workflowId,
 				description: state.value.description,
 			};
 
-			// Add annotation tag ID only for PATH requests
-			// TODO: Allow annotationTagId on POST?
-			const annotationTagId = state.value.tags.appliedTagIds[0];
-			if (testId && annotationTagId) {
-				params.annotationTagId = annotationTagId;
-			}
-
-			// Add evaluation workflow ID
-			if (state.value.evaluationWorkflow.value) {
-				params.evaluationWorkflowId = state.value.evaluationWorkflow.value as string;
-			}
-
-			if (testId) {
-				// Update existing test
-				return await evaluationsStore.update({
-					id: testId,
-					...params,
-				});
-			}
-
-			// Create new test
-			const newTest = await evaluationsStore.create({
-				...params,
-				name: state.value.name.value,
-				workflowId: state.value.evaluationWorkflow.value as string,
-			});
-
-			isSaving.value = false;
+			const newTest = await evaluationsStore.create(params);
 			return newTest;
 		} catch (error) {
-			// Re-throw the error to be handled by the caller
-			// Reset saving state regardless of success or failure
-			isSaving.value = false;
 			throw error;
 		} finally {
 			isSaving.value = false;
 		}
 	};
+
+	const updateTest = async (testId: string) => {
+		if (isSaving.value) return;
+
+		isSaving.value = true;
+		fieldsIssues.value = [];
+
+		try {
+			// Check if the test ID is provided
+			if (!testId) {
+				throw new Error('Test ID is required for updating a test');
+			}
+
+			// Prepare parameters for updating the existing test
+			const params: UpdateTestDefinitionParams = {
+				name: state.value.name.value,
+				description: state.value.description,
+			};
+			if (state.value.evaluationWorkflow.value) {
+				params.evaluationWorkflowId = state.value.evaluationWorkflow.value.toString();
+			}
+
+			const annotationTagId = state.value.tags.appliedTagIds[0];
+			if (annotationTagId) {
+				params.annotationTagId = annotationTagId;
+			}
+			// Update the existing test
+			return await evaluationsStore.update({ ...params, id: testId });
+		} catch (error) {
+			throw error;
+		} finally {
+			isSaving.value = false;
+		}
+	};
+
 	const startEditing = async (field: string) => {
 		if (field === 'name') {
 			state.value.name.tempValue = state.value.name.value;
@@ -193,7 +190,8 @@ export function useEvaluationForm() {
 		isSaving: computed(() => isSaving.value),
 		fieldsIssues: computed(() => fieldsIssues.value),
 		loadTestData,
-		saveTest,
+		createTest,
+		updateTest,
 		startEditing,
 		saveChanges,
 		cancelEditing,

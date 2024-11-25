@@ -16,7 +16,7 @@ import WorkflowSelector from '@/components/WorkflowEvaluation/EditEvaluation/Wor
 import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/MetricsInput.vue';
 
 const props = defineProps<{
-	testId?: number;
+	testId?: string;
 }>();
 
 const router = useRouter();
@@ -26,7 +26,8 @@ const { debounce } = useDebounce();
 const toast = useToast();
 const { isLoading, allTags, tagsById, fetchAll } = useAnnotationTagsStore();
 
-const testId = computed(() => props.testId ?? (route.params.testId as unknown as number));
+const testId = computed(() => props.testId ?? (route.params.testId as string));
+const currentWorkflowId = computed(() => route.params.name as string);
 const buttonLabel = computed(() =>
 	testId.value
 		? locale.baseText('workflowEvaluation.edit.updateTest')
@@ -38,7 +39,8 @@ const {
 	fieldsIssues,
 	isSaving,
 	loadTestData,
-	saveTest,
+	createTest,
+	updateTest,
 	startEditing,
 	saveChanges,
 	cancelEditing,
@@ -49,16 +51,23 @@ onMounted(async () => {
 	await fetchAll();
 	if (testId.value) {
 		await loadTestData(testId.value);
+	} else {
+		await onSaveTest();
 	}
 });
 
 async function onSaveTest() {
 	try {
-		const newTest = await saveTest(testId.value);
-		if (newTest) {
+		let savedTest;
+		if (testId.value) {
+			savedTest = await updateTest(testId.value);
+		} else {
+			savedTest = await createTest(currentWorkflowId.value);
+		}
+		if (savedTest && route.name === VIEWS.WORKFLOW_EVALUATION_EDIT) {
 			await router.replace({
 				name: VIEWS.WORKFLOW_EVALUATION_EDIT,
-				params: { testId: newTest.id },
+				params: { testId: savedTest.id },
 			});
 		}
 		toast.showMessage({
@@ -74,18 +83,7 @@ function hasIssues(key: string) {
 	return fieldsIssues.value.some((issue) => issue.field === key);
 }
 
-watch(
-	() => state.value,
-	debounce(
-		async () => {
-			if (state.value.evaluationWorkflow.value) {
-				await onSaveTest();
-			}
-		},
-		{ debounceTime: 1000 },
-	),
-	{ deep: true },
-);
+watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: true });
 </script>
 
 <template>
@@ -186,7 +184,7 @@ watch(
 .panelBlock {
 	max-width: var(--evaluation-edit-panel-width, 24rem);
 	display: grid;
-	// gap: var(--spacing-m);
+
 	justify-items: end;
 }
 .panelIntro {
