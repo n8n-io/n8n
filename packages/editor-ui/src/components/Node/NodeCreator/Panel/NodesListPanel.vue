@@ -17,12 +17,15 @@ import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import { useI18n } from '@/composables/useI18n';
+import { useDebounce } from '@/composables/useDebounce';
 
 const i18n = useI18n();
+const { callDebounced } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -55,6 +58,19 @@ function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
 		void setActiveItemIndex(getDefaultActiveIndex(value));
+		if (value.length) {
+			callDebounced(
+				nodeCreatorStore.onNodeFilterChanged,
+				{ trailing: true, debounceTime: 2000 },
+				{
+					newValue: value,
+					filteredNodes: activeViewStack.value.items ?? [],
+					filterMode: activeViewStack.value.rootView ?? 'Regular',
+					subcategory: activeViewStack.value.subcategory,
+					title: activeViewStack.value.title,
+				},
+			);
+		}
 	}
 }
 
@@ -160,9 +176,7 @@ function onBackButton() {
 				v-if="activeViewStack.hasSearch"
 				:class="$style.searchBar"
 				:placeholder="
-					searchPlaceholder
-						? searchPlaceholder
-						: $locale.baseText('nodeCreator.searchBar.searchNodes')
+					searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')
 				"
 				:model-value="activeViewStack.search"
 				@update:model-value="onSearch"
@@ -299,6 +313,7 @@ function onBackButton() {
 	margin-top: var(--spacing-4xs);
 	font-size: var(--font-size-s);
 	line-height: 19px;
+
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-regular);
 }

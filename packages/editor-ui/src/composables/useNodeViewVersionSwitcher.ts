@@ -16,7 +16,7 @@ export function useNodeViewVersionSwitcher() {
 
 	const nodeViewVersion = useLocalStorage(
 		'NodeView.version',
-		settingsStore.deploymentType === 'n8n-internal' ? '2' : '1',
+		settingsStore.isCanvasV2Enabled ? '2' : '1',
 	);
 
 	function setNodeViewSwitcherDropdownOpened(visible: boolean) {

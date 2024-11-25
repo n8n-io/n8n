@@ -1,6 +1,5 @@
 import type { Scope } from '@n8n/permissions';
 import type { Application } from 'express';
-import type { WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -14,7 +13,6 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
-	Workflow,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionSummary,
@@ -135,6 +133,10 @@ export interface IExecutionBase {
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId: string;
+
+	/**
+	 * @deprecated Use `status` instead
+	 */
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
@@ -294,12 +296,6 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
-}
-
-export interface IWorkflowExecuteProcess {
-	startedAt: Date;
-	workflow: Workflow;
-	workflowExecute: WorkflowExecute;
 }
 
 export interface IWorkflowStatisticsDataLoaded {

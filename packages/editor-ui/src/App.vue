@@ -8,7 +8,6 @@ import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { loadLanguage } from '@/plugins/i18n';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
 import { useAssistantStore } from '@/stores/assistant.store';
@@ -34,19 +33,14 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const showAssistantButton = computed(() => assistantStore.canShowAssistantButtonsOnCanvas);
-
+const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 
-watch(defaultLocale, (newLocale) => {
-	void loadLanguage(newLocale);
-});
-
 onMounted(async () => {
 	setAppZIndexes();
 	logHiringBanner();
-	void useExternalHooks().run('app.mount');
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
@@ -54,11 +48,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	window.removeEventListener('resize', updateGridWidth);
-});
-
-// As assistant sidebar width changes, recalculate the total width regularly
-watch(assistantSidebarWidth, async () => {
-	await updateGridWidth();
 });
 
 const logHiringBanner = () => {
@@ -73,6 +62,21 @@ const updateGridWidth = async () => {
 		uiStore.appGridWidth = appGrid.value.clientWidth;
 	}
 };
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
+});
+
+watch(route, (r) => {
+	hasContentFooter.value = r.matched.some(
+		(matchedRoute) => matchedRoute.components?.footer !== undefined,
+	);
+});
+
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
+});
 </script>
 
 <template>
@@ -96,12 +100,17 @@ const updateGridWidth = async () => {
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
-						<component :is="Component" />
-					</keep-alive>
-					<component :is="Component" v-else />
-				</router-view>
+				<div :class="$style.contentWrapper">
+					<router-view v-slot="{ Component }">
+						<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
+							<component :is="Component" />
+						</keep-alive>
+						<component :is="Component" v-else />
+					</router-view>
+				</div>
+				<div v-if="hasContentFooter" :class="$style.contentFooter">
+					<router-view name="footer" />
+				</div>
 			</div>
 			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
@@ -119,7 +128,8 @@ const updateGridWidth = async () => {
 .container {
 	height: 100vh;
 	overflow: hidden;
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr auto;
 }
 
 // App grid is the main app layout including modals and other absolute positioned elements
@@ -127,21 +137,38 @@ const updateGridWidth = async () => {
 	position: relative;
 	display: grid;
 	height: 100vh;
-	flex-basis: 100%;
 	grid-template-areas:
 		'banners banners'
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: minmax(0, max-content) 1fr;
-	grid-template-rows: auto fit-content($header-height) 1fr;
+	grid-template-columns: auto 1fr;
+	grid-template-rows: auto auto 1fr;
 }
 
 .banners {
 	grid-area: banners;
 	z-index: var(--z-index-top-banners);
 }
-
 .content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: auto;
+	grid-area: content;
+}
+
+.contentFooter {
+	height: auto;
+	z-index: 10;
+	width: 100%;
+	display: none;
+
+	// Only show footer if there's content
+	&:has(*) {
+		display: block;
+	}
+}
+.contentWrapper {
 	display: flex;
 	grid-area: content;
 	position: relative;
@@ -163,7 +190,6 @@ const updateGridWidth = async () => {
 
 .sidebar {
 	grid-area: sidebar;
-	height: 100%;
 	z-index: var(--z-index-app-sidebar);
 }
 

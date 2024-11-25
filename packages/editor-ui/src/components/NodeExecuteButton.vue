@@ -7,7 +7,12 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 } from '@/constants';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import {
+	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+	AI_TRANSFORM_JS_CODE,
+	AI_TRANSFORM_NODE_TYPE,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -21,6 +26,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { type IUpdateInformation } from '../Interface';
+import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -47,6 +54,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	stopExecution: [];
 	execute: [];
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 defineOptions({
@@ -54,9 +62,10 @@ defineOptions({
 });
 
 const lastPopupCountUpdate = ref(0);
+const codeGenerationInProgress = ref(false);
 
 const router = useRouter();
-const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution } = useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 const workflowsStore = useWorkflowsStore();
 const externalHooks = useExternalHooks();
@@ -76,7 +85,7 @@ const nodeType = computed((): INodeTypeDescription | null => {
 });
 
 const isNodeRunning = computed(() => {
-	if (!uiStore.isActionActive['workflowRunning']) return false;
+	if (!uiStore.isActionActive['workflowRunning'] || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
 		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name
@@ -142,6 +151,10 @@ const disabledHint = computed(() => {
 		return '';
 	}
 
+	if (codeGenerationInProgress.value) {
+		return i18n.baseText('ndv.execute.generatingCode');
+	}
+
 	if (isTriggerNode.value && node?.value?.disabled) {
 		return i18n.baseText('ndv.execute.nodeIsDisabled');
 	}
@@ -163,6 +176,9 @@ const disabledHint = computed(() => {
 });
 
 const tooltipText = computed(() => {
+	if (shouldGenerateCode.value) {
+		return i18n.baseText('ndv.execute.generateCodeAndTestNode.description');
+	}
 	if (disabledHint.value) return disabledHint.value;
 	if (props.tooltip && !isLoading.value && testStepButtonPopupCount() < MAX_POPUP_COUNT) {
 		return props.tooltip;
@@ -199,8 +215,36 @@ const buttonLabel = computed(() => {
 });
 
 const isLoading = computed(
-	() => isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value,
+	() =>
+		codeGenerationInProgress.value ||
+		(isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value),
 );
+
+const buttonIcon = computed(() => {
+	if (shouldGenerateCode.value) return 'terminal';
+	if (!isListeningForEvents.value && !props.hideIcon) return 'flask';
+	return undefined;
+});
+
+const shouldGenerateCode = computed(() => {
+	if (node.value?.type !== AI_TRANSFORM_NODE_TYPE) {
+		return false;
+	}
+	if (!node.value?.parameters?.instructions) {
+		return false;
+	}
+	if (!node.value?.parameters?.jsCode) {
+		return true;
+	}
+	if (
+		node.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
+		(node.value?.parameters?.instructions as string).trim() !==
+			(node.value?.parameters?.[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string).trim()
+	) {
+		return true;
+	}
+	return false;
+});
 
 async function stopWaitingForWebhook() {
 	try {
@@ -227,7 +271,52 @@ function onMouseOver() {
 }
 
 async function onClick() {
-	if (isChatNode.value || (isChatChild.value && ndvStore.isNDVDataEmpty('input'))) {
+	if (shouldGenerateCode.value) {
+		// Generate code if user hasn't clicked 'Generate Code' button
+		// and update parameters
+		codeGenerationInProgress.value = true;
+		try {
+			toast.showMessage({
+				title: i18n.baseText('ndv.execute.generateCode.title'),
+				message: i18n.baseText('ndv.execute.generateCode.message', {
+					interpolate: { nodeName: node.value?.name as string },
+				}),
+				type: 'success',
+			});
+			const prompt = node.value?.parameters?.instructions as string;
+			const updateInformation = await generateCodeForAiTransform(
+				prompt,
+				`parameters.${AI_TRANSFORM_JS_CODE}`,
+			);
+			if (!updateInformation) return;
+
+			emit('valueChanged', updateInformation);
+
+			emit('valueChanged', {
+				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
+				value: prompt,
+			});
+
+			useTelemetry().trackAiTransform('generationFinished', {
+				prompt,
+				code: updateInformation.value,
+			});
+		} catch (error) {
+			useTelemetry().trackAiTransform('generationFinished', {
+				prompt,
+				code: '',
+				hasError: true,
+			});
+			toast.showMessage({
+				type: 'error',
+				title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
+				message: error.message,
+			});
+		}
+		codeGenerationInProgress.value = false;
+	}
+
+	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
 		ndvStore.setActiveNodeName(null);
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
@@ -264,17 +353,10 @@ async function onClick() {
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			if (workflowsStore.isWaitingExecution) {
-				await runWorkflowResolvePending({
-					destinationNode: props.nodeName,
-					source: 'RunData.ExecuteNodeButton',
-				});
-			} else {
-				await runWorkflow({
-					destinationNode: props.nodeName,
-					source: 'RunData.ExecuteNodeButton',
-				});
-			}
+			await runWorkflow({
+				destinationNode: props.nodeName,
+				source: 'RunData.ExecuteNodeButton',
+			});
 
 			emit('execute');
 		}
@@ -296,7 +378,7 @@ async function onClick() {
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
+					:icon="buttonIcon"
 					:transparent-background="transparent"
 					:title="
 						!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''

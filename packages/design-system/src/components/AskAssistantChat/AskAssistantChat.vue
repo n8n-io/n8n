@@ -317,6 +317,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<textarea
 				ref="chatInput"
 				v-model="textInputValue"
+				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				:disabled="sessionEnded"
 				:placeholder="t('assistantChat.inputPlaceholder')"
 				rows="1"
@@ -343,6 +344,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .container {
 	height: 100%;
 	position: relative;
+	display: grid;
+	grid-template-rows: auto 1fr auto;
 }
 
 p {
@@ -372,10 +375,6 @@ p {
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-top: 0;
-	height: 100%;
-	overflow-x: hidden;
-	overflow-y: auto;
-	padding-bottom: 250px; // make scrollable at the end
 	position: relative;
 
 	pre,
@@ -389,7 +388,13 @@ p {
 }
 
 .messages {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
 	padding: var(--spacing-xs);
+	overflow-y: auto;
 
 	& + & {
 		padding-top: 0;
@@ -532,13 +537,11 @@ code[class^='language-'] {
 }
 
 .inputWrapper {
-	position: absolute;
 	display: flex;
-	bottom: 0;
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
-	padding-top: 1px;
+	border-top: 0;
 
 	textarea {
 		border: none;

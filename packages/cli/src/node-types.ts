@@ -1,3 +1,4 @@
+import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
 import { readdir } from 'fs/promises';
 import { loadClassInIsolation } from 'n8n-core';
@@ -148,5 +149,23 @@ export class NodeTypes implements INodeTypes {
 			ALLOWED_VERSIONED_DIRNAME_LENGTH.includes(dirent.name.length) &&
 			dirent.name.toLowerCase().startsWith('v')
 		);
+	}
+
+	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
+		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
+			const nodeType = this.getNode(nodeTypeName);
+
+			if (!nodeType) throw new ApplicationError(`Unknown node type: ${nodeTypeName}`);
+
+			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
+
+			const descriptionCopy = { ...description };
+
+			descriptionCopy.name = descriptionCopy.name.startsWith('n8n-nodes')
+				? descriptionCopy.name
+				: `n8n-nodes-base.${descriptionCopy.name}`; // nodes-base nodes are unprefixed
+
+			return descriptionCopy;
+		});
 	}
 }

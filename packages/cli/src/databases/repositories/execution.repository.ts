@@ -35,7 +35,6 @@ import type {
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import config from '@/config';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
@@ -460,8 +459,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -472,18 +470,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
+		date.setHours(date.getHours() - pruneDataMaxAge);
 
 		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
 			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
 
-		if (maxCount > 0) {
+		if (pruneDataMaxCount > 0) {
 			const executions = await this.createQueryBuilder('execution')
 				.select('execution.id')
 				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(maxCount)
+				.skip(pruneDataMaxCount)
 				.take(1)
 				.orderBy('execution.id', 'DESC')
 				.getMany();
@@ -515,9 +513,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.execute();
 	}
 
-	async hardDeleteSoftDeletedExecutions() {
+	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({

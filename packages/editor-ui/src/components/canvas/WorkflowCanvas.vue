@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
-import { computed, toRef, useCssModule } from 'vue';
+import { computed, ref, toRef, useCssModule } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import type { CanvasEventBusEvents } from '@/types';
+import { useVueFlow } from '@vue-flow/core';
 
 defineOptions({
 	inheritAttrs: false,
@@ -34,6 +35,8 @@ const props = withDefaults(
 
 const $style = useCssModule();
 
+const { onNodesInitialized } = useVueFlow({ id: props.id });
+
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
 
@@ -48,6 +51,14 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+});
+
+const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
+onNodesInitialized(() => {
+	if (!initialFitViewDone.value || props.showFallbackNodes) {
+		props.eventBus.emit('fitView');
+		initialFitViewDone.value = true;
+	}
 });
 </script>
 

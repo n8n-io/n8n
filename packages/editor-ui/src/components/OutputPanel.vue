@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import type { IRunData, IRunExecutionData, NodeError, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IRunData,
+	type IRunExecutionData,
+	type NodeError,
+	type Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
@@ -15,10 +21,11 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
+import { N8nRadioButtons, N8nText } from 'n8n-design-system';
 
 // Types
 
-type RunDataRef = InstanceType<typeof RunData> | null;
+type RunDataRef = InstanceType<typeof RunData>;
 
 const OUTPUT_TYPE = {
 	REGULAR: 'regular',
@@ -35,7 +42,7 @@ type Props = {
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;
 	canLinkRuns?: boolean;
-	pushRef?: string;
+	pushRef: string;
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
@@ -55,7 +62,7 @@ const emit = defineEmits<{
 	runChange: [number];
 	activatePane: [];
 	tableMounted: [{ avgRowHeight: number }];
-	itemHover: [{ itemIndex: number; outputIndex: number }];
+	itemHover: [item: { itemIndex: number; outputIndex: number } | null];
 	search: [string];
 	openSettings: [];
 }>();
@@ -77,7 +84,7 @@ const { isSubNodeType } = useNodeType({
 });
 const pinnedData = usePinnedData(activeNode, {
 	runIndex: props.runIndex,
-	displayMode: ndvStore.getPanelDisplayMode('output'),
+	displayMode: ndvStore.outputPanelDisplayMode,
 });
 
 // Data
@@ -87,7 +94,7 @@ const outputTypes = ref([
 	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
 	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 ]);
-const runDataRef = ref<RunDataRef>(null);
+const runDataRef = ref<RunDataRef>();
 
 // Computed
 
@@ -100,14 +107,15 @@ const isTriggerNode = computed(() => {
 });
 
 const hasAiMetadata = computed(() => {
+	if (isNodeRunning.value || !workflowRunData.value) {
+		return false;
+	}
+
 	if (node.value) {
-		const resultData = workflowsStore.getWorkflowResultDataByNodeName(node.value.name);
+		const connectedSubNodes = props.workflow.getParentNodes(node.value.name, 'ALL_NON_MAIN');
+		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
 
-		if (!resultData || !Array.isArray(resultData) || resultData.length === 0) {
-			return false;
-		}
-
-		return !!resultData[resultData.length - 1].metadata;
+		return resultData && Array.isArray(resultData) && resultData.length > 0;
 	}
 	return false;
 });
@@ -126,9 +134,7 @@ const isNodeRunning = computed(() => {
 	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
-const workflowRunning = computed(() => {
-	return uiStore.isActionActive['workflowRunning'];
-});
+const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const workflowExecution = computed(() => {
 	return workflowsStore.getWorkflowExecution;
@@ -209,6 +215,29 @@ const canPinData = computed(() => {
 	return pinnedData.isValidNodeType.value && !props.isReadOnly;
 });
 
+const allToolsWereUnusedNotice = computed(() => {
+	if (!node.value || runsCount.value === 0) return undefined;
+
+	// With pinned data there's no clear correct answer for whether
+	// we should use historic or current parents, so we don't show the notice,
+	// as it likely ends up unactionable noise to the user
+	if (pinnedData.hasData.value) return undefined;
+
+	const toolsAvailable = props.workflow.getParentNodes(
+		node.value.name,
+		NodeConnectionType.AiTool,
+		1,
+	);
+	const toolsUsedInLatestRun = toolsAvailable.filter(
+		(tool) => !!workflowRunData.value?.[tool]?.[props.runIndex],
+	);
+	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0) {
+		return i18n.baseText('ndv.output.noToolUsedInfo');
+	} else {
+		return undefined;
+	}
+});
+
 // Methods
 
 const insertTestData = () => {
@@ -252,8 +281,8 @@ const onRunIndexChange = (run: number) => {
 	emit('runChange', run);
 };
 
-const onUpdateOutputMode = (outputMode: OutputType) => {
-	if (outputMode === OUTPUT_TYPE.LOGS) {
+const onUpdateOutputMode = (newOutputMode: OutputType) => {
+	if (newOutputMode === OUTPUT_TYPE.LOGS) {
 		ndvEventBus.emit('setPositionByName', 'minLeft');
 	} else {
 		ndvEventBus.emit('setPositionByName', 'initial');
@@ -287,16 +316,18 @@ const activatePane = () => {
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="canLinkRuns"
-		:too-much-data-title="$locale.baseText('ndv.output.tooMuchData.title')"
-		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
+		:too-much-data-title="i18n.baseText('ndv.output.tooMuchData.title')"
+		:no-data-in-branch-message="i18n.baseText('ndv.output.noOutputDataInBranch')"
 		:is-executing="isNodeRunning"
-		:executing-message="$locale.baseText('ndv.output.executing')"
+		:executing-message="i18n.baseText('ndv.output.executing')"
 		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
+		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
+		:callout-message="allToolsWereUnusedNotice"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
@@ -308,15 +339,15 @@ const activatePane = () => {
 		<template #header>
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
-					<n8n-radio-buttons
-						data-test-id="ai-output-mode-select"
+					<N8nRadioButtons
 						v-model="outputMode"
+						data-test-id="ai-output-mode-select"
 						:options="outputTypes"
 						@update:model-value="onUpdateOutputMode"
 					/>
 				</template>
 				<span v-else :class="$style.title">
-					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
+					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
 					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
@@ -329,56 +360,54 @@ const activatePane = () => {
 		</template>
 
 		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
-				$locale.baseText('ndv.output.waitingToRun')
-			}}</n8n-text>
-			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
+			<N8nText v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
+				i18n.baseText('ndv.output.waitingToRun')
+			}}</N8nText>
+			<N8nText v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				<template v-if="isSubNodeType">
-					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
+					{{ i18n.baseText('ndv.output.runNodeHintSubNode') }}
 				</template>
 				<template v-else>
-					{{ $locale.baseText('ndv.output.runNodeHint') }}
+					{{ i18n.baseText('ndv.output.runNodeHint') }}
 					<span v-if="canPinData" @click="insertTestData">
 						<br />
-						{{ $locale.baseText('generic.or') }}
-						<n8n-text tag="a" size="medium" color="primary">
-							{{ $locale.baseText('ndv.output.insertTestData') }}
-						</n8n-text>
+						{{ i18n.baseText('generic.or') }}
+						<N8nText tag="a" size="medium" color="primary">
+							{{ i18n.baseText('ndv.output.insertTestData') }}
+						</N8nText>
 					</span>
 				</template>
-			</n8n-text>
+			</N8nText>
 		</template>
 
 		<template #node-waiting>
-			<n8n-text :bold="true" color="text-dark" size="large">Waiting for input</n8n-text>
-			<n8n-text v-n8n-html="waitingNodeTooltip()"></n8n-text>
+			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
+			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
 		</template>
 
 		<template #no-output-data>
-			<n8n-text :bold="true" color="text-dark" size="large">{{
-				$locale.baseText('ndv.output.noOutputData.title')
-			}}</n8n-text>
-			<n8n-text>
-				{{ $locale.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{
-					$locale.baseText('ndv.output.noOutputData.message.settings')
-				}}</a>
-				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
-			</n8n-text>
+			<N8nText :bold="true" color="text-dark" size="large">{{
+				i18n.baseText('ndv.output.noOutputData.title')
+			}}</N8nText>
+			<N8nText>
+				{{ i18n.baseText('ndv.output.noOutputData.message') }}
+				<a @click="openSettings">{{ i18n.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				{{ i18n.baseText('ndv.output.noOutputData.message.settingsOption') }}
+			</N8nText>
 		</template>
 
 		<template v-if="outputMode === 'logs' && node" #content>
-			<RunDataAi :node="node" :run-index="runIndex" />
+			<RunDataAi :node="node" :run-index="runIndex" :workflow="workflow" />
 		</template>
 
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
-				}}</n8n-text>
-				<n8n-text>
-					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
-				</n8n-text>
+				<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
+					i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</N8nText>
+				<N8nText>
+					{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</N8nText>
 			</div>
 		</template>
 

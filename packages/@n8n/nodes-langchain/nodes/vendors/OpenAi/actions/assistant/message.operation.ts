@@ -18,6 +18,7 @@ import {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
+import { promptTypeOptions } from '../../../../../utils/descriptions';
 import { getConnectedTools } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
@@ -26,24 +27,8 @@ import { assistantRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	assistantRLC,
 	{
-		displayName: 'Prompt',
+		...promptTypeOptions,
 		name: 'prompt',
-		type: 'options',
-		options: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Take from previous node automatically',
-				value: 'auto',
-				description: 'Looks for an input field called chatInput',
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Define below',
-				value: 'define',
-				description: 'Use an expression to reference data in previous nodes or enter static text',
-			},
-		],
-		default: 'auto',
 	},
 	{
 		displayName: 'Text',

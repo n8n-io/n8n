@@ -37,7 +37,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	async init() {
-		if (!config.getEnv('diagnostics.enabled')) return;
+		if (!this.globalConfig.diagnostics.enabled) return;
 
 		await this.telemetry.init();
 
@@ -236,10 +236,12 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private licenseCommunityPlusRegistered({
+		userId,
 		email,
 		licenseKey,
 	}: RelayEventMap['license-community-plus-registered']) {
 		this.telemetry.track('User registered for license community plus', {
+			user_id: userId,
 			email,
 			licenseKey,
 		});
@@ -769,8 +771,8 @@ export class TelemetryEventRelay extends EventRelay {
 				executions_data_save_manual_executions: config.getEnv(
 					'executions.saveDataManualExecutions',
 				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune: this.globalConfig.executions.pruneData,
+				executions_data_max_age: this.globalConfig.executions.pruneDataMaxAge,
 			},
 			n8n_deployment_type: config.getEnv('deployment.type'),
 			n8n_binary_data_mode: binaryDataConfig.mode,

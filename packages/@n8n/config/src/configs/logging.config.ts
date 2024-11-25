@@ -7,10 +7,12 @@ export const LOG_SCOPES = [
 	'external-secrets',
 	'license',
 	'multi-main-setup',
+	'pruning',
 	'pubsub',
 	'redis',
 	'scaling',
 	'waiting-executions',
+	'task-runner',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

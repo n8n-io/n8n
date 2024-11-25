@@ -1,3 +1,4 @@
+import { SecurityConfig } from '@n8n/config';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';
@@ -8,7 +9,10 @@ import { toReportTitle } from '@/security-audit/utils';
 
 @Service()
 export class SecurityAuditService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
+	constructor(
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly securityConfig: SecurityConfig,
+	) {}
 
 	private reporters: {
 		[name: string]: RiskReporter;
@@ -19,7 +23,7 @@ export class SecurityAuditService {
 
 		await this.initReporters(categories);
 
-		const daysFromEnv = config.getEnv('security.audit.daysAbandonedWorkflow');
+		const daysFromEnv = this.securityConfig.daysAbandonedWorkflow;
 
 		if (daysAbandonedWorkflow) {
 			config.set('security.audit.daysAbandonedWorkflow', daysAbandonedWorkflow);

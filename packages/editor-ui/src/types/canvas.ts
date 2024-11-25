@@ -118,13 +118,16 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
 	status?: 'success' | 'error' | 'pinned' | 'running';
+	maxConnections?: number;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
 export type CanvasConnectionCreateData = {
 	source: string;
+	sourceHandle: string;
 	target: string;
+	targetHandle: string;
 	data: {
 		source: PartialBy<IConnection, 'node'>;
 		target: PartialBy<IConnection, 'node'>;
@@ -171,6 +174,7 @@ export interface CanvasNodeHandleInjectionData {
 	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
+	maxConnections: Ref<number | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 
