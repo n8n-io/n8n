@@ -220,6 +220,13 @@ const icons = {
 
 const getIconBySchemaType = (type: Schema['type']): string => icons[type];
 
+const emptyItem = (): RenderItem => ({
+	id: `empty-${window.crypto.randomUUID()}`,
+	icon: '',
+	value: useI18n().baseText('dataMapping.schemaView.emptyData'),
+	type: 'item',
+});
+
 const isDataEmpty = (schema: Schema) => {
 	// Utilize the generated schema instead of looping over the entire data again
 	// The schema for empty data is { type: 'object', value: [] }
@@ -254,15 +261,9 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 	}): RenderItem[] => {
-		if (isDataEmpty(schema)) {
-			return [
-				{
-					id: `empty-${window.crypto.randomUUID()}`,
-					icon: '',
-					value: useI18n().baseText('dataMapping.schemaView.emptyData'),
-					type: 'item',
-				},
-			];
+		// only show empty item for the first level
+		if (isDataEmpty(schema) && depth <= 0) {
+			return [emptyItem()];
 		}
 
 		const expression = getMappedExpression({
@@ -341,6 +342,11 @@ export const useFlattenSchema = () => {
 			});
 
 			if (closedNodes.value.has(item.node.name)) {
+				return acc;
+			}
+
+			if (isDataEmpty(item.schema)) {
+				acc.push(emptyItem());
 				return acc;
 			}
 
