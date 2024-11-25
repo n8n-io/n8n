@@ -62,13 +62,13 @@ export class TestRunnerService {
 	 */
 	private async runTestCase(
 		workflow: WorkflowEntity,
-		testCase: IPinData,
+		testCasePinData: IPinData,
 		userId: string,
 	): Promise<IRun | undefined> {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode: 'evaluation',
 			runData: {},
-			pinData: testCase,
+			pinData: testCasePinData,
 			workflowData: workflow,
 			partialExecutionVersion: '-1',
 			userId,
