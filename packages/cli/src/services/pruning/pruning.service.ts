@@ -1,4 +1,4 @@
-import { PruningConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
@@ -26,8 +26,8 @@ export class PruningService {
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;
 
 	private readonly rates = {
-		softDeletion: this.pruningConfig.softDeleteInterval * Time.minutes.toMilliseconds,
-		hardDeletion: this.pruningConfig.hardDeleteInterval * Time.minutes.toMilliseconds,
+		softDeletion: this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toMilliseconds,
+		hardDeletion: this.executionsConfig.pruneDataIntervals.hardDelete * Time.minutes.toMilliseconds,
 	};
 
 	/** Max number of executions to hard-delete in a cycle. */
@@ -41,7 +41,7 @@ export class PruningService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly pruningConfig: PruningConfig,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('pruning');
 	}
@@ -59,7 +59,7 @@ export class PruningService {
 
 	get isEnabled() {
 		return (
-			this.pruningConfig.isEnabled &&
+			this.executionsConfig.pruneData &&
 			this.instanceSettings.instanceType === 'main' &&
 			this.instanceSettings.isLeader
 		);

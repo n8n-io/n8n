@@ -1,5 +1,6 @@
 import { stringify } from 'flatted';
-import type { IDataObject, IPinData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import type { IDataObject, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { clickExecuteWorkflowButton } from '../composables/workflow';
 
@@ -39,38 +40,6 @@ export function createMockNodeExecutionData(
 	};
 }
 
-function createMockWorkflowExecutionData({
-	runData,
-	lastNodeExecuted,
-}: {
-	runData: Record<string, ITaskData | ITaskData[]>;
-	pinData?: IPinData;
-	lastNodeExecuted: string;
-}) {
-	return {
-		data: stringify({
-			startData: {},
-			resultData: {
-				runData,
-				pinData: {},
-				lastNodeExecuted,
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		}),
-		mode: 'manual',
-		startedAt: new Date().toISOString(),
-		stoppedAt: new Date().toISOString(),
-		status: 'success',
-		finished: true,
-	};
-}
-
 export function runMockWorkflowExecution({
 	trigger,
 	lastNodeExecuted,
@@ -80,6 +49,7 @@ export function runMockWorkflowExecution({
 	lastNodeExecuted: string;
 	runData: Array<ReturnType<typeof createMockNodeExecutionData>>;
 }) {
+	const workflowId = nanoid();
 	const executionId = Math.floor(Math.random() * 1_000_000).toString();
 
 	cy.intercept('POST', '/rest/workflows/**/run?**', {
@@ -117,17 +87,24 @@ export function runMockWorkflowExecution({
 		resolvedRunData[nodeName] = nodeExecution[nodeName];
 	});
 
-	cy.intercept('GET', `/rest/executions/${executionId}`, {
-		statusCode: 200,
-		body: {
-			data: createMockWorkflowExecutionData({
+	cy.push('executionFinished', {
+		executionId,
+		workflowId,
+		status: 'success',
+		rawData: stringify({
+			startData: {},
+			resultData: {
+				runData,
+				pinData: {},
 				lastNodeExecuted,
-				runData: resolvedRunData,
-			}),
-		},
-	}).as('getExecution');
-
-	cy.push('executionFinished', { executionId });
-
-	cy.wait('@getExecution');
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		}),
+	});
 }

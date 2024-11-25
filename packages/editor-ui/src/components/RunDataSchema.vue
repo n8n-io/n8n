@@ -271,14 +271,12 @@ watch(
 		:class="[$style.schemaWrapper, { highlightSchema: highlight }]"
 	>
 		<div v-if="search && nodes.length > 0 && filteredNodes.length === 0" :class="$style.noMatch">
-			<n8n-text tag="h3" size="large">{{
-				$locale.baseText('ndv.search.noNodeMatch.title')
-			}}</n8n-text>
+			<n8n-text tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</n8n-text>
 			<n8n-text>
 				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
@@ -399,19 +397,17 @@ watch(
 
 	<div v-else :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
 		<div v-if="isDataEmpty(nodeSchema) && search" :class="$style.noMatch">
-			<n8n-text tag="h3" size="large">{{
-				$locale.baseText('ndv.search.noNodeMatch.title')
-			}}</n8n-text>
+			<n8n-text tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</n8n-text>
 			<n8n-text>
 				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
 			</n8n-text>
-			<n8n-text>{{ $locale.baseText('ndv.search.noMatchSchema.description') }}</n8n-text>
+			<n8n-text>{{ i18n.baseText('ndv.search.noMatchSchema.description') }}</n8n-text>
 		</div>
 
 		<div v-else :class="$style.schema" data-test-id="run-data-schema-node-schema">

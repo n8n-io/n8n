@@ -27,7 +27,7 @@ describe('Workflow Selector Parameter', () => {
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
-			.should('have.length', 2);
+			.should('have.length', 3);
 	});
 
 	it('should show required parameter warning', () => {
@@ -44,7 +44,8 @@ describe('Workflow Selector Parameter', () => {
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
-			.should('have.length', 1)
+			.should('have.length', 2)
+			.eq(1)
 			.click();
 
 		ndv.getters
@@ -57,7 +58,7 @@ describe('Workflow Selector Parameter', () => {
 		ndv.getters.resourceLocator('workflowId').should('be.visible');
 		ndv.getters.resourceLocatorInput('workflowId').click();
 
-		getVisiblePopper().findChildByTestId('rlc-item').first().click();
+		getVisiblePopper().findChildByTestId('rlc-item').eq(1).click();
 
 		ndv.getters.resourceLocatorInput('workflowId').find('a').should('exist');
 		cy.getByTestId('radio-button-expression').eq(1).click();
@@ -68,7 +69,7 @@ describe('Workflow Selector Parameter', () => {
 		ndv.getters.resourceLocator('workflowId').should('be.visible');
 		ndv.getters.resourceLocatorInput('workflowId').click();
 
-		getVisiblePopper().findChildByTestId('rlc-item').first().click();
+		getVisiblePopper().findChildByTestId('rlc-item').eq(1).click();
 		ndv.getters
 			.resourceLocatorModeSelector('workflowId')
 			.find('input')
@@ -78,5 +79,25 @@ describe('Workflow Selector Parameter', () => {
 			.resourceLocatorModeSelector('workflowId')
 			.find('input')
 			.should('have.value', 'By ID');
+	});
+
+	it('should render add resource option and redirect to the correct route when clicked', () => {
+		cy.window().then((win) => {
+			cy.stub(win, 'open').as('windowOpen');
+		});
+
+		ndv.getters.resourceLocator('workflowId').should('be.visible');
+		ndv.getters.resourceLocatorInput('workflowId').click();
+
+		getVisiblePopper().findChildByTestId('rlc-item').eq(0).should('exist');
+		getVisiblePopper()
+			.findChildByTestId('rlc-item')
+			.eq(0)
+			.find('span')
+			.should('have.text', 'Create a new sub-workflow');
+
+		getVisiblePopper().findChildByTestId('rlc-item').eq(0).click();
+
+		cy.get('@windowOpen').should('be.calledWith', '/workflows/onboarding/0?sampleSubWorkflows=0');
 	});
 });
