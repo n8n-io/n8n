@@ -86,8 +86,12 @@ const LazyRunDataTable = defineAsyncComponent(
 const LazyRunDataJson = defineAsyncComponent(
 	async () => await import('@/components/RunDataJson.vue'),
 );
-const LazyRunDataSchema = defineAsyncComponent(
-	async () => await import('@/components/RunDataSchema.vue'),
+
+const useVirtualSchema = ref(false);
+const LazyRunDataSchema = defineAsyncComponent(async () =>
+	useVirtualSchema.value
+		? await import('@/components/VirtualSchema.vue')
+		: await import('@/components/RunDataSchema.vue'),
 );
 const LazyRunDataHtml = defineAsyncComponent(
 	async () => await import('@/components/RunDataHtml.vue'),
