@@ -1,3 +1,14 @@
+## [1.69.1](https://github.com/n8n-io/n8n/compare/n8n@1.69.0...n8n@1.69.1) (2024-11-25)
+
+
+### Bug Fixes
+
+* **core:** Bring back execution data on the `executionFinished` push message ([#11821](https://github.com/n8n-io/n8n/issues/11821)) ([55ae09a](https://github.com/n8n-io/n8n/commit/55ae09af786aff206964f08bf4c6b2399d7719be))
+* **core:** Fix broken execution query when using projectId ([#11852](https://github.com/n8n-io/n8n/issues/11852)) ([74261da](https://github.com/n8n-io/n8n/commit/74261dadeca81d314e33563f4c63a1beeb0b094b))
+* **editor:** Fix AI assistant loading message layout ([#11819](https://github.com/n8n-io/n8n/issues/11819)) ([5f98dd4](https://github.com/n8n-io/n8n/commit/5f98dd477395aada0d62369aa394984549b2f454))
+
+
+
 # [1.69.0](https://github.com/n8n-io/n8n/compare/n8n@1.68.0...n8n@1.69.0) (2024-11-20)
 
 
