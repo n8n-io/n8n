@@ -378,35 +378,6 @@ const createFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 			{
-				displayName: 'Assigned Label',
-				name: 'assignedLabels',
-				default: [],
-				description: 'List of sensitivity label pairs associated with the group',
-				options: [
-					{
-						displayName: 'Label',
-						name: 'labelValues',
-						values: [
-							{
-								displayName: 'Display Name',
-								name: 'displayName',
-								default: '',
-								description: 'The display name of the label',
-								type: 'string',
-							},
-							{
-								displayName: 'Label ID',
-								name: 'labelId',
-								default: '',
-								description: 'The unique identifier of the label',
-								type: 'string',
-							},
-						],
-					},
-				],
-				type: 'fixedCollection',
-			},
-			{
 				displayName: 'Auto Subscribe New Members',
 				name: 'autoSubscribeNewMembers',
 				default: false,
@@ -890,47 +861,6 @@ const updateFields: INodeProperties[] = [
 				description: 'Whether people external to the organization can send messages to the group',
 				type: 'boolean',
 				validateType: 'boolean',
-			},
-			{
-				displayName: 'Assigned Label',
-				name: 'assignedLabels',
-				default: [],
-				description: 'List of sensitivity label pairs associated with the group',
-				options: [
-					{
-						displayName: 'Label',
-						name: 'labelValues',
-						values: [
-							{
-								displayName: 'Display Name',
-								name: 'displayName',
-								default: '',
-								description: 'The display name of the label',
-								routing: {
-									send: {
-										property: '=assignedLabels[{{$index}}].displayName',
-										type: 'body',
-									},
-								},
-								type: 'string',
-							},
-							{
-								displayName: 'Label ID',
-								name: 'labelId',
-								default: '',
-								description: 'The unique identifier of the label',
-								routing: {
-									send: {
-										property: '=assignedLabels[{{$index}}].labelId',
-										type: 'body',
-									},
-								},
-								type: 'string',
-							},
-						],
-					},
-				],
-				type: 'fixedCollection',
 			},
 			{
 				displayName: 'Auto Subscribe New Members',
