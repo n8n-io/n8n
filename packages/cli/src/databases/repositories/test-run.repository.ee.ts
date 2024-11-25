@@ -11,14 +11,15 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	public async createTestRun(testDefinitionId: string) {
-		const testRun = new TestRun();
-		testRun.testDefinitionId = testDefinitionId;
-		testRun.status = 'new';
+		const testRun = this.create({
+			status: 'new',
+			testDefinition: { id: testDefinitionId },
+		});
+
 		return await this.save(testRun);
 	}
 
 	public async markAsRunning(id: string) {
-		console.log('markAsRunning');
 		return await this.update(id, { status: 'running', runAt: new Date() });
 	}
 
