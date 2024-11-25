@@ -304,7 +304,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						workflowName,
 						flattedRunData: data?.resultData.runData
 							? stringify(data.resultData.runData)
-							: undefined,
+							: stringify({}),
 					},
 					pushRef,
 				);
