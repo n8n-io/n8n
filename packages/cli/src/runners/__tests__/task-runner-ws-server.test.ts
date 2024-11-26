@@ -2,7 +2,7 @@ import type { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type WebSocket from 'ws';
 
-import { Time } from '@/constants';
+import { Time, WsStatusCodes } from '@/constants';
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 
 describe('TaskRunnerWsServer', () => {
@@ -14,7 +14,7 @@ describe('TaskRunnerWsServer', () => {
 
 			await server.removeConnection('test-runner');
 
-			expect(ws.close).toHaveBeenCalledWith(1000);
+			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseNormal);
 		});
 	});
 
