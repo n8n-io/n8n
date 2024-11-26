@@ -10,34 +10,21 @@ import type {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	IExecuteData,
-	ContextType,
-	AiEvent,
-	ISourceData,
-	ITaskMetadata,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	createDeferredPromise,
-	NodeHelpers,
-	WorkflowDataProxy,
-} from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
 	assertBinaryData,
-	continueOnFail,
-	getAdditionalKeys,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
-	getCredentials,
-	getNodeParameter,
 	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
-import { NodeExecutionContext } from './node-execution-context';
+import { BaseExecuteContext } from './base-execute-context';
 
-export class ExecuteSingleContext extends NodeExecutionContext implements IExecuteSingleFunctions {
+export class ExecuteSingleContext extends BaseExecuteContext implements IExecuteSingleFunctions {
 	readonly helpers: IExecuteSingleFunctions['helpers'];
 
 	constructor(
@@ -45,15 +32,26 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
-		private readonly runExecutionData: IRunExecutionData,
-		private readonly runIndex: number,
-		private readonly connectionInputData: INodeExecutionData[],
-		private readonly inputData: ITaskDataConnections,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
 		private readonly itemIndex: number,
-		private readonly executeData: IExecuteData,
-		private readonly abortSignal?: AbortSignal,
+		executeData: IExecuteData,
+		abortSignal?: AbortSignal,
 	) {
-		super(workflow, node, additionalData, mode);
+		super(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			abortSignal,
+		);
 
 		this.helpers = {
 			createDeferredPromise,
@@ -74,47 +72,8 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 		};
 	}
 
-	getExecutionCancelSignal() {
-		return this.abortSignal;
-	}
-
-	onExecutionCancellation(handler: () => unknown) {
-		const fn = () => {
-			this.abortSignal?.removeEventListener('abort', fn);
-			handler();
-		};
-		this.abortSignal?.addEventListener('abort', fn);
-	}
-
-	setMetadata(metadata: ITaskMetadata): void {
-		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
-			...metadata,
-		};
-	}
-
-	continueOnFail() {
-		return continueOnFail(this.node);
-	}
-
-	evaluateExpression(expression: string, evaluateItemIndex: number | undefined) {
-		evaluateItemIndex = evaluateItemIndex ?? this.itemIndex;
-		return this.workflow.expression.resolveSimpleParameterValue(
-			`=${expression}`,
-			{},
-			this.runExecutionData,
-			this.runIndex,
-			evaluateItemIndex,
-			this.node.name,
-			this.connectionInputData,
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
-			this.executeData,
-		);
-	}
-
-	getContext(type: ContextType) {
-		return NodeHelpers.getContext(this.runExecutionData, type, this.node);
+	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {
+		return super.evaluateExpression(expression, itemIndex);
 	}
 
 	getInputData(inputIndex = 0, inputName = 'main') {
@@ -154,73 +113,14 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	getNodeParameter(parameterName: string, fallbackValue?: any, options?: IGetNodeParameterOptions) {
-		return getNodeParameter(
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			this.connectionInputData,
-			this.node,
-			parameterName,
-			this.itemIndex,
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
-			this.executeData,
-			fallbackValue,
-			options,
-		);
+		return this._getNodeParameter(parameterName, this.itemIndex, fallbackValue, options);
 	}
 
-	// TODO: extract out in a BaseExecutionContext
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await getCredentials<T>(
-			this.workflow,
-			this.node,
-			type,
-			this.additionalData,
-			this.mode,
-			this.executeData,
-			this.runExecutionData,
-			this.runIndex,
-			this.connectionInputData,
-			this.itemIndex,
-		);
-	}
-
-	getExecuteData() {
-		return this.executeData;
+		return await super.getCredentials<T>(type, this.itemIndex);
 	}
 
 	getWorkflowDataProxy() {
-		return new WorkflowDataProxy(
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			this.itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			{},
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
-			this.executeData,
-		).getDataProxy();
-	}
-
-	getInputSourceData(inputIndex = 0, inputName = 'main'): ISourceData {
-		if (this.executeData?.source === null) {
-			// Should never happen as n8n sets it automatically
-			throw new ApplicationError('Source data is missing');
-		}
-		return this.executeData.source[inputName][inputIndex] as ISourceData;
-	}
-
-	logAiEvent(eventName: AiEvent, msg: string) {
-		return this.additionalData.logAiEvent(eventName, {
-			executionId: this.additionalData.executionId ?? 'unsaved-execution',
-			nodeName: this.node.name,
-			workflowName: this.workflow.name ?? 'Unnamed workflow',
-			nodeType: this.node.type,
-			workflowId: this.workflow.id ?? 'unsaved-workflow',
-			msg,
-		});
+		return super.getWorkflowDataProxy(this.itemIndex);
 	}
 }

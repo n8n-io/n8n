@@ -14,7 +14,7 @@ import { NodeExecutionContext } from '../node-execution-context';
 
 class TestContext extends NodeExecutionContext {}
 
-describe('BaseContext', () => {
+describe('NodeExecutionContext', () => {
 	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });
 	Container.set(InstanceSettings, instanceSettings);
 
