@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Credentials, NodeExecuteFunctions } from 'n8n-core';
+import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
@@ -379,7 +379,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null, {
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseSecrets,
 		});
 

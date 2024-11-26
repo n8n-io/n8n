@@ -145,7 +145,7 @@ const isExecutingPrevious = computed(() => {
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		!workflowsStore.isNodeExecuting(activeNode.value.name)
+		workflowsStore.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -212,7 +212,10 @@ const activeNodeType = computed(() => {
 	return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
 });
 
-const waitingMessage = computed(() => waitingNodeTooltip());
+const waitingMessage = computed(() => {
+	const parentNode = parentNodes.value[0];
+	return parentNode && waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name));
+});
 
 watch(
 	inputMode,

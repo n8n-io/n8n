@@ -12,6 +12,10 @@ import type { DisconnectAnalyzer, DisconnectErrorOptions } from './runner-types'
  */
 @Service()
 export class DefaultTaskRunnerDisconnectAnalyzer implements DisconnectAnalyzer {
+	get isCloudDeployment() {
+		return config.get('deployment.type') === 'cloud';
+	}
+
 	async toDisconnectError(opts: DisconnectErrorOptions): Promise<Error> {
 		const { reason, heartbeatInterval } = opts;
 
@@ -22,6 +26,9 @@ export class DefaultTaskRunnerDisconnectAnalyzer implements DisconnectAnalyzer {
 			);
 		}
 
-		return new TaskRunnerDisconnectedError(opts.runnerId ?? 'Unknown runner ID');
+		return new TaskRunnerDisconnectedError(
+			opts.runnerId ?? 'Unknown runner ID',
+			this.isCloudDeployment,
+		);
 	}
 }

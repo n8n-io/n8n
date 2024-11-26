@@ -35,6 +35,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+import type { IExecutionResponse } from '@/Interface';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -145,7 +146,11 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return false;
 		}
 
-		if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
+		if (
+			receivedData.type === 'nodeExecuteAfter' ||
+			receivedData.type === 'nodeExecuteBefore' ||
+			receivedData.type === 'executionStarted'
+		) {
 			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
@@ -155,7 +160,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The data is not for the currently active execution or
 				// we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as PushMessage, retryAttempts);
+					queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
@@ -200,16 +205,24 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				// The workflow which did finish execution did either not get started
 				// by this session or we do not have the execution id yet.
 				if (isRetry !== true) {
-					queuePushMessage(event as unknown as PushMessage, retryAttempts);
+					queuePushMessage(receivedData, retryAttempts);
 				}
 				return false;
 			}
 
-			// pull execution data for the execution from the server
-			const executionData = await workflowsStore.fetchExecutionDataById(executionId);
-			if (!executionData?.data) return false;
-			// data comes in as 'flatten' object, so we need to parse it
-			executionData.data = parse(executionData.data as unknown as string) as IRunExecutionData;
+			let executionData: Pick<IExecutionResponse, 'workflowId' | 'data' | 'status'>;
+			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
+				const { workflowId, status, rawData } = receivedData.data;
+				executionData = { workflowId, data: parse(rawData), status };
+			} else {
+				const execution = await workflowsStore.fetchExecutionDataById(executionId);
+				if (!execution?.data) return false;
+				executionData = {
+					workflowId: execution.workflowId,
+					data: parse(execution.data as unknown as string),
+					status: execution.status,
+				};
+			}
 
 			const iRunExecutionData: IRunExecutionData = {
 				startData: executionData.data?.startData,
@@ -265,7 +278,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 				// Workflow did start but had been put to wait
 				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
-			} else if (executionData.finished !== true) {
+			} else if (executionData.status === 'error' || executionData.status === 'canceled') {
 				workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 
 				if (
@@ -347,17 +360,14 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						duration: 0,
 					});
 				} else {
-					let title: string;
-					const isManualExecutionCancelled =
-						executionData.mode === 'manual' && executionData.status === 'canceled';
-
-					// Do not show the error message if the workflow got canceled manually
-					if (isManualExecutionCancelled) {
+					// Do not show the error message if the workflow got canceled
+					if (executionData.status === 'canceled') {
 						toast.showMessage({
 							title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
 							type: 'success',
 						});
 					} else {
+						let title: string;
 						if (iRunExecutionData.resultData.lastNodeExecuted) {
 							title = `Problem in node ‘${iRunExecutionData.resultData.lastNodeExecuted}‘`;
 						} else {
@@ -421,7 +431,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 
 			workflowsStore.executingNode.length = 0;
-			workflowsStore.setWorkflowExecutionData(executionData);
+			workflowsStore.setWorkflowExecutionData(executionData as IExecutionResponse);
 			uiStore.removeActiveAction('workflowRunning');
 
 			// Set the node execution issues on all the nodes which produced an error so that
@@ -446,13 +456,18 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				runDataExecutedStartData: iRunExecutionData.startData,
 				resultDataError: iRunExecutionData.resultData.error,
 			});
-		} else if (receivedData.type === 'executionStarted') {
+		} else if (receivedData.type === 'executionWaiting') {
 			// Nothing to do
+		} else if (receivedData.type === 'executionStarted') {
+			if (workflowsStore.workflowExecutionData?.data && receivedData.data.flattedRunData) {
+				workflowsStore.workflowExecutionData.data.resultData.runData = parse(
+					receivedData.data.flattedRunData,
+				);
+			}
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;
-			workflowsStore.addNodeExecutionData(pushData);
-			workflowsStore.removeExecutingNode(pushData.nodeName);
+			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.

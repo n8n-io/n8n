@@ -28,6 +28,7 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
+	IWorkflowDataCreate,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -83,6 +84,8 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
+import { openPopUpWindow } from '@/utils/executionUtils';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -114,6 +117,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const router = useRouter();
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const settingsStore = useSettingsStore();
+	const rootStore = useRootStore();
+	const nodeHelpers = useNodeHelpers();
+
 	// -1 means the backend chooses the default
 	// 0 is the old flow
 	// 1 is the new flow
@@ -137,6 +143,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
+	const formPopupWindow = ref<Window | null>(null);
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -453,14 +460,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
-		const rootStore = useRootStore();
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
 			url,
 		});
 	}
 
 	async function getActivationError(id: string): Promise<string | undefined> {
-		const rootStore = useRootStore();
 		return await makeRestApiRequest(
 			rootStore.restApiContext,
 			'GET',
@@ -469,8 +474,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
-		const rootStore = useRootStore();
-
 		const filter = {
 			projectId,
 		};
@@ -484,7 +487,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
-		const rootStore = useRootStore();
 		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
 		addWorkflow(workflowData);
 		return workflowData;
@@ -497,8 +499,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			settings: { ...defaults.settings },
 		};
 		try {
-			const rootStore = useRootStore();
-
 			const data: IDataObject = {
 				name,
 				projectId,
@@ -632,7 +632,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function deleteWorkflow(id: string) {
-		const rootStore = useRootStore();
 		await makeRestApiRequest(rootStore.restApiContext, 'DELETE', `/workflows/${id}`);
 		const { [id]: deletedWorkflow, ...workflows } = workflowsById.value;
 		workflowsById.value = workflows;
@@ -676,7 +675,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchActiveWorkflows(): Promise<string[]> {
-		const rootStore = useRootStore();
 		const data = await workflowsApi.getActiveWorkflows(rootStore.restApiContext);
 		activeWorkflows.value = data;
 		return data;
@@ -696,7 +694,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
 		try {
-			const rootStore = useRootStore();
 			const newWorkflow = await workflowsApi.getNewWorkflow(rootStore.restApiContext, {
 				name: newName,
 			});
@@ -1042,10 +1039,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
-		nodeMetadata.value = nodes.reduce<NodeMetadataMap>((acc, node) => {
-			acc[node.name] = { pristine: true };
-			return acc;
-		}, {});
+		nodes.forEach((node) => {
+			if (!node.id) {
+				nodeHelpers.assignNodeId(node);
+			}
+
+			if (!nodeMetadata.value[node.name]) {
+				nodeMetadata.value[node.name] = { pristine: true };
+			}
+		});
 	}
 
 	function setConnections(connections: IConnections, updateWorkflow = false): void {
@@ -1276,12 +1278,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function addNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
+	function getFormResumeUrl(node: INode, executionId: string) {
+		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+		const testUrl = `${rootStore.formWaitingUrl}/${executionId}${suffix}`;
+		return testUrl;
+	}
+
+	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
 
-		if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
+		const { nodeName, data, executionId } = pushData;
+		const isNodeWaiting = data.executionStatus === 'waiting';
+		const node = getNodeByName(nodeName);
+		if (!node) return;
+
+		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
 			workflowExecutionData.value = {
 				...workflowExecutionData.value,
 				data: {
@@ -1290,15 +1304,38 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 						...workflowExecutionData.value.data.resultData,
 						runData: {
 							...workflowExecutionData.value.data.resultData.runData,
-							[pushData.nodeName]: [],
+							[nodeName]: [],
 						},
 					},
 				},
 			};
 		}
-		workflowExecutionData.value.data!.resultData.runData[pushData.nodeName].push(pushData.data);
 
-		void trackNodeExecution(pushData);
+		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
+		if (isNodeWaiting) {
+			tasksData.push(data);
+			if (
+				node.type === FORM_NODE_TYPE ||
+				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
+			) {
+				const testUrl = getFormResumeUrl(node, executionId);
+				if (!formPopupWindow.value || formPopupWindow.value.closed) {
+					formPopupWindow.value = openPopUpWindow(testUrl);
+				} else {
+					formPopupWindow.value.location = testUrl;
+					formPopupWindow.value.focus();
+				}
+			}
+		} else {
+			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
+				tasksData.splice(tasksData.length - 1, 1, data);
+			} else {
+				tasksData.push(data);
+			}
+
+			removeExecutingNode(nodeName);
+			void trackNodeExecution(pushData);
+		}
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
@@ -1348,12 +1385,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				limit,
 			};
 		}
-		const rootStore = useRootStore();
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/executions', sendData);
 	}
 
 	async function getExecution(id: string): Promise<IExecutionResponse | undefined> {
-		const rootStore = useRootStore();
 		const response = await makeRestApiRequest<IExecutionFlattedResponse | undefined>(
 			rootStore.restApiContext,
 			'GET',
@@ -1363,14 +1398,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return response && unflattenExecutionData(response);
 	}
 
-	async function createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+	/**
+	 * Creates a new workflow with the provided data.
+	 * Ensures that the new workflow is not active upon creation.
+	 * If the project ID is not provided in the data, it assigns the current project ID from the project store.
+	 */
+	async function createNewWorkflow(sendData: IWorkflowDataCreate): Promise<IWorkflowDb> {
 		// make sure that the new ones are not active
 		sendData.active = false;
 
-		const rootStore = useRootStore();
 		const projectStore = useProjectsStore();
 
-		if (projectStore.currentProjectId) {
+		if (!sendData.projectId && projectStore.currentProjectId) {
 			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
 		}
 
@@ -1387,8 +1426,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		data: IWorkflowDataUpdate,
 		forceSave = false,
 	): Promise<IWorkflowDb> {
-		const rootStore = useRootStore();
-
 		if (data.settings === null) {
 			data.settings = undefined;
 		}
@@ -1402,8 +1439,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
-		const rootStore = useRootStore();
-
 		if (startRunData.workflowData.settings === null) {
 			startRunData.workflowData.settings = undefined;
 		}
@@ -1427,7 +1462,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function removeTestWebhook(targetWorkflowId: string): Promise<boolean> {
-		const rootStore = useRootStore();
 		return await makeRestApiRequest(
 			rootStore.restApiContext,
 			'DELETE',
@@ -1436,7 +1470,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
-		const rootStore = useRootStore();
 		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId);
 	}
 
@@ -1459,7 +1492,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fileName: string,
 		mimeType: string,
 	): string {
-		const rootStore = useRootStore();
 		let restUrl = rootStore.restUrl;
 		if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
 		const url = new URL(`${restUrl}/binary-data`);
@@ -1536,6 +1568,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		// Logs panel open/close is tied to the chat panel open/close
 		isLogsPanelOpen.value = isOpen;
+	}
+
+	function markExecutionAsStopped() {
+		activeExecutionId.value = null;
+		executingNode.value.length = 0;
+		executionWaitingForWebhook.value = false;
+		uiStore.removeActiveAction('workflowRunning');
+		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
+
+		formPopupWindow.value?.close();
+		formPopupWindow.value = null;
+
+		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
+		for (const nodeName in runData) {
+			runData[nodeName] = runData[nodeName].filter(
+				({ executionStatus }) => executionStatus === 'success',
+			);
+		}
 	}
 
 	return {
@@ -1651,7 +1701,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodeValue,
 		setNodeParameters,
 		setLastNodeParameters,
-		addNodeExecutionData,
+		updateNodeExecutionData,
 		clearNodeExecutionData,
 		pinDataByNodeName,
 		activeNode,
@@ -1675,5 +1725,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
+		markExecutionAsStopped,
 	};
 });

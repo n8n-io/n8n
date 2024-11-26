@@ -435,7 +435,7 @@ export class Workflow {
 			) {
 				// Is expression so has to be rewritten
 				// To not run the "expensive" regex stuff when it is not needed
-				// make a simple check first if it really contains the the node-name
+				// make a simple check first if it really contains the node-name
 				if (parameterValue.includes(currentName)) {
 					// Really contains node-name (even though we do not know yet if really as $node-expression)
 

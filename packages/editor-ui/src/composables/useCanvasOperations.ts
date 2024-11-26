@@ -90,7 +90,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
@@ -759,7 +758,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
 	) {
-		const id = node.id ?? uuid();
+		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
@@ -1027,7 +1026,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
 		if (nodeTypeDescription.webhooks?.length && !node.webhookId) {
-			node.webhookId = uuid();
+			nodeHelpers.assignWebhookId(node);
 		}
 
 		// if it's a webhook and the path is empty set the UUID as the default path
@@ -1613,7 +1612,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 							(n) => n.webhookId === node.webhookId,
 						);
 						if (isDuplicate) {
-							node.webhookId = uuid();
+							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
 								node.parameters.path = node.webhookId as string;
@@ -1623,13 +1622,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						}
 					}
 
-					// set all new ids when pasting/importing workflows
+					// Set all new ids when pasting/importing workflows
 					if (node.id) {
-						const newId = uuid();
-						nodeIdMap[newId] = node.id;
-						node.id = newId;
+						const previousId = node.id;
+						const newId = nodeHelpers.assignNodeId(node);
+						nodeIdMap[newId] = previousId;
 					} else {
-						node.id = uuid();
+						nodeHelpers.assignNodeId(node);
 					}
 				});
 			}
@@ -1809,17 +1808,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function filterConnectionsByNodes(
-		connections: Record<string, IConnection[][]>,
+		connections: INodeConnections,
 		includeNodeNames: Set<string>,
 	): INodeConnections {
 		const filteredConnections: INodeConnections = {};
 
 		for (const [type, typeConnections] of Object.entries(connections)) {
-			const validConnections = typeConnections
-				.map((sourceConnections) =>
-					sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
-				)
-				.filter((sourceConnections) => sourceConnections.length > 0);
+			const validConnections = typeConnections.map((sourceConnections) =>
+				sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
+			);
 
 			if (validConnections.length) {
 				filteredConnections[type] = validConnections;
@@ -1888,6 +1885,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertDeleteConnection,
 		deleteConnectionsByNodeId,
 		isConnectionAllowed,
+		filterConnectionsByNodes,
 		importWorkflowData,
 		fetchWorkflowDataFromUrl,
 		resetWorkspace,

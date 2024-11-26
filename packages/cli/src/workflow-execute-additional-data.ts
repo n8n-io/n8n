@@ -5,6 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { stringify } from 'flatted';
 import { WorkflowExecute } from 'n8n-core';
 import {
 	ApplicationError,
@@ -280,7 +281,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
+			async function (this: WorkflowHooks, _workflow, data): Promise<void> {
 				const { pushRef, executionId } = this;
 				const { id: workflowId, name: workflowName } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
@@ -301,13 +302,16 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						retryOf: this.retryOf,
 						workflowId,
 						workflowName,
+						flattedRunData: data?.resultData.runData
+							? stringify(data.resultData.runData)
+							: stringify({}),
 					},
 					pushRef,
 				);
 			},
 		],
 		workflowExecuteAfter: [
-			async function (this: WorkflowHooks): Promise<void> {
+			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 				const { pushRef, executionId } = this;
 				if (pushRef === undefined) return;
 
@@ -318,7 +322,17 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId,
 				});
 
-				pushInstance.send('executionFinished', { executionId }, pushRef);
+				const { status } = fullRunData;
+				if (status === 'waiting') {
+					pushInstance.send('executionWaiting', { executionId }, pushRef);
+				} else {
+					const rawData = stringify(fullRunData.data);
+					pushInstance.send(
+						'executionFinished',
+						{ executionId, workflowId, status, rawData },
+						pushRef,
+					);
+				}
 			},
 		],
 	};
@@ -408,6 +422,9 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						}
 					}
 
+					const executionStatus = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = executionStatus;
+
 					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
@@ -425,27 +442,25 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						return;
 					}
 
-					const executionStatus = determineFinalExecutionStatus(fullRunData);
 					const shouldNotSave =
 						(executionStatus === 'success' && !saveSettings.success) ||
 						(executionStatus !== 'success' && !saveSettings.error);
 
-					if (shouldNotSave && !fullRunData.waitTill) {
-						if (!fullRunData.waitTill && !isManualMode) {
-							executeErrorWorkflow(
-								this.workflowData,
-								fullRunData,
-								this.mode,
-								this.executionId,
-								this.retryOf,
-							);
-							await Container.get(ExecutionRepository).hardDelete({
-								workflowId: this.workflowData.id,
-								executionId: this.executionId,
-							});
+					if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
+						executeErrorWorkflow(
+							this.workflowData,
+							fullRunData,
+							this.mode,
+							this.executionId,
+							this.retryOf,
+						);
 
-							return;
-						}
+						await Container.get(ExecutionRepository).hardDelete({
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+						});
+
+						return;
 					}
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
@@ -569,6 +584,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+					fullRunData.status = workflowStatusFinal;
 
 					if (workflowStatusFinal !== 'success' && workflowStatusFinal !== 'waiting') {
 						executeErrorWorkflow(
@@ -1110,7 +1126,12 @@ export function getWorkflowHooksWorkerMain(
 	hookFunctions.nodeExecuteAfter = [];
 	hookFunctions.workflowExecuteAfter = [
 		async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
+			// Don't delete executions before they are finished
+			if (!fullRunData.finished) return;
+
 			const executionStatus = determineFinalExecutionStatus(fullRunData);
+			fullRunData.status = executionStatus;
+
 			const saveSettings = toSaveSettings(this.workflowData.settings);
 
 			const shouldNotSave =

@@ -1,5 +1,6 @@
 import { ApplicationError, ensureError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
 
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
@@ -49,7 +50,7 @@ export interface TaskRunnerOpts extends BaseRunnerConfig {
 	name?: string;
 }
 
-export abstract class TaskRunner {
+export abstract class TaskRunner extends EventEmitter {
 	id: string = nanoid();
 
 	ws: WebSocket;
@@ -76,10 +77,17 @@ export abstract class TaskRunner {
 
 	name: string;
 
+	private idleTimer: NodeJS.Timeout | undefined;
+
+	/** How long (in seconds) a runner may be idle for before exit. */
+	private readonly idleTimeout: number;
+
 	constructor(opts: TaskRunnerOpts) {
+		super();
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
+		this.idleTimeout = opts.idleTimeout;
 
 		const wsUrl = `ws://${opts.n8nUri}/runners/_ws?id=${this.id}`;
 		this.ws = new WebSocket(wsUrl, {
@@ -108,6 +116,17 @@ export abstract class TaskRunner {
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.stopTaskOffers);
+		this.resetIdleTimer();
+	}
+
+	private resetIdleTimer() {
+		if (this.idleTimeout === 0) return;
+
+		this.clearIdleTimer();
+
+		this.idleTimer = setTimeout(() => {
+			if (this.runningTasks.size === 0) this.emit('runner:reached-idle-timeout');
+		}, this.idleTimeout * 1000);
 	}
 
 	private receiveMessage = (message: MessageEvent) => {
@@ -244,6 +263,7 @@ export abstract class TaskRunner {
 			this.openOffers.delete(offerId);
 		}
 
+		this.resetIdleTimer();
 		this.runningTasks.set(taskId, {
 			taskId,
 			active: false,
@@ -306,6 +326,8 @@ export abstract class TaskRunner {
 			this.taskDone(taskId, data);
 		} catch (error) {
 			this.taskErrored(taskId, error);
+		} finally {
+			this.resetIdleTimer();
 		}
 	}
 
@@ -432,11 +454,18 @@ export abstract class TaskRunner {
 
 	/** Close the connection gracefully and wait until has been closed */
 	async stop() {
+		this.clearIdleTimer();
+
 		this.stopTaskOffers();
 
 		await this.waitUntilAllTasksAreDone();
 
 		await this.closeConnection();
+	}
+
+	clearIdleTimer() {
+		if (this.idleTimer) clearTimeout(this.idleTimer);
+		this.idleTimer = undefined;
 	}
 
 	private async closeConnection() {

@@ -31,7 +31,7 @@ export async function reActAgentAgentExecute(
 		| BaseLanguageModel
 		| BaseChatModel;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
 	await checkForStructuredTools(tools, this.getNode(), 'ReAct Agent');
 

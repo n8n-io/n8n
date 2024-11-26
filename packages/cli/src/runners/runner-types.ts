@@ -6,6 +6,8 @@ import type { TaskRunner } from './task-broker.service';
 import type { AuthlessRequest } from '../requests';
 
 export interface DisconnectAnalyzer {
+	isCloudDeployment: boolean;
+
 	toDisconnectError(opts: DisconnectErrorOptions): Promise<Error>;
 }
 
