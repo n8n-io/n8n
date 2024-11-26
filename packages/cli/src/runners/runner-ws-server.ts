@@ -4,7 +4,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
-import { Time } from '@/constants';
+import { Time, WsStatusCodes } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
@@ -20,16 +20,6 @@ import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
-
-const WsStatusCodes = {
-	CloseNormal: 1000,
-	CloseGoingAway: 1001,
-	CloseProtocolError: 1002,
-	CloseUnsupportedData: 1003,
-	CloseNoStatus: 1005,
-	CloseAbnormal: 1006,
-	CloseInvalidData: 1007,
-} as const;
 
 type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
