@@ -1,6 +1,11 @@
-import type { INodeProperties } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
+	type INodeProperties,
+} from 'n8n-workflow';
 
-import { handleErrorPostReceive, presendFilter } from '../GenericFunctions';
+import { handleErrorPostReceive, presendFilter, presendTest } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -143,59 +148,59 @@ export const userOperations: INodeProperties[] = [
 ];
 
 const createFields: INodeProperties[] = [
+	// {
+	// 	displayName: 'User Pool ID',
+	// 	name: 'userPoolId',
+	// 	required: true,
+	// 	type: 'resourceLocator',
+	// 	default: {
+	// 		mode: 'list',
+	// 		value: '',
+	// 	},
+	// 	description: 'The user pool ID where the users are managed',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: ['user'],
+	// 			operation: ['create'],
+	// 		},
+	// 	},
+	// 	routing: {
+	// 		send: {
+	// 			type: 'body',
+	// 			property: 'UserPoolId',
+	// 		},
+	// 	},
+	// 	modes: [
+	// 		{
+	// 			displayName: 'From list', // ToDo: Fix error when selecting this option
+	// 			name: 'list',
+	// 			type: 'list',
+	// 			typeOptions: {
+	// 				searchListMethod: 'searchUserPools',
+	// 				searchable: true,
+	// 			},
+	// 		},
+	// 		{
+	// 			displayName: 'By ID',
+	// 			name: 'id',
+	// 			type: 'string',
+	// 			hint: 'Enter the user pool ID',
+	// 			placeholder: 'e.g. eu-central-1_ab12cdefgh',
+	// 			validation: [
+	// 				{
+	// 					type: 'regex',
+	// 					properties: {
+	// 						regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+	// 						errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+	// 					},
+	// 				},
+	// 			],
+	// 		},
+	// 	],
+	// },
 	{
-		displayName: 'User Pool ID',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'The user pool ID where the users are managed',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'UserPoolId',
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user pool ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
-						},
-					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'User Name',
+		name: 'UserName',
 		default: '',
 		description: 'The name of the new user to create',
 		placeholder: 'e.g. JohnSmith',
@@ -208,8 +213,9 @@ const createFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				property: 'name',
+				property: 'UserName',
 				type: 'body',
+				preSend: [presendTest],
 			},
 		},
 		type: 'string',
@@ -360,7 +366,7 @@ const getFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the user ID',
 				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 				validation: [
 					{
@@ -630,6 +636,8 @@ const deleteFields: INodeProperties[] = [
 	{
 		displayName: 'User',
 		name: 'user',
+		required: true,
+		type: 'resourceLocator',
 		default: {
 			mode: 'list',
 			value: '',
@@ -647,16 +655,16 @@ const deleteFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getUsers',
+					searchListMethod: 'searchUserPools',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the user ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
@@ -668,8 +676,6 @@ const deleteFields: INodeProperties[] = [
 				],
 			},
 		],
-		required: true,
-		type: 'resourceLocator',
 	},
 ];
 
@@ -744,16 +750,16 @@ const updateFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getUsers',
+					searchListMethod: 'searchUserPools',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the user ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
@@ -769,8 +775,8 @@ const updateFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'User Name',
+		name: 'userName',
 		default: '',
 		description: 'The name of the new user to create',
 		placeholder: 'e.g. JohnSmith',
@@ -783,8 +789,32 @@ const updateFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				property: 'name',
+				property: 'userName',
 				type: 'body',
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const userName = this.getNodeParameter('userName') as string;
+						if (userName.length < 1 || userName.length > 128) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'User Name must be between 1 and 128 characters.',
+							);
+						}
+
+						// Regex validation
+						if (!/^[\w+=,.@-]+$/.test(userName)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'User Name contains invalid characters. Allowed characters: [\\w+=,.@-].',
+							);
+						}
+
+						return requestOptions;
+					},
+				],
 			},
 		},
 		type: 'string',
@@ -907,16 +937,16 @@ const addToGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getUsers',
+					searchListMethod: 'searchUserPools',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the user ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
@@ -957,16 +987,16 @@ const addToGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getGroups',
+					searchListMethod: 'searchGroups',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the group ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
@@ -1054,16 +1084,16 @@ const removeFromGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getUsers',
+					searchListMethod: 'searchUserPools',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the user ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
@@ -1098,16 +1128,16 @@ const removeFromGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getGroups',
+					searchListMethod: 'searchGroups',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
-				hint: 'Enter the user pool ID',
+				hint: 'Enter the group ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
