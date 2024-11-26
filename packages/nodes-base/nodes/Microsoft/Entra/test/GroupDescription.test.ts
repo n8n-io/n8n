@@ -98,7 +98,6 @@ describe('Gong Node', () => {
 								mailNickname: 'MailNickname',
 								mailEnabled: true,
 								securityEnabled: true,
-								isAssignableToRole: true,
 								groupTypes: ['Unified', 'DynamicMembership'],
 							},
 							responseBody: microsoftEntraApiResponse.postGroup,
