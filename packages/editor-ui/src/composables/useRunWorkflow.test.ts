@@ -320,7 +320,8 @@ describe('useRunWorkflow({ router })', () => {
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ dirtyIds: [executeName] }),
 			);
-=======
+		});
+
 		it('does not use the original run data if `PartialExecution.version` is set to 0', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
