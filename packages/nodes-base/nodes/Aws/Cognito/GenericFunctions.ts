@@ -382,37 +382,56 @@ export async function searchGroups(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	// Get the userPoolId from the input
+	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
+	console.log('Raw User Pool ID:', userPoolIdRaw);
+
+	// Extract the actual value
+	const userPoolId = userPoolIdRaw.value as string;
+
+	// Ensure that userPoolId is provided
+	if (!userPoolId) {
+		throw new ApplicationError('User Pool ID is required to search groups');
+	}
+	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '', // the base url is set in "awsRequest"
+		url: '', // the base URL is set in "awsRequest"
 		method: 'POST',
 		headers: {
 			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
 		},
 		body: JSON.stringify({
-			MaxResults: 60, // the maximum number by documentation is 60
+			UserPoolId: userPoolId,
+			MaxResults: 60,
 			NextToken: paginationToken ?? undefined,
 		}),
 	};
+
 	const responseData: IDataObject = await awsRequest.call(this, opts);
 
-	const groups = responseData.Groups as Array<{ Name: string; Id: string }>;
+	const groups = responseData.Groups as Array<{ GroupName?: string }> | undefined;
 
+	// If no groups exist, return an empty list
+	if (!groups) {
+		return { results: [] };
+	}
+
+	// Map and filter the response
 	const results: INodeListSearchItems[] = groups
-		.map((a) => ({
-			name: a.Name,
-			value: a.Id,
+		.filter((group) => group.GroupName)
+		.map((group) => ({
+			name: group.GroupName as string,
+			value: group.GroupName as string,
 		}))
 		.filter(
-			(a) =>
+			(group) =>
 				!filter ||
-				a.name.toLowerCase().includes(filter.toLowerCase()) ||
-				a.value.toLowerCase().includes(filter.toLowerCase()),
+				group.name.toLowerCase().includes(filter.toLowerCase()) ||
+				group.value.toLowerCase().includes(filter.toLowerCase()),
 		)
 		.sort((a, b) => {
-			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
-			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
-			return 0;
+			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 		});
 
-	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
+	return { results, paginationToken: responseData.NextToken };
 }

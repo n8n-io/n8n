@@ -394,7 +394,7 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -427,7 +427,12 @@ const getFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		description: 'The name of the group to retrieve',
-		displayOptions: { show: { resource: ['group'], operation: ['get'] } },
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
 		routing: {
 			send: {
 				type: 'body',
@@ -440,13 +445,13 @@ const getFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'listGroups',
+					searchListMethod: 'searchGroups',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By Name',
-				name: 'id',
+				name: 'GroupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [
@@ -454,7 +459,7 @@ const getFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							errorMessage: 'The group name must follow the allowed pattern.',
 						},
 					},
 				],
@@ -700,13 +705,13 @@ const updateFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'listGroups',
+					searchListMethod: 'searchGroups',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By Name',
-				name: 'id',
+				name: 'GroupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [
@@ -714,7 +719,7 @@ const updateFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							errorMessage: 'The group name must follow the allowed pattern.',
 						},
 					},
 				],
