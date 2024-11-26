@@ -15,6 +15,18 @@ import type {
 	WorkflowParameters,
 } from 'n8n-workflow';
 
+export interface InputDataChunkDefinition {
+	startIndex: number;
+	count: number;
+}
+
+export interface InputDataRequestParams {
+	/** Whether to include the input data in the response */
+	include: boolean;
+	/** Optionally request only a specific chunk of data instead of all input data */
+	chunk?: InputDataChunkDefinition;
+}
+
 /**
  * Specifies what data should be included for a task data request.
  */
@@ -22,7 +34,7 @@ export interface TaskDataRequestParams {
 	dataOfNodes: string[] | 'all';
 	prevNode: boolean;
 	/** Whether input data for the node should be included */
-	input: boolean;
+	input: InputDataRequestParams;
 	/** Whether env provider's state should be included */
 	env: boolean;
 }
