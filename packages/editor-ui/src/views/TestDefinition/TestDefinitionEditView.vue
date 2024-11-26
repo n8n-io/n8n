@@ -97,17 +97,24 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 				:handle-keydown="handleKeydown"
 			/>
 
-			<EvaluationStep :class="$style.step" :title="'Description'" :expanded="false">
+			<EvaluationStep
+				:class="$style.step"
+				:title="locale.baseText('testDefinition.edit.description')"
+				:expanded="false"
+			>
 				<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 				<template #cardContent>
 					<DescriptionInput v-model="state.description" />
 				</template>
 			</EvaluationStep>
 
-			<div :class="$style.panelIntro">When running a test</div>
+			<div :class="$style.panelIntro">{{ locale.baseText('testDefinition.edit.step.intro') }}</div>
 			<BlockArrow :class="$style.introArrow" />
 			<div :class="$style.panelBlock">
-				<EvaluationStep :class="$style.step" :title="'Fetch 5 past executions'">
+				<EvaluationStep
+					:class="$style.step"
+					:title="locale.baseText('testDefinition.edit.step.executions')"
+				>
 					<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 					<template #cardContent>
 						<TagsInput
@@ -126,16 +133,30 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 					<BlockArrow />
 					<BlockArrow />
 				</div>
-				<EvaluationStep :class="$style.step" :title="'Mock nodes'" :small="true" :expanded="false">
+				<EvaluationStep
+					:class="$style.step"
+					:title="locale.baseText('testDefinition.edit.step.nodes')"
+					:small="true"
+					:expanded="false"
+				>
 					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-					<template #cardContent> 1 node mocked </template>
+					<template #cardContent>{{
+						locale.baseText('testDefinition.edit.step.mockedNodes', { adjustToNumber: 0 })
+					}}</template>
 				</EvaluationStep>
 
-				<EvaluationStep :class="$style.step" :title="'Re-run executions'" :small="true">
+				<EvaluationStep
+					:class="$style.step"
+					:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
+					:small="true"
+				>
 					<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 				</EvaluationStep>
 
-				<EvaluationStep :class="$style.step" :title="'Compare each past and new execution'">
+				<EvaluationStep
+					:class="$style.step"
+					:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
+				>
 					<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 					<template #cardContent>
 						<WorkflowSelector
@@ -145,7 +166,10 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 					</template>
 				</EvaluationStep>
 
-				<EvaluationStep :class="$style.step" :title="'Summarise metrics'">
+				<EvaluationStep
+					:class="$style.step"
+					:title="locale.baseText('testDefinition.edit.step.metrics')"
+				>
 					<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 					<template #cardContent>
 						<MetricsInput v-model="state.metrics" :class="{ 'has-issues': hasIssues('metrics') }" />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
 import { ElCollapseTransition } from 'element-plus';
 import { ref, nextTick } from 'vue';
 
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	expanded: true,
 });
 
+const locale = useI18n();
 const isExpanded = ref(props.expanded);
 const contentRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
@@ -32,7 +34,7 @@ const toggleExpand = async () => {
 </script>
 
 <template>
-	<div :class="[$style.evaluationStep, small && $style.small]" ref="containerRef">
+	<div ref="containerRef" :class="[$style.evaluationStep, small && $style.small]">
 		<div :class="$style.content">
 			<div :class="$style.header">
 				<div :class="[$style.icon, warning && $style.warning]">
@@ -47,7 +49,11 @@ const toggleExpand = async () => {
 					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
 					@click="toggleExpand"
 				>
-					{{ isExpanded ? 'Collapse' : 'Expand' }}
+					{{
+						isExpanded
+							? locale.baseText('testDefinition.edit.step.collapse')
+							: locale.baseText('testDefinition.edit.step.expand')
+					}}
 					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 				</button>
 			</div>
@@ -84,14 +90,10 @@ const toggleExpand = async () => {
 	align-items: center;
 	justify-content: center;
 	border-radius: var(--border-radius-base);
-	// padding: var(--spacing-2xs);
 	overflow: hidden;
-	// background-color: var(--color-primary);
 	width: 2rem;
 	height: 2rem;
-	& > * {
-		// color: white;
-	}
+
 	&.warning {
 		background-color: var(--color-warning-tint-2);
 	}

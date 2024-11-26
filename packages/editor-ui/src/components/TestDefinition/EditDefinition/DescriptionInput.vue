@@ -16,7 +16,12 @@ const locale = useI18n();
 
 <template>
 	<div :class="[$style.description]">
-		<n8n-input-label label="Description" :bold="false" size="small" :class="$style.field">
+		<n8n-input-label
+			:label="locale.baseText('testDefinition.edit.description')"
+			:bold="false"
+			size="small"
+			:class="$style.field"
+		>
 			<N8nInput
 				:model-value="modelValue"
 				type="textarea"

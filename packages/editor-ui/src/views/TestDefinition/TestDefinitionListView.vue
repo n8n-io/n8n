@@ -21,6 +21,7 @@ const locale = useI18n();
 const tests = computed<TestListItem[]>(() => {
 	return testDefinitionStore.allTestDefinitions
 		.filter((test): test is TestDefinitionRecord => test.id !== undefined)
+		.sort((a, b) => new Date(b?.updatedAt ?? '').getTime() - new Date(a?.updatedAt ?? '').getTime())
 		.map((test) => ({
 			id: test.id,
 			name: test.name ?? '',

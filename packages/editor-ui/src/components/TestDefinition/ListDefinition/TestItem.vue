@@ -49,14 +49,24 @@ const actions = [
 				<n8n-tag v-if="test.tagName" :text="test.tagName" />
 			</div>
 			<div :class="$style.testCases">
-				{{ test.testCases }} test case(s)
+				{{ locale.baseText('testDefinition.list.testCases', { adjustToNumber: test.testCases }) }}
 				<n8n-loading v-if="!test.execution.lastRun" :loading="true" :rows="1" />
-				<span v-else>Ran {{ test.execution.lastRun }}</span>
+				<span v-else>{{
+					locale.baseText('testDefinition.list.lastRun', {
+						interpolate: { lastRun: test.execution.lastRun },
+					})
+				}}</span>
 			</div>
 		</div>
 
 		<div :class="$style.metrics">
-			<div :class="$style.metric">Error rate: {{ test.execution.errorRate ?? '-' }}</div>
+			<div :class="$style.metric">
+				{{
+					locale.baseText('testDefinition.list.errorRate', {
+						interpolate: { errorRate: test.execution.errorRate ?? '-' },
+					})
+				}}
+			</div>
 			<div v-for="(value, key) in test.execution.metrics" :key="key" :class="$style.metric">
 				{{ key }}: {{ value ?? '-' }}
 			</div>

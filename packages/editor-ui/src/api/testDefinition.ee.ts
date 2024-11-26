@@ -7,6 +7,8 @@ export interface TestDefinitionRecord {
 	evaluationWorkflowId?: string | null;
 	annotationTagId?: string | null;
 	description?: string | null;
+	updatedAt?: string;
+	createdAt?: string;
 }
 interface CreateTestDefinitionParams {
 	name: string;
