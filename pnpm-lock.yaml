@@ -130,6 +130,9 @@ patchedDependencies:
   typedi@0.10.0:
     hash: sk6omkefrosihg7lmqbzh7vfxe
     path: patches/typedi@0.10.0.patch
+  vue-tsc@2.1.6:
+    hash: z2iuqlt7ype4qnrwd5eymeecl4
+    path: patches/vue-tsc@2.1.6.patch
 
 importers:
 
@@ -339,7 +342,7 @@ importers:
         version: 2.1.2(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
       vue-tsc:
         specifier: ^2.1.6
-        version: 2.1.6(typescript@5.7.2)
+        version: 2.1.6(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
 
   packages/@n8n/client-oauth2:
     dependencies:
@@ -1308,7 +1311,7 @@ importers:
         version: 2.0.2(typescript@5.7.2)(vitest@2.1.2(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.1.6
-        version: 2.1.6(typescript@5.7.2)
+        version: 2.1.6(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
 
   packages/editor-ui:
     dependencies:
@@ -1570,7 +1573,7 @@ importers:
         version: 2.0.2(typescript@5.7.2)(vitest@2.1.2(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       vue-tsc:
         specifier: ^2.1.6
-        version: 2.1.6(typescript@5.7.2)
+        version: 2.1.6(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2)
 
   packages/node-dev:
     dependencies:
@@ -25472,7 +25475,7 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.11(typescript@5.7.2)
 
-  vue-tsc@2.1.6(typescript@5.7.2):
+  vue-tsc@2.1.6(patch_hash=z2iuqlt7ype4qnrwd5eymeecl4)(typescript@5.7.2):
     dependencies:
       '@volar/typescript': 2.4.6
       '@vue/language-core': 2.1.6(typescript@5.7.2)
