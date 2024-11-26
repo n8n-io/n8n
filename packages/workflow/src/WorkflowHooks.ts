@@ -38,11 +38,18 @@ export class WorkflowHooks {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	async executeHookFunctions(hookName: string, parameters: any[]) {
+	async executeHookFunctions<HookName extends keyof IWorkflowExecuteHooks>(
+		hookName: HookName,
+		parameters: Parameters<NonNullable<IWorkflowExecuteHooks[HookName]>[number]>,
+	) {
 		const hooks = this.hookFunctions[hookName];
 		if (hooks !== undefined && Array.isArray(hooks)) {
 			for (const hookFunction of hooks) {
-				await hookFunction.apply(this, parameters);
+				// Necessary because TS can't narrow down the type correctly yet.
+				const typedHookFunction = hookFunction as (
+					...args: Parameters<NonNullable<IWorkflowExecuteHooks[HookName]>[number]>
+				) => Promise<void>;
+				await typedHookFunction.apply(this, parameters);
 			}
 		}
 	}

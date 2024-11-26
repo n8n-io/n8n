@@ -35,6 +35,7 @@ import type {
 	CloseFunction,
 	StartNodeData,
 	NodeExecutionHint,
+	IWorkflowExecuteHooks,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -390,7 +391,10 @@ export class WorkflowExecute {
 	 *
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	async executeHook(hookName: string, parameters: any[]): Promise<void> {
+	async executeHook<HookName extends keyof IWorkflowExecuteHooks>(
+		hookName: HookName,
+		parameters: Parameters<NonNullable<IWorkflowExecuteHooks[HookName]>[number]>,
+	): Promise<void> {
 		if (this.additionalData.hooks === undefined) {
 			return;
 		}
