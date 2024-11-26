@@ -1,9 +1,8 @@
-import { NodeConnectionType } from 'n8n-workflow';
-import nock from 'nock';
-
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
+import { NodeConnectionType } from 'n8n-workflow';
+import nock from 'nock';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
@@ -79,7 +78,7 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [[{ json: {} }]],
+						'Micosoft Entra ID': [microsoftEntraNodeResponse.addUserToGroup],
 					},
 				},
 				nock: {
@@ -116,11 +115,7 @@ describe('Gong Node', () => {
 									operation: 'create',
 									displayName: 'John Doe',
 									mailNickname: 'johndoe',
-									passwordProfile: {
-										passwordProfileValues: {
-											password: 'Test!12345',
-										},
-									},
+									password: 'Test!12345',
 									userPrincipalName: 'johndoe@contoso.com',
 									additionalFields: {
 										aboutMe: 'About me',
@@ -134,6 +129,7 @@ describe('Gong Node', () => {
 										department: 'IT',
 										employeeId: 'employee-id-123',
 										employeeType: 'Contractor',
+										forceChangePassword: 'forceChangePasswordNextSignInWithMfa',
 										givenName: 'John',
 										employeeHireDate: '2024-11-13T00:00:00Z',
 										employeeLeaveDateTime: '2024-11-18T00:00:00Z',
@@ -212,8 +208,6 @@ describe('Gong Node', () => {
 								displayName: 'John Doe',
 								mailNickname: 'johndoe',
 								passwordProfile: {
-									forceChangePasswordNextSignIn: true,
-									forceChangePasswordNextSignInWithMfa: true,
 									password: 'Test!12345',
 								},
 								userPrincipalName: 'johndoe@contoso.com',
@@ -249,6 +243,9 @@ describe('Gong Node', () => {
 								onPremisesImmutableId: 'premiseid123',
 								otherMails: ['johndoe2@contoso.com', 'johndoe3@contoso.com'],
 								passwordPolicies: 'DisablePasswordExpiration,DisableStrongPassword',
+								passwordProfile: {
+									forceChangePasswordNextSignInWithMfa: true,
+								},
 								postalCode: '0123456',
 								preferredLanguage: 'en-US',
 								state: 'New York',
@@ -333,7 +330,7 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [[{ json: {} }]],
+						'Micosoft Entra ID': [microsoftEntraNodeResponse.deleteUser],
 					},
 				},
 				nock: {
@@ -370,7 +367,7 @@ describe('Gong Node', () => {
 										value: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
 										mode: 'id',
 									},
-									options: {},
+									output: 'raw',
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.microsoftEntra',
@@ -441,9 +438,84 @@ describe('Gong Node', () => {
 										value: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
 										mode: 'id',
 									},
-									options: {
-										select: ['id'],
-									},
+									output: 'fields',
+									fields: [
+										'aboutMe',
+										'accountEnabled',
+										'ageGroup',
+										'assignedLicenses',
+										'assignedPlans',
+										'authorizationInfo',
+										'birthday',
+										'businessPhones',
+										'city',
+										'companyName',
+										'consentProvidedForMinor',
+										'country',
+										'createdDateTime',
+										'creationType',
+										'customSecurityAttributes',
+										'deletedDateTime',
+										'department',
+										'displayName',
+										'employeeHireDate',
+										'employeeId',
+										'employeeLeaveDateTime',
+										'employeeOrgData',
+										'externalUserStateChangeDateTime',
+										'externalUserState',
+										'employeeType',
+										'faxNumber',
+										'givenName',
+										'hireDate',
+										'identities',
+										'imAddresses',
+										'interests',
+										'isManagementRestricted',
+										'isResourceAccount',
+										'jobTitle',
+										'lastPasswordChangeDateTime',
+										'legalAgeGroupClassification',
+										'licenseAssignmentStates',
+										'mail',
+										'mailNickname',
+										'mobilePhone',
+										'mySite',
+										'officeLocation',
+										'onPremisesDistinguishedName',
+										'onPremisesDomainName',
+										'onPremisesExtensionAttributes',
+										'onPremisesImmutableId',
+										'onPremisesLastSyncDateTime',
+										'onPremisesProvisioningErrors',
+										'onPremisesSamAccountName',
+										'onPremisesSecurityIdentifier',
+										'onPremisesSyncEnabled',
+										'onPremisesUserPrincipalName',
+										'otherMails',
+										'passwordPolicies',
+										'passwordProfile',
+										'pastProjects',
+										'postalCode',
+										'preferredDataLocation',
+										'preferredLanguage',
+										'preferredName',
+										'provisionedPlans',
+										'proxyAddresses',
+										'userType',
+										'userPrincipalName',
+										'usageLocation',
+										'surname',
+										'streetAddress',
+										'state',
+										'skills',
+										'signInSessionsValidFromDateTime',
+										'showInAddressList',
+										'serviceProvisioningErrors',
+										'securityIdentifier',
+										'schools',
+										'responsibilities',
+									],
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.microsoftEntra',
@@ -495,7 +567,7 @@ describe('Gong Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/users/87d349ed-44d7-43e1-9a83-5f2406dee5bd?$select=id',
+							path: '/users/87d349ed-44d7-43e1-9a83-5f2406dee5bd?$select=aboutMe,accountEnabled,ageGroup,assignedLicenses,assignedPlans,authorizationInfo,birthday,businessPhones,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,externalUserStateChangeDateTime,externalUserState,employeeType,faxNumber,givenName,hireDate,identities,imAddresses,interests,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mail,mailNickname,mobilePhone,mySite,officeLocation,onPremisesDistinguishedName,onPremisesDomainName,onPremisesExtensionAttributes,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSamAccountName,onPremisesSecurityIdentifier,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,pastProjects,postalCode,preferredDataLocation,preferredLanguage,preferredName,provisionedPlans,proxyAddresses,userType,userPrincipalName,usageLocation,surname,streetAddress,state,skills,signInSessionsValidFromDateTime,showInAddressList,serviceProvisioningErrors,securityIdentifier,schools,responsibilities,id',
 							statusCode: 200,
 							responseBody: {
 								'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users(id)/$entity',
@@ -506,7 +578,7 @@ describe('Gong Node', () => {
 				},
 			},
 			{
-				description: 'should get all users',
+				description: 'should get all users with simple output',
 				input: {
 					workflowData: {
 						nodes: [
@@ -523,8 +595,8 @@ describe('Gong Node', () => {
 									resource: 'user',
 									operation: 'getAll',
 									returnAll: true,
-									filters: {},
-									options: {},
+									filter: '',
+									output: 'simple',
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.microsoftEntra',
@@ -566,18 +638,18 @@ describe('Gong Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/users',
+							path: '/users?$select=id,createdDateTime,displayName,userPrincipalName,mail,mailNickname,securityIdentifier',
 							statusCode: 200,
 							responseBody: {
 								'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users',
 								'@odata.nextLink':
-									'https://graph.microsoft.com/v1.0/users?$filter=&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA',
+									'https://graph.microsoft.com/v1.0/users?$select=id,createdDateTime,displayName,userPrincipalName,mail,mailNickname,securityIdentifier&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA',
 								value: new Array(100).fill(microsoftEntraApiResponse.getUser),
 							},
 						},
 						{
 							method: 'get',
-							path: '/users?$filter=&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA',
+							path: '/users?$select=id,createdDateTime,displayName,userPrincipalName,mail,mailNickname,securityIdentifier&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA',
 							statusCode: 200,
 							responseBody: {
 								'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users',
@@ -588,7 +660,7 @@ describe('Gong Node', () => {
 				},
 			},
 			{
-				description: 'should get limit 10 users',
+				description: 'should get limit 10 users with raw output',
 				input: {
 					workflowData: {
 						nodes: [
@@ -605,8 +677,8 @@ describe('Gong Node', () => {
 									resource: 'user',
 									operation: 'getAll',
 									limit: 10,
-									filters: {},
-									options: {},
+									filter: '',
+									output: 'raw',
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.microsoftEntra',
@@ -678,12 +750,75 @@ describe('Gong Node', () => {
 									resource: 'user',
 									operation: 'getAll',
 									returnAll: true,
-									filters: {
-										filter: "startswith(displayName,'user')",
-									},
-									options: {
-										select: ['id'],
-									},
+									filter: "startswith(displayName,'user')",
+									output: 'fields',
+									fields: [
+										'accountEnabled',
+										'ageGroup',
+										'assignedLicenses',
+										'assignedPlans',
+										'businessPhones',
+										'authorizationInfo',
+										'city',
+										'companyName',
+										'consentProvidedForMinor',
+										'country',
+										'createdDateTime',
+										'creationType',
+										'customSecurityAttributes',
+										'deletedDateTime',
+										'department',
+										'displayName',
+										'employeeHireDate',
+										'employeeId',
+										'employeeLeaveDateTime',
+										'employeeOrgData',
+										'employeeType',
+										'externalUserState',
+										'externalUserStateChangeDateTime',
+										'faxNumber',
+										'givenName',
+										'identities',
+										'imAddresses',
+										'isManagementRestricted',
+										'isResourceAccount',
+										'jobTitle',
+										'lastPasswordChangeDateTime',
+										'legalAgeGroupClassification',
+										'licenseAssignmentStates',
+										'mailNickname',
+										'mail',
+										'mobilePhone',
+										'officeLocation',
+										'onPremisesDistinguishedName',
+										'onPremisesExtensionAttributes',
+										'onPremisesDomainName',
+										'onPremisesImmutableId',
+										'onPremisesLastSyncDateTime',
+										'onPremisesProvisioningErrors',
+										'onPremisesSecurityIdentifier',
+										'onPremisesSamAccountName',
+										'onPremisesSyncEnabled',
+										'onPremisesUserPrincipalName',
+										'otherMails',
+										'passwordPolicies',
+										'passwordProfile',
+										'postalCode',
+										'preferredDataLocation',
+										'preferredLanguage',
+										'provisionedPlans',
+										'proxyAddresses',
+										'signInSessionsValidFromDateTime',
+										'showInAddressList',
+										'serviceProvisioningErrors',
+										'securityIdentifier',
+										'state',
+										'streetAddress',
+										'surname',
+										'usageLocation',
+										'userPrincipalName',
+										'userType',
+									],
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.microsoftEntra',
@@ -732,12 +867,12 @@ describe('Gong Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: "/users?$filter=startswith(displayName,'user')&$select=id",
+							path: "/users?$filter=startswith(displayName,'user')&$select=accountEnabled,ageGroup,assignedLicenses,assignedPlans,businessPhones,authorizationInfo,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,employeeType,externalUserState,externalUserStateChangeDateTime,faxNumber,givenName,identities,imAddresses,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mailNickname,mail,mobilePhone,officeLocation,onPremisesDistinguishedName,onPremisesExtensionAttributes,onPremisesDomainName,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSecurityIdentifier,onPremisesSamAccountName,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,postalCode,preferredDataLocation,preferredLanguage,provisionedPlans,proxyAddresses,signInSessionsValidFromDateTime,showInAddressList,serviceProvisioningErrors,securityIdentifier,state,streetAddress,surname,usageLocation,userPrincipalName,userType,id",
 							statusCode: 200,
 							responseBody: {
 								'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users',
 								'@odata.nextLink':
-									"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'user')&$select=id&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA",
+									"https://graph.microsoft.com/v1.0/users?$filter=startswith(displayName,'user')&$select=accountEnabled,ageGroup,assignedLicenses,assignedPlans,businessPhones,authorizationInfo,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,employeeType,externalUserState,externalUserStateChangeDateTime,faxNumber,givenName,identities,imAddresses,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mailNickname,mail,mobilePhone,officeLocation,onPremisesDistinguishedName,onPremisesExtensionAttributes,onPremisesDomainName,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSecurityIdentifier,onPremisesSamAccountName,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,postalCode,preferredDataLocation,preferredLanguage,provisionedPlans,proxyAddresses,signInSessionsValidFromDateTime,showInAddressList,serviceProvisioningErrors,securityIdentifier,state,streetAddress,surname,usageLocation,userPrincipalName,userType,id&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA",
 								value: new Array(100).fill({
 									'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users(id)/$entity',
 									id: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
@@ -746,7 +881,7 @@ describe('Gong Node', () => {
 						},
 						{
 							method: 'get',
-							path: "/users?$filter=startswith(displayName,'user')&$select=id&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA",
+							path: "/users?$filter=startswith(displayName,'user')&$select=accountEnabled,ageGroup,assignedLicenses,assignedPlans,businessPhones,authorizationInfo,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,employeeType,externalUserState,externalUserStateChangeDateTime,faxNumber,givenName,identities,imAddresses,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mailNickname,mail,mobilePhone,officeLocation,onPremisesDistinguishedName,onPremisesExtensionAttributes,onPremisesDomainName,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSecurityIdentifier,onPremisesSamAccountName,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,postalCode,preferredDataLocation,preferredLanguage,provisionedPlans,proxyAddresses,signInSessionsValidFromDateTime,showInAddressList,serviceProvisioningErrors,securityIdentifier,state,streetAddress,surname,usageLocation,userPrincipalName,userType,id&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA",
 							statusCode: 200,
 							responseBody: {
 								'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users',
@@ -819,7 +954,7 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [[{ json: {} }]],
+						'Micosoft Entra ID': [microsoftEntraNodeResponse.removeUserFromGroup],
 					},
 				},
 				nock: {
@@ -958,7 +1093,7 @@ describe('Gong Node', () => {
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
-			expect(result.finished).toEqual(true);
+			expect(result.status).toEqual('success');
 		});
 	});
 });

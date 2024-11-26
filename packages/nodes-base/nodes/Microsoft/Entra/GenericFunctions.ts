@@ -87,10 +87,8 @@ export async function handleErrorPostReceive(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const { resource, operation } = this.getNode().parameters as {
-			resource: string;
-			operation: string;
-		};
+		const resource = this.getNodeParameter('resource') as string;
+		const operation = this.getNodeParameter('operation') as string;
 		const {
 			code: errorCode,
 			message: errorMessage,
@@ -109,7 +107,106 @@ export async function handleErrorPostReceive(
 			}>;
 		};
 
-		if (errorCode === 'Request_BadRequest' && errorMessage === 'Invalid object identifier') {
+		// Operation specific errors
+		if (resource === 'group') {
+			if (operation === 'create') {
+			} else if (operation === 'delete') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required group doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Group to Delete' and try again",
+					});
+				}
+			} else if (operation === 'get') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required group doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Group to Get' and try again",
+					});
+				}
+			} else if (operation === 'getAll') {
+			} else if (operation === 'update') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required group doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Group to Update' and try again",
+					});
+				}
+			}
+		} else if (resource === 'user') {
+			if (operation === 'addGroup') {
+				if (
+					errorCode === 'Request_BadRequest' &&
+					errorMessage ===
+						"One or more added object references already exist for the following modified properties: 'members'."
+				) {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: 'The user is already in the group',
+						description:
+							'The specified user cannot be added to the group because they are already a member',
+					});
+				} else if (errorCode === 'Request_ResourceNotFound') {
+					const group = this.getNodeParameter('group.value') as string;
+					if (errorMessage.includes(group)) {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The required group doesn't match any existing one",
+							description: "Double-check the value in the parameter 'Group' and try again",
+						});
+					} else {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The required user doesn't match any existing one",
+							description: "Double-check the value in the parameter 'User to Add' and try again",
+						});
+					}
+				}
+			} else if (operation === 'create') {
+			} else if (operation === 'delete') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User to Delete' and try again",
+					});
+				}
+			} else if (operation === 'get') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User to Get' and try again",
+					});
+				}
+			} else if (operation === 'getAll') {
+			} else if (operation === 'removeGroup') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: 'The user is not in the group',
+						description:
+							'The specified user cannot be removed from the group because they are not a member of the group',
+					});
+				} else if (
+					errorCode === 'Request_UnsupportedQuery' &&
+					errorMessage ===
+						"Unsupported referenced-object resource identifier for link property 'members'."
+				) {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: 'The user ID is invalid',
+						description: 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+					});
+				}
+			} else if (operation === 'update') {
+				if (errorCode === 'Request_ResourceNotFound') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User to Update' and try again",
+					});
+				}
+			}
+		}
+
+		// Generic errors
+		if (
+			errorCode === 'Request_BadRequest' &&
+			errorMessage.startsWith('Invalid object identifier')
+		) {
 			const group = this.getNodeParameter('group.value', '') as string;
 			const parameterResource =
 				resource === 'group' || errorMessage.includes(group) ? 'group' : 'user';
@@ -118,40 +215,6 @@ export async function handleErrorPostReceive(
 				message: `The ${parameterResource} ID is invalid`,
 				description: 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 			});
-		}
-		if (errorCode === 'Request_ResourceNotFound') {
-			const group = this.getNodeParameter('group.value', '') as string;
-			const parameterResource =
-				resource === 'group' || errorMessage.includes(group) ? 'group' : 'user';
-			let parameterDisplayName = undefined;
-			if (parameterResource === 'group' && operation === 'delete') {
-				parameterDisplayName = 'Group to Delete';
-			} else if (parameterResource === 'group' && operation === 'get') {
-				parameterDisplayName = 'Group to Get';
-			} else if (parameterResource === 'group' && operation === 'update') {
-				parameterDisplayName = 'Group to Update';
-			} else if (parameterResource === 'user' && operation === 'delete') {
-				parameterDisplayName = 'User to Delete';
-			} else if (parameterResource === 'user' && operation === 'get') {
-				parameterDisplayName = 'User to Get';
-			} else if (parameterResource === 'user' && operation === 'update') {
-				parameterDisplayName = 'User to Update';
-			} else if (parameterResource === 'group' && operation === 'addGroup') {
-				parameterDisplayName = 'Group';
-			} else if (parameterResource === 'user' && operation === 'addGroup') {
-				parameterDisplayName = 'User to Add';
-			} else if (parameterResource === 'group' && operation === 'removeGroup') {
-				parameterDisplayName = 'Group';
-			} else if (parameterResource === 'user' && operation === 'removeGroup') {
-				parameterDisplayName = 'User to Remove';
-			}
-
-			if (parameterDisplayName) {
-				throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-					message: `The required ${parameterResource} doesn't match any existing one`,
-					description: `Double-check the value in the parameter '${parameterDisplayName}' and try again`,
-				});
-			}
 		}
 		if (errorDetails?.some((x) => x.code === 'ObjectConflict' || x.code === 'ConflictingObjects')) {
 			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {

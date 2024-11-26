@@ -1,3 +1,6 @@
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -6,10 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import nock from 'nock';
-
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
@@ -49,7 +48,7 @@ describe('Gong Node', () => {
 										value: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
 										mode: 'id',
 									},
-									options: {},
+									output: 'raw',
 									requestOptions: {},
 								},
 								type: 'n8n-nodes-base.microsoftEntra',
@@ -138,7 +137,7 @@ describe('Gong Node', () => {
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
-			expect(result.finished).toEqual(true);
+			expect(result.status).toEqual('success');
 		});
 	});
 
@@ -166,6 +165,7 @@ describe('Gong Node', () => {
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.users),
 				},
+				getCurrentNodeParameter: jest.fn(),
 			} as unknown as ILoadOptionsFunctions;
 			const node = new MicrosoftEntra();
 

@@ -1,9 +1,8 @@
-import { NodeConnectionType } from 'n8n-workflow';
-import nock from 'nock';
-
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
+import { NodeConnectionType } from 'n8n-workflow';
+import nock from 'nock';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
@@ -45,12 +44,6 @@ describe('Gong Node', () => {
 									additionalFields: {
 										allowExternalSenders: true,
 										isAssignableToRole: true,
-										assignedLabels: {
-											labelValues: {
-												displayName: 'Label Name',
-												labelId: 'label123',
-											},
-										},
 										autoSubscribeNewMembers: true,
 										description: 'Group Description',
 										preferredDataLocation: 'Preferred Data Location',
@@ -115,12 +108,6 @@ describe('Gong Node', () => {
 							path: `/groups/${microsoftEntraApiResponse.postGroup.id}`,
 							statusCode: 204,
 							requestBody: {
-								assignedLabels: [
-									{
-										displayName: 'Label Name',
-										labelId: 'label123',
-									},
-								],
 								description: 'Group Description',
 								preferredDataLocation: 'Preferred Data Location',
 								uniqueName: 'UniqueName',
@@ -306,7 +293,7 @@ describe('Gong Node', () => {
 										mode: 'id',
 									},
 									output: 'fields',
-									select: [
+									fields: [
 										'assignedLabels',
 										'assignedLicenses',
 										'createdDateTime',
@@ -575,7 +562,7 @@ describe('Gong Node', () => {
 									returnAll: true,
 									filter: "startswith(displayName,'group')",
 									output: 'fields',
-									select: [
+									fields: [
 										'assignedLabels',
 										'assignedLicenses',
 										'createdDateTime',
@@ -699,12 +686,6 @@ describe('Gong Node', () => {
 									},
 									updateFields: {
 										allowExternalSenders: true,
-										assignedLabels: {
-											labelValues: {
-												displayName: 'Label Name',
-												labelId: 'label123',
-											},
-										},
 										autoSubscribeNewMembers: true,
 										description: 'Group Description',
 										displayName: 'Group Display Name',
@@ -758,12 +739,6 @@ describe('Gong Node', () => {
 							path: `/groups/${microsoftEntraApiResponse.postGroup.id}`,
 							statusCode: 204,
 							requestBody: {
-								assignedLabels: [
-									{
-										displayName: 'Label Name',
-										labelId: 'label123',
-									},
-								],
 								description: 'Group Description',
 								displayName: 'Group Display Name',
 								mailNickname: 'MailNickname',
@@ -798,7 +773,7 @@ describe('Gong Node', () => {
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
 			);
-			expect(result.finished).toEqual(true);
+			expect(result.status).toEqual('success');
 		});
 	});
 });

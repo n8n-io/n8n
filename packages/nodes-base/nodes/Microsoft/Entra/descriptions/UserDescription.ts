@@ -1,3 +1,4 @@
+import { merge } from 'lodash';
 import type { DateTime } from 'luxon';
 import {
 	NodeOperationError,
@@ -34,7 +35,15 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "added": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Add user to group',
@@ -66,7 +75,15 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "deleted": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Delete user',
@@ -123,7 +140,15 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "removed": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Remove user from group',
@@ -139,7 +164,15 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "updated": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Update user',
@@ -259,6 +292,7 @@ const createFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
+		placeholder: 'e.g. Adele Vance',
 		required: true,
 		routing: {
 			send: {
@@ -268,95 +302,6 @@ const createFields: INodeProperties[] = [
 		},
 		type: 'string',
 		validateType: 'string',
-	},
-	{
-		displayName: 'Mail Nickname',
-		name: 'mailNickname',
-		default: '',
-		description: 'The mail alias for the user',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create'],
-			},
-		},
-		required: true,
-		routing: {
-			send: {
-				property: 'mailNickname',
-				type: 'body',
-			},
-		},
-		type: 'string',
-		validateType: 'string',
-	},
-	{
-		displayName: 'Password Profile',
-		name: 'passwordProfile',
-		default: {},
-		description: 'The password profile for the user',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Password Profile',
-				name: 'passwordProfileValues',
-				values: [
-					{
-						displayName: 'Force Change Password',
-						name: 'forceChangePasswordNextSignIn',
-						default: true,
-						description: 'Whether the user must change their password on the next sign-in',
-						routing: {
-							send: {
-								property: 'passwordProfile.forceChangePasswordNextSignIn',
-								type: 'body',
-							},
-						},
-						type: 'boolean',
-						validateType: 'boolean',
-					},
-					{
-						displayName: 'Force Change Password With MFA',
-						name: 'forceChangePasswordNextSignInWithMfa',
-						default: true,
-						description:
-							'Whether the user must perform a multifactor authentication (MFA) before being forced to change their password',
-						routing: {
-							send: {
-								property: 'passwordProfile.forceChangePasswordNextSignInWithMfa',
-								type: 'body',
-							},
-						},
-						type: 'boolean',
-						validateType: 'boolean',
-					},
-					{
-						displayName: 'Password',
-						name: 'password',
-						default: '',
-						description: 'The password for the user',
-						routing: {
-							send: {
-								property: 'passwordProfile.password',
-								type: 'body',
-							},
-						},
-						type: 'string',
-						typeOptions: {
-							password: true,
-						},
-						validateType: 'string',
-					},
-				],
-			},
-		],
-		required: true,
-		type: 'fixedCollection',
 	},
 	{
 		displayName: 'User Principal Name',
@@ -369,7 +314,7 @@ const createFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		placeholder: 'e.g. alias@domain',
+		placeholder: 'e.g. AdeleV@contoso.com',
 		required: true,
 		routing: {
 			send: {
@@ -393,6 +338,52 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		type: 'string',
+		validateType: 'string',
+	},
+	{
+		displayName: 'Mail Nickname',
+		name: 'mailNickname',
+		default: '',
+		description: 'The mail alias for the user',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		placeholder: 'e.g. AdeleV',
+		required: true,
+		routing: {
+			send: {
+				property: 'mailNickname',
+				type: 'body',
+			},
+		},
+		type: 'string',
+		validateType: 'string',
+	},
+	{
+		displayName: 'Password',
+		name: 'password',
+		default: '',
+		description: 'The password for the user',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		required: true,
+		routing: {
+			send: {
+				property: 'passwordProfile.password',
+				type: 'body',
+			},
+		},
+		type: 'string',
+		typeOptions: {
+			password: true,
+		},
 		validateType: 'string',
 	},
 	{
@@ -563,14 +554,6 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
-				displayName: 'First Name',
-				name: 'givenName',
-				default: '',
-				description: 'The given name (first name) of the user',
-				type: 'string',
-				validateType: 'string',
-			},
-			{
 				displayName: 'Employee Hire Date',
 				name: 'employeeHireDate',
 				default: '',
@@ -618,6 +601,32 @@ const createFields: INodeProperties[] = [
 				],
 				type: 'fixedCollection',
 				validateType: 'string',
+			},
+			{
+				displayName: 'First Name',
+				name: 'givenName',
+				default: '',
+				description: 'The given name (first name) of the user',
+				type: 'string',
+				validateType: 'string',
+			},
+			{
+				displayName: 'Force Change Password',
+				name: 'forceChangePassword',
+				default: 'forceChangePasswordNextSignIn',
+				description: 'Whether the user must change their password on the next sign-in',
+				options: [
+					{
+						name: 'Next Sign In',
+						value: 'forceChangePasswordNextSignIn',
+					},
+					{
+						name: 'Next Sign In with MFA',
+						value: 'forceChangePasswordNextSignInWithMfa',
+					},
+				],
+				type: 'options',
+				validateType: 'options',
 			},
 			{
 				displayName: 'Interests',
@@ -857,6 +866,19 @@ const createFields: INodeProperties[] = [
 								if (body.passwordPolicies) {
 									body.passwordPolicies = (body.passwordPolicies as string[]).join(',');
 								}
+								// forceChangePasswordNextSignInWithMfa doesn't seem to take effect when providing it in the initial create request,
+								// so we add it in the update request
+								if (body.forceChangePassword) {
+									if (body.forceChangePassword === 'forceChangePasswordNextSignIn') {
+										body.passwordProfile ??= {};
+										(body.passwordProfile as IDataObject).forceChangePasswordNextSignIn = true;
+									} else if (body.forceChangePassword === 'forceChangePasswordNextSignInWithMfa') {
+										body.passwordProfile ??= {};
+										(body.passwordProfile as IDataObject).forceChangePasswordNextSignInWithMfa =
+											true;
+									}
+									delete body.forceChangePassword;
+								}
 
 								// To update the following properties, you must specify them in their own PATCH request, without including the other properties
 								const separateProperties = [
@@ -878,13 +900,13 @@ const createFields: INodeProperties[] = [
 								}
 
 								try {
-									if (Object.keys(body).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
-										Object.assign(item.json, body);
-									}
 									if (Object.keys(separateBody).length) {
 										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, separateBody);
-										Object.assign(item.json, separateBody);
+										merge(item.json, separateBody);
+									}
+									if (Object.keys(body).length) {
+										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
+										merge(item.json, body);
 									}
 								} catch (error) {
 									try {
@@ -974,9 +996,9 @@ const getFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		default: {},
+		displayName: 'Output',
+		name: 'output',
+		default: 'simple',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -985,27 +1007,53 @@ const getFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields',
-				name: 'select',
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'The fields to add to the output',
+				name: 'Simplified',
+				value: 'simple',
 				routing: {
 					send: {
 						property: '$select',
 						type: 'query',
-						value: '={{ $value?.join(",") }}',
+						value:
+							'id,createdDateTime,displayName,userPrincipalName,mail,mailNickname,securityIdentifier',
 					},
 				},
-				typeOptions: {
-					loadOptionsMethod: 'getUserProperties',
-				},
-				type: 'multiOptions',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'fields',
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
+		type: 'options',
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Fields',
+		name: 'fields',
+		default: [],
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+		description: 'The fields to add to the output',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get'],
+				output: ['fields'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$select',
+				type: 'query',
+				value: '={{ $value.concat("id").join(",") }}',
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getUserProperties',
+		},
+		type: 'multiOptions',
 	},
 ];
 
@@ -1071,40 +1119,32 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
-		default: {},
+		displayName: 'Filter',
+		name: 'filter',
+		default: '',
+		description:
+			'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 		displayOptions: {
 			show: {
 				resource: ['user'],
 				operation: ['getAll'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Filter Query Parameter',
-				name: 'filter',
-				default: '',
-				description:
-					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
-				placeholder: "startswith(displayName, 'a')",
-				routing: {
-					send: {
-						property: '$filter',
-						type: 'query',
-					},
-				},
-				type: 'string',
-				validateType: 'string',
+		placeholder: "e.g. startswith(displayName, 'a')",
+		routing: {
+			send: {
+				property: '$filter',
+				type: 'query',
+				value: '={{ $value ? $value : undefined }}',
 			},
-		],
-		placeholder: 'Add Filter',
-		type: 'collection',
+		},
+		type: 'string',
+		validateType: 'string',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		default: {},
+		displayName: 'Output',
+		name: 'output',
+		default: 'simple',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -1113,27 +1153,53 @@ const getAllFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields',
-				name: 'select',
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'The fields to add to the output',
+				name: 'Simplified',
+				value: 'simple',
 				routing: {
 					send: {
 						property: '$select',
 						type: 'query',
-						value: '={{ $value?.join(",") }}',
+						value:
+							'id,createdDateTime,displayName,userPrincipalName,mail,mailNickname,securityIdentifier',
 					},
 				},
-				typeOptions: {
-					loadOptionsMethod: 'getUserProperties',
-				},
-				type: 'multiOptions',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'fields',
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
+		type: 'options',
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Fields',
+		name: 'fields',
+		default: [],
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+		description: 'The fields to add to the output',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+				output: ['fields'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$select',
+				type: 'query',
+				value: '={{ $value.concat("id").join(",") }}',
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getUserProperties',
+		},
+		type: 'multiOptions',
 	},
 ];
 
@@ -1573,6 +1639,49 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
+				displayName: 'Force Change Password',
+				name: 'forceChangePassword',
+				default: 'forceChangePasswordNextSignIn',
+				description: 'Whether the user must change their password on the next sign-in',
+				options: [
+					{
+						name: 'Next Sign In',
+						value: 'forceChangePasswordNextSignIn',
+					},
+					{
+						name: 'Next Sign In with MFA',
+						value: 'forceChangePasswordNextSignInWithMfa',
+					},
+				],
+				routing: {
+					send: {
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								const forceChangePassword = this.getNodeParameter(
+									'updateFields.forceChangePassword',
+								) as string;
+								if (forceChangePassword === 'forceChangePasswordNextSignIn') {
+									(requestOptions.body as IDataObject).passwordProfile ??= {};
+									(
+										(requestOptions.body as IDataObject).passwordProfile as IDataObject
+									).forceChangePasswordNextSignIn = true;
+								} else if (forceChangePassword === 'forceChangePasswordNextSignInWithMfa') {
+									(
+										(requestOptions.body as IDataObject).passwordProfile as IDataObject
+									).forceChangePasswordNextSignInWithMfa = true;
+								}
+								return requestOptions;
+							},
+						],
+					},
+				},
+				type: 'options',
+				validateType: 'options',
+			},
+			{
 				displayName: 'Interests',
 				name: 'interests',
 				default: [],
@@ -1709,6 +1818,24 @@ const updateFields: INodeProperties[] = [
 				validateType: 'array',
 			},
 			{
+				displayName: 'Password',
+				name: 'password',
+				default: '',
+				description:
+					'The password for the user. The password must satisfy minimum requirements as specified by the passwordPolicies property.',
+				routing: {
+					send: {
+						property: 'passwordProfile.password',
+						type: 'body',
+					},
+				},
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				validateType: 'string',
+			},
+			{
 				displayName: 'Password Policies',
 				name: 'passwordPolicies',
 				default: [],
@@ -1731,67 +1858,6 @@ const updateFields: INodeProperties[] = [
 					},
 				},
 				type: 'multiOptions',
-			},
-			{
-				displayName: 'Password Profile',
-				name: 'passwordProfile',
-				default: {},
-				description: 'The password profile for the user',
-				options: [
-					{
-						displayName: 'Password Profile',
-						name: 'passwordProfileValues',
-						values: [
-							{
-								displayName: 'Force Change Password',
-								name: 'forceChangePasswordNextSignIn',
-								default: true,
-								description: 'Whether the user must change their password on the next sign-in',
-								routing: {
-									send: {
-										property: 'passwordProfile.forceChangePasswordNextSignIn',
-										type: 'body',
-									},
-								},
-								type: 'boolean',
-								validateType: 'boolean',
-							},
-							{
-								displayName: 'Force Change Password With MFA',
-								name: 'forceChangePasswordNextSignInWithMfa',
-								default: true,
-								description:
-									'Whether the user must perform a multifactor authentication (MFA) before being forced to change their password',
-								routing: {
-									send: {
-										property: 'passwordProfile.forceChangePasswordNextSignInWithMfa',
-										type: 'body',
-									},
-								},
-								type: 'boolean',
-								validateType: 'boolean',
-							},
-							{
-								displayName: 'Password',
-								name: 'password',
-								default: '',
-								description: 'The password for the user',
-								routing: {
-									send: {
-										property: 'passwordProfile.password',
-										type: 'body',
-									},
-								},
-								type: 'string',
-								typeOptions: {
-									password: true,
-								},
-								validateType: 'string',
-							},
-						],
-					},
-				],
-				type: 'fixedCollection',
 			},
 			{
 				displayName: 'Past Projects',
@@ -1914,7 +1980,7 @@ const updateFields: INodeProperties[] = [
 				name: 'userPrincipalName',
 				default: '',
 				description: 'The user principal name (UPN)',
-				placeholder: 'e.g. alias@domain',
+				placeholder: 'e.g. AdeleV@contoso.com',
 				routing: {
 					send: {
 						property: 'userPrincipalName',

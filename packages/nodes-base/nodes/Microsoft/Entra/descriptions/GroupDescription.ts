@@ -1,3 +1,4 @@
+import { merge } from 'lodash';
 import type {
 	IDataObject,
 	IExecuteSingleFunctions,
@@ -367,11 +368,54 @@ const createFields: INodeProperties[] = [
 				displayName: 'Assignable to Role',
 				name: 'isAssignableToRole',
 				default: false,
-				description: 'Whether Microsoft Entra roles can be assigned to the grou',
+				description: 'Whether Microsoft Entra roles can be assigned to the group',
+				displayOptions: {
+					hide: {
+						'/membershipType': ['DynamicMembership'],
+					},
+				},
 				routing: {
 					send: {
 						property: 'isAssignableToRole',
 						type: 'body',
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								const isAssignableToRole = this.getNodeParameter(
+									'additionalFields.isAssignableToRole',
+								) as boolean;
+								if (isAssignableToRole) {
+									const securityEnabled = this.getNodeParameter('securityEnabled', true) as boolean;
+									const visibility = this.getNodeParameter(
+										'additionalFields.visibility',
+										'',
+									) as string;
+									const groupType = this.getNodeParameter('groupType') as string;
+									const mailEnabled = this.getNodeParameter('mailEnabled', false) as boolean;
+									if (!securityEnabled) {
+										throw new NodeOperationError(
+											this.getNode(),
+											"'Security Enabled' must be set to true if 'Assignable to Role' is set",
+										);
+									}
+									if (visibility !== 'Private') {
+										throw new NodeOperationError(
+											this.getNode(),
+											"'Visibility' must be set to 'Private' if 'Assignable to Role' is set",
+										);
+									}
+									if (groupType === 'Unified' && !mailEnabled) {
+										throw new NodeOperationError(
+											this.getNode(),
+											"'Mail Enabled' must be set to true if 'Assignable to Role' is set",
+										);
+									}
+								}
+								return requestOptions;
+							},
+						],
 					},
 				},
 				type: 'boolean',
@@ -400,6 +444,11 @@ const createFields: INodeProperties[] = [
 				default: '',
 				description:
 					'A property set for the group that Office 365 services use to provision the corresponding data-at-rest resources (mailbox, OneDrive, groups sites, and so on)',
+				displayOptions: {
+					show: {
+						'/groupType': ['Unified'],
+					},
+				},
 				type: 'string',
 				validateType: 'string',
 			},
@@ -443,7 +492,7 @@ const createFields: INodeProperties[] = [
 						for (const item of items) {
 							const groupId = item.json.id as string;
 							const fields = this.getNodeParameter('additionalFields', item.index) as IDataObject;
-							delete fields.isAssignableToRole;
+							// delete fields.isAssignableToRole;
 							if (Object.keys(fields).length) {
 								const body: IDataObject = {
 									...fields,
@@ -472,7 +521,7 @@ const createFields: INodeProperties[] = [
 								try {
 									if (Object.keys(body).length) {
 										await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
-										Object.assign(item.json, body);
+										merge(item.json, body);
 									}
 									if (Object.keys(separateBody).length) {
 										await microsoftApiRequest.call(
@@ -481,7 +530,7 @@ const createFields: INodeProperties[] = [
 											`/groups/${groupId}`,
 											separateBody,
 										);
-										Object.assign(item.json, separateBody);
+										merge(item.json, separateBody);
 									}
 								} catch (error) {
 									try {
@@ -607,7 +656,7 @@ const getFields: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'Fields',
-		name: 'select',
+		name: 'fields',
 		default: [],
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 		description: 'The fields to add to the output',
@@ -784,7 +833,7 @@ const getAllFields: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'Fields',
-		name: 'select',
+		name: 'fields',
 		default: [],
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 		description: 'The fields to add to the output',

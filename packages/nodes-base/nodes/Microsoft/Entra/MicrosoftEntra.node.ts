@@ -85,13 +85,14 @@ export class MicrosoftEntra implements INodeType {
 				let properties = entities
 					.flatMap((x: any) => x['Property'])
 					.map((x: any) => x['$']['Name']) as string[];
+				/* eslint-enable */
+
 				properties = properties.filter(
 					(x) => !['id', 'isArchived', 'hasMembersWithLicenseErrors'].includes(x),
 				);
 
-				const resource = this.getCurrentNodeParameter('resource');
 				const operation = this.getCurrentNodeParameter('operation');
-				if (resource === 'group' && operation === 'getAll') {
+				if (operation === 'getAll') {
 					// Not all groups support these properties
 					properties = properties.filter(
 						(x) =>
@@ -107,7 +108,7 @@ export class MicrosoftEntra implements INodeType {
 				}
 
 				properties = properties.sort();
-				/* eslint-enable */
+
 				for (const property of properties) {
 					returnData.push({
 						name: property,
@@ -123,6 +124,7 @@ export class MicrosoftEntra implements INodeType {
 				const metadata = await parseStringPromise(response as string, {
 					explicitArray: false,
 				});
+
 				/* eslint-disable */
 				const entities = metadata['edmx:Edmx']['edmx:DataServices']['Schema']
 					.find((x: any) => x['$']['Namespace'] === 'microsoft.graph')
@@ -132,9 +134,40 @@ export class MicrosoftEntra implements INodeType {
 				let properties = entities
 					.flatMap((x: any) => x['Property'])
 					.map((x: any) => x['$']['Name']) as string[];
-				properties = properties.filter((x) => !['deviceEnrollmentLimit', 'print'].includes(x));
-				properties = properties.sort();
 				/* eslint-enable */
+
+				// signInActivity requires AuditLog.Read.All
+				// mailboxSettings MailboxSettings.Read
+				properties = properties.filter(
+					(x) =>
+						!['id', 'deviceEnrollmentLimit', 'mailboxSettings', 'print', 'signInActivity'].includes(
+							x,
+						),
+				);
+
+				const operation = this.getCurrentNodeParameter('operation');
+				if (operation === 'getAll') {
+					// The following properties are only supported when retrieving a single user
+					properties = properties.filter(
+						(x) =>
+							![
+								'aboutMe',
+								'birthday',
+								'hireDate',
+								'interests',
+								'mySite',
+								'pastProjects',
+								'preferredName',
+								'responsibilities',
+								'schools',
+								'skills',
+								'mailboxSettings',
+							].includes(x),
+					);
+				}
+
+				properties = properties.sort();
+
 				for (const property of properties) {
 					returnData.push({
 						name: property,
@@ -213,8 +246,7 @@ export class MicrosoftEntra implements INodeType {
 					};
 					const headers: IDataObject = {};
 					if (filter) {
-						const filterValue = encodeURIComponent(filter);
-						qs.$filter = `startsWith(displayName, '${filterValue}') OR startsWith(mail, '${filterValue}')`;
+						qs.$filter = `startsWith(displayName, '${filter}') OR startsWith(userPrincipalName, '${filter}')`;
 					}
 					response = await microsoftApiRequest.call(this, 'GET', '/users', {}, qs, headers);
 				}

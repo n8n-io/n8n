@@ -652,12 +652,6 @@ export const microsoftEntraNodeResponse = {
 				theme: null,
 				onPremisesProvisioningErrors: [],
 				serviceProvisioningErrors: [],
-				assignedLabels: [
-					{
-						displayName: 'Label Name',
-						labelId: 'label123',
-					},
-				],
 				description: 'Group Description',
 				preferredDataLocation: 'Preferred Data Location',
 				uniqueName: 'UniqueName',
@@ -676,6 +670,10 @@ export const microsoftEntraNodeResponse = {
 		},
 	],
 
+	getGroup: [{ json: { ...microsoftEntraApiResponse.getGroup } }],
+
+	getGroupWithProperties: [{ json: { ...microsoftEntraApiResponse.getGroupWithProperties } }],
+
 	updateGroup: [
 		{
 			json: {
@@ -684,9 +682,13 @@ export const microsoftEntraNodeResponse = {
 		},
 	],
 
-	getGroup: [{ json: { ...microsoftEntraApiResponse.getGroup } }],
-
-	getGroupWithProperties: [{ json: { ...microsoftEntraApiResponse.getGroupWithProperties } }],
+	addUserToGroup: [
+		{
+			json: {
+				added: true,
+			},
+		},
+	],
 
 	createUser: [
 		{
@@ -725,6 +727,9 @@ export const microsoftEntraNodeResponse = {
 				onPremisesImmutableId: 'premiseid123',
 				otherMails: ['johndoe2@contoso.com', 'johndoe3@contoso.com'],
 				passwordPolicies: 'DisablePasswordExpiration,DisableStrongPassword',
+				passwordProfile: {
+					forceChangePasswordNextSignInWithMfa: true,
+				},
 				pastProjects: ['project1', 'project2'],
 				postalCode: '0123456',
 				responsibilities: ['responsibility1', 'responsibility2'],
@@ -734,6 +739,14 @@ export const microsoftEntraNodeResponse = {
 				streetAddress: 'Street 123',
 				usageLocation: 'US',
 				userType: 'Guest',
+			},
+		},
+	],
+
+	deleteUser: [
+		{
+			json: {
+				deleted: true,
 			},
 		},
 	],
@@ -753,6 +766,14 @@ export const microsoftEntraNodeResponse = {
 				surname: 'Doe',
 				userPrincipalName: 'johndoe@contoso.com',
 				id: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
+			},
+		},
+	],
+
+	removeUserFromGroup: [
+		{
+			json: {
+				removed: true,
 			},
 		},
 	],
@@ -1038,10 +1059,10 @@ export const microsoftEntraNodeResponse = {
 				name: 'hireDate',
 				value: 'hireDate',
 			},
-			{
-				name: 'id',
-				value: 'id',
-			},
+			// {
+			// 	name: 'id',
+			// 	value: 'id',
+			// },
 			{
 				name: 'identities',
 				value: 'identities',
@@ -1086,10 +1107,10 @@ export const microsoftEntraNodeResponse = {
 				name: 'mailNickname',
 				value: 'mailNickname',
 			},
-			{
-				name: 'mailboxSettings',
-				value: 'mailboxSettings',
-			},
+			// {
+			// 	name: 'mailboxSettings',
+			// 	value: 'mailboxSettings',
+			// },
 			{
 				name: 'mobilePhone',
 				value: 'mobilePhone',
@@ -1202,10 +1223,10 @@ export const microsoftEntraNodeResponse = {
 				name: 'showInAddressList',
 				value: 'showInAddressList',
 			},
-			{
-				name: 'signInActivity',
-				value: 'signInActivity',
-			},
+			// {
+			// 	name: 'signInActivity',
+			// 	value: 'signInActivity',
+			// },
 			{
 				name: 'signInSessionsValidFromDateTime',
 				value: 'signInSessionsValidFromDateTime',
