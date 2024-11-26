@@ -60,9 +60,19 @@ describe('Telemetry', () => {
 		settingsStore.telemetry = {
 			enabled: true,
 		};
+		usersStore.currentUserId = '123';
+		rootStore.instanceId = '456';
 		renderComponent();
 
-		expect(telemetryPlugin.init).toHaveBeenCalled();
+		expect(telemetryPlugin.init).toHaveBeenCalledWith(
+			{
+				enabled: true,
+			},
+			expect.objectContaining({
+				userId: '123',
+				instanceId: '456',
+			}),
+		);
 	});
 
 	it('should not initialize if telemetry is disabled in settings', async () => {
