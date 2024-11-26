@@ -14,7 +14,7 @@ const VALUES = 'values';
 
 type ValueOptions = { name: string; value: FieldType };
 
-const DEFAULT_PLACEHOLDER = 'DEFAULT_PLACEHOLDER';
+const DEFAULT_PLACEHOLDER = null;
 const IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER = false;
 const INCLUDE_BINARY_PLACEHOLDER = false;
 
