@@ -227,7 +227,8 @@ function createTextContext(style: CSSStyleDeclaration): CanvasRenderingContext2D
 
 const getRowIndex = (textareaY: number, lineHeight: string) => {
 	const rowHeight = parseInt(lineHeight, 10);
-	return Math.floor(textareaY / rowHeight);
+	const snapPosition = textareaY - rowHeight / 2 - 1;
+	return Math.floor(snapPosition / rowHeight);
 };
 
 const getColumnIndex = (rowText: string, textareaX: number, font: string) => {
