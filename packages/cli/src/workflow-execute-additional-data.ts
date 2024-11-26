@@ -281,7 +281,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
+			async function (this: WorkflowHooks, _workflow, data): Promise<void> {
 				const { pushRef, executionId } = this;
 				const { id: workflowId, name: workflowName } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
@@ -302,6 +302,9 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						retryOf: this.retryOf,
 						workflowId,
 						workflowName,
+						flattedRunData: data?.resultData.runData
+							? stringify(data.resultData.runData)
+							: stringify({}),
 					},
 					pushRef,
 				);
