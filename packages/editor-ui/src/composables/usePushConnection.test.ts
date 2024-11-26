@@ -2,7 +2,7 @@ import { stringify } from 'flatted';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
-import type { ITaskData, WorkflowOperationError } from 'n8n-workflow';
+import type { ITaskData, WorkflowOperationError, IRunData } from 'n8n-workflow';
 
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -10,6 +10,7 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables/useToast';
+import type { IExecutionResponse } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	return {
@@ -162,7 +163,7 @@ describe('usePushConnection()', () => {
 
 				expect(result).toBeTruthy();
 				expect(workflowsStore.workflowExecutionData).toBeDefined();
-				expect(uiStore.isActionActive['workflowRunning']).toBeTruthy();
+				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
 
 				expect(toast.showMessage).toHaveBeenCalledWith({
 					title: 'Workflow executed successfully',
@@ -234,6 +235,63 @@ describe('usePushConnection()', () => {
 					retriesLeft: 5,
 				});
 				expect(pushConnection.retryTimeout).not.toBeNull();
+			});
+		});
+
+		describe('executionStarted', async () => {
+			it("enqueues messages if we don't have the active execution id yet", async () => {
+				uiStore.isActionActive.workflowRunning = true;
+				const event: PushMessage = {
+					type: 'executionStarted',
+					data: {
+						executionId: '1',
+						mode: 'manual',
+						startedAt: new Date(),
+						workflowId: '1',
+						flattedRunData: stringify({}),
+					},
+				};
+
+				expect(pushConnection.retryTimeout.value).toBeNull();
+				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
+
+				const result = await pushConnection.pushMessageReceived(event);
+
+				expect(result).toBe(false);
+				expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
+				expect(pushConnection.pushMessageQueue.value).toContainEqual({
+					message: event,
+					retriesLeft: 5,
+				});
+				expect(pushConnection.retryTimeout).not.toBeNull();
+			});
+
+			it('overwrites the run data in the workflow store', async () => {
+				// ARRANGE
+				uiStore.isActionActive.workflowRunning = true;
+				const oldRunData: IRunData = { foo: [] };
+				workflowsStore.workflowExecutionData = {
+					data: { resultData: { runData: oldRunData } },
+				} as IExecutionResponse;
+				const newRunData: IRunData = { bar: [] };
+				const event: PushMessage = {
+					type: 'executionStarted',
+					data: {
+						executionId: '1',
+						flattedRunData: stringify(newRunData),
+						mode: 'manual',
+						startedAt: new Date(),
+						workflowId: '1',
+					},
+				};
+				workflowsStore.activeExecutionId = event.data.executionId;
+
+				// ACT
+				const result = await pushConnection.pushMessageReceived(event);
+
+				// ASSERT
+				expect(result).toBe(true);
+				expect(workflowsStore.workflowExecutionData.data?.resultData.runData).toEqual(newRunData);
 			});
 		});
 	});
