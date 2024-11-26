@@ -258,7 +258,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
-		['placeholder', '{agent_scratchpad}'],
 	];
 
 	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
@@ -266,6 +265,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		const binaryMessage = await extractBinaryMessages(this);
 		messages.push(binaryMessage);
 	}
+	// We add the agent scratchpad last, so that the agent will not run in loops
+	// by adding binary messages between each interaction
+	messages.push(['placeholder', '{agent_scratchpad}']);
 	const prompt = ChatPromptTemplate.fromMessages(messages);
 
 	const agent = createToolCallingAgent({
