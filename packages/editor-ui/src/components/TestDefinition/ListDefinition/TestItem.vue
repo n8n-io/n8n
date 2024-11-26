@@ -73,7 +73,7 @@ const actions = [
 		</div>
 
 		<div :class="$style.actions">
-			<n8n-tooltip v-for="action in actions" :key="action.icon" placement="top">
+			<n8n-tooltip v-for="action in actions" :key="action.icon" placement="top" :show-after="1000">
 				<template #content>
 					{{ action.tooltip }}
 				</template>
