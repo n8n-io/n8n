@@ -5,10 +5,18 @@ import {
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	validateFieldType,
+	type FieldType,
 } from 'n8n-workflow';
 
 const WORKFLOW_INPUTS = 'workflowInputs';
 const VALUES = 'values';
+
+type ValueOptions = { name: string; value: FieldType };
+
+const DEFAULT_PLACEHOLDER = 'DEFAULT_PLACEHOLDER';
+const IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER = false;
+const INCLUDE_BINARY_PLACEHOLDER = false;
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -79,36 +87,36 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
 							},
-							// {
-							// 	displayName: 'Type',
-							// 	name: 'type',
-							// 	type: 'options',
-							// 	description: 'The field value type',
-							// 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-							// 	options: [
-							// 		{
-							// 			name: 'String',
-							// 			value: 'stringValue',
-							// 		},
-							// 		{
-							// 			name: 'Number',
-							// 			value: 'numberValue',
-							// 		},
-							// 		{
-							// 			name: 'Boolean',
-							// 			value: 'booleanValue',
-							// 		},
-							// 		{
-							// 			name: 'Array',
-							// 			value: 'arrayValue',
-							// 		},
-							// 		{
-							// 			name: 'Object',
-							// 			value: 'objectValue',
-							// 		},
-							// 	],
-							// 	default: 'stringValue',
-							// },
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								description: 'The field value type',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+								options: [
+									{
+										name: 'String',
+										value: 'string',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+									},
+									{
+										name: 'Boolean',
+										value: 'boolean',
+									},
+									{
+										name: 'Array',
+										value: 'array',
+									},
+									{
+										name: 'Object',
+										value: 'object',
+									},
+								] as ValueOptions[],
+								default: 'string',
+							},
 						],
 					},
 				],
@@ -117,6 +125,10 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
+		if (!this.getNode()) {
+			return [];
+		}
+
 		const inputData = this.getInputData();
 
 		if (this.getNode().typeVersion < 1.1) {
@@ -140,6 +152,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				// Fields listed here will explicitly overwrite original fields
 				const newItem: INodeExecutionData = {
 					json: {},
+					index: itemIndex,
 					// TODO: Ensure we handle sub-execution jumps correctly.
 					// metadata: {
 					// 	subExecution: {
@@ -156,14 +169,42 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						[],
 					) as Array<{
 						name: string;
+						type: FieldType;
 					}>;
-					for (const { name } of newParams) {
-						/** TODO type check goes here */
-						newItem.json[name] = name in item.json ? item.json[name] : /* TODO default */ null;
+					for (const { name, type } of newParams) {
+						if (!item.json.hasOwnProperty(name)) {
+							newItem.json[name] = DEFAULT_PLACEHOLDER;
+							continue;
+						}
+
+						const result = validateFieldType(name, item.json[name], type);
+						console.log(result);
+						if (!result.valid) {
+							if (IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER) {
+								newItem.json[name] = item.json[name];
+								continue;
+							}
+
+							throw new NodeOperationError(this.getNode(), result.errorMessage, {
+								itemIndex,
+							});
+						} else {
+							// If the value is `null` or `undefined`, then `newValue` is not in the returned object
+							if (result.hasOwnProperty('newValue')) {
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+								newItem.json[name] = result.newValue;
+							} else {
+								newItem.json[name] = item.json[name];
+							}
+						}
 					}
 
 					// TODO Do we want to copy non-json data (e.g. binary) as well?
-					items.push(Object.assign({}, item, newItem));
+					if (INCLUDE_BINARY_PLACEHOLDER) {
+						items.push(Object.assign({}, item, newItem));
+					} else {
+						items.push(newItem);
+					}
 				} catch (error) {
 					if (this.continueOnFail()) {
 						/** todo error case? */
