@@ -60,6 +60,10 @@ export class PublicApiKeyService {
 		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
 	}
 
+	async updateApiKeyForUser(user: User, apiKeyId: string, { label }: { label?: string } = {}) {
+		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label });
+	}
+
 	private async getUserForApiKey(apiKey: string) {
 		return await this.userRepository
 			.createQueryBuilder('user')

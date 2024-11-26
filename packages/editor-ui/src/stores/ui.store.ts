@@ -142,7 +142,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		},
 		[API_KEY_EDIT_MODAL_KEY]: {
 			open: false,
-			mode: '',
+			data: {
+				activeId: null,
+				mode: '',
+			},
 		},
 		[CREDENTIAL_EDIT_MODAL_KEY]: {
 			open: false,

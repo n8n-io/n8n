@@ -18,3 +18,11 @@ export async function deleteApiKey(
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'DELETE', `/api-keys/${id}`);
 }
+
+export async function updateApiKey(
+	context: IRestApiContext,
+	id: string,
+	{ label }: { label: string },
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, { label });
+}

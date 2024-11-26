@@ -4,7 +4,7 @@ import { MODAL_CONFIRM } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import type { ApiKey } from '@/Interface';
-import humanizeDuration from 'humanize-duration';
+import { DateTime } from 'luxon';
 
 const API_KEY_ITEM_ACTIONS = {
 	EDIT: 'edit',
@@ -20,8 +20,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	edit: [id: string | undefined];
-	delete: [id: string | undefined];
+	edit: [id: string];
+	delete: [id: string];
 }>();
 
 const actions = computed((): Array<{ label: string; value: string }> => {
@@ -43,31 +43,12 @@ async function onAction(action: string) {
 	if (action === API_KEY_ITEM_ACTIONS.EDIT) {
 		emit('edit', props.apiKey.id);
 	} else if (action === API_KEY_ITEM_ACTIONS.DELETE) {
-		const deleteConfirmed = await confirm(
-			i18n.baseText('settings.api.delete.description'),
-			i18n.baseText('settings.api.delete.title'),
-			{
-				confirmButtonText: i18n.baseText('settings.api.delete.button'),
-				cancelButtonText: i18n.baseText('generic.cancel'),
-			},
-		);
-
-		if (deleteConfirmed !== MODAL_CONFIRM) {
-			return;
-		}
-
 		emit('delete', props.apiKey.id);
 	}
 }
 
 const getApiCreationTime = (apiKey: ApiKey): string => {
-	const ms = new Date(apiKey.createdAt).getTime() / 1000;
-	const timeAgo = humanizeDuration(ms, {
-		round: true,
-		largest: 2,
-		delimiter: ' and ',
-	});
-
+	const timeAgo = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toRelative() ?? '';
 	return i18n.baseText('settings.api.creationTime', { interpolate: { time: timeAgo } });
 };
 </script>

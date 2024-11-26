@@ -1,11 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import type { ApiKey } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
-import CopyInput from '@/components/CopyInput.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -15,6 +13,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { createEventBus } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
+import { useApiKeysStore } from '@/stores/apiKeys.store';
+import { storeToRefs } from 'pinia';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -29,19 +29,20 @@ const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();
 
 const loading = ref(false);
-const mounted = ref(false);
-const apiKeys = ref<ApiKey[]>([]);
 const apiDocsURL = ref('');
+const apiKeysStore = useApiKeysStore();
+const { createApiKey, getAllApiKeys, deleteApiKey } = apiKeysStore;
+const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 
 const eventBus = createEventBus();
 
 const { isPublicApiEnabled, isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } =
 	settingsStore;
 
-const isRedactedApiKey = computed((): boolean => {
-	if (!apiKeys.value) return false;
-	return apiKeys.value[0].apiKey.includes('*');
-});
+// const isRedactedApiKey = computed((): boolean => {
+// 	if (!apiKeys.value) return false;
+// 	return apiKeys.value[0].apiKey.includes('*');
+// });
 
 const onCreateApiKey = async () => {
 	uiStore.openModalWithData({
@@ -50,11 +51,12 @@ const onCreateApiKey = async () => {
 	});
 };
 
-onMounted(() => {
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.api'));
+
 	if (!isPublicApiEnabled) return;
 
-	void getApiKeys();
+	await getApiKeys();
 	apiDocsURL.value = isSwaggerUIEnabled
 		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
 		: `https://${DOCS_DOMAIN}/api/api-reference/`;
@@ -64,7 +66,18 @@ function onUpgrade() {
 	void goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 }
 
-async function showDeleteModal() {
+async function getApiKeys() {
+	try {
+		loading.value = true;
+		await getAllApiKeys();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
+
+async function onDelete(id: string) {
 	const confirmed = await confirm(
 		i18n.baseText('settings.api.delete.description'),
 		i18n.baseText('settings.api.delete.title'),
@@ -73,55 +86,28 @@ async function showDeleteModal() {
 			cancelButtonText: i18n.baseText('generic.cancel'),
 		},
 	);
+
 	if (confirmed === MODAL_CONFIRM) {
-		await deleteApiKey();
+		try {
+			await deleteApiKey(id);
+			showMessage({
+				title: i18n.baseText('settings.api.delete.toast'),
+				type: 'success',
+			});
+		} catch (e) {
+			showError(e, i18n.baseText('settings.api.delete.error'));
+		} finally {
+			telemetry.track('User clicked delete API key button');
+		}
 	}
 }
 
-async function getApiKeys() {
-	try {
-		apiKeys.value = await settingsStore.getApiKeys();
-	} catch (error) {
-		showError(error, i18n.baseText('settings.api.view.error'));
-	} finally {
-		mounted.value = true;
-	}
-}
-
-async function createApiKey() {
-	loading.value = true;
-
-	try {
-		const newApiKey = await settingsStore.createApiKey();
-		apiKeys.value.push(newApiKey);
-	} catch (error) {
-		showError(error, i18n.baseText('settings.api.create.error'));
-	} finally {
-		loading.value = false;
-		telemetry.track('User clicked create API key button');
-	}
-}
-
-async function deleteApiKey() {
-	try {
-		await settingsStore.deleteApiKey(apiKeys.value[0].id);
-		showMessage({
-			title: i18n.baseText('settings.api.delete.toast'),
-			type: 'success',
-		});
-		apiKeys.value = [];
-	} catch (error) {
-		showError(error, i18n.baseText('settings.api.delete.error'));
-	} finally {
-		telemetry.track('User clicked delete API key button');
-	}
-}
-
-function onDelete(id: string) {
-	console.log('on delete');
-}
 function onEdit(id: string) {
-	console.log('on edit');
+	console.log('getting rhis id', id);
+	uiStore.openModalWithData({
+		name: API_KEY_EDIT_MODAL_KEY,
+		data: { mode: 'edit', activeId: id },
+	});
 }
 
 function onCopy() {
@@ -139,23 +125,41 @@ function onCopy() {
 				</span>
 			</n8n-heading>
 		</div>
-		<template v-if="apiKeys.length">
+		<template v-if="apiKeysSortByCreationDate.length">
 			<el-row
-				v-for="apiKey in apiKeys"
+				v-for="apiKey in apiKeysSortByCreationDate"
 				:key="apiKey.id"
 				:gutter="10"
 				:class="$style.destinationItem"
 			>
 				<el-col>
-					<ApiKeyCard :api-key="apiKey" @delete="onDelete('123')" @edit="onEdit('123')" />
+					<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
 				</el-col>
 			</el-row>
-			<div class="mt-m text-right"></div>
+
+			<div class="mt-m text-right">
+				<n8n-button size="large" @click="onCreateApiKey">
+					{{ i18n.baseText('settings.api.create.button') }}
+				</n8n-button>
+			</div>
 		</template>
 
-		<div class="mt-m text-right">
-			<n8n-button size="large" @click="onCreateApiKey"> Create an API Key</n8n-button>
-		</div>
+		<n8n-action-box
+			v-else-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
+			data-test-id="public-api-upgrade-cta"
+			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
+			:description="i18n.baseText('settings.api.trial.upgradePlan.description')"
+			:button-text="i18n.baseText('settings.api.trial.upgradePlan.cta')"
+			@click:button="onUpgrade"
+		/>
+		<n8n-action-box
+			v-if="isPublicApiEnabled && !apiKeysSortByCreationDate.length"
+			:button-text="
+				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
+			"
+			:description="i18n.baseText('settings.api.create.description')"
+			@click:button="createApiKey"
+		/>
 
 		<!-- <div v-if="apiKeys.length">
 			<p class="mb-s">
@@ -211,23 +215,7 @@ function onCopy() {
 					}}
 				</n8n-link>
 			</div>
-		</div>
-		<n8n-action-box
-			v-else-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
-			data-test-id="public-api-upgrade-cta"
-			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
-			:description="i18n.baseText('settings.api.trial.upgradePlan.description')"
-			:button-text="i18n.baseText('settings.api.trial.upgradePlan.cta')"
-			@click:button="onUpgrade"
-		/>
-		<n8n-action-box
-			v-else-if="mounted && !cloudPlanStore.state.loadingPlan"
-			:button-text="
-				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
-			"
-			:description="i18n.baseText('settings.api.create.description')"
-			@click:button="createApiKey"
-		/> -->
+		</div>// -->
 	</div>
 </template>
 

@@ -1,6 +1,6 @@
 import { type RequestHandler } from 'express';
 
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
 import { ApiKeysRequest, AuthenticatedRequest } from '@/requests';
@@ -52,6 +52,21 @@ export class ApiKeysController {
 		await this.publicApiKeyService.deleteApiKeyForUser(req.user, req.params.id);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+
+		return { success: true };
+	}
+
+	/**
+	 * Patch an API Key
+	 */
+	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
+	async updateAPIKey(req: ApiKeysRequest.updateAPIKey) {
+		const { label } = req.body;
+		const updated = await this.publicApiKeyService.updateApiKeyForUser(req.user, req.params.id, {
+			label,
+		});
+
+		console.log(updated);
 
 		return { success: true };
 	}
