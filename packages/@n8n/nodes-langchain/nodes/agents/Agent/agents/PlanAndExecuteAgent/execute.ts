@@ -26,7 +26,7 @@ export async function planAndExecuteAgentExecute(
 		0,
 	)) as BaseChatModel;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
 	await checkForStructuredTools(tools, this.getNode(), 'Plan & Execute Agent');
 	const outputParsers = await getOptionalOutputParsers(this);

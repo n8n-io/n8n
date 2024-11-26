@@ -31,7 +31,7 @@ export async function conversationalAgentExecute(
 		| BaseChatMemory
 		| undefined;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 	const outputParsers = await getOptionalOutputParsers(this);
 
 	await checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');

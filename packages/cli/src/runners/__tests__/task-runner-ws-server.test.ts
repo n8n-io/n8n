@@ -17,12 +17,14 @@ describe('TaskRunnerWsServer', () => {
 				mock(),
 			);
 
+			server.start();
+
 			expect(setIntervalSpy).toHaveBeenCalledWith(
 				expect.any(Function),
 				30 * Time.seconds.toMilliseconds,
 			);
 
-			await server.shutdown();
+			await server.stop();
 		});
 
 		it('should clear heartbeat timer on server stop', async () => {
@@ -36,8 +38,9 @@ describe('TaskRunnerWsServer', () => {
 				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
 				mock(),
 			);
+			server.start();
 
-			await server.shutdown();
+			await server.stop();
 
 			expect(clearIntervalSpy).toHaveBeenCalled();
 		});
