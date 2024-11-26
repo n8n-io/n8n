@@ -1067,7 +1067,7 @@ function getWorkflowHooksIntegrated(
 ): WorkflowHooks {
 	const hookFunctions = hookFunctionsSave();
 	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions) as Array<keyof IWorkflowExecuteHooks>) {
+	for (const key of Object.keys(preExecuteFunctions)) {
 		const hooks = hookFunctions[key] ?? [];
 		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
@@ -1087,7 +1087,7 @@ export function getWorkflowHooksWorkerExecuter(
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSaveWorker();
 	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions) as Array<keyof IWorkflowExecuteHooks>) {
+	for (const key of Object.keys(preExecuteFunctions)) {
 		const hooks = hookFunctions[key] ?? [];
 		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
@@ -1160,13 +1160,13 @@ export function getWorkflowHooksMain(
 ): WorkflowHooks {
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
-	for (const key of Object.keys(pushFunctions) as Array<keyof IWorkflowExecuteHooks>) {
+	for (const key of Object.keys(pushFunctions)) {
 		const hooks = hookFunctions[key] ?? [];
 		hooks.push.apply(hookFunctions[key], pushFunctions[key]);
 	}
 
 	const preExecuteFunctions = hookFunctionsPreExecute();
-	for (const key of Object.keys(preExecuteFunctions) as Array<keyof IWorkflowExecuteHooks>) {
+	for (const key of Object.keys(preExecuteFunctions)) {
 		const hooks = hookFunctions[key] ?? [];
 		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}

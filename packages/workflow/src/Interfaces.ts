@@ -2238,14 +2238,14 @@ export interface IWorkflowCredentials {
 }
 
 export interface IWorkflowExecuteHooks {
+	[key: string]: Array<(...args: any[]) => Promise<void>> | undefined;
 	nodeExecuteAfter?: Array<
 		(nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>
 	>;
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
-	workflowExecuteAfter?: Array<(data: IRun, newStaticData?: IDataObject) => Promise<void>>;
+	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
 	workflowExecuteBefore?: Array<(workflow?: Workflow, data?: IRunExecutionData) => Promise<void>>;
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
-	nodeFetchedData?: Array<(workflowId?: string, node?: INode) => Promise<void>>;
 }
 
 export interface IWorkflowExecutionDataProcess {
