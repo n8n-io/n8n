@@ -13,7 +13,7 @@ export class DataRequestResponseReconstruct {
 	reconstructConnectionInputItems(
 		inputData: DataRequestResponse['inputData'],
 		chunk?: InputDataChunkDefinition,
-	): INodeExecutionData[] {
+	): Array<INodeExecutionData | undefined> {
 		const inputItems = inputData?.main?.[0] ?? [];
 		if (!chunk) {
 			return inputItems;
@@ -28,7 +28,7 @@ export class DataRequestResponseReconstruct {
 			.concat(inputItems)
 			.concat(Array.from({ length: inputItems.length - chunk.startIndex - chunk.count }));
 
-		return sparseInputItems as INodeExecutionData[];
+		return sparseInputItems;
 	}
 
 	/**

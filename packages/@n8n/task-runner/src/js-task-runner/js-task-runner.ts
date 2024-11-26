@@ -352,7 +352,12 @@ export class JsTaskRunner extends TaskRunner {
 		const inputData = this.taskDataReconstruct.reconstructConnectionInputItems(
 			response.inputData,
 			chunk,
-		);
+			// This type assertion is intentional. Chunking is only supported in
+			// runOnceForEachItem mode and if a chunk was requested, we intentionally
+			// fill the array with undefined values for the items outside the chunk.
+			// We only iterate over the chunk items but WorkflowDataProxy expects
+			// the full array of items.
+		) as INodeExecutionData[];
 
 		return {
 			...response,
