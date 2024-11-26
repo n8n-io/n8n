@@ -443,6 +443,17 @@ export class GraphQL implements INodeType {
 									{ itemIndex },
 								);
 							}
+						} else if (
+							typeof jsonBody.variables !== 'object' ||
+							typeof jsonBody.variables !== 'string'
+						) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Using variables failed:\n' +
+									(jsonBody.variables as string) +
+									'\n\nGraphQL variables should be either an object or a string:\n',
+								{ itemIndex },
+							);
 						}
 						if (jsonBody.operationName === '') {
 							jsonBody.operationName = null;
@@ -509,17 +520,8 @@ export class GraphQL implements INodeType {
 					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
-					const errorData = this.helpers.returnJsonArray({
-						$error: error,
-						json: this.getInputData(itemIndex),
-						itemIndex,
-					});
-					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
-						itemData: { item: itemIndex },
-					});
-					returnItems.push(...exectionErrorWithMetaData);
-					continue;
+				if (!this.continueOnFail()) {
+					throw error;
 				}
 				throw error;
 			}
