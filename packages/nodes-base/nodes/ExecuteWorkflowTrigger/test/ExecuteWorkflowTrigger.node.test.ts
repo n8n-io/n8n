@@ -9,7 +9,7 @@ describe('ExecuteWorkflowTrigger', () => {
 			{ json: { item: 0, foo: 'bar' } },
 			{ json: { item: 1, foo: 'quz' } },
 		];
-		const mockNode: INode = { typeVersion: 1 };
+		const mockNode = { typeVersion: 1 } as INode;
 		const executeFns = mock<IExecuteFunctions>({
 			getInputData: () => mockInputData,
 			getNode: () => mockNode,
