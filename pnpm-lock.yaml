@@ -280,7 +280,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -348,7 +348,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -422,7 +422,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja))
+        version: 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -449,7 +449,7 @@ importers:
         version: 0.3.1(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.11
-        version: 0.3.11(qw65fvnztmfuymkskopqa7kjky)
+        version: 0.3.11(ndajhtzj4xqxxpqz4t56suvqri)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
@@ -536,7 +536,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.5
-        version: 0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja)
+        version: 0.3.5(7umjwzmwnymi4lyinuvazmp6ki)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -795,7 +795,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1126,7 +1126,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1416,7 +1416,7 @@ importers:
         version: 10.11.0(vue@3.5.11(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -1899,7 +1899,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -11006,10 +11006,6 @@ packages:
     resolution: {integrity: sha512-7maUZy1N7uo6+WVEX6psASxtNlKaNVMlGQKkG/63nEDdLOWNbiUMoLK7X4uYoLhQstau72mLgfEWcXcwsaHbYQ==}
     engines: {node: '>= 10.13.0', npm: '>= 3.0.0'}
 
-  source-map-js@1.0.2:
-    resolution: {integrity: sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==}
-    engines: {node: '>=0.10.0'}
-
   source-map-js@1.2.0:
     resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
     engines: {node: '>=0.10.0'}
@@ -14118,7 +14114,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -14127,7 +14123,7 @@ snapshots:
       zod: 3.23.8
     optionalDependencies:
       '@langchain/core': 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
-      langchain: 0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja)
+      langchain: 0.3.5(7umjwzmwnymi4lyinuvazmp6ki)
     transitivePeerDependencies:
       - encoding
 
@@ -14594,7 +14590,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.11(qw65fvnztmfuymkskopqa7kjky)':
+  '@langchain/community@0.3.11(ndajhtzj4xqxxpqz4t56suvqri)':
     dependencies:
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/core': 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
@@ -14604,7 +14600,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja)
+      langchain: 0.3.5(7umjwzmwnymi4lyinuvazmp6ki)
       langsmith: 0.2.3(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
       uuid: 10.0.0
       zod: 3.23.8
@@ -14617,7 +14613,7 @@ snapshots:
       '@aws-sdk/client-s3': 3.666.0
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -15298,7 +15294,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
     dependencies:
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -17554,9 +17550,17 @@ snapshots:
       '@babel/runtime': 7.24.7
       is-retry-allowed: 2.2.0
 
-  axios@1.7.4(debug@4.3.7):
+  axios@1.7.4:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.7.4(debug@4.3.7):
+    dependencies:
+      follow-redirects: 1.15.6(debug@4.3.7)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -20404,7 +20408,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.7.4(debug@4.3.7))
+      retry-axios: 2.6.0(axios@1.7.4)
       tough-cookie: 4.1.3
     transitivePeerDependencies:
       - supports-color
@@ -21240,7 +21244,7 @@ snapshots:
       form-data: 4.0.0
       html-encoding-sniffer: 4.0.0
       http-proxy-agent: 7.0.0
-      https-proxy-agent: 7.0.2
+      https-proxy-agent: 7.0.5
       is-potential-custom-element-name: 1.0.1
       nwsapi: 2.2.7
       parse5: 7.1.2
@@ -21392,7 +21396,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja):
+  langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki):
     dependencies:
       '@langchain/core': 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
       '@langchain/openai': 0.3.11(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
@@ -21416,7 +21420,7 @@ snapshots:
       '@langchain/groq': 0.1.2(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/mistralai': 0.1.1(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/ollama': 0.1.1(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -23755,9 +23759,9 @@ snapshots:
 
   ret@0.1.15: {}
 
-  retry-axios@2.6.0(axios@1.7.4(debug@4.3.7)):
+  retry-axios@2.6.0(axios@1.7.4):
     dependencies:
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -23920,7 +23924,7 @@ snapshots:
     dependencies:
       chokidar: 4.0.1
       immutable: 4.2.2
-      source-map-js: 1.0.2
+      source-map-js: 1.2.1
 
   sax@1.2.4: {}
 
@@ -24201,8 +24205,6 @@ snapshots:
       ip: 2.0.1
       smart-buffer: 4.2.0
     optional: true
-
-  source-map-js@1.0.2: {}
 
   source-map-js@1.2.0: {}
 
@@ -25423,6 +25425,14 @@ snapshots:
       markdown-it: 13.0.2
       vue: 3.5.11(typescript@5.7.2)
 
+  vue-observe-visibility@2.0.0-alpha.1(vue@3.5.11(typescript@5.7.2)):
+    dependencies:
+      vue: 3.5.11(typescript@5.7.2)
+
+  vue-resize@2.0.0-alpha.1(vue@3.5.11(typescript@5.7.2)):
+    dependencies:
+      vue: 3.5.11(typescript@5.7.2)
+
   vue-router@4.4.5(vue@3.5.11(typescript@5.7.2)):
     dependencies:
       '@vue/devtools-api': 6.6.4
@@ -25435,12 +25445,12 @@ snapshots:
       semver: 7.6.0
       typescript: 5.7.2
 
-  vue-virtual-scroller@2.0.0-beta.8(vue@3.5.11(typescript@5.6.2)):
+  vue-virtual-scroller@2.0.0-beta.8(vue@3.5.11(typescript@5.7.2)):
     dependencies:
       mitt: 2.1.0
-      vue: 3.5.11(typescript@5.6.2)
-      vue-observe-visibility: 2.0.0-alpha.1(vue@3.5.11(typescript@5.6.2))
-      vue-resize: 2.0.0-alpha.1(vue@3.5.11(typescript@5.6.2))
+      vue: 3.5.11(typescript@5.7.2)
+      vue-observe-visibility: 2.0.0-alpha.1(vue@3.5.11(typescript@5.7.2))
+      vue-resize: 2.0.0-alpha.1(vue@3.5.11(typescript@5.7.2))
 
   vue3-touch-events@4.1.3: {}
 
