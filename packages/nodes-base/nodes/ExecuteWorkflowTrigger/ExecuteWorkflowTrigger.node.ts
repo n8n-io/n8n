@@ -79,36 +79,36 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
 							},
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								description: 'The field value type',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-								options: [
-									{
-										name: 'String',
-										value: 'stringValue',
-									},
-									{
-										name: 'Number',
-										value: 'numberValue',
-									},
-									{
-										name: 'Boolean',
-										value: 'booleanValue',
-									},
-									{
-										name: 'Array',
-										value: 'arrayValue',
-									},
-									{
-										name: 'Object',
-										value: 'objectValue',
-									},
-								],
-								default: 'stringValue',
-							},
+							// {
+							// 	displayName: 'Type',
+							// 	name: 'type',
+							// 	type: 'options',
+							// 	description: 'The field value type',
+							// 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+							// 	options: [
+							// 		{
+							// 			name: 'String',
+							// 			value: 'stringValue',
+							// 		},
+							// 		{
+							// 			name: 'Number',
+							// 			value: 'numberValue',
+							// 		},
+							// 		{
+							// 			name: 'Boolean',
+							// 			value: 'booleanValue',
+							// 		},
+							// 		{
+							// 			name: 'Array',
+							// 			value: 'arrayValue',
+							// 		},
+							// 		{
+							// 			name: 'Object',
+							// 			value: 'objectValue',
+							// 		},
+							// 	],
+							// 	default: 'stringValue',
+							// },
 						],
 					},
 				],
