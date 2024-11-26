@@ -336,3 +336,83 @@ export async function searchUserPools(
 
 	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
 }
+
+export async function searchUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const opts: IHttpRequestOptions = {
+		url: '', // the base url is set in "awsRequest"
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
+		},
+		body: JSON.stringify({
+			MaxResults: 60, // the maximum number by documentation is 60
+			NextToken: paginationToken ?? undefined,
+		}),
+	};
+	const responseData: IDataObject = await awsRequest.call(this, opts);
+
+	const users = responseData.Users as Array<{ Name: string; Id: string }>;
+
+	const results: INodeListSearchItems[] = users
+		.map((a) => ({
+			name: a.Name,
+			value: a.Id,
+		}))
+		.filter(
+			(a) =>
+				!filter ||
+				a.name.toLowerCase().includes(filter.toLowerCase()) ||
+				a.value.toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+
+	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
+}
+
+export async function searchGroups(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const opts: IHttpRequestOptions = {
+		url: '', // the base url is set in "awsRequest"
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
+		},
+		body: JSON.stringify({
+			MaxResults: 60, // the maximum number by documentation is 60
+			NextToken: paginationToken ?? undefined,
+		}),
+	};
+	const responseData: IDataObject = await awsRequest.call(this, opts);
+
+	const groups = responseData.Groups as Array<{ Name: string; Id: string }>;
+
+	const results: INodeListSearchItems[] = groups
+		.map((a) => ({
+			name: a.Name,
+			value: a.Id,
+		}))
+		.filter(
+			(a) =>
+				!filter ||
+				a.name.toLowerCase().includes(filter.toLowerCase()) ||
+				a.value.toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+
+	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
+}
