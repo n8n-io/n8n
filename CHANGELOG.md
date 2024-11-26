@@ -1,3 +1,12 @@
+## [1.69.2](https://github.com/n8n-io/n8n/compare/n8n@1.69.1...n8n@1.69.2) (2024-11-26)
+
+
+### Bug Fixes
+
+* **editor:** Restore workers view ([#11876](https://github.com/n8n-io/n8n/issues/11876)) ([c28ed67](https://github.com/n8n-io/n8n/commit/c28ed67b1c9e5407e661b109371c89556db4e2e5))
+
+
+
 ## [1.69.1](https://github.com/n8n-io/n8n/compare/n8n@1.69.0...n8n@1.69.1) (2024-11-25)
 
 
