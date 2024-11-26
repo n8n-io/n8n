@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
+import { computed, watch, ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import VirtualSchemaItem from '@/components/VirtualSchemaItem.vue';
 import VirtualSchemaHeader from '@/components/VirtualSchemaHeader.vue';
@@ -16,7 +16,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import {
+	DynamicScroller,
+	DynamicScrollerItem,
+	type RecycleScrollerInstance,
+} from 'vue-virtual-scroller';
 
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
@@ -52,12 +56,20 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const { getSchemaForExecutionData, filterSchema } = useDataSchema();
-const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
+const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
+	useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
 
 const emit = defineEmits<{
 	'clear:search': [];
 }>();
+
+const scroller = ref<RecycleScrollerInstance>();
+
+const toggleNodeAndScrollTop = (id: string) => {
+	toggleNode(id);
+	scroller.value?.scrollToItem(0);
+};
 
 watch(
 	() => props.search,
@@ -224,13 +236,19 @@ const onDragEnd = (el: HTMLElement) => {
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-			<DynamicScroller :items="items" :min-item-size="38" class="full-height scroller">
+			<DynamicScroller
+				ref="scroller"
+				:items="items"
+				:min-item-size="38"
+				class="full-height scroller"
+			>
 				<template #default="{ item, index, active }">
 					<VirtualSchemaHeader
 						v-if="item.type === 'header'"
 						v-bind="item"
 						:collapsed="closedNodes.has(item.id)"
-						@click="toggleNode(item.id)"
+						@click:toggle="toggleLeaf(item.id)"
+						@click="toggleNodeAndScrollTop(item.id)"
 					/>
 					<DynamicScrollerItem
 						v-else
@@ -245,7 +263,7 @@ const onDragEnd = (el: HTMLElement) => {
 							:draggable="mappingEnabled"
 							:collapsed="closedNodes.has(item.id)"
 							:highlight="ndvStore.highlightDraggables"
-							@click="toggleNode(item.id)"
+							@click="toggleLeaf(item.id)"
 						>
 						</VirtualSchemaItem>
 					</DynamicScrollerItem>

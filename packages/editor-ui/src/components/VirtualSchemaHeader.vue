@@ -16,11 +16,14 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const isTrigger = computed(() => props.nodeType.group.includes('trigger'));
+const emit = defineEmits<{
+	'click:toggle': [];
+}>();
 </script>
 
 <template>
 	<div class="schema-header" data-test-id="run-data-schema-header">
-		<div class="toggle">
+		<div class="toggle" @click.capture.stop="emit('click:toggle')">
 			<FontAwesomeIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
 		</div>
 

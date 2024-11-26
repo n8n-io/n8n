@@ -240,8 +240,18 @@ const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${t
 
 export const useFlattenSchema = () => {
 	const closedNodes = ref<Set<string>>(new Set());
+	const headerIds = ref<Set<string>>(new Set());
+	const toggleLeaf = (id: string) => {
+		if (closedNodes.value.has(id)) {
+			closedNodes.value.delete(id);
+		} else {
+			closedNodes.value.add(id);
+		}
+	};
+
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
+			closedNodes.value = new Set(headerIds.value);
 			closedNodes.value.delete(id);
 		} else {
 			closedNodes.value.add(id);
@@ -329,8 +339,13 @@ export const useFlattenSchema = () => {
 		return [];
 	};
 
-	const flattenMultipleSchemas = (nodes: SchemaNode[], additionalInfo: (node: INodeUi) => string) =>
-		nodes.reduce<Renders[]>((acc, item) => {
+	const flattenMultipleSchemas = (
+		nodes: SchemaNode[],
+		additionalInfo: (node: INodeUi) => string,
+	) => {
+		headerIds.value.clear();
+
+		return nodes.reduce<Renders[]>((acc, item) => {
 			acc.push({
 				title: item.node.name,
 				id: item.node.name,
@@ -340,6 +355,8 @@ export const useFlattenSchema = () => {
 				info: additionalInfo(item.node),
 				type: 'header',
 			});
+
+			headerIds.value.add(item.node.name);
 
 			if (closedNodes.value.has(item.node.name)) {
 				return acc;
@@ -353,6 +370,7 @@ export const useFlattenSchema = () => {
 			acc.push(...flattenSchema(item));
 			return acc;
 		}, []);
+	};
 
-	return { closedNodes, toggleNode, flattenSchema, flattenMultipleSchemas };
+	return { closedNodes, toggleLeaf, toggleNode, flattenSchema, flattenMultipleSchemas };
 };
