@@ -6,13 +6,7 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type {
-	Connection,
-	XYPosition,
-	ViewportTransform,
-	NodeDragEvent,
-	GraphNode,
-} from '@vue-flow/core';
+import type { Connection, XYPosition, NodeDragEvent, GraphNode } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
@@ -34,6 +28,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { NodeConnectionType } from 'n8n-workflow';
+import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 
 const $style = useCssModule();
 
@@ -114,6 +109,7 @@ const {
 	project,
 	nodes: graphNodes,
 	onPaneReady,
+	onNodesInitialized,
 	findNode,
 	viewport,
 	onEdgeMouseLeave,
@@ -431,7 +427,6 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
  */
 
 const defaultZoom = 1;
-const zoom = ref(defaultZoom);
 const isPaneMoving = ref(false);
 
 function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
@@ -467,10 +462,6 @@ async function onZoomOut() {
 
 async function onResetZoom() {
 	await onZoomTo(defaultZoom);
-}
-
-function onViewportChange(viewport: ViewportTransform) {
-	zoom.value = viewport.zoom;
 }
 
 function setReadonly(value: boolean) {
@@ -589,6 +580,8 @@ function onMinimapMouseLeave() {
  * Lifecycle
  */
 
+const initialized = ref(false);
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
@@ -604,6 +597,10 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
+onNodesInitialized(() => {
+	initialized.value = true;
+});
+
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
@@ -617,6 +614,8 @@ const isExecuting = toRef(props, 'executing');
 provide(CanvasKey, {
 	connectingHandle,
 	isExecuting,
+	initialized,
+	viewport,
 });
 </script>
 
@@ -644,7 +643,6 @@ provide(CanvasKey, {
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
 		@contextmenu="onOpenContextMenu"
-		@viewport-change="onViewportChange"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
@@ -717,7 +715,7 @@ provide(CanvasKey, {
 			:position="controlsPosition"
 			:show-interactive="false"
 			:show-bug-reporting-button="showBugReportingButton"
-			:zoom="zoom"
+			:zoom="viewport.zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
