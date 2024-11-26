@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-const FIELDS = 'fields';
+const WORKFLOW_INPUTS = 'WORKFLOW_INPUTS';
 const VALUES = 'values';
 
 export class ExecuteWorkflowTrigger implements INodeType {
@@ -52,8 +52,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				default: 'worklfow_call',
 			},
 			{
-				displayName: 'Input Fields',
-				name: FIELDS,
+				displayName: 'Workflow Inputs',
+				name: WORKFLOW_INPUTS,
 				placeholder: 'Add Field',
 				type: 'fixedCollection',
 				description:
@@ -127,7 +127,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			const hasFields =
 				inputData.length >= 0 &&
 				inputData.some(
-					(_x, i) => this.getNodeParameter(`${FIELDS}.${VALUES}`, i, marker) !== marker,
+					(_x, i) => this.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, i, marker) !== marker,
 				);
 
 			if (!hasFields) {
@@ -135,7 +135,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			}
 
 			const items: INodeExecutionData[] = [];
-			const discardedItems: INodeExecutionData[] = [];
 
 			for (const [itemIndex, item] of inputData.entries()) {
 				// Fields listed here will explicitly overwrite original fields
@@ -151,11 +150,14 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					pairedItem: { item: itemIndex },
 				};
 				try {
-					const newParams = this.getNodeParameter(`${FIELDS}.${VALUES}`, itemIndex, []) as Array<{
+					const newParams = this.getNodeParameter(
+						`${WORKFLOW_INPUTS}.${VALUES}`,
+						itemIndex,
+						[],
+					) as Array<{
 						name: string;
-						type: string;
 					}>;
-					for (const { name, type } of newParams) {
+					for (const { name } of newParams) {
 						/** TODO type check goes here */
 						newItem.json[name] = name in item.json ? item.json[name] : /* TODO default */ null;
 					}
