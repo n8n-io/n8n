@@ -21,6 +21,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnection } from '@/composables/usePushConnection';
 
 import GithubButton from 'vue-github-button';
+import { useLocalStorage } from '@vueuse/core';
 
 const router = useRouter();
 const route = useRoute();
@@ -37,7 +38,7 @@ const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
 const executionToReturnTo = ref('');
 const dirtyState = ref(false);
-const githubButtonHidden = ref(localStorage.getItem(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON));
+const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
 
 const tabBarItems = computed(() => [
 	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
@@ -58,10 +59,7 @@ const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
 const showGitHubButton = computed(
-	() =>
-		!isEnterprise.value &&
-		!settingsStore.settings.inE2ETests &&
-		githubButtonHidden.value !== 'true',
+	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
 );
 
 watch(route, (to, from) => {
@@ -175,8 +173,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 }
 
 function hideGithubButton() {
-	githubButtonHidden.value = 'true';
-	localStorage.setItem(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, 'true');
+	githubButtonHidden.value = true;
 }
 </script>
 
@@ -202,7 +199,7 @@ function hideGithubButton() {
 				@update:model-value="onTabSelected"
 			/>
 		</div>
-		<div class="github-button" v-if="showGitHubButton">
+		<div v-if="showGitHubButton" class="github-button">
 			<div class="github-button-container">
 				<GithubButton
 					href="https://github.com/n8n-io/n8n"
@@ -253,6 +250,7 @@ function hideGithubButton() {
 	position: relative;
 	align-items: center;
 	align-self: stretch;
+	min-width: 170px;
 	padding-top: 2px;
 	padding-left: var(--spacing-m);
 	padding-right: var(--spacing-m);
