@@ -331,9 +331,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const disableMfa = async (mfaCode: string) => {
+	const disableMfa = async (mfaCode: string, recoveryCode: string) => {
 		await mfaApi.disableMfa(rootStore.restApiContext, {
 			token: mfaCode,
+			recoveryCode,
 		});
 
 		if (currentUser.value) {

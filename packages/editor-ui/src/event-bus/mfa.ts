@@ -4,6 +4,7 @@ export const mfaEventBus = createEventBus();
 
 export interface MfaModalClosedEventPayload {
 	mfaCode: string;
+	recoveryCode: string;
 }
 
 export interface MfaModalEvents {

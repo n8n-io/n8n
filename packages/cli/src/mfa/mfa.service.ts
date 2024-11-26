@@ -85,8 +85,9 @@ export class MfaService {
 		return await this.authUserRepository.save(user);
 	}
 
-	async disableMfa(userId: string, mfaToken: string) {
-		const isValidToken = await this.validateMfa(userId, mfaToken, undefined);
+	async disableMfa(userId: string, mfaToken: string, recoveryCode: string) {
+		const isValidToken = await this.validateMfa(userId, mfaToken, recoveryCode);
+
 		if (!isValidToken) {
 			throw new InvalidMfaCodeError();
 		}
