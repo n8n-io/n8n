@@ -9,7 +9,12 @@ import {
 	groupOperations,
 	groupFields,
 } from './descriptions';
-import { presendStringifyBody, searchUserPools, searchGroups } from './GenericFunctions';
+import {
+	presendStringifyBody,
+	searchUserPools,
+	searchGroups,
+	searchUsers,
+} from './GenericFunctions';
 
 export class AwsCognito implements INodeType {
 	description: INodeTypeDescription = {
@@ -88,6 +93,7 @@ export class AwsCognito implements INodeType {
 		listSearch: {
 			searchUserPools,
 			searchGroups,
+			searchUsers,
 			// Todo: Add more search methods
 		},
 	};

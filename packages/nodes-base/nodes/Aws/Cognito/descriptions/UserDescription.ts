@@ -1,9 +1,4 @@
-import {
-	NodeOperationError,
-	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
-	type INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { handleErrorPostReceive, presendFilter, presendTest } from '../GenericFunctions';
 
@@ -14,7 +9,11 @@ export const userOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		default: 'getAll',
-		displayOptions: { show: { resource: ['user'] } },
+		displayOptions: {
+			show: {
+				resource: ['user'],
+			},
+		},
 		options: [
 			{
 				name: 'Add to Group',
@@ -25,7 +24,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AddUserToGroup',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminAddUserToGroup',
 						},
 					},
 					output: {
@@ -42,7 +41,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.CreateUser',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminCreateUser',
 						},
 					},
 					output: {
@@ -59,7 +58,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteUser',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminDeleteUser',
 						},
 					},
 					output: {
@@ -76,7 +75,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminGetUser',
 						},
 					},
 					output: {
@@ -118,7 +117,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.RemoveUserFromGroup',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminRemoveUserFromGroup',
 						},
 					},
 					output: {
@@ -135,7 +134,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.UpdateUser',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminUpdateUserAttributes',
 						},
 					},
 					output: {
@@ -148,61 +147,61 @@ export const userOperations: INodeProperties[] = [
 ];
 
 const createFields: INodeProperties[] = [
-	// {
-	// 	displayName: 'User Pool ID',
-	// 	name: 'userPoolId',
-	// 	required: true,
-	// 	type: 'resourceLocator',
-	// 	default: {
-	// 		mode: 'list',
-	// 		value: '',
-	// 	},
-	// 	description: 'The user pool ID where the users are managed',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['user'],
-	// 			operation: ['create'],
-	// 		},
-	// 	},
-	// 	routing: {
-	// 		send: {
-	// 			type: 'body',
-	// 			property: 'UserPoolId',
-	// 		},
-	// 	},
-	// 	modes: [
-	// 		{
-	// 			displayName: 'From list', // ToDo: Fix error when selecting this option
-	// 			name: 'list',
-	// 			type: 'list',
-	// 			typeOptions: {
-	// 				searchListMethod: 'searchUserPools',
-	// 				searchable: true,
-	// 			},
-	// 		},
-	// 		{
-	// 			displayName: 'By ID',
-	// 			name: 'id',
-	// 			type: 'string',
-	// 			hint: 'Enter the user pool ID',
-	// 			placeholder: 'e.g. eu-central-1_ab12cdefgh',
-	// 			validation: [
-	// 				{
-	// 					type: 'regex',
-	// 					properties: {
-	// 						regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-	// 						errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
-	// 					},
-	// 				},
-	// 			],
-	// 		},
-	// 	],
-	// },
 	{
-		displayName: 'User Name',
-		name: 'UserName',
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool ID where the users are managed',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list', // ToDo: Fix error when selecting this option
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Username',
+		name: 'Username',
 		default: '',
-		description: 'The name of the new user to create',
+		description: 'The username of the new user to create',
 		placeholder: 'e.g. JohnSmith',
 		displayOptions: {
 			show: {
@@ -213,7 +212,7 @@ const createFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				property: 'UserName',
+				property: 'Username',
 				type: 'body',
 				preSend: [presendTest],
 			},
@@ -236,7 +235,7 @@ const createFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Path',
-				name: 'path',
+				name: 'Path',
 				type: 'string',
 				validateType: 'string',
 				default: '/',
@@ -245,14 +244,15 @@ const createFields: INodeProperties[] = [
 					'The path for the user name, if it is not included, it defaults to a slash (/)',
 				routing: {
 					send: {
-						property: 'path',
+						property: 'Path',
 						type: 'body',
+						preSend: [presendTest],
 					},
 				},
 			},
 			{
 				displayName: 'Permissions Boundary',
-				name: 'permissionsBoundary',
+				name: 'PermissionsBoundary',
 				type: 'string',
 				validateType: 'string',
 				default: '',
@@ -260,14 +260,15 @@ const createFields: INodeProperties[] = [
 				description: 'Enter the ARN of a policy to set as the Permissions Boundary',
 				routing: {
 					send: {
-						property: 'permissionsBoundary',
+						property: 'PermissionsBoundary',
 						type: 'body',
+						preSend: [presendTest],
 					},
 				},
 			},
 			{
 				displayName: 'Tags',
-				name: 'tags',
+				name: 'Tags',
 				type: 'multiOptions',
 				placeholder: 'Add Tags',
 				default: [],
@@ -276,8 +277,9 @@ const createFields: INodeProperties[] = [
 				options: [],
 				routing: {
 					send: {
-						property: 'tags',
+						property: 'Tags',
 						type: 'body',
+						preSend: [presendTest],
 					},
 				},
 			},
@@ -306,6 +308,7 @@ const getFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'UserPoolId',
+				preSend: [presendTest],
 			},
 		},
 		modes: [
@@ -337,10 +340,8 @@ const getFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User',
-		name: 'user',
-		required: true,
-		type: 'resourceLocator',
+		displayName: 'User Name',
+		name: 'Username',
 		default: {
 			mode: 'list',
 			value: '',
@@ -354,11 +355,11 @@ const getFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From List',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'searchUserPools',
+					searchListMethod: 'searchUsers',
 					searchable: true,
 				},
 			},
@@ -367,7 +368,7 @@ const getFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				hint: 'Enter the user ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				validation: [
 					{
 						type: 'regex',
@@ -379,6 +380,15 @@ const getFields: INodeProperties[] = [
 				],
 			},
 		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Username',
+				preSend: [presendTest],
+			},
+		},
+		required: true,
+		type: 'resourceLocator',
 	},
 ];
 
@@ -603,6 +613,7 @@ const deleteFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'UserPoolId',
+				preSend: [presendTest],
 			},
 		},
 		modes: [
@@ -620,7 +631,6 @@ const deleteFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				hint: 'Enter the user pool ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 				validation: [
 					{
 						type: 'regex',
@@ -630,14 +640,13 @@ const deleteFields: INodeProperties[] = [
 						},
 					},
 				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 			},
 		],
 	},
 	{
-		displayName: 'User',
-		name: 'user',
-		required: true,
-		type: 'resourceLocator',
+		displayName: 'User Name',
+		name: 'Username',
 		default: {
 			mode: 'list',
 			value: '',
@@ -655,7 +664,7 @@ const deleteFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'searchUserPools',
+					searchListMethod: 'searchUsers',
 					searchable: true,
 				},
 			},
@@ -676,6 +685,15 @@ const deleteFields: INodeProperties[] = [
 				],
 			},
 		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Username',
+				preSend: [presendTest],
+			},
+		},
+		required: true,
+		type: 'resourceLocator',
 	},
 ];
 
@@ -700,6 +718,7 @@ const updateFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'UserPoolId',
+				preSend: [presendTest],
 			},
 		},
 		modes: [
@@ -731,8 +750,8 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User',
-		name: 'user',
+		displayName: 'User Name',
+		name: 'Username',
 		default: {
 			mode: 'list',
 			value: '',
@@ -750,7 +769,7 @@ const updateFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'searchUserPools',
+					searchListMethod: 'searchUsers',
 					searchable: true,
 				},
 			},
@@ -771,60 +790,71 @@ const updateFields: INodeProperties[] = [
 				],
 			},
 		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Username',
+				preSend: [presendTest],
+			},
+		},
 		required: true,
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'User Name',
-		name: 'userName',
-		default: '',
-		description: 'The name of the new user to create',
-		placeholder: 'e.g. JohnSmith',
+		displayName: 'User Attributes',
+		name: 'UserAttributes',
+		type: 'fixedCollection',
+		placeholder: 'Add Attribute',
+		default: {
+			attributes: [],
+		},
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['user'],
 				operation: ['update'],
 			},
 		},
-		required: true,
-		routing: {
-			send: {
-				property: 'userName',
-				type: 'body',
-				preSend: [
-					async function (
-						this: IExecuteSingleFunctions,
-						requestOptions: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> {
-						const userName = this.getNodeParameter('userName') as string;
-						if (userName.length < 1 || userName.length > 128) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'User Name must be between 1 and 128 characters.',
-							);
-						}
-
-						// Regex validation
-						if (!/^[\w+=,.@-]+$/.test(userName)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'User Name contains invalid characters. Allowed characters: [\\w+=,.@-].',
-							);
-						}
-
-						return requestOptions;
+		description: 'Attributes to update for the user',
+		typeOptions: {
+			multipleValues: true,
+		},
+		options: [
+			{
+				displayName: 'Attributes',
+				name: 'attributes',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'Name',
+						type: 'string',
+						default: '',
+						description: 'The name of the attribute (e.g., custom:deliverables)',
+					},
+					{
+						displayName: 'Value',
+						name: 'Value',
+						type: 'string',
+						default: '',
+						description: 'The value of the attribute',
 					},
 				],
 			},
+		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserAttributes',
+				value:
+					'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
+			},
 		},
-		type: 'string',
-		validateType: 'string',
 	},
 	{
-		displayName: 'Options',
-		name: 'option',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -834,33 +864,45 @@ const updateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Path',
-				name: 'path',
-				type: 'string',
-				validateType: 'string',
-				default: '/',
-				placeholder: 'e.g. /division_abc/engineering/',
-				description:
-					'The path for the user name, if it is not included, it defaults to a slash (/)',
-			},
-			{
-				displayName: 'Permissions Boundary',
-				name: 'permissionsBoundary',
-				type: 'string',
-				validateType: 'string',
-				default: '',
-				placeholder: 'e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy',
-				description: 'Enter the ARN of a policy to set as the Permissions Boundary',
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'multiOptions',
-				placeholder: 'Add Tags',
-				default: [],
-				description: 'A list of tags that you want to attach to the new user',
-				//TO-DO-GET TAGS LIST
-				options: [],
+				displayName: 'Client Metadata',
+				name: 'clientMetadata',
+				type: 'fixedCollection',
+				placeholder: 'Add Metadata Pair',
+				default: { metadata: [] },
+				description: 'A map of custom key-value pairs for workflows triggered by this action',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Metadata',
+						name: 'metadata',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+								description: 'The key of the metadata attribute',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value of the metadata attribute',
+							},
+						],
+					},
+				],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'ClientMetadata',
+						value:
+							'={{ $value.metadata && $value.metadata.length > 0 ? Object.fromEntries($value.metadata.map(attribute => [attribute.Name, attribute.Value])) : {} }}',
+					},
+				},
 			},
 		],
 	},
@@ -876,7 +918,7 @@ const addToGroupFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The ID of the user pool',
+		description: 'The user pool ID where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -904,7 +946,6 @@ const addToGroupFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				hint: 'Enter the user pool ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 				validation: [
 					{
 						type: 'regex',
@@ -914,12 +955,13 @@ const addToGroupFields: INodeProperties[] = [
 						},
 					},
 				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 			},
 		],
 	},
 	{
-		displayName: 'User',
-		name: 'user',
+		displayName: 'User Name',
+		name: 'Username',
 		default: {
 			mode: 'list',
 			value: '',
@@ -937,7 +979,7 @@ const addToGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'searchUserPools',
+					searchListMethod: 'searchUsers',
 					searchable: true,
 				},
 			},
@@ -958,27 +1000,27 @@ const addToGroupFields: INodeProperties[] = [
 				],
 			},
 		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Username',
+			},
+		},
 		required: true,
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Group',
-		name: 'group',
-		description: 'Select the group you want to add the user to',
+		displayName: 'Group Name',
+		name: 'GroupName',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'Select the group you want to update',
 		displayOptions: {
 			show: {
 				resource: ['user'],
 				operation: ['addToGroup'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'GroupId',
 			},
 		},
 		modes: [
@@ -992,23 +1034,30 @@ const addToGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By ID',
-				name: 'id',
+				displayName: 'By Name',
+				name: 'GroupName',
 				type: 'string',
-				hint: 'Enter the group ID',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				hint: 'Enter the group name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w+=,.@-]+$',
+							errorMessage: 'The group name must follow the allowed pattern.',
 						},
 					},
 				],
+				placeholder: 'e.g. Admins',
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+				type: 'body',
+				property: 'GroupName',
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -1023,7 +1072,7 @@ const removeFromGroupFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The ID of the user pool',
+		description: 'The user pool ID where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -1051,7 +1100,6 @@ const removeFromGroupFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				hint: 'Enter the user pool ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 				validation: [
 					{
 						type: 'regex',
@@ -1061,12 +1109,13 @@ const removeFromGroupFields: INodeProperties[] = [
 						},
 					},
 				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 			},
 		],
 	},
 	{
-		displayName: 'User',
-		name: 'user',
+		displayName: 'User Name',
+		name: 'Username',
 		default: {
 			mode: 'list',
 			value: '',
@@ -1084,7 +1133,7 @@ const removeFromGroupFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'searchUserPools',
+					searchListMethod: 'searchUsers',
 					searchable: true,
 				},
 			},
@@ -1105,17 +1154,24 @@ const removeFromGroupFields: INodeProperties[] = [
 				],
 			},
 		],
+		routing: {
+			send: {
+				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+				type: 'body',
+				property: 'Username',
+			},
+		},
 		required: true,
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Group',
-		name: 'group',
+		displayName: 'Group Name',
+		name: 'GroupName',
 		default: {
 			mode: 'list',
 			value: '',
 		},
-		description: 'Select the group you want to remove the user from',
+		description: 'Select the group you want to update',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -1133,23 +1189,30 @@ const removeFromGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By ID',
-				name: 'id',
+				displayName: 'By Name',
+				name: 'GroupName',
 				type: 'string',
-				hint: 'Enter the group ID',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				hint: 'Enter the group name',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w+=,.@-]+$',
+							errorMessage: 'The group name must follow the allowed pattern.',
 						},
 					},
 				],
+				placeholder: 'e.g. Admins',
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+				type: 'body',
+				property: 'GroupName',
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
