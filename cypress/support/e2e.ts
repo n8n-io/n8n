@@ -20,13 +20,6 @@ beforeEach(() => {
 		win.localStorage.setItem('N8N_THEME', 'light');
 		win.localStorage.setItem('N8N_AUTOCOMPLETE_ONBOARDED', 'true');
 		win.localStorage.setItem('N8N_MAPPING_ONBOARDED', 'true');
-
-		const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
-		if (nodeViewVersion) {
-			win.localStorage.setItem('NodeView.version', nodeViewVersion);
-		}
-		win.localStorage.setItem('NodeView.migrated', 'true');
-		win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
 	});
 
 	cy.intercept('GET', '/rest/settings', (req) => {
