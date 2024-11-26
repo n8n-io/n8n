@@ -36,7 +36,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Call n8n Workflow Tool',
@@ -200,6 +200,11 @@ export class ToolWorkflow implements INodeType {
 				hint: 'The field in the last-executed node of the workflow that contains the response',
 				description:
 					'Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Extra Workflow Inputs',
@@ -376,19 +381,6 @@ export class ToolWorkflow implements INodeType {
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
-			const responsePropertyName = this.getNodeParameter(
-				'responsePropertyName',
-				itemIndex,
-			) as string;
-
-			if (!responsePropertyName) {
-				throw new NodeOperationError(this.getNode(), "Field to return can't be empty", {
-					itemIndex,
-					description:
-						'Enter the name of a field in the last node of the workflow that contains the response to return',
-				});
-			}
-
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
@@ -467,17 +459,13 @@ export class ToolWorkflow implements INodeType {
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
-			const response: string | undefined = get(receivedData, [
-				'data',
-				0,
-				0,
-				'json',
-				responsePropertyName,
-			]) as string | undefined;
+			const response: string | undefined = get(receivedData, 'data[0][0].json') as
+				| string
+				| undefined;
 			if (response === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`,
+					'There was an error: "The workflow did not return a response"',
 				);
 			}
 
@@ -531,12 +519,10 @@ export class ToolWorkflow implements INodeType {
 			if (executionError) {
 				void this.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 			} else {
-				void this.addOutputData(
-					NodeConnectionType.AiTool,
-					index,
-					[[{ json: { response } }]],
-					metadata,
-				);
+				// Output always needs to be an object
+				// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
+				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json }]], metadata);
 			}
 			return response;
 		};

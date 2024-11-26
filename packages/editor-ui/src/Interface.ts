@@ -240,6 +240,10 @@ export interface IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 }
 
+export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
+	projectId?: string;
+}
+
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
@@ -366,6 +370,7 @@ export interface IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
+	createdAt: Date;
 	stoppedAt?: Date;
 	workflowId?: string; // To be able to filter executions easily //
 }

@@ -36,7 +36,7 @@ const shortcutTooltipLabel = computed(() => {
 
 <template>
 	<span :class="$style.container" data-test-id="save-button">
-		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
+		<span v-if="saved" :class="$style.saved">{{ i18n.baseText('saveButton.saved') }}</span>
 		<template v-else>
 			<KeyboardShortcutTooltip
 				v-if="withShortcut"

@@ -6,10 +6,14 @@ import { useUIStore } from '@/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import { CREDENTIAL_SELECT_MODAL_KEY, STORES } from '@/constants';
-import userEvent from '@testing-library/user-event';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
 import { useRouter } from 'vue-router';
+vi.mock('@/composables/useGlobalEntityCreation', () => ({
+	useGlobalEntityCreation: () => ({
+		menu: [],
+	}),
+}));
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -95,28 +99,6 @@ describe('CredentialsView', () => {
 			const uiStore = mockedStore(useUIStore);
 			renderComponent({ props: { credentialId: 'create' } });
 			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
-		});
-
-		it('should update credentialId route param to create', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.isProjectHome = false;
-			projectsStore.currentProject = { scopes: ['credential:create'] } as Project;
-			const credentialsStore = mockedStore(useCredentialsStore);
-			credentialsStore.allCredentials = [
-				{
-					id: '1',
-					name: 'test',
-					type: 'test',
-					createdAt: '2021-05-05T00:00:00Z',
-					updatedAt: '2021-05-05T00:00:00Z',
-				},
-			];
-			const { getByTestId } = renderComponent();
-
-			await userEvent.click(getByTestId('resources-list-add'));
-			await waitFor(() =>
-				expect(router.replace).toHaveBeenCalledWith({ params: { credentialId: 'create' } }),
-			);
 		});
 	});
 
