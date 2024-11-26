@@ -46,7 +46,7 @@ function updateTags(tags: string[]) {
 		<n8n-input-label label="Tag name" :bold="false" size="small">
 			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
 				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">
-					{{ locale.baseText('workflowEvaluation.edit.selectTag') }}
+					{{ locale.baseText('testDefinition.edit.selectTag') }}
 				</n8n-text>
 				<n8n-tag
 					v-for="tagId in modelValue.appliedTagIds"
@@ -78,7 +78,7 @@ function updateTags(tags: string[]) {
 			/>
 		</n8n-input-label>
 		<n8n-text size="small" color="text-light">{{
-			locale.baseText('workflowEvaluation.edit.tagsHelpText')
+			locale.baseText('testDefinition.edit.tagsHelpText')
 		}}</n8n-text>
 	</div>
 </template>

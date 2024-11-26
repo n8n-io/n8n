@@ -1,9 +1,9 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { useEvaluationForm } from '../composables/useEvaluationForm';
-import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
+import { useTestDefinitionForm } from '../composables/useTestDefinitionForm';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { mockedStore } from '@/__tests__/utils';
-import type { TestDefinitionRecord } from '@/api/evaluations.ee';
+import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
 const TEST_DEF_A: TestDefinitionRecord = {
 	id: '1',
@@ -35,9 +35,9 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 
-describe('useEvaluationForm', async () => {
+describe('useTestDefinitionForm', async () => {
 	it('should initialize with default props', async () => {
-		const { state } = useEvaluationForm();
+		const { state } = useTestDefinitionForm();
 
 		expect(state.value.description).toEqual('');
 		expect(state.value.name.value).toContain('My Test');
@@ -47,9 +47,9 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should load test data', async () => {
-		const { loadTestData, state } = useEvaluationForm();
+		const { loadTestData, state } = useTestDefinitionForm();
 		const fetchSpy = vi.fn();
-		const evaluationsStore = mockedStore(useEvaluationsStore);
+		const evaluationsStore = mockedStore(useTestDefinitionStore);
 
 		expect(state.value.description).toEqual('');
 		expect(state.value.name.value).toContain('My Test');
@@ -68,9 +68,9 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should save a new test', async () => {
-		const { createTest, state } = useEvaluationForm();
+		const { createTest, state } = useTestDefinitionForm();
 		const createSpy = vi.fn().mockResolvedValue(TEST_DEF_NEW);
-		const evaluationsStore = mockedStore(useEvaluationsStore);
+		const evaluationsStore = mockedStore(useTestDefinitionStore);
 
 		evaluationsStore.create = createSpy;
 
@@ -87,9 +87,9 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should update an existing test', async () => {
-		const { updateTest, state } = useEvaluationForm();
+		const { updateTest, state } = useTestDefinitionForm();
 		const updateSpy = vi.fn().mockResolvedValue(TEST_DEF_B);
-		const evaluationsStore = mockedStore(useEvaluationsStore);
+		const evaluationsStore = mockedStore(useTestDefinitionStore);
 
 		evaluationsStore.update = updateSpy;
 
@@ -106,7 +106,7 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should start editing a field', async () => {
-		const { state, startEditing } = useEvaluationForm();
+		const { state, startEditing } = useTestDefinitionForm();
 
 		await startEditing('name');
 		expect(state.value.name.isEditing).toBe(true);
@@ -117,7 +117,7 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should save changes to a field', async () => {
-		const { state, startEditing, saveChanges } = useEvaluationForm();
+		const { state, startEditing, saveChanges } = useTestDefinitionForm();
 
 		await startEditing('name');
 		state.value.name.tempValue = 'New Name';
@@ -133,7 +133,7 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should cancel editing a field', async () => {
-		const { state, startEditing, cancelEditing } = useEvaluationForm();
+		const { state, startEditing, cancelEditing } = useTestDefinitionForm();
 
 		await startEditing('name');
 		state.value.name.tempValue = 'New Name';
@@ -148,7 +148,7 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should handle keydown - Escape', async () => {
-		const { state, startEditing, handleKeydown } = useEvaluationForm();
+		const { state, startEditing, handleKeydown } = useTestDefinitionForm();
 
 		await startEditing('name');
 		handleKeydown(new KeyboardEvent('keydown', { key: 'Escape' }), 'name');
@@ -160,7 +160,7 @@ describe('useEvaluationForm', async () => {
 	});
 
 	it('should handle keydown - Enter', async () => {
-		const { state, startEditing, handleKeydown } = useEvaluationForm();
+		const { state, startEditing, handleKeydown } = useTestDefinitionForm();
 
 		await startEditing('name');
 		state.value.name.tempValue = 'New Name';

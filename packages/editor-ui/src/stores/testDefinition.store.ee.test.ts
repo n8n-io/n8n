@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useEvaluationsStore } from '@/stores/evaluations.store.ee'; // Adjust the import path as necessary
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee'; // Adjust the import path as necessary
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
-import type { TestDefinitionRecord } from '@/api/evaluations.ee';
+import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
 const { createTestDefinition, deleteTestDefinition, getTestDefinitions, updateTestDefinition } =
 	vi.hoisted(() => ({
@@ -12,7 +12,7 @@ const { createTestDefinition, deleteTestDefinition, getTestDefinitions, updateTe
 		deleteTestDefinition: vi.fn(),
 	}));
 
-vi.mock('@/api/evaluations.ee', () => ({
+vi.mock('@/api/testDefinition.ee', () => ({
 	createTestDefinition,
 	deleteTestDefinition,
 	getTestDefinitions,
@@ -44,15 +44,15 @@ const TEST_DEF_NEW: TestDefinitionRecord = {
 	description: 'New Description',
 };
 
-describe('evaluations.store.ee', () => {
-	let store: ReturnType<typeof useEvaluationsStore>;
+describe('testDefinition.store.ee', () => {
+	let store: ReturnType<typeof useTestDefinitionStore>;
 	let rootStoreMock: ReturnType<typeof useRootStore>;
 	let posthogStoreMock: ReturnType<typeof usePostHog>;
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		setActivePinia(createPinia());
-		store = useEvaluationsStore();
+		store = useTestDefinitionStore();
 		rootStoreMock = useRootStore();
 		posthogStoreMock = usePostHog();
 

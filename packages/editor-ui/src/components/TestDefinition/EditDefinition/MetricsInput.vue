@@ -21,15 +21,8 @@ function updateMetric(index: number, value: string) {
 
 <template>
 	<div :class="[$style.metrics]">
-		<!-- <n8n-text color="text-dark">{{
-			locale.baseText('workflowEvaluation.edit.metricsTitle')
-		}}</n8n-text>
-		<hr :class="$style.metricsDivider" />
-		<n8n-text size="small" color="text-light">
-			{{ locale.baseText('workflowEvaluation.edit.metricsHelpText') }}
-		</n8n-text> -->
 		<n8n-input-label
-			:label="locale.baseText('workflowEvaluation.edit.metricsFields')"
+			:label="locale.baseText('testDefinition.edit.metricsFields')"
 			:bold="false"
 			:class="$style.metricField"
 		>
@@ -39,13 +32,13 @@ function updateMetric(index: number, value: string) {
 						:ref="`metric_${index}`"
 						data-test-id="evaluation-metric-item"
 						:model-value="metric"
-						:placeholder="locale.baseText('workflowEvaluation.edit.metricsPlaceholder')"
+						:placeholder="locale.baseText('testDefinition.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
 					/>
 				</div>
 				<n8n-button
 					type="tertiary"
-					:label="locale.baseText('workflowEvaluation.edit.metricsNew')"
+					:label="locale.baseText('testDefinition.edit.metricsNew')"
 					:class="$style.newMetricButton"
 					@click="addNewMetric"
 				/>

@@ -2,21 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import EvaluationEditView from '@/views/WorkflowEvaluation/EvaluationEditView.vue';
+import TestDefinitionEditView from '@/views/TestDefinition/TestDefinitionEditView.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
-import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
+import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { ref, nextTick } from 'vue';
 import { VIEWS } from '@/constants';
 
 vi.mock('vue-router');
 vi.mock('@/composables/useToast');
-vi.mock('@/components/WorkflowEvaluation/composables/useEvaluationForm');
+vi.mock('@/components/TestDefinition/composables/useTestDefinitionForm');
 vi.mock('@/stores/tags.store');
 
-describe('EvaluationEditView', () => {
-	const renderComponent = createComponentRenderer(EvaluationEditView);
+describe('TestDefinitionEditView', () => {
+	const renderComponent = createComponentRenderer(TestDefinitionEditView);
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -36,7 +36,7 @@ describe('EvaluationEditView', () => {
 			showMessage: vi.fn(),
 			showError: vi.fn(),
 		} as unknown as ReturnType<typeof useToast>);
-		vi.mocked(useEvaluationForm).mockReturnValue({
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
 			state: ref({
 				name: { value: '', isEditing: false, tempValue: '' },
 				description: '',
@@ -52,7 +52,7 @@ describe('EvaluationEditView', () => {
 			saveChanges: vi.fn(),
 			cancelEditing: vi.fn(),
 			handleKeydown: vi.fn(),
-		} as unknown as ReturnType<typeof useEvaluationForm>);
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 		vi.mocked(useAnnotationTagsStore).mockReturnValue({
 			isLoading: ref(false),
 			allTags: ref([]),
@@ -72,10 +72,10 @@ describe('EvaluationEditView', () => {
 			name: 'test-route',
 		} as unknown as ReturnType<typeof useRoute>);
 		const loadTestDataMock = vi.fn();
-		vi.mocked(useEvaluationForm).mockReturnValue({
-			...vi.mocked(useEvaluationForm)(),
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
+			...vi.mocked(useTestDefinitionForm)(),
 			loadTestData: loadTestDataMock,
-		} as unknown as ReturnType<typeof useEvaluationForm>);
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 
 		renderComponent({
 			pinia: createTestingPinia(),
@@ -87,10 +87,10 @@ describe('EvaluationEditView', () => {
 
 	it('should not load test data when testId is not provided', async () => {
 		const loadTestDataMock = vi.fn();
-		vi.mocked(useEvaluationForm).mockReturnValue({
-			...vi.mocked(useEvaluationForm)(),
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
+			...vi.mocked(useTestDefinitionForm)(),
 			loadTestData: loadTestDataMock,
-		} as unknown as ReturnType<typeof useEvaluationForm>);
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 
 		renderComponent({
 			pinia: createTestingPinia(),
@@ -105,10 +105,10 @@ describe('EvaluationEditView', () => {
 		const showMessageMock = vi.fn();
 		const routerPushMock = vi.fn();
 		const routerResolveMock = vi.fn().mockReturnValue({ href: '/test-href' });
-		vi.mocked(useEvaluationForm).mockReturnValue({
-			...vi.mocked(useEvaluationForm)(),
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
+			...vi.mocked(useTestDefinitionForm)(),
 			saveTest: saveTestMock,
-		} as unknown as ReturnType<typeof useEvaluationForm>);
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 		vi.mocked(useToast).mockReturnValue({ showMessage: showMessageMock } as unknown as ReturnType<
 			typeof useToast
 		>);
@@ -127,16 +127,16 @@ describe('EvaluationEditView', () => {
 
 		expect(saveTestMock).toHaveBeenCalled();
 		expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.WORKFLOW_EVALUATION });
+		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.TEST_DEFINITION });
 	});
 
 	it('should show error message on failed save', async () => {
 		const saveTestMock = vi.fn().mockRejectedValue(new Error('Save failed'));
 		const showErrorMock = vi.fn();
-		vi.mocked(useEvaluationForm).mockReturnValue({
-			...vi.mocked(useEvaluationForm)(),
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
+			...vi.mocked(useTestDefinitionForm)(),
 			saveTest: saveTestMock,
-		} as unknown as ReturnType<typeof useEvaluationForm>);
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 		vi.mocked(useToast).mockReturnValue({ showError: showErrorMock } as unknown as ReturnType<
 			typeof useToast
 		>);
@@ -176,10 +176,10 @@ describe('EvaluationEditView', () => {
 	});
 
 	it('should apply "has-issues" class to inputs with issues', async () => {
-		vi.mocked(useEvaluationForm).mockReturnValue({
-			...vi.mocked(useEvaluationForm)(),
+		vi.mocked(useTestDefinitionForm).mockReturnValue({
+			...vi.mocked(useTestDefinitionForm)(),
 			fieldsIssues: ref([{ field: 'name' }, { field: 'tags' }]),
-		} as unknown as ReturnType<typeof useEvaluationForm>);
+		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 
 		const { container } = renderComponent({
 			pinia: createTestingPinia(),

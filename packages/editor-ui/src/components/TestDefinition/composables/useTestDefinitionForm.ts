@@ -1,10 +1,10 @@
 import { ref, computed } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from 'n8n-design-system';
-import type { UpdateTestDefinitionParams } from '@/api/evaluations.ee';
+import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
 
 interface EditableField {
 	value: string;
@@ -28,9 +28,9 @@ type FormRefs = {
 	tagsInput: ComponentPublicInstance<typeof AnnotationTagsDropdownEe>;
 };
 
-export function useEvaluationForm() {
+export function useTestDefinitionForm() {
 	// Stores
-	const evaluationsStore = useEvaluationsStore();
+	const evaluationsStore = useTestDefinitionStore();
 
 	// Form state
 	const state = ref<IEvaluationFormState>({

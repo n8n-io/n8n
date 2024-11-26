@@ -49,7 +49,10 @@ const tabBarItems = computed(() => {
 	];
 
 	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
-		items.push({ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') });
+		items.push({
+			value: MAIN_HEADER_TABS.TEST_DEFINITION,
+			label: locale.baseText('generic.tests'),
+		});
 	}
 	return items;
 });
@@ -92,8 +95,8 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	if (to.matched.some((record) => record.name === VIEWS.WORKFLOW_EVALUATION)) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
+	if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
+		activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
 	}
 	if (
 		to.name === VIEWS.EXECUTION_HOME ||
@@ -134,9 +137,9 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 			void navigateToExecutionsView(openInNewTab);
 			break;
 
-		case MAIN_HEADER_TABS.EVALUATION:
-			activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
-			void router.push({ name: VIEWS.WORKFLOW_EVALUATION });
+		case MAIN_HEADER_TABS.TEST_DEFINITION:
+			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
+			void router.push({ name: VIEWS.TEST_DEFINITION });
 			break;
 
 		default:

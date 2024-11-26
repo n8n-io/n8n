@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TestListItem } from '@/components/WorkflowEvaluation/types';
+import type { TestListItem } from '@/components/TestDefinition/types';
 import { useI18n } from '@/composables/useI18n';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
 
@@ -21,22 +21,22 @@ const actions = [
 	{
 		icon: 'play',
 		event: () => emit('run-test', props.test.id),
-		tooltip: locale.baseText('workflowEvaluation.runTest'),
+		tooltip: locale.baseText('testDefinition.runTest'),
 	},
 	{
 		icon: 'list',
 		event: () => emit('view-details', props.test.id),
-		tooltip: locale.baseText('workflowEvaluation.viewDetails'),
+		tooltip: locale.baseText('testDefinition.viewDetails'),
 	},
 	{
 		icon: 'pen',
 		event: () => emit('edit-test', props.test.id),
-		tooltip: locale.baseText('workflowEvaluation.editTest'),
+		tooltip: locale.baseText('testDefinition.editTest'),
 	},
 	{
 		icon: 'trash',
 		event: () => emit('delete-test', props.test.id),
-		tooltip: locale.baseText('workflowEvaluation.deleteTest'),
+		tooltip: locale.baseText('testDefinition.deleteTest'),
 	},
 ];
 </script>

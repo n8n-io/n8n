@@ -2,24 +2,24 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { useEvaluationsStore } from '@/stores/evaluations.store.ee';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
-import EmptyState from '@/components/WorkflowEvaluation/ListEvaluation/EmptyState.vue';
-import TestsList from '@/components/WorkflowEvaluation/ListEvaluation/TestsList.vue';
-import type { TestExecution, TestListItem } from '@/components/WorkflowEvaluation/types';
+import EmptyState from '@/components/TestDefinition/ListDefinition/EmptyState.vue';
+import TestsList from '@/components/TestDefinition/ListDefinition/TestsList.vue';
+import type { TestExecution, TestListItem } from '@/components/TestDefinition/types';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import type { TestDefinitionRecord } from '@/api/evaluations.ee';
+import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
 const router = useRouter();
 const tagsStore = useAnnotationTagsStore();
-const evaluationsStore = useEvaluationsStore();
+const testDefinitionStore = useTestDefinitionStore();
 const isLoading = ref(false);
 const toast = useToast();
 const locale = useI18n();
 
 const tests = computed<TestListItem[]>(() => {
-	return evaluationsStore.allTestDefinitions
+	return testDefinitionStore.allTestDefinitions
 		.filter((test): test is TestDefinitionRecord => test.id !== undefined)
 		.map((test) => ({
 			id: test.id,
@@ -57,13 +57,13 @@ function getTestExecution(_testId: string): TestExecution {
 
 // Action handlers
 function onCreateTest() {
-	void router.push({ name: VIEWS.NEW_WORKFLOW_EVALUATION });
+	void router.push({ name: VIEWS.NEW_TEST_DEFINITION });
 }
 
 function onRunTest(_testId: string) {
 	// TODO: Implement test run logic
 	toast.showMessage({
-		title: locale.baseText('workflowEvaluation.notImplemented'),
+		title: locale.baseText('testDefinition.notImplemented'),
 		type: 'warning',
 	});
 }
@@ -71,20 +71,20 @@ function onRunTest(_testId: string) {
 function onViewDetails(_testId: string) {
 	// TODO: Implement test details view
 	toast.showMessage({
-		title: locale.baseText('workflowEvaluation.notImplemented'),
+		title: locale.baseText('testDefinition.notImplemented'),
 		type: 'warning',
 	});
 }
 
 function onEditTest(testId: number) {
-	void router.push({ name: VIEWS.WORKFLOW_EVALUATION_EDIT, params: { testId } });
+	void router.push({ name: VIEWS.TEST_DEFINITION_EDIT, params: { testId } });
 }
 
 async function onDeleteTest(testId: string) {
-	await evaluationsStore.deleteById(testId);
+	await testDefinitionStore.deleteById(testId);
 
 	toast.showMessage({
-		title: locale.baseText('workflowEvaluation.list.testDeleted'),
+		title: locale.baseText('testDefinition.list.testDeleted'),
 		type: 'success',
 	});
 }
@@ -94,16 +94,16 @@ async function loadInitialData() {
 	isLoading.value = true;
 	try {
 		await tagsStore.fetchAll();
-		await evaluationsStore.fetchAll();
+		await testDefinitionStore.fetchAll();
 	} finally {
 		isLoading.value = false;
 	}
 }
 
 onMounted(() => {
-	if (!evaluationsStore.isFeatureEnabled) {
+	if (!testDefinitionStore.isFeatureEnabled) {
 		toast.showMessage({
-			title: locale.baseText('workflowEvaluation.notImplemented'),
+			title: locale.baseText('testDefinition.notImplemented'),
 			type: 'warning',
 		});
 

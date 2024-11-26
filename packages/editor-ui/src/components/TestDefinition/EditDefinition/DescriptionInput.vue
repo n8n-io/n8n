@@ -20,7 +20,7 @@ const locale = useI18n();
 			<N8nInput
 				:model-value="modelValue"
 				type="textarea"
-				:placeholder="locale.baseText('workflowEvaluation.edit.descriptionPlaceholder')"
+				:placeholder="locale.baseText('testDefinition.edit.descriptionPlaceholder')"
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>

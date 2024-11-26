@@ -19,19 +19,19 @@ const locale = useI18n();
 <template>
 	<div>
 		<n8n-input-label
-			:label="locale.baseText('workflowEvaluation.edit.workflowSelectorLabel')"
+			:label="locale.baseText('testDefinition.edit.workflowSelectorLabel')"
 			:bold="false"
 		>
 			<WorkflowSelectorParameterInput
 				ref="workflowInput"
 				:parameter="{
-					displayName: locale.baseText('workflowEvaluation.edit.workflowSelectorDisplayName'),
+					displayName: locale.baseText('testDefinition.edit.workflowSelectorDisplayName'),
 					name: 'workflowId',
 					type: 'workflowSelector',
 					default: '',
 				}"
 				:model-value="modelValue"
-				:display-title="locale.baseText('workflowEvaluation.edit.workflowSelectorTitle')"
+				:display-title="locale.baseText('testDefinition.edit.workflowSelectorTitle')"
 				:is-value-expression="false"
 				:expression-edit-dialog-visible="false"
 				:path="'workflows'"
@@ -39,10 +39,5 @@ const locale = useI18n();
 				@update:model-value="$emit('update:modelValue', $event)"
 			/>
 		</n8n-input-label>
-		<!-- <n8n-text size="small" color="text-light">
-			{{ locale.baseText('workflowEvaluation.edit.workflowSelectorHelpText') }}
-		</n8n-text> -->
 	</div>
 </template>
-
-<style module lang="scss"></style>

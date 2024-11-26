@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
-import * as testDefinitionsApi from '@/api/evaluations.ee';
-import type { TestDefinitionRecord } from '@/api/evaluations.ee';
+import * as testDefinitionsApi from '@/api/testDefinition.ee';
+import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
-export const useEvaluationsStore = defineStore(
-	STORES.EVALUATIONS,
+export const useTestDefinitionStore = defineStore(
+	STORES.TEST_DEFINITION,
 	() => {
 		// State
 		const testDefinitionsById = ref<Record<string, TestDefinitionRecord>>({});

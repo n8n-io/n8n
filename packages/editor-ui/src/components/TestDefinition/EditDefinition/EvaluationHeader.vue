@@ -24,7 +24,7 @@ const locale = useI18n();
 			icon="arrow-left"
 			:class="$style.backButton"
 			type="tertiary"
-			:title="locale.baseText('workflowEvaluation.edit.backButtonTitle')"
+			:title="locale.baseText('testDefinition.edit.backButtonTitle')"
 			@click="$router.back()"
 		/>
 		<h2 :class="$style.title">
@@ -45,7 +45,7 @@ const locale = useI18n();
 				data-test-id="evaluation-name-input"
 				:model-value="modelValue.tempValue"
 				type="text"
-				:placeholder="locale.baseText('workflowEvaluation.edit.namePlaceholder')"
+				:placeholder="locale.baseText('testDefinition.edit.namePlaceholder')"
 				@update:model-value="$emit('update:modelValue', { ...modelValue, tempValue: $event })"
 				@blur="() => saveChanges('name')"
 				@keydown="(e: KeyboardEvent) => handleKeydown(e, 'name')"

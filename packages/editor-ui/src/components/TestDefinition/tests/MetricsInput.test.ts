@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import MetricsInput from '../EditEvaluation/MetricsInput.vue';
+import MetricsInput from '../EditDefinition/MetricsInput.vue';
 import userEvent from '@testing-library/user-event';
 
 const renderComponent = createComponentRenderer(MetricsInput);

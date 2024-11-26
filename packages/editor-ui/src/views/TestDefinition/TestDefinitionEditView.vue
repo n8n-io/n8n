@@ -6,14 +6,14 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useDebounce } from '@/composables/useDebounce';
-import { useEvaluationForm } from '@/components/WorkflowEvaluation/composables/useEvaluationForm';
+import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 
-import EvaluationHeader from '@/components/WorkflowEvaluation/EditEvaluation/EvaluationHeader.vue';
-import DescriptionInput from '@/components/WorkflowEvaluation/EditEvaluation/DescriptionInput.vue';
-import EvaluationStep from '@/components/WorkflowEvaluation/EditEvaluation/EvaluationStep.vue';
-import TagsInput from '@/components/WorkflowEvaluation/EditEvaluation/TagsInput.vue';
-import WorkflowSelector from '@/components/WorkflowEvaluation/EditEvaluation/WorkflowSelector.vue';
-import MetricsInput from '@/components/WorkflowEvaluation/EditEvaluation/MetricsInput.vue';
+import EvaluationHeader from '@/components/TestDefinition/EditDefinition/EvaluationHeader.vue';
+import DescriptionInput from '@/components/TestDefinition/EditDefinition/DescriptionInput.vue';
+import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
+import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue';
+import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
+import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 
 const props = defineProps<{
 	testId?: string;
@@ -30,8 +30,8 @@ const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 const buttonLabel = computed(() =>
 	testId.value
-		? locale.baseText('workflowEvaluation.edit.updateTest')
-		: locale.baseText('workflowEvaluation.edit.saveTest'),
+		? locale.baseText('testDefinition.edit.updateTest')
+		: locale.baseText('testDefinition.edit.saveTest'),
 );
 
 const {
@@ -45,7 +45,7 @@ const {
 	saveChanges,
 	cancelEditing,
 	handleKeydown,
-} = useEvaluationForm();
+} = useTestDefinitionForm();
 
 onMounted(async () => {
 	await fetchAll();
@@ -64,18 +64,18 @@ async function onSaveTest() {
 		} else {
 			savedTest = await createTest(currentWorkflowId.value);
 		}
-		if (savedTest && route.name === VIEWS.WORKFLOW_EVALUATION_EDIT) {
+		if (savedTest && route.name === VIEWS.TEST_DEFINITION_EDIT) {
 			await router.replace({
-				name: VIEWS.WORKFLOW_EVALUATION_EDIT,
+				name: VIEWS.TEST_DEFINITION_EDIT,
 				params: { testId: savedTest.id },
 			});
 		}
 		toast.showMessage({
-			title: locale.baseText('workflowEvaluation.edit.testSaved'),
+			title: locale.baseText('testDefinition.edit.testSaved'),
 			type: 'success',
 		});
 	} catch (e: unknown) {
-		toast.showError(e, locale.baseText('workflowEvaluation.edit.testSaveFailed'));
+		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));
 	}
 }
 

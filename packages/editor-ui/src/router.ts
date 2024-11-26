@@ -18,8 +18,6 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import EvaluationListView from './views/WorkflowEvaluation/EvaluationListView.vue';
-import EvaluationEditView from './views/WorkflowEvaluation/EvaluationEditView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -59,6 +57,10 @@ const SettingsExternalSecrets = async () => await import('./views/SettingsExtern
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
+const TestDefinitionListView = async () =>
+	await import('./views/TestDefinition/TestDefinitionListView.vue');
+const TestDefinitionEditView = async () =>
+	await import('./views/TestDefinition/TestDefinitionEditView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -253,7 +255,7 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/workflow/:name/evaluation',
-		name: VIEWS.WORKFLOW_EVALUATION,
+		name: VIEWS.TEST_DEFINITION,
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -261,9 +263,9 @@ export const routes: RouteRecordRaw[] = [
 		children: [
 			{
 				path: '',
-				name: VIEWS.WORKFLOW_EVALUATION,
+				name: VIEWS.TEST_DEFINITION,
 				components: {
-					default: EvaluationListView,
+					default: TestDefinitionListView,
 					header: MainHeader,
 					sidebar: MainSidebar,
 				},
@@ -274,9 +276,9 @@ export const routes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'new',
-				name: VIEWS.NEW_WORKFLOW_EVALUATION,
+				name: VIEWS.NEW_TEST_DEFINITION,
 				components: {
-					default: EvaluationEditView,
+					default: TestDefinitionEditView,
 					header: MainHeader,
 					sidebar: MainSidebar,
 				},
@@ -287,9 +289,9 @@ export const routes: RouteRecordRaw[] = [
 			},
 			{
 				path: ':testId',
-				name: VIEWS.WORKFLOW_EVALUATION_EDIT,
+				name: VIEWS.TEST_DEFINITION_EDIT,
 				components: {
-					default: EvaluationEditView,
+					default: TestDefinitionEditView,
 					header: MainHeader,
 					sidebar: MainSidebar,
 				},
@@ -299,30 +301,6 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 		],
-		// children: [
-		// 	{
-		// 		path: '',
-		// 		name: VIEWS.EXECUTION_HOME,
-		// 		components: {
-		// 			executionPreview: WorkflowExecutionsLandingPage,
-		// 		},
-		// 		meta: {
-		// 			keepWorkflowAlive: true,
-		// 			middleware: ['authenticated'],
-		// 		},
-		// 	},
-		// 	{
-		// 		path: ':executionId',
-		// 		name: VIEWS.EXECUTION_PREVIEW,
-		// 		components: {
-		// 			executionPreview: WorkflowExecutionsPreview,
-		// 		},
-		// 		meta: {
-		// 			keepWorkflowAlive: true,
-		// 			middleware: ['authenticated'],
-		// 		},
-		// 	},
-		// ],
 	},
 	{
 		path: '/workflow/:workflowId/history/:versionId?',

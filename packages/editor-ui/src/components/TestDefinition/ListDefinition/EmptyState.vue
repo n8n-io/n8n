@@ -9,11 +9,11 @@ const locale = useI18n();
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
-			<h1>{{ locale.baseText('workflowEvaluation.list.tests') }}</h1>
+			<h1>{{ locale.baseText('testDefinition.list.tests') }}</h1>
 		</div>
 		<n8n-action-box
-			:description="locale.baseText('workflowEvaluation.list.actionDescription')"
-			:button-text="locale.baseText('workflowEvaluation.list.actionButton')"
+			:description="locale.baseText('testDefinition.list.actionDescription')"
+			:button-text="locale.baseText('testDefinition.list.actionButton')"
 			@click:button="$emit('create-test')"
 		/>
 	</div>
@@ -32,6 +32,7 @@ const locale = useI18n();
 	color: var(--color-text-dark);
 	font-size: var(--font-size-l);
 	margin-bottom: var(--spacing-xl);
+
 	h1 {
 		margin: 0;
 	}
