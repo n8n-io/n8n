@@ -1,8 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-
 import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive } from '../GenericFunctions';
+import { handleErrorPostReceive, presendTest } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -37,9 +36,6 @@ export const groupOperations: INodeProperties[] = [
 						//     return await getUserIdForGroup.call(this, requestOptions);
 						//   },
 						// ],
-						body: {
-							groupName: '={{ $parameter["groupName"] }}',
-						},
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -76,7 +72,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroup',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetGroup',
 						},
 						qs: {
 							pageSize:
@@ -191,7 +187,7 @@ const createFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group Name',
-		name: 'groupName',
+		name: 'GroupName',
 		default: '',
 		placeholder: 'e.g. My New Group',
 		description: 'The name of the new group to create',
@@ -204,32 +200,10 @@ const createFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				property: 'groupName',
+				property: 'GroupName',
 				type: 'body',
-				preSend: [
-					async function (
-						this: IExecuteSingleFunctions,
-						requestOptions: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> {
-						const groupName = this.getNodeParameter('groupName') as string;
-						if (groupName.length < 1 || groupName.length > 128) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Group Name must be between 1 and 128 characters.',
-							);
-						}
-
-						// Regex validation
-						if (!/^[\w+=,.@-]+$/.test(groupName)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Group Name contains invalid characters. Allowed characters: [\\w+=,.@-].',
-							);
-						}
-
-						return requestOptions;
-					},
-				],
+				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+				paginate: true,
 			},
 		},
 		type: 'string',
@@ -344,8 +318,8 @@ const deleteFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group',
-		name: 'group',
+		displayName: 'Group Name',
+		name: 'GroupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -359,107 +333,134 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getGroups',
+					searchListMethod: 'listGroups',
 					searchable: true,
 				},
 			},
 			{
-				displayName: 'By ID',
+				displayName: 'By Name',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
+				hint: 'Enter the group name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w+=,.@-]+$',
+							errorMessage: 'The group name must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+				placeholder: 'e.g. Admins',
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				type: 'body',
+				property: 'GroupName',
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'Group',
-		name: 'group',
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
 		default: {
 			mode: 'list',
 			value: '',
 		},
+		description: 'The user pool ID where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['group'],
 				operation: ['get'],
 			},
 		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list', // ToDo: Fix error when selecting this option
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getGroups',
+					searchListMethod: 'searchUserPools',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 			},
 		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['get'],
+		displayName: 'Group Name',
+		name: 'GroupName',
+		required: true,
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		description: 'The name of the group to retrieve',
+		displayOptions: { show: { resource: ['group'], operation: ['get'] } },
+		routing: {
+			send: {
+				type: 'body',
+				property: 'GroupName',
 			},
 		},
-		options: [
+		modes: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields',
-				name: 'select',
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'The fields to add to the output',
-				routing: {
-					send: {
-						property: '$select',
-						type: 'query',
-						value: '={{ $value?.join(",") }}',
-					},
-				},
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
 				typeOptions: {
-					loadOptionsMethod: 'getGroupProperties',
+					searchListMethod: 'listGroups',
+					searchable: true,
 				},
-				type: 'multiOptions',
 			},
 			{
-				displayName: 'Include Members',
-				name: 'includeMembers',
-				default: false,
-				routing: {
-					send: {
-						property: '$expand',
-						type: 'query',
-						value: '={{ $value ? "members" : undefined }}',
+				displayName: 'By Name',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the group name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w+=,.@-]+$',
+							errorMessage: 'The group name must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
 					},
-				},
-				type: 'boolean',
-				validateType: 'boolean',
+				],
+				placeholder: 'e.g. Admins',
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
 	},
 ];
 
@@ -680,8 +681,8 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group',
-		name: 'group',
+		displayName: 'Group Name',
+		name: 'GroupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -699,18 +700,35 @@ const updateFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'getGroups',
+					searchListMethod: 'listGroups',
 					searchable: true,
 				},
 			},
 			{
-				displayName: 'By ID',
+				displayName: 'By Name',
 				name: 'id',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 				type: 'string',
+				hint: 'Enter the group name',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w+=,.@-]+$',
+							errorMessage: 'The group name must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+				placeholder: 'e.g. Admins',
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+				type: 'body',
+				property: 'GroupName',
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -727,32 +745,32 @@ const updateFields: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				property: 'name',
+				property: 'GroupName',
 				type: 'body',
-				preSend: [
-					async function (
-						this: IExecuteSingleFunctions,
-						requestOptions: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> {
-						const groupName = this.getNodeParameter('name') as string;
-						if (groupName.length < 1 || groupName.length > 128) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Group Name must be between 1 and 128 characters.',
-							);
-						}
+				// preSend: [
+				// 	async function (
+				// 		this: IExecuteSingleFunctions,
+				// 		requestOptions: IHttpRequestOptions,
+				// 	): Promise<IHttpRequestOptions> {
+				// 		const GroupName = this.getNodeParameter('name') as string;
+				// 		if (GroupName.length < 1 || GroupName.length > 128) {
+				// 			throw new NodeOperationError(
+				// 				this.getNode(),
+				// 				'Group Name must be between 1 and 128 characters.',
+				// 			);
+				// 		}
 
-						// Regex validation
-						if (!/^[\w+=,.@-]+$/.test(groupName)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Group Name contains invalid characters. Allowed characters: [\\w+=,.@-].',
-							);
-						}
+				// 		// Regex validation
+				// 		if (!/^[\w+=,.@-]+$/.test(GroupName)) {
+				// 			throw new NodeOperationError(
+				// 				this.getNode(),
+				// 				'Group Name contains invalid characters. Allowed characters: [\\w+=,.@-].',
+				// 			);
+				// 		}
 
-						return requestOptions;
-					},
-				],
+				// 		return requestOptions;
+				// 	},
+				// ],
 			},
 		},
 		type: 'string',
