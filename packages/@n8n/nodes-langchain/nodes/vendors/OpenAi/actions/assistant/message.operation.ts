@@ -18,7 +18,7 @@ import {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { promptTypeOptions, textFromPreviousNode } from '../../../../../utils/descriptions';
+import { promptTypeOptions } from '../../../../../utils/descriptions';
 import { getConnectedTools } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
@@ -29,16 +29,6 @@ const properties: INodeProperties[] = [
 	{
 		...promptTypeOptions,
 		name: 'prompt',
-	},
-	{
-		...textFromPreviousNode,
-		disabledOptions: { show: { prompt: ['auto'] } },
-		displayOptions: {
-			show: {
-				prompt: ['auto'],
-				'@version': [{ _cnd: { gte: 1.7 } }],
-			},
-		},
 	},
 	{
 		displayName: 'Text',

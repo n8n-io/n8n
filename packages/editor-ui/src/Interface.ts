@@ -369,6 +369,7 @@ export interface IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
+	createdAt: Date;
 	stoppedAt?: Date;
 	workflowId?: string; // To be able to filter executions easily //
 }

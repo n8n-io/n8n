@@ -8,6 +8,7 @@ import { ref, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useStyles } from '@/composables/useStyles';
 
 const props = defineProps<{
 	isActive?: boolean;
@@ -17,6 +18,7 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
+const { APP_Z_INDEXES } = useStyles();
 
 const DEFAULT_TITLE = i18n.baseText('prompts.npsSurvey.recommendationQuestion');
 const GREAT_FEEDBACK_TITLE = i18n.baseText('prompts.npsSurvey.greatFeedbackTitle');
@@ -123,12 +125,14 @@ watch(
 		:name="NPS_SURVEY_MODAL_KEY"
 		:event-bus="modalBus"
 		:before-close="closeDialog"
-		:modal="false"
+		:modal="true"
 		:wrapper-closable="false"
 		direction="btt"
 		width="120px"
 		class="nps-survey"
 		:class="$style.npsSurvey"
+		:close-on-click-modal="false"
+		:z-index="APP_Z_INDEXES.NPS_SURVEY_MODAL"
 		data-test-id="nps-survey-modal"
 	>
 		<template #header>
