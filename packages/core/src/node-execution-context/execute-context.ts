@@ -1,11 +1,14 @@
 import type {
+	CallbackManager,
 	CloseFunction,
+	ExecutionBaseError,
 	IExecuteData,
+	IExecuteFunctions,
+	IExecuteResponsePromiseData,
 	IGetNodeParameterOptions,
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ISupplyDataFunctions,
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
@@ -15,29 +18,35 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
+import { createAgentStartJob } from '@/Agent';
 // eslint-disable-next-line import/no-cycle
 import {
-	assertBinaryData,
-	constructExecutionMetaData,
-	copyInputItems,
-	getBinaryDataBuffer,
-	getBinaryHelperFunctions,
-	getCheckProcessedHelperFunctions,
-	getFileSystemHelperFunctions,
-	getRequestHelperFunctions,
-	getSSHTunnelFunctions,
-	normalizeItems,
 	returnJsonArray,
+	copyInputItems,
+	normalizeItems,
+	constructExecutionMetaData,
 	getInputConnectionData,
 	addExecutionDataFunctions,
+	assertBinaryData,
+	getBinaryDataBuffer,
+	copyBinaryFile,
+	getRequestHelperFunctions,
+	getBinaryHelperFunctions,
+	getSSHTunnelFunctions,
+	getFileSystemHelperFunctions,
+	getCheckProcessedHelperFunctions,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
 
-export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
-	readonly helpers: ISupplyDataFunctions['helpers'];
+export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
+	readonly helpers: IExecuteFunctions['helpers'];
 
-	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
+	readonly nodeHelpers: IExecuteFunctions['nodeHelpers'];
+
+	readonly getNodeParameter: IExecuteFunctions['getNodeParameter'];
+
+	readonly startJob: IExecuteFunctions['startJob'];
 
 	constructor(
 		workflow: Workflow,
@@ -67,7 +76,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 		this.helpers = {
 			createDeferredPromise,
+			returnJsonArray,
 			copyInputItems,
+			normalizeItems,
+			constructExecutionMetaData,
 			...getRequestHelperFunctions(
 				workflow,
 				node,
@@ -75,18 +87,26 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				runExecutionData,
 				connectionInputData,
 			),
+			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getCheckProcessedHelperFunctions(workflow, node),
+
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+		};
 
-			returnJsonArray,
-			normalizeItems,
-			constructExecutionMetaData,
+		this.nodeHelpers = {
+			copyBinaryFile: async (filePath, fileName, mimeType) =>
+				await copyBinaryFile(
+					this.workflow.id,
+					this.additionalData.executionId!,
+					filePath,
+					fileName,
+					mimeType,
+				),
 		};
 
 		this.getNodeParameter = ((
@@ -101,7 +121,21 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				itemIndex,
 				fallbackValue,
 				options,
-			)) as ISupplyDataFunctions['getNodeParameter'];
+			)) as IExecuteFunctions['getNodeParameter'];
+
+		this.startJob = createAgentStartJob(
+			this.additionalData,
+			this.inputData,
+			this.node,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			this.node.name,
+			this.connectionInputData,
+			{},
+			this.mode,
+			this.executeData,
+		);
 	}
 
 	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
@@ -128,25 +162,48 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			return [];
 		}
 
+		const inputData = this.inputData[inputName];
 		// TODO: Check if nodeType has input with that index defined
-		if (this.inputData[inputName].length < inputIndex) {
+		if (inputData.length < inputIndex) {
 			throw new ApplicationError('Could not get input with given index', {
 				extra: { inputIndex, inputName },
 			});
 		}
 
-		if (this.inputData[inputName][inputIndex] === null) {
+		if (inputData[inputIndex] === null) {
 			throw new ApplicationError('Value of input was not set', {
 				extra: { inputIndex, inputName },
 			});
 		}
 
-		return this.inputData[inputName][inputIndex];
+		return inputData[inputIndex];
+	}
+
+	async putExecutionToWait(waitTill: Date): Promise<void> {
+		this.runExecutionData.waitTill = waitTill;
+		if (this.additionalData.setExecutionStatus) {
+			this.additionalData.setExecutionStatus('waiting');
+		}
+	}
+
+	logNodeOutput(...args: unknown[]): void {
+		if (this.mode === 'manual') {
+			this.sendMessageToUI(...args);
+			return;
+		}
+
+		if (process.env.CODE_ENABLE_STDOUT === 'true') {
+			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+		}
+	}
+
+	async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
+		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 	}
 
 	addInputData(
 		connectionType: NodeConnectionType,
-		data: INodeExecutionData[][],
+		data: INodeExecutionData[][] | ExecutionBaseError,
 	): { index: number } {
 		const nodeName = this.node.name;
 		let currentNodeRunIndex = 0;
@@ -154,7 +211,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			currentNodeRunIndex = this.runExecutionData.resultData.runData[nodeName].length;
 		}
 
-		addExecutionDataFunctions(
+		void addExecutionDataFunctions(
 			'input',
 			nodeName,
 			data,
@@ -166,10 +223,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			currentNodeRunIndex,
 		).catch((error) => {
 			this.logger.warn(
-				`There was a problem logging input data of node "${nodeName}": ${
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					error.message
-				}`,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				`There was a problem logging input data of node "${nodeName}": ${error.message}`,
 			);
 		});
 
@@ -179,7 +234,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	addOutputData(
 		connectionType: NodeConnectionType,
 		currentNodeRunIndex: number,
-		data: INodeExecutionData[][],
+		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
 	): void {
 		const nodeName = this.node.name;
@@ -196,11 +251,13 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			metadata,
 		).catch((error) => {
 			this.logger.warn(
-				`There was a problem logging output data of node "${nodeName}": ${
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					error.message
-				}`,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				`There was a problem logging output data of node "${nodeName}": ${error.message}`,
 			);
 		});
+	}
+
+	getParentCallbackManager(): CallbackManager | undefined {
+		return this.additionalData.parentCallbackManager;
 	}
 }

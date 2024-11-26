@@ -9,6 +9,7 @@ type ExecutionStarted = {
 		workflowId: string;
 		workflowName?: string;
 		retryOf?: string;
+		flattedRunData: string;
 	};
 };
 
