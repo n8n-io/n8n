@@ -22,10 +22,9 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'Execute Workflow Trigger',
+			name: 'Workflow Input Trigger',
 			color: '#ff6d5a',
 		},
-
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
 		properties: [
@@ -52,6 +51,26 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				default: 'worklfow_call',
 			},
 			{
+				displayName: 'Input Source',
+				name: 'inputSource',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Using fields below',
+						value: 'fields',
+						description: 'Provide via UI',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Using JSON',
+						value: 'json',
+						description: 'Provide via JSON schema',
+					},
+				],
+				default: 'fields',
+			},
+			{
 				displayName: 'Workflow Inputs',
 				name: WORKFLOW_INPUTS,
 				placeholder: 'Add Field',
@@ -63,7 +82,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					sortable: true,
 				},
 				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: ['fields'] },
 				},
 				default: {},
 				options: [
@@ -78,6 +97,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								default: '',
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
+								noDataExpression: true,
 							},
 							// {
 							// 	displayName: 'Type',
