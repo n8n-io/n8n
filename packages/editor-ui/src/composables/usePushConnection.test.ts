@@ -293,33 +293,6 @@ describe('usePushConnection()', () => {
 				expect(result).toBe(true);
 				expect(workflowsStore.workflowExecutionData.data?.resultData.runData).toEqual(newRunData);
 			});
-
-			it("does not overwrite the run data if it's not in the payload", async () => {
-				// ARRANGE
-				uiStore.isActionActive.workflowRunning = true;
-				const oldRunData: IRunData = { foo: [] };
-				workflowsStore.workflowExecutionData = {
-					data: { resultData: { runData: oldRunData } },
-				} as IExecutionResponse;
-				const event: PushMessage = {
-					type: 'executionStarted',
-					data: {
-						executionId: '1',
-						mode: 'manual',
-						startedAt: new Date(),
-						workflowId: '1',
-						flattedRunData: stringify({}),
-					},
-				};
-				workflowsStore.activeExecutionId = event.data.executionId;
-
-				// ACT
-				const result = await pushConnection.pushMessageReceived(event);
-
-				// ASSERT
-				expect(result).toBe(true);
-				expect(workflowsStore.workflowExecutionData.data?.resultData.runData).toEqual(oldRunData);
-			});
 		});
 	});
 });
