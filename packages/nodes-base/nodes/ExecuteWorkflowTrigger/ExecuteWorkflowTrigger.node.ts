@@ -177,8 +177,10 @@ export class ExecuteWorkflowTrigger implements INodeType {
 							continue;
 						}
 
-						const result = validateFieldType(name, item.json[name], type);
-						console.log(result);
+						const result = validateFieldType(name, item.json[name], type, {
+							strict: true,
+							parseStrings: true,
+						});
 						if (!result.valid) {
 							if (IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER) {
 								newItem.json[name] = item.json[name];
