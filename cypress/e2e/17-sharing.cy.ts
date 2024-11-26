@@ -88,7 +88,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 1);
-		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowsPage.getters.workflowCardContent('Workflow W1').click();
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
 		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
 		ndv.actions.close();
@@ -104,7 +104,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
-		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowsPage.getters.workflowCardContent('Workflow W1').click();
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
 		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
 		ndv.actions.close();
@@ -133,7 +133,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
-		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowsPage.getters.workflowCardContent('Workflow W1').click();
 		workflowPage.actions.openNode('Notion');
 		ndv.getters
 			.credentialInput()
@@ -144,7 +144,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.waitForLoad();
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard('Workflow W2').click('top');
+		workflowsPage.getters.workflowCardContent('Workflow W2').click('top');
 		workflowPage.actions.executeWorkflow();
 	});
 
@@ -353,7 +353,7 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard(workflowName).click();
+		workflowsPage.getters.workflowCardContent(workflowName).click();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
 		// Only the own credential the shared one (+ the 'Create new' option)
@@ -398,7 +398,7 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard(workflowName).click();
+		workflowsPage.getters.workflowCardContent(workflowName).click();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
 		// Only the personal credentials of the workflow owner and the global owner
