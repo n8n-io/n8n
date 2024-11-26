@@ -418,51 +418,49 @@ export class GraphQL implements INodeType {
 
 				const gqlQuery = this.getNodeParameter('query', itemIndex, '') as string;
 				if (requestMethod === 'GET') {
-					if (!requestOptions.qs) {
-						requestOptions.qs = {};
-					}
+					requestOptions.qs = requestOptions.qs ?? {};
 					requestOptions.qs.query = gqlQuery;
-				} else {
-					if (requestFormat === 'json') {
-						const jsonBody = {
-							...requestOptions.body,
-							query: gqlQuery,
-							variables: this.getNodeParameter('variables', itemIndex, {}) as object,
-							operationName: this.getNodeParameter('operationName', itemIndex) as string,
-						};
-						if (typeof jsonBody.variables === 'string') {
-							try {
-								jsonBody.variables = JSON.parse(jsonBody.variables || '{}');
-							} catch (error) {
-								throw new NodeOperationError(
-									this.getNode(),
-									'Using variables failed:\n' +
-										(jsonBody.variables as string) +
-										'\n\nWith error message:\n' +
-										(error as string),
-									{ itemIndex },
-								);
-							}
-						} else if (
-							typeof jsonBody.variables !== 'object' ||
-							typeof jsonBody.variables !== 'string'
-						) {
+				}
+
+				if (requestFormat === 'json') {
+					const jsonBody = {
+						...requestOptions.body,
+						query: gqlQuery,
+						variables: this.getNodeParameter('variables', itemIndex, {}) as object,
+						operationName: this.getNodeParameter('operationName', itemIndex) as string,
+					};
+					if (typeof jsonBody.variables === 'string') {
+						try {
+							jsonBody.variables = JSON.parse(jsonBody.variables || '{}');
+						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Using variables failed:\n' +
 									(jsonBody.variables as string) +
-									'\n\nGraphQL variables should be either an object or a string:\n',
+									'\n\nWith error message:\n' +
+									(error as string),
 								{ itemIndex },
 							);
 						}
-						if (jsonBody.operationName === '') {
-							jsonBody.operationName = null;
-						}
-						requestOptions.json = true;
-						requestOptions.body = jsonBody;
-					} else {
-						requestOptions.body = gqlQuery;
+					} else if (
+						typeof jsonBody.variables !== 'object' ||
+						typeof jsonBody.variables !== 'string'
+					) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Using variables failed:\n' +
+								(jsonBody.variables as string) +
+								'\n\nGraphQL variables should be either an object or a string:\n',
+							{ itemIndex },
+						);
 					}
+					if (jsonBody.operationName === '') {
+						jsonBody.operationName = null;
+					}
+					requestOptions.json = true;
+					requestOptions.body = jsonBody;
+				} else {
+					requestOptions.body = gqlQuery;
 				}
 
 				let response;
