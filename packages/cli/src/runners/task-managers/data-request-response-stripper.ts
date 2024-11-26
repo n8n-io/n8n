@@ -99,7 +99,7 @@ export class DataRequestResponseStripper {
 		}
 
 		// If a chunk of the input data is requested, we only return that chunk
-		// It is the responsibility of the requested to rebuild the input data
+		// It is the responsibility of the requester to rebuild the input data
 		const chunkInputItems = inputItems.slice(chunk.startIndex, chunk.startIndex + chunk.count);
 		const chunkedInputData: ITaskDataConnections = {
 			...inputData,
