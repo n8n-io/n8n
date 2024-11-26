@@ -141,7 +141,7 @@ export class Code implements INodeType {
 			return sandbox;
 		};
 
-		const items = this.getInputData();
+		const inputDataItems = this.getInputData();
 
 		// ----------------------------------
 		//        runOnceForAllItems
@@ -149,22 +149,22 @@ export class Code implements INodeType {
 
 		if (nodeMode === 'runOnceForAllItems') {
 			const sandbox = getSandbox();
-			let newItems: INodeExecutionData[];
+			let items: INodeExecutionData[];
 			try {
-				newItems = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
+				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
 				if (!this.continueOnFail()) {
 					set(error, 'node', node);
 					throw error;
 				}
-				newItems = [{ json: { error: error.message } }];
+				items = [{ json: { error: error.message } }];
 			}
 
-			for (const item of newItems) {
+			for (const item of items) {
 				standardizeOutput(item.json);
 			}
 
-			return addPostExecutionWarning(newItems, items?.length);
+			return addPostExecutionWarning(items, inputDataItems?.length);
 		}
 
 		// ----------------------------------
@@ -173,7 +173,7 @@ export class Code implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
-		for (let index = 0; index < items.length; index++) {
+		for (let index = 0; index < inputDataItems.length; index++) {
 			const sandbox = getSandbox(index);
 			let result: INodeExecutionData | undefined;
 			try {
@@ -200,6 +200,6 @@ export class Code implements INodeType {
 			}
 		}
 
-		return addPostExecutionWarning(returnData, items?.length);
+		return addPostExecutionWarning(returnData, inputDataItems?.length);
 	}
 }

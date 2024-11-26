@@ -26,6 +26,13 @@ describe('addPostExecutionWarning', () => {
 		const result = addPostExecutionWarning(returnData, inputItemsLength);
 
 		expect(result).toBeInstanceOf(NodeExecutionOutput);
+		expect((result as NodeExecutionOutput)?.getHints()).toEqual([
+			{
+				message:
+					'To make sure expressions after this node work, return the input items that produced each output item. <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">More info</a>',
+				location: 'ndv',
+			},
+		]);
 	});
 
 	it('should return returnData array when all items match inputItemsLength and have defined pairedItem', () => {
