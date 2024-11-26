@@ -14,9 +14,9 @@ export async function getWorkflowInputs(
 		id: col,
 		displayName: col,
 		required: false,
-		defaultMatch: col === 'id',
+		defaultMatch: true,
 		display: true,
-		type: 'string',
+		type: 'number',
 		canBeUsedToMatch: true,
 	}));
 
