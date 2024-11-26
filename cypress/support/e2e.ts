@@ -25,6 +25,8 @@ beforeEach(() => {
 		if (nodeViewVersion) {
 			win.localStorage.setItem('NodeView.version', nodeViewVersion);
 		}
+		win.localStorage.setItem('NodeView.migrated', 'true');
+		win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
 	});
 
 	cy.intercept('GET', '/rest/settings', (req) => {
