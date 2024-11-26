@@ -1,18 +1,11 @@
-import {
-	Column,
-	Entity,
-	Generated,
-	Index,
-	ManyToOne,
-	PrimaryColumn,
-	RelationId,
-} from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
+import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
-import { WithTimestamps } from './abstract-entity';
+import { WithTimestampsAndStringId } from './abstract-entity';
 
 /**
  * Entity representing a Test Definition
@@ -24,16 +17,15 @@ import { WithTimestamps } from './abstract-entity';
 @Entity()
 @Index(['workflow'])
 @Index(['evaluationWorkflow'])
-export class TestDefinition extends WithTimestamps {
-	@Generated()
-	@PrimaryColumn()
-	id: number;
-
+export class TestDefinition extends WithTimestampsAndStringId {
 	@Column({ length: 255 })
 	@Length(1, 255, {
 		message: 'Test definition name must be $constraint1 to $constraint2 characters long.',
 	})
 	name: string;
+
+	@Column('text')
+	description: string;
 
 	/**
 	 * Relation to the workflow under test
@@ -62,4 +54,7 @@ export class TestDefinition extends WithTimestamps {
 
 	@RelationId((test: TestDefinition) => test.annotationTag)
 	annotationTagId: string;
+
+	@OneToMany('TestMetric', 'testDefinition')
+	metrics: TestMetric[];
 }

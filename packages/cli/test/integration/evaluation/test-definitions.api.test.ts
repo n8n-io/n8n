@@ -163,9 +163,36 @@ describe('POST /evaluation/test-definitions', () => {
 		});
 
 		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data.name).toBe('test');
-		expect(resp.body.data.workflowId).toBe(workflowUnderTest.id);
-		expect(resp.body.data.evaluationWorkflowId).toBe(evaluationWorkflow.id);
+		expect(resp.body.data).toEqual(
+			expect.objectContaining({
+				name: 'test',
+				workflowId: workflowUnderTest.id,
+				evaluationWorkflowId: evaluationWorkflow.id,
+			}),
+		);
+	});
+
+	test('should create test definition with all fields', async () => {
+		const resp = await authOwnerAgent.post('/evaluation/test-definitions').send({
+			name: 'test',
+			description: 'test description',
+			workflowId: workflowUnderTest.id,
+			evaluationWorkflowId: evaluationWorkflow.id,
+			annotationTagId: annotationTag.id,
+		});
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual(
+			expect.objectContaining({
+				name: 'test',
+				description: 'test description',
+				workflowId: workflowUnderTest.id,
+				evaluationWorkflowId: evaluationWorkflow.id,
+				annotationTag: expect.objectContaining({
+					id: annotationTag.id,
+				}),
+			}),
+		);
 	});
 
 	test('should return error if name is empty', async () => {

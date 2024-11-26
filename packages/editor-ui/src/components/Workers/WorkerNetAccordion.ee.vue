@@ -27,7 +27,7 @@ function onCopyToClipboard(content: string) {
 <template>
 	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
 		<template #title>
-			{{ $locale.baseText('workerList.item.netListTitle') }} ({{ items.length }})
+			{{ i18n.baseText('workerList.item.netListTitle') }} ({{ items.length }})
 		</template>
 		<template #content>
 			<div v-if="props.items.length > 0" :class="$style.accordionItems">

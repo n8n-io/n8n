@@ -484,6 +484,7 @@ export interface ISourceDataConnections {
 
 export interface IExecuteData {
 	data: ITaskDataConnections;
+	metadata?: ITaskMetadata;
 	node: INode;
 	source: ITaskDataConnectionsSource | null;
 }
@@ -936,6 +937,7 @@ export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
+	setMetadata(metadata: ITaskMetadata): void;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -953,7 +955,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
 			parentCallbackManager?: CallbackManager,
-		): Promise<any>;
+			options?: {
+				doNotWaitToFinish?: boolean;
+				parentExecution?: RelatedExecution;
+			},
+		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
 			inputName: NodeConnectionType,
 			itemIndex: number,
@@ -976,6 +982,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			connectionType: NodeConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
+			metadata?: ITaskMetadata,
 		): void;
 
 		nodeHelpers: NodeHelperFunctions;
@@ -1208,6 +1215,9 @@ export interface INodeExecutionData {
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	metadata?: {
+		subExecution: RelatedExecution;
+	};
 	index?: number;
 }
 
@@ -1543,6 +1553,11 @@ export interface ITriggerResponse {
 	// Gets added automatically at manual workflow runs resolves with
 	// the first emitted data
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
+}
+
+export interface ExecuteWorkflowData {
+	executionId: string;
+	data: Array<INodeExecutionData[] | null>;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2133,8 +2148,16 @@ export interface ITaskSubRunMetadata {
 	runIndex: number;
 }
 
+export interface RelatedExecution {
+	executionId: string;
+	workflowId: string;
+}
+
 export interface ITaskMetadata {
 	subRun?: ITaskSubRunMetadata[];
+	parentExecution?: RelatedExecution;
+	subExecution?: RelatedExecution;
+	subExecutionsCount?: number;
 }
 
 // The data that gets returned when a node runs
@@ -2261,6 +2284,8 @@ export interface ExecuteWorkflowOptions {
 	loadedRunData?: IWorkflowExecutionDataProcess;
 	parentWorkflowSettings?: IWorkflowSettings;
 	parentCallbackManager?: CallbackManager;
+	doNotWaitToFinish?: boolean;
+	parentExecution?: RelatedExecution;
 }
 
 export type AiEvent =
@@ -2294,7 +2319,7 @@ export interface IWorkflowExecuteAdditionalData {
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
-	) => Promise<any>;
+	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
@@ -2566,7 +2591,7 @@ export interface ExecutionSummary {
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
 	waitTill?: Date;
-	createdAt?: Date;
+	createdAt: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;

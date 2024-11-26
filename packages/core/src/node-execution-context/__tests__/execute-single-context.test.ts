@@ -17,6 +17,7 @@ import type {
 	IContextObject,
 	ICredentialDataDecryptedObject,
 	ISourceData,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 
@@ -296,6 +297,23 @@ describe('ExecuteSingleContext', () => {
 				workflowId: workflow.id,
 				msg,
 			});
+		});
+	});
+
+	describe('setMetadata', () => {
+		it('sets metadata on execution data', () => {
+			const metadata: ITaskMetadata = {
+				subExecution: {
+					workflowId: '123',
+					executionId: 'xyz',
+				},
+			};
+
+			expect(executeSingleContext.getExecuteData().metadata?.subExecution).toEqual(undefined);
+			executeSingleContext.setMetadata(metadata);
+			expect(executeSingleContext.getExecuteData().metadata?.subExecution).toEqual(
+				metadata.subExecution,
+			);
 		});
 	});
 });

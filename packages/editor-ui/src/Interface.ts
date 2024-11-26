@@ -182,6 +182,10 @@ export interface IAiDataContent {
 	metadata: {
 		executionTime: number;
 		startTime: number;
+		subExecution?: {
+			workflowId: string;
+			executionId: string;
+		};
 	};
 }
 
@@ -202,6 +206,10 @@ export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
+	metadata: {
+		hasExecutionIds: boolean;
+		data: Array<INodeExecutionData['metadata'] | undefined>;
+	};
 }
 
 // Simple version of n8n-workflow.Workflow
@@ -229,6 +237,10 @@ export interface IWorkflowDataUpdate {
 	pinData?: IPinData;
 	versionId?: string;
 	meta?: WorkflowMetadata;
+}
+
+export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
+	projectId?: string;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -357,6 +369,7 @@ export interface IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
+	createdAt: Date;
 	stoppedAt?: Date;
 	workflowId?: string; // To be able to filter executions easily //
 }
@@ -392,15 +405,10 @@ export interface IExecutionsListResponse {
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
-	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
-	retryOf?: string | null;
-	retrySuccessId?: string | null;
 	startedAt: Date;
-	stoppedAt?: Date;
 	workflowId: string;
-	workflowName?: string;
 }
 
 export interface IExecutionsStopData {
@@ -839,14 +847,12 @@ export interface IUsedCredential {
 }
 
 export interface WorkflowsState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeWorkflowExecution: ExecutionSummary | null;
 	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
-	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
@@ -1083,11 +1089,6 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
-export interface IWorkflowsState {
-	currentWorkflowExecutions: ExecutionSummary[];
-	activeWorkflowExecution: ExecutionSummary | null;
-	finishedExecutionsCount: number;
-}
 export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }

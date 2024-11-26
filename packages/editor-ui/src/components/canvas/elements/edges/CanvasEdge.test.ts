@@ -30,7 +30,11 @@ beforeEach(() => {
 
 describe('CanvasEdge', () => {
 	it('should emit delete event when toolbar delete is clicked', async () => {
-		const { emitted, getByTestId } = renderComponent();
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				hovered: true,
+			},
+		});
 		await userEvent.hover(getByTestId('edge-label-wrapper'));
 		const deleteButton = getByTestId('delete-connection-button');
 
@@ -40,7 +44,11 @@ describe('CanvasEdge', () => {
 	});
 
 	it('should emit add event when toolbar add is clicked', async () => {
-		const { emitted, getByTestId } = renderComponent();
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				hovered: true,
+			},
+		});
 		await userEvent.hover(getByTestId('edge-label-wrapper'));
 
 		const addButton = getByTestId('add-connection-button');
@@ -120,11 +128,15 @@ describe('CanvasEdge', () => {
 			},
 		});
 
-		const edge = container.querySelector('.vue-flow__edge-path');
+		const edges = container.querySelectorAll('.vue-flow__edge-path');
 
-		expect(edge).toHaveAttribute(
+		expect(edges[0]).toHaveAttribute(
 			'd',
-			'M0 0L 24,0Q 40,0 40,16L 40,124Q 40,140 24,140L1 140L0 140M0 140L-40 140L -124,140Q -140,140 -140,124L -140,-84Q -140,-100 -124,-100L-100 -100',
+			'M0 0L 24,0Q 40,0 40,16L 40,114Q 40,130 24,130L-10 130L-50 130',
+		);
+		expect(edges[1]).toHaveAttribute(
+			'd',
+			'M-50 130L-90 130L -124,130Q -140,130 -140,114L -140,-84Q -140,-100 -124,-100L-100 -100',
 		);
 	});
 

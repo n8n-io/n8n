@@ -36,7 +36,6 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('renders placeholder UI', () => {
-		cy.viewport(1920, 1080);
 		aiAssistant.getters.askAssistantFloatingButton().should('be.visible');
 		aiAssistant.getters.askAssistantFloatingButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
@@ -558,6 +557,8 @@ describe('General help', () => {
 		}).as('chatRequest');
 
 		aiAssistant.getters.askAssistantFloatingButton().click();
+		wf.getters.zoomToFitButton().click();
+
 		aiAssistant.actions.sendMessage('What is wrong with this workflow?');
 		cy.wait('@chatRequest');
 

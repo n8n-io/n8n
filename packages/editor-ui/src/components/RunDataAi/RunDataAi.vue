@@ -8,6 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
 import { ElTree } from 'element-plus';
+import { useI18n } from '@/composables/useI18n';
 
 interface AIResult {
 	node: string;
@@ -32,6 +33,9 @@ const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const selectedRun: Ref<IAiData[]> = ref([]);
+
+const i18n = useI18n();
+
 function isTreeNodeSelected(node: TreeNode) {
 	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
 }
@@ -60,6 +64,7 @@ function getReferencedData(
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
+					subExecution: taskData.metadata?.subExecution,
 				},
 			});
 		});
@@ -259,7 +264,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 				<div v-if="selectedRun.length === 0" :class="$style.empty">
 					<n8n-text size="large">
 						{{
-							$locale.baseText('ndv.output.ai.empty', {
+							i18n.baseText('ndv.output.ai.empty', {
 								interpolate: {
 									node: props.node.name,
 								},
@@ -276,7 +281,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 				</div>
 			</div>
 		</template>
-		<div v-else :class="$style.noData">{{ $locale.baseText('ndv.output.ai.waiting') }}</div>
+		<div v-else :class="$style.noData">{{ i18n.baseText('ndv.output.ai.waiting') }}</div>
 	</div>
 </template>
 

@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/dom';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestProject } from '@/__tests__/data/projects';
@@ -29,6 +30,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
+			N8nNavigationDropdown: true,
 		},
 	},
 });
@@ -41,6 +43,8 @@ describe('ProjectHeader', () => {
 		createTestingPinia();
 		route = useRoute();
 		projectsStore = mockedStore(useProjectsStore);
+
+		projectsStore.teamProjectsLimit = -1;
 	});
 
 	afterEach(() => {
@@ -62,19 +66,37 @@ describe('ProjectHeader', () => {
 		expect(container.querySelector('.fa-layer-group')).toBeVisible();
 	});
 
-	it('should render the correct title', async () => {
-		const { getByText, rerender } = renderComponent();
+	it('should render the correct title and subtitle', async () => {
+		const { getByText, queryByText, rerender } = renderComponent();
+		const subtitle = 'All the workflows, credentials and executions you have access to';
 
-		expect(getByText('Home')).toBeVisible();
+		expect(getByText('Overview')).toBeVisible();
+		expect(getByText(subtitle)).toBeVisible();
 
 		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
 		await rerender({});
 		expect(getByText('Personal')).toBeVisible();
+		expect(queryByText(subtitle)).not.toBeInTheDocument();
 
 		const projectName = 'My Project';
 		projectsStore.currentProject = { name: projectName } as Project;
 		await rerender({});
 		expect(getByText(projectName)).toBeVisible();
+		expect(queryByText(subtitle)).not.toBeInTheDocument();
+	});
+
+	it('should overwrite default subtitle with slot', () => {
+		const defaultSubtitle = 'All the workflows, credentials and executions you have access to';
+		const subtitle = 'Custom subtitle';
+
+		const { getByText, queryByText } = renderComponent({
+			slots: {
+				subtitle,
+			},
+		});
+
+		expect(getByText(subtitle)).toBeVisible();
+		expect(queryByText(defaultSubtitle)).not.toBeInTheDocument();
 	});
 
 	it('should render ProjectTabs Settings if project is team project and user has update scope', () => {
@@ -105,9 +127,10 @@ describe('ProjectHeader', () => {
 
 	it('should render ProjectTabs without Settings if project is not team project', () => {
 		route.params.projectId = '123';
-		projectsStore.currentProject = createTestProject(
-			createTestProject({ type: ProjectTypes.Personal, scopes: ['project:update'] }),
-		);
+		projectsStore.currentProject = createTestProject({
+			type: ProjectTypes.Personal,
+			scopes: ['project:update'],
+		});
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
@@ -116,5 +139,24 @@ describe('ProjectHeader', () => {
 			},
 			null,
 		);
+	});
+
+	test.each([
+		[null, 'Create'],
+		[createTestProject({ type: ProjectTypes.Personal }), 'Create in personal'],
+		[createTestProject({ type: ProjectTypes.Team }), 'Create in project'],
+	])('in project %s should render correct create button label %s', (project, label) => {
+		projectsStore.currentProject = project;
+		const { getByTestId } = renderComponent({
+			global: {
+				stubs: {
+					N8nNavigationDropdown: {
+						template: '<div><slot></slot></div>',
+					},
+				},
+			},
+		});
+
+		expect(within(getByTestId('resource-add')).getByRole('button', { name: label })).toBeVisible();
 	});
 });

@@ -37,7 +37,7 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 		return { testDefinitions, count };
 	}
 
-	async getOne(id: number, accessibleWorkflowIds: string[]) {
+	async getOne(id: string, accessibleWorkflowIds: string[]) {
 		return await this.findOne({
 			where: {
 				id,
@@ -45,11 +45,11 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 					id: In(accessibleWorkflowIds),
 				},
 			},
-			relations: ['annotationTag'],
+			relations: ['annotationTag', 'metrics'],
 		});
 	}
 
-	async deleteById(id: number, accessibleWorkflowIds: string[]) {
+	async deleteById(id: string, accessibleWorkflowIds: string[]) {
 		return await this.delete({
 			id,
 			workflow: {

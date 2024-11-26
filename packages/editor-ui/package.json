@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.68.0",
+  "version": "1.69.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -56,7 +56,7 @@
     "esprima-next": "5.8.4",
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
-    "flatted": "^3.2.4",
+    "flatted": "catalog:",
     "highlight.js": "catalog:frontend",
     "humanize-duration": "^3.27.2",
     "jsonpath": "^1.1.1",

@@ -13,6 +13,7 @@ import type {
 	ContextType,
 	AiEvent,
 	ISourceData,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -83,6 +84,13 @@ export class ExecuteSingleContext extends NodeExecutionContext implements IExecu
 			handler();
 		};
 		this.abortSignal?.addEventListener('abort', fn);
+	}
+
+	setMetadata(metadata: ITaskMetadata): void {
+		this.executeData.metadata = {
+			...(this.executeData.metadata ?? {}),
+			...metadata,
+		};
 	}
 
 	continueOnFail() {

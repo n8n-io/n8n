@@ -1,6 +1,8 @@
+import { stringify } from 'flatted';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
+import type { ITaskData, WorkflowOperationError } from 'n8n-workflow';
 
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -8,7 +10,6 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables/useToast';
-import type { WorkflowOperationError } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -58,6 +59,7 @@ describe('usePushConnection()', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+		pushConnection.pushMessageQueue.value = [];
 	});
 
 	describe('initialize()', () => {
@@ -135,30 +137,28 @@ describe('usePushConnection()', () => {
 		});
 
 		describe('executionFinished', () => {
+			const executionId = '1';
+			const workflowId = 'abc';
+
+			beforeEach(() => {
+				workflowsStore.activeExecutionId = executionId;
+				uiStore.isActionActive.workflowRunning = true;
+			});
+
 			it('should handle executionFinished event correctly', async () => {
-				const event: PushMessage = {
+				const result = await pushConnection.pushMessageReceived({
 					type: 'executionFinished',
 					data: {
-						executionId: '1',
-						data: {
-							data: {
-								resultData: {
-									runData: {},
-								},
+						executionId,
+						workflowId,
+						status: 'success',
+						rawData: stringify({
+							resultData: {
+								runData: {},
 							},
-							finished: true,
-							mode: 'manual',
-							startedAt: new Date(),
-							stoppedAt: new Date(),
-							status: 'success',
-						},
+						}),
 					},
-				};
-
-				workflowsStore.activeExecutionId = '1';
-				uiStore.isActionActive.workflowRunning = true;
-
-				const result = await pushConnection.pushMessageReceived(event);
+				});
 
 				expect(result).toBeTruthy();
 				expect(workflowsStore.workflowExecutionData).toBeDefined();
@@ -171,37 +171,29 @@ describe('usePushConnection()', () => {
 			});
 
 			it('should handle isManualExecutionCancelled correctly', async () => {
-				const event: PushMessage = {
+				const result = await pushConnection.pushMessageReceived({
 					type: 'executionFinished',
 					data: {
-						executionId: '1',
-						data: {
-							data: {
-								startData: {},
-								resultData: {
-									runData: {
-										'Last Node': [],
-									},
-									lastNodeExecuted: 'Last Node',
-									error: {
-										message:
-											'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
-										name: 'NodeApiError',
-										node: 'Last Node',
-									} as unknown as WorkflowOperationError,
+						executionId,
+						workflowId,
+						status: 'error',
+						rawData: stringify({
+							startData: {},
+							resultData: {
+								runData: {
+									'Last Node': [],
 								},
+								lastNodeExecuted: 'Last Node',
+								error: {
+									message:
+										'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
+									name: 'NodeApiError',
+									node: 'Last Node',
+								} as unknown as WorkflowOperationError,
 							},
-							startedAt: new Date(),
-							mode: 'manual',
-							status: 'running',
-						},
+						}),
 					},
-				};
-
-				workflowsStore.activeExecutionId = '1';
-				uiStore.isActionActive['workflowRunning'] = true;
-
-				const result = await pushConnection.pushMessageReceived(event);
+				});
 
 				expect(useToast().showMessage).toHaveBeenCalledWith({
 					message:
@@ -215,6 +207,33 @@ describe('usePushConnection()', () => {
 				expect(result).toBeTruthy();
 				expect(workflowsStore.workflowExecutionData).toBeDefined();
 				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
+			});
+		});
+
+		describe('nodeExecuteAfter', async () => {
+			it("enqueues messages if we don't have the active execution id yet", async () => {
+				uiStore.isActionActive.workflowRunning = true;
+				const event: PushMessage = {
+					type: 'nodeExecuteAfter',
+					data: {
+						executionId: '1',
+						nodeName: 'foo',
+						data: {} as ITaskData,
+					},
+				};
+
+				expect(pushConnection.retryTimeout.value).toBeNull();
+				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
+
+				const result = await pushConnection.pushMessageReceived(event);
+
+				expect(result).toBe(false);
+				expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
+				expect(pushConnection.pushMessageQueue.value).toContainEqual({
+					message: event,
+					retriesLeft: 5,
+				});
+				expect(pushConnection.retryTimeout).not.toBeNull();
 			});
 		});
 	});

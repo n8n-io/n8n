@@ -5,9 +5,10 @@ import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import Container from 'typedi';
 
+import { Time } from '@/constants';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -47,8 +48,12 @@ describe('OAuth1CredentialController', () => {
 
 	const controller = Container.get(OAuth1CredentialController);
 
+	const timestamp = 1706750625678;
+	jest.useFakeTimers({ advanceTimers: true });
+
 	beforeEach(() => {
-		jest.resetAllMocks();
+		jest.setSystemTime(new Date(timestamp));
+		jest.clearAllMocks();
 	});
 
 	describe('getAuthUri', () => {
@@ -76,13 +81,15 @@ describe('OAuth1CredentialController', () => {
 			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				authUrl: 'https://example.domain/oauth/authorize',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
 				signatureMethod: 'HMAC-SHA1',
 			});
 			nock('https://example.domain')
 				.post('/oauth/request_token', {
 					oauth_callback:
-						'http://localhost:5678/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSJ9',
+						'http://localhost:5678/rest/oauth1-credential/callback?state=eyJ0b2tlbiI6InRva2VuIiwiY2lkIjoiMSIsImNyZWF0ZWRBdCI6MTcwNjc1MDYyNTY3OCwidXNlcklkIjoiMTIzIn0=',
 				})
+				.once()
 				.reply(200, { oauth_token: 'random-token' });
 			cipher.encrypt.mockReturnValue('encrypted');
 
@@ -107,14 +114,23 @@ describe('OAuth1CredentialController', () => {
 			JSON.stringify({
 				token: 'token',
 				cid: '1',
+				createdAt: timestamp,
 			}),
 		).toString('base64');
 
+		const res = mock<Response>();
+		const req = mock<OAuthRequest.OAuth1Credential.Callback>({
+			query: {
+				oauth_verifier: 'verifier',
+				oauth_token: 'token',
+				state: validState,
+			},
+		});
+
 		it('should render the error page when required query params are missing', async () => {
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = { state: 'test' } as OAuthRequest.OAuth1Credential.Callback['query'];
-			await controller.handleCallback(req, res);
+			const invalidReq = mock<OAuthRequest.OAuth1Credential.Callback>();
+			invalidReq.query = { state: 'test' } as OAuthRequest.OAuth1Credential.Callback['query'];
+			await controller.handleCallback(invalidReq, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
@@ -126,14 +142,14 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should render the error page when `state` query param is invalid', async () => {
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: 'test',
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
-			await controller.handleCallback(req, res);
+			const invalidReq = mock<OAuthRequest.OAuth1Credential.Callback>({
+				query: {
+					oauth_verifier: 'verifier',
+					oauth_token: 'token',
+					state: 'test',
+				},
+			});
+			await controller.handleCallback(invalidReq, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
@@ -146,18 +162,11 @@ describe('OAuth1CredentialController', () => {
 		it('should render the error page when credential is not found in DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValueOnce(null);
 
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: validState,
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'OAuth1 callback failed because of insufficient permissions',
+					message: 'OAuth callback failed because of insufficient permissions',
 				},
 			});
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
@@ -165,24 +174,67 @@ describe('OAuth1CredentialController', () => {
 		});
 
 		it('should render the error page when state differs from the stored state in the credential', async () => {
-			credentialsRepository.findOneBy.mockResolvedValue(new CredentialsEntity());
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret: 'invalid' });
-
-			const req = mock<OAuthRequest.OAuth1Credential.Callback>();
-			const res = mock<Response>();
-			req.query = {
-				oauth_verifier: 'verifier',
-				oauth_token: 'token',
-				state: validState,
-			} as OAuthRequest.OAuth1Credential.Callback['query'];
 
 			await controller.handleCallback(req, res);
 
 			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
 				error: {
-					message: 'The OAuth1 callback state is invalid!',
+					message: 'The OAuth callback state is invalid!',
 				},
 			});
+		});
+
+		it('should render the error page when state is older than 5 minutes', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
+			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+
+			jest.advanceTimersByTime(10 * Time.minutes.toMilliseconds);
+
+			await controller.handleCallback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'The OAuth callback state is invalid!',
+				},
+			});
+		});
+
+		it('should exchange the code for a valid token, and save it to DB', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(credential);
+			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
+			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA1',
+			});
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post('/oauth/access_token', {
+					oauth_token: 'token',
+					oauth_verifier: 'verifier',
+				})
+				.once()
+				.reply(200, 'access_token=new_token');
+			cipher.encrypt.mockReturnValue('encrypted');
+
+			await controller.handleCallback(req, res);
+
+			expect(cipher.encrypt).toHaveBeenCalledWith({
+				oauthTokenData: { access_token: 'new_token' },
+			});
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: 'encrypted',
+					id: '1',
+					name: 'Test Credential',
+					type: 'oAuth1Api',
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 	});
 });
