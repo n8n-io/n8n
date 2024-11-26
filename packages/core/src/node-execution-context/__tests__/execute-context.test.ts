@@ -14,12 +14,12 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, ExpressionError } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
-import { SupplyDataContext } from '../supply-data-context';
+import { ExecuteContext } from '../execute-context';
 
-describe('SupplyDataContext', () => {
+describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
 	const nodeType = mock<INodeType>({
 		description: {
@@ -50,6 +50,7 @@ describe('SupplyDataContext', () => {
 	});
 	node.parameters = {
 		testParameter: 'testValue',
+		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
@@ -62,7 +63,7 @@ describe('SupplyDataContext', () => {
 	const closeFn = jest.fn();
 	const abortSignal = mock<AbortSignal>();
 
-	const supplyDataContext = new SupplyDataContext(
+	const executeContext = new ExecuteContext(
 		workflow,
 		node,
 		additionalData,
@@ -81,7 +82,7 @@ describe('SupplyDataContext', () => {
 		expression.getParameterValue.mockImplementation((value) => value);
 	});
 
-	describeCommonTests(supplyDataContext, {
+	describeCommonTests(executeContext, {
 		abortSignal,
 		node,
 		workflow,
@@ -100,24 +101,24 @@ describe('SupplyDataContext', () => {
 		it('should return the input data correctly', () => {
 			const expectedData = [{ json: { test: 'data' } }];
 
-			expect(supplyDataContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(executeContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
 		});
 
 		it('should return an empty array if the input name does not exist', () => {
 			const inputName = 'nonExistent';
-			expect(supplyDataContext.getInputData(inputIndex, inputName)).toEqual([]);
+			expect(executeContext.getInputData(inputIndex, inputName)).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
 			const inputIndex = 2;
 
-			expect(() => supplyDataContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
+			expect(() => executeContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
 		});
 
 		it('should throw an error if the input index was not set', () => {
 			inputData.main[inputIndex] = null;
 
-			expect(() => supplyDataContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
+			expect(() => executeContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
 		});
 	});
 
@@ -127,16 +128,50 @@ describe('SupplyDataContext', () => {
 			expression.getParameterValue.mockImplementation((value) => value);
 		});
 
+		it('should throw if parameter is not defined on the node.parameters', () => {
+			expect(() => executeContext.getNodeParameter('invalidParameter', 0)).toThrow(
+				'Could not get parameter',
+			);
+		});
+
+		it('should return null if the parameter exists but has a null value', () => {
+			const parameter = executeContext.getNodeParameter('nullParameter', 0);
+
+			expect(parameter).toBeNull();
+		});
+
 		it('should return parameter value when it exists', () => {
-			const parameter = supplyDataContext.getNodeParameter('testParameter', 0);
+			const parameter = executeContext.getNodeParameter('testParameter', 0);
 
 			expect(parameter).toBe('testValue');
 		});
 
 		it('should return the fallback value when the parameter does not exist', () => {
-			const parameter = supplyDataContext.getNodeParameter('otherParameter', 0, 'fallback');
+			const parameter = executeContext.getNodeParameter('otherParameter', 0, 'fallback');
 
 			expect(parameter).toBe('fallback');
+		});
+
+		it('should handle expression evaluation errors', () => {
+			const error = new ExpressionError('Invalid expression');
+			expression.getParameterValue.mockImplementationOnce(() => {
+				throw error;
+			});
+
+			expect(() => executeContext.getNodeParameter('testParameter', 0)).toThrow(error);
+			expect(error.context.parameter).toEqual('testParameter');
+		});
+
+		it('should handle expression errors on Set nodes (Ticket #PAY-684)', () => {
+			node.type = 'n8n-nodes-base.set';
+			node.continueOnFail = true;
+
+			expression.getParameterValue.mockImplementationOnce(() => {
+				throw new ExpressionError('Invalid expression');
+			});
+
+			const parameter = executeContext.getNodeParameter('testParameter', 0);
+			expect(parameter).toEqual([{ name: undefined, value: undefined }]);
 		});
 	});
 
@@ -145,7 +180,7 @@ describe('SupplyDataContext', () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
 
-			const credentials = await supplyDataContext.getCredentials<ICredentialDataDecryptedObject>(
+			const credentials = await executeContext.getCredentials<ICredentialDataDecryptedObject>(
 				testCredentialType,
 				0,
 			);
@@ -154,9 +189,15 @@ describe('SupplyDataContext', () => {
 		});
 	});
 
+	describe('getExecuteData', () => {
+		it('should return the execute data correctly', () => {
+			expect(executeContext.getExecuteData()).toEqual(executeData);
+		});
+	});
+
 	describe('getWorkflowDataProxy', () => {
 		it('should return the workflow data proxy correctly', () => {
-			const workflowDataProxy = supplyDataContext.getWorkflowDataProxy(0);
+			const workflowDataProxy = executeContext.getWorkflowDataProxy(0);
 			expect(workflowDataProxy.isProxy).toBe(true);
 			expect(Object.keys(workflowDataProxy.$input)).toEqual([
 				'all',
