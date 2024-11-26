@@ -248,6 +248,7 @@ describe('usePushConnection()', () => {
 						mode: 'manual',
 						startedAt: new Date(),
 						workflowId: '1',
+						flattedRunData: stringify({}),
 					},
 				};
 
@@ -307,6 +308,7 @@ describe('usePushConnection()', () => {
 						mode: 'manual',
 						startedAt: new Date(),
 						workflowId: '1',
+						flattedRunData: stringify({}),
 					},
 				};
 				workflowsStore.activeExecutionId = event.data.executionId;
