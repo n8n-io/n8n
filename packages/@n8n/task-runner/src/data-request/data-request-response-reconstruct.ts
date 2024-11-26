@@ -8,7 +8,7 @@ import type { DataRequestResponse, InputDataChunkDefinition } from '@/runner-typ
  */
 export class DataRequestResponseReconstruct {
 	/**
-	 * Reconstructs `connectionInputData` from a DataRequestResponse
+	 * Reconstructs `inputData` from a DataRequestResponse
 	 */
 	reconstructConnectionInputItems(
 		inputData: DataRequestResponse['inputData'],
