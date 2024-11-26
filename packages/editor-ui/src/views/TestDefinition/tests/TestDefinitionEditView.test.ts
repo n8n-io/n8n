@@ -8,7 +8,6 @@ import { useToast } from '@/composables/useToast';
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { ref, nextTick } from 'vue';
-import { VIEWS } from '@/constants';
 
 vi.mock('vue-router');
 vi.mock('@/composables/useToast');
