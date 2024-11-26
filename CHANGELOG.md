@@ -1,3 +1,14 @@
+## [1.68.1](https://github.com/n8n-io/n8n/compare/n8n@1.68.0...n8n@1.68.1) (2024-11-26)
+
+
+### Bug Fixes
+
+* **core:** Fix broken execution query when using projectId ([#11852](https://github.com/n8n-io/n8n/issues/11852)) ([0ef9c3c](https://github.com/n8n-io/n8n/commit/0ef9c3c6846e63a691e5b60a6f829ac14b4873f2))
+* **editor:** Fix AI assistant loading message layout ([#11819](https://github.com/n8n-io/n8n/issues/11819)) ([830f68a](https://github.com/n8n-io/n8n/commit/830f68a96004418a8c79a6f710712b94d94fa0af))
+* **editor:** Restore workers view ([#11876](https://github.com/n8n-io/n8n/issues/11876)) ([66403ce](https://github.com/n8n-io/n8n/commit/66403cefc53750b0992220b3b14654bf1b52e16d))
+
+
+
 # [1.68.0](https://github.com/n8n-io/n8n/compare/n8n@1.67.0...n8n@1.68.0) (2024-11-13)
 
 
