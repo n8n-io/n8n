@@ -142,7 +142,6 @@ export class JsTaskRunner extends TaskRunner {
 		};
 	}
 
-	/** Validates that task settings are valid */
 	private validateTaskSettings(settings: JSExecSettings) {
 		a.ok(settings.code, 'No code to execute');
 
