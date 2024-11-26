@@ -52,7 +52,7 @@ export function getSchemas() {
 	};
 }
 
-export async function generateCodeForAiTransform(prompt: string, path: string) {
+export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
 	const schemas = getSchemas();
 
 	const payload: AskAiRequest.RequestPayload = {
@@ -69,7 +69,20 @@ export async function generateCodeForAiTransform(prompt: string, path: string) {
 	let value;
 	if (useSettingsStore().isAskAiEnabled) {
 		const { restApiContext } = useRootStore();
-		const { code } = await generateCodeForPrompt(restApiContext, payload);
+
+		let code = '';
+
+		while (retries > 0) {
+			try {
+				const { code: generatedCode } = await generateCodeForPrompt(restApiContext, payload);
+				code = generatedCode;
+				break;
+			} catch (e) {
+				if (!retries) throw e;
+				retries--;
+			}
+		}
+
 		value = code;
 	} else {
 		throw new ApplicationError('AI code generation is not enabled');
