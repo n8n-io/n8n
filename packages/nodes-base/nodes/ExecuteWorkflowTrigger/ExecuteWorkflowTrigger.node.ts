@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-const WORKFLOW_INPUTS = 'WORKFLOW_INPUTS';
+const WORKFLOW_INPUTS = 'workflowInputs';
 const VALUES = 'values';
 
 export class ExecuteWorkflowTrigger implements INodeType {
