@@ -280,7 +280,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -348,7 +348,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -422,7 +422,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja))
+        version: 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -449,7 +449,7 @@ importers:
         version: 0.3.1(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.11
-        version: 0.3.11(qw65fvnztmfuymkskopqa7kjky)
+        version: 0.3.11(ndajhtzj4xqxxpqz4t56suvqri)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
@@ -536,7 +536,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.5
-        version: 0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja)
+        version: 0.3.5(7umjwzmwnymi4lyinuvazmp6ki)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -795,7 +795,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1126,7 +1126,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1416,7 +1416,7 @@ importers:
         version: 10.11.0(vue@3.5.11(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -1717,8 +1717,8 @@ importers:
         specifier: 0.5.37
         version: 0.5.37
       mongodb:
-        specifier: 6.3.0
-        version: 6.3.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
+        specifier: 6.11.0
+        version: 6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       mqtt:
         specifier: 5.7.2
         version: 5.7.2
@@ -1896,7 +1896,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -5901,8 +5901,8 @@ packages:
   bser@2.1.1:
     resolution: {integrity: sha512-gQxTNE/GAfIIrmHLUE3oJyp5FO6HRBfhjnw4/wMmA63ZGDJnWBmgY/lyQBpnDUkGmAhbSe39tx2d/iTOAfglwQ==}
 
-  bson@6.8.0:
-    resolution: {integrity: sha512-iOJg8pr7wq2tg/zSlCCHMi3hMm5JTOxLTagf3zxhcenHsFp+c6uOs6K7W5UE7A4QIJGtqh/ZovFNMP4mOPJynQ==}
+  bson@6.10.0:
+    resolution: {integrity: sha512-ROchNosXMJD2cbQGm84KoP7vOGPO6/bOAW0veMMbzhXLqoZptcaYRVLitwvuhwhjjpU1qP4YZRWLhgETdgqUQw==}
     engines: {node: '>=16.20.1'}
 
   buffer-crc32@0.2.13:
@@ -8060,8 +8060,9 @@ packages:
     resolution: {integrity: sha512-1DKMMzlIHM02eBBVOFQ1+AolGjs6+xEcM4PDL7NqOS6szq7H9jSaEkIUH6/a5Hl241LzW6JLSiAbNvTQjUupUA==}
     engines: {node: '>=12.22.0'}
 
-  ip@2.0.1:
-    resolution: {integrity: sha512-lJUL9imLTNi1ZfXT+DU6rBBdbiKGBuay9B6xGSPVjUeQwaH1RIGqef8RZkUtHioLmSNpPR5M4HVKJGm1j8FWVQ==}
+  ip-address@9.0.5:
+    resolution: {integrity: sha512-zHtQzGojZXTwZTHQqra+ETKd4Sn3vgi7uBmlPoXVWZqYvuKmtI0l/VZTjqGmJY9x88GGOaZ9+G9ES8hC4T4X8g==}
+    engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
@@ -8535,6 +8536,9 @@ packages:
 
   jsbn@0.1.1:
     resolution: {integrity: sha512-UVU9dibq2JcFWxQPA6KCqj5O42VOmAY3zQUfEKxU0KpTGXwNoCjkX1e13eHNvw/xPynt6pU0rZ1htjWTNTSXsg==}
+
+  jsbn@1.1.0:
+    resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
 
   jsdoc-type-pratt-parser@4.1.0:
     resolution: {integrity: sha512-Hicd6JK5Njt2QB6XYFS7ok9e37O8AYk3jTcppG4YVQnYjOemymvTcmc7OWsmq/Qqj5TdRFO5/x/tIPmBeRtGHg==}
@@ -9400,8 +9404,8 @@ packages:
   mongodb-connection-string-url@3.0.0:
     resolution: {integrity: sha512-t1Vf+m1I5hC2M5RJx/7AtxgABy1cZmIPQRMXw+gEIPn/cZNF3Oiy+l0UIypUwVB5trcWHq3crg2g3uAR9aAwsQ==}
 
-  mongodb@6.3.0:
-    resolution: {integrity: sha512-tt0KuGjGtLUhLoU263+xvQmPHEGTw5LbcNC73EoFRYgSHwZt5tsoJC110hDyO1kjQzpgNrpdcSza9PknWN4LrA==}
+  mongodb@6.11.0:
+    resolution: {integrity: sha512-yVbPw0qT268YKhG241vAMLaDQAPbRyTgo++odSgGc9kXnzOujQI60Iyj23B9sQQFPSvmNPvMZ3dsFz0aN55KgA==}
     engines: {node: '>=16.20.1'}
     peerDependencies:
       '@aws-sdk/credential-providers': ^3.188.0
@@ -10996,9 +11000,9 @@ packages:
     resolution: {integrity: sha512-a6KW9G+6B3nWZ1yB8G7pJwL3ggLy1uTzKAgCb7ttblwqdz9fMGJUuTy3uFzEP48FAs9FLILlmzDlE2JJhVQaXQ==}
     engines: {node: '>= 10'}
 
-  socks@2.7.1:
-    resolution: {integrity: sha512-7maUZy1N7uo6+WVEX6psASxtNlKaNVMlGQKkG/63nEDdLOWNbiUMoLK7X4uYoLhQstau72mLgfEWcXcwsaHbYQ==}
-    engines: {node: '>= 10.13.0', npm: '>= 3.0.0'}
+  socks@2.8.3:
+    resolution: {integrity: sha512-l5x7VUUWbjVFbafGLxPWkYsHIhEvmF85tbIeFZWc8ZPtoMyybuEhL7Jye/ooC4/d48FgOjSJXgsF/AJPYCW8Zw==}
+    engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
   source-map-js@1.0.2:
     resolution: {integrity: sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==}
@@ -11063,6 +11067,9 @@ packages:
 
   sprintf-js@1.1.2:
     resolution: {integrity: sha512-VE0SOVEHCk7Qc8ulkWw3ntAzXuqf7S2lvwQaDLRnUeIEaKNQJzV6BwmLKhOqT61aGhfUMrXeaBk+oDGCzvhcug==}
+
+  sprintf-js@1.1.3:
+    resolution: {integrity: sha512-Oo+0REFV59/rz3gfJNKQiBlwfHaSESl1pcGyABQsnnIfWOFt6JNj5gCog2U6MLZ//IGYD+nA8nI+mTShREReaA==}
 
   sqlite3@5.1.7:
     resolution: {integrity: sha512-GGIyOiFaG+TUra3JIfkI/zGP8yZYLPQ0pl1bH+ODjiX57sPhrLU5sQJn1y9bDKZUFYkX1crlrPfSYt0BKKdkog==}
@@ -14097,7 +14104,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -14106,7 +14113,7 @@ snapshots:
       zod: 3.23.8
     optionalDependencies:
       '@langchain/core': 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
-      langchain: 0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja)
+      langchain: 0.3.5(7umjwzmwnymi4lyinuvazmp6ki)
     transitivePeerDependencies:
       - encoding
 
@@ -14573,7 +14580,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.11(qw65fvnztmfuymkskopqa7kjky)':
+  '@langchain/community@0.3.11(ndajhtzj4xqxxpqz4t56suvqri)':
     dependencies:
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/core': 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
@@ -14583,7 +14590,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja)
+      langchain: 0.3.5(7umjwzmwnymi4lyinuvazmp6ki)
       langsmith: 0.2.3(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
       uuid: 10.0.0
       zod: 3.23.8
@@ -14596,7 +14603,7 @@ snapshots:
       '@aws-sdk/client-s3': 3.666.0
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -15309,7 +15316,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
     dependencies:
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -17565,9 +17572,17 @@ snapshots:
       '@babel/runtime': 7.24.7
       is-retry-allowed: 2.2.0
 
-  axios@1.7.4(debug@4.3.7):
+  axios@1.7.4:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.7.4(debug@4.3.7):
+    dependencies:
+      follow-redirects: 1.15.6(debug@4.3.7)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -17765,7 +17780,7 @@ snapshots:
     dependencies:
       node-int64: 0.4.0
 
-  bson@6.8.0: {}
+  bson@6.10.0: {}
 
   buffer-crc32@0.2.13: {}
 
@@ -20547,7 +20562,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ip@2.0.1:
+  ip-address@9.0.5:
+    dependencies:
+      jsbn: 1.1.0
+      sprintf-js: 1.1.3
     optional: true
 
   ipaddr.js@1.9.1: {}
@@ -21208,6 +21226,9 @@ snapshots:
 
   jsbn@0.1.1: {}
 
+  jsbn@1.1.0:
+    optional: true
+
   jsdoc-type-pratt-parser@4.1.0: {}
 
   jsdom@20.0.2:
@@ -21403,7 +21424,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.5(4ubssgvn2k3t3hxnzmxuoc2aja):
+  langchain@0.3.5(7umjwzmwnymi4lyinuvazmp6ki):
     dependencies:
       '@langchain/core': 0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8))
       '@langchain/openai': 0.3.11(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
@@ -21427,7 +21448,7 @@ snapshots:
       '@langchain/groq': 0.1.2(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/mistralai': 0.1.1(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/ollama': 0.1.1(@langchain/core@0.3.15(openai@4.69.0(encoding@0.1.13)(zod@3.23.8)))
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -22331,15 +22352,15 @@ snapshots:
       '@types/whatwg-url': 11.0.4
       whatwg-url: 13.0.0
 
-  mongodb@6.3.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1):
+  mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3):
     dependencies:
       '@mongodb-js/saslprep': 1.1.9
-      bson: 6.8.0
+      bson: 6.10.0
       mongodb-connection-string-url: 3.0.0
     optionalDependencies:
       '@aws-sdk/credential-providers': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))
       gcp-metadata: 5.3.0(encoding@0.1.13)
-      socks: 2.7.1
+      socks: 2.8.3
 
   moo@0.5.2: {}
 
@@ -24238,14 +24259,14 @@ snapshots:
     dependencies:
       agent-base: 6.0.2
       debug: 4.3.7
-      socks: 2.7.1
+      socks: 2.8.3
     transitivePeerDependencies:
       - supports-color
     optional: true
 
-  socks@2.7.1:
+  socks@2.8.3:
     dependencies:
-      ip: 2.0.1
+      ip-address: 9.0.5
       smart-buffer: 4.2.0
     optional: true
 
@@ -24302,6 +24323,9 @@ snapshots:
   sprintf-js@1.0.3: {}
 
   sprintf-js@1.1.2: {}
+
+  sprintf-js@1.1.3:
+    optional: true
 
   sqlite3@5.1.7:
     dependencies:
