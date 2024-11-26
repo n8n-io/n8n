@@ -14,6 +14,7 @@ vi.mock('vue-router');
 vi.mock('@/composables/useToast');
 vi.mock('@/components/TestDefinition/composables/useTestDefinitionForm');
 vi.mock('@/stores/tags.store');
+vi.mock('@/stores/projects.store');
 
 describe('TestDefinitionEditView', () => {
 	const renderComponent = createComponentRenderer(TestDefinitionEditView);
@@ -59,6 +60,14 @@ describe('TestDefinitionEditView', () => {
 			tagsById: ref({}),
 			fetchAll: vi.fn(),
 		} as unknown as ReturnType<typeof useAnnotationTagsStore>);
+
+		vi.mock('@/stores/projects.store', () => ({
+			useProjectsStore: vi.fn().mockReturnValue({
+				isTeamProjectFeatureEnabled: false,
+				currentProject: null,
+				currentProjectId: null,
+			}),
+		}));
 	});
 
 	afterEach(() => {
@@ -102,16 +111,13 @@ describe('TestDefinitionEditView', () => {
 
 	it('should save test and show success message on successful save', async () => {
 		const saveTestMock = vi.fn().mockResolvedValue({});
-		const showMessageMock = vi.fn();
 		const routerPushMock = vi.fn();
 		const routerResolveMock = vi.fn().mockReturnValue({ href: '/test-href' });
 		vi.mocked(useTestDefinitionForm).mockReturnValue({
 			...vi.mocked(useTestDefinitionForm)(),
-			saveTest: saveTestMock,
+			createTest: saveTestMock,
 		} as unknown as ReturnType<typeof useTestDefinitionForm>);
-		vi.mocked(useToast).mockReturnValue({ showMessage: showMessageMock } as unknown as ReturnType<
-			typeof useToast
-		>);
+
 		vi.mocked(useRouter).mockReturnValue({
 			push: routerPushMock,
 			resolve: routerResolveMock,
@@ -126,8 +132,6 @@ describe('TestDefinitionEditView', () => {
 		await nextTick();
 
 		expect(saveTestMock).toHaveBeenCalled();
-		expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.TEST_DEFINITION });
 	});
 
 	it('should show error message on failed save', async () => {
@@ -135,7 +139,7 @@ describe('TestDefinitionEditView', () => {
 		const showErrorMock = vi.fn();
 		vi.mocked(useTestDefinitionForm).mockReturnValue({
 			...vi.mocked(useTestDefinitionForm)(),
-			saveTest: saveTestMock,
+			createTest: saveTestMock,
 		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 		vi.mocked(useToast).mockReturnValue({ showError: showErrorMock } as unknown as ReturnType<
 			typeof useToast

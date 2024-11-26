@@ -188,14 +188,16 @@ describe('testDefinition.store.ee', () => {
 			id: '1',
 			name: 'Updated Test Definition A',
 			description: 'Updated Description A',
+			workflowId: '123',
 		};
 		updateTestDefinition.mockResolvedValue(params);
 
 		const result = await store.update(params);
 
-		expect(updateTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, 1, {
+		expect(updateTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
 			name: 'Updated Test Definition A',
 			description: 'Updated Description A',
+			workflowId: '123',
 		});
 		expect(store.testDefinitionsById).toEqual({
 			'1': params,
@@ -211,7 +213,7 @@ describe('testDefinition.store.ee', () => {
 
 		const result = await store.deleteById('1');
 
-		expect(deleteTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, 1);
+		expect(deleteTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
 		expect(store.testDefinitionsById).toEqual({});
 		expect(result).toBe(true);
 	});
