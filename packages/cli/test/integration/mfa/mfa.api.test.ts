@@ -192,6 +192,7 @@ describe('Disable MFA setup', () => {
 			.post('/mfa/disable')
 			.send({
 				token: 'invalid token',
+				recoveryCode: '',
 			})
 			.expect(403);
 	});
