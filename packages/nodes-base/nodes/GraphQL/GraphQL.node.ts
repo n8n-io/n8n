@@ -423,40 +423,40 @@ export class GraphQL implements INodeType {
 				}
 
 				if (requestFormat === 'json') {
-					const jsonBody = {
-						...requestOptions.body,
-						query: gqlQuery,
-						variables: this.getNodeParameter('variables', itemIndex, {}) as object,
-						operationName: this.getNodeParameter('operationName', itemIndex) as string,
-					};
-					if (typeof jsonBody.variables === 'string') {
+					const variables = this.getNodeParameter('variables', itemIndex, {});
+
+					let parsedVariables;
+					if (typeof variables === 'string') {
 						try {
-							jsonBody.variables = JSON.parse(jsonBody.variables || '{}');
+							parsedVariables = JSON.parse(variables || '{}');
 						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Using variables failed:\n' +
-									(jsonBody.variables as string) +
-									'\n\nWith error message:\n' +
-									(error as string),
+								`Using variables failed:\n${variables}\n\nWith error message:\n${error}`,
 								{ itemIndex },
 							);
 						}
-					} else if (
-						typeof jsonBody.variables !== 'object' ||
-						typeof jsonBody.variables !== 'string'
-					) {
+					} else if (typeof variables === 'object' && variables !== null) {
+						parsedVariables = variables;
+					} else {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Using variables failed:\n' +
-								(jsonBody.variables as string) +
-								'\n\nGraphQL variables should be either an object or a string:\n',
+							`Using variables failed:\n${variables}\n\nGraphQL variables should be either an object or a string.`,
 							{ itemIndex },
 						);
 					}
+
+					const jsonBody = {
+						...requestOptions.body,
+						query: gqlQuery,
+						variables: parsedVariables,
+						operationName: this.getNodeParameter('operationName', itemIndex) as string,
+					};
+
 					if (jsonBody.operationName === '') {
 						jsonBody.operationName = null;
 					}
+
 					requestOptions.json = true;
 					requestOptions.body = jsonBody;
 				} else {
