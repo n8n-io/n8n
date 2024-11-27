@@ -85,6 +85,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -117,6 +118,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
+	const nodeHelpers = useNodeHelpers();
 
 	// -1 means the backend chooses the default
 	// 0 is the old flow
@@ -1037,10 +1039,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
-		nodeMetadata.value = nodes.reduce<NodeMetadataMap>((acc, node) => {
-			acc[node.name] = { pristine: true };
-			return acc;
-		}, {});
+		nodes.forEach((node) => {
+			if (!node.id) {
+				nodeHelpers.assignNodeId(node);
+			}
+
+			if (!nodeMetadata.value[node.name]) {
+				nodeMetadata.value[node.name] = { pristine: true };
+			}
+		});
 	}
 
 	function setConnections(connections: IConnections, updateWorkflow = false): void {

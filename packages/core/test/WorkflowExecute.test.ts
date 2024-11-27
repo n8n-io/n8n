@@ -206,7 +206,7 @@ describe('WorkflowExecute', () => {
 		}
 	});
 
-	describe('WorkflowExecute, NodeExecutionOutput type test', () => {
+	test('WorkflowExecute, NodeExecutionOutput type test', () => {
 		//TODO Add more tests here when execution hints are added to some node types
 		const nodeExecutionOutput = new NodeExecutionOutput(
 			[[{ json: { data: 123 } }]],
