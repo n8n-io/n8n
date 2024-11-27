@@ -80,6 +80,10 @@ export function createComponentRenderer(
 						global: {
 							...defaultOptions.global,
 							...options.global,
+							provide: {
+								...defaultOptions.global?.provide,
+								...options.global?.provide,
+							},
 						},
 					},
 		);

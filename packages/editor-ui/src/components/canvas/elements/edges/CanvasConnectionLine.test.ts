@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
+import { createCanvasProvide } from '@/__tests__/data';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -15,6 +16,11 @@ const DEFAULT_PROPS = {
 } satisfies Partial<ConnectionLineProps>;
 const renderComponent = createComponentRenderer(CanvasConnectionLine, {
 	props: DEFAULT_PROPS,
+	global: {
+		provide: {
+			...createCanvasProvide(),
+		},
+	},
 });
 
 beforeEach(() => {
