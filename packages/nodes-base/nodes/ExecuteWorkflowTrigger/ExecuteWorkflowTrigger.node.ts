@@ -17,6 +17,8 @@ type ValueOptions = { name: string; value: FieldType };
 const DEFAULT_PLACEHOLDER = null;
 const IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER = false;
 const INCLUDE_BINARY_PLACEHOLDER = false;
+const ATTEMPT_TO_CONVERT = false;
+const CONVERT_TO_STRING = true;
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -86,6 +88,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								default: '',
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
+								noDataExpression: true,
 							},
 							{
 								displayName: 'Type',
@@ -94,6 +97,12 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								description: 'The field value type',
 								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
+									// This is not a FieldType type, but will
+									// hit the default case in the type check function
+									{
+										name: 'Allow All Types',
+										value: 'any',
+									},
 									{
 										name: 'String',
 										value: 'string',
@@ -114,8 +123,35 @@ export class ExecuteWorkflowTrigger implements INodeType {
 										name: 'Object',
 										value: 'object',
 									},
+									{
+										name: 'DateTime',
+										value: 'dateTime',
+									},
+									{
+										name: 'Time',
+										value: 'time',
+									},
+									{
+										name: 'Alphanumeric String',
+										value: 'string-alphanumeric',
+									},
+									{
+										name: 'Form Fields',
+										value: 'form-fields',
+									},
+									{
+										name: 'JSON Web Token (JWT)',
+										value: 'jwt',
+									},
+									// This behaves pretty weirdly, so I'd rather
+									// drop it in an attempt to prevent proliferation
+									// {
+									// 	name: 'URL',
+									// 	value: 'url',
+									// },
 								] as ValueOptions[],
 								default: 'string',
+								noDataExpression: true,
 							},
 						],
 					},
@@ -178,7 +214,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						}
 
 						const result = validateFieldType(name, item.json[name], type, {
-							strict: true,
+							strict: !ATTEMPT_TO_CONVERT,
 							parseStrings: true,
 						});
 						if (!result.valid) {
@@ -201,7 +237,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						}
 					}
 
-					// TODO Do we want to copy non-json data (e.g. binary) as well?
 					if (INCLUDE_BINARY_PLACEHOLDER) {
 						items.push(Object.assign({}, item, newItem));
 					} else {
