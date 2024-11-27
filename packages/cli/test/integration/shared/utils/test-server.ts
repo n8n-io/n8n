@@ -281,7 +281,7 @@ export const setupTestServer = ({
 					case 'evaluation':
 						await import('@/evaluation/metrics.controller');
 						await import('@/evaluation/test-definitions.controller.ee');
-						await import('@/evaluation/test-runs.controlller.ee');
+						await import('@/evaluation/test-runs.controller.ee');
 						break;
 				}
 			}
