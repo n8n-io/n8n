@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 
 import { TOTPService } from './totp.service';
 
@@ -56,13 +57,13 @@ export class MfaService {
 
 	async validateMfa(
 		userId: string,
-		mfaToken: string | undefined,
+		mfaCode: string | undefined,
 		mfaRecoveryCode: string | undefined,
 	) {
 		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
-		if (mfaToken) {
+		if (mfaCode) {
 			const decryptedSecret = this.cipher.decrypt(user.mfaSecret!);
-			return this.totp.verifySecret({ secret: decryptedSecret, token: mfaToken });
+			return this.totp.verifySecret({ secret: decryptedSecret, mfaCode });
 		}
 
 		if (mfaRecoveryCode) {
@@ -85,13 +86,27 @@ export class MfaService {
 		return await this.authUserRepository.save(user);
 	}
 
-	async disableMfa(userId: string, mfaToken: string, recoveryCode: string) {
-		const isValidToken = await this.validateMfa(userId, mfaToken, recoveryCode);
+	async disableMfaWithMfaCode(userId: string, mfaCode: string) {
+		const isValidToken = await this.validateMfa(userId, mfaCode, '');
 
 		if (!isValidToken) {
 			throw new InvalidMfaCodeError();
 		}
 
+		await this.disableMfaForUser(userId);
+	}
+
+	async disableMfaWithRecoveryCode(userId: string, recoveryCode: string) {
+		const isValidToken = await this.validateMfa(userId, '', recoveryCode);
+
+		if (!isValidToken) {
+			throw new InvalidMfaRecoveryCodeError();
+		}
+
+		await this.disableMfaForUser(userId);
+	}
+
+	private async disableMfaForUser(userId: string) {
 		await this.authUserRepository.update(userId, {
 			mfaEnabled: false,
 			mfaSecret: null,

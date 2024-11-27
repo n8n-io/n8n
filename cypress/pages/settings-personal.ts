@@ -23,7 +23,6 @@ export class PersonalSettingsPage extends BasePage {
 		enableMfaButton: () => cy.getByTestId('enable-mfa-button'),
 		disableMfaButton: () => cy.getByTestId('disable-mfa-button'),
 		mfaCodeInput: () => cy.getByTestId('mfa-code-input'),
-		recoveryCodeInput: () => cy.getByTestId('recovery-code-input'),
 		mfaSaveButton: () => cy.getByTestId('mfa-save-button'),
 		themeSelector: () => cy.getByTestId('theme-select'),
 		selectOptionsVisible: () => cy.get('.el-select-dropdown:visible .el-select-dropdown__item'),
@@ -86,16 +85,10 @@ export class PersonalSettingsPage extends BasePage {
 				mfaSetupModal.getters.saveButton().click();
 			});
 		},
-		disableMfaWithMfaToken: (token: string) => {
+		disableMfa: (code: string) => {
 			cy.visit(this.url);
 			this.getters.disableMfaButton().click();
-			this.getters.mfaCodeInput().type(token);
-			this.getters.mfaSaveButton().click();
-		},
-		disableMfaWitRecoveryCode: (recoveryCode: string) => {
-			cy.visit(this.url);
-			this.getters.disableMfaButton().click();
-			this.getters.recoveryCodeInput().type(recoveryCode);
+			this.getters.mfaCodeInput().type(code);
 			this.getters.mfaSaveButton().click();
 		},
 	};

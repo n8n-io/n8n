@@ -1,89 +1,59 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import Modal from '../Modal.vue';
 import { PROMPT_MFA_CODE_MODAL_KEY } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { promptMfaCodeBus } from '@/event-bus';
+import type { IFormInputs } from '@/Interface';
+import { createFormEventBus } from 'n8n-design-system';
 import { validate as uuidValidate } from 'uuid';
-
-const MFA_CODE_INPUT_NAME = 'mfaCodeInput';
-
-const MFA_CODE_VALIDATORS = {
-	mfaCode: {
-		validate: (value: string) => {
-			if (value === '') {
-				return { message: ' ' };
-			}
-
-			if (value.length < 6) {
-				return {
-					message: 'Code must be 6 digits',
-				};
-			}
-
-			if (!/^\d+$/.test(value)) {
-				return {
-					message: 'Only digits are allow',
-				};
-			}
-
-			return false;
-		},
-	},
-};
-
-const RECOVERY_CODE_VALIDATORS = {
-	recoveryCode: {
-		validate: (value: string) => {
-			if (value === '') {
-				return { message: ' ' };
-			}
-
-			if (!uuidValidate(value)) {
-				return {
-					message: 'Must be an UUID',
-				};
-			}
-
-			return false;
-		},
-	},
-};
 
 const i18n = useI18n();
 
-const mfaCode = ref('');
-const recoveryCode = ref('');
+const formBus = createFormEventBus();
+const readyToSubmit = ref(false);
 
-const isMfaCodeValid = ref(false);
-const isRecoveryCodeValid = ref(false);
+const formFields: IFormInputs = [
+	{
+		name: 'code',
+		initialValue: '',
+		properties: {
+			label: i18n.baseText('mfa.code.recovery.input.label'),
+			placeholder: i18n.baseText('mfa.code.recovery.input.placeholder'),
+			focusInitially: true,
+			capitalize: true,
+			required: true,
+		},
+	},
+];
 
-const anyFieldValid = computed(() => isMfaCodeValid.value || isRecoveryCodeValid.value);
+function onSubmit(values: { code: string }) {
+	if (uuidValidate(values.code)) {
+		promptMfaCodeBus.emit('close', {
+			mfaRecoveryCode: values.code,
+		});
 
-function onClickSave() {
-	if (!anyFieldValid.value) {
 		return;
 	}
 
 	promptMfaCodeBus.emit('close', {
-		mfaCode: mfaCode.value,
-		recoveryCode: recoveryCode.value,
+		mfaCode: values.code,
 	});
 }
 
-function onValidate(name: string, value: boolean) {
-	if (name === MFA_CODE_INPUT_NAME) {
-		isMfaCodeValid.value = value;
-	} else {
-		isRecoveryCodeValid.value = value;
-	}
+function onClickSave() {
+	formBus.emit('submit');
+}
+
+function onFormReady(isReady: boolean) {
+	readyToSubmit.value = isReady;
 }
 </script>
 
 <template>
 	<Modal
 		width="500px"
-		height="400px"
+		height="300px"
 		max-height="640px"
 		:title="i18n.baseText('mfa.prompt.code.modal.title')"
 		:event-bus="promptMfaCodeBus"
@@ -92,27 +62,12 @@ function onValidate(name: string, value: boolean) {
 	>
 		<template #content>
 			<div :class="[$style.formContainer]">
-				<n8n-form-input
-					v-model="mfaCode"
-					name="mfaCode"
+				<n8n-form-inputs
 					data-test-id="mfa-code-input"
-					:label="i18n.baseText('mfa.code.input.label')"
-					:placeholder="i18n.baseText('mfa.code.input.placeholder')"
-					:validators="MFA_CODE_VALIDATORS"
-					:validation-rules="[{ name: 'MAX_LENGTH', config: { maximum: 6 } }, { name: 'mfaCode' }]"
-					@validate="(value: boolean) => onValidate(MFA_CODE_INPUT_NAME, value)"
-				/>
-				<span> {{ i18n.baseText('mfa.prompt.code.modal.divider') }} </span>
-
-				<n8n-form-input
-					v-model="recoveryCode"
-					name="recoveryCode"
-					data-test-id="recovery-code-input"
-					:label="i18n.baseText('mfa.recoveryCode.input.label')"
-					:placeholder="i18n.baseText('mfa.recovery.input.placeholder')"
-					:validators="RECOVERY_CODE_VALIDATORS"
-					:validation-rules="[{ name: 'recoveryCode' }]"
-					@validate="(value: boolean) => onValidate('recoveryCodeInput', value)"
+					:inputs="formFields"
+					:event-bus="formBus"
+					@submit="onSubmit"
+					@ready="onFormReady"
 				/>
 			</div>
 		</template>
@@ -120,9 +75,9 @@ function onValidate(name: string, value: boolean) {
 			<div>
 				<n8n-button
 					float="right"
+					:disabled="!readyToSubmit"
 					:label="i18n.baseText('settings.personal.save')"
 					size="large"
-					:disabled="!anyFieldValid"
 					data-test-id="mfa-save-button"
 					@click="onClickSave"
 				/>
@@ -133,12 +88,6 @@ function onValidate(name: string, value: boolean) {
 
 <style lang="scss" module>
 .formContainer {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-s);
-
-	span {
-		font-weight: 600;
-	}
+	padding-bottom: var(--spacing-xl);
 }
 </style>

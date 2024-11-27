@@ -58,7 +58,7 @@ const onInput = (value: string) => {
 		return;
 	}
 	userStore
-		.verifyMfaToken({ token: value })
+		.verifyMfaCode({ mfaCode: value })
 		.then(() => {
 			showRecoveryCodes.value = true;
 			authenticatorCode.value = value;
@@ -98,7 +98,7 @@ const onDownloadClick = () => {
 
 const onSetupClick = async () => {
 	try {
-		await userStore.enableMfa({ token: authenticatorCode.value });
+		await userStore.enableMfa({ mfaCode: authenticatorCode.value });
 		closeDialog();
 		toast.showMessage({
 			type: 'success',
