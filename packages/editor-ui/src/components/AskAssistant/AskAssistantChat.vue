@@ -71,7 +71,7 @@ function onClose() {
 
 <template>
 	<SlideTransition>
-		<n8n-resize-wrapper
+		<N8nResizeWrapper
 			v-show="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
@@ -97,7 +97,7 @@ function onClose() {
 					@code-undo="undoCodeDiff"
 				/>
 			</div>
-		</n8n-resize-wrapper>
+		</N8nResizeWrapper>
 	</SlideTransition>
 </template>
 
