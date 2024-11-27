@@ -81,6 +81,41 @@ export async function presendFilter(
 	return requestOptions;
 }
 
+/* Helper function to process attributes in UserAttributes */
+export async function processAttributes(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	let body: Record<string, any>;
+	if (typeof requestOptions.body === 'string') {
+		try {
+			body = JSON.parse(requestOptions.body);
+		} catch (error) {
+			throw new ApplicationError('Invalid JSON body: Unable to parse.');
+		}
+	} else if (typeof requestOptions.body === 'object' && requestOptions.body !== null) {
+		body = requestOptions.body;
+	} else {
+		throw new ApplicationError('Invalid request body: Expected a JSON string or object.');
+	}
+
+	const attributes = this.getNodeParameter('UserAttributes.attributes', []) as Array<{
+		Name: string;
+		Value: string;
+	}>;
+
+	const processedAttributes = attributes.map((attribute) => ({
+		Name: attribute.Name.startsWith('custom:') ? attribute.Name : attribute.Name,
+		Value: attribute.Value,
+	}));
+
+	body.UserAttributes = processedAttributes;
+
+	requestOptions.body = JSON.stringify(body);
+
+	return requestOptions;
+}
+
 /* Helper function to handle pagination */
 const possibleRootProperties = ['Users']; // Root properties that can be returned by the list operations of the API
 // ToDo: Test if pagination works
@@ -296,7 +331,6 @@ export async function awsRequest(
 }
 
 /* listSearch methods */
-
 export async function searchUserPools(
 	this: ILoadOptionsFunctions,
 	filter?: string,

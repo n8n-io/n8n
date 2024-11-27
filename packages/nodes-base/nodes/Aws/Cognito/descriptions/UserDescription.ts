@@ -1,6 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { handleErrorPostReceive, presendFilter, presendTest } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	presendFilter,
+	presendTest,
+	processAttributes,
+} from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -198,7 +203,7 @@ const createFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Username',
+		displayName: 'User Name',
 		name: 'Username',
 		default: '',
 		description: 'The username of the new user to create',
@@ -221,10 +226,10 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -234,52 +239,209 @@ const createFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Path',
-				name: 'Path',
-				type: 'string',
-				validateType: 'string',
-				default: '/',
-				placeholder: 'e.g. /division_abc/engineering/',
-				description:
-					'The path for the user name, if it is not included, it defaults to a slash (/)',
+				displayName: 'Client Metadata',
+				name: 'clientMetadata',
+				type: 'fixedCollection',
+				placeholder: 'Add Metadata Pair',
+				default: { metadata: [] },
+				description: 'A map of custom key-value pairs for workflows triggered by this action',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Metadata',
+						name: 'metadata',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+								description: 'The key of the metadata attribute',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value of the metadata attribute',
+							},
+						],
+					},
+				],
 				routing: {
 					send: {
-						property: 'Path',
 						type: 'body',
-						preSend: [presendTest],
+						property: 'ClientMetadata',
+						value:
+							'={{ $value.metadata && $value.metadata.length > 0 ? Object.fromEntries($value.metadata.map(attribute => [attribute.Name, attribute.Value])) : {} }}',
 					},
 				},
 			},
 			{
-				displayName: 'Permissions Boundary',
-				name: 'PermissionsBoundary',
-				type: 'string',
-				validateType: 'string',
+				displayName: 'Temporary Password',
+				name: 'TemporaryPassword',
 				default: '',
-				placeholder: 'e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy',
-				description: 'Enter the ARN of a policy to set as the Permissions Boundary',
+				description: "The user's temporary password",
 				routing: {
 					send: {
-						property: 'PermissionsBoundary',
+						property: 'TemporaryPassword',
+						type: 'body',
+						preSend: [presendTest],
+					},
+				},
+				type: 'string',
+				typeOptions: { password: true },
+			},
+			{
+				displayName: 'Message Action',
+				name: 'MessageAction',
+				default: 'RESEND',
+				description:
+					"Set to RESEND to resend the invitation message to a user that already exists and reset the expiration limit on the user's account. Set to SUPPRESS to suppress sending the message. You can specify only one value.",
+				type: 'options',
+				options: [
+					{
+						name: 'Resend',
+						value: 'RESEND',
+					},
+					{
+						name: 'Suppress',
+						value: 'SUPPRESS',
+					},
+				],
+				routing: {
+					send: {
+						property: 'MessageAction',
 						type: 'body',
 						preSend: [presendTest],
 					},
 				},
 			},
 			{
-				displayName: 'Tags',
-				name: 'Tags',
-				type: 'multiOptions',
-				placeholder: 'Add Tags',
-				default: [],
-				description: 'A list of tags that you want to attach to the new user',
-				//TO-DO-GET TAGS LIST
-				options: [],
+				displayName: 'Force Alias Creation',
+				name: 'ForceAliasCreation',
+				type: 'boolean',
+				validateType: 'boolean',
+				default: false,
+				description:
+					'Whether this parameter is used only if the phone_number_verified or email_verified attribute is set to True. Otherwise, it is ignored. If set to True, and the phone number or email address specified in the UserAttributes parameter already exists as an alias with a different user, the alias will be migrated. If set to False, an AliasExistsException error is thrown if the alias already exists',
 				routing: {
 					send: {
-						property: 'Tags',
+						type: 'body',
+						property: 'ForceAliasCreation',
+					},
+				},
+			},
+			{
+				displayName: 'Desired Delivery Mediums',
+				name: 'DesiredDeliveryMediums',
+				default: ['SMS'],
+				description:
+					'Specify EMAIL if email will be used to send the welcome message. Specify SMS if the phone number will be used. The default value is SMS. You can specify more than one value.',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'SMS',
+						value: 'SMS',
+					},
+					{
+						name: 'Email',
+						value: 'EMAIL',
+					},
+				],
+				routing: {
+					send: {
+						property: 'DesiredDeliveryMediums',
 						type: 'body',
 						preSend: [presendTest],
+					},
+				},
+			},
+			{
+				displayName: 'User Attributes',
+				name: 'UserAttributes',
+				type: 'fixedCollection',
+				placeholder: 'Add Attribute',
+				default: {
+					attributes: [],
+				},
+				description: 'Attributes to add for the user',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Attributes',
+						name: 'attributes',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'Name',
+								type: 'string',
+								default: '',
+								description: 'The name of the attribute (e.g., custom:deliverables)',
+							},
+							{
+								displayName: 'Value',
+								name: 'Value',
+								type: 'string',
+								default: '',
+								description: 'The value of the attribute',
+							},
+						],
+					},
+				],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'UserAttributes',
+						value:
+							'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
+						preSend: [processAttributes],
+					},
+				},
+			},
+			{
+				displayName: 'Validation Data',
+				name: 'ValidationData',
+				type: 'fixedCollection',
+				placeholder: 'Add Attribute',
+				default: {
+					attributes: [],
+				},
+				description: 'Validation data to add for the user',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Data',
+						name: 'data',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'Key',
+								type: 'string',
+								default: '',
+								description: 'The name of the data (e.g., custom:deliverables)',
+							},
+							{
+								displayName: 'Value',
+								name: 'Value',
+								type: 'string',
+								default: '',
+								description: 'The value of the data',
+							},
+						],
+					},
+				],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'ValidationData',
+						value: '={{ $value.data?.map(data => ({ Name: data.Key, Value: data.Value })) || [] }}',
 					},
 				},
 			},
