@@ -28,7 +28,6 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { NodeConnectionType } from 'n8n-workflow';
-import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 
 const $style = useCssModule();
 
