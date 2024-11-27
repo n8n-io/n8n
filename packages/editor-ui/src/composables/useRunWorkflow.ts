@@ -37,10 +37,10 @@ import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useLocalStorage } from '@vueuse/core';
 
-const getDirtyNodesIds = (runData: IRunData): string[] | undefined => {
+const getDirtyNodeNames = (runData: IRunData): string[] | undefined => {
 	const workflowsStore = useWorkflowsStore();
 
-	const dirtyIds = Object.entries(runData).reduce<string[]>((acc, [nodeName, tasks]) => {
+	const dirtyNodeNames = Object.entries(runData).reduce<string[]>((acc, [nodeName, tasks]) => {
 		if (!tasks.length) return acc;
 
 		const updatedAt = workflowsStore.getParametersLastUpdate(nodeName) ?? 0;
@@ -52,7 +52,7 @@ const getDirtyNodesIds = (runData: IRunData): string[] | undefined => {
 		return acc;
 	}, []);
 
-	return dirtyIds.length ? dirtyIds : undefined;
+	return dirtyNodeNames.length ? dirtyNodeNames : undefined;
 };
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {

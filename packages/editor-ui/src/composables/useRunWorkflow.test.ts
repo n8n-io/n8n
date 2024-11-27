@@ -321,7 +321,7 @@ describe('useRunWorkflow({ router })', () => {
 			await runWorkflow({ destinationNode: 'Code 1', source: 'Node.executeNode' });
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ dirtyIds: [executeName] }),
+				expect.objectContaining({ dirtyNodeNames: [executeName] }),
 			);
 		});
 
