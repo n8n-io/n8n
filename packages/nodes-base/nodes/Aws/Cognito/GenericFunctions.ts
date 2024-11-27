@@ -342,39 +342,72 @@ export async function searchUsers(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	// Get the userPoolId from the input
+	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
+
+	// Extract the actual value
+	const userPoolId = userPoolIdRaw.value as string;
+
+	// Ensure that userPoolId is provided
+	if (!userPoolId) {
+		throw new ApplicationError('User Pool ID is required to search users');
+	}
+
+	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '', // the base url is set in "awsRequest"
+		url: '', // the base URL is set in "awsRequest"
 		method: 'POST',
 		headers: {
 			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
 		},
 		body: JSON.stringify({
-			MaxResults: 60, // the maximum number by documentation is 60
+			UserPoolId: userPoolId,
+			MaxResults: 60,
 			NextToken: paginationToken ?? undefined,
 		}),
 	};
+
+	// Make the AWS request
 	const responseData: IDataObject = await awsRequest.call(this, opts);
 
-	const users = responseData.Users as Array<{ Name: string; Id: string }>;
+	// Extract users from the response
+	const users = responseData.Users as IDataObject[] | undefined;
 
+	// Handle cases where no users are returned
+	if (!users) {
+		console.warn('No users found in the response');
+		return { results: [] };
+	}
+
+	// Map and filter the response data to create results
 	const results: INodeListSearchItems[] = users
-		.map((a) => ({
-			name: a.Name,
-			value: a.Id,
-		}))
+		.map((user) => {
+			// Extract user attributes, if any
+			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
+
+			// Find the `email` or `sub` attribute, fallback to `Username`
+			const email = attributes?.find((attr) => attr.Name === 'email')?.Value;
+			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
+			const username = user.Username as string;
+
+			// Use email, sub, or Username as the user name and value
+			const name = email || sub || username;
+			const value = username;
+
+			return { name, value };
+		})
 		.filter(
-			(a) =>
+			(user) =>
 				!filter ||
-				a.name.toLowerCase().includes(filter.toLowerCase()) ||
-				a.value.toLowerCase().includes(filter.toLowerCase()),
+				user.name.toLowerCase().includes(filter.toLowerCase()) ||
+				user.value.toLowerCase().includes(filter.toLowerCase()),
 		)
 		.sort((a, b) => {
-			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
-			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
-			return 0;
+			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 		});
 
-	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
+	// Return the results and the pagination token
+	return { results, paginationToken: responseData.NextToken as string | undefined };
 }
 
 export async function searchGroups(
