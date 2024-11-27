@@ -34,6 +34,8 @@ vi.mock('@/stores/workflows.store', () => ({
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
 		nodeIssuesExit: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn(),
+		getParametersLastUpdate: vi.fn(),
 	}),
 }));
 
@@ -75,6 +77,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
 		setDocumentTitle: vi.fn(),
+		executeData: vi.fn(),
 	}),
 }));
 
@@ -269,7 +272,7 @@ describe('useRunWorkflow({ router })', () => {
 		});
 
 		it('should send dirty nodes for partial executions', async () => {
-			localStorage.setItem('PartialExecution.version', '1');
+			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
 			const composable = useRunWorkflow({ router });
 			const parentName = 'When clicking';
 			const executeName = 'Code';
@@ -298,9 +301,9 @@ describe('useRunWorkflow({ router })', () => {
 				getParentNodes: () => [parentName],
 				nodes: { [parentName]: {} },
 			} as unknown as Workflow);
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				{} as unknown as IWorkflowData,
-			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [],
+			} as unknown as IWorkflowData);
 			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
 				data: {},
 				node: {},
