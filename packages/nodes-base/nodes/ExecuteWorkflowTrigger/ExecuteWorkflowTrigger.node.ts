@@ -10,15 +10,12 @@ import {
 } from 'n8n-workflow';
 
 const WORKFLOW_INPUTS = 'workflowInputs';
+const INPUT_OPTIONS = 'inputOptions';
 const VALUES = 'values';
 
 type ValueOptions = { name: string; value: FieldType };
 
 const DEFAULT_PLACEHOLDER = null;
-const IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER = false;
-const INCLUDE_BINARY_PLACEHOLDER = false;
-const ATTEMPT_TO_CONVERT = false;
-const CONVERT_TO_STRING = true;
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -100,7 +97,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 									// This is not a FieldType type, but will
 									// hit the default case in the type check function
 									{
-										name: 'Allow All Types',
+										name: 'Allow Any Type',
 										value: 'any',
 									},
 									{
@@ -123,37 +120,57 @@ export class ExecuteWorkflowTrigger implements INodeType {
 										name: 'Object',
 										value: 'object',
 									},
-									{
-										name: 'DateTime',
-										value: 'dateTime',
-									},
-									{
-										name: 'Time',
-										value: 'time',
-									},
-									{
-										name: 'Alphanumeric String',
-										value: 'string-alphanumeric',
-									},
-									{
-										name: 'Form Fields',
-										value: 'form-fields',
-									},
-									{
-										name: 'JSON Web Token (JWT)',
-										value: 'jwt',
-									},
-									// This behaves pretty weirdly, so I'd rather
-									// drop it in an attempt to prevent proliferation
-									// {
-									// 	name: 'URL',
-									// 	value: 'url',
-									// },
+									// Intentional omission of `dateTime`, `time`, `string-alphanumeric`, `form-fields`, `jwt` and `url`
 								] as ValueOptions[],
 								default: 'string',
 								noDataExpression: true,
 							},
 						],
+					},
+				],
+			},
+			{
+				displayName: 'Input Options',
+				name: INPUT_OPTIONS,
+				placeholder: 'Options',
+				type: 'collection',
+				description: 'Options controlling how input data is handled, converted and rejected',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+				},
+				default: {},
+				// Note that, while the defaults are true, the user has to add these in the first place
+				// We default to false if absent in the execute function below
+				options: [
+					{
+						displayName: 'Attempt to Convert Types',
+						name: 'attemptToConvertTypes',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
+						noDataExpression: true,
+					},
+					{
+						displayName: 'Ignore Type Mismatch Errors',
+						name: 'ignoreTypeErrors',
+						type: 'boolean',
+						default: true,
+						description: 'Whether type mismatches should be ignored rather than returning an Error',
+						noDataExpression: true,
+					},
+					// REVIEW: Note that by having this here we commit to passing the binary data
+					// to the sub-workflow in the first place, otherwise we'd need this on the parent
+					// or at least for the parent to read this from this node.
+					// Is there significant cost to switching to the sub-workflow or is it all one big workflow under the hood?
+					{
+						displayName: 'Include Binary Data',
+						name: 'includeBinaryData',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether binary data should be included from the parent. If set to false, binary data will be removed.',
+						noDataExpression: true,
 					},
 				],
 			},
@@ -185,6 +202,22 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			const items: INodeExecutionData[] = [];
 
 			for (const [itemIndex, item] of inputData.entries()) {
+				const attemptToConvertTypes = this.getNodeParameter(
+					`${INPUT_OPTIONS}.attemptToConvertTypes`,
+					itemIndex,
+					false,
+				);
+				const ignoreTypeErrors = this.getNodeParameter(
+					`${INPUT_OPTIONS}.ignoreTypeErrors`,
+					itemIndex,
+					false,
+				);
+				const includeBinaryData = this.getNodeParameter(
+					`${INPUT_OPTIONS}.includeBinaryData`,
+					itemIndex,
+					false,
+				);
+
 				// Fields listed here will explicitly overwrite original fields
 				const newItem: INodeExecutionData = {
 					json: {},
@@ -213,12 +246,17 @@ export class ExecuteWorkflowTrigger implements INodeType {
 							continue;
 						}
 
+						// We always parse strings rather than blindly accepting anything as a string
+						// Which is the behavior of this function
+						// Also note we intentionally pass `any` in here for `type`, which hits a
+						// permissive default case in the function
 						const result = validateFieldType(name, item.json[name], type, {
-							strict: !ATTEMPT_TO_CONVERT,
+							strict: !attemptToConvertTypes,
 							parseStrings: true,
 						});
+
 						if (!result.valid) {
-							if (IGNORE_TYPE_CONVERSION_ERRORS_PLACEHOLDER) {
+							if (ignoreTypeErrors) {
 								newItem.json[name] = item.json[name];
 								continue;
 							}
@@ -237,7 +275,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						}
 					}
 
-					if (INCLUDE_BINARY_PLACEHOLDER) {
+					if (includeBinaryData) {
+						// Important not to assign directly to avoid modifying upstream data
 						items.push(Object.assign({}, item, newItem));
 					} else {
 						items.push(newItem);
