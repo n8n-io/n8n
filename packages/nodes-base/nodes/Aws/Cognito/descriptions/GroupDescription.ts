@@ -1,7 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive, presendTest } from '../GenericFunctions';
+import { handleErrorPostReceive } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -26,10 +26,6 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.CreateGroup',
 						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
-						},
 						// preSend: [
 						//   async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions) {
 						//     // Call the function you created in GenericFunctions
@@ -53,13 +49,17 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteGroup',
 						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
-						},
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "deleted": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Delete group',
@@ -73,10 +73,6 @@ export const groupOperations: INodeProperties[] = [
 						method: 'POST',
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetGroup',
-						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
 						},
 					},
 					output: {
@@ -104,7 +100,22 @@ export const groupOperations: INodeProperties[] = [
 						},
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ $response.body.Groups }}',
+								},
+							},
+							{
+								type: 'set',
+								properties: {
+									value:
+										'={{ $response.body.Groups.length > 10 && $parameter.simplified ? $response.body.Groups.map(group => ({ CreatedDate: group.CreatedDate, Description: group.Description, GroupName: group.GroupName, LastModifiedDate: group.LastModifiedDate })) : $response.body.Groups }}', // Simplify if more than 10 fields
+								},
+							},
+						],
 					},
 				},
 				action: 'Get many groups',
@@ -119,13 +130,17 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.UpdateGroup',
 						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
-						},
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "updated": true } }}',
+								},
+							},
+						],
 					},
 				},
 				action: 'Update group',
@@ -159,7 +174,7 @@ const createFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -177,7 +192,7 @@ const createFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx".',
 						},
 					},
 				],
@@ -186,7 +201,7 @@ const createFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Name',
 		name: 'GroupName',
 		default: '',
 		placeholder: 'e.g. My New Group',
@@ -202,7 +217,6 @@ const createFields: INodeProperties[] = [
 			send: {
 				property: 'GroupName',
 				type: 'body',
-				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
 				paginate: true,
 			},
 		},
@@ -220,6 +234,35 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Description',
+				name: 'Description',
+				default: '',
+				placeholder: 'e.g. New group description',
+				description: 'A description for the new group',
+				type: 'string',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'Description',
+					},
+				},
+			},
+			{
+				displayName: 'Precedence',
+				name: 'Precedence',
+				default: '',
+				placeholder: 'e.g. 10',
+				description: 'Precedence value for the group. Lower values indicate higher priority.',
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'Precedence',
+					},
+				},
+				validateType: 'number',
+			},
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -260,6 +303,20 @@ const createFields: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				displayName: 'Role ARN',
+				name: 'RoleArn',
+				default: '',
+				placeholder: 'e.g. arn:aws:iam::123456789012:role/GroupRole',
+				description: 'The role ARN for the group, used for setting claims in tokens',
+				type: 'string',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'RoleArn',
+					},
+				},
+			},
 		],
 		placeholder: 'Add Option',
 		type: 'collection',
@@ -291,7 +348,7 @@ const deleteFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -318,7 +375,7 @@ const deleteFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group',
 		name: 'GroupName',
 		default: {
 			mode: 'list',
@@ -337,13 +394,13 @@ const deleteFields: INodeProperties[] = [
 				name: 'list',
 				type: 'list',
 				typeOptions: {
-					searchListMethod: 'listGroups',
+					searchListMethod: 'searchGroups',
 					searchable: true,
 				},
 			},
 			{
 				displayName: 'By Name',
-				name: 'id',
+				name: 'GroupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [
@@ -351,7 +408,7 @@ const deleteFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							errorMessage: 'The group name must follow the allowed pattern.',
 						},
 					},
 				],
@@ -421,12 +478,15 @@ const getFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group',
 		name: 'GroupName',
 		required: true,
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		description: 'The name of the group to retrieve',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the group you want to retrieve',
 		displayOptions: {
 			show: {
 				resource: ['group'],
@@ -467,46 +527,70 @@ const getFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Include Members',
+		name: 'includeMembers',
+		type: 'boolean',
+		default: false,
+		description: 'Whether include members of the group in the result',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$expand',
+				type: 'query',
+				value:
+					'={{ $value ? "members($select=CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId)" : undefined }}',
+			},
+		},
+	},
+	{
+		displayName: 'Include Group Policy',
+		name: 'includeGroupPolicy',
+		type: 'boolean',
+		default: false,
+		description: 'Whether include group policy details in the result',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$expand',
+				type: 'query',
+				value: '={{ $value ? "groupPolicy($select=policyName,policyType)" : undefined }}',
+			},
+		},
+	},
+	{
+		displayName: 'Simplified',
+		name: 'simplified',
+		type: 'boolean',
+		default: false,
+		description: 'Whether simplify the response if there are more than 10 fields',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$select',
+				type: 'query',
+				value: 'CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId',
+			},
+		},
+	},
 ];
 
 const getAllFields: INodeProperties[] = [
-	{
-		displayName: 'User Pool ID',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		description: 'The user pool ID where the users are managed',
-		displayOptions: { show: { resource: ['group'], operation: ['getAll'] } },
-		routing: { send: { type: 'body', property: 'UserPoolId' } },
-		modes: [
-			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user pool ID',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
-						},
-					},
-				],
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-			},
-		],
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -516,28 +600,6 @@ const getAllFields: INodeProperties[] = [
 			show: {
 				resource: ['group'],
 				operation: ['getAll'],
-			},
-		},
-		routing: {
-			send: {
-				paginate: '={{ $value }}',
-			},
-			operations: {
-				pagination: {
-					type: 'generic',
-					properties: {
-						continue: '={{ !!$response.body?.["@odata.nextLink"] }}',
-						request: {
-							url: '={{ $response.body?.["@odata.nextLink"] ?? $request.url }}',
-							qs: {
-								$filter:
-									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$filter }}',
-								$select:
-									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$select }}',
-							},
-						},
-					},
-				},
 			},
 		},
 		type: 'boolean',
@@ -568,69 +630,102 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-			},
-		},
-		options: [
+		displayName: 'User Pool ID',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		description: 'The user pool ID where the users are managed',
+		displayOptions: { show: { resource: ['group'], operation: ['getAll'] } },
+		routing: { send: { type: 'body', property: 'UserPoolId' } },
+		modes: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields',
-				name: 'select',
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'The fields to add to the output',
-				routing: {
-					send: {
-						property: '$select',
-						type: 'query',
-						value: '={{ $value?.join(",") }}',
-					},
-				},
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
 				typeOptions: {
-					loadOptionsMethod: 'getGroupProperties',
+					searchListMethod: 'searchUserPools',
+					searchable: true,
 				},
-				type: 'multiOptions',
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user pool ID',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+						},
+					},
+				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
-		default: {},
+		displayName: 'Include Members',
+		name: 'includeMembers',
+		type: 'boolean',
+		default: false,
+		description: 'Whether include members of the group in the result',
 		displayOptions: {
 			show: {
 				resource: ['group'],
 				operation: ['getAll'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Filter Query Parameter',
-				name: 'filter',
-				default: '',
-				description:
-					'<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
-				placeholder: "startswith(displayName, 'a')",
-				routing: {
-					send: {
-						property: '$filter',
-						type: 'query',
-					},
-				},
-				type: 'string',
-				validateType: 'string',
+		routing: {
+			send: {
+				property: '$expand',
+				type: 'query',
+				value:
+					'={{ $value ? "members($select=CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId)" : undefined }}',
 			},
-		],
-		placeholder: 'Add Filter',
-		type: 'collection',
+		},
+	},
+	{
+		displayName: 'Include Group Policy',
+		name: 'includeGroupPolicy',
+		type: 'boolean',
+		default: false,
+		description: 'Whether include group policy details in the result',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['getAll'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$expand',
+				type: 'query',
+				value: '={{ $value ? "groupPolicy($select=policyName,policyType)" : undefined }}',
+			},
+		},
+	},
+	{
+		displayName: 'Simplified',
+		name: 'simplified',
+		type: 'boolean',
+		default: false,
+		description: 'Whether simplify the response if there are more than 10 fields',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['getAll'],
+			},
+		},
+		routing: {
+			send: {
+				property: '$select',
+				type: 'query',
+				value: 'CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId',
+			},
+		},
 	},
 ];
 
@@ -659,7 +754,7 @@ const updateFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -686,7 +781,7 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group',
 		name: 'GroupName',
 		default: {
 			mode: 'list',
@@ -699,9 +794,15 @@ const updateFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'GroupName',
+			},
+		},
 		modes: [
 			{
-				displayName: 'From List',
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -727,59 +828,7 @@ const updateFields: INodeProperties[] = [
 			},
 		],
 		required: true,
-		routing: {
-			send: {
-				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-				type: 'body',
-				property: 'GroupName',
-			},
-		},
 		type: 'resourceLocator',
-	},
-	{
-		displayName: 'New Name',
-		name: 'name',
-		default: '',
-		placeholder: 'e.g. My New Group',
-		description: 'The new name of the group',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['update'],
-			},
-		},
-		routing: {
-			send: {
-				property: 'GroupName',
-				type: 'body',
-				// preSend: [
-				// 	async function (
-				// 		this: IExecuteSingleFunctions,
-				// 		requestOptions: IHttpRequestOptions,
-				// 	): Promise<IHttpRequestOptions> {
-				// 		const GroupName = this.getNodeParameter('name') as string;
-				// 		if (GroupName.length < 1 || GroupName.length > 128) {
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				'Group Name must be between 1 and 128 characters.',
-				// 			);
-				// 		}
-
-				// 		// Regex validation
-				// 		if (!/^[\w+=,.@-]+$/.test(GroupName)) {
-				// 			throw new NodeOperationError(
-				// 				this.getNode(),
-				// 				'Group Name contains invalid characters. Allowed characters: [\\w+=,.@-].',
-				// 			);
-				// 		}
-
-				// 		return requestOptions;
-				// 	},
-				// ],
-			},
-		},
-		type: 'string',
-		validateType: 'string',
 	},
 	{
 		displayName: 'Options',
@@ -792,6 +841,36 @@ const updateFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Description',
+				name: 'Description',
+				default: '',
+				placeholder: 'e.g. Updated group description',
+				description: 'A new description for the group',
+				type: 'string',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'Description',
+					},
+				},
+			},
+			{
+				displayName: 'Precedence',
+				name: 'Precedence',
+				default: '',
+				placeholder: 'e.g. 10',
+				description:
+					'The new precedence value for the group. Lower values indicate higher priority.',
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'Precedence',
+					},
+				},
+				validateType: 'number',
+			},
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -829,6 +908,21 @@ const updateFields: INodeProperties[] = [
 								return requestOptions;
 							},
 						],
+					},
+				},
+			},
+			{
+				displayName: 'Role ARN',
+				name: 'RoleArn',
+				default: '',
+				placeholder: 'e.g. arn:aws:iam::123456789012:role/GroupRole',
+				description:
+					'A new role Amazon Resource Name (ARN) for the group. Used for setting claims in tokens.',
+				type: 'string',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'RoleArn',
 					},
 				},
 			},

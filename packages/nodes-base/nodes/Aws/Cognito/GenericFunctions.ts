@@ -461,7 +461,7 @@ export async function searchGroups(
 	}
 	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '', // the base URL is set in "awsRequest"
+		url: '',
 		method: 'POST',
 		headers: {
 			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
