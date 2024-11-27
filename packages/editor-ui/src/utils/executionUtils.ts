@@ -132,7 +132,7 @@ export function displayForm({
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
 			if (testUrl && source !== 'RunData.ManualChatMessage') {
-				useWorkflowsStore().openFormWindow(testUrl);
+				useWorkflowsStore().formPopupWindow = openPopUpWindow(testUrl);
 			}
 		}
 	}

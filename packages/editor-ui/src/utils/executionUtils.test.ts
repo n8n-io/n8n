@@ -1,11 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { displayForm, executionFilterToQueryFilter, waitingNodeTooltip } from './executionUtils';
+import {
+	displayForm,
+	openPopUpWindow,
+	executionFilterToQueryFilter,
+	waitingNodeTooltip,
+} from './executionUtils';
 import type { INode, IRunData, IPinData } from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const FORM_TRIGGER_NODE_TYPE = 'formTrigger';
 const WAIT_NODE_TYPE = 'waitNode';
+
+vi.mock('./executionUtils', async () => {
+	const actual = await vi.importActual('./executionUtils');
+	return {
+		...actual,
+		openPopUpWindow: vi.fn(),
+	};
+});
 
 vi.mock('@/stores/root.store', () => ({
 	useRootStore: () => ({
@@ -17,7 +29,6 @@ vi.mock('@/stores/root.store', () => ({
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		activeExecutionId: '123',
-		openFormWindow: vi.fn(),
 	}),
 }));
 
@@ -42,7 +53,7 @@ describe('displayForm', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should not call openFormWindow if node has already run or is pinned', () => {
+	it('should not call openPopUpWindow if node has already run or is pinned', () => {
 		const nodes: INode[] = [
 			{
 				id: '1',
@@ -75,7 +86,7 @@ describe('displayForm', () => {
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(useWorkflowsStore().openFormWindow).not.toHaveBeenCalled();
+		expect(openPopUpWindow).not.toHaveBeenCalled();
 	});
 
 	it('should skip nodes if destinationNode does not match and node is not a directParentNode', () => {
@@ -108,7 +119,7 @@ describe('displayForm', () => {
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(useWorkflowsStore().openFormWindow).not.toHaveBeenCalled();
+		expect(openPopUpWindow).not.toHaveBeenCalled();
 	});
 
 	it('should not open pop-up if source is "RunData.ManualChatMessage"', () => {
@@ -135,7 +146,7 @@ describe('displayForm', () => {
 			getTestUrl: getTestUrlMock,
 		});
 
-		expect(useWorkflowsStore().openFormWindow).not.toHaveBeenCalled();
+		expect(openPopUpWindow).not.toHaveBeenCalled();
 	});
 
 	describe('executionFilterToQueryFilter()', () => {

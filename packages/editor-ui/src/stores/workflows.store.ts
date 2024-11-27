@@ -1278,15 +1278,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function openFormWindow(url: string) {
-		if (!formPopupWindow.value || formPopupWindow.value.closed) {
-			formPopupWindow.value = openPopUpWindow(url);
-		} else {
-			formPopupWindow.value.location = url;
-			formPopupWindow.value.focus();
-		}
-	}
-
 	function getFormResumeUrl(node: INode, executionId: string) {
 		const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
@@ -1328,7 +1319,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
 			) {
 				const testUrl = getFormResumeUrl(node, executionId);
-				openFormWindow(testUrl);
+				if (!formPopupWindow.value || formPopupWindow.value.closed) {
+					formPopupWindow.value = openPopUpWindow(testUrl);
+				} else {
+					formPopupWindow.value.location = testUrl;
+					formPopupWindow.value.focus();
+				}
 			}
 		} else {
 			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
@@ -1730,6 +1726,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
-		openFormWindow,
+		formPopupWindow,
 	};
 });
