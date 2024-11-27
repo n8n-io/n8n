@@ -399,7 +399,7 @@ onMounted(() => {
 
 	form {
 		width: 100%;
-		max-width: 1280px;
+		max-width: var(--content-container-width);
 		padding: 0 var(--spacing-2xl);
 
 		fieldset {
@@ -416,7 +416,7 @@ onMounted(() => {
 
 .header {
 	width: 100%;
-	max-width: 1280px;
+	max-width: var(--content-container-width);
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
