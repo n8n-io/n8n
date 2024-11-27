@@ -188,7 +188,7 @@ const getColumnIndex = (rowText: string, textareaX: number, font: string) => {
 	return rowText.length === col ? col : col - 1;
 };
 
-export function updateTextareaValue(
+export function getUpdatedTextareaValue(
 	event: MouseEvent,
 	textareaRowsData: TextareaRowData | null,
 	value: string,

@@ -10,7 +10,7 @@ import {
 	getParentNodes,
 	generateCodeForAiTransform,
 	type TextareaRowData,
-	updateTextareaValue,
+	getUpdatedTextareaValue,
 	getTextareaCursorPosition,
 } from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -176,7 +176,7 @@ function cleanTextareaRowsData() {
 async function onDrop(value: string, event: MouseEvent) {
 	value = propertyNameFromExpression(value);
 
-	prompt.value = updateTextareaValue(event, textareaRowsData.value, value);
+	prompt.value = getUpdatedTextareaValue(event, textareaRowsData.value, value);
 
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
@@ -184,7 +184,7 @@ async function onDrop(value: string, event: MouseEvent) {
 	});
 }
 
-async function highlightCursorPosition(event: MouseEvent, activeDrop: boolean) {
+async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: boolean) {
 	if (!activeDrop) return;
 
 	const textarea = event.target as HTMLTextAreaElement;
@@ -240,7 +240,7 @@ async function highlightCursorPosition(event: MouseEvent, activeDrop: boolean) {
 						:maxlength="inputFieldMaxLength"
 						:placeholder="parameter.placeholder"
 						@input="onPromptInput"
-						@mousemove="highlightCursorPosition($event, activeDrop)"
+						@mousemove="updateCursorPositionOnMouseMove($event, activeDrop)"
 						@mouseleave="cleanTextareaRowsData"
 					/>
 				</template>
