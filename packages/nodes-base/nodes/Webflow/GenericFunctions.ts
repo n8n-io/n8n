@@ -5,7 +5,7 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	IHttpRequestMethods,
-	IRequestOptions,
+	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
@@ -20,11 +20,11 @@ export async function webflowApiRequest(
 ) {
 	let credentialsType = 'webflowOAuth2Api';
 
-	let options: IRequestOptions = {
+	let options: IHttpRequestOptions = {
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.webflow.com${resource}`,
+		url: uri || `https://api.webflow.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -37,8 +37,8 @@ export async function webflowApiRequest(
 		}
 		options.headers = { 'accept-version': '1.0.0' };
 	} else {
-		options.resolveWithFullResponse = true;
-		options.uri = `https://api.webflow.com/v2${resource}`;
+		options.returnFullResponse = true;
+		options.url = `https://api.webflow.com/v2${resource}`;
 	}
 
 	if (Object.keys(options.qs as IDataObject).length === 0) {
@@ -48,7 +48,7 @@ export async function webflowApiRequest(
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function webflowApiRequestAllItems(
