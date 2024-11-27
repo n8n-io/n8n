@@ -64,6 +64,16 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
+		hints: [
+			{
+				message:
+					'We strongly recommend defining your input fields explicitly. If no inputs are provided, all data from the calling workflow will be available, and issues will be more difficult to debug later on.',
+				// keys() on WORKFLOW_INPUTS contains `VALUES` if at least one value is provided
+				displayCondition: `={{ $parameter["${INPUT_SOURCE}"] === '${FIELDS}' && !$parameter["${WORKFLOW_INPUTS}"].keys().length  }}`, // TODO json mode condition
+				whenToDisplay: 'always',
+				location: 'ndv',
+			},
+		],
 		properties: [
 			{
 				displayName: `When an ‘Execute Workflow’ node calls this workflow, the execution starts here.<br><br>
@@ -90,7 +100,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 			},
 			{
 				displayName: 'Input Source',
-				name: 'inputSource',
+				name: INPUT_SOURCE,
 				type: 'options',
 				options: [
 					{
@@ -136,7 +146,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 								default: '',
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
-								noDataExpression: true,
+								// noDataExpression: true,
 							},
 							{
 								displayName: 'Type',
@@ -200,7 +210,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 						default: true,
 						description:
 							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
-						noDataExpression: true,
+						// noDataExpression: true,
 					},
 					{
 						displayName: 'Ignore Type Mismatch Errors',
