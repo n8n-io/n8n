@@ -54,7 +54,7 @@ export class RssFeedRead implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Ignore SSL Issues',
+						displayName: 'Ignore SSL Issues (insecure)',
 						name: 'ignoreSSL',
 						type: 'boolean',
 						default: false,

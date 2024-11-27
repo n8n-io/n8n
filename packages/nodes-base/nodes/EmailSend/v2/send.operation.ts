@@ -167,7 +167,7 @@ const properties: INodeProperties[] = [
 				description: 'Email address of BCC recipient',
 			},
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,

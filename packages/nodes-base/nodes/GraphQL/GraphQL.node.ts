@@ -160,7 +160,7 @@ export class GraphQL implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
