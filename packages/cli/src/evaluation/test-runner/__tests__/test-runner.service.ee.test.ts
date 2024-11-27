@@ -176,5 +176,36 @@ describe('TestRunnerService', () => {
 		);
 
 		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
+
+		// Check workflow under test was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'evaluation',
+				pinData: {
+					'When clicking ‘Test workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+				},
+				workflowData: expect.objectContaining({
+					id: 'workflow-under-test-id',
+				}),
+			}),
+		);
+
+		// Check evaluation workflow was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'evaluation',
+				executionData: expect.objectContaining({
+					executionData: expect.objectContaining({
+						nodeExecutionStack: expect.arrayContaining([
+							expect.objectContaining({ data: expect.anything() }),
+						]),
+					}),
+				}),
+				workflowData: expect.objectContaining({
+					id: 'evaluation-workflow-id',
+				}),
+			}),
+		);
 	});
 });

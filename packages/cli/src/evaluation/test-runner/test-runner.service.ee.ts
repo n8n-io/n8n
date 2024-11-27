@@ -25,7 +25,8 @@ import { WorkflowRunner } from '@/workflow-runner';
  * It uses the test definitions to find
  * past executions, creates pin data from them,
  * and runs the workflow-under-test with the pin data.
- * TODO: Evaluation workflows
+ * After the workflow-under-test finishes, it runs the evaluation workflow
+ * with the original and new run data.
  * TODO: Node pinning
  * TODO: Collect metrics
  */
@@ -92,10 +93,6 @@ export class TestRunnerService {
 
 	/**
 	 * Run the evaluation workflow with the expected and actual run data.
-	 * @param evaluationWorkflow
-	 * @param expectedData
-	 * @param actualData
-	 * @private
 	 */
 	private async runTestCaseEvaluation(
 		evaluationWorkflow: WorkflowEntity,
@@ -114,6 +111,8 @@ export class TestRunnerService {
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
 
+		data.executionMode = 'evaluation';
+
 		// Trigger the evaluation workflow
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
@@ -129,8 +128,10 @@ export class TestRunnerService {
 		assert(lastNodeExecuted, 'Could not find the last node executed in evaluation workflow');
 
 		// Extract the output of the last node executed in the evaluation workflow
-		// We use only the first main output
-		return execution.data.resultData.runData[lastNodeExecuted]?.[0]?.data?.main[0]?.[0]?.json ?? {};
+		// We use only the first item of a first main output
+		const lastNodeTaskData = execution.data.resultData.runData[lastNodeExecuted]?.[0];
+		const mainConnectionData = lastNodeTaskData?.data?.main?.[0];
+		return mainConnectionData?.[0]?.json ?? {};
 	}
 
 	/**
@@ -170,14 +171,16 @@ export class TestRunnerService {
 			const { pinData, executionData } = testData;
 
 			// Run the test case and wait for it to finish
-			const execution = await this.runTestCase(workflow, pinData, user.id);
+			const testCaseExecution = await this.runTestCase(workflow, pinData, user.id);
 
-			if (!execution) {
+			// In case of a permission check issue, the test case execution will be undefined.
+			// Skip them and continue with the next test case
+			if (!testCaseExecution) {
 				continue;
 			}
 
 			// Collect the results of the test case execution
-			const testCaseRunData = execution.data.resultData.runData;
+			const testCaseRunData = testCaseExecution.data.resultData.runData;
 
 			// Get the original runData from the test case execution data
 			const originalRunData = executionData.resultData.runData;
@@ -191,8 +194,7 @@ export class TestRunnerService {
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
-			const evalResult = this.extractEvaluationResult(evalExecution);
-			console.log({ evalResult });
+			this.extractEvaluationResult(evalExecution);
 
 			// TODO: collect metrics
 		}
