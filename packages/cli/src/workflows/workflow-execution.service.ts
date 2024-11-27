@@ -94,7 +94,7 @@ export class WorkflowExecutionService {
 			runData,
 			startNodes,
 			destinationNode,
-			dirtyIds,
+			dirtyNodeNames,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -143,7 +143,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
-			dirtyNodeNames: dirtyIds,
+			dirtyNodeNames,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
