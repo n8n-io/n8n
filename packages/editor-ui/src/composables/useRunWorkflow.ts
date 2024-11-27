@@ -263,7 +263,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 
 			if (startRunData.runData) {
-				startRunData.dirtyIds = getDirtyNodesIds(startRunData.runData);
+				startRunData.dirtyNodeNames = getDirtyNodeNames(startRunData.runData);
 			}
 
 			// Init the execution data to represent the start of the execution
