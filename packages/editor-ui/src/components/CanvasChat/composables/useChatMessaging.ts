@@ -153,7 +153,6 @@ export function useChatMessaging({
 			source: 'RunData.ManualChatMessage',
 			message,
 		});
-		console.log('Finished onRunChatWorkflow', response);
 		isLoading.value = false;
 		if (!response?.executionId) {
 			return;
