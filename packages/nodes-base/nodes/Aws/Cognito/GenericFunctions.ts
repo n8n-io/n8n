@@ -116,6 +116,25 @@ export async function processAttributes(
 	return requestOptions;
 }
 
+/* Helper function to process Group Response */
+export async function processGroupsResponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const responseBody = response.body as { Groups: IDataObject[] };
+
+	if (!responseBody || !Array.isArray(responseBody.Groups)) {
+		throw new ApplicationError('Unexpected response format: No groups found.');
+	}
+
+	const executionData: INodeExecutionData[] = responseBody.Groups.map((group) => ({
+		json: group,
+	}));
+
+	return executionData;
+}
+
 /* Helper function to handle pagination */
 const possibleRootProperties = ['Users']; // Root properties that can be returned by the list operations of the API
 // ToDo: Test if pagination works

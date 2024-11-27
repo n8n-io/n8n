@@ -1,7 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive } from '../GenericFunctions';
+import { handleErrorPostReceive, processGroupsResponse } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -100,22 +100,7 @@ export const groupOperations: INodeProperties[] = [
 						},
 					},
 					output: {
-						postReceive: [
-							handleErrorPostReceive,
-							{
-								type: 'set',
-								properties: {
-									value: '={{ $response.body.Groups }}',
-								},
-							},
-							{
-								type: 'set',
-								properties: {
-									value:
-										'={{ $response.body.Groups.length > 10 && $parameter.simplified ? $response.body.Groups.map(group => ({ CreatedDate: group.CreatedDate, Description: group.Description, GroupName: group.GroupName, LastModifiedDate: group.LastModifiedDate })) : $response.body.Groups }}', // Simplify if more than 10 fields
-								},
-							},
-						],
+						postReceive: [handleErrorPostReceive, processGroupsResponse],
 					},
 				},
 				action: 'Get many groups',
