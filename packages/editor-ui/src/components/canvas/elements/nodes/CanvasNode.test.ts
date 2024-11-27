@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import { NodeConnectionType } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
-import { createCanvasNodeProps } from '@/__tests__/data';
+import { createCanvasNodeProps, createCanvasProvide } from '@/__tests__/data';
 
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -19,7 +19,14 @@ beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
 
-	renderComponent = createComponentRenderer(CanvasNode, { pinia });
+	renderComponent = createComponentRenderer(CanvasNode, {
+		pinia,
+		global: {
+			provide: {
+				...createCanvasProvide(),
+			},
+		},
+	});
 });
 
 describe('CanvasNode', () => {
