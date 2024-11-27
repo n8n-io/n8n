@@ -136,3 +136,5 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return useStore() as any;
 };
+
+export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;
