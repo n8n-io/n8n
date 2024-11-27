@@ -163,6 +163,8 @@ export class TaskRunnerServer {
 			authEndpoint,
 			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
 		);
+
+		this.app.get('/healthz', (_, res) => res.send({ status: 'ok' }));
 	}
 
 	private handleUpgradeRequest = (
