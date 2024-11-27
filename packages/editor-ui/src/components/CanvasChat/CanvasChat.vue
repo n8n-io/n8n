@@ -50,7 +50,7 @@ const isChatOpen = computed(() => {
 const canvasNodes = computed(() => workflowsStore.allNodes);
 const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-
+const resultData = computed(() => workflowsStore.getWorkflowRunData);
 // Expose internal state for testing
 defineExpose({
 	messages,
@@ -302,7 +302,7 @@ watchEffect(() => {
 				</n8n-resize-wrapper>
 				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
 					<ChatLogsPanel
-						:key="messages.length"
+						:key="`${resultData?.length ?? messages?.length}`"
 						:workflow="workflow"
 						data-test-id="canvas-chat-logs"
 						:node="connectedNode"

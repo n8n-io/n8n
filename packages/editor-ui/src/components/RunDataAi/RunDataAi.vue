@@ -201,7 +201,7 @@ const aiData = computed<AIResult[]>(() => {
 		return startTime >= rootNodeStartTime && startTime < rootNodeEndTime;
 	});
 
-	return currentNodeResult;
+	return result;
 });
 
 const executionTree = computed<TreeNode[]>(() => {
