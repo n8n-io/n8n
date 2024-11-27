@@ -21,7 +21,7 @@
 					"conditions": [
 						{
 							"id": "9d3abc8d-3270-4bec-9a59-82622d5dbb5a",
-							"leftValue": "={{ $json.actual.Code[0].data.main[0].length }}",
+							"leftValue": "={{ $json.newExecution.Code[0].data.main[0].length }}",
 							"rightValue": 3,
 							"operator": {
 								"type": "number",
@@ -30,7 +30,7 @@
 						},
 						{
 							"id": "894ce84b-13a4-4415-99c0-0c25182903bb",
-							"leftValue": "={{ $json.actual.Code[0].data.main[0][0].json.random }}",
+							"leftValue": "={{ $json.newExecution.Code[0].data.main[0][0].json.random }}",
 							"rightValue": 0.7,
 							"operator": {
 								"type": "number",
