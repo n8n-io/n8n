@@ -92,8 +92,8 @@ return items;`,
 
 		// Define the global objects for the custom function
 		const sandbox = {
-			getNodeParameter: this.getNodeParameter,
-			getWorkflowStaticData: this.getWorkflowStaticData,
+			getNodeParameter: this.getNodeParameter.bind(this),
+			getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
 			helpers: this.helpers,
 			items,
 			// To be able to access data of other items
@@ -157,7 +157,7 @@ return items;`,
 		const vm = new NodeVM(options);
 
 		if (mode === 'manual') {
-			vm.on('console.log', this.sendMessageToUI);
+			vm.on('console.log', this.sendMessageToUI.bind(this));
 		}
 
 		// Get the code to execute
