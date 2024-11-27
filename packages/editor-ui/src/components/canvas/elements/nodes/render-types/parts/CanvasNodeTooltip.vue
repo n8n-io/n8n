@@ -14,7 +14,6 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 
 <template>
 	<N8nTooltip
-		v-if="renderOptions.tooltip"
 		placement="top"
 		:show-after="500"
 		:visible="true"

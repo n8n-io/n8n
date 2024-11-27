@@ -126,7 +126,7 @@ function openContextMenu(event: MouseEvent) {
 
 <template>
 	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
-		<CanvasNodeTooltip :visible="showTooltip" />
+		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<slot />
 		<CanvasNodeTriggerIcon v-if="renderOptions.trigger" />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
