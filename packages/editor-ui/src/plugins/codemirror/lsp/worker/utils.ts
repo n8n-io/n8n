@@ -76,14 +76,7 @@ export function tsDiagnosticMessage(diagnostic: Pick<ts.Diagnostic, 'messageText
 	return diagnostic.messageText.messageText;
 }
 
-/**
- * TypeScript and CodeMirror have slightly different
- * ways of representing diagnostics. This converts
- * from one to the other.
- */
 export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation, prefix: string): Diagnostic {
-	// We add some code at the end of the document, but we can't have a
-	// diagnostic in an invalid range
 	const start = tsPosToCm(d.start, prefix);
 	const message = tsDiagnosticMessage(d);
 
@@ -171,10 +164,11 @@ declare global {
 }`;
 }
 
-function returnTypeForMode(mode: CodeExecutionMode): string {
+export function returnTypeForMode(mode: CodeExecutionMode): string {
+	const returnItem = '{ json: { [key: string]: unknown } } | { [key: string]: unknown }';
 	if (mode === 'runOnceForAllItems') {
-		return 'Promise<Array<Object>> | Array<Object>';
+		return `Promise<Array<${returnItem}>> | Array<${returnItem}>`;
 	}
 
-	return 'Promise<Object> | Object';
+	return `Promise<${returnItem}> | ${returnItem}`;
 }

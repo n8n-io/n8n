@@ -1,17 +1,20 @@
 import { useDataSchema } from '@/composables/useDataSchema';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { autocompletion, type CompletionSource } from '@codemirror/autocomplete';
+import { type CompletionSource } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { LanguageSupport } from '@codemirror/language';
 import { linter, type LintSource } from '@codemirror/lint';
 import { combineConfig, Facet } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
-import { useNDVStore } from '../../../stores/ndv.store';
-import { autocompletableNodeNames, stripExcessParens } from '../completions/utils';
+import { useNDVStore } from '@/stores/ndv.store';
+import { autocompletableNodeNames } from '../completions/utils';
+import { n8nAutocompletion } from '../n8nLang';
 import type { LanguageServiceWorker } from './types';
-import { dollarOptions } from '../completions/dollar.completions';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import useEnvironmentsStore from '../../../stores/environments.ee.store';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -24,22 +27,16 @@ export const tsFacet = Facet.define<
 
 const tsCompletions: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(tsFacet);
-	const { pos, explicit } = context;
+	const { pos } = context;
 
 	let word = context.matchBefore(/[\$\w]*/);
 	if (!word?.text) {
 		word = context.matchBefore(/\./);
 	}
 
-	if (!word?.text && explicit) {
-		return {
-			from: pos,
-			options: dollarOptions().map(stripExcessParens(context)),
-		};
-	}
-
 	const result = await worker.getCompletionsAtPos(context.pos);
 
+	if (context.aborted) return null;
 	if (!result) return result;
 
 	return {
@@ -50,33 +47,36 @@ const tsCompletions: CompletionSource = async (context) => {
 
 const tsLint: LintSource = async (view) => {
 	const { worker } = view.state.facet(tsFacet);
-	return await worker.getDiagnostics();
+	const docLength = view.state.doc.length;
+	return (await worker.getDiagnostics()).filter((diag) => {
+		return diag.from < docLength && diag.to <= docLength && diag.from >= 0;
+	});
 };
 
-// type HoverSource = Parameters<typeof hoverTooltip>[0];
-// const tsHover: HoverSource = async (view, pos) => {
-// 	const { worker } = view.state.facet(tsFacet);
+type HoverSource = Parameters<typeof hoverTooltip>[0];
+const tsHover: HoverSource = async (view, pos) => {
+	const { worker } = view.state.facet(tsFacet);
 
-// 	const info = await worker.getHoverTooltip(pos);
+	const info = await worker.getHoverTooltip(pos);
 
-// 	if (!info) return null;
+	if (!info) return null;
 
-// 	return {
-// 		pos: info.start,
-// 		end: info.end,
-// 		create: () => {
-// 			const div = document.createElement('div');
-// 			if (info.quickInfo?.displayParts) {
-// 				for (const part of info.quickInfo.displayParts) {
-// 					const span = div.appendChild(document.createElement('span'));
-// 					span.className = `quick-info-${part.kind}`;
-// 					span.innerText = part.text;
-// 				}
-// 			}
-// 			return { dom: div };
-// 		},
-// 	};
-// };
+	return {
+		pos: info.start,
+		end: info.end,
+		create: () => {
+			const div = document.createElement('div');
+			if (info.quickInfo?.displayParts) {
+				for (const part of info.quickInfo.displayParts) {
+					const span = div.appendChild(document.createElement('span'));
+					span.className = `quick-info-${part.kind}`;
+					span.innerText = part.text;
+				}
+			}
+			return { dom: div };
+		},
+	};
+};
 
 function webWorker(path: string) {
 	return new Worker(new URL(path, import.meta.url), { type: 'module' });
@@ -85,42 +85,58 @@ function webWorker(path: string) {
 export async function typescript(initialValue: string, mode: CodeExecutionMode) {
 	const worker = Comlink.wrap<LanguageServiceWorker>(webWorker('./worker/typescript.worker.ts'));
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
-	const activeNodeName = useNDVStore().activeNodeName;
+	const ndvStore = useNDVStore();
+	const workflowsStore = useWorkflowsStore();
+	const activeNodeName = ndvStore.activeNodeName;
 
 	await worker.init(
-		initialValue,
+		{
+			content: initialValue,
+			allNodeNames: autocompletableNodeNames(),
+			variables: useEnvironmentsStore().variables.map((v) => v.key),
+			inputNodeNames: activeNodeName
+				? workflowsStore
+						.getCurrentWorkflow()
+						.getParentNodes(activeNodeName, NodeConnectionType.Main, 1)
+				: [],
+			mode,
+		},
 		Comlink.proxy(async (nodeName) => {
-			const node = useWorkflowsStore().getNodeByName(nodeName);
+			const node = workflowsStore.getNodeByName(nodeName);
 
 			if (node) {
 				const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
 				const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
+				const execution = workflowsStore.getWorkflowExecution;
+				const binaryData = useNodeHelpers()
+					.getBinaryData(
+						execution?.data?.resultData?.runData ?? null,
+						node.name,
+						ndvStore.ndvInputRunIndex ?? 0,
+						0,
+					)
+					.filter((data) => Boolean(data && Object.keys(data).length));
 
-				return schema;
+				return { json: schema, binary: Object.keys(binaryData) };
 			}
 
 			return undefined;
 		}),
-		autocompletableNodeNames(),
-		activeNodeName
-			? useWorkflowsStore()
-					.getCurrentWorkflow()
-					.getParentNodes(activeNodeName, NodeConnectionType.Main, 1)
-			: [],
-		mode,
 	);
 
 	return {
 		extension: [
 			tsFacet.of({ worker }),
-			javascriptLanguage,
-			autocompletion({
-				icons: false,
-				defaultKeymap: false,
-				override: [tsCompletions],
-			}),
+			new LanguageSupport(
+				javascriptLanguage,
+				javascriptLanguage.data.of({ autocomplete: tsCompletions }),
+			),
+			n8nAutocompletion(),
 			linter(tsLint),
-			// hoverTooltip(tsHover),
+			hoverTooltip(tsHover, {
+				hideOnChange: true,
+				hoverTime: 500,
+			}),
 			EditorView.updateListener.of(async (update) => {
 				if (!update.docChanged) return;
 				await worker.updateFile(update.state.doc.toString());

@@ -11,14 +11,20 @@ export interface HoverInfo {
 	quickInfo: ts.QuickInfo | undefined;
 }
 
+export type WorkerInitOptions = {
+	content: string;
+	allNodeNames: string[];
+	inputNodeNames: string[];
+	variables: string[];
+	mode: CodeExecutionMode;
+};
+
+export type NodeDataFetcher = (
+	nodeName: string,
+) => Promise<{ json: Schema | undefined; binary: string[] } | undefined>;
+
 export type LanguageServiceWorker = {
-	init(
-		content: string,
-		nodeJsonFetcher: (nodeName: string) => Promise<Schema | undefined>,
-		allNodeNames: string[],
-		inputNodeNames: string[],
-		mode: CodeExecutionMode,
-	): Promise<void>;
+	init(options: WorkerInitOptions, nodeDataFetcher: NodeDataFetcher): Promise<void>;
 	updateFile(content: string): void;
 	updateMode(mode: CodeExecutionMode): void;
 	getCompletionsAtPos(pos: number): Promise<CompletionResult | null>;

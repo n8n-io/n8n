@@ -2,7 +2,7 @@ import type { Completion } from '@codemirror/autocomplete';
 import * as tsvfs from '@typescript/vfs';
 import * as Comlink from 'comlink';
 import ts, { type DiagnosticWithLocation } from 'typescript';
-import type { LanguageServiceWorker } from '../types';
+import type { LanguageServiceWorker, NodeDataFetcher } from '../types';
 import { indexedDbCache } from './cache';
 import {
 	FILE_NAME,
@@ -11,20 +11,19 @@ import {
 	fnPrefix,
 	generateExtensionTypes,
 	isDiagnosticWithLocation,
+	returnTypeForMode,
 	schemaToTypescriptTypes,
+	tsPosToCm,
 	wrapInFunction,
 } from './utils';
 
-// eslint-disable-next-line import/extensions
-import globalTypes from './type-declarations/globals.d.ts?raw';
-// eslint-disable-next-line import/extensions
 import { pascalCase } from 'change-case';
-import type { Schema } from '@/Interface';
+import type { CodeExecutionMode } from 'n8n-workflow';
+import globalTypes from './type-declarations/globals.d.ts?raw';
 import luxonTypes from './type-declarations/luxon.d.ts?raw';
-import n8nTypes from './type-declarations/n8n.d.ts?raw';
 import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
 import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
-import type { CodeExecutionMode } from 'n8n-workflow';
+import n8nTypes from './type-declarations/n8n.d.ts?raw';
 import { loadTypes } from './typesLoader';
 
 self.process = { env: {} } as NodeJS.Process;
@@ -33,7 +32,7 @@ const TS_COMPLETE_BLOCKLIST: ts.ScriptElementKind[] = [ts.ScriptElementKind.warn
 
 const worker = (): LanguageServiceWorker => {
 	let env: tsvfs.VirtualTypeScriptEnvironment;
-	let nodeJsonFetcher: (nodeName: string) => Promise<Schema | undefined> = async () => undefined;
+	let nodeDataFetcher: NodeDataFetcher = async () => undefined;
 	const loadedNodeTypesMap: Record<string, { type: string; typeName: string }> = {};
 	let inputNodeNames: string[];
 	let mode: CodeExecutionMode;
@@ -50,9 +49,10 @@ const worker = (): LanguageServiceWorker => {
 	async function loadNodeTypes(nodeName: string) {
 		if (loadedNodeTypesMap[nodeName]) return;
 
-		const schema = await nodeJsonFetcher(nodeName);
+		const data = await nodeDataFetcher(nodeName);
 
-		if (schema) {
+		if (data?.json) {
+			const schema = data.json;
 			const typeName = pascalCase(nodeName);
 			const type = schemaToTypescriptTypes(schema, typeName);
 			loadedNodeTypesMap[nodeName] = { type, typeName };
@@ -133,23 +133,19 @@ itemMatching(itemIndex: number): N8nInputItem;`
 			if (!callExpression) return;
 
 			const nodeName = ((callExpression as ts.CallExpression).arguments.at(0) as ts.StringLiteral)
-				.text;
+				?.text;
+
+			if (!nodeName) return;
 
 			await loadNodeTypes(nodeName);
 		}
 	}
 
 	return {
-		async init(
-			content: string,
-			nodeJsonFetcherArg: (nodeName: string) => Promise<Schema | undefined>,
-			allNodeNames: string[],
-			inputNodeNamesArg: string[],
-			modeArg: CodeExecutionMode,
-		) {
-			nodeJsonFetcher = nodeJsonFetcherArg;
-			inputNodeNames = inputNodeNamesArg;
-			mode = modeArg;
+		async init(options, nodeDataFetcherArg) {
+			nodeDataFetcher = nodeDataFetcherArg;
+			inputNodeNames = options.inputNodeNames;
+			mode = options.mode;
 
 			const compilerOptions: ts.CompilerOptions = {
 				allowJs: true,
@@ -195,7 +191,7 @@ declare global {
   }
 }`,
 			);
-			fsMap.set(FILE_NAME, wrapInFunction(content, mode));
+			fsMap.set(FILE_NAME, wrapInFunction(options.content, mode));
 
 			fsMap.set(
 				'n8n-mode-specific.d.ts',
@@ -210,6 +206,18 @@ declare global {
 				compilerOptions,
 			);
 
+			if (options.variables) {
+				env.createFile(
+					'n8n-variables.d.ts',
+					`export {}
+declare global {
+  interface N8nVars {
+    ${options.variables.map((key) => `${key}: string;`).join('\n')}
+  }
+}`,
+				);
+			}
+
 			if (cache.getItem('/node_modules/@types/luxon/package.json')) {
 				const fileMap = await cache.getAllWithPrefix('/node_modules/@types/luxon');
 
@@ -223,14 +231,16 @@ declare global {
 				});
 			}
 
-			await Promise.all(allNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)));
+			await Promise.all(
+				options.allNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)),
+			);
 			await Promise.all(
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
 			);
 		},
 		updateFile: (content) => updateFile(FILE_NAME, wrapInFunction(content, mode)),
 		async getCompletionsAtPos(pos) {
-			const tsPos = cmPosToTs(pos, fnPrefix(mode));
+			const tsPos = cmPosToTs(pos, fnPrefix(returnTypeForMode(mode)));
 
 			await loadTypesIfNeeded(tsPos);
 
@@ -270,22 +280,19 @@ declare global {
 				isDiagnosticWithLocation(diagnostic),
 			);
 
-			return diagnostics.map((d) => convertTSDiagnosticToCM(d, fnPrefix(mode)));
+			return diagnostics.map((d) => convertTSDiagnosticToCM(d, fnPrefix(returnTypeForMode(mode))));
 		},
 		getHoverTooltip(pos) {
-			const quickInfo = env.languageService.getQuickInfoAtPosition(
-				FILE_NAME,
-				cmPosToTs(pos, fnPrefix(mode)),
-			);
+			const tsPos = cmPosToTs(pos, fnPrefix(returnTypeForMode(mode)));
+			const quickInfo = env.languageService.getQuickInfoAtPosition(FILE_NAME, tsPos);
+
 			if (!quickInfo) return null;
 
-			const start = quickInfo.textSpan.start;
+			const start = tsPosToCm(quickInfo.textSpan.start, fnPrefix(returnTypeForMode(mode)));
 
 			const typeDef =
-				env.languageService.getTypeDefinitionAtPosition(
-					FILE_NAME,
-					cmPosToTs(pos, fnPrefix(mode)),
-				) ?? env.languageService.getDefinitionAtPosition(FILE_NAME, cmPosToTs(pos, fnPrefix(mode)));
+				env.languageService.getTypeDefinitionAtPosition(FILE_NAME, tsPos) ??
+				env.languageService.getDefinitionAtPosition(FILE_NAME, tsPos);
 
 			return {
 				start,

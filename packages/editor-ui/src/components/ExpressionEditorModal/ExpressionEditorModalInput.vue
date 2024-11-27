@@ -7,7 +7,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { forceParse } from '@/utils/forceParse';
-import { completionStatus } from '@codemirror/autocomplete';
 import { inputTheme } from './theme';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
@@ -44,7 +43,7 @@ const extensions = computed(() => [
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
-	EditorView.domEventHandlers({ scroll: forceParse }),
+	EditorView.domEventHandlers({ scroll: (_, view) => forceParse(view) }),
 	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));

@@ -42,6 +42,8 @@ import {
 } from 'vue';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
 import type { CodeExecutionMode } from 'n8n-workflow';
+import { forceParse } from '../utils/forceParse';
+import { useCompleter } from '../components/CodeNodeEditor/completer';
 
 export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
 
@@ -102,14 +104,21 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	async function getFullLanguageExtensions(): Promise<Extension[]> {
 		const lang = toValue(language);
 		switch (lang) {
-			case 'javaScript':
+			case 'javaScript': {
 				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
 				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
 				const { extension, updateMode } = await typescript(readEditorValue(), mode);
 				onUpdateMode.value = updateMode;
 				return [extension];
-			case 'python':
-				return [python()];
+			}
+			case 'python': {
+				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
+				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
+				const pythonAutocomplete = useCompleter(mode, editor.value ?? null).autocompletionExtension(
+					'python',
+				);
+				return [python(), pythonAutocomplete];
+			}
 			case 'json':
 				return [json()];
 			case 'html':
@@ -213,6 +222,9 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 					return null;
 				}),
 				EditorState.allowMultipleSelections.of(true),
+				EditorView.clickAddsSelectionRange.of(
+					(event) => event.altKey && !event.metaKey && !event.shiftKey,
+				),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 				EditorView.domEventHandlers({
 					mousedown: () => {
@@ -261,7 +273,6 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 						light: 'var(--color-code-indentation-marker)',
 					},
 				}),
-				infoBoxTooltips(),
 				Prec.highest(keymap.of(editorKeymap)),
 			],
 		});
@@ -290,10 +301,17 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 
 	watch(toRef(language), setLanguageExtensions);
 
-	watch(toRef(languageParams), (params) => {
+	watch(toRef(languageParams), async (params) => {
+		if (!editor.value) return;
+
 		if ('mode' in params) {
 			onUpdateMode.value((params as CodeEditorLanguageParamsMap['javaScript']).mode);
+			forceParse(editor.value);
 		}
+
+		editor.value.dispatch({
+			effects: languageExtensions.value.reconfigure(await getFullLanguageExtensions()),
+		});
 	});
 
 	watch(toRef(isReadOnly), setReadOnlyExtensions);
