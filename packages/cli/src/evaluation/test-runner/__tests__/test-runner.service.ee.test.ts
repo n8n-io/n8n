@@ -2,6 +2,7 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
+import type { IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -16,6 +17,10 @@ import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
+);
+
+const wfEvaluationJson = JSON.parse(
+	readFileSync(path.join(__dirname, './mock-data/workflow.evaluation.json'), { encoding: 'utf-8' }),
 );
 
 const executionDataJson = JSON.parse(
@@ -41,6 +46,16 @@ const executionMocks = [
 	}),
 ];
 
+function mockExecutionData() {
+	return mock<IRun>({
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+	});
+}
+
 describe('TestRunnerService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -60,6 +75,11 @@ describe('TestRunnerService', () => {
 		executionRepository.findOne
 			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id-2' } }))
 			.mockResolvedValueOnce(executionMocks[1]);
+	});
+
+	afterEach(() => {
+		activeExecutions.getPostExecutePromise.mockClear();
+		workflowRunner.run.mockClear();
 	});
 
 	test('should create an instance of TestRunnerService', async () => {
@@ -86,17 +106,106 @@ describe('TestRunnerService', () => {
 			...wfUnderTestJson,
 		});
 
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
 		workflowRunner.run.mockResolvedValue('test-execution-id');
 
 		await testRunnerService.runTest(
 			mock<User>(),
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
 			}),
 		);
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
 		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+	});
+
+	test('should run both workflow under test and evaluation workflow', async () => {
+		const testRunnerService = new TestRunnerService(
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-4')
+			.mockResolvedValue(mockExecutionData());
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+			}),
+		);
+
+		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
+
+		// Check workflow under test was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'evaluation',
+				pinData: {
+					'When clicking ‘Test workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+				},
+				workflowData: expect.objectContaining({
+					id: 'workflow-under-test-id',
+				}),
+			}),
+		);
+
+		// Check evaluation workflow was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'evaluation',
+				executionData: expect.objectContaining({
+					executionData: expect.objectContaining({
+						nodeExecutionStack: expect.arrayContaining([
+							expect.objectContaining({ data: expect.anything() }),
+						]),
+					}),
+				}),
+				workflowData: expect.objectContaining({
+					id: 'evaluation-workflow-id',
+				}),
+			}),
+		);
 	});
 });
