@@ -271,6 +271,10 @@ function onNodeDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
+function onSelectionDragStop(event: NodeDragEvent) {
+	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
 function onSetNodeActive(id: string) {
 	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:active' });
 	emit('update:node:active', id);
@@ -644,6 +648,7 @@ provide(CanvasKey, {
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
+		@selection-drag-stop="onSelectionDragStop"
 	>
 		<template #node-canvas-node="nodeProps">
 			<Node

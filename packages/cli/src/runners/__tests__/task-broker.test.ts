@@ -524,7 +524,9 @@ describe('TaskBroker', () => {
 			const requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'] = {
 				dataOfNodes: 'all',
 				env: true,
-				input: true,
+				input: {
+					include: true,
+				},
 				prevNode: true,
 			};
 

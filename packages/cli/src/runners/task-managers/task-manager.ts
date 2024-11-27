@@ -1,6 +1,5 @@
-import { TaskRunnersConfig } from '@n8n/config';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
-import { DataRequestResponseReconstruct, RPC_ALLOW_LIST } from '@n8n/task-runner';
+import { RPC_ALLOW_LIST } from '@n8n/task-runner';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -18,8 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import * as a from 'node:assert/strict';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 
@@ -58,8 +56,6 @@ export abstract class TaskManager {
 	pendingRequests: Map<string, TaskRequest> = new Map();
 
 	tasks: Map<string, Task> = new Map();
-
-	private readonly runnerConfig = Container.get(TaskRunnersConfig);
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
@@ -245,18 +241,6 @@ export abstract class TaskManager {
 		}
 
 		const dataRequestResponse = this.dataResponseBuilder.buildFromTaskData(job.data);
-
-		if (this.runnerConfig.assertDeduplicationOutput) {
-			const reconstruct = new DataRequestResponseReconstruct();
-			a.deepStrictEqual(
-				reconstruct.reconstructConnectionInputData(dataRequestResponse.inputData),
-				job.data.connectionInputData,
-			);
-			a.deepStrictEqual(
-				reconstruct.reconstructExecuteData(dataRequestResponse),
-				job.data.executeData,
-			);
-		}
 
 		const strippedData = new DataRequestResponseStripper(
 			dataRequestResponse,
