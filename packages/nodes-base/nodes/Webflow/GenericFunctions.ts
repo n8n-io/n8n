@@ -57,21 +57,28 @@ export async function webflowApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-) {
+): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
-
 	let responseData;
 
 	query.limit = 100;
 	query.offset = 0;
 
+	const isTypeVersion1 = this.getNode().typeVersion === 1;
+
 	do {
 		responseData = await webflowApiRequest.call(this, method, endpoint, body, query);
-		if (responseData.offset !== undefined) {
+		const items = isTypeVersion1 ? responseData.items : responseData.body.items;
+		returnData.push(...(items as IDataObject[]));
+
+		if (responseData.offset !== undefined || responseData?.body?.pagination?.offset !== undefined) {
 			query.offset += query.limit;
 		}
-		returnData.push.apply(returnData, responseData.items as IDataObject[]);
-	} while (returnData.length < responseData.total);
+	} while (
+		isTypeVersion1
+			? returnData.length < responseData.total
+			: returnData.length < responseData.body.pagination.total
+	);
 
 	return returnData;
 }
