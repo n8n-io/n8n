@@ -3,7 +3,10 @@ import express from 'express';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { testMetricCreateRequestBodySchema } from '@/evaluation/metric.schema';
+import {
+	testMetricCreateRequestBodySchema,
+	testMetricPatchRequestBodySchema,
+} from '@/evaluation/metric.schema';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 import { TestDefinitionService } from './test-definition.service.ee';
@@ -88,7 +91,7 @@ export class TestMetricsController {
 	async patch(req: TestMetricsRequest.Patch, res: express.Response) {
 		const { id: metricId, testDefinitionId } = req.params;
 
-		const bodyParseResult = testMetricCreateRequestBodySchema.safeParse(req.body);
+		const bodyParseResult = testMetricPatchRequestBodySchema.safeParse(req.body);
 		if (!bodyParseResult.success) {
 			res.status(400).json({ errors: bodyParseResult.error.errors });
 			return;
