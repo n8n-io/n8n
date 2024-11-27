@@ -37,7 +37,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<div>
+	<div data-test-id="concurrent-executions-header">
 		<n8n-tooltip>
 			<template #content>
 				<div :class="$style.tooltip">

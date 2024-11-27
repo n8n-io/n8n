@@ -70,7 +70,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
-	const isConcurrencyEnabled = computed(() => settings.value.concurrency !== -1);
+	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
 
