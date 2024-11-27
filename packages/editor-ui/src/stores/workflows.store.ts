@@ -1726,5 +1726,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		formPopupWindow,
 	};
 });
