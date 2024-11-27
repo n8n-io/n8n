@@ -7,8 +7,48 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+const INPUT_SOURCE = 'inputSource';
+const FIELDS = 'fields';
 const WORKFLOW_INPUTS = 'workflowInputs';
 const VALUES = 'values';
+
+function hasFields(context: IExecuteFunctions, index: number): boolean {
+	const inputSource = context.getNodeParameter(INPUT_SOURCE, index) as string;
+	if (inputSource === FIELDS) {
+		const fields = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, index, []) as Array<{
+			name: string;
+		}>;
+		return fields.length > 0;
+	} else {
+		return false;
+	}
+}
+
+function parseJson(
+	context: IExecuteFunctions,
+	index: number,
+): Array<{
+	name: string;
+}> {
+	return [{ name: 'dummy' }];
+}
+
+function getSchema(
+	context: IExecuteFunctions,
+	index: number,
+): Array<{
+	name: string;
+}> {
+	const inputSource = context.getNodeParameter(INPUT_SOURCE, index) as string;
+	if (inputSource === FIELDS) {
+		const fields = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, index, []) as Array<{
+			name: string;
+		}>;
+		return fields;
+	} else {
+		return parseJson(context, index);
+	}
+}
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,7 +98,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Using fields below',
-						value: 'fields',
+						value: FIELDS,
 						description: 'Provide via UI',
 					},
 					{
@@ -68,7 +108,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						description: 'Provide via JSON schema',
 					},
 				],
-				default: 'fields',
+				default: FIELDS,
 			},
 			{
 				displayName: 'Workflow Inputs',
@@ -82,7 +122,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					sortable: true,
 				},
 				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: ['fields'] },
+					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [FIELDS] },
 				},
 				default: {},
 				options: [
@@ -142,15 +182,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		if (this.getNode().typeVersion < 1.1) {
 			return [inputData];
 		} else {
-			// Need to mask type due to bad `getNodeParameter` typing
-			const marker = Symbol() as unknown as object;
-			const hasFields =
-				inputData.length >= 0 &&
-				inputData.some(
-					(_x, i) => this.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, i, marker) !== marker,
-				);
-
-			if (!hasFields) {
+			if (!hasFields(this, 0)) {
 				return [inputData];
 			}
 
@@ -170,13 +202,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					pairedItem: { item: itemIndex },
 				};
 				try {
-					const newParams = this.getNodeParameter(
-						`${WORKFLOW_INPUTS}.${VALUES}`,
-						itemIndex,
-						[],
-					) as Array<{
-						name: string;
-					}>;
+					const newParams = getSchema(this, itemIndex);
+
 					for (const { name } of newParams) {
 						/** TODO type check goes here */
 						newItem.json[name] = name in item.json ? item.json[name] : /* TODO default */ null;
