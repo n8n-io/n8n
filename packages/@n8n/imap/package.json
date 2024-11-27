@@ -20,7 +20,7 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "iconv-lite": "0.6.3",
+    "iconv-lite": "catalog:",
     "imap": "0.8.19",
     "quoted-printable": "1.0.1",
     "utf8": "3.0.0",
