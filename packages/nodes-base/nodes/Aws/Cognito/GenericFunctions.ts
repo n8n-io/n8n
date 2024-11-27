@@ -384,7 +384,6 @@ export async function searchGroups(
 ): Promise<INodeListSearchResult> {
 	// Get the userPoolId from the input
 	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
-	console.log('Raw User Pool ID:', userPoolIdRaw);
 
 	// Extract the actual value
 	const userPoolId = userPoolIdRaw.value as string;
@@ -395,7 +394,7 @@ export async function searchGroups(
 	}
 	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '', // the base URL is set in "awsRequest"
+		url: '',
 		method: 'POST',
 		headers: {
 			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
