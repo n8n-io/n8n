@@ -119,6 +119,9 @@ describe('RunDataSchema.vue', () => {
 		},
 		template:
 			'<div><template v-for="item in items"><slot v-bind="{ item }"></slot></template></div>',
+		methods: {
+			scrollToItem: vi.fn(),
+		},
 	};
 
 	const DynamicScrollerItemStub = {
