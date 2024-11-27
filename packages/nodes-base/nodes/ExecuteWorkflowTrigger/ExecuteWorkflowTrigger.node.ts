@@ -14,6 +14,9 @@ const FIELDS = 'fields';
 const WORKFLOW_INPUTS = 'workflowInputs';
 const INPUT_OPTIONS = 'inputOptions';
 const VALUES = 'values';
+const DEFAULT_PLACEHOLDER = null;
+
+type ValueOptions = { name: string; type: FieldType };
 
 function hasFields(context: IExecuteFunctions, index: number): boolean {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, index) as string;
@@ -27,23 +30,11 @@ function hasFields(context: IExecuteFunctions, index: number): boolean {
 	}
 }
 
-function parseJson(
-	context: IExecuteFunctions,
-	index: number,
-): Array<{
-	name: string;
-	type: FieldType;
-}> {
-	return [{ name: 'dummy', type: 'number' }];
+function parseJson(context: IExecuteFunctions, index: number): ValueOptions[] {
+	return [{ name: 'Placeholder', type: 'number' }];
 }
 
-function getSchema(
-	context: IExecuteFunctions,
-	index: number,
-): Array<{
-	name: string;
-	type: FieldType;
-}> {
+function getSchema(context: IExecuteFunctions, index: number): ValueOptions[] {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, index) as string;
 	if (inputSource === FIELDS) {
 		const fields = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, index, []) as Array<{
@@ -55,9 +46,6 @@ function getSchema(
 		return parseJson(context, index);
 	}
 }
-type ValueOptions = { name: string; value: FieldType };
-
-const DEFAULT_PLACEHOLDER = null;
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -183,7 +171,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 										value: 'object',
 									},
 									// Intentional omission of `dateTime`, `time`, `string-alphanumeric`, `form-fields`, `jwt` and `url`
-								] as ValueOptions[],
+								] as Array<{ name: string; value: FieldType }>,
 								default: 'string',
 								noDataExpression: true,
 							},
