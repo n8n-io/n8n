@@ -178,10 +178,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		if (!this.getNode()) {
-			return [];
-		}
-
 		const inputData = this.getInputData();
 
 		if (this.getNode().typeVersion < 1.1) {
