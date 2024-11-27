@@ -6,7 +6,13 @@ import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getParentNodes, generateCodeForAiTransform } from './utils';
+import {
+	getParentNodes,
+	generateCodeForAiTransform,
+	type TextareaRowData,
+	updateTextareaValue,
+	getTextareaCursorPosition,
+} from './utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -31,10 +37,7 @@ const i18n = useI18n();
 const isLoading = ref(false);
 const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
-const textareaRowsData = ref<{
-	rows: string[];
-	linesToRowsMap: number[][];
-} | null>(null);
+const textareaRowsData = ref<TextareaRowData | null>(null);
 
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
@@ -170,139 +173,11 @@ function cleanTextareaRowsData() {
 	textareaRowsData.value = null;
 }
 
-function splitText(textarea: HTMLTextAreaElement) {
-	if (textareaRowsData.value) return textareaRowsData.value;
-	const rows: string[] = [];
-	const linesToRowsMap: number[][] = [];
-	const style = window.getComputedStyle(textarea);
-
-	const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-	const border = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
-	const textareaWidth = textarea.clientWidth - padding - border;
-
-	const context = createTextContext(style);
-
-	const lines = textarea.value.split('\n');
-
-	lines.forEach((_) => {
-		linesToRowsMap.push([]);
-	});
-	lines.forEach((line, index) => {
-		if (line === '') {
-			rows.push(line);
-			linesToRowsMap[index].push(rows.length - 1);
-			return;
-		}
-		let currentLine = '';
-		const words = line.split(/(\s+)/);
-
-		words.forEach((word) => {
-			const testLine = currentLine + word;
-			const testWidth = context.measureText(testLine).width;
-
-			if (testWidth <= textareaWidth) {
-				currentLine = testLine;
-			} else {
-				rows.push(currentLine.trimEnd());
-				linesToRowsMap[index].push(rows.length - 1);
-				currentLine = word;
-			}
-		});
-
-		if (currentLine) {
-			rows.push(currentLine.trimEnd());
-			linesToRowsMap[index].push(rows.length - 1);
-		}
-	});
-
-	return { rows, linesToRowsMap };
-}
-
-function createTextContext(style: CSSStyleDeclaration): CanvasRenderingContext2D {
-	const canvas = document.createElement('canvas');
-	const context = canvas.getContext('2d')!;
-	context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-	return context;
-}
-
-const getRowIndex = (textareaY: number, lineHeight: string) => {
-	const rowHeight = parseInt(lineHeight, 10);
-	const snapPosition = textareaY - rowHeight / 2 - 1;
-	return Math.floor(snapPosition / rowHeight);
-};
-
-const getColumnIndex = (rowText: string, textareaX: number, font: string) => {
-	const span = document.createElement('span');
-	span.style.font = font;
-	span.style.visibility = 'hidden';
-	span.style.position = 'absolute';
-	span.style.whiteSpace = 'pre';
-	document.body.appendChild(span);
-
-	let left = 0;
-	let right = rowText.length;
-	let col = 0;
-
-	while (left <= right) {
-		const mid = Math.floor((left + right) / 2);
-		span.textContent = rowText.substring(0, mid);
-		const width = span.getBoundingClientRect().width;
-
-		if (width <= textareaX) {
-			col = mid;
-			left = mid + 1;
-		} else {
-			right = mid - 1;
-		}
-	}
-
-	document.body.removeChild(span);
-
-	return rowText.length === col ? col : col - 1;
-};
-
 async function onDrop(value: string, event: MouseEvent) {
 	value = propertyNameFromExpression(value);
-	const textarea = event.target as HTMLTextAreaElement;
 
-	const rect = textarea.getBoundingClientRect();
-	const textareaX = event.clientX - rect.left;
-	const textareaY = event.clientY - rect.top;
-	const { lineHeight, font } = window.getComputedStyle(textarea);
+	prompt.value = updateTextareaValue(event, textareaRowsData.value, value);
 
-	const rowIndex = getRowIndex(textareaY, lineHeight);
-
-	const { rows, linesToRowsMap } = splitText(textarea);
-
-	if (rows[rowIndex] === undefined) {
-		prompt.value = `${prompt.value} ${value}`;
-		emit('valueChanged', {
-			name: getPath(props.parameter.name),
-			value: prompt.value,
-		});
-		return;
-	}
-
-	const rowText = rows[rowIndex];
-
-	if (rowText === '') {
-		rows[rowIndex] = value;
-	} else {
-		const col = getColumnIndex(rowText, textareaX, font);
-		rows[rowIndex] = [
-			rows[rowIndex].slice(0, col).trim(),
-			value,
-			rows[rowIndex].slice(col).trim(),
-		].join(' ');
-	}
-
-	const newText = linesToRowsMap
-		.map((lineMap) => {
-			return lineMap.map((index) => rows[index]).join(' ');
-		})
-		.join('\n');
-
-	prompt.value = newText;
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: prompt.value,
@@ -313,24 +188,13 @@ async function highlightCursorPosition(event: MouseEvent, activeDrop: boolean) {
 	if (!activeDrop) return;
 
 	const textarea = event.target as HTMLTextAreaElement;
-	const rect = textarea.getBoundingClientRect();
-	const textareaX = event.clientX - rect.left;
-	const textareaY = event.clientY - rect.top;
-	const { lineHeight, font } = window.getComputedStyle(textarea);
 
-	const rowIndex = getRowIndex(textareaY, lineHeight);
-	const { rows } = splitText(textarea);
-
-	if (rowIndex < 0 || rowIndex >= rows.length) {
-		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-		return;
-	}
-
-	const rowText = rows[rowIndex];
-
-	const col = getColumnIndex(rowText, textareaX, font);
-
-	const position = rows.slice(0, rowIndex).reduce((acc, curr) => acc + curr.length + 1, 0) + col;
+	const position = getTextareaCursorPosition(
+		textarea,
+		textareaRowsData.value,
+		event.clientX,
+		event.clientY,
+	);
 
 	textarea.focus();
 	textarea.setSelectionRange(position, position);
