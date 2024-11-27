@@ -156,10 +156,6 @@ export function useChatMessaging({
 		console.log('Finished onRunChatWorkflow', response);
 		isLoading.value = false;
 		if (!response?.executionId) {
-			showError(
-				new Error('It was not possible to start workflow!'),
-				'Workflow could not be started',
-			);
 			return;
 		}
 

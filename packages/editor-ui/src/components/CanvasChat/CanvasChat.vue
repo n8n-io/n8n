@@ -194,18 +194,21 @@ async function createExecutionPromise() {
 }
 
 async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
-	const response = await runWorkflow({
-		triggerNode: payload.triggerNode,
-		nodeData: payload.nodeData,
-		source: payload.source,
-	});
-
 	try {
-		await createExecutionPromise();
-		workflowsStore.appendChatMessage(payload.message);
-		return response;
+		const response = await runWorkflow({
+			triggerNode: payload.triggerNode,
+			nodeData: payload.nodeData,
+			source: payload.source,
+		});
+
+		if (response) {
+			await createExecutionPromise();
+			workflowsStore.appendChatMessage(payload.message);
+			return response;
+		}
+		return;
 	} catch (error) {
-		return response;
+		throw error;
 	}
 }
 

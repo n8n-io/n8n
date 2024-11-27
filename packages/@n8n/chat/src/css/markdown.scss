@@ -406,7 +406,7 @@ body {
 	h4,
 	h5,
 	h6 {
-		margin: 3.2rem 0 0.8em;
+		margin: 2rem 0 0.8em;
 	}
 
 	/*
@@ -639,5 +639,16 @@ body {
 
 	body > a:first-child:focus {
 		top: 1rem;
+	}
+
+	// Lists
+	ul,
+	ol {
+		padding-left: 1.5rem;
+		margin-bottom: 1rem;
+
+		li {
+			margin-bottom: 0.5rem;
+		}
 	}
 }
