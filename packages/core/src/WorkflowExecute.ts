@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
+import { omit } from 'lodash';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
@@ -58,7 +59,6 @@ import {
 	cleanRunData,
 	recreateNodeExecutionStack,
 	handleCycles,
-	removeDirtyNodes,
 } from './PartialExecutionUtils';
 
 export class WorkflowExecute {
@@ -351,7 +351,7 @@ export class WorkflowExecute {
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		runData = removeDirtyNodes(runData, dirtyNodeNames);
+		runData = omit(runData, dirtyNodeNames);
 		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
