@@ -81,6 +81,9 @@ export default mergeConfig(
 			minify: !!release,
 			sourcemap: !!release,
 		},
+		worker: {
+			format: 'es',
+		},
 	}),
 	vitestConfig,
 );

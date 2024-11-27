@@ -78,12 +78,10 @@ const tsHover: HoverSource = async (view, pos) => {
 	};
 };
 
-function webWorker(path: string) {
-	return new Worker(new URL(path, import.meta.url), { type: 'module' });
-}
-
 export async function typescript(initialValue: string, mode: CodeExecutionMode) {
-	const worker = Comlink.wrap<LanguageServiceWorker>(webWorker('./worker/typescript.worker.ts'));
+	const worker = Comlink.wrap<LanguageServiceWorker>(
+		new Worker(new URL('./worker/typescript.worker.ts', import.meta.url), { type: 'module' }),
+	);
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
