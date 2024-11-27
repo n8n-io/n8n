@@ -746,7 +746,7 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-export async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
+export async function binaryToString(body: Buffer | Readable, encoding?: string) {
 	if (!encoding && body instanceof IncomingMessage) {
 		parseIncomingMessage(body);
 		encoding = body.encoding;
