@@ -30,7 +30,7 @@ function hasFields(context: IExecuteFunctions, index: number): boolean {
 	}
 }
 
-function parseJson(context: IExecuteFunctions, index: number): ValueOptions[] {
+function parseJson(_context: IExecuteFunctions, _index: number): ValueOptions[] {
 	return [{ name: 'Placeholder', type: 'number' }];
 }
 
@@ -107,6 +107,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 					},
 				],
 				default: FIELDS,
+				noDataExpression: true,
 			},
 			{
 				displayName: 'Workflow Inputs',
