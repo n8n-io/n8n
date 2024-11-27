@@ -4629,8 +4629,7 @@ export default defineComponent({
 					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 					size="large"
 					icon="comment"
-					type="primary"
-					:outline="isChatOpen"
+					:type="isChatOpen ? 'tertiary' : 'primary'"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>

@@ -144,7 +144,7 @@ function copySessionId() {
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<header :class="$style.chatHeader">
-			<span>{{ locale.baseText('chat.window.title') }}</span>
+			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">
 				<span>{{ locale.baseText('chat.window.session.title') }}</span>
 				<n8n-tooltip placement="left">
@@ -276,6 +276,9 @@ function copySessionId() {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+.chatTitle {
+	font-weight: 600;
 }
 .session {
 	display: flex;
