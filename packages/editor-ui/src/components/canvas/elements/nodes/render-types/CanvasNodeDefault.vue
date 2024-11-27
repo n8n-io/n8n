@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
