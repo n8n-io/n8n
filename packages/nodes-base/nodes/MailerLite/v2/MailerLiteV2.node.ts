@@ -1,17 +1,20 @@
 import type {
 	IExecuteFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
+import type { Subscriber } from './MailerLite.Interface';
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
-import { mailerliteApiRequest, mailerliteApiRequestAllItems } from '../GenericFunctions';
+import {
+	getCustomFields,
+	mailerliteApiRequest,
+	mailerliteApiRequestAllItems,
+} from '../GenericFunctions';
 
 export class MailerLiteV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -58,19 +61,7 @@ export class MailerLiteV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that they can
-			// select them easily
-			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const fields = await mailerliteApiRequest.call(this, 'GET', '/fields');
-				for (const field of fields) {
-					returnData.push({
-						name: field.key,
-						value: field.key,
-					});
-				}
-				return returnData;
-			},
+			getCustomFields,
 		},
 	};
 
@@ -128,7 +119,7 @@ export class MailerLiteV2 implements INodeType {
 							`/subscribers/${subscriberId}`,
 						);
 
-						responseData = responseData.data;
+						responseData = responseData.data as Subscriber[];
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
@@ -159,14 +150,14 @@ export class MailerLiteV2 implements INodeType {
 					if (operation === 'update') {
 						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {};
 
-						Object.assign(body, updateFields);
+						Object.assign(body, additionalFields);
 
-						if (updateFields.customFieldsUi) {
-							const customFieldsValues = (updateFields.customFieldsUi as IDataObject)
+						if (additionalFields.customFieldsUi) {
+							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject)
 								.customFieldsValues as IDataObject[];
 
 							if (customFieldsValues) {

@@ -1,9 +1,7 @@
 import type {
 	IExecuteFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
@@ -11,7 +9,11 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
-import { mailerliteApiRequest, mailerliteApiRequestAllItems } from '../GenericFunctions';
+import {
+	getCustomFields,
+	mailerliteApiRequest,
+	mailerliteApiRequestAllItems,
+} from '../GenericFunctions';
 
 export class MailerLiteV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -58,19 +60,7 @@ export class MailerLiteV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that they can
-			// select them easily
-			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const fields = await mailerliteApiRequest.call(this, 'GET', '/fields');
-				for (const field of fields) {
-					returnData.push({
-						name: field.key,
-						value: field.key,
-					});
-				}
-				return returnData;
-			},
+			getCustomFields,
 		},
 	};
 

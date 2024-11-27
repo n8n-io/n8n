@@ -60,115 +60,6 @@ export const subscriberFields: INodeProperties[] = [
 		},
 		description: 'Email of new subscriber',
 	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['subscriber'],
-				operation: ['create'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Confirmation Timestamp',
-				name: 'confirmation_timestamp',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Confirmation IP',
-				name: 'confirmation_ip',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customFieldsUi',
-				placeholder: 'Add Custom Field',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				description: 'Filter by custom fields',
-				default: {},
-				options: [
-					{
-						name: 'customFieldsValues',
-						displayName: 'Custom Field',
-						values: [
-							{
-								displayName: 'Field Name or ID',
-								name: 'fieldId',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getCustomFields',
-								},
-								default: '',
-								description:
-									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'The value to set on custom field',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Resubscribe',
-				name: 'resubscribe',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to reactivate subscriber',
-			},
-			{
-				displayName: 'Signup IP',
-				name: 'signup_ip',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Signup Timestamp',
-				name: 'signup_timestamp',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Active',
-						value: 'active',
-					},
-					{
-						name: 'Unsubscribed',
-						value: 'unsubscribed',
-					},
-					{
-						name: 'Unconfirmed',
-						value: 'unconfirmed',
-					},
-				],
-				default: '',
-			},
-		],
-	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                subscriber:update                           */
@@ -188,15 +79,15 @@ export const subscriberFields: INodeProperties[] = [
 		description: 'Email of subscriber',
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
 				resource: ['subscriber'],
-				operation: ['update'],
+				operation: ['update', 'create'],
 			},
 		},
 		options: [
@@ -238,21 +129,8 @@ export const subscriberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Resend Autoresponders',
-				name: 'resend_autoresponders',
-				type: 'boolean',
-				default: false,
-				description: 'Whether it is needed to resend autoresponders',
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
+				displayName: 'Status',
+				name: 'status',
 				type: 'options',
 				options: [
 					{
@@ -260,14 +138,52 @@ export const subscriberFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Unsubscribed',
-						value: 'unsubscribed',
+						name: 'Bounced',
+						value: 'bounced',
+					},
+					{
+						name: 'Junk',
+						value: 'junk',
 					},
 					{
 						name: 'Unconfirmed',
 						value: 'unconfirmed',
 					},
+					{
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
+					},
 				],
+				default: '',
+			},
+			{
+				displayName: 'Subscribed At',
+				name: 'subscribed_at',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'IP Address',
+				name: 'ip_address',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Opted In At',
+				name: 'opted_in_at',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Opt In IP',
+				name: 'optin_ip',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Unsubscribed At',
+				name: 'unsubscribed_at',
+				type: 'dateTime',
 				default: '',
 			},
 		],

@@ -1,14 +1,18 @@
+/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import {
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type IHookFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
-import nock from 'nock';
 
-import { mailerliteApiRequest, mailerliteApiRequestAllItems } from '../GenericFunctions'; // Adjust the import path as needed
+import {
+	getCustomFields,
+	mailerliteApiRequest,
+	mailerliteApiRequestAllItems,
+} from '../GenericFunctions';
 
-describe('mailerliteApiRequest', () => {
+describe('MailerLite -> mailerliteApiRequest', () => {
 	let mockExecuteFunctions: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions;
 
 	const setupMockFunctions = (typeVersion: number) => {
@@ -32,8 +36,6 @@ describe('mailerliteApiRequest', () => {
 		const qs = {};
 
 		const responseData = { success: true };
-
-		nock('https://api.mailerlite.com').get('/api/v2/test').reply(200, responseData);
 
 		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
 			responseData,
@@ -63,8 +65,6 @@ describe('mailerliteApiRequest', () => {
 
 		const responseData = { success: true };
 
-		nock('https://connect.mailerlite.com').get('/api/test').reply(200, responseData);
-
 		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
 			responseData,
 		);
@@ -90,8 +90,6 @@ describe('mailerliteApiRequest', () => {
 		const qs = {};
 
 		const responseData = { success: true };
-
-		nock('https://api.mailerlite.com').get('/api/v2/test').reply(200, responseData);
 
 		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
 			responseData,
@@ -119,8 +117,6 @@ describe('mailerliteApiRequest', () => {
 
 		const errorResponse = { message: 'Error' };
 
-		nock('https://api.mailerlite.com').get('/api/v2/test').reply(400, errorResponse);
-
 		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValue(
 			errorResponse,
 		);
@@ -131,7 +127,7 @@ describe('mailerliteApiRequest', () => {
 	});
 });
 
-describe('mailerliteApiRequestAllItems', () => {
+describe('MailerLite -> mailerliteApiRequestAllItems', () => {
 	let mockExecuteFunctions: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions;
 
 	const setupMockFunctions = (typeVersion: number) => {
@@ -156,17 +152,6 @@ describe('mailerliteApiRequestAllItems', () => {
 
 		const responseDataPage1 = [{ id: 1 }, { id: 2 }];
 		const responseDataPage2 = [{ id: 3 }, { id: 4 }];
-
-		nock('https://api.mailerlite.com')
-			.get('/api/v2/test')
-			.query({ limit: 1000, offset: 0 })
-			.reply(200, responseDataPage1)
-			.get('/api/v2/test')
-			.query({ limit: 1000, offset: 1000 })
-			.reply(200, responseDataPage2)
-			.get('/api/v2/test')
-			.query({ limit: 1000, offset: 2000 })
-			.reply(200, []);
 
 		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock)
 			.mockResolvedValueOnce(responseDataPage1)
@@ -203,14 +188,6 @@ describe('mailerliteApiRequestAllItems', () => {
 			links: { next: null },
 		};
 
-		nock('https://connect.mailerlite.com')
-			.get('/api/test')
-			.query({ limit: 1000, offset: 0 })
-			.reply(200, responseDataPage1)
-			.get('/api/test')
-			.query({ limit: 1000, cursor: 'cursor1' })
-			.reply(200, responseDataPage2);
-
 		(mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock)
 			.mockResolvedValueOnce(responseDataPage1)
 			.mockResolvedValueOnce(responseDataPage2);
@@ -224,5 +201,53 @@ describe('mailerliteApiRequestAllItems', () => {
 		);
 
 		expect(result).toEqual([...responseDataPage1.data, ...responseDataPage2.data]);
+	});
+});
+
+describe('MailerLite -> getCustomFields', () => {
+	let mockExecuteFunctions: ILoadOptionsFunctions;
+
+	const v1FieldResponse = [
+		{ name: 'Field1', key: 'field1' },
+		{ name: 'Field2', key: 'field2' },
+	];
+
+	const v2FieldResponse = {
+		data: v1FieldResponse,
+	};
+
+	const setupMockFunctions = (typeVersion: number) => {
+		mockExecuteFunctions = {
+			getNode: jest.fn().mockReturnValue({ typeVersion }),
+			helpers: {
+				httpRequestWithAuthentication: jest
+					.fn()
+					.mockResolvedValue(typeVersion === 1 ? v1FieldResponse : v2FieldResponse),
+			},
+		} as unknown as ILoadOptionsFunctions;
+		jest.clearAllMocks();
+	};
+
+	beforeEach(() => {
+		setupMockFunctions(1);
+	});
+
+	it('should return custom fields for type version 1', async () => {
+		const result = await getCustomFields.call(mockExecuteFunctions);
+
+		expect(result).toEqual([
+			{ name: 'field1', value: 'field1' },
+			{ name: 'field2', value: 'field2' },
+		]);
+	});
+
+	it('should return custom fields for type version 2', async () => {
+		setupMockFunctions(2);
+		const result = await getCustomFields.call(mockExecuteFunctions);
+
+		expect(result).toEqual([
+			{ name: 'Field1', value: 'field1' },
+			{ name: 'Field2', value: 'field2' },
+		]);
 	});
 });
