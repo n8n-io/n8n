@@ -146,7 +146,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 								default: '',
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
-								// noDataExpression: true,
+								noDataExpression: true,
 							},
 							{
 								displayName: 'Type',
@@ -210,7 +210,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 						default: true,
 						description:
 							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
-						// noDataExpression: true,
+						noDataExpression: true,
 					},
 					{
 						displayName: 'Ignore Type Mismatch Errors',
