@@ -459,8 +459,8 @@ async function onAutoRefreshToggle(value: boolean) {
 	position: relative;
 	height: 100%;
 	width: 100%;
-	max-width: 1280px;
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
+	max-width: var(--content-container-width);
 }
 
 .execList {

@@ -495,6 +495,9 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
+	TEST_DEFINITION = 'TestDefinition',
+	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
+	NEW_TEST_DEFINITION = 'NewTestDefinition',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -591,6 +594,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
+	TEST_DEFINITION = 'testDefinition',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -652,6 +656,7 @@ export const enum STORES {
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
+	TEST_DEFINITION = 'testDefinition',
 }
 
 export const enum SignInType {
@@ -708,6 +713,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 ];
+
+export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
 
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
