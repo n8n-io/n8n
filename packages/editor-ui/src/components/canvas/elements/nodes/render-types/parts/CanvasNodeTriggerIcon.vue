@@ -3,6 +3,7 @@ import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 </script>
+
 <template>
 	<N8nTooltip placement="bottom">
 		<template #content>
