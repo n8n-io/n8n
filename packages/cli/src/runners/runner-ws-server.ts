@@ -4,7 +4,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
-import { Time } from '@/constants';
+import { Time, WsStatusCodes } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
@@ -21,15 +21,7 @@ function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
 
-const enum WsStatusCode {
-	CloseNormal = 1000,
-	CloseGoingAway = 1001,
-	CloseProtocolError = 1002,
-	CloseUnsupportedData = 1003,
-	CloseNoStatus = 1005,
-	CloseAbnormal = 1006,
-	CloseInvalidData = 1007,
-}
+type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
 @Service()
 export class TaskRunnerWsServer {
@@ -62,7 +54,7 @@ export class TaskRunnerWsServer {
 					void this.removeConnection(
 						runnerId,
 						'failed-heartbeat-check',
-						WsStatusCode.CloseNoStatus,
+						WsStatusCodes.CloseNoStatus,
 					);
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
@@ -156,7 +148,7 @@ export class TaskRunnerWsServer {
 	async removeConnection(
 		id: TaskRunner['id'],
 		reason: DisconnectReason = 'unknown',
-		code?: WsStatusCode,
+		code: WsStatusCode = WsStatusCodes.CloseNormal,
 	) {
 		const connection = this.runnerConnections.get(id);
 		if (connection) {
@@ -181,7 +173,8 @@ export class TaskRunnerWsServer {
 		// shutting them down
 		await Promise.all(
 			Array.from(this.runnerConnections.keys()).map(
-				async (id) => await this.removeConnection(id, 'shutting-down', WsStatusCode.CloseGoingAway),
+				async (id) =>
+					await this.removeConnection(id, 'shutting-down', WsStatusCodes.CloseGoingAway),
 			),
 		);
 	}

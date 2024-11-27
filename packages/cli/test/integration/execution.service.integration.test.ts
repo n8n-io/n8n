@@ -327,6 +327,95 @@ describe('ExecutionService', () => {
 			});
 		});
 
+		test('should filter executions by `projectId` and expected `status`', async () => {
+			const firstProject = await createTeamProject();
+			const secondProject = await createTeamProject();
+
+			const firstWorkflow = await createWorkflow(undefined, firstProject);
+			const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'error' }, firstWorkflow);
+			await createExecution({ status: 'success' }, secondWorkflow);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [firstWorkflow.id],
+				projectId: firstProject.id,
+				status: ['error'],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 1,
+				estimated: false,
+				results: expect.arrayContaining([
+					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
+				]),
+			});
+		});
+
+		test.each([
+			{
+				name: 'waitTill',
+				filter: { waitTill: true },
+				matchingParams: { waitTill: new Date() },
+				nonMatchingParams: { waitTill: undefined },
+			},
+			{
+				name: 'metadata',
+				filter: { metadata: [{ key: 'testKey', value: 'testValue' }] },
+				matchingParams: { metadata: [{ key: 'testKey', value: 'testValue' }] },
+				nonMatchingParams: { metadata: [{ key: 'otherKey', value: 'otherValue' }] },
+			},
+			{
+				name: 'startedAfter',
+				filter: { startedAfter: '2023-01-01' },
+				matchingParams: { startedAt: new Date('2023-06-01') },
+				nonMatchingParams: { startedAt: new Date('2022-01-01') },
+			},
+			{
+				name: 'startedBefore',
+				filter: { startedBefore: '2023-12-31' },
+				matchingParams: { startedAt: new Date('2023-06-01') },
+				nonMatchingParams: { startedAt: new Date('2024-01-01') },
+			},
+		])(
+			'should filter executions by `projectId` and expected `$name`',
+			async ({ filter, matchingParams, nonMatchingParams }) => {
+				const firstProject = await createTeamProject();
+				const secondProject = await createTeamProject();
+
+				const firstWorkflow = await createWorkflow(undefined, firstProject);
+				const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+				await Promise.all([
+					createExecution(matchingParams, firstWorkflow),
+					createExecution(nonMatchingParams, secondWorkflow),
+				]);
+
+				const query: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					accessibleWorkflowIds: [firstWorkflow.id],
+					projectId: firstProject.id,
+					...filter,
+				};
+
+				const output = await executionService.findRangeWithCount(query);
+
+				expect(output).toEqual({
+					count: 1,
+					estimated: false,
+					results: expect.arrayContaining([
+						expect.objectContaining({ workflowId: firstWorkflow.id }),
+					]),
+				});
+			},
+		);
+
 		test('should exclude executions by inaccessible `workflowId`', async () => {
 			const accessibleWorkflow = await createWorkflow();
 			const inaccessibleWorkflow = await createWorkflow();
