@@ -33,7 +33,6 @@ export class AiController {
 			}
 		} catch (e) {
 			assert(e instanceof Error);
-			ErrorReporterProxy.error(e);
 			throw new InternalServerError(`Something went wrong: ${e.message}`);
 		}
 	}
@@ -46,7 +45,6 @@ export class AiController {
 			return await this.aiService.applySuggestion(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
-			ErrorReporterProxy.error(e);
 			throw new InternalServerError(`Something went wrong: ${e.message}`);
 		}
 	}
@@ -57,7 +55,6 @@ export class AiController {
 			return await this.aiService.askAi(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
-			ErrorReporterProxy.error(e);
 			throw new InternalServerError(`Something went wrong: ${e.message}`);
 		}
 	}
