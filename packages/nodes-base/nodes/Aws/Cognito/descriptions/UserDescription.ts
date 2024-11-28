@@ -641,7 +641,7 @@ const getAllFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['user'], operation: ['getAll'], returnAll: [false] } },
 	},
 	{
-		displayName: 'Additional Fields', // ToDo: Test additional parameters with the API
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -655,11 +655,7 @@ const getAllFields: INodeProperties[] = [
 				typeOptions: { multipleValues: true },
 				default: {},
 				placeholder: 'Add Attribute',
-				description:
-					'The attributes to return in the response. They can be only required attributes in your user pool, or in conjunction with Filter.' +
-					'Amazon Cognito returns an error if not all users in the results have set a value for the attribute you request.' +
-					"Attributes that you can't filter on, including custom attributes, must have a value set in every " +
-					'user profile before an AttributesToGet parameter returns results. e.g. ToDo', // ToDo: Improve description
+				description: 'The attributes to return in the response',
 				options: [
 					{
 						name: 'metadataValues',

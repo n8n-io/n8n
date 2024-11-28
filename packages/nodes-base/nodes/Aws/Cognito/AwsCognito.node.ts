@@ -94,7 +94,6 @@ export class AwsCognito implements INodeType {
 			searchUserPools,
 			searchGroups,
 			searchUsers,
-			// Todo: Add more search methods
 		},
 	};
 }

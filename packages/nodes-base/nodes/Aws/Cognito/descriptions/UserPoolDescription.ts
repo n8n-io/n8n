@@ -1,7 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { presendTest } from '../GenericFunctions';
-
 export const userPoolOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -15,9 +13,6 @@ export const userPoolOperations: INodeProperties[] = [
 				value: 'get',
 				action: 'Describe the configuration of a user pool',
 				routing: {
-					send: {
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -48,7 +43,7 @@ export const userPoolFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {

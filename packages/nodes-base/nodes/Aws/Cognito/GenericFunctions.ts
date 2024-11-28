@@ -71,11 +71,7 @@ export async function presendFilter(
 			...body,
 			Filter: `${filterAttribute} ${filterType} "${filterValue}"`,
 		});
-
-		console.log('requestOptions with filter', requestOptions); // ToDo: Remove
 	} else {
-		// ToDo: Return warning that all three parameters are needed, don't throw an error but don't send the request
-		console.log('no filter is added', requestOptions); // ToDo: Remove
 	}
 
 	return requestOptions;
@@ -365,7 +361,6 @@ export async function awsRequest(
 			requestOptions,
 		)) as IDataObject;
 	} catch (error) {
-		// ToDo: Check if this error handling is correct/needed. It is taken from another AWS node.
 		const statusCode = (error.statusCode || error.cause?.statusCode) as number;
 		let errorMessage = (error.response?.body?.message ||
 			error.response?.body?.Message ||
