@@ -9,7 +9,7 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import {
+import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
