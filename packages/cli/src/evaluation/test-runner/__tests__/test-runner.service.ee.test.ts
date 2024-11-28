@@ -2,22 +2,22 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
-import type { IRun } from 'n8n-workflow';
+import type { GenericValue, IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
-import { TestMetric } from '@/databases/entities/test-metric.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -55,6 +55,31 @@ function mockExecutionData() {
 		data: {
 			resultData: {
 				runData: {},
+			},
+		},
+	});
+}
+
+function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
+	return mock<IRun>({
+		data: {
+			resultData: {
+				lastNodeExecuted: 'lastNode',
+				runData: {
+					lastNode: [
+						{
+							data: {
+								main: [
+									[
+										{
+											json: metrics,
+										},
+									],
+								],
+							},
+						},
+					],
+				},
 			},
 		},
 	});
@@ -177,17 +202,17 @@ describe('TestRunnerService', () => {
 			.mockResolvedValue(mockExecutionData());
 
 		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
+			.calledWith('some-execution-id-3')
 			.mockResolvedValue(mockExecutionData());
 
 		// Mock executions of evaluation workflow
 		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockExecutionData());
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
 
 		activeExecutions.getPostExecutePromise
 			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockExecutionData());
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5 }));
 
 		await testRunnerService.runTest(
 			mock<User>(),
@@ -235,6 +260,91 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id');
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {});
+		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
+			metric1: 0.75,
+			metric2: 0,
+		});
+	});
+});
+
+describe('TestRunnerService - rollUpMetrics', () => {
+	test('should roll up metrics correctly', () => {
+		const testRunnerService = new TestRunnerService(mock(), mock(), mock(), mock(), mock(), mock());
+
+		const testMetrics = new Set(['metric1', 'metric2']);
+
+		const metricValues = [
+			{ metric1: 1, metric2: 0 },
+			{ metric1: 0.5, metric2: 0.2 },
+		];
+
+		const rolledUpMetrics = (testRunnerService as any).rollUpMetrics(metricValues, testMetrics);
+
+		expect(rolledUpMetrics).toEqual({ metric1: 0.75, metric2: 0.1 });
+	});
+
+	test('should roll up only numbers', () => {
+		const testRunnerService = new TestRunnerService(mock(), mock(), mock(), mock(), mock(), mock());
+
+		const testMetrics = new Set(['metric1', 'metric2']);
+
+		const metricValues = [
+			{ metric1: 1, metric2: 0 },
+			{ metric1: '0.5', metric2: 0.2 },
+		];
+
+		const rolledUpMetrics = (testRunnerService as any).rollUpMetrics(metricValues, testMetrics);
+
+		expect(rolledUpMetrics).toEqual({ metric1: 1, metric2: 0.1 });
+	});
+
+	test('should handle missing values', () => {
+		const testRunnerService = new TestRunnerService(mock(), mock(), mock(), mock(), mock(), mock());
+
+		const testMetrics = new Set(['metric1', 'metric2']);
+
+		const metricValues = [{ metric1: 1 }, { metric2: 0.2 }];
+
+		const rolledUpMetrics = (testRunnerService as any).rollUpMetrics(metricValues, testMetrics);
+
+		expect(rolledUpMetrics).toEqual({ metric1: 1, metric2: 0.2 });
+	});
+
+	test('should handle empty metrics', () => {
+		const testRunnerService = new TestRunnerService(mock(), mock(), mock(), mock(), mock(), mock());
+
+		const testMetrics = new Set(['metric1', 'metric2']);
+
+		const rolledUpMetrics = (testRunnerService as any).rollUpMetrics([], testMetrics);
+
+		expect(rolledUpMetrics).toEqual({});
+	});
+
+	test('should handle empty testMetrics', () => {
+		const testRunnerService = new TestRunnerService(mock(), mock(), mock(), mock(), mock(), mock());
+
+		const metricValues = [
+			{ metric1: 1, metric2: 0 },
+			{ metric1: 0.5, metric2: 0.2 },
+		];
+
+		const rolledUpMetrics = (testRunnerService as any).rollUpMetrics(metricValues, new Set());
+
+		expect(rolledUpMetrics).toEqual({});
+	});
+
+	test('should ignore non-relevant values', () => {
+		const testRunnerService = new TestRunnerService(mock(), mock(), mock(), mock(), mock(), mock());
+
+		const testMetrics = new Set(['metric1']);
+
+		const metricValues = [
+			{ metric1: 1, notRelevant: 0 },
+			{ metric1: 0.5, notRelevant2: { foo: 'bar' } },
+		];
+
+		const rolledUpMetrics = (testRunnerService as any).rollUpMetrics(metricValues, testMetrics);
+
+		expect(rolledUpMetrics).toEqual({ metric1: 0.75 });
 	});
 });
