@@ -218,14 +218,20 @@ export class TestWebhooks implements IWebhookManager {
 	 * Return whether activating a workflow requires listening for webhook calls.
 	 * For every webhook call to listen for, also activate the webhook.
 	 */
-	async needsWebhook(
-		userId: string,
-		workflowEntity: IWorkflowDb,
-		additionalData: IWorkflowExecuteAdditionalData,
-		runData?: IRunData,
-		pushRef?: string,
-		destinationNode?: string,
-	) {
+	async needsWebhook(options: {
+		userId: string;
+		workflowEntity: IWorkflowDb;
+		additionalData: IWorkflowExecuteAdditionalData;
+		runData?: IRunData;
+		pushRef?: string;
+		destinationNode?: string;
+	}) {
+		const userId = options.userId;
+		const workflowEntity = options.workflowEntity;
+		const additionalData = options.additionalData;
+		const runData = options.runData;
+		const pushRef = options.pushRef;
+		const destinationNode = options.destinationNode;
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
 		const workflow = this.toWorkflow(workflowEntity);

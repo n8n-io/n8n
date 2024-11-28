@@ -45,9 +45,11 @@ describe('TestWebhooks', () => {
 
 	describe('needsWebhook()', () => {
 		const args: Parameters<typeof testWebhooks.needsWebhook> = [
-			userId,
-			workflowEntity,
-			mock<IWorkflowExecuteAdditionalData>(),
+			{
+				userId,
+				workflowEntity,
+				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			},
 		];
 
 		test('if webhook is needed, should register then create webhook and return true', async () => {

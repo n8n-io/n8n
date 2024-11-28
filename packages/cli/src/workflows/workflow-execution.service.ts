@@ -117,14 +117,14 @@ export class WorkflowExecutionService {
 		) {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhook(
-				user.id,
-				workflowData,
+			const needsWebhook = await this.testWebhooks.needsWebhook({
+				userId: user.id,
+				workflowEntity: workflowData,
 				additionalData,
 				runData,
 				pushRef,
 				destinationNode,
-			);
+			});
 
 			if (needsWebhook) return { waitingForWebhook: true };
 		}
