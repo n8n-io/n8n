@@ -1,6 +1,5 @@
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import type { Response } from 'express';
-import { ErrorReporterProxy } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
