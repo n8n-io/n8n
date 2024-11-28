@@ -119,6 +119,7 @@ import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
+	HTTP_TIMEOUT,
 	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
@@ -140,7 +141,11 @@ import {
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 
-axios.defaults.timeout = 300000;
+// httpTimeout schema config is provided in seconds
+axios.defaults.timeout = process.env[HTTP_TIMEOUT]
+	? parseInt(process.env[HTTP_TIMEOUT]) * 1000
+	: 300000;
+
 // Prevent axios from adding x-form-www-urlencoded headers by default
 axios.defaults.headers.post = {};
 axios.defaults.headers.put = {};

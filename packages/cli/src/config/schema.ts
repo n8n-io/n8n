@@ -60,6 +60,12 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_TIMEOUT_MAX',
 		},
+		httpTimeout: {
+			doc: 'Timeout for HTTP requests (seconds)',
+			format: Number,
+			default: 300,
+			env: 'N8N_HTTP_TIMEOUT',
+		},
 
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes
