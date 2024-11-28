@@ -25,6 +25,7 @@ const props = withDefaults(
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
+		concurrencyCap: number;
 	}>(),
 	{
 		selected: false,
@@ -40,6 +41,10 @@ const isStopping = ref(false);
 
 const isRunning = computed(() => {
 	return props.execution.status === 'running';
+});
+
+const isQueued = computed(() => {
+	return props.execution.status === 'new';
 });
 
 const isWaitTillIndefinite = computed(() => {
@@ -80,6 +85,12 @@ const formattedStoppedAtDate = computed(() => {
 });
 
 const statusTooltipText = computed(() => {
+	if (isQueued.value) {
+		return i18n.baseText('executionsList.statusTooltipText.waitingForConcurrencyCapacity', {
+			interpolate: { concurrencyCap: props.concurrencyCap },
+		});
+	}
+
 	if (props.execution.status === 'waiting' && isWaitTillIndefinite.value) {
 		return i18n.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
 	}
@@ -178,7 +189,7 @@ async function handleActionItemClick(commandData: Command) {
 					<FontAwesomeIcon icon="spinner" spin />
 				</span>
 				<i18n-t
-					v-if="!isWaitTillIndefinite"
+					v-if="!isWaitTillIndefinite && !isQueued"
 					data-test-id="execution-status"
 					tag="span"
 					:keypath="statusTextTranslationPath"
