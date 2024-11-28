@@ -89,9 +89,7 @@ function parseJsonSchema(schema: JSONSchema7): ValueOptions[] | string {
 
 function parseJsonExample(context: IExecuteFunctions): JSONSchema7 {
 	const jsonString = context.getNodeParameter(JSON_EXAMPLE, 0, '') as string;
-	console.log('jsonString', jsonString);
 	const json = jsonParse<SchemaObject>(jsonString);
-	console.log('json', json);
 
 	return generateSchemaFromExample(json) as JSONSchema7;
 }
@@ -117,10 +115,7 @@ function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
 			e && typeof e === 'object' && 'message' in e && typeof e.message === 'string'
 				? e.message
 				: `Unknown error occurred: ${JSON.stringify(e)}`;
-
-		console.log('result B', result);
 	}
-	console.log('result', result);
 
 	if (Array.isArray(result)) {
 		return result;
@@ -128,8 +123,8 @@ function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
 	throw new NodeOperationError(context.getNode(), result);
 }
 
-// This intentionally doesn't catch any potential errors like an invalid json example
-// So that they end up exposed to the user.
+// This intentionally doesn't catch any potential errors, e.g. an invalid json example
+// This way they correctly end up exposed to the user.
 // Otherwise we'd have to return true on error here as we short-circuit on false
 function hasFields(context: IExecuteFunctions): boolean {
 	const entries = getFieldEntries(context);
@@ -157,13 +152,13 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			{
 				message:
 					'We strongly recommend defining your input fields explicitly. If no inputs are provided, all data from the calling workflow will be available, and issues will be more difficult to debug later on.',
-				// This condition checks if we have no input fields, which gets a bit awkward with the json schema
+				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
-				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with 2 characters or less for either '' or '{}'
-				// For JSON_SCHEMA: We check if we have 'properties: {}' after removing all whitespace. Otherwise the schema is invalid anyway
+				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON
+				// For JSON_SCHEMA: We check if we have '"properties":{}' after removing all whitespace. Otherwise the schema is invalid anyway and we'll error out elsewhere
 				displayCondition:
 					`={{$parameter['${INPUT_SOURCE}'] === '${WORKFLOW_INPUTS}' && !$parameter['${WORKFLOW_INPUTS}'].keys().length ` +
-					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_EXAMPLE}' && $parameter['${JSON_EXAMPLE}'].toString().replaceAll(' ', '').replaceAll('\\n', '').length <= 2 ` +
+					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_EXAMPLE}' && $parameter['${JSON_EXAMPLE}'].toString().replaceAll(' ', '').replaceAll('\\n', '') === '{}' ` +
 					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_SCHEMA}' && $parameter['${JSON_SCHEMA}'].toString().replaceAll(' ', '').replaceAll('\\n', '').includes('"properties":{}') }}`,
 				whenToDisplay: 'always',
 				location: 'ndv',
@@ -172,6 +167,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			{
 				message:
 					'n8n does not support items types on Array fields. These entries will have no effect.',
+				// This is only best effort, but few natural use cases should trigger false positives here
 				displayCondition: `={{$parameter["${INPUT_SOURCE}"] === '${JSON_SCHEMA}' && $parameter["${JSON_SCHEMA}"].toString().includes('"items":') && $parameter["${JSON_SCHEMA}"].toString().includes('"array"')  }}`,
 				whenToDisplay: 'always',
 				location: 'ndv',
@@ -207,20 +203,17 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 				type: 'options',
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Using fields below',
+						name: 'Using Fields Below',
 						value: WORKFLOW_INPUTS,
 						description: 'Provide via UI',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Using JSON example',
+						name: 'Using JSON Example',
 						value: JSON_EXAMPLE,
 						description: 'Infer JSON schema via JSON example output',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Using JSON schema',
+						name: 'Using JSON Schema',
 						value: JSON_SCHEMA,
 						description: 'Provide JSON Schema',
 					},
