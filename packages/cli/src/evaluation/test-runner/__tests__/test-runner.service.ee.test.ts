@@ -16,6 +16,8 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
+import { TestMetric } from '@/databases/entities/test-metric.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -64,6 +66,7 @@ describe('TestRunnerService', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
+	const testMetricRepository = mock<TestMetricRepository>();
 
 	beforeEach(() => {
 		const executionsQbMock = mockDeep<SelectQueryBuilder<ExecutionEntity>>({
@@ -80,6 +83,11 @@ describe('TestRunnerService', () => {
 			.mockResolvedValueOnce(executionMocks[1]);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
+
+		testMetricRepository.find.mockResolvedValue([
+			mock<TestMetric>({ name: 'metric1' }),
+			mock<TestMetric>({ name: 'metric2' }),
+		]);
 	});
 
 	afterEach(() => {
@@ -97,6 +105,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testMetricRepository,
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
@@ -109,6 +118,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testMetricRepository,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -143,6 +153,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testMetricRepository,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -224,8 +235,6 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id');
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
-			success: false,
-		});
+		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {});
 	});
 });

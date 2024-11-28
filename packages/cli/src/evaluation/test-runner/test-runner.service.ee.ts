@@ -15,6 +15,7 @@ import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IExecutionResponse } from '@/interfaces';
@@ -39,6 +40,7 @@ export class TestRunnerService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
+		private readonly testMetricRepository: TestMetricRepository,
 	) {}
 
 	/**
@@ -125,6 +127,9 @@ export class TestRunnerService {
 		return await executePromise;
 	}
 
+	/**
+	 * Get the output of the last node executed in the evaluation workflow.
+	 */
 	private extractEvaluationResult(execution: IRun): IDataObject {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 		assert(lastNodeExecuted, 'Could not find the last node executed in evaluation workflow');
@@ -134,6 +139,55 @@ export class TestRunnerService {
 		const lastNodeTaskData = execution.data.resultData.runData[lastNodeExecuted]?.[0];
 		const mainConnectionData = lastNodeTaskData?.data?.main?.[0];
 		return mainConnectionData?.[0]?.json ?? {};
+	}
+
+	private extractMetricsFromEvaluationResult(result: IDataObject, metrics: Set<string>) {
+		const extractedMetrics: Record<string, number> = {};
+
+		for (const metric of metrics) {
+			if (typeof result[metric] === 'number') {
+				extractedMetrics[metric] = result[metric];
+			}
+		}
+
+		return extractedMetrics;
+	}
+
+	/**
+	 * Get the metrics to collect from the evaluation workflow execution results.
+	 */
+	private async getTestMetrics(testDefinitionId: string) {
+		const metrics = await this.testMetricRepository.find({
+			where: {
+				testDefinition: {
+					id: testDefinitionId,
+				},
+			},
+		});
+
+		return new Set(metrics.map((m) => m.name));
+	}
+
+	private rollUpMetrics(
+		extractedMetricValues: ReadonlyArray<Record<string, number>>,
+		testMetrics: Set<string>,
+	) {
+		const aggregatedMetrics: Record<string, number> = {};
+
+		// The only type of aggregation available now is AVERAGE
+
+		for (const metric of testMetrics) {
+			const metricValues = extractedMetricValues
+				.map((result) => result[metric])
+				.filter((v) => typeof v === 'number');
+
+			if (metricValues.length > 0) {
+				const metricSum = metricValues.reduce((acc, val) => acc + val, 0);
+				aggregatedMetrics[metric] = metricSum / metricValues.length;
+			}
+		}
+
+		return aggregatedMetrics;
 	}
 
 	/**
@@ -164,11 +218,15 @@ export class TestRunnerService {
 				.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 				.getMany();
 
+		// Get the metrics to collect from the evaluation workflow
+		const testMetrics = await this.getTestMetrics(test.id);
+
 		// 2. Run over all the test cases
 
 		await this.testRunRepository.markAsRunning(testRun.id);
 
-		const metrics = [];
+		// Array to collect the results of the evaluation workflow executions
+		const evalResults = [];
 
 		for (const { id: pastExecutionId } of pastExecutions) {
 			// Fetch past execution with data
@@ -205,12 +263,14 @@ export class TestRunnerService {
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
-			metrics.push(this.extractEvaluationResult(evalExecution));
+			evalResults.push(this.extractEvaluationResult(evalExecution));
 		}
 
-		// TODO: 3. Aggregate the results
-		// Now we just set success to true if all the test cases passed
-		const aggregatedMetrics = { success: metrics.every((metric) => metric.success) };
+		const rawMetricValues = evalResults.map((result) =>
+			this.extractMetricsFromEvaluationResult(result, testMetrics),
+		);
+
+		const aggregatedMetrics = this.rollUpMetrics(rawMetricValues, testMetrics);
 
 		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 	}
