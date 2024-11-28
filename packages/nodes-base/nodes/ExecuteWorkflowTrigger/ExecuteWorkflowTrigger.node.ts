@@ -13,7 +13,6 @@ import {
 } from 'n8n-workflow';
 
 const INPUT_SOURCE = 'inputSource';
-const FIELDS = 'fields';
 const WORKFLOW_INPUTS = 'workflowInputs';
 const INPUT_OPTIONS = 'inputOptions';
 const VALUES = 'values';
