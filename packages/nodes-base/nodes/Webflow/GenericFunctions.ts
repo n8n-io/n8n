@@ -31,7 +31,6 @@ export async function webflowApiRequest(
 
 	// Keep support for v1 node
 	if (this.getNode().typeVersion === 1) {
-		console.log('v1');
 		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken');
 		if (authenticationMethod === 'accessToken') {
 			credentialsType = 'webflowApi';
@@ -80,8 +79,6 @@ export async function webflowApiRequestAllItems(
 export async function getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const response = await webflowApiRequest.call(this, 'GET', '/sites');
-
-	console.log(response);
 
 	const sites = response.body?.sites || response;
 
