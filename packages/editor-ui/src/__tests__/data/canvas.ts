@@ -14,6 +14,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import type { ViewportTransform } from '@vue-flow/core';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -91,16 +92,22 @@ export function createCanvasNodeProps({
 }
 
 export function createCanvasProvide({
+	initialized = true,
 	isExecuting = false,
 	connectingHandle = undefined,
+	viewport = { x: 0, y: 0, zoom: 1 },
 }: {
+	initialized?: boolean;
 	isExecuting?: boolean;
 	connectingHandle?: ConnectStartEvent;
+	viewport?: ViewportTransform;
 } = {}) {
 	return {
 		[String(CanvasKey)]: {
+			initialized: ref(initialized),
 			isExecuting: ref(isExecuting),
 			connectingHandle: ref(connectingHandle),
+			viewport: ref(viewport),
 		} satisfies CanvasInjectionData,
 	};
 }
