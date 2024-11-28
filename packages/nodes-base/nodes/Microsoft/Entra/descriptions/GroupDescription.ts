@@ -298,10 +298,14 @@ const createFields: INodeProperties[] = [
 			{
 				name: 'Assigned',
 				value: '',
+				description:
+					'Lets you add specific users as members of a group and have unique permissions',
 			},
 			{
 				name: 'Dynamic',
 				value: 'DynamicMembership',
+				description:
+					'Lets you use rules for users to automatically add and remove users as members',
 			},
 		],
 		routing: {
