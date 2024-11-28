@@ -350,7 +350,6 @@ const arrowHeadMarkerId = ref('custom-arrow-head');
 
 const edgesHoveredById = ref<Record<string, boolean>>({});
 const edgesBringToFrontById = ref<Record<string, boolean>>({});
-const nodesHoveredById = ref<Record<string, boolean>>({});
 
 onEdgeMouseEnter(({ edge }) => {
 	edgesBringToFrontById.value = { [edge.id]: true };
@@ -381,6 +380,13 @@ onEdgeMouseLeave(({ edge }) => {
 	edgesHoveredById.value = { [edge.id]: false };
 });
 
+function onUpdateEdgeLabelHovered(id: string, hovered: boolean) {
+	edgesBringToFrontById.value = { [id]: true };
+	edgesHoveredById.value[id] = hovered;
+}
+
+const nodesHoveredById = ref<Record<string, boolean>>({});
+
 onNodeMouseEnter(({ node }) => {
 	nodesHoveredById.value = { [node.id]: true };
 });
@@ -388,10 +394,6 @@ onNodeMouseEnter(({ node }) => {
 onNodeMouseLeave(({ node }) => {
 	nodesHoveredById.value = { [node.id]: false };
 });
-
-function onUpdateEdgeHovered(id: string, hovered: boolean) {
-	edgesHoveredById.value[id] = hovered;
-}
 
 /**
  * Executions
@@ -653,7 +655,6 @@ provide(CanvasKey, {
 				:read-only="readOnly"
 				:event-bus="eventBus"
 				:hovered="nodesHoveredById[nodeProps.id]"
-				:bring-to-front="nodesHoveredById[nodeProps.id]"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
@@ -675,7 +676,7 @@ provide(CanvasKey, {
 				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
-				@update:hovered="onUpdateEdgeHovered(edgeProps.id, $event)"
+				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
 			/>
 		</template>
 
