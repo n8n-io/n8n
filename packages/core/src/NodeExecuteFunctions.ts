@@ -675,14 +675,18 @@ function parseHeaderParameters(parameters: string[]): Record<string, string> {
 	return parameters.reduce(
 		(acc, param) => {
 			const [key, value] = param.split('=');
-			acc[key.toLowerCase().trim()] = decodeURIComponent(value);
+			let decodedValue = decodeURIComponent(value).trim();
+			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
+				decodedValue = decodedValue.slice(1, -1);
+			}
+			acc[key.toLowerCase().trim()] = decodedValue;
 			return acc;
 		},
 		{} as Record<string, string>,
 	);
 }
 
-function parseContentType(contentType?: string): IContentType | null {
+export function parseContentType(contentType?: string): IContentType | null {
 	if (!contentType) {
 		return null;
 	}
@@ -695,22 +699,7 @@ function parseContentType(contentType?: string): IContentType | null {
 	};
 }
 
-function parseFileName(filename?: string): string | undefined {
-	if (filename?.startsWith('"') && filename?.endsWith('"')) {
-		return filename.slice(1, -1);
-	}
-
-	return filename;
-}
-
-// https://datatracker.ietf.org/doc/html/rfc5987
-function parseFileNameStar(filename?: string): string | undefined {
-	const [_encoding, _locale, content] = parseFileName(filename)?.split("'") ?? [];
-
-	return content;
-}
-
-function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
+export function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
 	if (!contentDisposition) {
 		return null;
 	}
@@ -725,11 +714,15 @@ function parseContentDisposition(contentDisposition?: string): IContentDispositi
 
 	const parsedParameters = parseHeaderParameters(parameters);
 
-	return {
-		type,
-		filename:
-			parseFileNameStar(parsedParameters['filename*']) ?? parseFileName(parsedParameters.filename),
-	};
+	let { filename } = parsedParameters;
+	const wildcard = parsedParameters['filename*'];
+	if (wildcard) {
+		// https://datatracker.ietf.org/doc/html/rfc5987
+		const [_encoding, _locale, content] = wildcard?.split("'") ?? [];
+		filename = content;
+	}
+
+	return { type, filename };
 }
 
 export function parseIncomingMessage(message: IncomingMessage) {
