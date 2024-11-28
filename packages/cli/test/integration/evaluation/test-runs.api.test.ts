@@ -166,3 +166,39 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
 		expect(resp.statusCode).toBe(404);
 	});
 });
+
+describe('DELETE /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
+	test('should delete test run for a test definition', async () => {
+		const testRunRepository = Container.get(TestRunRepository);
+		const testRun = await testRunRepository.createTestRun(testDefinition.id);
+
+		const resp = await authOwnerAgent.delete(
+			`/evaluation/test-definitions/${testDefinition.id}/runs/${testRun.id}`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual({ success: true });
+
+		const testRunAfterDelete = await testRunRepository.findOne({ where: { id: testRun.id } });
+		expect(testRunAfterDelete).toBeNull();
+	});
+
+	test('should retrieve 404 if test run does not exist', async () => {
+		const resp = await authOwnerAgent.delete(
+			`/evaluation/test-definitions/${testDefinition.id}/runs/123`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should retrieve 404 if user does not have access to test definition', async () => {
+		const testRunRepository = Container.get(TestRunRepository);
+		const testRun = await testRunRepository.createTestRun(otherTestDefinition.id);
+
+		const resp = await authOwnerAgent.delete(
+			`/evaluation/test-definitions/${otherTestDefinition.id}/runs/${testRun.id}`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+});
