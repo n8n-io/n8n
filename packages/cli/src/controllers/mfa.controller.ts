@@ -89,13 +89,17 @@ export class MFAController {
 
 		const { mfaCode, mfaRecoveryCode } = req.body;
 
-		if (!mfaCode && !mfaRecoveryCode) {
+		const mfaCodeDefined = mfaCode && typeof mfaCode === 'string';
+
+		const mfaRecoveryCodeDefined = mfaRecoveryCode && typeof mfaRecoveryCode === 'string';
+
+		if (!mfaCodeDefined && !mfaRecoveryCodeDefined) {
 			throw new BadRequestError('MFA code or recovery code is required to disable MFA feature');
 		}
 
-		if (mfaCode && typeof mfaCode === 'string') {
+		if (mfaCodeDefined) {
 			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
-		} else if (mfaRecoveryCode && typeof mfaRecoveryCode === 'string') {
+		} else if (mfaRecoveryCodeDefined) {
 			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
 		}
 	}
