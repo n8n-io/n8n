@@ -37,6 +37,25 @@ import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useLocalStorage } from '@vueuse/core';
 
+const getDirtyNodeNames = (
+	runData: IRunData,
+	getParametersLastUpdate: (nodeName: string) => number | undefined,
+): string[] | undefined => {
+	const dirtyNodeNames = Object.entries(runData).reduce<string[]>((acc, [nodeName, tasks]) => {
+		if (!tasks.length) return acc;
+
+		const updatedAt = getParametersLastUpdate(nodeName) ?? 0;
+
+		if (updatedAt > tasks[0].startTime) {
+			acc.push(nodeName);
+		}
+
+		return acc;
+	}, []);
+
+	return dirtyNodeNames.length ? dirtyNodeNames : undefined;
+};
+
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
@@ -242,6 +261,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			};
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
+			}
+
+			if (startRunData.runData) {
+				startRunData.dirtyNodeNames = getDirtyNodeNames(
+					startRunData.runData,
+					workflowsStore.getParametersLastUpdate,
+				);
 			}
 
 			// Init the execution data to represent the start of the execution
