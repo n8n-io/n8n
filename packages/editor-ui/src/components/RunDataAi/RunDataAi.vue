@@ -349,9 +349,7 @@ watch(() => props.runIndex, selectFirst, { immediate: true });
 	margin-right: var(--spacing-4xs);
 }
 .isSelected {
-	.nodeIcon {
-		background-color: var(--color-foreground-base);
-	}
+	background-color: var(--color-foreground-base);
 }
 .treeNode {
 	display: inline-flex;
