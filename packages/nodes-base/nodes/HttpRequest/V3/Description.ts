@@ -695,7 +695,7 @@ export const mainProperties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Ignore SSL Issues (insecure)',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				noDataExpression: true,

@@ -258,7 +258,7 @@ export const webhookModalDescription = [
 		default: {},
 		options: [
 			{
-				displayName: 'Ignore SSL Issues (insecure)',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				noDataExpression: true,

@@ -37,7 +37,7 @@ export class ElasticsearchApi implements ICredentialType {
 			description: "Referred to as Elasticsearch 'endpoint' in the Elastic deployment dashboard",
 		},
 		{
-			displayName: 'Ignore SSL Issues (insecure)',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'ignoreSSLIssues',
 			type: 'boolean',
 			default: false,
