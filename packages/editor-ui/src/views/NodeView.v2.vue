@@ -1072,6 +1072,10 @@ async function openExecution(executionId: string) {
 
 	workflowsStore.setWorkflowExecutionData(data);
 
+	if (data.mode !== 'manual') {
+		workflowsStore.setWorkflowPinData({});
+	}
+
 	uiStore.stateIsDirty = false;
 	canvasStore.stopLoading();
 
