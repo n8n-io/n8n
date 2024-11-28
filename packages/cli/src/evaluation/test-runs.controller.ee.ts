@@ -5,6 +5,7 @@ import { TestRunsRequest } from '@/evaluation/test-definitions.types.ee';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 import { TestDefinitionService } from './test-definition.service.ee';
+import { listQueryMiddleware } from '@/middlewares';
 
 @RestController('/evaluation/test-definitions')
 export class TestRunsController {
@@ -32,15 +33,13 @@ export class TestRunsController {
 		return testDefinition;
 	}
 
-	@Get('/:testDefinitionId/runs')
+	@Get('/:testDefinitionId/runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { testDefinitionId } = req.params;
 
 		await this.getTestDefinition(req);
 
-		return await this.testRunRepository.find({
-			where: { testDefinition: { id: testDefinitionId } },
-		});
+		return await this.testRunRepository.getMany(testDefinitionId, req.listQueryOptions);
 	}
 
 	@Get('/:testDefinitionId/runs/:id')
@@ -59,7 +58,7 @@ export class TestRunsController {
 	}
 
 	@Delete('/:testDefinitionId/runs/:id')
-	async delete(req: TestRunsRequest.GetOne) {
+	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId, testDefinitionId } = req.params;
 
 		await this.getTestDefinition(req);

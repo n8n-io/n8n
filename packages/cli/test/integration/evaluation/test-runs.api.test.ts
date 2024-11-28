@@ -84,6 +84,46 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
 			}),
 		]);
 	});
+
+	test('should retrieve list of runs for a test definition with pagination', async () => {
+		const testRunRepository = Container.get(TestRunRepository);
+		const testRun1 = await testRunRepository.createTestRun(testDefinition.id);
+		// Mark as running just to make a slight delay between the runs
+		await testRunRepository.markAsRunning(testRun1.id);
+		const testRun2 = await testRunRepository.createTestRun(testDefinition.id);
+
+		// Fetch the first page
+		const resp = await authOwnerAgent.get(
+			`/evaluation/test-definitions/${testDefinition.id}/runs?take=1`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual([
+			expect.objectContaining({
+				id: testRun2.id,
+				status: 'new',
+				testDefinitionId: testDefinition.id,
+				runAt: null,
+				completedAt: null,
+			}),
+		]);
+
+		// Fetch the second page
+		const resp2 = await authOwnerAgent.get(
+			`/evaluation/test-definitions/${testDefinition.id}/runs?take=1&skip=1`,
+		);
+
+		expect(resp2.statusCode).toBe(200);
+		expect(resp2.body.data).toEqual([
+			expect.objectContaining({
+				id: testRun1.id,
+				status: 'running',
+				testDefinitionId: testDefinition.id,
+				runAt: expect.any(String),
+				completedAt: null,
+			}),
+		]);
+	});
 });
 
 describe('GET /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
