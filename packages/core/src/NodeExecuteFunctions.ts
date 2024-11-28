@@ -28,6 +28,7 @@ import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
+import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
@@ -745,13 +746,13 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-export async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
-	const buffer = await binaryToBuffer(body);
+export async function binaryToString(body: Buffer | Readable, encoding?: string) {
 	if (!encoding && body instanceof IncomingMessage) {
 		parseIncomingMessage(body);
 		encoding = body.encoding;
 	}
-	return buffer.toString(encoding);
+	const buffer = await binaryToBuffer(body);
+	return iconv.decode(buffer, encoding ?? 'utf-8');
 }
 
 export async function proxyRequestToAxios(
