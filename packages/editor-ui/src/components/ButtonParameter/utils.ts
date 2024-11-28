@@ -4,10 +4,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { generateCodeForPrompt } from '../../api/ai';
-import { useRootStore } from '../../stores/root.store';
-import { type AskAiRequest } from '../../types/assistant.types';
-import { useSettingsStore } from '../../stores/settings.store';
+import { generateCodeForPrompt } from '@/api/ai';
+import { useRootStore } from '@/stores/root.store';
+import { type AskAiRequest } from '@/types/assistant.types';
+import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
@@ -83,8 +83,8 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 				code = generatedCode;
 				break;
 			} catch (e) {
-				if (!retries) throw e;
 				retries--;
+				if (!retries) throw e;
 			}
 		}
 
