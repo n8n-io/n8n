@@ -4,6 +4,7 @@ import {
 	CRON_NODE_TYPE,
 	INTERVAL_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	PREVIEW_SCHEMAS,
 	START_NODE_TYPE,
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -183,6 +184,10 @@ const currentNode = computed(() => {
 	}
 
 	return workflowsStore.getNodeByName(props.currentNodeName ?? '');
+});
+
+const hasSchemaPreview = computed(() => {
+	return Boolean(currentNode.value && PREVIEW_SCHEMAS.hasOwnProperty(currentNode.value.type));
 });
 
 const connectedCurrentNodeOutputs = computed(() => {
@@ -428,9 +433,22 @@ function activatePane() {
 						@execute="onNodeExecute"
 					/>
 				</N8nTooltip>
-				<N8nText v-if="!readOnly" tag="div" size="small">
+				<N8nText v-if="!readOnly && !hasSchemaPreview" tag="div" size="small">
 					{{ i18n.baseText('ndv.input.noOutputData.hint') }}
 				</N8nText>
+
+				<div v-if="!readOnly && hasSchemaPreview" :class="$style.schemaPreview">
+					<N8nText tag="div" size="small">
+						{{ i18n.baseText('ndv.input.noOutputData.or') }}
+					</N8nText>
+					<N8nText tag="div" size="small">
+						<i18n-t keypath="ndv.input.noOutputData.schemaPreviewHint">
+							<template #schema>
+								<b>{{ i18n.baseText('runData.schema') }}</b>
+							</template>
+						</i18n-t>
+					</N8nText>
+				</div>
 			</div>
 			<div v-else :class="$style.notConnected">
 				<div>
@@ -533,5 +551,11 @@ function activatePane() {
 	letter-spacing: 3px;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
+}
+
+.schemaPreview {
+	display: flex;
+	flex-flow: column nowrap;
+	gap: var(--spacing-2xs);
 }
 </style>

@@ -18,6 +18,7 @@ type Props = {
 	distanceFromActive?: number;
 	node: INodeUi | null;
 	search: string;
+	preview?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -86,6 +87,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 					[$style.pill]: true,
 					[$style.mappable]: mappingEnabled,
 					[$style.highlight]: dragged,
+					[$style.preview]: preview,
 				}"
 			>
 				<span
@@ -139,6 +141,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 					:distance-from-active="distanceFromActive"
 					:node="node"
 					:search="search"
+					:preview="preview"
 				/>
 			</div>
 		</div>
@@ -265,6 +268,19 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				background-color: var(--color-background-light);
 				border-color: var(--color-foreground-base);
 			}
+		}
+	}
+
+	&.preview {
+		border-style: dashed;
+		border-width: 1.5px;
+
+		.label {
+			color: var(--color-text-light);
+		}
+
+		.label > span {
+			border-left: 1.5px dashed var(--color-foreground-light);
 		}
 	}
 }

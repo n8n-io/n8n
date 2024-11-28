@@ -34,6 +34,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
+	PREVIEW_SCHEMAS,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -272,6 +273,10 @@ const hasNodeRun = computed(() =>
 			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
 				pinnedData.hasData.value),
 	),
+);
+
+const hasPreviewSchema = computed(() =>
+	Boolean(node.value && PREVIEW_SCHEMAS.hasOwnProperty(node.value.type)),
 );
 
 const isArtificialRecoveredEventItem = computed(
@@ -1318,7 +1323,8 @@ defineExpose({ enterEditMode });
 
 				<N8nRadioButtons
 					v-show="
-						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
+						hasPreviewSchema ||
+						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
 					"
 					:model-value="displayMode"
 					:options="displayModes"
@@ -1562,7 +1568,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
 				:class="$style.center"
 			>
 				<slot name="node-not-run"></slot>
@@ -1734,7 +1740,7 @@ defineExpose({ enterEditMode });
 				<LazyRunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && isSchemaView">
+			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
 				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"

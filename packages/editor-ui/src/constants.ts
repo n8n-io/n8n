@@ -4,6 +4,7 @@ import type {
 	INodeUi,
 	IWorkflowDataCreate,
 	NodeCreatorOpenSource,
+	Schema,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
 import type {
@@ -120,6 +121,7 @@ export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
 export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
 export const GOOGLE_GMAIL_NODE_TYPE = 'n8n-nodes-base.gmail';
+export const GOOGLE_GMAIL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.gmailTrigger';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
@@ -931,4 +933,155 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 		executionOrder: 'v1',
 	},
 	pinData: {},
+};
+
+export const PREVIEW_SCHEMAS: Record<string, Schema> = {
+	[OPEN_AI_NODE_TYPE]: {
+		type: 'object',
+		value: [
+			{
+				type: 'number',
+				key: 'index',
+				value: '',
+				path: '.index',
+			},
+			{
+				type: 'object',
+				key: 'message',
+				value: [
+					{
+						type: 'string',
+						key: 'role',
+						value: '',
+						path: '.message.role',
+					},
+					{
+						type: 'string',
+						key: 'content',
+						value: '',
+						path: '.message.content',
+					},
+					{
+						type: 'null',
+						key: 'refusal',
+						value: '',
+						path: 'message.refusal',
+					},
+				],
+				path: '.message',
+			},
+			{
+				type: 'null',
+				key: 'logprobs',
+				value: '',
+				path: '.logprobs',
+			},
+			{
+				type: 'string',
+				key: 'finish_reason',
+				value: '',
+				path: '.finish_reason',
+			},
+		],
+		path: '',
+	},
+	[GOOGLE_GMAIL_TRIGGER_NODE_TYPE]: {
+		type: 'object',
+		value: [
+			{
+				type: 'string',
+				key: 'id',
+				value: '',
+				path: '.id',
+			},
+			{
+				type: 'string',
+				key: 'threadId',
+				value: '',
+				path: '.threadId',
+			},
+			{
+				type: 'string',
+				key: 'snippet',
+				value: '',
+				path: '.snippet',
+			},
+			{
+				type: 'object',
+				key: 'payload',
+				value: [
+					{
+						type: 'string',
+						key: 'mimeType',
+						value: '',
+						path: 'payload.mimeType',
+					},
+				],
+				path: '.payload',
+			},
+			{
+				type: 'number',
+				key: 'sizeEstimate',
+				value: '',
+				path: '.sizeEstimate',
+			},
+			{
+				type: 'string',
+				key: 'historyId',
+				value: '',
+				path: '.historyId',
+			},
+			{
+				type: 'string',
+				key: 'internalDate',
+				value: '',
+				path: '.internalDate',
+			},
+			{
+				type: 'array',
+				key: 'labels',
+				value: [
+					{
+						type: 'object',
+						key: '0',
+						value: [
+							{
+								type: 'string',
+								key: 'id',
+								value: '',
+								path: '.labels[0].id',
+							},
+							{
+								type: 'string',
+								key: 'name',
+								value: '',
+								path: '.labels[0].name',
+							},
+						],
+						path: '.labels[0]',
+					},
+				],
+				path: '.labels',
+			},
+			{
+				type: 'string',
+				key: 'From',
+				value: '',
+				path: '.From',
+			},
+			{
+				type: 'string',
+				key: 'To',
+				value: '',
+				path: '.To',
+			},
+			{
+				type: 'string',
+				key: 'Subject',
+				value: '',
+				path: '.Subject',
+			},
+		],
+		path: '',
+	},
 };

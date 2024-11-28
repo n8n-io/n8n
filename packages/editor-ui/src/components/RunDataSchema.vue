@@ -22,6 +22,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useDebounce } from '@/composables/useDebounce';
+import { PREVIEW_SCHEMAS, DATA_EDITING_DOCS_URL } from '@/constants';
+import { N8nNotice } from 'n8n-design-system';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -46,6 +48,7 @@ type SchemaNode = {
 	connectedOutputIndexes: number[];
 	itemsCount: number | null;
 	schema: Schema | null;
+	isPreview: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -64,7 +67,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const draggingPath = ref<string>('');
 const nodesOpen = ref<Partial<Record<string, boolean>>>({});
-const nodesData = ref<Partial<Record<string, { schema: Schema; itemsCount: number }>>>({});
+const nodesData = ref<
+	Partial<Record<string, { schema: Schema; itemsCount: number; isPreview: boolean }>>
+>({});
 const nodesLoading = ref<Partial<Record<string, boolean>>>({});
 const disableScrollInView = ref(false);
 
@@ -90,7 +95,10 @@ const nodes = computed(() => {
 			if (!fullNode) return null;
 
 			const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
-			const { itemsCount, schema } = nodesData.value[node.name] ?? {
+
+			if (!nodeType) return null;
+
+			const { itemsCount, schema, isPreview } = nodesData.value[node.name] ?? {
 				itemsCount: null,
 				schema: null,
 			};
@@ -102,8 +110,9 @@ const nodes = computed(() => {
 				itemsCount,
 				nodeType,
 				schema: schema ? filterSchema(schema, props.search) : null,
-				loading: nodesLoading.value[node.name],
-				open: nodesOpen.value[node.name],
+				loading: nodesLoading.value[node.name] ?? false,
+				open: nodesOpen.value[node.name] ?? false,
+				isPreview,
 			};
 		})
 		.filter((node): node is SchemaNode => !!(node?.node && node.nodeType));
@@ -147,7 +156,7 @@ const noNodesOpen = computed(() => nodes.value.every((node) => !node.open));
 
 const loadNodeData = async ({ node, connectedOutputIndexes }: SchemaNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(node.name);
-	const data =
+	let data =
 		pinData ??
 		connectedOutputIndexes
 			.map((outputIndex) =>
@@ -157,9 +166,19 @@ const loadNodeData = async ({ node, connectedOutputIndexes }: SchemaNode) => {
 			)
 			.flat();
 
+	if (data.length === 0 && PREVIEW_SCHEMAS.hasOwnProperty(node.type)) {
+		nodesData.value[node.name] = {
+			schema: PREVIEW_SCHEMAS[node.type],
+			itemsCount: 0,
+			isPreview: true,
+		};
+		return;
+	}
+
 	nodesData.value[node.name] = {
 		schema: getSchemaForExecutionData(data),
 		itemsCount: data.length,
+		isPreview: false,
 	};
 };
 
@@ -316,6 +335,9 @@ watch(
 						<span v-if="nodeAdditionalInfo(currentNode.node)" :class="$style.subtitle">{{
 							nodeAdditionalInfo(currentNode.node)
 						}}</span>
+						<span v-if="currentNode.isPreview" :class="$style.preview">
+							{{ i18n.baseText('dataMapping.schemaView.previewNode') }}
+						</span>
 					</div>
 					<font-awesome-icon
 						v-if="currentNode.nodeType.group.includes('trigger')"
@@ -359,6 +381,16 @@ watch(
 						@transitionstart="(event) => onTransitionStart(event, currentNode.node.name)"
 					>
 						<div :class="$style.innerSchema" @transitionstart.stop>
+							<N8nNotice v-if="currentNode.isPreview" :class="$style.previewNotice" theme="warning">
+								<i18n-t keypath="dataMapping.schemaView.preview">
+									<template #link>
+										<N8nLink :to="DATA_EDITING_DOCS_URL" size="small">
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</template>
+								</i18n-t>
+							</N8nNotice>
+
 							<div
 								v-if="currentNode.node.disabled"
 								:class="$style.notice"
@@ -387,6 +419,7 @@ watch(
 								:distance-from-active="currentNode.depth"
 								:node="currentNode.node"
 								:search="search"
+								:preview="currentNode.isPreview"
 							/>
 						</div>
 					</div>
@@ -594,6 +627,10 @@ watch(
 		transform 0.2s $ease-out-expo;
 }
 
+.preview {
+	color: var(--color-text-light);
+}
+
 .triggerIcon {
 	margin-left: var(--spacing-2xs);
 	color: var(--color-primary);
@@ -603,6 +640,11 @@ watch(
 	.nodeIcon {
 		border-radius: 16px 4px 4px 16px;
 	}
+}
+
+.previewNotice {
+	margin-left: var(--spacing-l);
+	margin-top: 0;
 }
 
 @container schema (max-width: 24em) {
