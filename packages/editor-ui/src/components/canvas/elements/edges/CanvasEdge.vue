@@ -12,7 +12,7 @@ import { getEdgeRenderData } from './utils';
 const emit = defineEmits<{
 	add: [connection: Connection];
 	delete: [connection: Connection];
-	'update:hovered': [hovered: boolean];
+	'update:label:hovered': [hovered: boolean];
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
@@ -111,11 +111,11 @@ function onDelete() {
 }
 
 function onEdgeLabelMouseEnter() {
-	emit('update:hovered', true);
+	emit('update:label:hovered', true);
 }
 
 function onEdgeLabelMouseLeave() {
-	emit('update:hovered', false);
+	emit('update:label:hovered', false);
 }
 </script>
 

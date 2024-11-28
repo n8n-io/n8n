@@ -9,12 +9,13 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import type {
+import {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
+	CanvasNodeRenderType,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -81,7 +82,6 @@ const classes = computed(() => ({
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
 	selected: props.selected,
-	'bring-to-front': props.bringToFront,
 }));
 
 /**
