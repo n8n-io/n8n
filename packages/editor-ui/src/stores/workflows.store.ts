@@ -1200,6 +1200,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeAtIndex(nodeIndex, {
 			[updateInformation.key]: updateInformation.value,
 		});
+
+		if (updateInformation.key !== 'position') {
+			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+		}
 	}
 
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
