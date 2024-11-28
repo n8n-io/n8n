@@ -1664,7 +1664,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActive,
 		setWorkflowInactive,
 		fetchActiveWorkflows,
-		formPopupWindow,
 		setActive,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionData,
