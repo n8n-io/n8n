@@ -1,7 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive, processGroupsResponse } from '../GenericFunctions';
+import { handleErrorPostReceive, handlePagination } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -83,9 +83,8 @@ export const groupOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of groups',
 				routing: {
-					send: {
-						paginate: true,
-					},
+					send: { paginate: true },
+					operations: { pagination: handlePagination },
 					request: {
 						method: 'POST',
 						headers: {
@@ -98,7 +97,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive, processGroupsResponse],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Get many groups',
@@ -580,38 +579,20 @@ const getAllFields: INodeProperties[] = [
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-			},
-		},
+		displayOptions: { show: { resource: ['group'], operation: ['getAll'] } },
 		type: 'boolean',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
-		default: 50,
-		description: 'Max number of results to return',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		routing: {
-			send: {
-				property: '$top',
-				type: 'query',
-				value: '={{ $value }}',
-			},
-		},
+		required: true,
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
 		},
-		validateType: 'number',
+		default: 20,
+		description: 'Max number of results to return',
+		displayOptions: { show: { resource: ['group'], operation: ['getAll'], returnAll: [false] } },
 	},
 	{
 		displayName: 'User Pool ID',

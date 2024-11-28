@@ -5,7 +5,6 @@ import {
 	handlePagination,
 	presendFilter,
 	processAttributes,
-	processUsersResponse,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -106,9 +105,8 @@ export const userOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
-					send: {
-						paginate: true,
-					},
+					send: { paginate: true },
+					operations: { pagination: handlePagination },
 					request: {
 						method: 'POST',
 						headers: {
@@ -121,7 +119,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive, processUsersResponse],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Get many users',
@@ -627,46 +625,20 @@ const getAllFields: INodeProperties[] = [
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			send: {
-				paginate: '={{ $value }}',
-			},
-			operations: {
-				pagination: handlePagination,
-			},
-		},
+		displayOptions: { show: { resource: ['user'], operation: ['getAll'] } },
 		type: 'boolean',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
-		default: 50,
-		description: 'Max number of results to return',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		routing: {
-			send: {
-				property: 'limit',
-				type: 'body',
-				value: '={{ $value }}',
-			},
-		},
+		required: true,
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
 		},
-		validateType: 'number',
+		default: 20,
+		description: 'Max number of results to return',
+		displayOptions: { show: { resource: ['user'], operation: ['getAll'], returnAll: [false] } },
 	},
 	{
 		displayName: 'Additional Fields', // ToDo: Test additional parameters with the API
