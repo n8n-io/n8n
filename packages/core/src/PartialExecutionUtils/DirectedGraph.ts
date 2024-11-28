@@ -470,6 +470,12 @@ export class DirectedGraph {
 		return graph;
 	}
 
+	static fromDirectedGraph(graph: DirectedGraph) {
+		return new DirectedGraph()
+			.addNodes(...graph.getNodes().values())
+			.addConnections(...graph.getConnections().values());
+	}
+
 	private toIConnections() {
 		const result: IConnections = {};
 
