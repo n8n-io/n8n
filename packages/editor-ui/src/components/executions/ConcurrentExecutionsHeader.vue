@@ -11,14 +11,15 @@ const props = defineProps<{
 const i18n = useI18n();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const tooltipText = computed(() => {
-	return i18n.baseText('executionsList.activeExecutions.tooltip', {
+const tooltipText = computed(() =>
+	i18n.baseText('executionsList.activeExecutions.tooltip', {
 		interpolate: {
 			running: props.runningExecutionsCount,
 			cap: props.concurrencyCap,
 		},
-	});
-});
+	}),
+);
+
 const headerText = computed(() => {
 	if (props.runningExecutionsCount === 0) {
 		return i18n.baseText('executionsList.activeExecutions.none');
