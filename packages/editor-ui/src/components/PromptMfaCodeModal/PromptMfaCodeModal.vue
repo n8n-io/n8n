@@ -27,17 +27,17 @@ const formFields: IFormInputs = [
 	},
 ];
 
-function onSubmit(values: { code: string }) {
-	if (validateUuid(values.code)) {
+function onSubmit(values: { mfaCodeOrMfaRecoveryCode: string }) {
+	if (validateUuid(values.mfaCodeOrMfaRecoveryCode)) {
 		promptMfaCodeBus.emit('close', {
-			mfaRecoveryCode: values.code,
+			mfaRecoveryCode: values.mfaCodeOrMfaRecoveryCode,
 		});
 
 		return;
 	}
 
 	promptMfaCodeBus.emit('close', {
-		mfaCode: values.code,
+		mfaCode: values.mfaCodeOrMfaRecoveryCode,
 	});
 }
 
