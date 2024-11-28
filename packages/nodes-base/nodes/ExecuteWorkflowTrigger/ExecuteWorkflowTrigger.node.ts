@@ -20,8 +20,6 @@ const VALUES = 'values';
 const JSON_EXAMPLE = 'jsonExample';
 const JSON_SCHEMA = 'jsonSchema';
 const TYPE_OPTIONS: Array<{ name: string; value: FieldType | 'any' }> = [
-	// This is not a FieldType type, but will
-	// hit the default case in the type check function
 	{
 		name: 'Allow Any Type',
 		value: 'any',
