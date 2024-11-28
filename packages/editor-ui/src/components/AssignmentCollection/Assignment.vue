@@ -5,6 +5,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isExpression, stringifyExpressionResult } from '@/utils/expressions';
 import type { AssignmentValue, INodeProperties, Result } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -101,7 +102,12 @@ const hint = computed(() => {
 		result = { ok: false, error };
 	}
 
-	return stringifyExpressionResult(result);
+	const hasRunData =
+		!!useWorkflowsStore().workflowExecutionData?.data?.resultData?.runData[
+			ndvStore.activeNode?.name ?? ''
+		];
+
+	return stringifyExpressionResult(result, hasRunData);
 });
 
 const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
