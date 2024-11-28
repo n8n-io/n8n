@@ -1,3 +1,5 @@
+import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
+import type { JSONSchema7 } from 'json-schema';
 import {
 	type INodeExecutionData,
 	NodeConnectionType,
@@ -7,6 +9,7 @@ import {
 	type INodeTypeDescription,
 	validateFieldType,
 	type FieldType,
+	jsonParse,
 } from 'n8n-workflow';
 
 const INPUT_SOURCE = 'inputSource';
@@ -14,37 +17,123 @@ const FIELDS = 'fields';
 const WORKFLOW_INPUTS = 'workflowInputs';
 const INPUT_OPTIONS = 'inputOptions';
 const VALUES = 'values';
+const JSON_EXAMPLE = 'jsonExample';
+const JSON_SCHEMA = 'jsonSchema';
+const TYPE_OPTIONS: Array<{ name: string; value: FieldType | 'any' }> = [
+	// This is not a FieldType type, but will
+	// hit the default case in the type check function
+	{
+		name: 'Allow Any Type',
+		value: 'any',
+	},
+	{
+		name: 'String',
+		value: 'string',
+	},
+	{
+		name: 'Number',
+		value: 'number',
+	},
+	{
+		name: 'Boolean',
+		value: 'boolean',
+	},
+	{
+		name: 'Array',
+		value: 'array',
+	},
+	{
+		name: 'Object',
+		value: 'object',
+	},
+	// Intentional omission of `dateTime`, `time`, `string-alphanumeric`, `form-fields`, `jwt` and `url`
+];
+const SUPPORTED_TYPES = TYPE_OPTIONS.map((x) => x.value);
+
 const DEFAULT_PLACEHOLDER = null;
 
-type ValueOptions = { name: string; type: FieldType };
+type ValueOptions = { name: string; type: FieldType | 'any' };
 
-function hasFields(context: IExecuteFunctions, index: number): boolean {
-	const inputSource = context.getNodeParameter(INPUT_SOURCE, index) as string;
-	if (inputSource === FIELDS) {
-		const fields = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, index, []) as Array<{
-			name: string;
-		}>;
-		return fields.length > 0;
-	} else {
-		return false;
+function parseJsonSchema(schema: JSONSchema7): ValueOptions[] | string {
+	if (!schema?.properties) {
+		return 'Invalid JSON schema. Missing key `properties` in schema';
 	}
+
+	if (typeof schema.properties !== 'object') {
+		return 'Invalid JSON schema. Key `properties` is not an object';
+	}
+
+	const result: ValueOptions[] = [];
+	for (const [name, v] of Object.entries(schema.properties)) {
+		if (typeof v !== 'object') {
+			return `Invalid JSON schema. Value for property '${name}' is not an object`;
+		}
+
+		const type = v?.type;
+
+		if (type === 'null') {
+			result.push({ name, type: 'any' });
+		} else if (Array.isArray(type)) {
+			// Schema allows an array of types, but we don't
+			return `Invalid JSON schema. Array of types for property '${name}' is not supported by n8n. Either provide a single type or use type 'any' to allow any type`;
+		} else if (typeof type !== 'string') {
+			return `Invalid JSON schema. Unexpected non-string type ${type} for property '${name}'`;
+		} else if (!SUPPORTED_TYPES.includes(type as never)) {
+			return `Invalid JSON schema. Unsupported type ${type} for property '${name}'. Supported types are ${JSON.stringify(SUPPORTED_TYPES, null, 1)}`;
+		} else {
+			result.push({ name, type: type as FieldType });
+		}
+	}
+	return result;
 }
 
-function parseJson(_context: IExecuteFunctions, _index: number): ValueOptions[] {
-	return [{ name: 'Placeholder', type: 'number' }];
+function parseJsonExample(context: IExecuteFunctions): JSONSchema7 {
+	const jsonString = context.getNodeParameter(JSON_EXAMPLE, 0, '') as string;
+	console.log('jsonString', jsonString);
+	const json = jsonParse<SchemaObject>(jsonString);
+	console.log('json', json);
+
+	return generateSchemaFromExample(json) as JSONSchema7;
 }
 
-function getSchema(context: IExecuteFunctions, index: number): ValueOptions[] {
-	const inputSource = context.getNodeParameter(INPUT_SOURCE, index) as string;
-	if (inputSource === FIELDS) {
-		const fields = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, index, []) as Array<{
-			name: string;
-			type: FieldType;
-		}>;
-		return fields;
-	} else {
-		return parseJson(context, index);
+function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
+	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0) as string;
+	let result: ValueOptions[] | string = 'Internal Error: Invalid input source';
+	try {
+		if (inputSource === FIELDS) {
+			result = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, 0, []) as Array<{
+				name: string;
+				type: FieldType;
+			}>;
+		} else if (inputSource === JSON_SCHEMA) {
+			const schema = context.getNodeParameter(JSON_SCHEMA, 0, '{}') as string;
+			result = parseJsonSchema(jsonParse<JSONSchema7>(schema));
+		} else if (inputSource === JSON_EXAMPLE) {
+			const schema = parseJsonExample(context);
+			result = parseJsonSchema(schema);
+		}
+	} catch (e: unknown) {
+		result =
+			e && typeof e === 'object' && 'message' in e && typeof e.message === 'string'
+				? e.message
+				: `Unknown error occurred: ${JSON.stringify(e)}`;
+
+		console.log('result B', result);
 	}
+	console.log('result', result);
+
+	if (Array.isArray(result)) {
+		return result;
+	}
+	throw new NodeOperationError(context.getNode(), result);
+}
+
+// This intentionally doesn't catch any potential errors like an invalid json example
+// So that they end up exposed to the user.
+// Otherwise we'd have to return true on error here as we short-circuit on false
+function hasFields(context: IExecuteFunctions): boolean {
+	const entries = getFieldEntries(context);
+	return entries.length > 0;
 }
 
 export class ExecuteWorkflowTrigger implements INodeType {
@@ -68,8 +157,22 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			{
 				message:
 					'We strongly recommend defining your input fields explicitly. If no inputs are provided, all data from the calling workflow will be available, and issues will be more difficult to debug later on.',
-				// keys() on WORKFLOW_INPUTS contains `VALUES` if at least one value is provided
-				displayCondition: `={{ $parameter["${INPUT_SOURCE}"] === '${FIELDS}' && !$parameter["${WORKFLOW_INPUTS}"].keys().length  }}`, // TODO json mode condition
+				// This condition checks if we have no input fields, which gets a bit awkward with the json schema
+				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
+				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with 2 characters or less for either '' or '{}'
+				// For JSON_SCHEMA: We check if we have 'properties: {}' after removing all whitespace. Otherwise the schema is invalid anyway
+				displayCondition:
+					`={{$parameter['${INPUT_SOURCE}'] === '${WORKFLOW_INPUTS}' && !$parameter['${WORKFLOW_INPUTS}'].keys().length ` +
+					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_EXAMPLE}' && $parameter['${JSON_EXAMPLE}'].toString().replaceAll(' ', '').replaceAll('\\n', '').length <= 2 ` +
+					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_SCHEMA}' && $parameter['${JSON_SCHEMA}'].toString().replaceAll(' ', '').replaceAll('\\n', '').includes('"properties":{}') }}`,
+				whenToDisplay: 'always',
+				location: 'ndv',
+			},
+
+			{
+				message:
+					'n8n does not support items types on Array fields. These entries will have no effect.',
+				displayCondition: `={{$parameter["${INPUT_SOURCE}"] === '${JSON_SCHEMA}' && $parameter["${JSON_SCHEMA}"].toString().includes('"items":') && $parameter["${JSON_SCHEMA}"].toString().includes('"array"')  }}`,
 				whenToDisplay: 'always',
 				location: 'ndv',
 			},
@@ -106,18 +209,73 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Using fields below',
-						value: FIELDS,
+						value: WORKFLOW_INPUTS,
 						description: 'Provide via UI',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Using JSON',
-						value: 'json',
-						description: 'Provide via JSON schema',
+						name: 'Using JSON example',
+						value: JSON_EXAMPLE,
+						description: 'Infer JSON schema via JSON example output',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Using JSON schema',
+						value: JSON_SCHEMA,
+						description: 'Provide JSON Schema',
 					},
 				],
-				default: FIELDS,
+				default: WORKFLOW_INPUTS,
 				noDataExpression: true,
+			},
+			{
+				displayName:
+					'Provide an example object to infer fields and their types. To allow any type for a given field set the value to null.',
+				name: `${JSON_EXAMPLE}_notice`,
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [JSON_EXAMPLE] },
+				},
+			},
+			{
+				displayName: 'JSON Example',
+				name: JSON_EXAMPLE,
+				type: 'json',
+				default: JSON.stringify(
+					{
+						aField: 'a string',
+						aNumber: 123,
+						thisFieldAcceptsAnyType: null,
+						anArray: [],
+					},
+					null,
+					2,
+				),
+				noDataExpression: true,
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [JSON_EXAMPLE] },
+				},
+			},
+			{
+				displayName: 'JSON Schema',
+				name: JSON_SCHEMA,
+				type: 'json',
+				default: JSON.stringify(
+					{
+						properties: {
+							aField: { type: 'number' },
+							anotherField: { type: 'array' },
+							thisFieldAcceptsAnyType: { type: 'any' },
+						},
+					},
+					null,
+					2,
+				),
+				noDataExpression: true,
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [JSON_SCHEMA] },
+				},
 			},
 			{
 				displayName: 'Workflow Inputs',
@@ -131,7 +289,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 					sortable: true,
 				},
 				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [FIELDS] },
+					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [WORKFLOW_INPUTS] },
 				},
 				default: {},
 				options: [
@@ -154,35 +312,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 								type: 'options',
 								description: 'The field value type',
 								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-								options: [
-									// This is not a FieldType type, but will
-									// hit the default case in the type check function
-									{
-										name: 'Allow Any Type',
-										value: 'any',
-									},
-									{
-										name: 'String',
-										value: 'string',
-									},
-									{
-										name: 'Number',
-										value: 'number',
-									},
-									{
-										name: 'Boolean',
-										value: 'boolean',
-									},
-									{
-										name: 'Array',
-										value: 'array',
-									},
-									{
-										name: 'Object',
-										value: 'object',
-									},
-									// Intentional omission of `dateTime`, `time`, `string-alphanumeric`, `form-fields`, `jwt` and `url`
-								] as Array<{ name: string; value: FieldType }>,
+								options: TYPE_OPTIONS,
 								default: 'string',
 								noDataExpression: true,
 							},
@@ -244,7 +374,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 		if (this.getNode().typeVersion < 1.1) {
 			return [inputData];
 		} else {
-			if (!hasFields(this, 0)) {
+			if (!hasFields(this)) {
 				return [inputData];
 			}
 
@@ -281,7 +411,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 					pairedItem: { item: itemIndex },
 				};
 				try {
-					const newParams = getSchema(this, itemIndex);
+					const newParams = getFieldEntries(this);
 
 					for (const { name, type } of newParams) {
 						if (!item.json.hasOwnProperty(name)) {
@@ -289,14 +419,13 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 							continue;
 						}
 
-						// We always parse strings rather than blindly accepting anything as a string
-						// Which is the behavior of this function
-						// Also note we intentionally pass `any` in here for `type`, which hits a
-						// permissive default case in the function
-						const result = validateFieldType(name, item.json[name], type, {
-							strict: !attemptToConvertTypes,
-							parseStrings: true,
-						});
+						const result =
+							type === 'any'
+								? ({ valid: true, newValue: item.json[name] } as const)
+								: validateFieldType(name, item.json[name], type, {
+										strict: !attemptToConvertTypes,
+										parseStrings: true, // Default behavior is to accept anything as a string, this is a good opportunity for a stricter boundary
+									});
 
 						if (!result.valid) {
 							if (ignoreTypeErrors) {
