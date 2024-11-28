@@ -150,6 +150,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
+			let preferredTrigger: IStartRunData['preferredTrigger'];
 			if (
 				startNodeNames.length === 0 &&
 				'destinationNode' in options &&
@@ -157,14 +158,16 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if ('triggerNode' in options && 'nodeData' in options) {
+			} else if (options.triggerNode && options.nodeData) {
 				startNodeNames.push(
-					...workflow.getChildNodes(options.triggerNode as string, NodeConnectionType.Main, 1),
+					...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
 				);
-				newRunData = {
-					[options.triggerNode as string]: [options.nodeData],
-				} as IRunData;
+				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
+				preferredTrigger = {
+					name: options.triggerNode,
+					data: options.nodeData,
+				};
 			}
 
 			// If the destination node is specified, check if it is a chat node or has a chat parent
@@ -258,6 +261,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// data to use and what to ignore.
 				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
 				startNodes,
+				preferredTrigger,
 			};
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;

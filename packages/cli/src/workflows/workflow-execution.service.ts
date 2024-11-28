@@ -95,6 +95,7 @@ export class WorkflowExecutionService {
 			startNodes,
 			destinationNode,
 			dirtyNodeNames,
+			preferredTrigger,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -124,6 +125,7 @@ export class WorkflowExecutionService {
 				runData,
 				pushRef,
 				destinationNode,
+				preferredTrigger,
 			});
 
 			if (needsWebhook) return { waitingForWebhook: true };
@@ -144,6 +146,7 @@ export class WorkflowExecutionService {
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
 			dirtyNodeNames,
+			preferredTrigger,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

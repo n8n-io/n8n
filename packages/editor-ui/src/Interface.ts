@@ -46,6 +46,7 @@ import type {
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
+	ITaskData,
 } from 'n8n-workflow';
 
 import type {
@@ -201,6 +202,10 @@ export interface IStartRunData {
 	destinationNode?: string;
 	runData?: IRunData;
 	dirtyNodeNames?: string[];
+	preferredTrigger?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ITableData {

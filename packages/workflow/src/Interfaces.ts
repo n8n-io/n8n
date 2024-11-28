@@ -2275,6 +2275,10 @@ export interface IWorkflowExecutionDataProcess {
 	 */
 	partialExecutionVersion?: string;
 	dirtyNodeNames?: string[];
+	preferredTrigger?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ExecuteWorkflowOptions {

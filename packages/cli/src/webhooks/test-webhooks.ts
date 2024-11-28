@@ -23,6 +23,7 @@ import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrati
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 import type {
 	IWebhookResponseCallbackData,
@@ -225,6 +226,7 @@ export class TestWebhooks implements IWebhookManager {
 		runData?: IRunData;
 		pushRef?: string;
 		destinationNode?: string;
+		preferredTrigger?: WorkflowRequest.ManualRunPayload['preferredTrigger'];
 	}) {
 		const userId = options.userId;
 		const workflowEntity = options.workflowEntity;
@@ -232,16 +234,28 @@ export class TestWebhooks implements IWebhookManager {
 		const runData = options.runData;
 		const pushRef = options.pushRef;
 		const destinationNode = options.destinationNode;
+		const preferredTrigger = options.preferredTrigger;
+
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(
+		let webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
 			destinationNode,
 			true,
 		);
+
+		// If we have a preferred trigger with data, we don't have to listen for a
+		// webhook.
+		if (preferredTrigger?.data) {
+			return false;
+		}
+
+		if (preferredTrigger) {
+			webhooks = webhooks.filter((w) => w.node === preferredTrigger.name);
+		}
 
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
