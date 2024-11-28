@@ -357,14 +357,6 @@ const createFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Allow External Senders',
-				name: 'allowExternalSenders',
-				default: false,
-				description: 'Whether people external to the organization can send messages to the group',
-				type: 'boolean',
-				validateType: 'boolean',
-			},
-			{
 				displayName: 'Assignable to Role',
 				name: 'isAssignableToRole',
 				default: false,
@@ -418,15 +410,6 @@ const createFields: INodeProperties[] = [
 						],
 					},
 				},
-				type: 'boolean',
-				validateType: 'boolean',
-			},
-			{
-				displayName: 'Auto Subscribe New Members',
-				name: 'autoSubscribeNewMembers',
-				default: false,
-				description:
-					'Whether new members added to the group will be auto-subscribed to receive email notifications',
 				type: 'boolean',
 				validateType: 'boolean',
 			},
@@ -501,37 +484,9 @@ const createFields: INodeProperties[] = [
 									body.assignedLabels = [(body.assignedLabels as IDataObject).labelValues];
 								}
 
-								// To update the following properties, you must specify them in their own PATCH request, without including the other properties
-								const separateProperties = [
-									'allowExternalSenders',
-									'autoSubscribeNewMembers',
-									// 'hideFromAddressLists',
-									// 'hideFromOutlookClients',
-									// 'isSubscribedByMail',
-									// 'unseenCount',
-								];
-								const separateBody: IDataObject = {};
-								for (const [key, value] of Object.entries(body)) {
-									if (separateProperties.includes(key)) {
-										separateBody[key] = value;
-										delete body[key];
-									}
-								}
-
 								try {
-									if (Object.keys(body).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
-										merge(item.json, body);
-									}
-									if (Object.keys(separateBody).length) {
-										await microsoftApiRequest.call(
-											this,
-											'PATCH',
-											`/groups/${groupId}`,
-											separateBody,
-										);
-										merge(item.json, separateBody);
-									}
+									await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
+									merge(item.json, body);
 								} catch (error) {
 									try {
 										await microsoftApiRequest.call(this, 'DELETE', `/groups/${groupId}`);
