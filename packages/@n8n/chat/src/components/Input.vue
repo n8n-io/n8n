@@ -38,12 +38,12 @@ const isSubmitting = ref(false);
 const resizeObserver = ref<ResizeObserver | null>(null);
 
 const isSubmitDisabled = computed(() => {
-	return input.value === '' || waitingForResponse.value || options.disabled?.value === true;
+	return input.value === '' || unref(waitingForResponse) || options.disabled?.value === true;
 });
 
 const isInputDisabled = computed(() => options.disabled?.value === true);
 const isFileUploadDisabled = computed(
-	() => isFileUploadAllowed.value && waitingForResponse.value && !options.disabled?.value,
+	() => isFileUploadAllowed.value && unref(waitingForResponse) && !options.disabled?.value,
 );
 const isFileUploadAllowed = computed(() => unref(options.allowFileUploads) === true);
 const allowedFileTypes = computed(() => unref(options.allowedFilesMimeTypes));
