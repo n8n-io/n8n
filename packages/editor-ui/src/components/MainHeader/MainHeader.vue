@@ -10,6 +10,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
+	WORKFLOW_EVALUATION_EXPERIMENT,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -19,6 +20,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnection } from '@/composables/usePushConnection';
+import { usePostHog } from '@/stores/posthog.store';
 
 import GithubButton from 'vue-github-button';
 import { useLocalStorage } from '@vueuse/core';
@@ -33,6 +35,7 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const posthogStore = usePostHog();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
@@ -40,10 +43,20 @@ const executionToReturnTo = ref('');
 const dirtyState = ref(false);
 const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
 
-const tabBarItems = computed(() => [
-	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
-	{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-]);
+const tabBarItems = computed(() => {
+	const items = [
+		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
+		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+	];
+
+	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
+		items.push({
+			value: MAIN_HEADER_TABS.TEST_DEFINITION,
+			label: locale.baseText('generic.tests'),
+		});
+	}
+	return items;
+});
 
 const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
@@ -80,6 +93,9 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
+	if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
+		activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
+	}
 	if (
 		to.name === VIEWS.EXECUTION_HOME ||
 		to.name === VIEWS.WORKFLOW_EXECUTIONS ||
@@ -117,6 +133,11 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EXECUTIONS:
 			void navigateToExecutionsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.TEST_DEFINITION:
+			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
+			void router.push({ name: VIEWS.TEST_DEFINITION });
 			break;
 
 		default:

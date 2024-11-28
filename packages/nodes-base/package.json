@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.69.0",
+  "version": "1.70.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -868,7 +868,7 @@
     "get-system-fonts": "2.0.2",
     "gm": "1.25.0",
     "html-to-text": "9.0.5",
-    "iconv-lite": "0.6.3",
+    "iconv-lite": "catalog:",
     "ics": "2.40.0",
     "isbot": "3.6.13",
     "iso-639-1": "2.1.15",
