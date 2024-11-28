@@ -96,7 +96,7 @@ function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0) as string;
 	let result: ValueOptions[] | string = 'Internal Error: Invalid input source';
 	try {
-		if (inputSource === FIELDS) {
+		if (inputSource === WORKFLOW_INPUTS) {
 			result = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, 0, []) as Array<{
 				name: string;
 				type: FieldType;
