@@ -292,7 +292,7 @@ const createFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		placeholder: 'e.g. Adele Vance',
+		placeholder: 'e.g. Nathan Smith',
 		required: true,
 		routing: {
 			send: {
@@ -314,7 +314,7 @@ const createFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		placeholder: 'e.g. AdeleV@contoso.com',
+		placeholder: 'e.g. NathanSmith@contoso.com',
 		required: true,
 		routing: {
 			send: {
@@ -351,7 +351,7 @@ const createFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		placeholder: 'e.g. AdeleV',
+		placeholder: 'e.g. NathanSmith',
 		required: true,
 		routing: {
 			send: {
@@ -1023,7 +1023,7 @@ const getFields: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Selected Fields',
 				value: 'fields',
 			},
 		],
@@ -1169,7 +1169,7 @@ const getAllFields: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Selected Fields',
 				value: 'fields',
 			},
 		],

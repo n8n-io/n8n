@@ -647,7 +647,7 @@ const getFields: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Selected Fields',
 				value: 'fields',
 			},
 		],
@@ -824,7 +824,7 @@ const getAllFields: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Select Included Fields',
+				name: 'Selected Fields',
 				value: 'fields',
 			},
 		],
