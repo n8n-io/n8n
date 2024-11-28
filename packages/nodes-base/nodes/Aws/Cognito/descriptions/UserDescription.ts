@@ -2,9 +2,10 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	handleErrorPostReceive,
+	handlePagination,
 	presendFilter,
-	presendTest,
 	processAttributes,
+	processUsersResponse,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -31,6 +32,7 @@ export const userOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminAddUserToGroup',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -48,6 +50,7 @@ export const userOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminCreateUser',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -65,9 +68,18 @@ export const userOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminDeleteUser',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "deleted": true } }}',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -82,6 +94,7 @@ export const userOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminGetUser',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -91,13 +104,11 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get many users',
+				description: 'Retrieve a list of users',
 				routing: {
 					send: {
 						paginate: true,
 					},
-					// ToDo: Test with pagination (ideally we need 4+ users in the user pool)
-					// operations: { pagination: handlePagination }, // Responsible for pagination and number of results returned
 					request: {
 						method: 'POST',
 						headers: {
@@ -107,11 +118,13 @@ export const userOperations: INodeProperties[] = [
 							pageSize:
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [handleErrorPostReceive, processUsersResponse],
 					},
 				},
+				action: 'Get many users',
 			},
 			{
 				name: 'Remove From Group',
@@ -124,6 +137,7 @@ export const userOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminRemoveUserFromGroup',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -141,9 +155,18 @@ export const userOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminUpdateUserAttributes',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "updated": true } }}',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -176,7 +199,7 @@ const createFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -194,8 +217,8 @@ const createFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -219,7 +242,6 @@ const createFields: INodeProperties[] = [
 			send: {
 				property: 'Username',
 				type: 'body',
-				preSend: [presendTest],
 			},
 		},
 		type: 'string',
@@ -288,7 +310,6 @@ const createFields: INodeProperties[] = [
 					send: {
 						property: 'TemporaryPassword',
 						type: 'body',
-						preSend: [presendTest],
 					},
 				},
 				type: 'string',
@@ -315,7 +336,6 @@ const createFields: INodeProperties[] = [
 					send: {
 						property: 'MessageAction',
 						type: 'body',
-						preSend: [presendTest],
 					},
 				},
 			},
@@ -355,7 +375,6 @@ const createFields: INodeProperties[] = [
 					send: {
 						property: 'DesiredDeliveryMediums',
 						type: 'body',
-						preSend: [presendTest],
 					},
 				},
 			},
@@ -470,12 +489,11 @@ const getFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'UserPoolId',
-				preSend: [presendTest],
 			},
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -492,8 +510,8 @@ const getFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -502,7 +520,7 @@ const getFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User',
 		name: 'Username',
 		default: {
 			mode: 'list',
@@ -535,8 +553,8 @@ const getFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
 						},
 					},
 				],
@@ -546,7 +564,6 @@ const getFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'Username',
-				preSend: [presendTest],
 			},
 		},
 		required: true,
@@ -564,7 +581,7 @@ const getAllFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'The user pool ID that the users are in', // ToDo: Improve description
+		description: 'The user pool ID where the users are managed',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -579,7 +596,7 @@ const getAllFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -597,8 +614,8 @@ const getAllFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -621,21 +638,7 @@ const getAllFields: INodeProperties[] = [
 				paginate: '={{ $value }}',
 			},
 			operations: {
-				pagination: {
-					type: 'generic',
-					properties: {
-						continue: '={{ !!$response.body?.["@odata.nextLink"] }}',
-						request: {
-							url: '={{ $response.body?.["@odata.nextLink"] ?? $request.url }}',
-							qs: {
-								$filter:
-									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$filter }}',
-								$select:
-									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$select }}',
-							},
-						},
-					},
-				},
+				pagination: handlePagination,
 			},
 		},
 		type: 'boolean',
@@ -654,8 +657,8 @@ const getAllFields: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				property: '$top',
-				type: 'query',
+				property: 'limit',
+				type: 'body',
 				value: '={{ $value }}',
 			},
 		},
@@ -775,12 +778,11 @@ const deleteFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'UserPoolId',
-				preSend: [presendTest],
 			},
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -797,8 +799,8 @@ const deleteFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -807,7 +809,7 @@ const deleteFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User',
 		name: 'Username',
 		default: {
 			mode: 'list',
@@ -840,8 +842,8 @@ const deleteFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
 						},
 					},
 				],
@@ -851,7 +853,6 @@ const deleteFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'Username',
-				preSend: [presendTest],
 			},
 		},
 		required: true,
@@ -880,12 +881,11 @@ const updateFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'UserPoolId',
-				preSend: [presendTest],
 			},
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -902,8 +902,8 @@ const updateFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -912,7 +912,7 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User',
 		name: 'Username',
 		default: {
 			mode: 'list',
@@ -945,8 +945,8 @@ const updateFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
 						},
 					},
 				],
@@ -956,7 +956,6 @@ const updateFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'Username',
-				preSend: [presendTest],
 			},
 		},
 		required: true,
@@ -1095,7 +1094,7 @@ const addToGroupFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1112,8 +1111,8 @@ const addToGroupFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -1122,7 +1121,7 @@ const addToGroupFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User',
 		name: 'Username',
 		default: {
 			mode: 'list',
@@ -1155,8 +1154,8 @@ const addToGroupFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
 						},
 					},
 				],
@@ -1172,7 +1171,7 @@ const addToGroupFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group',
 		name: 'GroupName',
 		default: {
 			mode: 'list',
@@ -1215,7 +1214,6 @@ const addToGroupFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
 				type: 'body',
 				property: 'GroupName',
 			},
@@ -1249,7 +1247,7 @@ const removeFromGroupFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'From list', // ToDo: Fix error when selecting this option
+				displayName: 'From list',
 				name: 'list',
 				type: 'list',
 				typeOptions: {
@@ -1266,8 +1264,8 @@ const removeFromGroupFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
 						},
 					},
 				],
@@ -1276,7 +1274,7 @@ const removeFromGroupFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User Name',
+		displayName: 'User',
 		name: 'Username',
 		default: {
 			mode: 'list',
@@ -1309,8 +1307,8 @@ const removeFromGroupFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^[\\w-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx_xxxxxxxxxxx"',
+							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
 						},
 					},
 				],
@@ -1318,7 +1316,6 @@ const removeFromGroupFields: INodeProperties[] = [
 		],
 		routing: {
 			send: {
-				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
 				type: 'body',
 				property: 'Username',
 			},
@@ -1327,7 +1324,7 @@ const removeFromGroupFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Group Name',
+		displayName: 'Group',
 		name: 'GroupName',
 		default: {
 			mode: 'list',
@@ -1370,7 +1367,6 @@ const removeFromGroupFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [presendTest], // ToDo: Remove this line before completing the pull request
 				type: 'body',
 				property: 'GroupName',
 			},

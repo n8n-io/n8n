@@ -116,7 +116,7 @@ export async function processAttributes(
 	return requestOptions;
 }
 
-/* Helper function to process Group Response */
+/* Helper function to process Group/User Response */
 export async function processGroupsResponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -135,8 +135,26 @@ export async function processGroupsResponse(
 	return executionData;
 }
 
+export async function processUsersResponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const responseBody = response.body as { Users: IDataObject[] };
+
+	if (!responseBody || !Array.isArray(responseBody.Users)) {
+		throw new ApplicationError('Unexpected response format: No users found.');
+	}
+
+	const executionData: INodeExecutionData[] = responseBody.Users.map((user) => ({
+		json: user,
+	}));
+
+	return executionData;
+}
+
 /* Helper function to handle pagination */
-const possibleRootProperties = ['Users']; // Root properties that can be returned by the list operations of the API
+const possibleRootProperties = ['Attributes'];
 // ToDo: Test if pagination works
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
@@ -146,6 +164,8 @@ export async function handlePagination(
 	let nextPageToken: string | undefined;
 	const returnAll = this.getNodeParameter('returnAll') as boolean;
 	let limit = 60;
+
+	// Update limit if 'returnAll' is not selected
 	if (!returnAll) {
 		limit = this.getNodeParameter('limit') as number;
 		resultOptions.maxResults = limit;
@@ -154,144 +174,226 @@ export async function handlePagination(
 
 	do {
 		if (nextPageToken) {
-			// For different responses the pagination token might differ. ToDo: Ensure this code works for all endpoints.
+			// Append PaginationToken to the request body
+			const body =
+				typeof resultOptions.options.body === 'object' && resultOptions.options.body !== null
+					? resultOptions.options.body
+					: {};
 			resultOptions.options.body = {
-				...(resultOptions.options.body as IDataObject),
+				...body,
 				PaginationToken: nextPageToken,
 			} as IDataObject;
+			console.log('Updated request body with PaginationToken:', resultOptions.options.body);
 		}
 
+		// Make the request
+		console.log('Sending request with options:', resultOptions);
 		const responseData = await this.makeRoutingRequest(resultOptions);
 
+		// Process response data
 		for (const page of responseData) {
+			console.log('Processing page:', page.json);
+
+			// Iterate over possible root properties (e.g., "Users")
 			for (const prop of possibleRootProperties) {
 				if (page.json[prop]) {
 					const currentData = page.json[prop] as IDataObject[];
+					console.log(`Extracted data from property "${prop}":`, currentData);
 					aggregatedResult.push(...currentData);
 				}
 			}
 
+			// Check if the limit has been reached
 			if (!returnAll && aggregatedResult.length >= limit) {
+				console.log('Limit reached. Returning results.');
 				return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 			}
 
-			// For different responses the pagination token might differ. ToDo: Ensure this code works for all endpoints.
+			// Update the nextPageToken for the next request
 			nextPageToken = page.json.PaginationToken as string | undefined;
+			console.log('Next Page Token:', nextPageToken);
 		}
 	} while (nextPageToken);
 
+	console.log('Final Aggregated Results:', aggregatedResult);
 	return aggregatedResult.map((item) => ({ json: item }));
 }
 
 /* Helper functions to handle errors */
-
-// ToDo: Handle errors when something is not found. Answer the questions "what happened?" and "how to fix it?".
 export async function handleErrorPostReceive(
 	this: IExecuteSingleFunctions,
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const { resource, operation } = this.getNode().parameters as {
-			resource: string;
-			operation: string;
-		};
-		const {
-			code: errorCode,
-			message: errorMessage,
-			details: errorDetails,
-		} = (response.body as IDataObject)?.error as {
-			code: string;
-			message: string;
-			innerError?: {
-				code: string;
-				'request-id'?: string;
-				date?: string;
-			};
-			details?: Array<{
-				code: string;
-				message: string;
-			}>;
-		};
+		const resource = this.getNodeParameter('resource') as string;
+		const operation = this.getNodeParameter('operation') as string;
+		const responseBody = response.body as IDataObject;
+		const errorType = responseBody.__type ?? response.headers?.['x-amzn-errortype'];
+		const errorMessage = responseBody.message ?? response.headers?.['x-amzn-errormessage'];
 
-		if (errorCode === 'Request_BadRequest' && errorMessage === 'Invalid object identifier') {
+		// Resource/Operation specific errors
+		if (resource === 'group') {
+			if (operation === 'delete') {
+				if (errorType === 'ResourceNotFoundException' || errorType === 'NoSuchEntity') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required group doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Group' and try again",
+					});
+				}
+			} else if (operation === 'get') {
+				if (errorType === 'ResourceNotFoundException' || errorType === 'NoSuchEntity') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required group doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Group' and try again",
+					});
+				}
+			} else if (operation === 'update') {
+				if (errorType === 'ResourceNotFoundException' || errorType === 'NoSuchEntity') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required group doesn't match any existing one",
+						description: "Double-check the value in the parameter 'Group' and try again",
+					});
+				}
+			} else if (operation === 'create') {
+				if (errorType === 'EntityAlreadyExists' || errorType === 'GroupExistsException') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: 'The group is already created',
+						description: "Double-check the value in the parameter 'Group Name' and try again",
+					});
+				}
+			}
+		} else if (resource === 'user') {
+			if (operation === 'create') {
+				if (
+					errorType === 'UsernameExistsException' &&
+					errorMessage === 'User account already exists'
+				) {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: 'The user is already created',
+						description: "Double-check the value in the parameter 'User Name' and try again",
+					});
+				}
+			} else if (operation === 'addToGroup') {
+				// Group or user doesn't exist
+				if (errorType === 'UserNotFoundException') {
+					const user = this.getNodeParameter('user.value', '') as string;
+
+					if (typeof errorMessage === 'string' && errorMessage.includes(user)) {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The required user doesn't match any existing one",
+							description: "Double-check the value in the parameter 'User' and try again.",
+						});
+					}
+				} else if (errorType === 'ResourceNotFoundException') {
+					const group = this.getNodeParameter('group.value', '') as string;
+
+					if (typeof errorMessage === 'string' && errorMessage.includes(group)) {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The required group doesn't match any existing one",
+							description: "Double-check the value in the parameter 'Group' and try again.",
+						});
+					}
+				}
+			} else if (operation === 'delete') {
+				if (errorType === 'UserNotFoundException') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User' and try again",
+					});
+				}
+			} else if (operation === 'get') {
+				if (errorType === 'UserNotFoundException') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User' and try again",
+					});
+				}
+			} else if (operation === 'removeFromGroup') {
+				// Group or user doesn't exist
+				if (errorType === 'UserNotFoundException') {
+					const user = this.getNodeParameter('user.value', '') as string;
+
+					if (typeof errorMessage === 'string' && errorMessage.includes(user)) {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The required user doesn't match any existing one",
+							description: "Double-check the value in the parameter 'User' and try again.",
+						});
+					}
+				} else if (errorType === 'ResourceNotFoundException') {
+					const group = this.getNodeParameter('group.value', '') as string;
+
+					if (typeof errorMessage === 'string' && errorMessage.includes(group)) {
+						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+							message: "The required group doesn't match any existing one",
+							description: "Double-check the value in the parameter 'Group' and try again.",
+						});
+					}
+				}
+			} else if (operation === 'update') {
+				if (errorType === 'UserNotFoundException') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "The required user doesn't match any existing one",
+						description: "Double-check the value in the parameter 'User' and try again",
+					});
+				}
+			}
+		}
+
+		// Generic Error Handling
+		if (errorType === 'InvalidParameterException') {
 			const group = this.getNodeParameter('group.value', '') as string;
 			const parameterResource =
-				resource === 'group' || errorMessage.includes(group) ? 'group' : 'user';
+				resource === 'group' || (typeof errorMessage === 'string' && errorMessage.includes(group))
+					? 'group'
+					: 'user';
 
 			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 				message: `The ${parameterResource} ID is invalid`,
 				description: 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
 			});
 		}
-		if (errorCode === 'Request_ResourceNotFound') {
-			const group = this.getNodeParameter('group.value', '') as string;
-			const parameterResource =
-				resource === 'group' || errorMessage.includes(group) ? 'group' : 'user';
-			let parameterDisplayName = undefined;
-			if (parameterResource === 'group' && operation === 'delete') {
-				parameterDisplayName = 'Group to Delete';
-			} else if (parameterResource === 'group' && operation === 'get') {
-				parameterDisplayName = 'Group to Get';
-			} else if (parameterResource === 'group' && operation === 'update') {
-				parameterDisplayName = 'Group to Update';
-			} else if (parameterResource === 'user' && operation === 'delete') {
-				parameterDisplayName = 'User to Delete';
-			} else if (parameterResource === 'user' && operation === 'get') {
-				parameterDisplayName = 'User to Get';
-			} else if (parameterResource === 'user' && operation === 'update') {
-				parameterDisplayName = 'User to Update';
-			} else if (parameterResource === 'group' && operation === 'addGroup') {
-				parameterDisplayName = 'Group';
-			} else if (parameterResource === 'user' && operation === 'addGroup') {
-				parameterDisplayName = 'User to Add';
-			} else if (parameterResource === 'group' && operation === 'removeGroup') {
-				parameterDisplayName = 'Group';
-			} else if (parameterResource === 'user' && operation === 'removeGroup') {
-				parameterDisplayName = 'User to Remove';
-			}
 
-			if (parameterDisplayName) {
-				throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-					message: `The required ${parameterResource} doesn't match any existing one`,
-					description: `Double-check the value in the parameter '${parameterDisplayName}' and try again`,
-				});
-			}
-		}
-		if (errorDetails?.some((x) => x.code === 'ObjectConflict' || x.code === 'ConflictingObjects')) {
+		if (errorType === 'InternalErrorException') {
 			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: `The ${resource} already exists`,
-				description: errorMessage,
+				message: 'Internal Server Error',
+				description: 'Amazon Cognito encountered an internal error. Try again later.',
 			});
 		}
 
+		if (errorType === 'TooManyRequestsException') {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+				message: 'Too Many Requests',
+				description: 'You have exceeded the allowed number of requests. Try again later.',
+			});
+		}
+
+		if (errorType === 'NotAuthorizedException') {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+				message: 'Unauthorized Access',
+				description:
+					'You are not authorized to perform this operation. Check your permissions and try again.',
+			});
+		}
+
+		if (errorType === 'ServiceFailure') {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+				message: 'Service Failure',
+				description:
+					'The request processing has failed because of an unknown error, exception, or failure. Try again later.',
+			});
+		}
+
+		if (errorType === 'LimitExceeded') {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+				message: 'Limit Exceeded',
+				description:
+					'The request was rejected because it attempted to create resources beyond the current AWS account limits. Check your AWS limits and try again.',
+			});
+		}
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 
-	return data;
-}
-
-export async function handleErrorsDeleteUser(
-	this: IExecuteSingleFunctions,
-	data: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (response.statusCode < 200 || response.statusCode >= 300) {
-		const post = this.getNodeParameter('user', undefined) as IDataObject;
-
-		// Provide a user-friendly error message
-		if (post && response.statusCode === 404) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'The user you are deleting could not be found. Adjust the "user" parameter setting to delete the post correctly.',
-			);
-		}
-
-		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
-			message: response.statusMessage,
-			httpCode: response.statusCode.toString(),
-		});
-	}
 	return data;
 }
 

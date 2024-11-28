@@ -26,12 +26,7 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.CreateGroup',
 						},
-						// preSend: [
-						//   async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions) {
-						//     // Call the function you created in GenericFunctions
-						//     return await getUserIdForGroup.call(this, requestOptions);
-						//   },
-						// ],
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -49,6 +44,7 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteGroup',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [
@@ -74,6 +70,7 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetGroup',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -98,6 +95,7 @@ export const groupOperations: INodeProperties[] = [
 							pageSize:
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleErrorPostReceive, processGroupsResponse],
@@ -115,6 +113,7 @@ export const groupOperations: INodeProperties[] = [
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.UpdateGroup',
 						},
+						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [
@@ -186,7 +185,7 @@ const createFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Name',
+		displayName: 'Group Name',
 		name: 'GroupName',
 		default: '',
 		placeholder: 'e.g. My New Group',
