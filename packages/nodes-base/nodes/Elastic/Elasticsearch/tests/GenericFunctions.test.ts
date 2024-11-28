@@ -5,6 +5,8 @@ import { elasticsearchApiRequest } from '../GenericFunctions';
 describe('Elasticsearch -> elasticsearchApiRequest', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 
+	const mockHttpRequestWithAuthentication = jest.fn();
+
 	const setupMockFunctions = () => {
 		mockExecuteFunctions = {
 			getCredentials: jest.fn().mockResolvedValue({
@@ -12,7 +14,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 				ignoreSSLIssues: false,
 			}),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn().mockResolvedValue({ success: true }),
+				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 			},
 			getNode: jest.fn().mockReturnValue({}),
 		} as unknown as IExecuteFunctions;
@@ -21,11 +23,14 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 
 	beforeEach(() => {
 		setupMockFunctions();
+		mockHttpRequestWithAuthentication.mockClear();
 	});
 
 	const response = { success: true };
 
 	it('should make a successful GET API request', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValue(response);
+
 		const result = await elasticsearchApiRequest.call(
 			mockExecuteFunctions,
 			'GET',
@@ -46,6 +51,8 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 
 	it('should make a successful POST API request', async () => {
 		const body = { key: 'value' };
+
+		mockHttpRequestWithAuthentication.mockResolvedValue(response);
 
 		const result = await elasticsearchApiRequest.call(
 			mockExecuteFunctions,
@@ -69,8 +76,7 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 
 	it('should handle API request errors', async () => {
 		const errorResponse = { message: 'Error occurred' };
-
-		mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockRejectedValue(errorResponse);
+		mockHttpRequestWithAuthentication.mockRejectedValue(errorResponse);
 
 		await expect(
 			elasticsearchApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint'),
