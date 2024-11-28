@@ -15,7 +15,6 @@ import {
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
-	CanvasNodeRenderType,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -37,7 +36,6 @@ type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
-	bringToFront?: boolean; // Determines if entire nodes layer should be brought to front
 };
 
 const emit = defineEmits<{
