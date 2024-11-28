@@ -5,21 +5,22 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SolarWindsIpamApi implements ICredentialType {
-	name = 'solarWindsIpamApi';
+export class SolarWindsObservabilityApi implements ICredentialType {
+	name = 'solarWindsObservabilityApi';
 
-	displayName = 'SolarWinds IPAM';
+	displayName = 'SolarWinds Observability';
 
-	documentationUrl = 'solarwindsipam';
+	documentationUrl = 'solarwindsobservability';
 
 	icon = {
-		light: 'file:icons/SolarWindsIpam.svg',
-		dark: 'file:icons/SolarWindsIpam.svg',
+		light: 'file:icons/SolarWindsObservability.svg',
+		dark: 'file:icons/SolarWindsObservability.svg',
 	} as const;
 
 	httpRequestNode = {
-		name: 'SolarWinds IPAM',
-		docsUrl: 'https://documentation.solarwinds.com/',
+		name: 'SolarWinds Observability',
+		docsUrl:
+			'https://documentation.solarwinds.com/en/success_center/observability/content/api/api-swagger.htm',
 		apiBaseUrlPlaceholder: 'https://api.xx-yy.cloud.solarwinds.com/',
 	};
 
