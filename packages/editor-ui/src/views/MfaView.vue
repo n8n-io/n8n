@@ -106,7 +106,7 @@ const onSubmit = async (form: { mfaCode: string; mfaRecoveryCode: string }) => {
 };
 
 const onInput = ({ target: { value, name } }: { target: { value: string; name: string } }) => {
-	const isSubmittingMfaCode = name === 'mfaToken';
+	const isSubmittingMfaCode = name === 'mfaCode';
 	const inputValidLength = isSubmittingMfaCode
 		? MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH
 		: MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH;
@@ -139,7 +139,7 @@ const mfaRecoveryCodeFieldWithDefaults = () => {
 
 const mfaCodeFieldWithDefaults = () => {
 	return formField(
-		'mfaToken',
+		'mfaCode',
 		i18.baseText('mfa.code.input.label'),
 		i18.baseText('mfa.code.input.placeholder'),
 		MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,

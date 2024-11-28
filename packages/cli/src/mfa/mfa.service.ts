@@ -87,7 +87,7 @@ export class MfaService {
 	}
 
 	async disableMfaWithMfaCode(userId: string, mfaCode: string) {
-		const isValidToken = await this.validateMfa(userId, mfaCode, '');
+		const isValidToken = await this.validateMfa(userId, mfaCode, undefined);
 
 		if (!isValidToken) {
 			throw new InvalidMfaCodeError();
@@ -97,7 +97,7 @@ export class MfaService {
 	}
 
 	async disableMfaWithRecoveryCode(userId: string, recoveryCode: string) {
-		const isValidToken = await this.validateMfa(userId, '', recoveryCode);
+		const isValidToken = await this.validateMfa(userId, undefined, recoveryCode);
 
 		if (!isValidToken) {
 			throw new InvalidMfaRecoveryCodeError();

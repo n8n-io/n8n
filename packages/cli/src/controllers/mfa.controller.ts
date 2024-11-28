@@ -89,6 +89,10 @@ export class MFAController {
 
 		const { mfaCode, mfaRecoveryCode } = req.body;
 
+		if (!mfaCode && !mfaRecoveryCode) {
+			throw new BadRequestError('MFA code or recovery code is required to disable MFA feature');
+		}
+
 		if (mfaCode && typeof mfaCode === 'string') {
 			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
 		} else if (mfaRecoveryCode && typeof mfaRecoveryCode === 'string') {

@@ -79,8 +79,12 @@ export class AuthController {
 					throw new AuthError('MFA Error', 998);
 				}
 
-				const isMFACodeValid = await this.mfaService.validateMfa(user.id, mfaCode, mfaRecoveryCode);
-				if (!isMFACodeValid) {
+				const isMFACodeOrMfaRecoveryCodeValid = await this.mfaService.validateMfa(
+					user.id,
+					mfaCode,
+					mfaRecoveryCode,
+				);
+				if (!isMFACodeOrMfaRecoveryCodeValid) {
 					throw new AuthError('Invalid mfa token or recovery code');
 				}
 			}

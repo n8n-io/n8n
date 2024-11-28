@@ -207,6 +207,12 @@ describe('Disable MFA setup', () => {
 			})
 			.expect(403);
 	});
+
+	test('POST /disable should fail if neither MFA code nor recovery code is sent', async () => {
+		const { user } = await createUserWithMfaEnabled();
+
+		await testServer.authAgentFor(user).post('/mfa/disable').send({ anotherParam: '' }).expect(400);
+	});
 });
 
 describe('Change password with MFA enabled', () => {

@@ -6,7 +6,7 @@ import { useI18n } from '@/composables/useI18n';
 import { promptMfaCodeBus } from '@/event-bus';
 import type { IFormInputs } from '@/Interface';
 import { createFormEventBus } from 'n8n-design-system';
-import { validate as uuidValidate } from 'uuid';
+import { validate as validateUuid } from 'uuid';
 
 const i18n = useI18n();
 
@@ -15,7 +15,7 @@ const readyToSubmit = ref(false);
 
 const formFields: IFormInputs = [
 	{
-		name: 'code',
+		name: 'mfaCodeOrMfaRecoveryCode',
 		initialValue: '',
 		properties: {
 			label: i18n.baseText('mfa.code.recovery.input.label'),
@@ -28,7 +28,7 @@ const formFields: IFormInputs = [
 ];
 
 function onSubmit(values: { code: string }) {
-	if (uuidValidate(values.code)) {
+	if (validateUuid(values.code)) {
 		promptMfaCodeBus.emit('close', {
 			mfaRecoveryCode: values.code,
 		});
@@ -63,7 +63,7 @@ function onFormReady(isReady: boolean) {
 		<template #content>
 			<div :class="[$style.formContainer]">
 				<n8n-form-inputs
-					data-test-id="mfa-code-input"
+					data-test-id="mfa-code-or-recovery-code-input"
 					:inputs="formFields"
 					:event-bus="formBus"
 					@submit="onSubmit"
