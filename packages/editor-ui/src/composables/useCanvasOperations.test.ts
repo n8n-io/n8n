@@ -5,12 +5,14 @@ import type {
 	IWebhookDescription,
 	Workflow,
 	INodeConnections,
+	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -40,6 +42,7 @@ import {
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -2172,6 +2175,67 @@ describe('useCanvasOperations', () => {
 			expect(result).toEqual({
 				[NodeConnectionType.Main]: [[], []],
 			});
+		});
+	});
+
+	describe('openExecution', () => {
+		it('should initialize workspace and set execution data when execution is found', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const { openExecution } = useCanvasOperations({ router });
+
+			const executionId = '123';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+
+			const result = await openExecution(executionId);
+
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(executionData);
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(result).toEqual(executionData);
+		});
+
+		it('should throw error when execution data is undefined', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const executionId = '123';
+			const { openExecution } = useCanvasOperations({ router });
+
+			workflowsStore.getExecution.mockResolvedValue(undefined);
+
+			await expect(openExecution(executionId)).rejects.toThrow(
+				`Execution with id "${executionId}" could not be found!`,
+			);
+		});
+
+		it('should clear workflow pin data if execution mode is not manual', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { openExecution } = useCanvasOperations({ router });
+
+			const executionId = '123';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'trigger' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+
+			await openExecution(executionId);
+
+			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
 		});
 	});
 });
