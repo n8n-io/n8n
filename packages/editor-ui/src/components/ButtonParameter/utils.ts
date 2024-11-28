@@ -4,10 +4,10 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { generateCodeForPrompt } from '../../api/ai';
-import { useRootStore } from '../../stores/root.store';
-import { type AskAiRequest } from '../../types/assistant.types';
-import { useSettingsStore } from '../../stores/settings.store';
+import { generateCodeForPrompt } from '@/api/ai';
+import { useRootStore } from '@/stores/root.store';
+import { type AskAiRequest } from '@/types/assistant.types';
+import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
@@ -43,7 +43,7 @@ export function getSchemas() {
 
 			return {
 				nodeName: node?.name || '',
-				schema: getSchemaForExecutionData(executionDataToJson(inputData), true),
+				schema: getSchemaForExecutionData(executionDataToJson(inputData), false),
 			};
 		})
 		.filter((node) => node.schema?.value.length > 0);
@@ -57,7 +57,7 @@ export function getSchemas() {
 	};
 }
 
-export async function generateCodeForAiTransform(prompt: string, path: string) {
+export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
 	const schemas = getSchemas();
 
 	const payload: AskAiRequest.RequestPayload = {
@@ -74,7 +74,20 @@ export async function generateCodeForAiTransform(prompt: string, path: string) {
 	let value;
 	if (useSettingsStore().isAskAiEnabled) {
 		const { restApiContext } = useRootStore();
-		const { code } = await generateCodeForPrompt(restApiContext, payload);
+
+		let code = '';
+
+		while (retries > 0) {
+			try {
+				const { code: generatedCode } = await generateCodeForPrompt(restApiContext, payload);
+				code = generatedCode;
+				break;
+			} catch (e) {
+				retries--;
+				if (!retries) throw e;
+			}
+		}
+
 		value = code;
 	} else {
 		throw new ApplicationError('AI code generation is not enabled');

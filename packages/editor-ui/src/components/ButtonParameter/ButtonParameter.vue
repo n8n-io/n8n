@@ -105,6 +105,7 @@ async function onSubmit() {
 				const updateInformation = await generateCodeForAiTransform(
 					prompt.value,
 					getPath(target as string),
+					5,
 				);
 				if (!updateInformation) return;
 
