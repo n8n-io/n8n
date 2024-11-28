@@ -33,27 +33,22 @@ COPY docker/images/n8n/docker-entrypoint.sh /
 
 # Setup the Task Runner Launcher
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=0.1.1
-ENV N8N_RUNNERS_MODE=internal_launcher \
-    N8N_RUNNERS_LAUNCHER_PATH=/usr/local/bin/task-runner-launcher
+ARG LAUNCHER_VERSION=0.6.0-rc
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
-# First, download, verify, then extract the launcher binary
-# Second, chmod with 4555 to allow the use of setuid
-# Third, create a new user and group to execute the Task Runners under
+# Download, verify, then extract the launcher binary
 RUN \
-	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="x86_64"; \
-	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="aarch64"; fi; \
+	if [[ "$TARGETPLATFORM" = "linux/amd64" ]]; then export ARCH_NAME="amd64"; \
+	elif [[ "$TARGETPLATFORM" = "linux/arm64" ]]; then export ARCH_NAME="arm64"; fi; \
 	mkdir /launcher-temp && \
 	cd /launcher-temp && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-$ARCH_NAME-unknown-linux-musl.zip && \
-	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-$ARCH_NAME-unknown-linux-musl.sha256 && \
-	sha256sum -c task-runner-launcher-$ARCH_NAME-unknown-linux-musl.sha256 && \
-	unzip -d $(dirname ${N8N_RUNNERS_LAUNCHER_PATH}) task-runner-launcher-$ARCH_NAME-unknown-linux-musl.zip task-runner-launcher && \
+	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz && \
+	wget https://github.com/n8n-io/task-runner-launcher/releases/download/${LAUNCHER_VERSION}/task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256 && \
+	# The .sha256 does not contain the filename --> Form the correct checksum file
+	echo "$(cat task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz.sha256) task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz" > checksum.sha256 && \
+	sha256sum -c checksum.sha256 && \
+	tar xvf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz --directory=/usr/local/bin && \
 	cd - && \
-	rm -r /launcher-temp && \
-	chmod 4555 ${N8N_RUNNERS_LAUNCHER_PATH} && \
-	addgroup -g 2000 task-runner && \
-	adduser -D -u 2000 -g "Task Runner User" -G task-runner task-runner
+	rm -r /launcher-temp
 
 RUN \
 	cd /usr/local/lib/node_modules/n8n && \

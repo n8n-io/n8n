@@ -35,8 +35,8 @@ export function getSandboxContext(
 	};
 	return {
 		// from NodeExecuteFunctions
-		$getNodeParameter: this.getNodeParameter,
-		$getWorkflowStaticData: this.getWorkflowStaticData,
+		$getNodeParameter: this.getNodeParameter.bind(this),
+		$getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
 		helpers,
 
 		// to bring in all $-prefixed vars and methods from WorkflowDataProxy

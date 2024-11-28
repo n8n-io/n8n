@@ -136,158 +136,167 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="messages?.length" :class="$style.messages">
-				<div
-					v-for="(message, i) in messages"
-					:key="i"
-					:class="$style.message"
-					:data-test-id="
-						message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
-					"
-				>
+			<div v-if="messages?.length || loadingMessage" :class="$style.messages">
+				<div v-if="messages?.length">
 					<div
-						v-if="
-							!isEndOfSessionEvent(message) && (i === 0 || message.role !== messages[i - 1].role)
+						v-for="(message, i) in messages"
+						:key="i"
+						:class="$style.message"
+						:data-test-id="
+							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 						"
-						:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
 					>
-						<AssistantAvatar v-if="message.role === 'assistant'" />
-						<n8n-avatar
-							v-else
-							:first-name="user?.firstName"
-							:last-name="user?.lastName"
-							size="xsmall"
-						/>
+						<div
+							v-if="
+								!isEndOfSessionEvent(message) && (i === 0 || message.role !== messages[i - 1].role)
+							"
+							:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
+						>
+							<AssistantAvatar v-if="message.role === 'assistant'" />
+							<n8n-avatar
+								v-else
+								:first-name="user?.firstName"
+								:last-name="user?.lastName"
+								size="xsmall"
+							/>
 
-						<span v-if="message.role === 'assistant'">{{
-							t('assistantChat.aiAssistantName')
-						}}</span>
-						<span v-else>{{ t('assistantChat.you') }}</span>
-					</div>
-					<div v-if="message.type === 'block'">
-						<div :class="$style.block">
-							<div :class="$style.blockTitle">
-								{{ message.title }}
-								<BlinkingCursor
-									v-if="streaming && i === messages?.length - 1 && !message.content"
-								/>
-							</div>
-							<div :class="$style.blockBody">
-								<span
-									v-n8n-html="renderMarkdown(message.content)"
-									:class="$style['rendered-content']"
-								></span>
-								<BlinkingCursor
-									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
-								/>
+							<span v-if="message.role === 'assistant'">{{
+								t('assistantChat.aiAssistantName')
+							}}</span>
+							<span v-else>{{ t('assistantChat.you') }}</span>
+						</div>
+						<div v-if="message.type === 'block'">
+							<div :class="$style.block">
+								<div :class="$style.blockTitle">
+									{{ message.title }}
+									<BlinkingCursor
+										v-if="streaming && i === messages?.length - 1 && !message.content"
+									/>
+								</div>
+								<div :class="$style.blockBody">
+									<span
+										v-n8n-html="renderMarkdown(message.content)"
+										:class="$style['rendered-content']"
+									></span>
+									<BlinkingCursor
+										v-if="
+											streaming && i === messages?.length - 1 && message.title && message.content
+										"
+									/>
+								</div>
 							</div>
 						</div>
-					</div>
-					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
-						<span
-							v-if="message.role === 'user'"
-							v-n8n-html="renderMarkdown(message.content)"
-							:class="$style['rendered-content']"
-						></span>
-						<div
-							v-else
-							v-n8n-html="renderMarkdown(message.content)"
-							:class="[$style.assistantText, $style['rendered-content']]"
-						></div>
-						<div
-							v-if="message?.codeSnippet"
-							:class="$style['code-snippet']"
-							data-test-id="assistant-code-snippet"
-						>
-							<header v-if="isClipboardSupported">
-								<n8n-button
-									type="tertiary"
-									text="true"
-									size="mini"
-									data-test-id="assistant-copy-snippet-button"
-									@click="onCopyButtonClick(message.codeSnippet, $event)"
-								>
-									{{ t('assistantChat.copy') }}
-								</n8n-button>
-							</header>
+						<div v-else-if="message.type === 'text'" :class="$style.textMessage">
+							<span
+								v-if="message.role === 'user'"
+								v-n8n-html="renderMarkdown(message.content)"
+								:class="$style['rendered-content']"
+							></span>
 							<div
-								v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
-								data-test-id="assistant-code-snippet-content"
-								:class="[$style['snippet-content'], $style['rendered-content']]"
+								v-else
+								v-n8n-html="renderMarkdown(message.content)"
+								:class="[$style.assistantText, $style['rendered-content']]"
 							></div>
+							<div
+								v-if="message?.codeSnippet"
+								:class="$style['code-snippet']"
+								data-test-id="assistant-code-snippet"
+							>
+								<header v-if="isClipboardSupported">
+									<n8n-button
+										type="tertiary"
+										text="true"
+										size="mini"
+										data-test-id="assistant-copy-snippet-button"
+										@click="onCopyButtonClick(message.codeSnippet, $event)"
+									>
+										{{ t('assistantChat.copy') }}
+									</n8n-button>
+								</header>
+								<div
+									v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
+									data-test-id="assistant-code-snippet-content"
+									:class="[$style['snippet-content'], $style['rendered-content']]"
+								></div>
+							</div>
+							<BlinkingCursor
+								v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
+							/>
 						</div>
-						<BlinkingCursor
-							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
-						/>
-					</div>
-					<div
-						v-else-if="message.type === 'error'"
-						:class="$style.error"
-						data-test-id="chat-message-system"
-					>
-						<span>⚠️ {{ message.content }}</span>
-						<n8n-button
-							v-if="message.retry"
-							type="secondary"
-							size="mini"
-							:class="$style.retryButton"
-							data-test-id="error-retry-button"
-							@click="() => message.retry?.()"
+						<div
+							v-else-if="message.type === 'error'"
+							:class="$style.error"
+							data-test-id="chat-message-system"
 						>
-							{{ t('generic.retry') }}
-						</n8n-button>
-					</div>
-					<div v-else-if="message.type === 'code-diff'">
-						<CodeDiff
-							:title="message.description"
-							:content="message.codeDiff"
-							:replacing="message.replacing"
-							:replaced="message.replaced"
-							:error="message.error"
-							:streaming="streaming && i === messages?.length - 1"
-							@replace="() => emit('codeReplace', i)"
-							@undo="() => emit('codeUndo', i)"
-						/>
-					</div>
-					<div
-						v-else-if="isEndOfSessionEvent(message)"
-						:class="$style.endOfSessionText"
-						data-test-id="chat-message-system"
-					>
-						<span>
-							{{ t('assistantChat.sessionEndMessage.1') }}
-						</span>
-						<InlineAskAssistantButton size="small" :static="true" />
-						<span>
-							{{ t('assistantChat.sessionEndMessage.2') }}
-						</span>
-					</div>
-
-					<div
-						v-if="
-							!streaming &&
-							'quickReplies' in message &&
-							message.quickReplies?.length &&
-							i === messages?.length - 1
-						"
-						:class="$style.quickReplies"
-					>
-						<div :class="$style.quickRepliesTitle">{{ t('assistantChat.quickRepliesTitle') }}</div>
-						<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
+							<span>⚠️ {{ message.content }}</span>
 							<n8n-button
-								v-if="opt.text"
+								v-if="message.retry"
 								type="secondary"
 								size="mini"
-								@click="() => onQuickReply(opt)"
+								:class="$style.retryButton"
+								data-test-id="error-retry-button"
+								@click="() => message.retry?.()"
 							>
-								{{ opt.text }}
+								{{ t('generic.retry') }}
 							</n8n-button>
+						</div>
+						<div v-else-if="message.type === 'code-diff'">
+							<CodeDiff
+								:title="message.description"
+								:content="message.codeDiff"
+								:replacing="message.replacing"
+								:replaced="message.replaced"
+								:error="message.error"
+								:streaming="streaming && i === messages?.length - 1"
+								@replace="() => emit('codeReplace', i)"
+								@undo="() => emit('codeUndo', i)"
+							/>
+						</div>
+						<div
+							v-else-if="isEndOfSessionEvent(message)"
+							:class="$style.endOfSessionText"
+							data-test-id="chat-message-system"
+						>
+							<span>
+								{{ t('assistantChat.sessionEndMessage.1') }}
+							</span>
+							<InlineAskAssistantButton size="small" :static="true" />
+							<span>
+								{{ t('assistantChat.sessionEndMessage.2') }}
+							</span>
+						</div>
+
+						<div
+							v-if="
+								!streaming &&
+								'quickReplies' in message &&
+								message.quickReplies?.length &&
+								i === messages?.length - 1
+							"
+							:class="$style.quickReplies"
+						>
+							<div :class="$style.quickRepliesTitle">
+								{{ t('assistantChat.quickRepliesTitle') }}
+							</div>
+							<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
+								<n8n-button
+									v-if="opt.text"
+									type="secondary"
+									size="mini"
+									@click="() => onQuickReply(opt)"
+								>
+									{{ opt.text }}
+								</n8n-button>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-			<div v-if="loadingMessage" :class="$style.messages">
-				<AssistantLoadingMessage :message="loadingMessage" />
+				<div
+					v-if="loadingMessage"
+					:class="{ [$style.message]: true, [$style.loading]: messages?.length }"
+				>
+					<AssistantLoadingMessage :message="loadingMessage" />
+				</div>
 			</div>
 			<div
 				v-else-if="showPlaceholder"
@@ -317,6 +326,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<textarea
 				ref="chatInput"
 				v-model="textInputValue"
+				class="ignore-key-press-node-creator ignore-key-press-canvas"
 				:disabled="sessionEnded"
 				:placeholder="t('assistantChat.inputPlaceholder')"
 				rows="1"
@@ -343,6 +353,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .container {
 	height: 100%;
 	position: relative;
+	display: grid;
+	grid-template-rows: auto 1fr auto;
 }
 
 p {
@@ -372,10 +384,6 @@ p {
 	background-color: var(--color-background-light);
 	border: var(--border-base);
 	border-top: 0;
-	height: 100%;
-	overflow-x: hidden;
-	overflow-y: auto;
-	padding-bottom: 250px; // make scrollable at the end
 	position: relative;
 
 	pre,
@@ -389,7 +397,13 @@ p {
 }
 
 .messages {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
 	padding: var(--spacing-xs);
+	overflow-y: auto;
 
 	& + & {
 		padding-top: 0;
@@ -400,6 +414,10 @@ p {
 	margin-bottom: var(--spacing-xs);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-xloose);
+
+	&.loading {
+		margin-top: var(--spacing-m);
+	}
 }
 
 .roleName {
@@ -532,13 +550,11 @@ code[class^='language-'] {
 }
 
 .inputWrapper {
-	position: absolute;
 	display: flex;
-	bottom: 0;
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
-	padding-top: 1px;
+	border-top: 0;
 
 	textarea {
 		border: none;

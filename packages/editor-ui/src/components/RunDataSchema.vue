@@ -34,6 +34,7 @@ type Props = {
 	paneType: 'input' | 'output';
 	connectionType?: NodeConnectionType;
 	search?: string;
+	context?: 'ndv' | 'modal';
 };
 
 type SchemaNode = {
@@ -58,6 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 	connectionType: NodeConnectionType.Main,
 	search: '',
 	mappingEnabled: false,
+	context: 'ndv',
 });
 
 const draggingPath = ref<string>('');
@@ -269,14 +271,12 @@ watch(
 		:class="[$style.schemaWrapper, { highlightSchema: highlight }]"
 	>
 		<div v-if="search && nodes.length > 0 && filteredNodes.length === 0" :class="$style.noMatch">
-			<n8n-text tag="h3" size="large">{{
-				$locale.baseText('ndv.search.noNodeMatch.title')
-			}}</n8n-text>
+			<n8n-text tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</n8n-text>
 			<n8n-text>
 				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
@@ -381,7 +381,7 @@ watch(
 								:level="0"
 								:parent="null"
 								:pane-type="paneType"
-								:sub-key="snakeCase(currentNode.node.name)"
+								:sub-key="`${props.context}_${snakeCase(currentNode.node.name)}`"
 								:mapping-enabled="mappingEnabled"
 								:dragging-path="draggingPath"
 								:distance-from-active="currentNode.depth"
@@ -397,18 +397,17 @@ watch(
 
 	<div v-else :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
 		<div v-if="isDataEmpty(nodeSchema) && search" :class="$style.noMatch">
-			<n8n-text tag="h3" size="large">{{
-				$locale.baseText('ndv.search.noNodeMatch.title')
-			}}</n8n-text>
+			<n8n-text tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</n8n-text>
 			<n8n-text>
 				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
 			</n8n-text>
+			<n8n-text>{{ i18n.baseText('ndv.search.noMatchSchema.description') }}</n8n-text>
 		</div>
 
 		<div v-else :class="$style.schema" data-test-id="run-data-schema-node-schema">
@@ -426,7 +425,7 @@ watch(
 				:level="0"
 				:parent="null"
 				:pane-type="paneType"
-				:sub-key="`output_${nodeSchema.type}-0-0`"
+				:sub-key="`${props.context}_output_${nodeSchema.type}-0-0`"
 				:mapping-enabled="mappingEnabled"
 				:dragging-path="draggingPath"
 				:node="node"

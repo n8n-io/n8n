@@ -22,7 +22,7 @@ export const useKeybindings = (
 		const active = activeElement.value;
 		const isInput = ['INPUT', 'TEXTAREA'].includes(active.tagName);
 		const isContentEditable = active.closest('[contenteditable]') !== null;
-		const isIgnoreClass = active.closest('.ignore-key-press') !== null;
+		const isIgnoreClass = active.closest('.ignore-key-press-canvas') !== null;
 
 		return isInput || isContentEditable || isIgnoreClass;
 	});

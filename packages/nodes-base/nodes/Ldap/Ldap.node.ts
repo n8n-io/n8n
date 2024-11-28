@@ -129,7 +129,7 @@ export class Ldap implements INodeType {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					await client.unbind();
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				}
 
@@ -138,7 +138,7 @@ export class Ldap implements INodeType {
 				try {
 					results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
 				} catch (error) {
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				} finally {
 					await client.unbind();
@@ -158,7 +158,7 @@ export class Ldap implements INodeType {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					await client.unbind();
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				}
 
@@ -168,7 +168,7 @@ export class Ldap implements INodeType {
 				try {
 					results = await client.search(baseDN, { sizeLimit: 10, paged: false }); // should this size limit be set in credentials?
 				} catch (error) {
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				} finally {
 					await client.unbind();
@@ -202,7 +202,7 @@ export class Ldap implements INodeType {
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					await client.unbind();
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				}
 
@@ -211,7 +211,7 @@ export class Ldap implements INodeType {
 				try {
 					results = await client.search(baseDN, { sizeLimit: 1, paged: false });
 				} catch (error) {
-					console.log(error);
+					this.logger.error(error);
 					return [];
 				} finally {
 					await client.unbind();

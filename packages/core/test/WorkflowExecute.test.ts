@@ -188,7 +188,11 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
-						return nodeData.data.main[0];
+						return nodeData.data.main[0]!.map((entry) => {
+							// remove pairedItem from entry if it is an error output test
+							if (testData.description.includes('error_outputs')) delete entry.pairedItem;
+							return entry;
+						});
 					});
 
 					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
@@ -202,7 +206,7 @@ describe('WorkflowExecute', () => {
 		}
 	});
 
-	describe('WorkflowExecute, NodeExecutionOutput type test', () => {
+	test('WorkflowExecute, NodeExecutionOutput type test', () => {
 		//TODO Add more tests here when execution hints are added to some node types
 		const nodeExecutionOutput = new NodeExecutionOutput(
 			[[{ json: { data: 123 } }]],

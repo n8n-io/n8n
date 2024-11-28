@@ -9,8 +9,7 @@ import { parse as parseUrl } from 'node:url';
 import { Service } from 'typedi';
 import { Server as WSServer } from 'ws';
 
-import { inTest, LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { inTest } from '@/constants';
 import { Logger } from '@/logging/logger.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
@@ -19,7 +18,7 @@ import type {
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
 } from '@/runners/runner-types';
-import { TaskRunnerService } from '@/runners/runner-ws-server';
+import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 
 /**
  * Task Runner HTTP & WS server
@@ -44,7 +43,7 @@ export class TaskRunnerServer {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRunnerAuthController: TaskRunnerAuthController,
-		private readonly taskRunnerService: TaskRunnerService,
+		private readonly taskRunnerWsServer: TaskRunnerWsServer,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -69,16 +68,22 @@ export class TaskRunnerServer {
 		this.configureRoutes();
 	}
 
-	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stop(): Promise<void> {
 		if (this.wsServer) {
 			this.wsServer.close();
 			this.wsServer = undefined;
 		}
-		if (this.server) {
-			await new Promise<void>((resolve) => this.server?.close(() => resolve()));
-			this.server = undefined;
-		}
+
+		const stopHttpServerTask = (async () => {
+			if (this.server) {
+				await new Promise<void>((resolve) => this.server?.close(() => resolve()));
+				this.server = undefined;
+			}
+		})();
+
+		const stopWsServerTask = this.taskRunnerWsServer.stop();
+
+		await Promise.all([stopHttpServerTask, stopWsServerTask]);
 	}
 
 	/** Creates an HTTP server and listens to the configured port */
@@ -119,6 +124,8 @@ export class TaskRunnerServer {
 			maxPayload: this.globalConfig.taskRunners.maxPayload,
 		});
 		this.server.on('upgrade', this.handleUpgradeRequest);
+
+		this.taskRunnerWsServer.start();
 	}
 
 	private async setupErrorHandlers() {
@@ -148,7 +155,7 @@ export class TaskRunnerServer {
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.taskRunnerAuthController.authMiddleware,
 			(req: TaskRunnerServerInitRequest, res: TaskRunnerServerInitResponse) =>
-				this.taskRunnerService.handleRequest(req, res),
+				this.taskRunnerWsServer.handleRequest(req, res),
 		);
 
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
@@ -156,6 +163,8 @@ export class TaskRunnerServer {
 			authEndpoint,
 			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
 		);
+
+		this.app.get('/healthz', (_, res) => res.send({ status: 'ok' }));
 	}
 
 	private handleUpgradeRequest = (
@@ -181,7 +190,10 @@ export class TaskRunnerServer {
 
 			const response = new ServerResponse(request);
 			response.writeHead = (statusCode) => {
-				if (statusCode > 200) ws.close(100);
+				if (statusCode > 200) {
+					this.logger.error(`Task runner connection attempt failed with status code ${statusCode}`);
+					ws.close();
+				}
 				return response;
 			};
 

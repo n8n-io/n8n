@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, watch, ref } from 'vue';
-import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
-import type { ITag, IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -12,7 +15,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
@@ -21,7 +23,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
-	N8nButton,
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
@@ -29,9 +30,9 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -49,9 +50,7 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const documentTitle = useDocumentTitle();
 
-interface Filters {
-	search: string;
-	homeProject: string;
+interface Filters extends IFilters {
 	status: string | boolean;
 	tags: string[];
 }
@@ -115,12 +114,6 @@ const isSalesUser = computed(() => {
 	return ['Sales', 'sales-and-marketing'].includes(userRole.value || '');
 });
 
-const addWorkflowButtonText = computed(() => {
-	return projectsStore.currentProject
-		? i18n.baseText('workflows.project.add')
-		: i18n.baseText('workflows.add');
-});
-
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
 		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
@@ -137,16 +130,13 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const onFilter = (
-	resource: IWorkflowDb,
-	newFilters: { tags: string[]; search: string; status: string | boolean },
-	matches: boolean,
-): boolean => {
-	if (settingsStore.areTagsEnabled && newFilters.tags.length > 0) {
+const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iFilters = newFilters as Filters;
+	if (settingsStore.areTagsEnabled && iFilters.tags.length > 0) {
 		matches =
 			matches &&
-			newFilters.tags.every((tag) =>
-				(resource.tags as ITag[])?.find((resourceTag) =>
+			iFilters.tags.every((tag) =>
+				(resource as IWorkflowDb).tags?.find((resourceTag) =>
 					typeof resourceTag === 'object'
 						? `${resourceTag.id}` === `${tag}`
 						: `${resourceTag}` === `${tag}`,
@@ -155,14 +145,14 @@ const onFilter = (
 	}
 
 	if (newFilters.status !== '') {
-		matches = matches && resource.active === newFilters.status;
+		matches = matches && (resource as IWorkflowDb).active === newFilters.status;
 	}
 
 	return matches;
 };
 
 // Methods
-const onFiltersUpdated = (newFilters: Filters) => {
+const onFiltersUpdated = (newFilters: IFilters) => {
 	Object.assign(filters.value, newFilters);
 };
 
@@ -313,31 +303,7 @@ onMounted(async () => {
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<N8nTooltip :disabled="!readOnlyEnv">
-				<div>
-					<N8nButton
-						size="large"
-						block
-						:disabled="disabled"
-						data-test-id="resources-list-add"
-						@click="addWorkflow"
-					>
-						{{ addWorkflowButtonText }}
-					</N8nButton>
-				</div>
-				<template #content>
-					<i18n-t tag="span" keypath="mainSidebar.workflows.readOnlyEnv.tooltip">
-						<template #link>
-							<a target="_blank" href="https://docs.n8n.io/source-control-environments/">
-								{{ i18n.baseText('mainSidebar.workflows.readOnlyEnv.tooltip.link') }}
-							</a>
-						</template>
-					</i18n-t>
-				</template>
-			</N8nTooltip>
+			<ProjectHeader />
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<WorkflowCard

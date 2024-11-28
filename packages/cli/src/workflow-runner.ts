@@ -35,6 +35,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { ExecutionNotFoundError } from './errors/execution-not-found-error';
 import { EventService } from './events/event.service';
 
 @Service()
@@ -57,12 +58,21 @@ export class WorkflowRunner {
 
 	/** The process did error */
 	async processError(
-		error: ExecutionError,
+		error: ExecutionError | ExecutionNotFoundError,
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
+		// This means the execution was probably cancelled and has already
+		// been cleaned up.
+		//
+		// FIXME: This is a quick fix. The proper fix would be to not remove
+		// the execution from the active executions while it's still running.
+		if (error instanceof ExecutionNotFoundError) {
+			return;
+		}
+
 		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
@@ -127,7 +137,10 @@ export class WorkflowRunner {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
 			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
+			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
@@ -391,7 +404,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', []);
+			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.

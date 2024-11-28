@@ -84,14 +84,12 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
-	ITelemetryTrackProperties,
 	IWorkflowBase,
 	NodeInputConnections,
 	NodeParameterValueType,
 	Workflow,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
@@ -106,12 +104,21 @@ type AddNodeDataWithTypeVersion = AddNodeData & {
 	typeVersion: INodeUi['typeVersion'];
 };
 
-type AddNodeOptions = {
+type AddNodesBaseOptions = {
 	dragAndDrop?: boolean;
-	openNDV?: boolean;
 	trackHistory?: boolean;
-	isAutoAdd?: boolean;
+	keepPristine?: boolean;
 	telemetry?: boolean;
+};
+
+type AddNodesOptions = AddNodesBaseOptions & {
+	position?: XYPosition;
+	trackBulk?: boolean;
+};
+
+type AddNodeOptions = AddNodesBaseOptions & {
+	openNDV?: boolean;
+	isAutoAdd?: boolean;
 };
 
 export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
@@ -480,17 +487,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 	}
 
-	async function addNodes(
-		nodes: AddedNodesAndConnections['nodes'],
-		options: {
-			dragAndDrop?: boolean;
-			position?: XYPosition;
-			trackHistory?: boolean;
-			trackBulk?: boolean;
-			keepPristine?: boolean;
-			telemetry?: boolean;
-		} = {},
-	) {
+	async function addNodes(nodes: AddedNodesAndConnections['nodes'], options: AddNodesOptions = {}) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
@@ -614,8 +611,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		void nextTick(() => {
-			workflowsStore.setNodePristine(nodeData.name, true);
+			if (!options.keepPristine) {
+				uiStore.stateIsDirty = true;
+			}
 
+			workflowsStore.setNodePristine(nodeData.name, true);
 			nodeHelpers.matchCredentials(nodeData);
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
@@ -733,25 +733,22 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function trackAddStickyNoteNode() {
-		telemetry.trackNodesPanel('nodeView.addSticky', {
+		telemetry.track('User inserted workflow note', {
 			workflow_id: workflowsStore.workflowId,
 		});
 	}
 
 	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
-		const trackProperties: ITelemetryTrackProperties = {
+		nodeCreatorStore.onNodeAddedToCanvas({
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
 			workflow_id: workflowsStore.workflowId,
 			drag_and_drop: options.dragAndDrop,
-		};
-
-		if (uiStore.lastInteractedWithNode) {
-			trackProperties.input_node_type = uiStore.lastInteractedWithNode.type;
-		}
-
-		telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
+			input_node_type: uiStore.lastInteractedWithNode
+				? uiStore.lastInteractedWithNode.type
+				: undefined,
+		});
 	}
 
 	/**
@@ -761,7 +758,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
 	) {
-		const id = node.id ?? uuid();
+		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
@@ -780,9 +777,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			parameters,
 		};
 
-		resolveNodeParameters(nodeData);
-		resolveNodeCredentials(nodeData, nodeTypeDescription);
 		resolveNodeName(nodeData);
+		resolveNodeParameters(nodeData, nodeTypeDescription);
 		resolveNodeWebhook(nodeData, nodeTypeDescription);
 
 		return nodeData;
@@ -831,10 +827,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return nodeVersion;
 	}
 
-	function resolveNodeParameters(node: INodeUi) {
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
 		const nodeParameters = NodeHelpers.getNodeParameters(
-			nodeType?.properties ?? [],
+			nodeTypeDescription?.properties ?? [],
 			node.parameters,
 			true,
 			false,
@@ -842,60 +837,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 
 		node.parameters = nodeParameters ?? {};
-	}
-
-	function resolveNodeCredentials(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		const credentialPerType = nodeTypeDescription.credentials
-			?.map((type) => credentialsStore.getUsableCredentialByType(type.name))
-			.flat();
-
-		if (credentialPerType?.length === 1) {
-			const defaultCredential = credentialPerType[0];
-
-			const selectedCredentials = credentialsStore.getCredentialById(defaultCredential.id);
-			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
-			const credentials = {
-				[defaultCredential.type]: selected,
-			};
-
-			if (nodeTypeDescription.credentials) {
-				const authentication = nodeTypeDescription.credentials.find(
-					(type) => type.name === defaultCredential.type,
-				);
-
-				const authDisplayOptionsHide = authentication?.displayOptions?.hide;
-				const authDisplayOptionsShow = authentication?.displayOptions?.show;
-
-				if (!authDisplayOptionsHide) {
-					if (!authDisplayOptionsShow) {
-						node.credentials = credentials;
-					} else if (
-						Object.keys(authDisplayOptionsShow).length === 1 &&
-						authDisplayOptionsShow.authentication
-					) {
-						// ignore complex case when there's multiple dependencies
-						node.credentials = credentials;
-
-						let parameters: { [key: string]: string } = {};
-						for (const displayOption of Object.keys(authDisplayOptionsShow)) {
-							if (node.parameters && !node.parameters[displayOption]) {
-								parameters = {};
-								node.credentials = undefined;
-								break;
-							}
-							const optionValue = authDisplayOptionsShow[displayOption]?.[0];
-							if (optionValue && typeof optionValue === 'string') {
-								parameters[displayOption] = optionValue;
-							}
-							node.parameters = {
-								...node.parameters,
-								...parameters,
-							};
-						}
-					}
-				}
-			}
-		}
 	}
 
 	function resolveNodePosition(
@@ -1084,8 +1025,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function resolveNodeWebhook(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
-		if (nodeTypeDescription.webhooks?.length) {
-			node.webhookId = uuid();
+		if (nodeTypeDescription.webhooks?.length && !node.webhookId) {
+			nodeHelpers.assignWebhookId(node);
 		}
 
 		// if it's a webhook and the path is empty set the UUID as the default path
@@ -1132,7 +1073,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	 * Connection operations
 	 */
 
-	function createConnection(connection: Connection, { trackHistory = false } = {}) {
+	function createConnection(
+		connection: Connection,
+		{ trackHistory = false, keepPristine = false } = {},
+	) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
@@ -1166,7 +1110,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			nodeHelpers.updateNodeInputIssues(targetNode);
 		});
 
-		uiStore.stateIsDirty = true;
+		if (!keepPristine) {
+			uiStore.stateIsDirty = true;
+		}
 	}
 
 	function revertCreateConnection(connection: [IConnection, IConnection]) {
@@ -1375,7 +1321,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	async function addConnections(
 		connections: CanvasConnectionCreateData[] | CanvasConnection[],
-		{ trackBulk = true, trackHistory = false } = {},
+		{ trackBulk = true, trackHistory = false, keepPristine = false } = {},
 	) {
 		await nextTick(); // Connection creation relies on the nodes being already added to the store
 
@@ -1384,11 +1330,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		for (const connection of connections) {
-			createConnection(connection, { trackHistory });
+			createConnection(connection, { trackHistory, keepPristine });
 		}
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
+		}
+
+		if (!keepPristine) {
+			uiStore.stateIsDirty = true;
 		}
 	}
 
@@ -1425,13 +1375,18 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		nodeHelpers.credentialsUpdated.value = false;
 	}
 
-	async function initializeWorkspace(data: IWorkflowDb) {
-		// Set workflow data
+	function initializeWorkspace(data: IWorkflowDb) {
 		workflowHelpers.initState(data);
 
-		// Add nodes and connections
-		await addNodes(data.nodes, { keepPristine: true });
-		await addConnections(mapLegacyConnectionsToCanvasConnections(data.connections, data.nodes));
+		data.nodes.forEach((node) => {
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			nodeHelpers.matchCredentials(node);
+			resolveNodeParameters(node, nodeTypeDescription);
+			resolveNodeWebhook(node, nodeTypeDescription);
+		});
+
+		workflowsStore.setNodes(data.nodes);
+		workflowsStore.setConnections(data.connections);
 	}
 
 	/**
@@ -1657,7 +1612,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 							(n) => n.webhookId === node.webhookId,
 						);
 						if (isDuplicate) {
-							node.webhookId = uuid();
+							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
 								node.parameters.path = node.webhookId as string;
@@ -1667,13 +1622,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						}
 					}
 
-					// set all new ids when pasting/importing workflows
+					// Set all new ids when pasting/importing workflows
 					if (node.id) {
-						const newId = uuid();
-						nodeIdMap[newId] = node.id;
-						node.id = newId;
+						const previousId = node.id;
+						const newId = nodeHelpers.assignNodeId(node);
+						nodeIdMap[newId] = previousId;
 					} else {
-						node.id = uuid();
+						nodeHelpers.assignNodeId(node);
 					}
 				});
 			}
@@ -1853,17 +1808,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function filterConnectionsByNodes(
-		connections: Record<string, IConnection[][]>,
+		connections: INodeConnections,
 		includeNodeNames: Set<string>,
 	): INodeConnections {
 		const filteredConnections: INodeConnections = {};
 
 		for (const [type, typeConnections] of Object.entries(connections)) {
-			const validConnections = typeConnections
-				.map((sourceConnections) =>
-					sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
-				)
-				.filter((sourceConnections) => sourceConnections.length > 0);
+			const validConnections = typeConnections.map((sourceConnections) =>
+				sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
+			);
 
 			if (validConnections.length) {
 				filteredConnections[type] = validConnections;
@@ -1932,9 +1885,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertDeleteConnection,
 		deleteConnectionsByNodeId,
 		isConnectionAllowed,
+		filterConnectionsByNodes,
 		importWorkflowData,
 		fetchWorkflowDataFromUrl,
 		resetWorkspace,
 		initializeWorkspace,
+		resolveNodeWebhook,
 	};
 }

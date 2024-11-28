@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.3.0",
+  "version": "1.8.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -17,14 +17,32 @@
   },
   "main": "dist/start.js",
   "module": "src/start.ts",
-  "types": "dist/start.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
   ],
+  "exports": {
+    "./start": {
+      "require": "./dist/start.js",
+      "import": "./src/start.ts",
+      "types": "./dist/start.d.ts"
+    },
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "dependencies": {
-    "n8n-workflow": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@sentry/integrations": "catalog:",
+    "@sentry/node": "catalog:",
+    "acorn": "8.14.0",
+    "acorn-walk": "8.3.4",
     "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
     "nanoid": "^3.3.6",
+    "typedi": "catalog:",
     "ws": "^8.18.0"
   },
   "devDependencies": {

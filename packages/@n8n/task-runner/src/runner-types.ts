@@ -1,213 +1,102 @@
-import type { INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
+import type {
+	EnvProviderState,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeParameters,
+	IRunExecutionData,
+	ITaskDataConnections,
+	ITaskDataConnectionsSource,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
+	WorkflowExecuteMode,
+	WorkflowParameters,
+} from 'n8n-workflow';
 
-export type DataRequestType = 'input' | 'node' | 'all';
+export interface InputDataChunkDefinition {
+	startIndex: number;
+	count: number;
+}
+
+export interface InputDataRequestParams {
+	/** Whether to include the input data in the response */
+	include: boolean;
+	/** Optionally request only a specific chunk of data instead of all input data */
+	chunk?: InputDataChunkDefinition;
+}
+
+/**
+ * Specifies what data should be included for a task data request.
+ */
+export interface TaskDataRequestParams {
+	dataOfNodes: string[] | 'all';
+	prevNode: boolean;
+	/** Whether input data for the node should be included */
+	input: InputDataRequestParams;
+	/** Whether env provider's state should be included */
+	env: boolean;
+}
+
+export interface DataRequestResponse {
+	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
+	inputData: ITaskDataConnections;
+	connectionInputSource: ITaskDataConnectionsSource | null;
+	node: INode;
+
+	runExecutionData: IRunExecutionData;
+	runIndex: number;
+	itemIndex: number;
+	activeNodeName: string;
+	siblingParameters: INodeParameters;
+	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
+	defaultReturnRunIndex: number;
+	selfData: IDataObject;
+	contextNodeName: string;
+	additionalData: PartialAdditionalData;
+}
 
 export interface TaskResultData {
 	result: INodeExecutionData[];
 	customData?: Record<string, string>;
 }
 
-export namespace N8nMessage {
-	export namespace ToRunner {
-		export interface InfoRequest {
-			type: 'broker:inforequest';
-		}
+export interface TaskData {
+	executeFunctions: IExecuteFunctions;
+	inputData: ITaskDataConnections;
+	node: INode;
 
-		export interface RunnerRegistered {
-			type: 'broker:runnerregistered';
-		}
-
-		export interface TaskOfferAccept {
-			type: 'broker:taskofferaccept';
-			taskId: string;
-			offerId: string;
-		}
-
-		export interface TaskCancel {
-			type: 'broker:taskcancel';
-			taskId: string;
-			reason: string;
-		}
-
-		export interface TaskSettings {
-			type: 'broker:tasksettings';
-			taskId: string;
-			settings: unknown;
-		}
-
-		export interface RPCResponse {
-			type: 'broker:rpcresponse';
-			callId: string;
-			taskId: string;
-			status: 'success' | 'error';
-			data: unknown;
-		}
-
-		export interface TaskDataResponse {
-			type: 'broker:taskdataresponse';
-			taskId: string;
-			requestId: string;
-			data: unknown;
-		}
-
-		export interface NodeTypes {
-			type: 'broker:nodetypes';
-			nodeTypes: INodeTypeBaseDescription[];
-		}
-
-		export type All =
-			| InfoRequest
-			| TaskOfferAccept
-			| TaskCancel
-			| TaskSettings
-			| RunnerRegistered
-			| RPCResponse
-			| TaskDataResponse
-			| NodeTypes;
-	}
-
-	export namespace ToRequester {
-		export interface TaskReady {
-			type: 'broker:taskready';
-			requestId: string;
-			taskId: string;
-		}
-
-		export interface TaskDone {
-			type: 'broker:taskdone';
-			taskId: string;
-			data: TaskResultData;
-		}
-
-		export interface TaskError {
-			type: 'broker:taskerror';
-			taskId: string;
-			error: unknown;
-		}
-
-		export interface TaskDataRequest {
-			type: 'broker:taskdatarequest';
-			taskId: string;
-			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
-		}
-
-		export interface RPC {
-			type: 'broker:rpc';
-			callId: string;
-			taskId: string;
-			name: (typeof RPC_ALLOW_LIST)[number];
-			params: unknown[];
-		}
-
-		export type All = TaskReady | TaskDone | TaskError | TaskDataRequest | RPC;
-	}
+	workflow: Workflow;
+	runExecutionData: IRunExecutionData;
+	runIndex: number;
+	itemIndex: number;
+	activeNodeName: string;
+	connectionInputData: INodeExecutionData[];
+	siblingParameters: INodeParameters;
+	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
+	executeData?: IExecuteData;
+	defaultReturnRunIndex: number;
+	selfData: IDataObject;
+	contextNodeName: string;
+	additionalData: IWorkflowExecuteAdditionalData;
 }
 
-export namespace RequesterMessage {
-	export namespace ToN8n {
-		export interface TaskSettings {
-			type: 'requester:tasksettings';
-			taskId: string;
-			settings: unknown;
-		}
-
-		export interface TaskCancel {
-			type: 'requester:taskcancel';
-			taskId: string;
-			reason: string;
-		}
-
-		export interface TaskDataResponse {
-			type: 'requester:taskdataresponse';
-			taskId: string;
-			requestId: string;
-			data: unknown;
-		}
-
-		export interface RPCResponse {
-			type: 'requester:rpcresponse';
-			taskId: string;
-			callId: string;
-			status: 'success' | 'error';
-			data: unknown;
-		}
-
-		export interface TaskRequest {
-			type: 'requester:taskrequest';
-			requestId: string;
-			taskType: string;
-		}
-
-		export type All = TaskSettings | TaskCancel | RPCResponse | TaskDataResponse | TaskRequest;
-	}
-}
-
-export namespace RunnerMessage {
-	export namespace ToN8n {
-		export interface Info {
-			type: 'runner:info';
-			name: string;
-			types: string[];
-		}
-
-		export interface TaskAccepted {
-			type: 'runner:taskaccepted';
-			taskId: string;
-		}
-
-		export interface TaskRejected {
-			type: 'runner:taskrejected';
-			taskId: string;
-			reason: string;
-		}
-
-		export interface TaskDone {
-			type: 'runner:taskdone';
-			taskId: string;
-			data: TaskResultData;
-		}
-
-		export interface TaskError {
-			type: 'runner:taskerror';
-			taskId: string;
-			error: unknown;
-		}
-
-		export interface TaskOffer {
-			type: 'runner:taskoffer';
-			offerId: string;
-			taskType: string;
-			validFor: number;
-		}
-
-		export interface TaskDataRequest {
-			type: 'runner:taskdatarequest';
-			taskId: string;
-			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
-		}
-
-		export interface RPC {
-			type: 'runner:rpc';
-			callId: string;
-			taskId: string;
-			name: (typeof RPC_ALLOW_LIST)[number];
-			params: unknown[];
-		}
-
-		export type All =
-			| Info
-			| TaskDone
-			| TaskError
-			| TaskAccepted
-			| TaskRejected
-			| TaskOffer
-			| RPC
-			| TaskDataRequest;
-	}
+export interface PartialAdditionalData {
+	executionId?: string;
+	restartExecutionId?: string;
+	restApiUrl: string;
+	instanceBaseUrl: string;
+	formWaitingBaseUrl: string;
+	webhookBaseUrl: string;
+	webhookWaitingBaseUrl: string;
+	webhookTestBaseUrl: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+	userId?: string;
+	variables: IDataObject;
 }
 
 export const RPC_ALLOW_LIST = [
@@ -235,3 +124,6 @@ export const RPC_ALLOW_LIST = [
 	'helpers.httpRequest',
 	'logNodeOutput',
 ] as const;
+
+/** Node types needed for the runner to execute a task. */
+export type NeededNodeType = { name: string; version: number };

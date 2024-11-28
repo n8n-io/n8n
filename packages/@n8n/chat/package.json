@@ -1,11 +1,11 @@
 {
   "name": "@n8n/chat",
-  "version": "0.29.0",
+  "version": "0.31.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
-    "build:vite": "vite build",
-    "build:bundle": "INCLUDE_VUE=true vite build",
+    "build:vite": "cross-env vite build",
+    "build:bundle": "cross-env INCLUDE_VUE=true vite build",
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run",
