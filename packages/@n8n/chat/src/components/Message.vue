@@ -152,9 +152,6 @@ onMounted(async () => {
 		left: auto;
 		right: 0;
 	}
-	&.chat-message-from-bot .chat-message-actions {
-		bottom: calc(100% - 1rem);
-	}
 
 	&:hover {
 		.chat-message-actions {
