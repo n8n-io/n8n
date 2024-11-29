@@ -15,7 +15,7 @@ import { createNodeData } from './helpers';
 import { DirectedGraph } from '../DirectedGraph';
 import { filterDisabledNodes } from '../filterDisabledNodes';
 
-describe('findSubgraph', () => {
+describe('filterDisabledNodes', () => {
 	//                     XX
 	//  ┌───────┐         ┌────────┐       ►►
 	//  │       ├────────►│        │      ┌───────────┐
@@ -28,7 +28,7 @@ describe('findSubgraph', () => {
 	//  │trigger├─────►│destination│
 	//  │       │      └───────────┘
 	//  └───────┘
-	test('skip disabled nodes', () => {
+	test('filter disabled nodes', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const disabled = createNodeData({ name: 'disabled', disabled: true });
 		const destination = createNodeData({ name: 'destination' });
@@ -54,7 +54,7 @@ describe('findSubgraph', () => {
 	//  ┌───────┐     ┌───────────┐
 	//  │trigger├────►│destination│
 	//  └───────┘     └───────────┘
-	test('skip multiple disabled nodes', () => {
+	test('filter multiple disabled nodes in a row', () => {
 		// ARRANGE
 		const trigger = createNodeData({ name: 'trigger' });
 		const disabledNode1 = createNodeData({ name: 'disabledNode1', disabled: true });
@@ -93,7 +93,7 @@ describe('findSubgraph', () => {
 		//  ┌───────┐            ┌───────────┐
 		//  │trigger├────────────►destination│
 		//  └───────┘            └───────────┘
-		test('skip disabled root nodes', () => {
+		test('filter disabled root nodes', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
 			const root = createNodeData({ name: 'root', disabled: true });
