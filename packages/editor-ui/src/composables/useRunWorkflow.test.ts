@@ -8,6 +8,7 @@ import {
 	type IRunData,
 	type Workflow,
 	type IExecuteData,
+	type ITaskData,
 } from 'n8n-workflow';
 
 import { useRootStore } from '@/stores/root.store';
@@ -20,6 +21,7 @@ import { useToast } from './useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
@@ -322,6 +324,34 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ dirtyNodeNames: [executeName] }),
+			);
+		});
+
+		it('should send preferredTrigger if triggerNode and nodeData are passed in', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({ getChildNodes: vi.fn().mockReturnValue([]) }),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					preferredTrigger: {
+						name: triggerNode,
+						data: nodeData,
+					},
+				}),
 			);
 		});
 
