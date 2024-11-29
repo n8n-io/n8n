@@ -2,6 +2,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -23,6 +24,7 @@ export class WaitTracker {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
@@ -133,6 +135,13 @@ export class WaitTracker {
 
 		// Start the execution again
 		await this.workflowRunner.run(data, false, false, executionId);
+
+		const { parentExecution } = fullExecutionData.data;
+		if (parentExecution) {
+			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
+				void this.startExecution(parentExecution.executionId);
+			});
+		}
 	}
 
 	stopTracking() {

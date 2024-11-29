@@ -97,6 +97,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
+	async putExecutionToWait(waitTill: Date): Promise<void> {
+		this.runExecutionData.waitTill = waitTill;
+		if (this.additionalData.setExecutionStatus) {
+			this.additionalData.setExecutionStatus('waiting');
+		}
+	}
+
 	async executeWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
 		inputData?: INodeExecutionData[],
@@ -106,23 +113,26 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentExecution?: RelatedExecution;
 		},
 	): Promise<ExecuteWorkflowData> {
-		return await this.additionalData
-			.executeWorkflow(workflowInfo, this.additionalData, {
-				...options,
-				parentWorkflowId: this.workflow.id?.toString(),
-				inputData,
-				parentWorkflowSettings: this.workflow.settings,
-				node: this.node,
-				parentCallbackManager,
-			})
-			.then(async (result) => {
-				const data = await this.binaryDataService.duplicateBinaryData(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					result.data,
-				);
-				return { ...result, data };
-			});
+		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
+			...options,
+			parentWorkflowId: this.workflow.id?.toString(),
+			inputData,
+			parentWorkflowSettings: this.workflow.settings,
+			node: this.node,
+			parentCallbackManager,
+		});
+
+		// If a subworkflow goes into the waiting state, then put the parent workflow also into the waiting state
+		if (result.waitTill) {
+			await this.putExecutionToWait(result.waitTill);
+		}
+
+		const data = await this.binaryDataService.duplicateBinaryData(
+			this.workflow.id,
+			this.additionalData.executionId!,
+			result.data,
+		);
+		return { ...result, data };
 	}
 
 	getNodeInputs(): INodeInputConfiguration[] {

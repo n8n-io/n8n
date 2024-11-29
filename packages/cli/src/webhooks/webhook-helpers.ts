@@ -53,6 +53,7 @@ import { Logger } from '@/logging/logger.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WaitTracker } from '@/wait-tracker';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -548,11 +549,20 @@ export async function executeWebhook(
 			{ executionId },
 		);
 
+		// Get a promise which resolves when the workflow did execute and send then response
+		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
+			executionId,
+		) as Promise<IExecutionDb | undefined>;
+
+		const { parentExecution } = runExecutionData;
+		if (parentExecution) {
+			void executePromise.then(() => {
+				const waitTracker = Container.get(WaitTracker);
+				void waitTracker.startExecution(parentExecution.executionId);
+			});
+		}
+
 		if (!didSendResponse) {
-			// Get a promise which resolves when the workflow did execute and send then response
-			const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-				executionId,
-			) as Promise<IExecutionDb | undefined>;
 			executePromise
 				// eslint-disable-next-line complexity
 				.then(async (data) => {
