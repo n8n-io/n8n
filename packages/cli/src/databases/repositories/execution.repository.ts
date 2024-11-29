@@ -394,7 +394,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (data) {
 				executionData.data = stringify(data);
 			}
-			// @ts-ignore
+			// @ts-expect-error A deeply nested error type does not line up with unknown
 			await this.executionDataRepository.update({ executionId }, executionData);
 		}
 	}

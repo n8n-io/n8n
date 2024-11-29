@@ -35,6 +35,7 @@ export function getAuthError(body: {
 	error: string;
 	error_description?: string;
 }): Error | undefined {
+	// @Cleanup: This should explicitly handle optional `error` on body, which is how this function is used by callers
 	const message: string | undefined =
 		ERROR_RESPONSES[body.error] ?? body.error_description ?? body.error;
 

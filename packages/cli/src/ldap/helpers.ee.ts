@@ -76,7 +76,8 @@ export const createFilter = (filter: string, userFilter: string) => {
 };
 
 export const escapeFilter = (filter: string): string => {
-	//@ts-ignore
+	// @Problem Create a class that extends Filter instead
+	// @ts-expect-error This creates an instance of an abstract class, see https://github.com/n8n-io/n8n/pull/3835/files#r1042626072
 	return new Filter().escape(filter); /* eslint-disable-line */
 };
 

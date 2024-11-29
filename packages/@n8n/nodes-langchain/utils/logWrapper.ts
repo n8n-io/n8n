@@ -394,7 +394,6 @@ export function logWrapper(
 					return async (
 						query: string,
 						k?: number,
-						// @ts-ignore
 						filter?: BiquadFilterType | undefined,
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {

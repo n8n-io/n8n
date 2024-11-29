@@ -76,8 +76,8 @@ export class CodeFlow {
 		const data =
 			typeof url.search === 'string' ? qs.parse(url.search.substring(1)) : url.search || {};
 
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
+		// @Cleanup: URL above should never not be a string, so we shouldn't need the fallback that breaks type-safety here
+		// @ts-expect-error We don't mind this throwing, as that's what we're about to do
 		const error = getAuthError(data);
 		if (error) throw error;
 

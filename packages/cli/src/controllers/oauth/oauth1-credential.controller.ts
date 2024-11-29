@@ -77,7 +77,8 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 
 		const data = oauth.toHeader(oauth.authorize(options));
 
-		// @ts-ignore
+		// @Cleanup: Move this to the declaration of `options` and type to `RequestOptions & { headers: OAuth.Header}
+		// @ts-expect-error This intentionally sets a new property
 		options.headers = data;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

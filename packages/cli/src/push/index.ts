@@ -131,7 +131,8 @@ export const setupPushServer = (restEndpoint: string, server: Server, app: Appli
 						return response;
 					};
 
-					// @ts-ignore
+					// @Problem: Find a public alternative
+					// @ts-expect-error This uses a private function https://github.com/expressjs/express/blob/e4a61bd88e2f170eab64d937f3bf6c0812b4a649/lib/application.js#L153
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					app.handle(request, response);
 				});

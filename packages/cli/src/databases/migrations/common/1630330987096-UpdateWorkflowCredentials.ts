@@ -146,10 +146,12 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
-									// @ts-ignore
+									// @Problem This should drop `.name`? Unless we intentionally need it like this when generating the SQL
+									// @ts-expect-error This appears to actually be incorrect
 									node.credentials[type] = matchingCredentials.name;
 								} else {
-									// @ts-ignore
+									// @Problem This should drop `.name`? Unless we intentionally need it like this when generating the SQL
+									// @ts-expect-error This appears to actually be incorrect
 									node.credentials[type] = creds.name;
 								}
 								credentialsUpdated = true;
@@ -188,10 +190,12 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
-									// @ts-ignore
+									// @Problem This should drop `.name`? Unless we intentionally need it like this when generating the SQL
+									// @ts-expect-error This appears to actually be incorrect
 									node.credentials[type] = matchingCredentials.name;
 								} else {
-									// @ts-ignore
+									// @Problem This should drop `.name`? Unless we intentionally need it like this when generating the SQL
+									// @ts-expect-error This appears to actually be incorrect
 									node.credentials[type] = creds.name;
 								}
 								credentialsUpdated = true;
@@ -230,10 +234,12 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 								(credentials) => credentials.id == creds.id && credentials.type === type,
 							);
 							if (matchingCredentials) {
-								// @ts-ignore
+								// @Problem This should drop `.name`? Unless we intentionally need it like this when generating the SQL
+								// @ts-expect-error This appears to actually be incorrect
 								node.credentials[type] = matchingCredentials.name;
 							} else {
-								// @ts-ignore
+								// @Problem This should drop `.name`? Unless we intentionally need it like this when generating the SQL
+								// @ts-expect-error This appears to actually be incorrect
 								node.credentials[type] = creds.name;
 							}
 							credentialsUpdated = true;

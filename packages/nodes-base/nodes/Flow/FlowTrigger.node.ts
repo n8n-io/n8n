@@ -137,7 +137,6 @@ export class FlowTrigger implements INodeType {
 				if (resource === 'task') {
 					resourceIds = (this.getNodeParameter('taskIds') as string).split(',');
 				}
-				// @ts-ignore
 				for (const resourceId of resourceIds) {
 					body = {
 						organization_id: credentials.organizationId as number,
