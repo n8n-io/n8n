@@ -96,7 +96,7 @@ export function prepareItems(
 		data = items.filter((item) => item.json[updateKey] !== undefined);
 	}
 
-	const preperedItems = data.map(({ json }) => {
+	const preparedItems = data.map(({ json }) => {
 		const updateItem: IDataObject = {};
 
 		for (const field of fields) {
@@ -122,7 +122,7 @@ export function prepareItems(
 		return updateItem;
 	});
 
-	return preperedItems;
+	return preparedItems;
 }
 
 export function prepareFields(fields: string) {

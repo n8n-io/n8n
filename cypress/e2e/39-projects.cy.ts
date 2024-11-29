@@ -186,7 +186,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
 
 		cy.intercept('GET', '/rest/workflows/*').as('loadWorkflow');
-		workflowsPage.getters.workflowCards().first().click();
+		workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 		cy.wait('@loadWorkflow');
 		menuItems = cy.getByTestId('menu-item');
@@ -747,7 +747,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			// Open the moved workflow
 			workflowsPage.getters.workflowCards().should('have.length', 1);
-			workflowsPage.getters.workflowCards().first().click();
+			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 			// Check if the credential can be changed
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();

@@ -1,6 +1,5 @@
 import { ref, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
-import { v4 as uuid } from 'uuid';
 import type { Connection, ConnectionDetachedParams } from '@jsplumb/core';
 import { useHistoryStore } from '@/stores/history.store';
 import {
@@ -1187,7 +1186,7 @@ export function useNodeHelpers() {
 			};
 
 			if (!newNode.id) {
-				newNode.id = uuid();
+				assignNodeId(newNode);
 			}
 
 			nodeType = nodeTypesStore.getNodeType(newNode.type, newNode.typeVersion);
@@ -1257,6 +1256,18 @@ export function useNodeHelpers() {
 		canvasStore.jsPlumbInstance?.setSuspendDrawing(false, true);
 	}
 
+	function assignNodeId(node: INodeUi) {
+		const id = window.crypto.randomUUID();
+		node.id = id;
+		return id;
+	}
+
+	function assignWebhookId(node: INodeUi) {
+		const id = window.crypto.randomUUID();
+		node.webhookId = id;
+		return id;
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -1292,5 +1303,7 @@ export function useNodeHelpers() {
 		addPinDataConnections,
 		removePinDataConnections,
 		getNodeTaskData,
+		assignNodeId,
+		assignWebhookId,
 	};
 }

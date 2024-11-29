@@ -10,7 +10,7 @@ import type { ListQuery } from '@/requests';
 
 type TestDefinitionLike = Omit<
 	Partial<TestDefinition>,
-	'workflow' | 'evaluationWorkflow' | 'annotationTag'
+	'workflow' | 'evaluationWorkflow' | 'annotationTag' | 'metrics'
 > & {
 	workflow?: { id: string };
 	evaluationWorkflow?: { id: string };

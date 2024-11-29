@@ -135,14 +135,14 @@ export function findStartNodes(options: {
 	graph: DirectedGraph;
 	trigger: INode;
 	destination: INode;
-	runData?: IRunData;
-	pinData?: IPinData;
+	pinData: IPinData;
+	runData: IRunData;
 }): Set<INode> {
 	const graph = options.graph;
 	const trigger = options.trigger;
 	const destination = options.destination;
-	const runData = options.runData ?? {};
-	const pinData = options.pinData ?? {};
+	const runData = { ...options.runData };
+	const pinData = options.pinData;
 
 	const startNodes = findStartNodesRecursive(
 		graph,
