@@ -145,18 +145,6 @@ export class TestRunnerService {
 		return mainConnectionData?.[0]?.json ?? {};
 	}
 
-	private extractMetricsFromEvaluationResult(result: IDataObject, metrics: Set<string>) {
-		const extractedMetrics: Record<string, number> = {};
-
-		for (const metric of metrics) {
-			if (typeof result[metric] === 'number') {
-				extractedMetrics[metric] = result[metric];
-			}
-		}
-
-		return extractedMetrics;
-	}
-
 	/**
 	 * Get the metrics to collect from the evaluation workflow execution results.
 	 */
