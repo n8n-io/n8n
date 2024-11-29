@@ -5,35 +5,25 @@ import { Container } from 'typedi';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
-import type { initErrorHandling as Handler } from '../error-reporting';
-
 const init = jest.fn();
-const setTag = jest.fn();
-const captureException = jest.fn();
 
 jest.mock('@sentry/integrations');
 jest.mock('@sentry/node', () => ({
 	init,
-	setTag,
-	captureException,
+	setTag: jest.fn(),
+	captureException: jest.fn(),
 	Integrations: {},
 }));
 
 jest.spyOn(process, 'on');
 
 describe('initErrorHandling', () => {
-	let errorReporting: { initErrorHandling: typeof Handler };
 	beforeEach(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		errorReporting = require('./error-reporting');
-	});
-
-	afterEach(() => {
 		jest.resetModules();
-		jest.resetAllMocks();
 	});
 
 	it('does not initialize if config is not set', async () => {
+		const errorReporting = require('@/error-reporting');
 		Container.get(GlobalConfig).sentry.backendDsn = '';
 		await errorReporting.initErrorHandling();
 
@@ -41,6 +31,7 @@ describe('initErrorHandling', () => {
 	});
 
 	it('keeps events with error cause', async () => {
+		const errorReporting = require('@/error-reporting');
 		Container.get(GlobalConfig).sentry.backendDsn = 'backend-dsn';
 		await errorReporting.initErrorHandling();
 
@@ -56,6 +47,7 @@ describe('initErrorHandling', () => {
 	});
 
 	it('filters out events with error cause with warning level', async () => {
+		const errorReporting = require('@/error-reporting');
 		Container.get(GlobalConfig).sentry.backendDsn = 'backend-dsn';
 		await errorReporting.initErrorHandling();
 
