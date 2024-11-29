@@ -185,6 +185,7 @@ const {
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
 	initializeWorkspace,
+	openExecution,
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
@@ -1051,30 +1052,18 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function openExecution(executionId: string) {
+async function onOpenExecution(executionId: string) {
 	canvasStore.startLoading();
+
 	resetWorkspace();
-
-	let data: IExecutionResponse | undefined;
-	try {
-		data = await workflowsStore.getExecution(executionId);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
-		return;
-	}
-	if (data === undefined) {
-		throw new Error(`Execution with id "${executionId}" could not be found!`);
-	}
-
 	await initializeData();
 
-	initializeWorkspace(data.workflowData);
+	const data = await openExecution(executionId);
+	if (!data) {
+		return;
+	}
 
-	workflowsStore.setWorkflowExecutionData(data);
-
-	uiStore.stateIsDirty = false;
 	canvasStore.stopLoading();
-
 	fitView();
 
 	canvasEventBus.emit('open:execution', data);
@@ -1320,7 +1309,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				// so everything it needs has to be sent using post messages and passed down to child components
 				isProductionExecutionPreview.value = json.executionMode !== 'manual';
 
-				await openExecution(json.executionId);
+				await onOpenExecution(json.executionId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = true;
@@ -1627,7 +1616,8 @@ onBeforeUnmount(() => {
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
-				:outline="isChatOpen === false"
+				:type="isChatOpen ? 'tertiary' : 'primary'"
+				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 				@click="onOpenChat"
 			/>
 			<CanvasStopCurrentExecutionButton
