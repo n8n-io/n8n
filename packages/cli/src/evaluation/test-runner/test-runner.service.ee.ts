@@ -71,8 +71,6 @@ export class TestRunnerService {
 			userId,
 		};
 
-		console.log({ destinationNode: data.destinationNode, startNode: pastExecutionStartNode });
-
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
@@ -169,8 +167,6 @@ export class TestRunnerService {
 			assert(pastExecution, 'Execution not found');
 
 			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
-
-			console.log(JSON.stringify(executionData, null, 2));
 
 			// Run the test case and wait for it to finish
 			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);
