@@ -59,6 +59,7 @@ import {
 	cleanRunData,
 	recreateNodeExecutionStack,
 	handleCycles,
+	filterDisabledNodes,
 } from './PartialExecutionUtils';
 
 export class WorkflowExecute {
@@ -347,7 +348,7 @@ export class WorkflowExecute {
 
 		// 2. Find the Subgraph
 		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph({ graph, destination, trigger });
+		const subgraph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes

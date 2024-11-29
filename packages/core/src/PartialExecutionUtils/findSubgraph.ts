@@ -21,7 +21,7 @@ function findSubgraphRecursive(
 		return;
 	}
 
-	let parentConnections = graph.getDirectParentConnections(current);
+	const parentConnections = graph.getDirectParentConnections(current);
 
 	// If the current node has no parents, don’t keep this branch.
 	if (parentConnections.length === 0) {
@@ -46,27 +46,6 @@ function findSubgraphRecursive(
 		return;
 	}
 
-	// If the current node is disabled, don’t keep this node, but keep the
-	// branch.
-	// Take every incoming connection and connect it to every node that is
-	// connected to the current node’s first output
-	if (current.disabled) {
-		// The last segment on the current branch is still pointing to the removed
-		// node, so let's remove it.
-		currentBranch.pop();
-
-		// The node is replaced by a set of new connections, connecting the parents
-		// and children of it directly. In the recursive call below we'll follow
-		// them further.
-		parentConnections = graph.removeNode(current, {
-			reconnectConnections: true,
-			// If the node has non-Main connections we don't want to rewire those.
-			// Otherwise we'd end up connecting AI utilities to nodes that don't
-			// support them.
-			skipConnectionFn: (c) => c.type !== NodeConnectionType.Main,
-		});
-	}
-
 	// Recurse on each parent.
 	for (const parentConnection of parentConnections) {
 		// Skip parents that are connected via non-Main connection types. They are
@@ -84,8 +63,7 @@ function findSubgraphRecursive(
 }
 
 /**
- * Find all nodes that can lead from the trigger to the destination node,
- * ignoring disabled nodes.
+ * Find all nodes that can lead from the trigger to the destination node.
  *
  * The algorithm is:
  *   Start with Destination Node
@@ -95,12 +73,8 @@ function findSubgraphRecursive(
  *   3. if the current node is the destination node again, don’t keep this
  *      branch
  *   4. if the current node was already visited, keep this branch
- *   5. if the current node is disabled, don’t keep this node, but keep the
- *      branch
- *     - take every incoming connection and connect it to every node that is
- *       connected to the current node’s first output
- *   6. Recurse on each parent
- *   7. Re-add all connections that don't use the `Main` connections type.
+ *   5. Recurse on each parent
+ *   6. Re-add all connections that don't use the `Main` connections type.
  *      Theses are used by nodes called root nodes and they are not part of the
  *      dataflow in the graph they are utility nodes, like the AI model used in a
  *      lang chain node.
