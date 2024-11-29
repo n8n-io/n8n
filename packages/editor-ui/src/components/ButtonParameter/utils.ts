@@ -1,5 +1,5 @@
 import type { Schema } from '@/Interface';
-import { ApplicationError, IDataObject, type INodeExecutionData } from 'n8n-workflow';
+import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
