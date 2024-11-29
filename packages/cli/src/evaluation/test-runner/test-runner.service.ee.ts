@@ -22,6 +22,8 @@ import type { IExecutionResponse } from '@/interfaces';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { EvaluationMetrics } from './evaluation-metrics.ee';
+
 /**
  * This service orchestrates the running of test cases.
  * It uses the test definitions to find
@@ -158,7 +160,7 @@ export class TestRunnerService {
 	/**
 	 * Get the metrics to collect from the evaluation workflow execution results.
 	 */
-	private async getTestMetrics(testDefinitionId: string) {
+	private async getTestMetricNames(testDefinitionId: string) {
 		const metrics = await this.testMetricRepository.find({
 			where: {
 				testDefinition: {
@@ -168,28 +170,6 @@ export class TestRunnerService {
 		});
 
 		return new Set(metrics.map((m) => m.name));
-	}
-
-	private rollUpMetrics(
-		extractedMetricValues: ReadonlyArray<Record<string, number>>,
-		testMetrics: Set<string>,
-	) {
-		const aggregatedMetrics: Record<string, number> = {};
-
-		// The only type of aggregation available now is AVERAGE
-
-		for (const metric of testMetrics) {
-			const metricValues = extractedMetricValues
-				.map((result) => result[metric])
-				.filter((v) => typeof v === 'number');
-
-			if (metricValues.length > 0) {
-				const metricSum = metricValues.reduce((acc, val) => acc + val, 0);
-				aggregatedMetrics[metric] = metricSum / metricValues.length;
-			}
-		}
-
-		return aggregatedMetrics;
 	}
 
 	/**
@@ -221,14 +201,14 @@ export class TestRunnerService {
 				.getMany();
 
 		// Get the metrics to collect from the evaluation workflow
-		const testMetrics = await this.getTestMetrics(test.id);
+		const testMetricNames = await this.getTestMetricNames(test.id);
 
 		// 2. Run over all the test cases
 
 		await this.testRunRepository.markAsRunning(testRun.id);
 
-		// Array to collect the results of the evaluation workflow executions
-		const evalResults = [];
+		// Object to collect the results of the evaluation workflow executions
+		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
 			// Fetch past execution with data
@@ -265,14 +245,10 @@ export class TestRunnerService {
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
-			evalResults.push(this.extractEvaluationResult(evalExecution));
+			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
-		const rawMetricValues = evalResults.map((result) =>
-			this.extractMetricsFromEvaluationResult(result, testMetrics),
-		);
-
-		const aggregatedMetrics = this.rollUpMetrics(rawMetricValues, testMetrics);
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
 		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 	}
