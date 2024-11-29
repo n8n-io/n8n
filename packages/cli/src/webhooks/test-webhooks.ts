@@ -253,6 +253,8 @@ export class TestWebhooks implements IWebhookManager {
 			return false;
 		}
 
+		// If we have a preferred trigger without data we only want to listen for
+		// that trigger, not the other ones.
 		if (preferredTrigger) {
 			webhooks = webhooks.filter((w) => w.node === preferredTrigger.name);
 		}
