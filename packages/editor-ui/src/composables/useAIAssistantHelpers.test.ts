@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import type { INode } from 'n8n-workflow';
+import type { INode, NodeConnectionType } from 'n8n-workflow';
 import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import type { IWorkflowDb } from '@/Interface';
 
 const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected: string[] }> = [
 	{
@@ -76,6 +77,15 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 							name: 'document',
 							value: "={{ $('Edit Fields 2').item.json.document}}",
 							type: 'string',
+							typeVersion: 1,
+						},
+						{
+							parameters: {},
+							id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
+							name: 'Replace me with your logic',
+							type: 'n8n-nodes-base.noOp',
+							position: [520, 340],
+							typeVersion: 1,
 						},
 					],
 				},
@@ -377,6 +387,66 @@ const referencedNodesTestCases: Array<{ caseName: string; node: INode; expected:
 	},
 ];
 
+const testWorkflow: IWorkflowDb = {
+	id: 'MokOcBHON6KkPq6Y',
+	name: 'My Sub-Workflow 3',
+	active: false,
+	createdAt: -1,
+	updatedAt: -1,
+	connections: {
+		'Execute Workflow Trigger': {
+			main: [
+				[
+					{
+						node: 'Replace me with your logic',
+						type: 'main' as NodeConnectionType,
+						index: 0,
+					},
+				],
+			],
+		},
+	},
+	nodes: [
+		{
+			parameters: {
+				notice: '',
+				events: 'worklfow_call',
+			},
+			id: 'c055762a-8fe7-4141-a639-df2372f30060',
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			position: [260, 340],
+			typeVersion: 0,
+		},
+		{
+			parameters: {},
+			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
+			name: 'Replace me with your logic',
+			type: 'n8n-nodes-base.noOp',
+			position: [520, 340],
+			typeVersion: 1,
+		},
+	],
+	settings: {
+		executionOrder: 'v1',
+	},
+	tags: [],
+	pinData: {},
+	versionId: '9f3263e3-d23d-4cc8-bff0-0fdecfbd82bf',
+	usedCredentials: [],
+	scopes: [
+		'workflow:create',
+		'workflow:delete',
+		'workflow:execute',
+		'workflow:list',
+		'workflow:move',
+		'workflow:read',
+		'workflow:share',
+		'workflow:update',
+	],
+	sharedWithProjects: [],
+};
+
 describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
 
@@ -388,5 +458,33 @@ describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	const caseName = testCase.caseName;
 	it(`${caseName}`, () => {
 		expect(aiAssistantHelpers.getReferencedNodes(testCase.node)).toEqual(testCase.expected);
+	});
+});
+
+describe('simplifyWorkflowForAssistant', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should remove unnecessary properties from workflow object', () => {
+		const workflow = testWorkflow;
+		const simplifiedWorkflow = aiAssistantHelpers.simplifyWorkflowForAssistant(workflow);
+		const removedProperties = [
+			'createdAt',
+			'updatedAt',
+			'settings',
+			'versionId',
+			'usedCredentials',
+			'sharedWithProjects',
+			'pinData',
+			'scopes',
+			'tags',
+		];
+		removedProperties.forEach((property) => {
+			expect(simplifiedWorkflow).not.toHaveProperty(property);
+		});
 	});
 });
