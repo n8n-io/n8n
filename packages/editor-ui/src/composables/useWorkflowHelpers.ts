@@ -554,7 +554,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			'notes',
 			'parameters',
 			'status',
-		] as const;
+		];
 
 		// @Cleanup: Unify the following lines in a type-safe way, probably with Object.assign() and a filter
 		// Cast to INodeUi as we're about to provide all required keys
