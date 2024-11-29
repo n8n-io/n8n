@@ -5,7 +5,7 @@ import { Container } from 'typedi';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
-import type { initErrorHandling as Handler } from './error-reporting';
+import type { initErrorHandling as Handler } from '../error-reporting';
 
 const init = jest.fn();
 const setTag = jest.fn();
