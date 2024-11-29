@@ -1,3 +1,13 @@
+## [1.70.1](https://github.com/n8n-io/n8n/compare/n8n@1.70.0...n8n@1.70.1) (2024-11-29)
+
+
+### Bug Fixes
+
+* **editor:** Fix bug causing connection lines to disappear when hovering stickies  ([#11950](https://github.com/n8n-io/n8n/issues/11950)) ([c018b63](https://github.com/n8n-io/n8n/commit/c018b63eea7bfc5478ffa2f9ab79379716cabb60))
+* **editor:** Fix pin data showing up in production executions on new canvas ([#11951](https://github.com/n8n-io/n8n/issues/11951)) ([e4e5077](https://github.com/n8n-io/n8n/commit/e4e5077ddcdbc2af90decf6d6e8e2b64b0a38370))
+
+
+
 # [1.70.0](https://github.com/n8n-io/n8n/compare/n8n@1.69.0...n8n@1.70.0) (2024-11-27)
 
 
