@@ -137,6 +137,8 @@ export class FlowTrigger implements INodeType {
 				if (resource === 'task') {
 					resourceIds = (this.getNodeParameter('taskIds') as string).split(',');
 				}
+				// @Cleanup: Define resourceIds as an empty array instead
+				// @ts-expect-error resourceIds are set for either case
 				for (const resourceId of resourceIds) {
 					body = {
 						organization_id: credentials.organizationId as number,
