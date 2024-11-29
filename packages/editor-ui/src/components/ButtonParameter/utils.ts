@@ -64,7 +64,7 @@ const calculateTokens = (item: object, averageTokenLength: number): number => {
 export function reducePayloadSizeOrThrow(
 	payload: AskAiRequest.RequestPayload,
 	error: Error,
-	averegeTokenLength = 4,
+	averageTokenLength = 4,
 ) {
 	try {
 		//calculate how many tokens has to be reduced
@@ -76,8 +76,8 @@ export function reducePayloadSizeOrThrow(
 
 		let remainingTokensToReduce = currentTokens - maxTokens;
 
-		//check if parent nodes schema taces more tokens than available
-		let parentNodesTokenCount = calculateTokens(payload.context.schema, averegeTokenLength);
+		//check if parent nodes schema takes more tokens than available
+		let parentNodesTokenCount = calculateTokens(payload.context.schema, averageTokenLength);
 
 		if (remainingTokensToReduce > parentNodesTokenCount) {
 			remainingTokensToReduce -= parentNodesTokenCount;
@@ -91,7 +91,7 @@ export function reducePayloadSizeOrThrow(
 			for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
 				if (payload.question.includes(nodes[nodeIndex].nodeName)) continue;
 
-				const nodeTokens = calculateTokens(nodes[nodeIndex], averegeTokenLength);
+				const nodeTokens = calculateTokens(nodes[nodeIndex], averageTokenLength);
 				remainingTokensToReduce -= nodeTokens;
 				parentNodesTokenCount -= nodeTokens;
 
@@ -111,7 +111,7 @@ export function reducePayloadSizeOrThrow(
 				const key = props[index].key;
 				if (key && payload.question.includes(key)) continue;
 
-				const propTokens = calculateTokens(props[index], averegeTokenLength);
+				const propTokens = calculateTokens(props[index], averageTokenLength);
 
 				remainingTokensToReduce -= propTokens;
 
@@ -121,7 +121,7 @@ export function reducePayloadSizeOrThrow(
 			}
 		} else throw error;
 
-		//if tokensToReduce is still remainig, remove all parent nodes
+		//if tokensToReduce is still remaining, remove all parent nodes
 		if (remainingTokensToReduce > 0 && remainingTokensToReduce - parentNodesTokenCount <= 0) {
 			payload.context.schema = [];
 			return;
