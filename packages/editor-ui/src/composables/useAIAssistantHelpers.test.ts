@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { INode, NodeConnectionType } from 'n8n-workflow';
+import type { INode, IRunExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { useAIAssistantHelpers } from './useAIAssistantHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -447,6 +447,61 @@ const testWorkflow: IWorkflowDb = {
 	sharedWithProjects: [],
 };
 
+const testExecutionData: IRunExecutionData['resultData'] = {
+	runData: {
+		'When clicking ‘Test workflow’': [
+			{
+				hints: [],
+				startTime: 1732882780588,
+				executionTime: 4,
+				source: [],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								pairedItem: {
+									item: 0,
+								},
+							},
+						],
+					],
+				},
+			},
+		],
+		'Edit Fields': [
+			{
+				hints: [],
+				startTime: 1732882780593,
+				executionTime: 0,
+				source: [
+					{
+						previousNode: 'When clicking ‘Test workflow’',
+					},
+				],
+				executionStatus: 'success',
+				data: {
+					main: [
+						[
+							{
+								json: {
+									something: 'here',
+								},
+								pairedItem: {
+									item: 0,
+								},
+							},
+						],
+					],
+				},
+			},
+		],
+	},
+	pinData: {},
+	lastNodeExecuted: 'Edit Fields',
+};
+
 describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
 
@@ -461,7 +516,7 @@ describe.each(referencedNodesTestCases)('getReferencedNodes', (testCase) => {
 	});
 });
 
-describe('simplifyWorkflowForAssistant', () => {
+describe('Simplify assistant payloads', () => {
 	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
 
 	beforeEach(() => {
@@ -469,9 +524,8 @@ describe('simplifyWorkflowForAssistant', () => {
 		aiAssistantHelpers = useAIAssistantHelpers();
 	});
 
-	it('Should remove unnecessary properties from workflow object', () => {
-		const workflow = testWorkflow;
-		const simplifiedWorkflow = aiAssistantHelpers.simplifyWorkflowForAssistant(workflow);
+	it('simplifyWorkflowForAssistant: Should remove unnecessary properties from workflow object', () => {
+		const simplifiedWorkflow = aiAssistantHelpers.simplifyWorkflowForAssistant(testWorkflow);
 		const removedProperties = [
 			'createdAt',
 			'updatedAt',
@@ -486,5 +540,12 @@ describe('simplifyWorkflowForAssistant', () => {
 		removedProperties.forEach((property) => {
 			expect(simplifiedWorkflow).not.toHaveProperty(property);
 		});
+	});
+
+	it('simplifyResultData: Should remove data from nodes', () => {
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(testExecutionData);
+		for (const nodeName of Object.keys(simplifiedResultData.runData)) {
+			expect(simplifiedResultData.runData[nodeName][0]).not.toHaveProperty('data');
+		}
 	});
 });
