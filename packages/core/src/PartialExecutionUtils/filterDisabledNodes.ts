@@ -7,7 +7,6 @@ export function filterDisabledNodes(graph: DirectedGraph): DirectedGraph {
 
 	for (const node of filteredGraph.getNodes().values()) {
 		if (node.disabled) {
-			// remove node
 			filteredGraph.removeNode(node, {
 				reconnectConnections: true,
 				skipConnectionFn: (c) => c.type !== NodeConnectionType.Main,
