@@ -1,5 +1,5 @@
 import type { Schema } from '@/Interface';
-import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
+import { ApplicationError, IDataObject, type INodeExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
@@ -57,8 +57,15 @@ export function getSchemas() {
 	};
 }
 
-function reducePayloadSize(payload: AskAiRequest.RequestPayload, error: Error) {
-	const AVERAGE_TOKEN_LENGTH = 4;
+const calculateTokens = (item: object, averageTokenLength: number): number => {
+	return Math.ceil(JSON.stringify(item).length / averageTokenLength);
+};
+
+export function reducePayloadSizeOrThrow(
+	payload: AskAiRequest.RequestPayload,
+	error: Error,
+	averegeTokenLength = 4,
+) {
 	try {
 		//calculate how many tokens has to be reduced
 		const tokens = error.message.match(/\d+/g);
@@ -67,65 +74,60 @@ function reducePayloadSize(payload: AskAiRequest.RequestPayload, error: Error) {
 		const maxTokens = parseInt(tokens[0]);
 		const currentTokens = parseInt(tokens[1]);
 
-		let tokensToReduce = currentTokens - maxTokens;
+		let remainingTokensToReduce = currentTokens - maxTokens;
 
 		//check if parent nodes schema taces more tokens than available
-		let parentNodesTokens = Math.ceil(
-			JSON.stringify(payload.context.schema).length / AVERAGE_TOKEN_LENGTH,
-		);
+		let parentNodesTokenCount = calculateTokens(payload.context.schema, averegeTokenLength);
 
-		if (tokensToReduce > parentNodesTokens) {
-			tokensToReduce -= parentNodesTokens;
+		if (remainingTokensToReduce > parentNodesTokenCount) {
+			remainingTokensToReduce -= parentNodesTokenCount;
 			payload.context.schema = [];
 		}
 
 		//remove parent nodes not referenced in the prompt
 		if (payload.context.schema.length) {
-			const nodesLength = payload.context.schema.length;
+			const nodes = [...payload.context.schema];
 
-			for (let nodeIndex = nodesLength - 1; nodeIndex >= 0; nodeIndex--) {
-				if (payload.question.includes(payload.context.schema[nodeIndex].nodeName)) continue;
+			for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+				if (payload.question.includes(nodes[nodeIndex].nodeName)) continue;
 
-				const nodeTokens = Math.ceil(
-					JSON.stringify(payload.context.schema[nodeIndex]).length / AVERAGE_TOKEN_LENGTH,
-				);
-				tokensToReduce -= nodeTokens;
-				parentNodesTokens -= nodeTokens;
+				const nodeTokens = calculateTokens(nodes[nodeIndex], averegeTokenLength);
+				remainingTokensToReduce -= nodeTokens;
+				parentNodesTokenCount -= nodeTokens;
 
 				payload.context.schema.splice(nodeIndex, 1);
 
-				if (tokensToReduce <= 0) break;
+				if (remainingTokensToReduce <= 0) return;
 			}
 		}
 
-		if (tokensToReduce <= 0) return;
+		if (remainingTokensToReduce <= 0) return;
 
 		//remove properties not referenced in the prompt from the input schema
-		if (typeof payload.context.inputSchema.schema.value === 'object') {
-			const propsLength = payload.context.inputSchema.schema.value.length;
-			for (let index = propsLength - 1; index >= 0; index--) {
-				const key = payload.context.inputSchema.schema.value[index].key;
+		if (Array.isArray(payload.context.inputSchema.schema.value)) {
+			const props = [...payload.context.inputSchema.schema.value];
+
+			for (let index = 0; index < props.length; index++) {
+				const key = props[index].key;
 				if (key && payload.question.includes(key)) continue;
 
-				const propTokens = Math.ceil(
-					JSON.stringify(payload.context.inputSchema.schema.value[index]).length /
-						AVERAGE_TOKEN_LENGTH,
-				);
-				tokensToReduce -= propTokens;
+				const propTokens = calculateTokens(props[index], averegeTokenLength);
+
+				remainingTokensToReduce -= propTokens;
 
 				payload.context.inputSchema.schema.value.splice(index, 1);
 
-				if (tokensToReduce <= 0) break;
+				if (remainingTokensToReduce <= 0) return;
 			}
 		} else throw error;
 
 		//if tokensToReduce is still remainig, remove all parent nodes
-		if (tokensToReduce > 0 && tokensToReduce - parentNodesTokens <= 0) {
+		if (remainingTokensToReduce > 0 && remainingTokensToReduce - parentNodesTokenCount <= 0) {
 			payload.context.schema = [];
 			return;
 		}
 
-		if (tokensToReduce > 0) throw error;
+		if (remainingTokensToReduce > 0) throw error;
 	} catch (e) {
 		throw e;
 	}
@@ -158,7 +160,7 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 				break;
 			} catch (e) {
 				if (e.message.includes('maximum context length')) {
-					reducePayloadSize(payload, e);
+					reducePayloadSizeOrThrow(payload, e);
 					continue;
 				}
 
