@@ -17,6 +17,7 @@ import {
 	organizationDescription,
 	ticketDescription,
 	userDescription,
+	roleDescription,
 } from './descriptions';
 
 import {
@@ -25,6 +26,7 @@ import {
 	getAllFields,
 	getGroupCustomFields,
 	getGroupFields,
+	getRoleFields,
 	getOrganizationCustomFields,
 	getOrganizationFields,
 	getTicketCustomFields,
@@ -116,6 +118,10 @@ export class Zammad implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'Role',
+						value: 'role',
+					},
 				],
 				default: 'user',
 			},
@@ -124,6 +130,7 @@ export class Zammad implements INodeType {
 			...organizationDescription,
 			...ticketDescription,
 			...userDescription,
+			...roleDescription,
 		],
 	};
 
@@ -185,6 +192,12 @@ export class Zammad implements INodeType {
 				return getUserFields(allFields).map(fieldToLoadOption);
 			},
 
+			async loadRoleFields(this: ILoadOptionsFunctions) {
+				const allFields = await getAllFields.call(this);
+
+				return getRoleFields(allFields).map(fieldToLoadOption);
+			},
+
 			// ----------------------------------
 			//             resources
 			// ----------------------------------
@@ -238,6 +251,14 @@ export class Zammad implements INodeType {
 				)) as ZammadTypes.Organization[];
 
 				return orgs.filter(isNotZammadFoundation).map((i) => ({ name: i.name, value: i.id }));
+			},
+
+			// by ID
+
+			async loadRoles(this: ILoadOptionsFunctions) {
+				const roles = (await zammadApiRequest.call(this, 'GET', '/Roles')) as ZammadTypes.Role[];
+
+				return roles.map((i) => ({ name: i.name, value: i.id }));
 			},
 
 			async loadUsers(this: ILoadOptionsFunctions) {
@@ -464,7 +485,7 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/organization.html#create
 
 						const body: IDataObject = {
-							name: this.getNodeParameter('name', i),
+							name: this.getNodeParameter('name', i) as string,
 						};
 
 						const { customFieldsUi, ...rest } = this.getNodeParameter(
@@ -645,6 +666,76 @@ export class Zammad implements INodeType {
 							this,
 							'GET',
 							'/groups',
+							{},
+							{},
+							limit,
+						);
+					}
+				} else if (resource === 'role') {
+					// **********************************************************************
+					//                                  role
+					// **********************************************************************
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//           role:create
+						// ----------------------------------
+
+						// https://docs.zammad.org/en/latest/api/role.html#create
+
+						const body: IDataObject = {
+							name: this.getNodeParameter('name', i) as string,
+						};
+
+						const { customFieldsUi, ...rest } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as ZammadTypes.UserAdditionalFields;
+
+						/*customFieldsUi?.customFieldPairs.forEach((pair) => {
+							body[pair.name] = pair.value;
+						});*/
+
+						Object.assign(body, rest);
+
+						responseData = await zammadApiRequest.call(this, 'POST', '/roles', body);
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//            roles:update
+						// ----------------------------------
+
+						// https://docs.zammad.org/en/latest/api/role.html#update
+
+						const id = this.getNodeParameter('id', i) as string;
+
+						const body: IDataObject = {};
+
+						responseData = await zammadApiRequest.call(this, 'PUT', `/roles/${id}`, body);
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//             role:get
+						// ----------------------------------
+
+						// https://docs.zammad.org/en/latest/api/role.html#show
+
+						const id = this.getNodeParameter('id', i) as string;
+
+						responseData = await zammadApiRequest.call(this, 'GET', `/roles/${id}`);
+					} else if (operation === 'getAll') {
+						// ----------------------------------
+						//           role:getAll
+						// ----------------------------------
+
+						// https://docs.zammad.org/en/latest/api/role.html#list
+
+						const returnAll = this.getNodeParameter('returnAll', i);
+
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
+
+						responseData = await zammadApiRequestAllItems.call(
+							this,
+							'GET',
+							'/roles',
 							{},
 							{},
 							limit,

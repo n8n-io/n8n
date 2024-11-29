@@ -1,7 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 
 export declare namespace Zammad {
-	export type Resource = 'group' | 'organization' | 'ticket' | 'user';
+	export type Resource = 'group' | 'organization' | 'ticket' | 'user' | 'role';
 
 	export type AuthMethod = 'basicAuth' | 'tokenAuth';
 
@@ -31,6 +31,13 @@ export declare namespace Zammad {
 		active: boolean;
 		id: number;
 		name: string;
+	};
+
+	export type Role = {
+		active: boolean;
+		id: number;
+		name: string;
+		default_at_signup: boolean;
 	};
 
 	export type Group = Organization;
