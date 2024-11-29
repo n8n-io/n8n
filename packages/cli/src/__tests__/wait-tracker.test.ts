@@ -1,33 +1,46 @@
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { IWorkflowBase } from 'n8n-workflow';
 
+import type { Project } from '@/databases/entities/project';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/interfaces';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
+import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
+import type { WorkflowRunner } from '@/workflow-runner';
 import { mockLogger } from '@test/mocking';
 
 jest.useFakeTimers();
 
 describe('WaitTracker', () => {
+	const ownershipService = mock<OwnershipService>();
+	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 
+	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
 		id: '123',
+		finished: false,
 		waitTill: new Date(Date.now() + 1000),
+		mode: 'manual',
+		data: mock({
+			pushRef: 'push_ref',
+		}),
 	});
+	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
 		waitTracker = new WaitTracker(
 			mockLogger(),
 			executionRepository,
-			mock(),
-			mock(),
+			ownershipService,
+			workflowRunner,
 			orchestrationService,
 			instanceSettings,
 		);
@@ -64,14 +77,22 @@ describe('WaitTracker', () => {
 		});
 
 		describe('if execution to start', () => {
-			it('if not enough time passed, should not start execution', async () => {
+			let startExecutionSpy: jest.SpyInstance<Promise<void>, [executionId: string]>;
+
+			beforeEach(() => {
+				executionRepository.findSingleExecution.mockResolvedValue(execution);
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+
+				startExecutionSpy = jest
+					.spyOn(waitTracker, 'startExecution')
+					.mockImplementation(async () => {});
+
 				waitTracker.init();
+			});
 
-				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+			it('if not enough time passed, should not start execution', async () => {
 				await waitTracker.getWaitingExecutions();
-
-				const startExecutionSpy = jest.spyOn(waitTracker, 'startExecution');
 
 				jest.advanceTimersByTime(100);
 
@@ -79,13 +100,7 @@ describe('WaitTracker', () => {
 			});
 
 			it('if enough time passed, should start execution', async () => {
-				executionRepository.getWaitingExecutions.mockResolvedValue([]);
-				waitTracker.init();
-
-				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 				await waitTracker.getWaitingExecutions();
-
-				const startExecutionSpy = jest.spyOn(waitTracker, 'startExecution');
 
 				jest.advanceTimersByTime(2_000);
 
@@ -100,13 +115,27 @@ describe('WaitTracker', () => {
 			waitTracker.init();
 
 			executionRepository.findSingleExecution.mockResolvedValue(execution);
-			waitTracker.startExecution(execution.id);
-			jest.advanceTimersByTime(5);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+
+			await waitTracker.startExecution(execution.id);
 
 			expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(execution.id, {
 				includeData: true,
 				unflattenData: true,
 			});
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				{
+					executionMode: execution.mode,
+					executionData: execution.data,
+					workflowData: execution.workflowData,
+					projectId: project.id,
+					pushRef: execution.data.pushRef,
+				},
+				false,
+				false,
+				execution.id,
+			);
 		});
 	});
 
@@ -135,8 +164,8 @@ describe('WaitTracker', () => {
 			const waitTracker = new WaitTracker(
 				mockLogger(),
 				executionRepository,
-				mock(),
-				mock(),
+				ownershipService,
+				workflowRunner,
 				orchestrationService,
 				mock<InstanceSettings>({ isLeader: false }),
 			);
