@@ -113,7 +113,7 @@ describe('Webflow -> webflowApiRequest', () => {
 			{
 				method: 'PATCH',
 				returnFullResponse: true,
-				url: `https://api.webflow.com/v2/collections/zzz/items/xxx/live`,
+				url: 'https://api.webflow.com/v2/collections/zzz/items/xxx/live',
 				json: true,
 			},
 		);
@@ -141,7 +141,7 @@ describe('Webflow -> webflowApiRequest', () => {
 			{
 				method: 'PATCH',
 				returnFullResponse: true,
-				url: `https://api.webflow.com/v2/collections/zzz/items/xxx`,
+				url: 'https://api.webflow.com/v2/collections/zzz/items/xxx',
 				json: true,
 			},
 		);
