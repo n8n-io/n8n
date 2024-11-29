@@ -1,0 +1,126 @@
+{
+	"name": "[TEST] Philips Hue",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-340, 0],
+			"id": "b4c1f6ce-b730-4b52-9b28-7d1cdf31e045",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [-80, 0],
+			"id": "4c793cc6-e724-477d-9cca-8d9e7a9458e7",
+			"name": "Philips Hue",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "Y4sLtXQ4hjjvga7Y",
+					"name": "PhilipHue account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [140, 0],
+			"id": "31384e0f-19e7-4ccb-8b6b-8d23a03618ec",
+			"name": "No Operation, do nothing"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"state": {
+						"on": false,
+						"bri": 1,
+						"hue": 33761,
+						"sat": 254,
+						"effect": "none",
+						"xy": [0.3171, 0.3366],
+						"ct": 159,
+						"alert": "none",
+						"colormode": "xy",
+						"mode": "homeautomation",
+						"reachable": true
+					},
+					"swupdate": {
+						"state": "noupdates",
+						"lastinstall": "2018-01-02T19:24:20"
+					},
+					"type": "Extended color light",
+					"name": "Hue color lamp 7",
+					"modelid": "LCT007",
+					"manufacturername": "Philips",
+					"productname": "Hue color lamp",
+					"capabilities": {
+						"certified": true,
+						"control": {
+							"mindimlevel": 5000,
+							"maxlumen": 600,
+							"colorgamuttype": "B",
+							"colorgamut": [[0.675, 0.322], [0.409, 0.518], [0.167, 0.04]],
+							"ct": {
+								"min": 153,
+								"max": 500
+							}
+						},
+						"streaming": {
+							"renderer": true,
+							"proxy": false
+						}
+					},
+					"config": {
+						"archetype": "sultanbulb",
+						"function": "mixed",
+						"direction": "omnidirectional"
+					},
+					"uniqueid": "00:17:88:01:00:bd:c7:b9-0b",
+					"swversion": "5.105.0.21169"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Philips Hue",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Philips Hue": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "129107d8-2091-42a1-b211-d84558cecaf8",
+	"meta": {
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"id": "mp8GU0Saf16b0CAb",
+	"tags": []
+}
