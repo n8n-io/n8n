@@ -6,7 +6,6 @@ import type {
 	Workflow,
 	INodeConnections,
 	WorkflowExecuteMode,
-	ExecutionStatus,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
@@ -42,7 +41,6 @@ import {
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
