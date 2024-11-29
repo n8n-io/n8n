@@ -142,7 +142,8 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	async function pushMessageReceived(event: Event) {
 		let receivedData: PushMessage;
 		try {
-			// @ts-ignore
+			// @Cleanup: Check for data explicitly and log telemetry on missing field if appropriate
+			// @ts-expect-error We're okay to error on missing data attribute here
 			receivedData = JSON.parse(event.data);
 		} catch (error) {
 			return;

@@ -518,7 +518,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		const nodes: INode[] = [];
 		for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-			// @ts-ignore
 			nodeData = getNodeDataToSave(workflowNodes[nodeIndex]);
 
 			nodes.push(nodeData);
@@ -555,16 +554,17 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			'notes',
 			'parameters',
 			'status',
-		];
+		] as const;
 
-		// @ts-ignore
-		const nodeData: INodeUi = {
+		// @Cleanup: Unify the following lines in a type-safe way, probably with Object.assign() and a filter
+		// Cast to INodeUi as we're about to provide all required keys
+		const nodeData = {
 			parameters: {},
-		};
+		} as INodeUi;
 
 		for (const key in node) {
-			if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
-				// @ts-ignore
+			if (key.charAt(0) !== '_' && skipKeys.indexOf(key as never) === -1) {
+				// @ts-expect-error We can't narrow the type to the same key, should Object.assign instead
 				nodeData[key] = node[key];
 			}
 		}

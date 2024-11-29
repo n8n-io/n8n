@@ -4,7 +4,10 @@ import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from './useHistoryHelper';
 import { defineComponent, type PropType } from 'vue';
-import type { RouteLocationNormalizedLoaded } from 'vue-router';
+import type {
+	RouteLocationNormalizedLoaded,
+	RouteLocationNormalizedLoadedGeneric,
+} from 'vue-router';
 import { mock } from 'vitest-mock-extended';
 
 const undoMock = vi.fn();
@@ -56,7 +59,6 @@ describe('useHistoryHelper', () => {
 		redoMock.mockClear();
 	});
 	it('should call undo when Ctrl+Z is pressed', async () => {
-		// @ts-ignore
 		render(TestComponent, {
 			props: {
 				route: mock<RouteLocationNormalizedLoaded>({
@@ -74,7 +76,6 @@ describe('useHistoryHelper', () => {
 		expect(undoMock).toHaveBeenCalledTimes(2);
 	});
 	it('should call redo when Ctrl+Shift+Z is pressed', async () => {
-		// @ts-ignore
 		render(TestComponent, {
 			props: {
 				route: mock<RouteLocationNormalizedLoaded>({
@@ -92,8 +93,7 @@ describe('useHistoryHelper', () => {
 		expect(redoMock).toHaveBeenCalledTimes(2);
 	});
 	it('should not call undo when Ctrl+Z if not on NodeView', async () => {
-		// @ts-ignore
-		render(TestComponent, { props: { route: {} } });
+		render(TestComponent, { props: { route: {} as RouteLocationNormalizedLoadedGeneric } });
 
 		await userEvent.keyboard('{Control>}z');
 		await userEvent.keyboard('{Control>}z');

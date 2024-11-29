@@ -366,7 +366,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 						undefined,
 				};
 			},
-		} as unknown as INodeTypes;
+		};
 
 		return nodeTypes;
 	}

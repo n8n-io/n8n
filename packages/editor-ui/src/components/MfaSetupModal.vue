@@ -9,7 +9,6 @@ import { ref, onMounted } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
 import { mfaEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
-//@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';

@@ -21,8 +21,8 @@ describe('bodyParser', () => {
 		const response = await request(server)
 			.post('/')
 			.set('content-encoding', 'gzip')
-			// @ts-ignore
-			.serialize((d) => gzipSync(JSON.stringify(d)))
+			// Mock for testing
+			.serialize((d) => gzipSync(JSON.stringify(d)) as unknown as string)
 			.send({ hello: 'world' })
 			.expect(200);
 		expect(response.text).toEqual('{"hello":"world"}');
@@ -32,8 +32,8 @@ describe('bodyParser', () => {
 		const response = await request(server)
 			.post('/')
 			.set('content-encoding', 'deflate')
-			// @ts-ignore
-			.serialize((d) => deflateSync(JSON.stringify(d)))
+			// Mock for testing
+			.serialize((d) => deflateSync(JSON.stringify(d)) as unknown as string)
 			.send({ hello: 'world' })
 			.expect(200);
 		expect(response.text).toEqual('{"hello":"world"}');

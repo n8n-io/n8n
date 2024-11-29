@@ -11,13 +11,14 @@ import type { PermissionsRecord } from '@/permissions';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
-const emit = defineEmits<{
-	stop: [data: ExecutionSummary];
-	select: [data: ExecutionSummary];
-	retrySaved: [data: ExecutionSummary];
-	retryOriginal: [data: ExecutionSummary];
-	delete: [data: ExecutionSummary];
-}>();
+const emit = defineEmits<
+	{
+		stop: [data: ExecutionSummary];
+		select: [data: ExecutionSummary];
+	} & {
+		[c in Command]: [data: ExecutionSummary];
+	}
+>();
 
 const props = withDefaults(
 	defineProps<{
@@ -160,8 +161,9 @@ function onSelect() {
 }
 
 async function handleActionItemClick(commandData: Command) {
-	//@ts-ignore todo: fix this type
-	emit(commandData, props.execution);
+	// The `emit` function is not typed very well and does not take type unions of the single event types
+	// Se we need to hide the type
+	emit(commandData as never, props.execution);
 }
 </script>
 <template>
