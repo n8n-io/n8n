@@ -62,13 +62,19 @@ defineExpose({
 const { runWorkflow } = useRunWorkflow({ router });
 
 // Initialize features with injected dependencies
-const { chatTriggerNode, connectedNode, allowFileUploads, setChatTriggerNode, setConnectedNode } =
-	useChatTrigger({
-		workflow,
-		canvasNodes,
-		getNodeByName: workflowsStore.getNodeByName,
-		getNodeType: nodeTypesStore.getNodeType,
-	});
+const {
+	chatTriggerNode,
+	connectedNode,
+	allowFileUploads,
+	allowedFilesMimeTypes,
+	setChatTriggerNode,
+	setConnectedNode,
+} = useChatTrigger({
+	workflow,
+	canvasNodes,
+	getNodeByName: workflowsStore.getNodeByName,
+	getNodeType: nodeTypesStore.getNodeType,
+});
 
 const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
 	chatTrigger: chatTriggerNode,
@@ -125,7 +131,7 @@ function createChatConfig(params: {
 		showWindowCloseButton: true,
 		disabled: params.isDisabled,
 		allowFileUploads: params.allowFileUploads,
-		allowedFilesMimeTypes: '',
+		allowedFilesMimeTypes,
 	};
 
 	return { chatConfig, chatOptions };
