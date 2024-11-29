@@ -32,7 +32,7 @@ export class AiController {
 			}
 		} catch (e) {
 			assert(e instanceof Error);
-			throw new InternalServerError(`Something went wrong: ${e.message}`, e);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 
@@ -44,7 +44,7 @@ export class AiController {
 			return await this.aiService.applySuggestion(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
-			throw new InternalServerError(`Something went wrong: ${e.message}`, e);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 
@@ -54,7 +54,7 @@ export class AiController {
 			return await this.aiService.askAi(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
-			throw new InternalServerError(`Something went wrong: ${e.message}`, e);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 }
