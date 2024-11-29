@@ -18,48 +18,44 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('initErrorHandling', () => {
-	beforeEach(() => {
-		jest.resetModules();
-	});
+	let beforeSend: ClientOptions['beforeSend'];
 
-	it('does not initialize if config is not set', async () => {
-		const errorReporting = require('@/error-reporting');
-		Container.get(GlobalConfig).sentry.backendDsn = '';
-		await errorReporting.initErrorHandling();
-
-		expect(init).not.toHaveBeenCalled();
-	});
-
-	it('keeps events with error cause', async () => {
-		const errorReporting = require('@/error-reporting');
+	beforeAll(async () => {
 		Container.get(GlobalConfig).sentry.backendDsn = 'backend-dsn';
+		const errorReporting = require('@/error-reporting');
 		await errorReporting.initErrorHandling();
+		const options = (init.mock.calls[0] as [ClientOptions])[0];
+		beforeSend = options.beforeSend;
+	});
 
-		expect(init).toHaveBeenCalled();
-		const { beforeSend } = (init.mock.calls[0] as [ClientOptions])[0];
+	it('ignores errors with level warning', async () => {
+		const originalException = new InternalServerError('test');
+		originalException.level = 'warning';
+
+		const event = {} as ErrorEvent;
+
 		assert(beforeSend);
+		expect(await beforeSend(event, { originalException })).toEqual(null);
+	});
 
+	it('keeps events with a cause with error level', async () => {
 		const cause = new Error('cause-error');
 
 		const originalException = new InternalServerError('test', cause);
 		const event = {} as ErrorEvent;
+
+		assert(beforeSend);
 		expect(await beforeSend(event, { originalException })).toEqual(event);
 	});
 
-	it('filters out events with error cause with warning level', async () => {
-		const errorReporting = require('@/error-reporting');
-		Container.get(GlobalConfig).sentry.backendDsn = 'backend-dsn';
-		await errorReporting.initErrorHandling();
-
-		expect(init).toHaveBeenCalled();
-		const { beforeSend } = (init.mock.calls[0] as [ClientOptions])[0];
-		assert(beforeSend);
-
+	it('ignores events with error cause with warning level', async () => {
 		const cause: Error & { level?: 'warning' } = new Error('cause-error');
 		cause.level = 'warning';
 
 		const originalException = new InternalServerError('test', cause);
 		const event = {} as ErrorEvent;
+
+		assert(beforeSend);
 		expect(await beforeSend(event, { originalException })).toEqual(null);
 	});
 });
