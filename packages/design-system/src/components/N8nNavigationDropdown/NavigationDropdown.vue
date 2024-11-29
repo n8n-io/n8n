@@ -29,7 +29,7 @@ defineProps<{
 }>();
 
 const menuRef = ref<typeof ElMenu | null>(null);
-const menuIndex = ref('-1');
+const ROOT_MENU_INDEX = '-1';
 
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
@@ -37,7 +37,18 @@ const emit = defineEmits<{
 }>();
 
 const close = () => {
-	menuRef.value?.close(menuIndex.value);
+	menuRef.value?.close(ROOT_MENU_INDEX);
+};
+
+const menuTrigger = ref<'click' | 'hover'>('click');
+const onOpen = (index: string) => {
+	if (index !== ROOT_MENU_INDEX) return;
+	menuTrigger.value = 'hover';
+};
+
+const onClose = (index: string) => {
+	if (index !== ROOT_MENU_INDEX) return;
+	menuTrigger.value = 'click';
 };
 
 defineExpose({
@@ -50,14 +61,16 @@ defineExpose({
 		ref="menuRef"
 		mode="horizontal"
 		unique-opened
-		menu-trigger="click"
+		:menu-trigger="menuTrigger"
 		:ellipsis="false"
 		:class="$style.dropdown"
 		@select="emit('select', $event)"
 		@keyup.escape="close"
+		@open="onOpen"
+		@close="onClose"
 	>
 		<ElSubMenu
-			:index="menuIndex"
+			:index="ROOT_MENU_INDEX"
 			:class="$style.trigger"
 			:popper-offset="-10"
 			:popper-class="$style.submenu"
@@ -70,7 +83,12 @@ defineExpose({
 
 			<template v-for="item in menu" :key="item.id">
 				<template v-if="item.submenu">
-					<ElSubMenu :index="item.id" :popper-offset="-10" data-test-id="navigation-submenu">
+					<ElSubMenu
+						:popper-class="$style.nestedSubmenu"
+						:index="item.id"
+						:popper-offset="-10"
+						data-test-id="navigation-submenu"
+					>
 						<template #title>{{ item.title }}</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
 							<ConditionalRouterLink :to="!subitem.disabled && subitem.route">
@@ -122,6 +140,13 @@ defineExpose({
 				border: 0;
 			}
 		}
+	}
+}
+
+.nestedSubmenu {
+	:global(.el-menu) {
+		max-height: 450px;
+		overflow: auto;
 	}
 }
 
