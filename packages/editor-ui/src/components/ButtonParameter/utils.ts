@@ -57,6 +57,80 @@ export function getSchemas() {
 	};
 }
 
+function reducePayloadSize(payload: AskAiRequest.RequestPayload, error: Error) {
+	const AVERAGE_TOKEN_LENGTH = 4;
+	try {
+		//calculate how many tokens has to be reduced
+		const tokens = error.message.match(/\d+/g);
+		if (!tokens || tokens.length < 2) throw error;
+
+		const maxTokens = parseInt(tokens[0]);
+		const currentTokens = parseInt(tokens[1]);
+
+		let tokensToReduce = currentTokens - maxTokens;
+
+		//check if parent nodes schema taces more tokens than available
+		let parentNodesTokens = Math.ceil(
+			JSON.stringify(payload.context.schema).length / AVERAGE_TOKEN_LENGTH,
+		);
+
+		if (tokensToReduce > parentNodesTokens) {
+			tokensToReduce -= parentNodesTokens;
+			payload.context.schema = [];
+		}
+
+		//remove parent nodes not referenced in the prompt
+		if (payload.context.schema.length) {
+			const nodesLength = payload.context.schema.length;
+
+			for (let nodeIndex = nodesLength - 1; nodeIndex >= 0; nodeIndex--) {
+				if (payload.question.includes(payload.context.schema[nodeIndex].nodeName)) continue;
+
+				const nodeTokens = Math.ceil(
+					JSON.stringify(payload.context.schema[nodeIndex]).length / AVERAGE_TOKEN_LENGTH,
+				);
+				tokensToReduce -= nodeTokens;
+				parentNodesTokens -= nodeTokens;
+
+				payload.context.schema.splice(nodeIndex, 1);
+
+				if (tokensToReduce <= 0) break;
+			}
+		}
+
+		if (tokensToReduce <= 0) return;
+
+		//remove properties not referenced in the prompt from the input schema
+		if (typeof payload.context.inputSchema.schema.value === 'object') {
+			const propsLength = payload.context.inputSchema.schema.value.length;
+			for (let index = propsLength - 1; index >= 0; index--) {
+				const key = payload.context.inputSchema.schema.value[index].key;
+				if (key && payload.question.includes(key)) continue;
+
+				const propTokens = Math.ceil(
+					JSON.stringify(payload.context.inputSchema.schema.value[index]).length /
+						AVERAGE_TOKEN_LENGTH,
+				);
+				tokensToReduce -= propTokens;
+
+				payload.context.inputSchema.schema.value.splice(index, 1);
+
+				if (tokensToReduce <= 0) break;
+			}
+		} else throw error;
+
+		//if tokensToReduce is still remainig, remove all parent nodes
+		if (tokensToReduce > 0 && tokensToReduce - parentNodesTokens <= 0) {
+			payload.context.schema = [];
+			return;
+		}
+
+		if (tokensToReduce > 0) throw error;
+	} catch (e) {
+		throw e;
+	}
+}
+
 export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
 	const schemas = getSchemas();
 
@@ -83,6 +157,11 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 				code = generatedCode;
 				break;
 			} catch (e) {
+				if (e.message.includes('maximum context length')) {
+					reducePayloadSize(payload, e);
+					continue;
+				}
+
 				retries--;
 				if (!retries) throw e;
 			}
