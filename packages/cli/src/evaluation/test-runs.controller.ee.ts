@@ -14,8 +14,9 @@ export class TestRunsController {
 		private readonly testRunRepository: TestRunRepository,
 	) {}
 
-	// This method is used in multiple places in the controller to get the test definition
-	// (or just check that it exists and the user has access to it).
+	/** This method is used in multiple places in the controller to get the test definition
+	 * (or just check that it exists and the user has access to it).
+	 */
 	private async getTestDefinition(
 		req: TestRunsRequest.GetOne | TestRunsRequest.GetMany | TestRunsRequest.Delete,
 	) {

@@ -10,6 +10,7 @@ import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 let authOwnerAgent: SuperAgentTest;
 let workflowUnderTest: WorkflowEntity;
@@ -18,7 +19,10 @@ let testDefinition: TestDefinition;
 let otherTestDefinition: TestDefinition;
 let ownerShell: User;
 
-const testServer = utils.setupTestServer({ endpointGroups: ['evaluation'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['workflows', 'evaluation'],
+	enabledFeatures: ['feat:sharing'],
+});
 
 beforeAll(async () => {
 	ownerShell = await createUserShell('global:owner');
@@ -26,7 +30,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TestDefinition', 'TestRun']);
+	await testDb.truncate(['TestDefinition', 'TestRun', 'Workflow', 'SharedWorkflow']);
 
 	workflowUnderTest = await createWorkflow({ name: 'workflow-under-test' }, ownerShell);
 
@@ -164,6 +168,37 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
 		);
 
 		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should retrieve test run for a test definition of a shared workflow', async () => {
+		const memberShell = await createUserShell('global:member');
+		const memberAgent = testServer.authAgentFor(memberShell);
+		const memberPersonalProject = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(memberShell.id);
+
+		// Share workflow with a member
+		const sharingResponse = await authOwnerAgent
+			.put(`/workflows/${workflowUnderTest.id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
+
+		expect(sharingResponse.statusCode).toBe(200);
+
+		// Create a test run for the shared workflow
+		const testRunRepository = Container.get(TestRunRepository);
+		const testRun = await testRunRepository.createTestRun(testDefinition.id);
+
+		// Check if member can retrieve the test run of a shared workflow
+		const resp = await memberAgent.get(
+			`/evaluation/test-definitions/${testDefinition.id}/runs/${testRun.id}`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual(
+			expect.objectContaining({
+				id: testRun.id,
+			}),
+		);
 	});
 });
 
