@@ -351,7 +351,7 @@ async function handleActionItemClick(commandData: Command) {
 	}
 
 	&.new td:first-child::before {
-		background: var(--execution-card-border-new);
+		background: var(--execution-card-border-waiting);
 	}
 
 	&.running td:first-child::before {
@@ -401,8 +401,8 @@ async function handleActionItemClick(commandData: Command) {
 		font-weight: var(--font-weight-normal);
 	}
 
-	.new {
-		color: var(--color-text-dark);
+	.new & {
+		color: var(--execution-card-text-waiting);
 	}
 
 	.running & {
