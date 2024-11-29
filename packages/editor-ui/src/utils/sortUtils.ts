@@ -220,6 +220,12 @@ export function sublimeSearch<T extends object>(
 	data: Readonly<T[]>,
 	keys: Array<{ key: string; weight: number }>,
 ): Array<{ score: number; item: T }> {
+	// Helper to check if the search term exists as a whole word
+	const containsWord = (text: string, word: string): boolean => {
+		const regex = new RegExp(`\\b${word}\\b`, 'i');
+		return regex.test(text);
+	};
+
 	const results = data.reduce((accu: Array<{ score: number; item: T }>, item: T) => {
 		let values: Array<{ value: string; weight: number }> = [];
 		keys.forEach(({ key, weight }) => {
@@ -240,6 +246,23 @@ export function sublimeSearch<T extends object>(
 				accu: null | { matched: boolean; outScore: number },
 				{ value, weight }: { value: string; weight: number },
 			) => {
+				// Check for whole word match first
+				if (containsWord(value, filter)) {
+					return {
+						matched: true,
+						outScore: 1000 * weight, // High score for whole word matches
+					};
+				}
+
+				// Check for substring match (case-insensitive)
+				if (value.toLowerCase().includes(filter.toLowerCase())) {
+					return {
+						matched: true,
+						outScore: 500 * weight, // Medium score for substring matches
+					};
+				}
+
+				// Fall back to fuzzy match
 				if (!fuzzyMatchSimple(filter, value)) {
 					return accu;
 				}
@@ -269,13 +292,10 @@ export function sublimeSearch<T extends object>(
 		return accu;
 	}, []);
 
-	results.sort((a, b) => {
-		return b.score - a.score;
-	});
+	results.sort((a, b) => b.score - a.score);
 
 	return results;
 }
-
 export const sortByProperty = <T>(
 	property: keyof T,
 	arr: T[],
