@@ -6,13 +6,7 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type {
-	Connection,
-	XYPosition,
-	ViewportTransform,
-	NodeDragEvent,
-	GraphNode,
-} from '@vue-flow/core';
+import type { Connection, XYPosition, NodeDragEvent, GraphNode } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
@@ -114,6 +108,7 @@ const {
 	project,
 	nodes: graphNodes,
 	onPaneReady,
+	onNodesInitialized,
 	findNode,
 	viewport,
 	onEdgeMouseLeave,
@@ -355,7 +350,6 @@ const arrowHeadMarkerId = ref('custom-arrow-head');
 
 const edgesHoveredById = ref<Record<string, boolean>>({});
 const edgesBringToFrontById = ref<Record<string, boolean>>({});
-const nodesHoveredById = ref<Record<string, boolean>>({});
 
 onEdgeMouseEnter(({ edge }) => {
 	edgesBringToFrontById.value = { [edge.id]: true };
@@ -386,6 +380,13 @@ onEdgeMouseLeave(({ edge }) => {
 	edgesHoveredById.value = { [edge.id]: false };
 });
 
+function onUpdateEdgeLabelHovered(id: string, hovered: boolean) {
+	edgesBringToFrontById.value = { [id]: true };
+	edgesHoveredById.value[id] = hovered;
+}
+
+const nodesHoveredById = ref<Record<string, boolean>>({});
+
 onNodeMouseEnter(({ node }) => {
 	nodesHoveredById.value = { [node.id]: true };
 });
@@ -393,10 +394,6 @@ onNodeMouseEnter(({ node }) => {
 onNodeMouseLeave(({ node }) => {
 	nodesHoveredById.value = { [node.id]: false };
 });
-
-function onUpdateEdgeHovered(id: string, hovered: boolean) {
-	edgesHoveredById.value[id] = hovered;
-}
 
 /**
  * Executions
@@ -431,7 +428,6 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
  */
 
 const defaultZoom = 1;
-const zoom = ref(defaultZoom);
 const isPaneMoving = ref(false);
 
 function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
@@ -467,10 +463,6 @@ async function onZoomOut() {
 
 async function onResetZoom() {
 	await onZoomTo(defaultZoom);
-}
-
-function onViewportChange(viewport: ViewportTransform) {
-	zoom.value = viewport.zoom;
 }
 
 function setReadonly(value: boolean) {
@@ -589,6 +581,8 @@ function onMinimapMouseLeave() {
  * Lifecycle
  */
 
+const initialized = ref(false);
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
@@ -604,6 +598,10 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
+onNodesInitialized(() => {
+	initialized.value = true;
+});
+
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
@@ -617,6 +615,8 @@ const isExecuting = toRef(props, 'executing');
 provide(CanvasKey, {
 	connectingHandle,
 	isExecuting,
+	initialized,
+	viewport,
 });
 </script>
 
@@ -644,7 +644,6 @@ provide(CanvasKey, {
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
 		@contextmenu="onOpenContextMenu"
-		@viewport-change="onViewportChange"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
@@ -656,7 +655,6 @@ provide(CanvasKey, {
 				:read-only="readOnly"
 				:event-bus="eventBus"
 				:hovered="nodesHoveredById[nodeProps.id]"
-				:bring-to-front="nodesHoveredById[nodeProps.id]"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
@@ -678,7 +676,7 @@ provide(CanvasKey, {
 				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
-				@update:hovered="onUpdateEdgeHovered(edgeProps.id, $event)"
+				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
 			/>
 		</template>
 
@@ -717,7 +715,7 @@ provide(CanvasKey, {
 			:position="controlsPosition"
 			:show-interactive="false"
 			:show-bug-reporting-button="showBugReportingButton"
-			:zoom="zoom"
+			:zoom="viewport.zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"

@@ -18,6 +18,7 @@ catalog:
   fast-glob: 3.2.12
   flatted: 3.2.7
   form-data: 4.0.0
+  iconv-lite: 0.6.3
   lodash: 4.17.21
   luxon: 3.4.4
   nanoid: 3.3.6

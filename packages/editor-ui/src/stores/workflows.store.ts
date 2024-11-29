@@ -84,7 +84,7 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
-import { openPopUpWindow } from '@/utils/executionUtils';
+import { closeFormPopupWindow, openFormPopupWindow } from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
@@ -143,7 +143,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
-	const formPopupWindow = ref<Window | null>(null);
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -1201,6 +1200,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeAtIndex(nodeIndex, {
 			[updateInformation.key]: updateInformation.value,
 		});
+
+		if (updateInformation.key !== 'position') {
+			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+		}
 	}
 
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
@@ -1319,12 +1322,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
 			) {
 				const testUrl = getFormResumeUrl(node, executionId);
-				if (!formPopupWindow.value || formPopupWindow.value.closed) {
-					formPopupWindow.value = openPopUpWindow(testUrl);
-				} else {
-					formPopupWindow.value.location = testUrl;
-					formPopupWindow.value.focus();
-				}
+				openFormPopupWindow(testUrl);
 			}
 		} else {
 			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
@@ -1577,8 +1575,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
 
-		formPopupWindow.value?.close();
-		formPopupWindow.value = null;
+		closeFormPopupWindow();
 
 		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
 		for (const nodeName in runData) {
