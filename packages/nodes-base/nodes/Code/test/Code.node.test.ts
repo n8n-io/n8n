@@ -57,7 +57,8 @@ describe('Code Node unit test', () => {
 					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
-					expect(output).toEqual([expected]);
+
+					expect([...output]).toEqual([expected]);
 				}),
 			);
 		});
@@ -109,7 +110,7 @@ describe('Code Node unit test', () => {
 					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
-					expect(output).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
+					expect([...output]).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
 				}),
 			);
 		});

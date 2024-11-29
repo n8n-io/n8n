@@ -91,7 +91,7 @@ defineExpose({ editor });
 	:global(.cm-content) {
 		border-radius: var(--border-radius-base);
 		&[aria-readonly='true'] {
-			--disabled-fill: var(--color-background-medium);
+			--disabled-fill: var(--color-background-base);
 			background-color: var(--disabled-fill, var(--color-background-light));
 			color: var(--disabled-color, var(--color-text-base));
 			cursor: not-allowed;

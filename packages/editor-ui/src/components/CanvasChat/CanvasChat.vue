@@ -25,11 +25,9 @@ import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import type { RunWorkflowChatPayload } from './composables/useChatMessaging';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const workflowsStore = useWorkflowsStore();
-const uiStore = useUIStore();
 const canvasStore = useCanvasStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
@@ -43,10 +41,7 @@ const container = ref<HTMLElement>();
 
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const isLoading = computed(() => {
-	const result = uiStore.isActionActive.workflowRunning;
-	return result;
-});
+
 const allConnections = computed(() => workflowsStore.allConnections);
 const isChatOpen = computed(() => {
 	const result = workflowsStore.isChatPanelOpen;
@@ -55,34 +50,38 @@ const isChatOpen = computed(() => {
 const canvasNodes = computed(() => workflowsStore.allNodes);
 const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-
+const resultData = computed(() => workflowsStore.getWorkflowRunData);
 // Expose internal state for testing
 defineExpose({
 	messages,
 	currentSessionId,
 	isDisabled,
 	workflow,
-	isLoading,
 });
 
 const { runWorkflow } = useRunWorkflow({ router });
 
 // Initialize features with injected dependencies
-const { chatTriggerNode, connectedNode, allowFileUploads, setChatTriggerNode, setConnectedNode } =
-	useChatTrigger({
-		workflow,
-		canvasNodes,
-		getNodeByName: workflowsStore.getNodeByName,
-		getNodeType: nodeTypesStore.getNodeType,
-	});
+const {
+	chatTriggerNode,
+	connectedNode,
+	allowFileUploads,
+	allowedFilesMimeTypes,
+	setChatTriggerNode,
+	setConnectedNode,
+} = useChatTrigger({
+	workflow,
+	canvasNodes,
+	getNodeByName: workflowsStore.getNodeByName,
+	getNodeType: nodeTypesStore.getNodeType,
+});
 
-const { sendMessage, getChatMessages } = useChatMessaging({
+const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
 	chatTrigger: chatTriggerNode,
 	connectedNode,
 	messages,
 	sessionId: currentSessionId,
 	workflow,
-	isLoading,
 	executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
 	getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
@@ -132,7 +131,7 @@ function createChatConfig(params: {
 		showWindowCloseButton: true,
 		disabled: params.isDisabled,
 		allowFileUploads: params.allowFileUploads,
-		allowedFilesMimeTypes: '',
+		allowedFilesMimeTypes,
 	};
 
 	return { chatConfig, chatOptions };
@@ -173,15 +172,50 @@ const closePanel = () => {
 	workflowsStore.setPanelOpen('chat', false);
 };
 
-async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
-	const response = await runWorkflow({
-		triggerNode: payload.triggerNode,
-		nodeData: payload.nodeData,
-		source: payload.source,
+// This function creates a promise that resolves when the workflow execution completes
+// It's used to handle the loading state while waiting for the workflow to finish
+async function createExecutionPromise() {
+	let resolvePromise: () => void;
+	const promise = new Promise<void>((resolve) => {
+		resolvePromise = resolve;
 	});
 
-	workflowsStore.appendChatMessage(payload.message);
-	return response;
+	// Watch for changes in the workflow execution status
+	const stopWatch = watch(
+		() => workflowsStore.getWorkflowExecution?.status,
+		(newStatus) => {
+			// If the status is no longer 'running', resolve the promise
+			if (newStatus && newStatus !== 'running') {
+				resolvePromise();
+				// Stop the watcher when the promise is resolved
+				stopWatch();
+			}
+		},
+		{ immediate: true }, // Check the status immediately when the watcher is set up
+	);
+
+	// Return the promise, which will resolve when the workflow execution is complete
+	// This allows the caller to await the execution and handle the loading state appropriately
+	return await promise;
+}
+
+async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
+	try {
+		const response = await runWorkflow({
+			triggerNode: payload.triggerNode,
+			nodeData: payload.nodeData,
+			source: payload.source,
+		});
+
+		if (response) {
+			await createExecutionPromise();
+			workflowsStore.appendChatMessage(payload.message);
+			return response;
+		}
+		return;
+	} catch (error) {
+		throw error;
+	}
 }
 
 // Initialize chat config
@@ -240,7 +274,7 @@ watchEffect(() => {
 </script>
 
 <template>
-	<n8n-resize-wrapper
+	<N8nResizeWrapper
 		v-if="chatTriggerNode"
 		:is-resizing-enabled="isChatOpen || isLogsOpen"
 		:supported-directions="['top']"
@@ -264,6 +298,8 @@ watchEffect(() => {
 							:messages="messages"
 							:session-id="currentSessionId"
 							:past-chat-messages="previousChatMessages"
+							:show-close-button="!connectedNode"
+							@close="closePanel"
 							@refresh-session="handleRefreshSession"
 							@display-execution="handleDisplayExecution"
 							@send-message="sendMessage"
@@ -272,7 +308,7 @@ watchEffect(() => {
 				</n8n-resize-wrapper>
 				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
 					<ChatLogsPanel
-						:key="messages.length"
+						:key="`${resultData?.length ?? messages?.length}`"
 						:workflow="workflow"
 						data-test-id="canvas-chat-logs"
 						:node="connectedNode"
@@ -282,7 +318,7 @@ watchEffect(() => {
 				</div>
 			</div>
 		</div>
-	</n8n-resize-wrapper>
+	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>

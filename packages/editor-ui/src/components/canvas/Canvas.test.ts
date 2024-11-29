@@ -87,8 +87,6 @@ describe('Canvas', () => {
 	});
 
 	it('should handle `update:nodes:position` event', async () => {
-		vi.useFakeTimers();
-
 		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({
 			props: {
@@ -111,8 +109,6 @@ describe('Canvas', () => {
 			clientY: 40,
 		});
 		await fireEvent.mouseUp(node, { view: window });
-
-		vi.advanceTimersByTime(250); // Event debounce time
 
 		expect(emitted()['update:nodes:position']).toEqual([
 			[

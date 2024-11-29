@@ -6,6 +6,7 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 } from 'n8n-workflow';
+import * as a from 'node:assert/strict';
 
 /**
  * Strips data from data request response based on the specified parameters
@@ -81,11 +82,31 @@ export class DataRequestResponseStripper {
 	}
 
 	private stripInputData(inputData: ITaskDataConnections): ITaskDataConnections {
-		if (this.stripParams.input) {
+		if (!this.stripParams.input.include) {
+			return {};
+		}
+
+		return this.stripParams.input.chunk ? this.stripChunkedInputData(inputData) : inputData;
+	}
+
+	private stripChunkedInputData(inputData: ITaskDataConnections): ITaskDataConnections {
+		const { chunk } = this.stripParams.input;
+		a.ok(chunk);
+
+		const inputItems = inputData.main?.[0];
+		if (!inputItems) {
 			return inputData;
 		}
 
-		return {};
+		// If a chunk of the input data is requested, we only return that chunk
+		// It is the responsibility of the requester to rebuild the input data
+		const chunkInputItems = inputItems.slice(chunk.startIndex, chunk.startIndex + chunk.count);
+		const chunkedInputData: ITaskDataConnections = {
+			...inputData,
+			main: [chunkInputItems],
+		};
+
+		return chunkedInputData;
 	}
 
 	/**

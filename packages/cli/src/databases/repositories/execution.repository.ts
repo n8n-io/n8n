@@ -163,7 +163,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData', 'metadata');
+
+			if (Array.isArray(queryParams.relations)) {
+				queryParams.relations.push('executionData', 'metadata');
+			} else {
+				queryParams.relations.executionData = true;
+				queryParams.relations.metadata = true;
+			}
 		}
 
 		const executions = await this.find(queryParams);
@@ -981,7 +987,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (projectId) {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
-				.where('sw.projectId = :projectId', { projectId });
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;

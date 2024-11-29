@@ -16,7 +16,6 @@ export const newTaskWithSettings = (
 	settings: {
 		workflowMode: 'manual',
 		continueOnFail: false,
-		mode: 'manual',
 		...settings,
 	},
 	active: true,

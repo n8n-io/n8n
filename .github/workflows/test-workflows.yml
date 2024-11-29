@@ -74,6 +74,8 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
           SKIP_STATISTICS_EVENTS: true
           DB_SQLITE_POOL_SIZE: 4
+          N8N_SENTRY_DSN: ${{secrets.CI_SENTRY_DSN}}
+
       # -
       #   name: Export credentials
       #   if: always()
@@ -93,7 +95,7 @@ jobs:
 
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
-        if: failure()
+        if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
           channel: '#alerts-build'

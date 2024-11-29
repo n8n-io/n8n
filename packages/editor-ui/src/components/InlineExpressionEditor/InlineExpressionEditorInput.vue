@@ -127,7 +127,7 @@ defineExpose({
 	padding-left: 0;
 }
 :deep(.cm-content) {
-	--disabled-fill: var(--color-background-medium);
+	--disabled-fill: var(--color-background-base);
 	padding-left: var(--spacing-2xs);
 
 	&[aria-readonly='true'] {

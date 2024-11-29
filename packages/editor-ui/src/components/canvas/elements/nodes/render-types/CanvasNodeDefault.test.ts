@@ -1,12 +1,18 @@
 import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { NodeConnectionType } from 'n8n-workflow';
-import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 
-const renderComponent = createComponentRenderer(CanvasNodeDefault);
+const renderComponent = createComponentRenderer(CanvasNodeDefault, {
+	global: {
+		provide: {
+			...createCanvasProvide(),
+		},
+	},
+});
 
 beforeEach(() => {
 	const pinia = createTestingPinia();

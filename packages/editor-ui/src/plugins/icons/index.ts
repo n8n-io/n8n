@@ -51,6 +51,7 @@ import {
 	faEllipsisH,
 	faEllipsisV,
 	faEnvelope,
+	faEquals,
 	faEye,
 	faExclamationTriangle,
 	faExpand,
@@ -223,6 +224,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faEllipsisH);
 		addIcon(faEllipsisV);
 		addIcon(faEnvelope);
+		addIcon(faEquals);
 		addIcon(faEye);
 		addIcon(faExclamationTriangle);
 		addIcon(faExpand);
