@@ -426,6 +426,56 @@ const createFields: INodeProperties[] = [
 				validateType: 'string',
 			},
 			{
+				displayName: 'Membership Rule',
+				name: 'membershipRule',
+				default: '',
+				description:
+					'The <a href="https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership">dynamic membership rules</a>',
+				displayOptions: {
+					show: {
+						'/membershipType': ['DynamicMembership'],
+					},
+				},
+				placeholder: 'e.g. user.department -eq "Marketing"',
+				routing: {
+					send: {
+						property: 'membershipRule',
+						type: 'body',
+					},
+				},
+				type: 'string',
+				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule Processing State',
+				name: 'membershipRuleProcessingState',
+				default: 'On',
+				description: 'Indicates whether the dynamic membership processing is on or paused',
+				displayOptions: {
+					show: {
+						'/membershipType': ['DynamicMembership'],
+					},
+				},
+				options: [
+					{
+						name: 'On',
+						value: 'On',
+					},
+					{
+						name: 'Paused',
+						value: 'Paused',
+					},
+				],
+				routing: {
+					send: {
+						property: 'membershipRuleProcessingState',
+						type: 'body',
+					},
+				},
+				type: 'string',
+				validateType: 'string',
+			},
+			{
 				displayName: 'Preferred Data Location',
 				name: 'preferredDataLocation',
 				default: '',
@@ -479,7 +529,9 @@ const createFields: INodeProperties[] = [
 						for (const item of items) {
 							const groupId = item.json.id as string;
 							const fields = this.getNodeParameter('additionalFields', item.index) as IDataObject;
-							// delete fields.isAssignableToRole;
+							delete fields.isAssignableToRole;
+							delete fields.membershipRule;
+							delete fields.membershipRuleProcessingState;
 							if (Object.keys(fields).length) {
 								const body: IDataObject = {
 									...fields,
