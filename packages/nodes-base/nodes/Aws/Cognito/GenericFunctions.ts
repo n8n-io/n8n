@@ -12,7 +12,7 @@ import type {
 	DeclarativeRestApiSettings,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /* Function which helps while developing the node */
 // ToDo: Remove before completing the pull request
@@ -114,7 +114,6 @@ export async function processAttributes(
 
 /* Helper function to handle pagination */
 const possibleRootProperties = ['Users', 'Groups'];
-// ToDo: Test if pagination works
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
 	resultOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -122,19 +121,25 @@ export async function handlePagination(
 	const aggregatedResult: IDataObject[] = [];
 	let nextPageToken: string | undefined;
 	const returnAll = this.getNodeParameter('returnAll') as boolean;
-	let limit = 100;
+	let limit = 60;
+
 	if (!returnAll) {
 		limit = this.getNodeParameter('limit') as number;
-		resultOptions.maxResults = limit;
+		resultOptions.maxResults = limit > 60 ? 60 : limit;
 	}
 	resultOptions.paginate = true;
 
-	do {
-		console.log('----> TOKEN', nextPageToken);
+	const resource = this.getNodeParameter('resource') as string;
+	const tokenKey = resource === 'group' ? 'NextToken' : 'PaginationToken';
 
+	do {
 		if (nextPageToken) {
-			resultOptions.options.qs = { ...resultOptions.options.qs, PaginationToken: nextPageToken };
-			console.log('----> GOT HERE');
+			resultOptions.options.body = JSON.stringify({
+				...(typeof resultOptions.options.body === 'string'
+					? jsonParse(resultOptions.options.body)
+					: resultOptions.options.body),
+				[tokenKey]: nextPageToken,
+			});
 		}
 
 		const responseData = await this.makeRoutingRequest(resultOptions);
@@ -154,7 +159,6 @@ export async function handlePagination(
 			nextPageToken = page.json.PaginationToken as string | undefined;
 		}
 	} while (nextPageToken);
-	console.log('----> Array with results', aggregatedResult);
 
 	return aggregatedResult.map((item) => ({ json: item }));
 }

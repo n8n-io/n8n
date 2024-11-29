@@ -593,6 +593,7 @@ const getAllFields: INodeProperties[] = [
 		default: 20,
 		description: 'Max number of results to return',
 		displayOptions: { show: { resource: ['group'], operation: ['getAll'], returnAll: [false] } },
+		routing: { send: { type: 'body', property: 'Limit' } },
 	},
 	{
 		displayName: 'User Pool ID',

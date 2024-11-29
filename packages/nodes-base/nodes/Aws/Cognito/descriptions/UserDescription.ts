@@ -639,6 +639,7 @@ const getAllFields: INodeProperties[] = [
 		default: 20,
 		description: 'Max number of results to return',
 		displayOptions: { show: { resource: ['user'], operation: ['getAll'], returnAll: [false] } },
+		routing: { send: { type: 'body', property: 'Limit' } },
 	},
 	{
 		displayName: 'Additional Fields',
