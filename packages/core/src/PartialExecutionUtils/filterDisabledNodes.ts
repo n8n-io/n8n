@@ -1,9 +1,9 @@
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { DirectedGraph } from './DirectedGraph';
+import type { DirectedGraph } from './DirectedGraph';
 
 export function filterDisabledNodes(graph: DirectedGraph): DirectedGraph {
-	const filteredGraph = DirectedGraph.fromDirectedGraph(graph);
+	const filteredGraph = graph.clone();
 
 	for (const node of filteredGraph.getNodes().values()) {
 		if (node.disabled) {

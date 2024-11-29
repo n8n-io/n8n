@@ -470,10 +470,10 @@ export class DirectedGraph {
 		return graph;
 	}
 
-	static fromDirectedGraph(graph: DirectedGraph) {
+	clone() {
 		return new DirectedGraph()
-			.addNodes(...graph.getNodes().values())
-			.addConnections(...graph.getConnections().values());
+			.addNodes(...this.getNodes().values())
+			.addConnections(...this.getConnections().values());
 	}
 
 	private toIConnections() {
