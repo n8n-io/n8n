@@ -128,7 +128,9 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Get the output of the last node executed in the evaluation workflow.
+	 * Evaluation result is the first item in the output of the last node
+	 * executed in the evaluation workflow. Defaults to an empty object
+	 * in case the node doesn't produce any output items.
 	 */
 	private extractEvaluationResult(execution: IRun): IDataObject {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
