@@ -50,7 +50,7 @@ export const useGlobalEntityCreation = (
 
 	const menu = computed<Item[]>(() => {
 		// Community
-		if (!projectsStore.canCreateProjects) {
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return [
 				{
 					id: 'workflow',
