@@ -2,7 +2,7 @@ import nock from 'nock';
 
 import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-import { currentWeatherResponse, errorResponse } from './apiResponses';
+import { currentWeatherResponse } from './apiResponses';
 
 describe('OpenWeatherMap', () => {
 	describe('Run OpenWeatherMap workflow', () => {
@@ -16,11 +16,6 @@ describe('OpenWeatherMap', () => {
 				.get('/data/2.5/weather')
 				.query({ units: 'metric', q: 'berlin,de', lang: 'en' })
 				.reply(200, currentWeatherResponse);
-
-			nock('https://api.openweathermap.org')
-				.get('/data/2.5/weather')
-				.query({ units: 'metric', q: 'invalid', lang: 'en' })
-				.reply(404, errorResponse);
 		});
 
 		afterAll(() => {

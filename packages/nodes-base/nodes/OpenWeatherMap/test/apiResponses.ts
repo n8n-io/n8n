@@ -43,7 +43,3 @@ export const currentWeatherResponse = {
 	name: 'Berlin',
 	cod: 200,
 };
-
-export const errorResponse = {
-	error: 'The resource you are requesting could not be found',
-};
