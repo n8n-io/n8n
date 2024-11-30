@@ -381,3 +381,19 @@ export const sendAudioResponse = {
 		},
 	},
 };
+
+export const getMemberResponse = {
+	ok: true,
+	result: {
+		user: {
+			id: 123456789,
+			is_bot: false,
+			first_name: 'Nathan',
+			last_name: 'W',
+			username: 'n8n',
+			language_code: 'en',
+		},
+		status: 'creator',
+		is_anonymous: false,
+	},
+};

@@ -5,7 +5,7 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-60, 1540],
+			"position": [-60, 2000],
 			"id": "c4d16e3b-b442-4497-87ca-b946f7106da8",
 			"name": "When clicking ‘Test workflow’"
 		},
@@ -479,6 +479,59 @@
 			"position": [440, 2020],
 			"id": "47117767-0f12-4ecf-9a64-f0bda661c1aa",
 			"name": "No Operation, do nothing15"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "leave",
+				"chatId": "-1002433089005"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [220, 2200],
+			"id": "abc0591b-cd27-4603-8635-9cc90be1f87a",
+			"name": "Leave Chat",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 2200],
+			"id": "4222cedf-6267-46a2-a9da-542ff1f709c4",
+			"name": "No Operation, do nothing16"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "member",
+				"chatId": "-1002433089005",
+				"userId": "123456789"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [220, 2380],
+			"id": "2057b4b7-1bde-4dcd-9fb3-da3a1dae8afd",
+			"name": "Chat Get Member",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 2380],
+			"id": "ff742218-5832-4f5b-8e2b-bf5cd4231dc1",
+			"name": "No Operation, do nothing17"
 		}
 	],
 	"pinData": {
@@ -934,6 +987,33 @@
 					"result": true
 				}
 			}
+		],
+		"No Operation, do nothing16": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing17": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"user": {
+							"id": 123456789,
+							"is_bot": false,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"language_code": "en"
+						},
+						"status": "creator",
+						"is_anonymous": false
+					}
+				}
+			}
 		]
 	},
 	"connections": {
@@ -1017,6 +1097,16 @@
 					},
 					{
 						"node": "Send Chat Action",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Leave Chat",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chat Get Member",
 						"type": "main",
 						"index": 0
 					}
@@ -1199,13 +1289,35 @@
 					}
 				]
 			]
+		},
+		"Leave Chat": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing16",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Get Member": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing17",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "33b41334-65cc-4674-9701-1840f90c3542",
+	"versionId": "364f5fce-de4b-42fb-a586-a05cf3551f13",
 	"meta": {
 		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
 	},
