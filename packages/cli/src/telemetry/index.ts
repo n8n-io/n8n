@@ -5,7 +5,6 @@ import { InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
 
-import config from '@/config';
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
@@ -54,10 +53,9 @@ export class Telemetry {
 	) {}
 
 	async init() {
-		const enabled = config.getEnv('diagnostics.enabled');
+		const { enabled, backendConfig } = this.globalConfig.diagnostics;
 		if (enabled) {
-			const conf = config.getEnv('diagnostics.config.backend');
-			const [key, dataPlaneUrl] = conf.split(';');
+			const [key, dataPlaneUrl] = backendConfig.split(';');
 
 			if (!key || !dataPlaneUrl) {
 				this.logger.warn('Diagnostics backend config is invalid');
@@ -188,6 +186,10 @@ export class Telemetry {
 		this.rudderStack.identify({
 			userId: instanceId,
 			traits: { ...traits, instanceId },
+			context: {
+				// provide a fake IP address to instruct RudderStack to not use the user's IP address
+				ip: '0.0.0.0',
+			},
 		});
 	}
 
@@ -212,13 +214,18 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
+			context: {},
 		};
 
 		if (withPostHog) {
 			this.postHog?.track(payload);
 		}
 
-		return this.rudderStack.track(payload);
+		return this.rudderStack.track({
+			...payload,
+			// provide a fake IP address to instruct RudderStack to not use the user's IP address
+			context: { ...payload.context, ip: '0.0.0.0' },
+		});
 	}
 
 	// test helpers

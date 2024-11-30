@@ -1,4 +1,4 @@
-import { NodeExecuteFunctions } from 'n8n-core';
+import { LoadOptionsContext, NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -54,7 +54,7 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType.description.requestDefaults?.baseURL) {
-			// This in in here for now for security reasons.
+			// This is in here for now for security reasons.
 			// Background: As the full data for the request to make does get send, and the auth data
 			// will then be applied, would it be possible to retrieve that data like that. By at least
 			// requiring a baseURL to be defined can at least not a random server be called.
@@ -253,6 +253,6 @@ export class DynamicNodeParametersService {
 		workflow: Workflow,
 	) {
 		const node = workflow.nodes['Temp-Node'];
-		return NodeExecuteFunctions.getLoadOptionsFunctions(workflow, node, path, additionalData);
+		return new LoadOptionsContext(workflow, node, additionalData, path);
 	}
 }

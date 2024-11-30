@@ -2,8 +2,7 @@
 import { ref, computed, useCssModule } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
-import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
-import { useRouter } from 'vue-router';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
@@ -26,6 +25,7 @@ const props = withDefaults(
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
+		concurrencyCap: number;
 	}>(),
 	{
 		selected: false,
@@ -35,13 +35,16 @@ const props = withDefaults(
 
 const style = useCssModule();
 const i18n = useI18n();
-const router = useRouter();
 const executionHelpers = useExecutionHelpers();
 
 const isStopping = ref(false);
 
 const isRunning = computed(() => {
 	return props.execution.status === 'running';
+});
+
+const isQueued = computed(() => {
+	return props.execution.status === 'new';
 });
 
 const isWaitTillIndefinite = computed(() => {
@@ -82,6 +85,12 @@ const formattedStoppedAtDate = computed(() => {
 });
 
 const statusTooltipText = computed(() => {
+	if (isQueued.value) {
+		return i18n.baseText('executionsList.statusTooltipText.waitingForConcurrencyCapacity', {
+			interpolate: { concurrencyCap: props.concurrencyCap },
+		});
+	}
+
 	if (props.execution.status === 'waiting' && isWaitTillIndefinite.value) {
 		return i18n.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
 	}
@@ -138,11 +147,7 @@ function formatDate(fullDate: Date | string | number) {
 }
 
 function displayExecution() {
-	const route = router.resolve({
-		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: props.execution.workflowId, executionId: props.execution.id },
-	});
-	window.open(route.href, '_blank');
+	executionHelpers.openExecutionInNewTab(props.execution.id, props.execution.workflowId);
 }
 
 function onStopExecution() {
@@ -184,7 +189,7 @@ async function handleActionItemClick(commandData: Command) {
 					<FontAwesomeIcon icon="spinner" spin />
 				</span>
 				<i18n-t
-					v-if="!isWaitTillIndefinite"
+					v-if="!isWaitTillIndefinite && !isQueued"
 					data-test-id="execution-status"
 					tag="span"
 					:keypath="statusTextTranslationPath"
@@ -346,7 +351,7 @@ async function handleActionItemClick(commandData: Command) {
 	}
 
 	&.new td:first-child::before {
-		background: var(--execution-card-border-new);
+		background: var(--execution-card-border-waiting);
 	}
 
 	&.running td:first-child::before {
@@ -396,8 +401,8 @@ async function handleActionItemClick(commandData: Command) {
 		font-weight: var(--font-weight-normal);
 	}
 
-	.new {
-		color: var(--color-text-dark);
+	.new & {
+		color: var(--execution-card-text-waiting);
 	}
 
 	.running & {

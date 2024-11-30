@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
@@ -12,7 +12,7 @@ import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';
@@ -36,7 +36,7 @@ export class MemoryZep implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Zep Memory',
 		defaults: {
 			name: 'Zep',
@@ -67,6 +67,12 @@ export class MemoryZep implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			{
+				displayName: 'Only works with Zep Cloud and Community edition <= v0.27.2',
+				name: 'supportedVersions',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',
@@ -99,11 +105,12 @@ export class MemoryZep implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.3),
 			sessionKeyProperty,
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl?: string;

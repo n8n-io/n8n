@@ -55,7 +55,9 @@ export async function main(
 		return;
 	}
 
-	await connection.undoLastMigration();
+	await connection.undoLastMigration({
+		transaction: lastMigrationInstance.transaction === false ? 'none' : 'each',
+	});
 	await connection.destroy();
 }
 

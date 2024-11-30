@@ -1,20 +1,14 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { computed } from 'vue';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 
-export default defineComponent({
-	computed: {
-		...mapStores(useRootStore, useUIStore),
-		basePath(): string {
-			return this.rootStore.baseUrl;
-		},
-		logoPath(): string {
-			return this.basePath + this.uiStore.logo;
-		},
-	},
-});
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+
+const basePath = computed(() => rootStore.baseUrl);
+
+const logoPath = computed(() => basePath.value + uiStore.logo);
 </script>
 
 <template>

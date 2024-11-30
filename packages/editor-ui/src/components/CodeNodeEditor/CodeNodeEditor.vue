@@ -15,7 +15,6 @@ import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, w
 import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore } from '@/stores/root.store';
-import { usePostHog } from '@/stores/posthog.store';
 
 import { useMessage } from '@/composables/useMessage';
 import AskAI from './AskAI/AskAI.vue';
@@ -27,6 +26,7 @@ import { codeNodeEditorTheme } from './theme';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { dropInCodeEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { useSettingsStore } from '@/stores/settings.store';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -67,9 +67,9 @@ const { autocompletionExtension } = useCompleter(() => props.mode, editor);
 const { createLinter } = useLinter(() => props.mode, editor);
 
 const rootStore = useRootStore();
-const posthog = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 onMounted(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
@@ -146,8 +146,8 @@ onBeforeUnmount(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
-const aiEnabled = computed(() => {
-	return posthog.isAiEnabled() && props.language === 'javaScript';
+const askAiEnabled = computed(() => {
+	return settingsStore.isAskAiEnabled && props.language === 'javaScript';
 });
 
 const placeholder = computed(() => {
@@ -218,7 +218,7 @@ watch(
 	},
 );
 watch(
-	aiEnabled,
+	askAiEnabled,
 	async (isEnabled) => {
 		if (isEnabled && !props.modelValue) {
 			emit('update:modelValue', placeholder.value);
@@ -391,7 +391,7 @@ async function onDrop(value: string, event: MouseEvent) {
 		@mouseout="onMouseOut"
 	>
 		<el-tabs
-			v-if="aiEnabled"
+			v-if="askAiEnabled"
 			ref="tabs"
 			v-model="activeTab"
 			type="card"
@@ -399,12 +399,17 @@ async function onDrop(value: string, event: MouseEvent) {
 			:class="$style.tabs"
 		>
 			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				:label="i18n.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
 				:class="$style.fillHeight"
 			>
-				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+				<DraggableTarget
+					type="mapping"
+					:disabled="!dragAndDropEnabled"
+					:class="$style.fillHeight"
+					@drop="onDrop"
+				>
 					<template #default="{ activeDrop, droppable }">
 						<div
 							ref="codeNodeEditorRef"
@@ -421,7 +426,7 @@ async function onDrop(value: string, event: MouseEvent) {
 				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
 				name="ask-ai"
 				data-test-id="code-node-tab-ai"
 			>
@@ -437,7 +442,12 @@ async function onDrop(value: string, event: MouseEvent) {
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
-			<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+			<DraggableTarget
+				type="mapping"
+				:disabled="!dragAndDropEnabled"
+				:class="$style.fillHeight"
+				@drop="onDrop"
+			>
 				<template #default="{ activeDrop, droppable }">
 					<div
 						ref="codeNodeEditorRef"

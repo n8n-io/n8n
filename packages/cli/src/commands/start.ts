@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Flags, type Config } from '@oclif/core';
+import { GlobalConfig } from '@n8n/config';
+import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -21,12 +22,12 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
-import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { PruningService } from '@/services/pruning.service';
+import { PruningService } from '@/services/pruning/pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -67,11 +68,6 @@ export class Start extends BaseCommand {
 	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
-
-	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
-		this.setInstanceQueueModeId();
-	}
 
 	/**
 	 * Opens the UI in browser
@@ -172,8 +168,9 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			this.logger.debug('Main Instance running in queue mode');
-			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+			const scopedLogger = this.logger.scoped('scaling');
+			scopedLogger.debug('Starting main instance in scaling mode');
+			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
 		const { flags } = await this.parse(Start);
@@ -200,7 +197,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
+		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -210,6 +207,8 @@ export class Start extends BaseCommand {
 		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initDataDeduplicationService();
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
@@ -220,6 +219,13 @@ export class Start extends BaseCommand {
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
+
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (taskRunnerConfig.enabled) {
+			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const taskRunnerModule = Container.get(TaskRunnerModule);
+			await taskRunnerModule.start();
+		}
 	}
 
 	async initOrchestration() {
@@ -229,7 +235,7 @@ export class Start extends BaseCommand {
 		}
 
 		if (
-			config.getEnv('multiMainSetup.enabled') &&
+			Container.get(GlobalConfig).multiMainSetup.enabled &&
 			!Container.get(License).isMultipleMainInstancesLicensed()
 		) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
@@ -239,10 +245,13 @@ export class Start extends BaseCommand {
 
 		await orchestrationService.init();
 
-		await Container.get(OrchestrationHandlerMainService).initWithOptions({
-			queueModeId: this.queueModeId,
-			publisher: Container.get(Publisher),
-		});
+		Container.get(PubSubHandler).init();
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe('n8n.commands');
+		await subscriber.subscribe('n8n.worker-response');
+
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

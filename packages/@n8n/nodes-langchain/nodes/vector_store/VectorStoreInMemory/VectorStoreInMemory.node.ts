@@ -19,7 +19,7 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export const VectorStoreInMemory = createVectorStoreNode({
+export class VectorStoreInMemory extends createVectorStoreNode({
 	meta: {
 		displayName: 'In-Memory Vector Store',
 		name: 'vectorStoreInMemory',
@@ -54,6 +54,6 @@ export const VectorStoreInMemory = createVectorStoreNode({
 		const workflowId = context.getWorkflow().id;
 		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
 
-		void vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
+		await vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
 	},
-});
+}) {}

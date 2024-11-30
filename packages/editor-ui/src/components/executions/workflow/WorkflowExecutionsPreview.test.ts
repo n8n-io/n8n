@@ -50,6 +50,7 @@ const executionDataFactory = (): ExecutionSummaryWithScopes => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
+	createdAt: faker.date.past(),
 	startedAt: faker.date.past(),
 	stoppedAt: faker.date.past(),
 	workflowId: faker.number.int().toString(),

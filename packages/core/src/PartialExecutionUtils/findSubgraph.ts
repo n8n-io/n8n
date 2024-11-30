@@ -1,4 +1,4 @@
-import type { INode } from 'n8n-workflow';
+import { NodeConnectionType, type INode } from 'n8n-workflow';
 
 import type { GraphConnection } from './DirectedGraph';
 import { DirectedGraph } from './DirectedGraph';
@@ -21,7 +21,7 @@ function findSubgraphRecursive(
 		return;
 	}
 
-	let parentConnections = graph.getDirectParents(current);
+	const parentConnections = graph.getDirectParentConnections(current);
 
 	// If the current node has no parents, don’t keep this branch.
 	if (parentConnections.length === 0) {
@@ -46,36 +46,15 @@ function findSubgraphRecursive(
 		return;
 	}
 
-	// If the current node is disabled, don’t keep this node, but keep the
-	// branch.
-	// Take every incoming connection and connect it to every node that is
-	// connected to the current node’s first output
-	if (current.disabled) {
-		const incomingConnections = graph.getDirectParents(current);
-		const outgoingConnections = graph
-			.getDirectChildren(current)
-			// NOTE: When a node is disabled only the first output gets data
-			.filter((connection) => connection.outputIndex === 0);
-
-		parentConnections = [];
-
-		for (const incomingConnection of incomingConnections) {
-			for (const outgoingConnection of outgoingConnections) {
-				const newConnection = {
-					...incomingConnection,
-					to: outgoingConnection.to,
-					inputIndex: outgoingConnection.inputIndex,
-				};
-
-				parentConnections.push(newConnection);
-				currentBranch.pop();
-				currentBranch.push(newConnection);
-			}
-		}
-	}
-
 	// Recurse on each parent.
 	for (const parentConnection of parentConnections) {
+		// Skip parents that are connected via non-Main connection types. They are
+		// only utility nodes for AI and are not part of the data or control flow
+		// and can never lead too the trigger.
+		if (parentConnection.type !== NodeConnectionType.Main) {
+			continue;
+		}
+
 		findSubgraphRecursive(graph, destinationNode, parentConnection.from, trigger, newGraph, [
 			...currentBranch,
 			parentConnection,
@@ -84,8 +63,7 @@ function findSubgraphRecursive(
 }
 
 /**
- * Find all nodes that can lead from the trigger to the destination node,
- * ignoring disabled nodes.
+ * Find all nodes that can lead from the trigger to the destination node.
  *
  * The algorithm is:
  *   Start with Destination Node
@@ -95,20 +73,42 @@ function findSubgraphRecursive(
  *   3. if the current node is the destination node again, don’t keep this
  *      branch
  *   4. if the current node was already visited, keep this branch
- *   5. if the current node is disabled, don’t keep this node, but keep the
- *      branch
- *     - take every incoming connection and connect it to every node that is
- *       connected to the current node’s first output
- *   6. Recurse on each parent
+ *   5. Recurse on each parent
+ *   6. Re-add all connections that don't use the `Main` connections type.
+ *      Theses are used by nodes called root nodes and they are not part of the
+ *      dataflow in the graph they are utility nodes, like the AI model used in a
+ *      lang chain node.
  */
-export function findSubgraph(
-	graph: DirectedGraph,
-	destinationNode: INode,
-	trigger: INode,
-): DirectedGraph {
-	const newGraph = new DirectedGraph();
+export function findSubgraph(options: {
+	graph: DirectedGraph;
+	destination: INode;
+	trigger: INode;
+}): DirectedGraph {
+	const graph = options.graph;
+	const destination = options.destination;
+	const trigger = options.trigger;
+	const subgraph = new DirectedGraph();
 
-	findSubgraphRecursive(graph, destinationNode, destinationNode, trigger, newGraph, []);
+	findSubgraphRecursive(graph, destination, destination, trigger, subgraph, []);
 
-	return newGraph;
+	// For each node in the subgraph, if it has parent connections of a type that
+	// is not `Main` in the input graph, add the connections and the nodes
+	// connected to it to the subgraph
+	//
+	// Without this all AI related workflows would not work when executed
+	// partially, because all utility nodes would be missing.
+	for (const node of subgraph.getNodes().values()) {
+		const parentConnections = graph.getParentConnections(node);
+
+		for (const connection of parentConnections) {
+			if (connection.type === NodeConnectionType.Main) {
+				continue;
+			}
+
+			subgraph.addNodes(connection.from, connection.to);
+			subgraph.addConnection(connection);
+		}
+	}
+
+	return subgraph;
 }

@@ -244,7 +244,13 @@ export declare namespace UserRequest {
 	>;
 
 	export type InviteResponse = {
-		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		user: {
+			id: string;
+			email: string;
+			inviteAcceptUrl?: string;
+			emailSent: boolean;
+			role: AssignableRole;
+		};
 		error?: string;
 	};
 
@@ -329,7 +335,7 @@ export declare namespace MFA {
 export declare namespace OAuthRequest {
 	namespace OAuth1Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthlessRequest<
+		type Callback = AuthenticatedRequest<
 			{},
 			{},
 			{},
@@ -341,7 +347,7 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthlessRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
 	}
 }
 
@@ -479,15 +485,6 @@ export declare namespace ExternalSecretsRequest {
 }
 
 // ----------------------------------
-//           /orchestration
-// ----------------------------------
-//
-export declare namespace OrchestrationRequest {
-	type GetAll = AuthenticatedRequest;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-}
-
-// ----------------------------------
 //           /workflow-history
 // ----------------------------------
 
@@ -586,5 +583,6 @@ export declare namespace AiAssistantRequest {
 	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
 
 	type SuggestionPayload = { sessionId: string; suggestionId: string };
-	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	type ApplySuggestionPayload = AuthenticatedRequest<{}, {}, SuggestionPayload>;
+	type AskAiPayload = AuthenticatedRequest<{}, {}, AiAssistantSDK.AskAiRequestPayload>;
 }

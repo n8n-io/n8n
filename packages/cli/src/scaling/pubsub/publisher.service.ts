@@ -1,4 +1,5 @@
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
+import { InstanceSettings } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
@@ -6,6 +7,7 @@ import { Logger } from '@/logging/logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
+import { IMMEDIATE_COMMANDS, SELF_SEND_COMMANDS } from '../constants';
 
 /**
  * Responsible for publishing messages into the pubsub channels used by scaling mode.
@@ -19,9 +21,12 @@ export class Publisher {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
+		// @TODO: Once this class is only ever initialized in scaling mode, assert in the next line.
 		if (config.getEnv('executions.mode') !== 'queue') return;
+
+		this.logger = this.logger.scoped(['scaling', 'pubsub']);
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}
@@ -41,19 +46,27 @@ export class Publisher {
 
 	/** Publish a command into the `n8n.commands` channel. */
 	async publishCommand(msg: Omit<PubSub.Command, 'senderId'>) {
+		// @TODO: Once this class is only ever used in scaling mode, remove next line.
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
 		await this.client.publish(
 			'n8n.commands',
-			JSON.stringify({ ...msg, senderId: config.getEnv('redis.queueModeId') }),
+			JSON.stringify({
+				...msg,
+				senderId: this.instanceSettings.hostId,
+				selfSend: SELF_SEND_COMMANDS.has(msg.command),
+				debounce: !IMMEDIATE_COMMANDS.has(msg.command),
+			}),
 		);
 
 		this.logger.debug(`Published ${msg.command} to command channel`);
 	}
 
-	/** Publish a response for a command into the `n8n.worker-response` channel. */
+	/** Publish a response to a command into the `n8n.worker-response` channel. */
 	async publishWorkerResponse(msg: PubSub.WorkerResponse) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
-		this.logger.debug(`Published response for ${msg.command} to worker response channel`);
+		this.logger.debug(`Published ${msg.response} to worker response channel`);
 	}
 
 	// #endregion

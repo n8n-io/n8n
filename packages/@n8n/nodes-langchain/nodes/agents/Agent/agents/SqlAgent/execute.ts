@@ -1,3 +1,9 @@
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { DataSource } from '@n8n/typeorm';
+import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
+import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
+import { SqlDatabase } from 'langchain/sql_db';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -6,19 +12,12 @@ import {
 	type IDataObject,
 } from 'n8n-workflow';
 
-import { SqlDatabase } from 'langchain/sql_db';
-import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
-import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import type { DataSource } from '@n8n/typeorm';
-
+import { getMysqlDataSource } from './other/handlers/mysql';
+import { getPostgresDataSource } from './other/handlers/postgres';
+import { getSqliteDataSource } from './other/handlers/sqlite';
+import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
 import { getTracingConfig } from '../../../../../utils/tracing';
-import { getSqliteDataSource } from './other/handlers/sqlite';
-import { getPostgresDataSource } from './other/handlers/postgres';
-import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
-import { getMysqlDataSource } from './other/handlers/mysql';
 
 const parseTablesString = (tablesString: string) =>
 	tablesString

@@ -1,8 +1,8 @@
 import type { ApiKey } from '@/databases/entities/api-key';
-import type { MigrationContext } from '@/databases/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { generateNanoId } from '@/databases/utils/generators';
 
-export class AddApiKeysTable1724951148974 {
+export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 	async up({
 		queryRunner,
 		escape,
@@ -54,5 +54,56 @@ export class AddApiKeysTable1724951148974 {
 
 		//  Drop apiKey column on user's table
 		await queryRunner.query(`ALTER TABLE ${userTable} DROP COLUMN ${apiKeyColumn};`);
+	}
+
+	async down({
+		queryRunner,
+		runQuery,
+		schemaBuilder: { dropTable, addColumns, createIndex, column },
+		escape,
+		isMysql,
+	}: MigrationContext) {
+		const userTable = escape.tableName('user');
+		const userApiKeysTable = escape.tableName('user_api_keys');
+		const apiKeyColumn = escape.columnName('apiKey');
+		const userIdColumn = escape.columnName('userId');
+		const idColumn = escape.columnName('id');
+		const createdAtColumn = escape.columnName('createdAt');
+
+		await addColumns('user', [column('apiKey').varchar()]);
+
+		await createIndex('user', ['apiKey'], true);
+
+		const queryToGetUsersApiKeys = isMysql
+			? `
+			SELECT ${userIdColumn},
+				${apiKeyColumn},
+				${createdAtColumn}
+			FROM ${userApiKeysTable} u
+			WHERE ${createdAtColumn} = (SELECT Min(${createdAtColumn})
+																	FROM   ${userApiKeysTable}
+																	WHERE  ${userIdColumn} = u.${userIdColumn});`
+			: `
+				SELECT DISTINCT ON
+					(${userIdColumn}) ${userIdColumn},
+					${apiKeyColumn}, ${createdAtColumn}
+				FROM ${userApiKeysTable}
+				ORDER BY ${userIdColumn}, ${createdAtColumn} ASC;`;
+
+		const oldestApiKeysPerUser = (await queryRunner.query(queryToGetUsersApiKeys)) as Array<
+			Partial<ApiKey>
+		>;
+
+		await Promise.all(
+			oldestApiKeysPerUser.map(
+				async (user: { userId: string; apiKey: string }) =>
+					await runQuery(
+						`UPDATE ${userTable} SET ${apiKeyColumn} = :apiKey WHERE ${idColumn} = :userId`,
+						user,
+					),
+			),
+		);
+
+		await dropTable('user_api_keys');
 	}
 }

@@ -160,8 +160,9 @@ export class LiveWebhooks implements IWebhookManager {
 		}
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
+		const webhookMethods = await this.getWebhookMethods(path);
 		if (webhook === null) {
-			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
+			throw new WebhookNotFoundError({ path, httpMethod, webhookMethods }, { hint: 'production' });
 		}
 
 		return webhook;

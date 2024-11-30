@@ -6,11 +6,36 @@ const credentialsModal = new CredentialsModal();
 
 export const getHomeButton = () => cy.getByTestId('project-home-menu-item');
 export const getMenuItems = () => cy.getByTestId('project-menu-item');
-export const getAddProjectButton = () =>
-	cy.getByTestId('add-project-menu-item').should('contain', 'Add project').should('be.visible');
+export const getAddProjectButton = () => {
+	cy.getByTestId('universal-add').should('be.visible').click();
+	cy.getByTestId('universal-add')
+		.find('.el-sub-menu__title')
+		.as('menuitem')
+		.should('have.attr', 'aria-describedby');
+
+	cy.get('@menuitem')
+		.invoke('attr', 'aria-describedby')
+		.then((el) => cy.get(`[id="${el}"]`))
+		.as('submenu');
+
+	cy.get('@submenu').within((submenu) =>
+		cy
+			.wrap(submenu)
+			.getByTestId('navigation-menu-item')
+			.should('be.visible')
+			.filter(':contains("Project")')
+			.as('button'),
+	);
+
+	return cy.get('@button');
+};
+
+// export const getAddProjectButton = () =>
+// 	cy.getByTestId('universal-add').should('contain', 'Add project').should('be.visible');
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
+export const getProjectTabExecutions = () => getProjectTabs().filter('a[href$="/executions"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
 export const getProjectSettingsNameInput = () =>
 	cy.getByTestId('project-settings-name-input').find('input');

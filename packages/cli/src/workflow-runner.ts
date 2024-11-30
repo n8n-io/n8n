@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -29,13 +28,14 @@ import { ExternalHooks } from '@/external-hooks';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
+import type { Job, JobData } from '@/scaling/scaling.types';
 import { PermissionChecker } from '@/user-management/permission-checker';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { ExecutionNotFoundError } from './errors/execution-not-found-error';
 import { EventService } from './events/event.service';
 
 @Service()
@@ -58,13 +58,22 @@ export class WorkflowRunner {
 
 	/** The process did error */
 	async processError(
-		error: ExecutionError,
+		error: ExecutionError | ExecutionNotFoundError,
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
-		ErrorReporter.error(error);
+		// This means the execution was probably cancelled and has already
+		// been cleaned up.
+		//
+		// FIXME: This is a quick fix. The proper fix would be to not remove
+		// the execution from the active executions while it's still running.
+		if (error instanceof ExecutionNotFoundError) {
+			return;
+		}
+
+		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -128,7 +137,10 @@ export class WorkflowRunner {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
 			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
+			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
@@ -245,7 +257,7 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		await this.executionRepository.updateStatus(executionId, 'running');
+		await this.executionRepository.setRunning(executionId); // write
 
 		try {
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
@@ -305,8 +317,9 @@ export class WorkflowRunner {
 					workflowExecution = workflowExecute.runPartialWorkflow2(
 						workflow,
 						data.runData,
-						data.destinationNode,
 						data.pinData,
+						data.dirtyNodeNames,
+						data.destinationNode,
 					);
 				} else {
 					workflowExecution = workflowExecute.runPartialWorkflow(
@@ -376,22 +389,12 @@ export class WorkflowRunner {
 			this.scalingService = Container.get(ScalingService);
 		}
 
-		let priority = 100;
-		if (realtime === true) {
-			// Jobs which require a direct response get a higher priority
-			priority = 50;
-		}
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		const jobOptions = {
-			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
-		};
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, jobOptions);
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -402,7 +405,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', []);
+			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -437,56 +440,9 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<JobResult> = job.finished();
-
-				const { queueRecoveryInterval } = Container.get(GlobalConfig).queue.bull;
-
-				const racingPromises: Array<Promise<JobResult>> = [jobData];
-
-				let clearWatchdogInterval;
-				if (queueRecoveryInterval > 0) {
-					/** ***********************************************
-					 * Long explanation about what this solves:      *
-					 * This only happens in a very specific scenario *
-					 * when Redis crashes and recovers shortly       *
-					 * but during this time, some execution(s)       *
-					 * finished. The end result is that the main     *
-					 * process will wait indefinitely and never      *
-					 * get a response. This adds an active polling to*
-					 * the queue that allows us to identify that the *
-					 * execution finished and get information from   *
-					 * the database.                                 *
-					 ************************************************ */
-					let watchDogInterval: NodeJS.Timeout | undefined;
-
-					const watchDog: Promise<JobResult> = new Promise((res) => {
-						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.scalingService.getJob(job.id);
-							// When null means job is finished (not found in queue)
-							if (currentJob === null) {
-								// Mimic worker's success message
-								res({ success: true });
-							}
-						}, queueRecoveryInterval * 1000);
-					});
-
-					racingPromises.push(watchDog);
-
-					clearWatchdogInterval = () => {
-						if (watchDogInterval) {
-							clearInterval(watchDogInterval);
-							watchDogInterval = undefined;
-						}
-					};
-				}
-
 				try {
-					await Promise.race(racingPromises);
-					if (clearWatchdogInterval !== undefined) {
-						clearWatchdogInterval();
-					}
+					await job.finished();
 				} catch (error) {
-					ErrorReporter.error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
@@ -496,9 +452,6 @@ export class WorkflowRunner {
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
 					this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-					if (clearWatchdogInterval !== undefined) {
-						clearWatchdogInterval();
-					}
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);

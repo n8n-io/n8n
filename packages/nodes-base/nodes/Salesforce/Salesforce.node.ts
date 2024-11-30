@@ -1039,7 +1039,7 @@ export class Salesforce implements INodeType {
 			// async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	const returnData: INodePropertyOptions[] = [];
 			// 	const fields = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/sobjects/folder/describe');
-			// 	console.log(JSON.stringify(fields, undefined, 2))
+			// 	this.logger.debug(JSON.stringify(fields, undefined, 2))
 			// 	const qs = {
 			// 		//ContentFolderItem ContentWorkspace ContentFolder
 			// 		q: `SELECT Id, Title FROM ContentVersion`,

@@ -9,13 +9,20 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
+import N8nInfoTip from 'n8n-design-system/components/N8nInfoTip';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
+import { useUsersStore } from '@/stores/users.store';
+import { getResourcePermissions } from '@/permissions';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
@@ -30,6 +37,24 @@ const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const canUserActivateLicense = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
+);
+
+const badgedPlanName = computed(() => {
+	const [badge, name] = usageStore.planName.split(' ');
+	return {
+		name,
+		badge,
+	};
+});
+
+const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+
+const isCommunityEditionRegistered = computed(
+	() => usageStore.planName.toLowerCase() === 'registered community',
+);
+
+const canUserRegisterCommunityPlus = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
 const showActivationSuccess = () => {
@@ -106,7 +131,7 @@ const onAddActivationKey = () => {
 };
 
 const onViewPlans = () => {
-	void uiStore.goToUpgrade('usage_page', 'open');
+	void pageRedirectionHelper.goToUpgrade('usage_page', 'open');
 	sendUsageTelemetry('view_plans');
 };
 
@@ -121,15 +146,21 @@ const onDialogClosed = () => {
 const onDialogOpened = () => {
 	activationKeyInput.value?.focus();
 };
+
+const openCommunityRegisterModal = () => {
+	uiStore.openModal(COMMUNITY_PLUS_ENROLLMENT_MODAL);
+};
 </script>
 
 <template>
 	<div class="settings-usage-and-plan">
-		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
+		<n8n-heading tag="h2" size="2xlarge">{{
+			locale.baseText('settings.usageAndPlan.title')
+		}}</n8n-heading>
 		<div v-if="!usageStore.isLoading">
-			<n8n-heading :class="$style.title" size="large">
+			<n8n-heading tag="h3" :class="$style.title" size="large">
 				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
-					<template #name>{{ usageStore.planName }}</template>
+					<template #name>{{ badgedPlanName.name ?? usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
 							locale.baseText('settings.usageAndPlan.plan')
@@ -137,14 +168,39 @@ const onDialogOpened = () => {
 						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
 				</i18n-t>
+				<span v-if="badgedPlanName.badge && badgedPlanName.name" :class="$style.titleTooltip">
+					<N8nTooltip placement="top">
+						<template #content>
+							<i18n-t
+								v-if="isCommunityEditionRegistered"
+								keypath="settings.usageAndPlan.license.communityRegistered.tooltip"
+							>
+							</i18n-t>
+						</template>
+						<N8nBadge>{{ badgedPlanName.badge }}</N8nBadge>
+					</N8nTooltip>
+				</span>
 			</n8n-heading>
+
+			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" theme="warning">
+				<i18n-t keypath="settings.usageAndPlan.callOut">
+					<template #link>
+						<N8nButton
+							class="pl-0 pr-0"
+							text
+							:label="locale.baseText('settings.usageAndPlan.callOut.link')"
+							@click="openCommunityRegisterModal"
+						/>
+					</template>
+				</i18n-t>
+			</N8nNotice>
 
 			<div :class="$style.quota">
 				<n8n-text size="medium" color="text-light">
 					{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
 				</n8n-text>
 				<div :class="$style.chart">
-					<span v-if="usageStore.executionLimit > 0" :class="$style.chartLine">
+					<span v-if="usageStore.activeWorkflowTriggersLimit > 0" :class="$style.chartLine">
 						<span
 							:class="$style.chartBar"
 							:style="{ width: `${usageStore.executionPercentage}%` }"
@@ -155,20 +211,18 @@ const onDialogOpened = () => {
 						:class="$style.count"
 						keypath="settings.usageAndPlan.activeWorkflows.count"
 					>
-						<template #count>{{ usageStore.executionCount }}</template>
+						<template #count>{{ usageStore.activeWorkflowTriggersCount }}</template>
 						<template #limit>
-							<span v-if="usageStore.executionLimit < 0">{{
+							<span v-if="usageStore.activeWorkflowTriggersLimit < 0">{{
 								locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
 							}}</span>
-							<span v-else>{{ usageStore.executionLimit }}</span>
+							<span v-else>{{ usageStore.activeWorkflowTriggersLimit }}</span>
 						</template>
 					</i18n-t>
 				</div>
 			</div>
 
-			<n8n-info-tip>{{
-				locale.baseText('settings.usageAndPlan.activeWorkflows.hint')
-			}}</n8n-info-tip>
+			<N8nInfoTip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</N8nInfoTip>
 
 			<div :class="$style.buttons">
 				<n8n-button
@@ -239,7 +293,8 @@ const onDialogOpened = () => {
 }
 
 .title {
-	display: block;
+	display: flex;
+	align-items: center;
 	padding: var(--spacing-2xl) 0 var(--spacing-m);
 }
 
@@ -308,6 +363,12 @@ const onDialogOpened = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
+}
+
+.titleTooltip {
+	display: flex;
+	align-items: center;
+	margin: 0 0 0 var(--spacing-2xs);
 }
 </style>
 

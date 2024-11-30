@@ -1,3 +1,4 @@
+import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
 import { readdir } from 'fs/promises';
 import { loadClassInIsolation } from 'n8n-core';
@@ -44,15 +45,38 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		const versionedNodeType = NodeHelpers.getVersionedNodeType(
-			this.getNode(nodeType).type,
-			version,
-		);
-		if (versionedNodeType.description.usableAsTool) {
-			return NodeHelpers.convertNodeToAiTool(versionedNodeType);
+		const origType = nodeType;
+		const toolRequested = nodeType.startsWith('n8n-nodes-base') && nodeType.endsWith('Tool');
+		// Make sure the nodeType to actually get from disk is the un-wrapped type
+		if (toolRequested) {
+			nodeType = nodeType.replace(/Tool$/, '');
 		}
 
-		return versionedNodeType;
+		const node = this.getNode(nodeType);
+		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (!toolRequested) return versionedNodeType;
+
+		if (!versionedNodeType.description.usableAsTool)
+			throw new ApplicationError('Node cannot be used as a tool', { extra: { nodeType } });
+
+		const { loadedNodes } = this.loadNodesAndCredentials;
+		if (origType in loadedNodes) {
+			return loadedNodes[origType].type as INodeType;
+		}
+
+		// Instead of modifying the existing type, we extend it into a new type object
+		const clonedProperties = Object.create(
+			versionedNodeType.description.properties,
+		) as INodeTypeDescription['properties'];
+		const clonedDescription = Object.create(versionedNodeType.description, {
+			properties: { value: clonedProperties },
+		}) as INodeTypeDescription;
+		const clonedNode = Object.create(versionedNodeType, {
+			description: { value: clonedDescription },
+		}) as INodeType;
+		const tool = NodeHelpers.convertNodeToAiTool(clonedNode);
+		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
+		return tool;
 	}
 
 	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */
@@ -125,5 +149,23 @@ export class NodeTypes implements INodeTypes {
 			ALLOWED_VERSIONED_DIRNAME_LENGTH.includes(dirent.name.length) &&
 			dirent.name.toLowerCase().startsWith('v')
 		);
+	}
+
+	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
+		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
+			const nodeType = this.getNode(nodeTypeName);
+
+			if (!nodeType) throw new ApplicationError(`Unknown node type: ${nodeTypeName}`);
+
+			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);
+
+			const descriptionCopy = { ...description };
+
+			descriptionCopy.name = descriptionCopy.name.startsWith('n8n-nodes')
+				? descriptionCopy.name
+				: `n8n-nodes-base.${descriptionCopy.name}`; // nodes-base nodes are unprefixed
+
+			return descriptionCopy;
+		});
 	}
 }

@@ -5,7 +5,49 @@ export class CredentialsPage extends BasePage {
 
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
-		createCredentialButton: () => cy.getByTestId('resources-list-add'),
+		createCredentialButton: () => {
+			cy.getByTestId('resource-add').should('be.visible').click();
+			cy.getByTestId('resource-add')
+				.find('.el-sub-menu__title')
+				.as('menuitem')
+				.should('have.attr', 'aria-describedby');
+
+			cy.get('@menuitem')
+				.should('be.visible')
+				.invoke('attr', 'aria-describedby')
+				.then((el) => cy.get(`[id="${el}"]`))
+				.as('submenu');
+
+			cy.get('@submenu')
+				.should('be.visible')
+				.within((submenu) => {
+					// If submenu has another submenu
+					if (submenu.find('[data-test-id="navigation-submenu"]').length) {
+						cy.wrap(submenu)
+							.find('[data-test-id="navigation-submenu"]')
+							.should('be.visible')
+							.filter(':contains("Credential")')
+							.as('child')
+							.click();
+
+						cy.get('@child')
+							.should('be.visible')
+							.find('[data-test-id="navigation-submenu-item"]')
+							.should('be.visible')
+							.filter(':contains("Personal")')
+							.as('button');
+					} else {
+						cy.wrap(submenu)
+							.find('[data-test-id="navigation-menu-item"]')
+							.filter(':contains("Credential")')
+							.as('button');
+					}
+				});
+
+			return cy.get('@button').should('be.visible');
+		},
+
+		// cy.getByTestId('resources-list-add'),
 		searchInput: () => cy.getByTestId('resources-list-search'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),
 		credentialCards: () => cy.getByTestId('resources-list-item'),

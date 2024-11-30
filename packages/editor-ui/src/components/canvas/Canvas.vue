@@ -6,21 +6,15 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type {
-	Connection,
-	XYPosition,
-	ViewportTransform,
-	NodeChange,
-	NodePositionChange,
-} from '@vue-flow/core';
+import type { Connection, XYPosition, NodeDragEvent, GraphNode } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { computed, onMounted, onUnmounted, provide, ref, useCssModule, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, toRef, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, useDeviceSupport } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -29,8 +23,11 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp } from '@vueuse/core';
+import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
+import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
+import { NodeConnectionType } from 'n8n-workflow';
 
 const $style = useCssModule();
 
@@ -78,7 +75,9 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		executing?: boolean;
 		keyBindings?: boolean;
+		showBugReportingButton?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -87,10 +86,14 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		executing: false,
 		keyBindings: true,
 	},
 );
 
+const { controlKeyCode } = useDeviceSupport();
+
+const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -105,15 +108,28 @@ const {
 	project,
 	nodes: graphNodes,
 	onPaneReady,
+	onNodesInitialized,
 	findNode,
-} = useVueFlow({ id: props.id, deleteKeyCode: null });
+	viewport,
+	onEdgeMouseLeave,
+	onEdgeMouseEnter,
+	onEdgeMouseMove,
+	onNodeMouseEnter,
+	onNodeMouseLeave,
+} = vueFlow;
+const {
+	getIncomingNodes,
+	getOutgoingNodes,
+	getSiblingNodes,
+	getDownstreamNodes,
+	getUpstreamNodes,
+} = useCanvasTraversal(vueFlow);
 
 const isPaneReady = ref(false);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: isPaneReady.value,
-	[$style.draggable]: isPanningEnabled.value,
 }));
 
 /**
@@ -125,56 +141,120 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-const panningKeyCode = ' ';
-const isPanningEnabled = ref(false);
+const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
+const panningMouseButton = ref<number[]>([1]);
+const selectionKeyCode = ref<true | null>(true);
 
-onKeyDown(panningKeyCode, () => {
-	isPanningEnabled.value = true;
+onKeyDown(panningKeyCode.value, () => {
+	selectionKeyCode.value = null;
 });
 
-onKeyUp(panningKeyCode, () => {
-	isPanningEnabled.value = false;
+onKeyUp(panningKeyCode.value, () => {
+	selectionKeyCode.value = true;
 });
 
-useKeybindings(
-	{
-		ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
-		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
-		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
-		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
-		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
-		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-		enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
-		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
-		tab: () => emit('create:node', 'tab'),
-		shift_s: () => emit('create:sticky'),
-		ctrl_alt_n: () => emit('create:workflow'),
-		ctrl_enter: () => emit('run:workflow'),
-		ctrl_s: () => emit('save:workflow'),
-		ctrl_a: () => addSelectedNodes(graphNodes.value),
-		'+|=': async () => await onZoomIn(),
-		'-|_': async () => await onZoomOut(),
-		0: async () => await onResetZoom(),
-		1: async () => await onFitView(),
-		// @TODO implement arrow key shortcuts to modify selection
-	},
-	{ disabled: disableKeyBindings },
-);
+function selectLeftNode(id: string) {
+	const incomingNodes = getIncomingNodes(id);
+	const previousNode = incomingNodes[0];
+	if (previousNode) {
+		onSelectNodes({ ids: [previousNode.id] });
+	}
+}
+
+function selectRightNode(id: string) {
+	const outgoingNodes = getOutgoingNodes(id);
+	const nextNode = outgoingNodes[0];
+	if (nextNode) {
+		onSelectNodes({ ids: [nextNode.id] });
+	}
+}
+
+function selectLowerSiblingNode(id: string) {
+	const siblingNodes = getSiblingNodes(id);
+	const index = siblingNodes.findIndex((n) => n.id === id);
+	const nextNode = siblingNodes[index + 1] ?? siblingNodes[0];
+	if (nextNode) {
+		onSelectNodes({
+			ids: [nextNode.id],
+		});
+	}
+}
+
+function selectUpperSiblingNode(id: string) {
+	const siblingNodes = getSiblingNodes(id);
+	const index = siblingNodes.findIndex((n) => n.id === id);
+	const previousNode = siblingNodes[index - 1] ?? siblingNodes[siblingNodes.length - 1];
+	if (previousNode) {
+		onSelectNodes({
+			ids: [previousNode.id],
+		});
+	}
+}
+
+function selectDownstreamNodes(id: string) {
+	const downstreamNodes = getDownstreamNodes(id);
+	onSelectNodes({ ids: [...downstreamNodes.map((node) => node.id), id] });
+}
+
+function selectUpstreamNodes(id: string) {
+	const upstreamNodes = getUpstreamNodes(id);
+	onSelectNodes({ ids: [...upstreamNodes.map((node) => node.id), id] });
+}
+
+const keyMap = computed(() => ({
+	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+	ctrl_a: () => addSelectedNodes(graphNodes.value),
+	'+|=': async () => await onZoomIn(),
+	'-|_': async () => await onZoomOut(),
+	0: async () => await onResetZoom(),
+	1: async () => await onFitView(),
+	ArrowUp: emitWithLastSelectedNode(selectUpperSiblingNode),
+	ArrowDown: emitWithLastSelectedNode(selectLowerSiblingNode),
+	ArrowLeft: emitWithLastSelectedNode(selectLeftNode),
+	ArrowRight: emitWithLastSelectedNode(selectRightNode),
+	shift_ArrowLeft: emitWithLastSelectedNode(selectUpstreamNodes),
+	shift_ArrowRight: emitWithLastSelectedNode(selectDownstreamNodes),
+	// @TODO implement arrow key shortcuts to modify selection
+
+	...(props.readOnly
+		? {}
+		: {
+				ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+				'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+				ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+				d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+				p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
+				f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+				tab: () => emit('create:node', 'tab'),
+				shift_s: () => emit('create:sticky'),
+				ctrl_alt_n: () => emit('create:workflow'),
+				ctrl_enter: () => emit('run:workflow'),
+				ctrl_s: () => emit('save:workflow'),
+			}),
+}));
+
+useKeybindings(keyMap, { disabled: disableKeyBindings });
 
 /**
  * Nodes
  */
 
-const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : true));
-const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
+
+const lastSelectedNode = ref<GraphNode>();
+watch(selectedNodes, (nodes) => {
+	if (!lastSelectedNode.value || !nodes.find((node) => node.id === lastSelectedNode.value?.id)) {
+		lastSelectedNode.value = nodes[nodes.length - 1];
+	}
+});
 
 function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onUpdateNodesPosition(events: NodePositionChange[]) {
+function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	emit('update:nodes:position', events);
 }
 
@@ -182,14 +262,12 @@ function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
-function onNodesChange(events: NodeChange[]) {
-	const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
-		event.type === 'position' && 'position' in event;
+function onNodeDragStop(event: NodeDragEvent) {
+	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
 
-	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
-	if (positionChangeEndEvents.length > 0) {
-		onUpdateNodesPosition(positionChangeEndEvents);
-	}
+function onSelectionDragStop(event: NodeDragEvent) {
+	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
 function onSetNodeActive(id: string) {
@@ -224,7 +302,7 @@ function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>)
 }
 
 /**
- * Connections
+ * Connections / Edges
  */
 
 const connectionCreated = ref(false);
@@ -267,6 +345,57 @@ function onClickConnectionAdd(connection: Connection) {
 const arrowHeadMarkerId = ref('custom-arrow-head');
 
 /**
+ * Edge and Nodes Hovering
+ */
+
+const edgesHoveredById = ref<Record<string, boolean>>({});
+const edgesBringToFrontById = ref<Record<string, boolean>>({});
+
+onEdgeMouseEnter(({ edge }) => {
+	edgesBringToFrontById.value = { [edge.id]: true };
+	edgesHoveredById.value = { [edge.id]: true };
+});
+
+onEdgeMouseMove(
+	useThrottleFn(({ edge, event }) => {
+		const type = edge.data.source.type;
+		if (type !== NodeConnectionType.AiTool) {
+			return;
+		}
+
+		if (!edge.data.maxConnections || edge.data.maxConnections > 1) {
+			const projectedPosition = getProjectedPosition(event);
+			const yDiff = projectedPosition.y - edge.targetY;
+			if (yDiff < 4 * GRID_SIZE) {
+				edgesBringToFrontById.value = { [edge.id]: false };
+			} else {
+				edgesBringToFrontById.value = { [edge.id]: true };
+			}
+		}
+	}, 100),
+);
+
+onEdgeMouseLeave(({ edge }) => {
+	edgesBringToFrontById.value = { [edge.id]: false };
+	edgesHoveredById.value = { [edge.id]: false };
+});
+
+function onUpdateEdgeLabelHovered(id: string, hovered: boolean) {
+	edgesBringToFrontById.value = { [id]: true };
+	edgesHoveredById.value[id] = hovered;
+}
+
+const nodesHoveredById = ref<Record<string, boolean>>({});
+
+onNodeMouseEnter(({ node }) => {
+	nodesHoveredById.value = { [node.id]: true };
+});
+
+onNodeMouseLeave(({ node }) => {
+	nodesHoveredById.value = { [node.id]: false };
+});
+
+/**
  * Executions
  */
 
@@ -299,10 +428,9 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
  */
 
 const defaultZoom = 1;
-const zoom = ref(defaultZoom);
 const isPaneMoving = ref(false);
 
-function getProjectedPosition(event?: MouseEvent) {
+function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
 	const offsetX = event?.clientX ?? 0;
 	const offsetY = event?.clientY ?? 0;
@@ -335,10 +463,6 @@ async function onZoomOut() {
 
 async function onResetZoom() {
 	await onZoomTo(defaultZoom);
-}
-
-function onViewportChange(viewport: ViewportTransform) {
-	zoom.value = viewport.zoom;
 }
 
 function setReadonly(value: boolean) {
@@ -457,6 +581,8 @@ function onMinimapMouseLeave() {
  * Lifecycle
  */
 
+const initialized = ref(false);
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
@@ -472,6 +598,10 @@ onPaneReady(async () => {
 	isPaneReady.value = true;
 });
 
+onNodesInitialized(() => {
+	initialized.value = true;
+});
+
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
@@ -480,8 +610,13 @@ watch(() => props.readOnly, setReadonly, {
  * Provide
  */
 
+const isExecuting = toRef(props, 'executing');
+
 provide(CanvasKey, {
 	connectingHandle,
+	isExecuting,
+	initialized,
+	viewport,
 });
 </script>
 
@@ -493,6 +628,7 @@ provide(CanvasKey, {
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
+		:pan-on-drag="panningMouseButton"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
@@ -501,22 +637,24 @@ provide(CanvasKey, {
 		:class="classes"
 		:selection-key-code="selectionKeyCode"
 		:pan-activation-key-code="panningKeyCode"
+		:disable-keyboard-a11y="true"
 		data-test-id="canvas"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
 		@contextmenu="onOpenContextMenu"
-		@viewport-change="onViewportChange"
-		@nodes-change="onNodesChange"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
+		@node-drag-stop="onNodeDragStop"
+		@selection-drag-stop="onSelectionDragStop"
 	>
-		<template #node-canvas-node="canvasNodeProps">
+		<template #node-canvas-node="nodeProps">
 			<Node
-				v-bind="canvasNodeProps"
+				v-bind="nodeProps"
 				:read-only="readOnly"
 				:event-bus="eventBus"
+				:hovered="nodesHoveredById[nodeProps.id]"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
@@ -529,13 +667,16 @@ provide(CanvasKey, {
 			/>
 		</template>
 
-		<template #edge-canvas-edge="canvasEdgeProps">
+		<template #edge-canvas-edge="edgeProps">
 			<Edge
-				v-bind="canvasEdgeProps"
+				v-bind="edgeProps"
 				:marker-end="`url(#${arrowHeadMarkerId})`"
 				:read-only="readOnly"
+				:hovered="edgesHoveredById[edgeProps.id]"
+				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
+				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
 			/>
 		</template>
 
@@ -545,7 +686,11 @@ provide(CanvasKey, {
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
+			<template v-if="readOnly" #pattern-container>
+				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+			</template>
+		</Background>
 
 		<Transition name="minimap">
 			<MiniMap
@@ -569,7 +714,8 @@ provide(CanvasKey, {
 			:class="$style.canvasControls"
 			:position="controlsPosition"
 			:show-interactive="false"
-			:zoom="zoom"
+			:show-bug-reporting-button="showBugReportingButton"
+			:zoom="viewport.zoom"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
@@ -590,12 +736,16 @@ provide(CanvasKey, {
 		opacity: 1;
 	}
 
-	&.draggable :global(.vue-flow__pane) {
+	:global(.vue-flow__pane) {
 		cursor: grab;
-	}
 
-	:global(.vue-flow__pane.dragging) {
-		cursor: grabbing;
+		&:global(.selection) {
+			cursor: default;
+		}
+
+		&:global(.dragging) {
+			cursor: grabbing;
+		}
 	}
 }
 </style>

@@ -1,11 +1,13 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
+<script lang="ts" setup>
+import { computed, onMounted, watch, ref } from 'vue';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
-import type { ITag, IUser, IWorkflowDb } from '@/Interface';
-import { mapStores } from 'pinia';
+import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -13,15 +15,42 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@/composables/useI18n';
+import { useRoute, useRouter } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
+import {
+	N8nCard,
+	N8nHeading,
+	N8nIcon,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from 'n8n-design-system';
+import { pickBy } from 'lodash-es';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
-interface Filters {
-	search: string;
-	homeProject: string;
+const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
+
+const sourceControlStore = useSourceControlStore();
+const usersStore = useUsersStore();
+const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
+const posthogStore = usePostHog();
+const projectsStore = useProjectsStore();
+const templatesStore = useTemplatesStore();
+const telemetry = useTelemetry();
+const uiStore = useUIStore();
+const tagsStore = useTagsStore();
+const documentTitle = useDocumentTitle();
+
+interface Filters extends IFilters {
 	status: string | boolean;
 	tags: string[];
 }
@@ -32,285 +61,235 @@ const StatusFilter = {
 	ALL: '',
 };
 
-const WorkflowsView = defineComponent({
-	name: 'WorkflowsView',
-	components: {
-		ResourcesListLayout,
-		WorkflowCard,
-		WorkflowTagsDropdown,
-		ProjectTabs,
-	},
-	data() {
-		return {
-			filters: {
-				search: '',
-				homeProject: '',
-				status: StatusFilter.ALL,
-				tags: [],
-			} as Filters,
-			sourceControlStoreUnsubscribe: () => {},
-			loading: false,
-			documentTitle: useDocumentTitle(),
-		};
-	},
-	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-			useWorkflowsStore,
-			useSourceControlStore,
-			useTagsStore,
-			useProjectsStore,
-			useTemplatesStore,
-			usePostHog,
-		),
-		readOnlyEnv(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
-		},
-		currentUser(): IUser {
-			return this.usersStore.currentUser || ({} as IUser);
-		},
-		allWorkflows(): IResource[] {
-			return this.workflowsStore.allWorkflows as IResource[];
-		},
-		isShareable(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
-		},
-		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
-			return [
-				{
-					label: this.$locale.baseText('workflows.filters.status.all'),
-					value: StatusFilter.ALL,
-				},
-				{
-					label: this.$locale.baseText('workflows.filters.status.active'),
-					value: StatusFilter.ACTIVE,
-				},
-				{
-					label: this.$locale.baseText('workflows.filters.status.deactivated'),
-					value: StatusFilter.DEACTIVATED,
-				},
-			];
-		},
-		userRole() {
-			const role = this.usersStore.currentUserCloudInfo?.role;
-
-			if (role) {
-				return role;
-			}
-
-			const answers = this.usersStore.currentUser?.personalizationAnswers;
-			if (answers && 'role' in answers) {
-				return answers.role;
-			}
-
-			return undefined;
-		},
-		isOnboardingExperimentEnabled() {
-			return (
-				this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-				MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
-			);
-		},
-		isSalesUser() {
-			if (!this.userRole) {
-				return false;
-			}
-			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
-		},
-		addWorkflowButtonText() {
-			return this.projectsStore.currentProject
-				? this.$locale.baseText('workflows.project.add')
-				: this.$locale.baseText('workflows.add');
-		},
-		projectPermissions() {
-			return getResourcePermissions(
-				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
-			);
-		},
-		emptyListDescription() {
-			if (this.readOnlyEnv) {
-				return this.$locale.baseText('workflows.empty.description.readOnlyEnv');
-			} else if (!this.projectPermissions.workflow.create) {
-				return this.$locale.baseText('workflows.empty.description.noPermission');
-			} else {
-				return this.$locale.baseText('workflows.empty.description');
-			}
-		},
-	},
-	watch: {
-		filters: {
-			deep: true,
-			handler() {
-				this.saveFiltersOnQueryString();
-			},
-		},
-		'$route.params.projectId'() {
-			void this.initialize();
-		},
-	},
-	async mounted() {
-		this.documentTitle.set(this.$locale.baseText('workflows.heading'));
-		await this.setFiltersFromQueryString();
-
-		void this.usersStore.showPersonalizationSurvey();
-
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
-			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
-	},
-	methods: {
-		onFiltersUpdated(filters: Filters) {
-			this.filters = filters;
-		},
-		addWorkflow() {
-			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({
-				name: VIEWS.NEW_WORKFLOW,
-				query: { projectId: this.$route?.params?.projectId },
-			});
-
-			this.$telemetry.track('User clicked add workflow button', {
-				source: 'Workflows list',
-			});
-			this.trackEmptyCardClick('blank');
-		},
-		getTemplateRepositoryURL() {
-			return this.templatesStore.websiteTemplateRepositoryURL;
-		},
-		trackEmptyCardClick(option: 'blank' | 'templates' | 'courses') {
-			this.$telemetry.track('User clicked empty page option', {
-				option,
-			});
-			if (option === 'templates' && this.isSalesUser) {
-				this.trackCategoryLinkClick('Sales');
-			}
-		},
-		trackCategoryLinkClick(category: string) {
-			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
-				role: this.usersStore.currentUserCloudInfo?.role,
-				active_workflow_count: this.workflowsStore.activeWorkflows.length,
-			});
-		},
-		async initialize() {
-			this.loading = true;
-			await Promise.all([
-				this.usersStore.fetchUsers(),
-				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
-				this.workflowsStore.fetchActiveWorkflows(),
-			]);
-			this.loading = false;
-		},
-		onClickTag(tagId: string) {
-			if (!this.filters.tags.includes(tagId)) {
-				this.filters.tags.push(tagId);
-			}
-		},
-		onFilter(
-			resource: IWorkflowDb,
-			filters: { tags: string[]; search: string; status: string | boolean },
-			matches: boolean,
-		): boolean {
-			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
-				matches =
-					matches &&
-					filters.tags.every((tag) =>
-						(resource.tags as ITag[])?.find((resourceTag) =>
-							typeof resourceTag === 'object'
-								? `${resourceTag.id}` === `${tag}`
-								: `${resourceTag}` === `${tag}`,
-						),
-					);
-			}
-
-			if (filters.status !== '') {
-				matches = matches && resource.active === filters.status;
-			}
-
-			return matches;
-		},
-		saveFiltersOnQueryString() {
-			const query: { [key: string]: string } = {};
-
-			if (this.filters.search) {
-				query.search = this.filters.search;
-			}
-
-			if (typeof this.filters.status !== 'string') {
-				query.status = this.filters.status.toString();
-			}
-
-			if (this.filters.tags.length) {
-				query.tags = this.filters.tags.join(',');
-			}
-
-			if (this.filters.homeProject) {
-				query.homeProject = this.filters.homeProject;
-			}
-
-			void this.$router.replace({
-				query: Object.keys(query).length ? query : undefined,
-			});
-		},
-		isValidProjectId(projectId: string) {
-			return this.projectsStore.availableProjects.some((project) => project.id === projectId);
-		},
-		async setFiltersFromQueryString() {
-			const { tags, status, search, homeProject } = this.$route.query;
-
-			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
-
-			if (homeProject && typeof homeProject === 'string') {
-				await this.projectsStore.getAvailableProjects();
-				if (this.isValidProjectId(homeProject)) {
-					filtersToApply.homeProject = homeProject;
-				}
-			}
-
-			if (search && typeof search === 'string') {
-				filtersToApply.search = search;
-			}
-
-			if (tags && typeof tags === 'string') {
-				const currentTags = this.tagsStore.allTags.map((tag) => tag.id);
-				const savedTags = tags.split(',').filter((tag) => currentTags.includes(tag));
-				if (savedTags.length) {
-					filtersToApply.tags = savedTags;
-				}
-			}
-
-			if (
-				status &&
-				typeof status === 'string' &&
-				[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
-			) {
-				filtersToApply.status = status === 'true';
-			}
-
-			if (Object.keys(filtersToApply).length) {
-				this.filters = {
-					...this.filters,
-					...filtersToApply,
-				};
-			}
-		},
-	},
+const loading = ref(false);
+const filters = ref<Filters>({
+	search: '',
+	homeProject: '',
+	status: StatusFilter.ALL,
+	tags: [],
 });
 
-export default WorkflowsView;
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
+const allWorkflows = computed(() => workflowsStore.allWorkflows as IResource[]);
+const isShareable = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
+
+const statusFilterOptions = computed(() => [
+	{
+		label: i18n.baseText('workflows.filters.status.all'),
+		value: StatusFilter.ALL,
+	},
+	{
+		label: i18n.baseText('workflows.filters.status.active'),
+		value: StatusFilter.ACTIVE,
+	},
+	{
+		label: i18n.baseText('workflows.filters.status.deactivated'),
+		value: StatusFilter.DEACTIVATED,
+	},
+]);
+
+const userRole = computed(() => {
+	const role = usersStore.currentUserCloudInfo?.role;
+	if (role) return role;
+
+	const answers = usersStore.currentUser?.personalizationAnswers;
+	if (answers && 'role' in answers) {
+		return answers.role;
+	}
+
+	return undefined;
+});
+
+const isOnboardingExperimentEnabled = computed(() => {
+	return (
+		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+		MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
+	);
+});
+
+const isSalesUser = computed(() => {
+	return ['Sales', 'sales-and-marketing'].includes(userRole.value || '');
+});
+
+const projectPermissions = computed(() => {
+	return getResourcePermissions(
+		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+	);
+});
+
+const emptyListDescription = computed(() => {
+	if (readOnlyEnv.value) {
+		return i18n.baseText('workflows.empty.description.readOnlyEnv');
+	} else if (!projectPermissions.value.workflow.create) {
+		return i18n.baseText('workflows.empty.description.noPermission');
+	} else {
+		return i18n.baseText('workflows.empty.description');
+	}
+});
+
+const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iFilters = newFilters as Filters;
+	if (settingsStore.areTagsEnabled && iFilters.tags.length > 0) {
+		matches =
+			matches &&
+			iFilters.tags.every((tag) =>
+				(resource as IWorkflowDb).tags?.find((resourceTag) =>
+					typeof resourceTag === 'object'
+						? `${resourceTag.id}` === `${tag}`
+						: `${resourceTag}` === `${tag}`,
+				),
+			);
+	}
+
+	if (newFilters.status !== '') {
+		matches = matches && (resource as IWorkflowDb).active === newFilters.status;
+	}
+
+	return matches;
+};
+
+// Methods
+const onFiltersUpdated = (newFilters: IFilters) => {
+	Object.assign(filters.value, newFilters);
+};
+
+const addWorkflow = () => {
+	uiStore.nodeViewInitialized = false;
+	void router.push({
+		name: VIEWS.NEW_WORKFLOW,
+		query: { projectId: route.params?.projectId },
+	});
+
+	telemetry.track('User clicked add workflow button', {
+		source: 'Workflows list',
+	});
+	trackEmptyCardClick('blank');
+};
+
+const getTemplateRepositoryURL = () => templatesStore.websiteTemplateRepositoryURL;
+
+const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
+	telemetry.track('User clicked empty page option', {
+		option,
+	});
+	if (option === 'templates' && isSalesUser.value) {
+		trackCategoryLinkClick('Sales');
+	}
+};
+
+const trackCategoryLinkClick = (category: string) => {
+	telemetry.track(`User clicked Browse ${category} Templates`, {
+		role: usersStore.currentUserCloudInfo?.role,
+		active_workflow_count: workflowsStore.activeWorkflows.length,
+	});
+};
+
+const initialize = async () => {
+	loading.value = true;
+	await Promise.all([
+		usersStore.fetchUsers(),
+		workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined),
+		workflowsStore.fetchActiveWorkflows(),
+	]);
+	loading.value = false;
+};
+
+const onClickTag = (tagId: string) => {
+	if (!filters.value.tags.includes(tagId)) {
+		filters.value.tags.push(tagId);
+	}
+};
+
+const saveFiltersOnQueryString = () => {
+	const query: { [key: string]: string } = {};
+
+	if (filters.value.search) {
+		query.search = filters.value.search;
+	}
+
+	if (typeof filters.value.status !== 'string') {
+		query.status = filters.value.status.toString();
+	}
+
+	if (filters.value.tags.length) {
+		query.tags = filters.value.tags.join(',');
+	}
+
+	if (filters.value.homeProject) {
+		query.homeProject = filters.value.homeProject;
+	}
+
+	void router.replace({
+		query: Object.keys(query).length ? query : undefined,
+	});
+};
+
+function isValidProjectId(projectId: string) {
+	return projectsStore.availableProjects.some((project) => project.id === projectId);
+}
+
+const setFiltersFromQueryString = async () => {
+	const { tags, status, search, homeProject } = route.query ?? {};
+
+	const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+
+	if (homeProject && typeof homeProject === 'string') {
+		await projectsStore.getAvailableProjects();
+		if (isValidProjectId(homeProject)) {
+			filtersToApply.homeProject = homeProject;
+		}
+	}
+
+	if (search && typeof search === 'string') {
+		filtersToApply.search = search;
+	}
+
+	if (tags && typeof tags === 'string') {
+		await tagsStore.fetchAll();
+		const currentTags = tagsStore.allTags.map((tag) => tag.id);
+
+		filtersToApply.tags = tags.split(',').filter((tag) => currentTags.includes(tag));
+	}
+
+	if (
+		status &&
+		typeof status === 'string' &&
+		[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
+	) {
+		filtersToApply.status = status === 'true';
+	}
+
+	if (Object.keys(filtersToApply).length) {
+		Object.assign(filters.value, filtersToApply);
+	}
+
+	void router.replace({ query: pickBy(route.query) });
+};
+
+sourceControlStore.$onAction(({ name, after }) => {
+	if (name !== 'pullWorkfolder') return;
+	after(async () => await initialize());
+});
+
+watch(filters, () => saveFiltersOnQueryString(), { deep: true });
+
+watch(
+	() => route.params?.projectId,
+	async () => await initialize(),
+);
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('workflows.heading'));
+	await setFiltersFromQueryString();
+	void usersStore.showPersonalizationSurvey();
+});
 </script>
 
 <template>
 	<ResourcesListLayout
-		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
 		:filters="filters"
@@ -324,31 +303,7 @@ export default WorkflowsView;
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<n8n-tooltip :disabled="!readOnlyEnv">
-				<div>
-					<n8n-button
-						size="large"
-						block
-						:disabled="disabled"
-						data-test-id="resources-list-add"
-						@click="addWorkflow"
-					>
-						{{ addWorkflowButtonText }}
-					</n8n-button>
-				</div>
-				<template #content>
-					<i18n-t tag="span" keypath="mainSidebar.workflows.readOnlyEnv.tooltip">
-						<template #link>
-							<a target="_blank" href="https://docs.n8n.io/source-control-environments/">
-								{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip.link') }}
-							</a>
-						</template>
-					</i18n-t>
-				</template>
-			</n8n-tooltip>
+			<ProjectHeader />
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<WorkflowCard
@@ -362,50 +317,50 @@ export default WorkflowsView;
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
-				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+				<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
 					{{
 						currentUser.firstName
-							? $locale.baseText('workflows.empty.heading', {
+							? i18n.baseText('workflows.empty.heading', {
 									interpolate: { name: currentUser.firstName },
 								})
-							: $locale.baseText('workflows.empty.heading.userNotSetup')
+							: i18n.baseText('workflows.empty.heading.userNotSetup')
 					}}
-				</n8n-heading>
-				<n8n-text v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
+				</N8nHeading>
+				<N8nText v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
 					{{ emptyListDescription }}
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div
 				v-if="!readOnlyEnv && projectPermissions.workflow.create"
 				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 			>
-				<n8n-card
+				<N8nCard
 					:class="$style.emptyStateCard"
 					hoverable
 					data-test-id="new-workflow-card"
 					@click="addWorkflow"
 				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-dark">
-						{{ $locale.baseText('workflows.empty.startFromScratch') }}
-					</n8n-text>
-				</n8n-card>
+					<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
+					<N8nText size="large" class="mt-xs" color="text-dark">
+						{{ i18n.baseText('workflows.empty.startFromScratch') }}
+					</N8nText>
+				</N8nCard>
 				<a
 					v-if="isSalesUser || isOnboardingExperimentEnabled"
 					href="https://docs.n8n.io/courses/#available-courses"
 					:class="$style.emptyStateCard"
 					target="_blank"
 				>
-					<n8n-card
+					<N8nCard
 						hoverable
 						data-test-id="browse-sales-templates-card"
 						@click="trackEmptyCardClick('courses')"
 					>
-						<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
-						<n8n-text size="large" class="mt-xs" color="text-dark">
-							{{ $locale.baseText('workflows.empty.learnN8n') }}
-						</n8n-text>
-					</n8n-card>
+						<N8nIcon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
+						<N8nText size="large" class="mt-xs" color="text-dark">
+							{{ i18n.baseText('workflows.empty.learnN8n') }}
+						</N8nText>
+					</N8nCard>
 				</a>
 				<a
 					v-if="isSalesUser || isOnboardingExperimentEnabled"
@@ -413,57 +368,57 @@ export default WorkflowsView;
 					:class="$style.emptyStateCard"
 					target="_blank"
 				>
-					<n8n-card
+					<N8nCard
 						hoverable
 						data-test-id="browse-sales-templates-card"
 						@click="trackEmptyCardClick('templates')"
 					>
-						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-						<n8n-text size="large" class="mt-xs" color="text-dark">
-							{{ $locale.baseText('workflows.empty.browseTemplates') }}
-						</n8n-text>
-					</n8n-card>
+						<N8nIcon :class="$style.emptyStateCardIcon" icon="box-open" />
+						<N8nText size="large" class="mt-xs" color="text-dark">
+							{{ i18n.baseText('workflows.empty.browseTemplates') }}
+						</N8nText>
+					</N8nCard>
 				</a>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div v-if="settingsStore.areTagsEnabled" class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('workflows.filters.tags')"
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.tags')"
 					:bold="false"
 					size="small"
 					color="text-base"
 					class="mb-3xs"
 				/>
 				<WorkflowTagsDropdown
-					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
+					:placeholder="i18n.baseText('workflowOpen.filterWorkflows')"
 					:model-value="filters.tags"
 					:create-enabled="false"
 					@update:model-value="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('workflows.filters.status')"
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.status')"
 					:bold="false"
 					size="small"
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select
+				<N8nSelect
 					data-test-id="status-dropdown"
 					:model-value="filters.status"
 					@update:model-value="setKeyValue('status', $event)"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="option in statusFilterOptions"
 						:key="option.label"
 						:label="option.label"
 						:value="option.value"
 						data-test-id="status"
 					>
-					</n8n-option>
-				</n8n-select>
+					</N8nOption>
+				</N8nSelect>
 			</div>
 		</template>
 	</ResourcesListLayout>

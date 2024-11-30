@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
@@ -93,8 +93,8 @@ export class DocumentGithubLoader implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		console.log('Supplying data for Github Document Loader');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supplying data for Github Document Loader');
 
 		const repository = this.getNodeParameter('repository', itemIndex) as string;
 		const branch = this.getNodeParameter('branch', itemIndex) as string;
@@ -109,17 +109,22 @@ export class DocumentGithubLoader implements INodeType {
 			0,
 		)) as CharacterTextSplitter | undefined;
 
+		const { index } = this.addInputData(NodeConnectionType.AiDocument, [
+			[{ json: { repository, branch, ignorePaths, recursive } }],
+		]);
 		const docs = new GithubRepoLoader(repository, {
 			branch,
 			ignorePaths: (ignorePaths ?? '').split(',').map((p) => p.trim()),
 			recursive,
 			accessToken: (credentials.accessToken as string) || '',
+			apiUrl: credentials.server as string,
 		});
 
 		const loadedDocs = textSplitter
 			? await textSplitter.splitDocuments(await docs.load())
 			: await docs.load();
 
+		this.addOutputData(NodeConnectionType.AiDocument, index, [[{ json: { loadedDocs } }]]);
 		return {
 			response: logWrapper(loadedDocs, this),
 		};

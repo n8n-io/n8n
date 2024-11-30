@@ -33,7 +33,7 @@ export async function facebookApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: `https://graph.facebook.com/v17.0${resource}`,
+		uri: `https://graph.facebook.com/v21.0${resource}`,
 		json: true,
 	};
 
@@ -89,7 +89,7 @@ export async function facebookAppApiRequest(
 		method,
 		qs,
 		gzip: true,
-		uri: `https://graph.facebook.com/v17.0${resource}`,
+		uri: `https://graph.facebook.com/v21.0${resource}`,
 		json: true,
 	};
 
@@ -181,7 +181,7 @@ export async function facebookPageApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: `https://graph.facebook.com/v17.0${resource}`,
+		uri: `https://graph.facebook.com/v21.0${resource}`,
 		json: true,
 	};
 

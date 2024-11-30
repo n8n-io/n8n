@@ -5,10 +5,12 @@ import { useRouter, useRoute } from 'vue-router';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
+	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
 	MAIN_HEADER_TABS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
+	WORKFLOW_EVALUATION_EXPERIMENT,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -16,7 +18,12 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnection } from '@/composables/usePushConnection';
+import { usePostHog } from '@/stores/posthog.store';
+
+import GithubButton from 'vue-github-button';
+import { useLocalStorage } from '@vueuse/core';
 
 const router = useRouter();
 const route = useRoute();
@@ -27,16 +34,29 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const settingsStore = useSettingsStore();
+const posthogStore = usePostHog();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
 const executionToReturnTo = ref('');
 const dirtyState = ref(false);
+const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
 
-const tabBarItems = computed(() => [
-	{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
-	{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-]);
+const tabBarItems = computed(() => {
+	const items = [
+		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
+		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+	];
+
+	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
+		items.push({
+			value: MAIN_HEADER_TABS.TEST_DEFINITION,
+			label: locale.baseText('generic.tests'),
+		});
+	}
+	return items;
+});
 
 const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
@@ -48,6 +68,12 @@ const workflowId = computed(() =>
 );
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+const isEnterprise = computed(
+	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
+);
+const showGitHubButton = computed(
+	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
+);
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -67,6 +93,9 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
+	if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
+		activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
+	}
 	if (
 		to.name === VIEWS.EXECUTION_HOME ||
 		to.name === VIEWS.WORKFLOW_EXECUTIONS ||
@@ -104,6 +133,11 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EXECUTIONS:
 			void navigateToExecutionsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.TEST_DEFINITION:
+			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
+			void router.push({ name: VIEWS.TEST_DEFINITION });
 			break;
 
 		default:
@@ -158,10 +192,14 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 		await router.push(routeToNavigateTo);
 	}
 }
+
+function hideGithubButton() {
+	githubButtonHidden.value = true;
+}
 </script>
 
 <template>
-	<div>
+	<div class="container">
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
 				<WorkflowDetails
@@ -174,11 +212,30 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 					:active="workflow.active"
 					:read-only="readOnly"
 				/>
-				<TabBar
-					v-if="onWorkflowPage"
-					:items="tabBarItems"
-					:model-value="activeHeaderTab"
-					@update:model-value="onTabSelected"
+			</div>
+			<TabBar
+				v-if="onWorkflowPage"
+				:items="tabBarItems"
+				:model-value="activeHeaderTab"
+				@update:model-value="onTabSelected"
+			/>
+		</div>
+		<div v-if="showGitHubButton" class="github-button">
+			<div class="github-button-container">
+				<GithubButton
+					href="https://github.com/n8n-io/n8n"
+					:data-color-scheme="uiStore.appliedTheme"
+					data-size="large"
+					data-show-count="true"
+					aria-label="Star n8n-io/n8n on GitHub"
+				>
+					Star
+				</GithubButton>
+				<N8nIcon
+					class="close-github-button"
+					icon="times-circle"
+					size="medium"
+					@click="hideGithubButton"
 				/>
 			</div>
 		</div>
@@ -186,9 +243,15 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 </template>
 
 <style lang="scss">
+.container {
+	display: flex;
+	position: relative;
+	width: 100%;
+	align-items: center;
+}
+
 .main-header {
 	background-color: var(--color-background-xlight);
-	height: $header-height;
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -199,8 +262,45 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	height: $header-height;
 	font-weight: 400;
-	padding: 0 var(--spacing-m) 0 var(--spacing-xs);
+	padding: var(--spacing-xs) var(--spacing-m);
+}
+
+.github-button {
+	display: flex;
+	position: relative;
+	align-items: center;
+	align-self: stretch;
+	justify-content: center;
+	min-width: 170px;
+	padding-top: 2px;
+	padding-left: var(--spacing-m);
+	padding-right: var(--spacing-m);
+	background-color: var(--color-background-xlight);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+}
+
+.close-github-button {
+	display: none;
+	position: absolute;
+	right: 0;
+	top: 0;
+	transform: translate(50%, -46%);
+	color: var(--color-foreground-xdark);
+	background-color: var(--color-background-xlight);
+	border-radius: 100%;
+	cursor: pointer;
+
+	&:hover {
+		color: var(--prim-color-primary-shade-100);
+	}
+}
+.github-button-container {
+	position: relative;
+}
+
+.github-button:hover .close-github-button {
+	display: block;
 }
 </style>

@@ -110,7 +110,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 		let metrics = {
-			userId: owner!.id,
+			userId: owner?.id ?? '', // team projects have no owner
 			project: project.id,
 			workflowId,
 			nodeType: node.type,

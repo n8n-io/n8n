@@ -43,6 +43,7 @@ export class Supabase implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'supabaseApi',
@@ -123,14 +124,16 @@ export class Supabase implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
+		let qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
+			const tableId = this.getNodeParameter('tableId', 0) as string;
+
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
 					const dataToSend = this.getNodeParameter('dataToSend', 0) as
@@ -184,7 +187,6 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'delete') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				for (let i = 0; i < length; i++) {
 					let endpoint = `/${tableId}`;
@@ -240,7 +242,6 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'get') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/${tableId}`;
 
 				for (let i = 0; i < length; i++) {
@@ -280,11 +281,13 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'getAll') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0);
 				const filterType = this.getNodeParameter('filterType', 0) as string;
+
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
+					qs = {}; // reset qs
+
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -341,7 +344,6 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'update') {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {

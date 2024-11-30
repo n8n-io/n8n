@@ -1,16 +1,49 @@
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	LoggerProxy: { init: jest.fn() },
+}));
+
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { LoggerProxy } from 'n8n-workflow';
 
 import { Logger } from '@/logging/logger.service';
 
 describe('Logger', () => {
+	beforeEach(() => {
+		jest.resetAllMocks();
+	});
+
+	describe('constructor', () => {
+		const globalConfig = mock<GlobalConfig>({
+			logging: {
+				level: 'info',
+				outputs: ['console'],
+				scopes: [],
+			},
+		});
+
+		test('if root, should initialize `LoggerProxy` with instance', () => {
+			const logger = new Logger(globalConfig, mock<InstanceSettings>(), { isRoot: true });
+
+			expect(LoggerProxy.init).toHaveBeenCalledWith(logger);
+		});
+
+		test('if scoped, should not initialize `LoggerProxy`', () => {
+			new Logger(globalConfig, mock<InstanceSettings>(), { isRoot: false });
+
+			expect(LoggerProxy.init).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('transports', () => {
 		test('if `console` selected, should set console transport', () => {
 			const globalConfig = mock<GlobalConfig>({
 				logging: {
 					level: 'info',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -30,6 +63,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'info',
 					outputs: ['file'],
+					scopes: [],
 					file: {
 						fileSizeMax: 100,
 						fileCountMax: 16,
@@ -56,6 +90,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'error',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -74,6 +109,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'warn',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -92,6 +128,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'info',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -110,6 +147,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'debug',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 
@@ -128,6 +166,7 @@ describe('Logger', () => {
 				logging: {
 					level: 'silent',
 					outputs: ['console'],
+					scopes: [],
 				},
 			});
 

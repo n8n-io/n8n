@@ -15,6 +15,7 @@ import {
 	NDV,
 	MainSidebar,
 } from '../pages';
+import { clearNotifications } from '../pages/notifications';
 import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
@@ -50,7 +51,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		projects.getHomeButton().click();
-		projects.getProjectTabs().should('have.length', 2);
+		projects.getProjectTabs().should('have.length', 3);
 
 		projects.getProjectTabCredentials().click();
 		credentialsPage.getters.credentialCards().should('not.have.length');
@@ -100,7 +101,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 		projects.getMenuItems().first().click();
 		workflowsPage.getters.workflowCards().should('not.have.length');
-		projects.getProjectTabs().should('have.length', 3);
+		projects.getProjectTabs().should('have.length', 4);
 
 		workflowsPage.getters.newWorkflowButtonCard().click();
 
@@ -175,7 +176,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		let menuItems = cy.getByTestId('menu-item');
 
 		menuItems.filter('[class*=active_]').should('have.length', 1);
-		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+		menuItems.filter(':contains("Overview")[class*=active_]').should('exist');
 
 		projects.getMenuItems().first().click();
 
@@ -185,7 +186,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		menuItems.filter(':contains("Development")[class*=active_]').should('exist');
 
 		cy.intercept('GET', '/rest/workflows/*').as('loadWorkflow');
-		workflowsPage.getters.workflowCards().first().click();
+		workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 		cy.wait('@loadWorkflow');
 		menuItems = cy.getByTestId('menu-item');
@@ -221,7 +222,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		menuItems = cy.getByTestId('menu-item');
 
 		menuItems.filter('[class*=active_]').should('have.length', 1);
-		menuItems.filter(':contains("Home")[class*=active_]').should('exist');
+		menuItems.filter(':contains("Overview")[class*=active_]').should('exist');
 
 		workflowsPage.getters.workflowCards().should('have.length', 2).first().click();
 
@@ -229,7 +230,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		cy.getByTestId('execute-workflow-button').should('be.visible');
 
 		menuItems = cy.getByTestId('menu-item');
-		menuItems.filter(':contains("Home")[class*=active_]').should('not.exist');
+		menuItems.filter(':contains("Overview")[class*=active_]').should('not.exist');
 
 		menuItems = cy.getByTestId('menu-item');
 		menuItems.filter('[class*=active_]').should('have.length', 1);
@@ -448,38 +449,48 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().should('not.have.length');
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
+			clearNotifications();
 
 			projects.getHomeButton().click();
 			projects.getProjectTabCredentials().should('be.visible').click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
 			projects.createCredential('Credential in Home project');
 
+			clearNotifications();
+
 			// Create a project and add a credential and a workflow to it
 			projects.createProject('Project 1');
+			clearNotifications();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
 			projects.createCredential('Credential in Project 1');
+			clearNotifications();
 
 			projects.getProjectTabWorkflows().click();
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
 
+			clearNotifications();
+
 			// Create another project and add a credential and a workflow to it
 			projects.createProject('Project 2');
+			clearNotifications();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.emptyListCreateCredentialButton().click();
 			projects.createCredential('Credential in Project 2');
+			clearNotifications();
 
 			projects.getProjectTabWorkflows().click();
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
+			clearNotifications();
 
-			// Move the workflow owned by me from Home to Project 1
+			// Move the workflow Personal from Home to Project 1
 			projects.getHomeButton().click();
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("Personal")')
 				.should('exist');
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
@@ -496,11 +507,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Project 1")')
 				.click();
 			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			clearNotifications();
 
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("Personal")')
 				.should('not.exist');
 
 			// Move the workflow from Project 1 to Project 2
@@ -527,6 +539,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
+			clearNotifications();
 
 			projects
 				.getResourceMoveModal()
@@ -566,10 +579,11 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.click();
 
 			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			clearNotifications();
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("Personal")')
 				.should('have.length', 1);
 
 			// Move the credential from Project 1 to Project 2
@@ -591,7 +605,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Project 2")')
 				.click();
 			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
-
+			clearNotifications();
 			credentialsPage.getters.credentialCards().should('not.have.length');
 
 			// Move the credential from Project 2 to admin user
@@ -637,10 +651,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.click();
 			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
 
+			clearNotifications();
+
 			credentialsPage.getters
 				.credentialCards()
 				.should('have.length', 3)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("Personal")')
 				.should('have.length', 2);
 
 			// Move the credential from admin user back to its original project (Project 1)
@@ -681,9 +697,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getHomeButton().click();
 			workflowsPage.getters.workflowCards().should('not.have.length');
 			workflowsPage.getters.newWorkflowButtonCard().click();
-			workflowsPage.getters.workflowCards().should('not.have.length');
 
-			workflowsPage.getters.newWorkflowButtonCard().click();
 			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			ndv.getters.backToCanvas().click();
@@ -699,7 +713,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 1)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("Personal")')
 				.should('exist');
 			workflowsPage.getters.workflowCardActions('My workflow').click();
 			workflowsPage.getters.workflowMoveButton().click();
@@ -720,7 +734,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters
 				.workflowCards()
 				.should('have.length', 1)
-				.filter(':contains("Owned by me")')
+				.filter(':contains("Personal")')
 				.should('not.exist');
 
 			//Log out with instance owner and log in with the member user
@@ -733,7 +747,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			// Open the moved workflow
 			workflowsPage.getters.workflowCards().should('have.length', 1);
-			workflowsPage.getters.workflowCards().first().click();
+			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
 
 			// Check if the credential can be changed
 			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
@@ -769,7 +783,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 
-			mainSidebar.getters.executions().click();
+			projects.getMenuItems().last().click();
+			projects.getProjectTabExecutions().click();
 			cy.getByTestId('global-execution-list-item').first().find('td:last button').click();
 			getVisibleDropdown()
 				.find('li')
