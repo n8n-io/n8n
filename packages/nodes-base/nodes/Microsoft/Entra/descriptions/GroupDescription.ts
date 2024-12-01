@@ -472,8 +472,8 @@ const createFields: INodeProperties[] = [
 						type: 'body',
 					},
 				},
-				type: 'string',
-				validateType: 'string',
+				type: 'options',
+				validateType: 'options',
 			},
 			{
 				displayName: 'Preferred Data Location',
@@ -1015,6 +1015,46 @@ const updateFields: INodeProperties[] = [
 				},
 				type: 'string',
 				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule',
+				name: 'membershipRule',
+				default: '',
+				description:
+					'The <a href="https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership">dynamic membership rules</a>',
+				placeholder: 'e.g. user.department -eq "Marketing"',
+				routing: {
+					send: {
+						property: 'membershipRule',
+						type: 'body',
+					},
+				},
+				type: 'string',
+				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule Processing State',
+				name: 'membershipRuleProcessingState',
+				default: 'On',
+				description: 'Indicates whether the dynamic membership processing is on or paused',
+				options: [
+					{
+						name: 'On',
+						value: 'On',
+					},
+					{
+						name: 'Paused',
+						value: 'Paused',
+					},
+				],
+				routing: {
+					send: {
+						property: 'membershipRuleProcessingState',
+						type: 'body',
+					},
+				},
+				type: 'options',
+				validateType: 'options',
 			},
 			{
 				displayName: 'Preferred Data Location',
