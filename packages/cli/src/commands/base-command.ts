@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
 import { Command, Errors } from '@oclif/core';
+import glob from 'fast-glob';
+import { access as fsAccess, realpath as fsRealPath } from 'fs/promises';
 import {
 	BinaryDataService,
 	InstanceSettings,
@@ -13,6 +15,8 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	sleep,
 } from 'n8n-workflow';
+import path from 'path';
+import picocolors from 'picocolors';
 import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -43,6 +47,8 @@ export abstract class BaseCommand extends Command {
 
 	protected nodeTypes: NodeTypes;
 
+	protected loadNodesAndCredentials: LoadNodesAndCredentials;
+
 	protected instanceSettings: InstanceSettings = Container.get(InstanceSettings);
 
 	protected server?: AbstractServer;
@@ -70,7 +76,8 @@ export abstract class BaseCommand extends Command {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
-		await Container.get(LoadNodesAndCredentials).init();
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		await this.loadNodesAndCredentials.init();
 
 		await Db.init().catch(
 			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
@@ -319,5 +326,89 @@ export abstract class BaseCommand extends Command {
 
 			clearTimeout(forceShutdownTimer);
 		};
+	}
+
+	protected async setupHotReload() {
+		if (!inDevelopment || process.env.N8N_DEV_RELOAD !== 'true') return;
+
+		const { default: debounce } = await import('lodash/debounce');
+		// eslint-disable-next-line import/no-extraneous-dependencies
+		const { watch } = await import('chokidar');
+
+		const { Push } = await import('@/push');
+		const push = Container.get(Push);
+
+		// #region Hot-reload for nodes
+		Object.values(this.loadNodesAndCredentials.loaders).forEach(async (loader) => {
+			try {
+				await fsAccess(loader.directory);
+			} catch {
+				// If directory doesn't exist, there is nothing to watch
+				return;
+			}
+
+			const realModulePath = path.join(await fsRealPath(loader.directory), path.sep);
+			const reloader = debounce(async (fileName: string) => {
+				console.info(
+					picocolors.green('⭮ Reloading'),
+					picocolors.bold(fileName),
+					'in',
+					loader.packageName,
+				);
+				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
+					filePath.startsWith(realModulePath),
+				);
+				modulesToUnload.forEach((filePath) => {
+					delete require.cache[filePath];
+				});
+
+				loader.reset();
+				await loader.loadAll();
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				push.broadcast('nodeDescriptionUpdated', {});
+			}, 100);
+
+			const toWatch = loader.isLazyLoaded
+				? ['**/nodes.json', '**/credentials.json']
+				: ['**/*.js', '**/*.json'];
+			const files = await glob(toWatch, {
+				cwd: realModulePath,
+				ignore: ['node_modules/**'],
+			});
+			const watcher = watch(files, {
+				cwd: realModulePath,
+				ignoreInitial: true,
+			});
+			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
+		});
+		// #endregion
+
+		// #region Hot-reload for Backend DI services
+		// eslint-disable-next-line import/no-extraneous-dependencies
+		const { locate } = await import('func-loc');
+
+		// @ts-expect-error globalInstance is marked as private
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const { services } = Container.of() as {
+			services: Array<{ type: (...args: any[]) => any; value: object }>;
+		};
+		services.forEach(async (service) => {
+			const file = await locate(service.type);
+			if (!file?.path) return;
+			watch(file.path).on(
+				'change',
+				debounce(() => {
+					console.info(picocolors.green('⭮ Reloading service'), picocolors.bold(service.type.name));
+					delete require.cache[file.path];
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-member-access
+					const updatedClass = require(file.path)[service.type.name];
+					// @ts-expect-error
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+					service.value.__proto__ = updatedClass.prototype;
+				}, 1000),
+			);
+		});
+
+		// #endregion
 	}
 }

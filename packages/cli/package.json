@@ -78,6 +78,7 @@
     "@types/yamljs": "^0.2.31",
     "@vvo/tzdb": "^6.141.0",
     "concurrently": "^8.2.0",
+    "func-loc": "^0.1.16",
     "ioredis-mock": "^8.8.1",
     "mjml": "^4.15.3",
     "ts-essentials": "^7.0.3"

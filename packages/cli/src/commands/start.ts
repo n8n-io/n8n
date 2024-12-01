@@ -356,6 +356,8 @@ export class Start extends BaseCommand {
 				}
 			});
 		}
+
+		void this.setupHotReload();
 	}
 
 	async catch(error: Error) {

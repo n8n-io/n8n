@@ -1,6 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
 import glob from 'fast-glob';
-import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -19,7 +18,7 @@ import type {
 import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -354,51 +353,5 @@ export class LoadNodesAndCredentials {
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
-	}
-
-	async setupHotReload() {
-		const { default: debounce } = await import('lodash/debounce');
-		// eslint-disable-next-line import/no-extraneous-dependencies
-		const { watch } = await import('chokidar');
-
-		const { Push } = await import('@/push');
-		const push = Container.get(Push);
-
-		Object.values(this.loaders).forEach(async (loader) => {
-			try {
-				await fsPromises.access(loader.directory);
-			} catch {
-				// If directory doesn't exist, there is nothing to watch
-				return;
-			}
-
-			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
-			const reloader = debounce(async () => {
-				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
-					filePath.startsWith(realModulePath),
-				);
-				modulesToUnload.forEach((filePath) => {
-					delete require.cache[filePath];
-				});
-
-				loader.reset();
-				await loader.loadAll();
-				await this.postProcessLoaders();
-				push.broadcast('nodeDescriptionUpdated', {});
-			}, 100);
-
-			const toWatch = loader.isLazyLoaded
-				? ['**/nodes.json', '**/credentials.json']
-				: ['**/*.js', '**/*.json'];
-			const files = await glob(toWatch, {
-				cwd: realModulePath,
-				ignore: ['node_modules/**'],
-			});
-			const watcher = watch(files, {
-				cwd: realModulePath,
-				ignoreInitial: true,
-			});
-			watcher.on('add', reloader).on('change', reloader).on('unlink', reloader);
-		});
 	}
 }
