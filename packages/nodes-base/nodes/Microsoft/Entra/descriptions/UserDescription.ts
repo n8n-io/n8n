@@ -1197,7 +1197,7 @@ const getAllFields: INodeProperties[] = [
 			},
 		},
 		typeOptions: {
-			loadOptionsMethod: 'getUserProperties',
+			loadOptionsMethod: 'getUserPropertiesGetAll',
 		},
 		type: 'multiOptions',
 	},

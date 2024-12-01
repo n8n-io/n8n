@@ -863,7 +863,7 @@ const getAllFields: INodeProperties[] = [
 			},
 		},
 		typeOptions: {
-			loadOptionsMethod: 'getGroupProperties',
+			loadOptionsMethod: 'getGroupPropertiesGetAll',
 		},
 		type: 'multiOptions',
 	},
