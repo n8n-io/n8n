@@ -297,7 +297,7 @@ export class Wise implements INodeType {
 							qs.to = moment.tz(range.rangeProperties.to, timezone).utc().format();
 						} else if (time === undefined) {
 							qs.from = moment().subtract(1, 'months').utc().format();
-							qs.to = moment().format();
+							qs.to = moment().utc().format();
 						}
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/rates', {}, qs);
@@ -511,11 +511,17 @@ export class Wise implements INodeType {
 						});
 
 						if (filters.range !== undefined) {
-							qs.createdDateStart = moment(filters.range.rangeProperties.createdDateStart).format();
-							qs.createdDateEnd = moment(filters.range.rangeProperties.createdDateEnd).format();
+							qs.createdDateStart = moment
+								.tz(filters.range.rangeProperties.createdDateStart, timezone)
+								.utc()
+								.format();
+							qs.createdDateEnd = moment
+								.tz(filters.range.rangeProperties.createdDateEnd, timezone)
+								.utc()
+								.format();
 						} else {
-							qs.createdDateStart = moment().subtract(1, 'months').format();
-							qs.createdDateEnd = moment().format();
+							qs.createdDateStart = moment().subtract(1, 'months').utc().format();
+							qs.createdDateEnd = moment().utc().format();
 						}
 
 						const returnAll = this.getNodeParameter('returnAll', i);
