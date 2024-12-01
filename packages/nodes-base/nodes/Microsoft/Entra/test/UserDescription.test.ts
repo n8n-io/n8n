@@ -409,7 +409,7 @@ describe('Gong Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/users/87d349ed-44d7-43e1-9a83-5f2406dee5bd',
+							path: '/users/87d349ed-44d7-43e1-9a83-5f2406dee5bd?$select=id,accountEnabled,ageGroup,assignedLicenses,assignedPlans,authorizationInfo,businessPhones,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,employeeType,externalUserState,externalUserStateChangeDateTime,faxNumber,givenName,identities,imAddresses,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mail,mailNickname,mobilePhone,officeLocation,onPremisesDistinguishedName,onPremisesDomainName,onPremisesExtensionAttributes,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSamAccountName,onPremisesSecurityIdentifier,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,postalCode,preferredDataLocation,preferredLanguage,provisionedPlans,proxyAddresses,securityIdentifier,serviceProvisioningErrors,showInAddressList,signInSessionsValidFromDateTime,state,streetAddress,surname,usageLocation,userPrincipalName,userType',
 							statusCode: 200,
 							responseBody: microsoftEntraApiResponse.getUser,
 						},
@@ -720,12 +720,12 @@ describe('Gong Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/users?$top=10',
+							path: '/users?$top=10&$select=id,accountEnabled,ageGroup,assignedLicenses,assignedPlans,authorizationInfo,businessPhones,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,employeeType,externalUserState,externalUserStateChangeDateTime,faxNumber,givenName,identities,imAddresses,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mail,mailNickname,mobilePhone,officeLocation,onPremisesDistinguishedName,onPremisesDomainName,onPremisesExtensionAttributes,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSamAccountName,onPremisesSecurityIdentifier,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,postalCode,preferredDataLocation,preferredLanguage,provisionedPlans,proxyAddresses,securityIdentifier,serviceProvisioningErrors,showInAddressList,signInSessionsValidFromDateTime,state,streetAddress,surname,usageLocation,userPrincipalName,userType',
 							statusCode: 200,
 							responseBody: {
 								'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users',
 								'@odata.nextLink':
-									'https://graph.microsoft.com/v1.0/users?$top=10&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA',
+									'https://graph.microsoft.com/v1.0/users?$top=10&$select=id,accountEnabled,ageGroup,assignedLicenses,assignedPlans,authorizationInfo,businessPhones,city,companyName,consentProvidedForMinor,country,createdDateTime,creationType,customSecurityAttributes,deletedDateTime,department,displayName,employeeHireDate,employeeId,employeeLeaveDateTime,employeeOrgData,employeeType,externalUserState,externalUserStateChangeDateTime,faxNumber,givenName,identities,imAddresses,isManagementRestricted,isResourceAccount,jobTitle,lastPasswordChangeDateTime,legalAgeGroupClassification,licenseAssignmentStates,mail,mailNickname,mobilePhone,officeLocation,onPremisesDistinguishedName,onPremisesDomainName,onPremisesExtensionAttributes,onPremisesImmutableId,onPremisesLastSyncDateTime,onPremisesProvisioningErrors,onPremisesSamAccountName,onPremisesSecurityIdentifier,onPremisesSyncEnabled,onPremisesUserPrincipalName,otherMails,passwordPolicies,passwordProfile,postalCode,preferredDataLocation,preferredLanguage,provisionedPlans,proxyAddresses,securityIdentifier,serviceProvisioningErrors,showInAddressList,signInSessionsValidFromDateTime,state,streetAddress,surname,usageLocation,userPrincipalName,userType&$skiptoken=RFNwdAIAAQAAACpHcm91cF9jYzEzY2Y5Yy1lOWNiLTQ3NjUtODMzYS05MDIzZDhhMjhlZjMqR3JvdXBfY2MxM2NmOWMtZTljYi00NzY1LTgzM2EtOTAyM2Q4YTI4ZWYzAAAAAAAAAAAAAAA',
 								value: new Array(10).fill(microsoftEntraApiResponse.getUser),
 							},
 						},
