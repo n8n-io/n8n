@@ -201,7 +201,7 @@ export class CommunityPackagesController {
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
-			throw new InternalServerError(message);
+			throw new InternalServerError(message, error);
 		}
 
 		// broadcast to connected frontends that node list has been updated
@@ -283,7 +283,7 @@ export class CommunityPackagesController {
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
-			throw new InternalServerError(message);
+			throw new InternalServerError(message, error);
 		}
 	}
 }
