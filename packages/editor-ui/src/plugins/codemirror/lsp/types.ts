@@ -27,6 +27,7 @@ export type LanguageServiceWorker = {
 	init(options: WorkerInitOptions, nodeDataFetcher: NodeDataFetcher): Promise<void>;
 	updateFile(content: string): void;
 	updateMode(mode: CodeExecutionMode): void;
+	updateNodeTypes(): void;
 	getCompletionsAtPos(pos: number): Promise<CompletionResult | null>;
 	getDiagnostics(): Diagnostic[];
 	getHoverTooltip(pos: number): HoverInfo | null;

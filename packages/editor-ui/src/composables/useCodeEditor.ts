@@ -1,6 +1,6 @@
 import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
-import { typescript } from '@/plugins/codemirror/lsp/typescript';
+import { useTypescript } from '@/plugins/codemirror/lsp/typescript';
 import { closeCursorInfoBox, infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import { closeBrackets, closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
@@ -107,7 +107,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 			case 'javaScript': {
 				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
 				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
-				const { extension, updateMode } = await typescript(readEditorValue(), mode);
+				const { extension, updateMode } = await useTypescript(readEditorValue(), mode);
 				onUpdateMode.value = updateMode;
 				return [extension];
 			}

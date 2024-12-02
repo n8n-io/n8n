@@ -230,7 +230,7 @@ declare global {
 			}
 
 			await Promise.all(
-				options.allNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)),
+				options.inputNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)),
 			);
 			await Promise.all(
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
@@ -305,6 +305,15 @@ declare global {
 				'n8n-mode-specific.d.ts',
 				mode === 'runOnceForAllItems' ? runOnceForAllItemsTypes : runOnceForEachItemTypes,
 			);
+			await Promise.all(
+				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
+			);
+		},
+		async updateNodeTypes() {
+			const nodeNames = Object.keys(loadedNodeTypesMap);
+
+			console.log('nodes to load', nodeNames);
+			await Promise.all(nodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)));
 			await Promise.all(
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
 			);

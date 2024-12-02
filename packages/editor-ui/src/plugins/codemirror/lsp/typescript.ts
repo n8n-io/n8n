@@ -15,6 +15,7 @@ import { n8nAutocompletion } from '../n8nLang';
 import type { LanguageServiceWorker } from './types';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useEnvironmentsStore from '../../../stores/environments.ee.store';
+import { watch } from 'vue';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -78,7 +79,7 @@ const tsHover: HoverSource = async (view, pos) => {
 	};
 };
 
-export async function typescript(initialValue: string, mode: CodeExecutionMode) {
+export async function useTypescript(initialValue: string, mode: CodeExecutionMode) {
 	const worker = Comlink.wrap<LanguageServiceWorker>(
 		new Worker(new URL('./worker/typescript.worker.ts', import.meta.url), { type: 'module' }),
 	);
@@ -86,6 +87,11 @@ export async function typescript(initialValue: string, mode: CodeExecutionMode) 
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const activeNodeName = ndvStore.activeNodeName;
+
+	watch(
+		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		async () => await worker.updateNodeTypes(),
+	);
 
 	await worker.init(
 		{
