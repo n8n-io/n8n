@@ -100,9 +100,6 @@ function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
 				name: string;
 				type: FieldType;
 			}>;
-		} else if (inputSource === JSON_SCHEMA) {
-			const schema = context.getNodeParameter(JSON_SCHEMA, 0, '{}') as string;
-			result = parseJsonSchema(jsonParse<JSONSchema7>(schema));
 		} else if (inputSource === JSON_EXAMPLE) {
 			const schema = parseJsonExample(context);
 			result = parseJsonSchema(schema);
@@ -118,14 +115,6 @@ function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
 		return result;
 	}
 	throw new NodeOperationError(context.getNode(), result);
-}
-
-// This intentionally doesn't catch any potential errors, e.g. an invalid json example
-// This way they correctly end up exposed to the user.
-// Otherwise we'd have to return true on error here as we short-circuit on false
-function hasFields(context: IExecuteFunctions): boolean {
-	const entries = getFieldEntries(context);
-	return entries.length > 0;
 }
 
 export class ExecuteWorkflowTrigger implements INodeType {
@@ -152,33 +141,14 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
 				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON
-				// For JSON_SCHEMA: We check if we have '"properties":{}' after removing all whitespace. Otherwise the schema is invalid anyway and we'll error out elsewhere
 				displayCondition:
 					`={{$parameter['${INPUT_SOURCE}'] === '${WORKFLOW_INPUTS}' && !$parameter['${WORKFLOW_INPUTS}'].keys().length ` +
-					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_EXAMPLE}' && $parameter['${JSON_EXAMPLE}'].toString().replaceAll(' ', '').replaceAll('\\n', '') === '{}' ` +
-					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_SCHEMA}' && $parameter['${JSON_SCHEMA}'].toString().replaceAll(' ', '').replaceAll('\\n', '').includes('"properties":{}') }}`,
-				whenToDisplay: 'always',
-				location: 'ndv',
-			},
-
-			{
-				message:
-					'n8n does not support items types on Array fields. These entries will have no effect.',
-				// This is only best effort, but few natural use cases should trigger false positives here
-				displayCondition: `={{$parameter["${INPUT_SOURCE}"] === '${JSON_SCHEMA}' && $parameter["${JSON_SCHEMA}"].toString().includes('"items":') && $parameter["${JSON_SCHEMA}"].toString().includes('"array"')  }}`,
+					`|| $parameter['${INPUT_SOURCE}'] === '${JSON_EXAMPLE}' && $parameter['${JSON_EXAMPLE}'].toString().replaceAll(' ', '').replaceAll('\\n', '') === '{}' }}`,
 				whenToDisplay: 'always',
 				location: 'ndv',
 			},
 		],
 		properties: [
-			{
-				displayName: `When an ‘Execute Workflow’ node calls this workflow, the execution starts here.<br><br>
-Specified fields below will be output by this node with values provided by the calling workflow.<br><br>
-If you don't provide fields, all data passed into the 'Execute Workflow' node will be passed through instead.`,
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
 			{
 				displayName: 'Events',
 				name: 'events',
@@ -208,11 +178,6 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 						name: 'Using JSON Example',
 						value: JSON_EXAMPLE,
 						description: 'Infer JSON schema via JSON example output',
-					},
-					{
-						name: 'Using JSON Schema',
-						value: JSON_SCHEMA,
-						description: 'Provide JSON Schema',
 					},
 				],
 				default: WORKFLOW_INPUTS,
@@ -245,26 +210,6 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 				noDataExpression: true,
 				displayOptions: {
 					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [JSON_EXAMPLE] },
-				},
-			},
-			{
-				displayName: 'JSON Schema',
-				name: JSON_SCHEMA,
-				type: 'json',
-				default: JSON.stringify(
-					{
-						properties: {
-							aField: { type: 'number' },
-							anotherField: { type: 'array' },
-							thisFieldAcceptsAnyType: { type: 'any' },
-						},
-					},
-					null,
-					2,
-				),
-				noDataExpression: true,
-				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [JSON_SCHEMA] },
 				},
 			},
 			{
@@ -337,20 +282,8 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 						name: 'ignoreTypeErrors',
 						type: 'boolean',
 						default: true,
-						description: 'Whether type mismatches should be ignored rather than returning an Error',
-						noDataExpression: true,
-					},
-					// REVIEW: Note that by having this here we commit to passing the binary data
-					// to the sub-workflow in the first place, otherwise we'd need this on the parent
-					// or at least for the parent to read this from this node.
-					// Is there significant cost to switching to the sub-workflow or is it all one big workflow under the hood?
-					{
-						displayName: 'Include Binary Data',
-						name: 'includeBinaryData',
-						type: 'boolean',
-						default: true,
 						description:
-							'Whether binary data should be included from the parent. If set to false, binary data will be removed.',
+							'Whether type mismatches should be ignored, rather than returning an Error',
 						noDataExpression: true,
 					},
 				],
@@ -364,10 +297,6 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 		if (this.getNode().typeVersion < 1.1) {
 			return [inputData];
 		} else {
-			if (!hasFields(this)) {
-				return [inputData];
-			}
-
 			const items: INodeExecutionData[] = [];
 
 			for (const [itemIndex, item] of inputData.entries()) {
@@ -378,11 +307,6 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 				);
 				const ignoreTypeErrors = this.getNodeParameter(
 					`${INPUT_OPTIONS}.ignoreTypeErrors`,
-					itemIndex,
-					false,
-				);
-				const includeBinaryData = this.getNodeParameter(
-					`${INPUT_OPTIONS}.includeBinaryData`,
 					itemIndex,
 					false,
 				);
@@ -437,12 +361,7 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 						}
 					}
 
-					if (includeBinaryData) {
-						// Important not to assign directly to avoid modifying upstream data
-						items.push(Object.assign({}, item, newItem));
-					} else {
-						items.push(newItem);
-					}
+					items.push(newItem);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						/** todo error case? */
