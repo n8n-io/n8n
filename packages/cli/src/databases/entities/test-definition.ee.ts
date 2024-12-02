@@ -32,6 +32,9 @@ export class TestDefinition extends WithTimestampsAndStringId {
 	@Column('text')
 	description: string;
 
+	@Column(jsonColumnType, { default: '[]' })
+	pinnedNodes: PinnedNodeItem[];
+
 	/**
 	 * Relation to the workflow under test
 	 */
@@ -62,7 +65,4 @@ export class TestDefinition extends WithTimestampsAndStringId {
 
 	@OneToMany('TestMetric', 'testDefinition')
 	metrics: TestMetric[];
-
-	@Column(jsonColumnType, { default: [] })
-	pinnedNodes: PinnedNodeItem[];
 }
