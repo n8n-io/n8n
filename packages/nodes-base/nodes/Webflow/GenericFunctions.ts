@@ -5,7 +5,7 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	IHttpRequestMethods,
-	IRequestOptions,
+	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
@@ -20,11 +20,11 @@ export async function webflowApiRequest(
 ) {
 	let credentialsType = 'webflowOAuth2Api';
 
-	let options: IRequestOptions = {
+	let options: IHttpRequestOptions = {
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.webflow.com${resource}`,
+		url: uri || `https://api.webflow.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -37,8 +37,8 @@ export async function webflowApiRequest(
 		}
 		options.headers = { 'accept-version': '1.0.0' };
 	} else {
-		options.resolveWithFullResponse = true;
-		options.uri = `https://api.webflow.com/v2${resource}`;
+		options.returnFullResponse = true;
+		options.url = `https://api.webflow.com/v2${resource}`;
 	}
 
 	if (Object.keys(options.qs as IDataObject).length === 0) {
@@ -48,7 +48,7 @@ export async function webflowApiRequest(
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function webflowApiRequestAllItems(
@@ -57,21 +57,28 @@ export async function webflowApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-) {
+): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
-
 	let responseData;
 
 	query.limit = 100;
 	query.offset = 0;
 
+	const isTypeVersion1 = this.getNode().typeVersion === 1;
+
 	do {
 		responseData = await webflowApiRequest.call(this, method, endpoint, body, query);
-		if (responseData.offset !== undefined) {
+		const items = isTypeVersion1 ? responseData.items : responseData.body.items;
+		returnData.push(...(items as IDataObject[]));
+
+		if (responseData.offset !== undefined || responseData?.body?.pagination?.offset !== undefined) {
 			query.offset += query.limit;
 		}
-		returnData.push.apply(returnData, responseData.items as IDataObject[]);
-	} while (returnData.length < responseData.total);
+	} while (
+		isTypeVersion1
+			? returnData.length < responseData.total
+			: returnData.length < responseData.body.pagination.total
+	);
 
 	return returnData;
 }

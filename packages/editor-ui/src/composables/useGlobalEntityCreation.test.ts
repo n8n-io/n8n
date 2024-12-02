@@ -57,7 +57,7 @@ describe('useGlobalEntityCreation', () => {
 		const projectsStore = mockedStore(useProjectsStore);
 
 		const personalProjectId = 'personal-project';
-		projectsStore.canCreateProjects = false;
+		projectsStore.isTeamProjectFeatureEnabled = false;
 		projectsStore.personalProject = { id: personalProjectId } as Project;
 		const { menu } = useGlobalEntityCreation();
 
@@ -83,7 +83,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should use currentProject', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.currentProject = { id: currentProjectId } as Project;
 
 			const { menu } = useGlobalEntityCreation(false);
@@ -107,7 +107,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should be disabled in readOnly', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.currentProject = { id: currentProjectId } as Project;
 
 			const sourceControl = mockedStore(useSourceControlStore);
@@ -131,7 +131,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should be disabled based in scopes', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.currentProject = { id: currentProjectId, scopes: [] } as unknown as Project;
 
 			const { menu } = useGlobalEntityCreation(false);
@@ -155,7 +155,7 @@ describe('useGlobalEntityCreation', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
 			const personalProjectId = 'personal-project';
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.personalProject = { id: personalProjectId } as Project;
 			projectsStore.myProjects = [
 				{ id: '1', name: '1', type: 'team' },
@@ -173,7 +173,7 @@ describe('useGlobalEntityCreation', () => {
 	describe('handleSelect()', () => {
 		it('should only handle create-project', () => {
 			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			const { handleSelect } = useGlobalEntityCreation(true);
 			handleSelect('dummy');
 			expect(projectsStore.createProject).not.toHaveBeenCalled();
@@ -182,6 +182,7 @@ describe('useGlobalEntityCreation', () => {
 		it('creates a new project', async () => {
 			const toast = useToast();
 			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
 			projectsStore.createProject.mockResolvedValueOnce({ name: 'test', id: '1' } as Project);
 
@@ -198,6 +199,7 @@ describe('useGlobalEntityCreation', () => {
 		it('handles create project error', async () => {
 			const toast = useToast();
 			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
 			projectsStore.createProject.mockRejectedValueOnce(new Error('error'));
 
@@ -211,6 +213,7 @@ describe('useGlobalEntityCreation', () => {
 		it('redirects when project limit has been reached', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.canCreateProjects = false;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			const redirect = usePageRedirectionHelper();
 
 			const { handleSelect } = useGlobalEntityCreation(true);
