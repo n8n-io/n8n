@@ -56,7 +56,7 @@ const onSubmit = async (values: { [key: string]: string }) => {
 			const changePasswordParameters = {
 				token,
 				password: password.value,
-				...(values.mfaCode && { mfaToken: values.mfaCode }),
+				...(values.mfaCode && { mfaCode: values.mfaCode }),
 			};
 
 			await usersStore.changePassword(changePasswordParameters);

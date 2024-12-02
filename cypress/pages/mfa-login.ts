@@ -14,7 +14,7 @@ export class MfaLoginPage extends BasePage {
 	};
 
 	actions = {
-		loginWithMfaToken: (email: string, password: string, mfaCode: string) => {
+		loginWithMfaCode: (email: string, password: string, mfaCode: string) => {
 			const signinPage = new SigninPage();
 			const workflowsPage = new WorkflowsPage();
 

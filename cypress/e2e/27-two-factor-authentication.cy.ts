@@ -55,7 +55,7 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
 		const mfaCode = generateOTPToken(user.mfaSecret);
-		mfaLoginPage.actions.loginWithMfaToken(email, password, mfaCode);
+		mfaLoginPage.actions.loginWithMfaCode(email, password, mfaCode);
 		mainSidebar.actions.signout();
 	});
 
@@ -74,7 +74,7 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
 		const loginToken = generateOTPToken(user.mfaSecret);
-		mfaLoginPage.actions.loginWithMfaToken(email, password, loginToken);
+		mfaLoginPage.actions.loginWithMfaCode(email, password, loginToken);
 		const disableToken = generateOTPToken(user.mfaSecret);
 		personalSettingsPage.actions.disableMfa(disableToken);
 		personalSettingsPage.getters.enableMfaButton().should('exist');
