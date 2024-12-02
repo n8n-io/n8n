@@ -7,6 +7,8 @@ services:
       - MARIADB_MYSQL_LOCALHOST_USER=true
     ports:
       - 3306:3306
+    tmpfs:
+      - /var/lib/mysql
 
   postgres:
     image: postgres:16
@@ -17,3 +19,5 @@ services:
       - POSTGRES_PASSWORD=password
     ports:
       - 5432:5432
+    tmpfs:
+      - /var/lib/postgresql/data

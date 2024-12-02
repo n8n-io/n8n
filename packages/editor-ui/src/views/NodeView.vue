@@ -1829,7 +1829,7 @@ export default defineComponent({
 						return;
 					}
 				} else {
-					// Pasted data is is possible workflow data
+					// Pasted data is possible workflow data
 					try {
 						// Check first if it is valid JSON
 						workflowData = JSON.parse(plainTextData);
@@ -4626,11 +4626,10 @@ export default defineComponent({
 
 				<n8n-button
 					v-if="containsChatNodes"
-					label="Chat"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 					size="large"
 					icon="comment"
-					type="primary"
-					:outline="isChatOpen === false"
+					:type="isChatOpen ? 'tertiary' : 'primary'"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>

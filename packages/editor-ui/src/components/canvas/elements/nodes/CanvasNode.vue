@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	toRef,
+	useCssModule,
+	watch,
+} from 'vue';
 import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
@@ -26,6 +35,7 @@ import { createEventBus } from 'n8n-design-system';
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
+	hovered?: boolean;
 };
 
 const emit = defineEmits<{
@@ -39,6 +49,8 @@ const emit = defineEmits<{
 	update: [id: string, parameters: Record<string, unknown>];
 	move: [id: string, position: XYPosition];
 }>();
+
+const style = useCssModule();
 
 const props = defineProps<Props>();
 
@@ -62,6 +74,13 @@ const isDisabled = computed(() => props.data.disabled);
 const nodeTypeDescription = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+
+const classes = computed(() => ({
+	[style.canvasNode]: true,
+	[style.showToolbar]: showToolbar.value,
+	hovered: props.hovered,
+	selected: props.selected,
+}));
 
 /**
  * Event bus
@@ -256,11 +275,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div
-		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
-		data-test-id="canvas-node"
-		:data-node-type="data.type"
-	>
+	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
 		<template
 			v-for="source in mappedOutputs"
 			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"

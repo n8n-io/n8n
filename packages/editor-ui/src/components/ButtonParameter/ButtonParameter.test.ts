@@ -45,6 +45,7 @@ describe('ButtonParameter', () => {
 		vi.mocked(useNDVStore).mockReturnValue({
 			ndvInputData: [{}],
 			activeNode: { name: 'TestNode', parameters: {} },
+			isDraggableDragging: false,
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({

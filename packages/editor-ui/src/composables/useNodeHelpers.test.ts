@@ -208,4 +208,30 @@ describe('useNodeHelpers()', () => {
 			},
 		);
 	});
+
+	describe('assignNodeId()', () => {
+		it('should assign a unique id to the node', () => {
+			const { assignNodeId } = useNodeHelpers();
+			const node = createTestNode({
+				id: '',
+			});
+
+			assignNodeId(node);
+			expect(node.id).not.toBe('');
+			expect(node.id).toMatch(/\w+(-\w+)+/);
+		});
+	});
+
+	describe('assignWebhookId', () => {
+		it('should assign a unique id to the webhook', () => {
+			const { assignWebhookId } = useNodeHelpers();
+			const webhook = createTestNode({
+				id: '',
+			});
+
+			assignWebhookId(webhook);
+			expect(webhook.webhookId).not.toBe('');
+			expect(webhook.webhookId).toMatch(/\w+(-\w+)+/);
+		});
+	});
 });

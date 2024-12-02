@@ -274,7 +274,9 @@ export class Form extends Node {
 			delete staticData[id];
 
 			if (config.redirectUrl) {
-				res.redirect(config.redirectUrl);
+				res.send(
+					`<html><head><meta http-equiv="refresh" content="0; url=${config.redirectUrl}"></head></html>`,
+				);
 				return { noWebhookResponse: true };
 			}
 
