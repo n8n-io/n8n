@@ -244,10 +244,6 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
-	/**
-	 * Simplify workflow object for the AI assistant
-	 * by removing unnecessary properties
-	 */
 	const simplifyWorkflowForAssistant = (workflow: IWorkflowDb): Partial<IWorkflowDb> => ({
 		name: workflow.name,
 		active: workflow.active,
