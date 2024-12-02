@@ -5,6 +5,7 @@ import Container, { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { Logger } from '@/logging/logger.service';
+import type { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart-loop-error';
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { TaskRunnerProcessRestartLoopDetector } from '@/runners/task-runner-process-restart-loop-detector';
 
