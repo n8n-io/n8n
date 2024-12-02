@@ -237,7 +237,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 								data-test-id="error-retry-button"
 								@click="() => message.retry?.()"
 							>
-								{{ t('generic.retry') }}
+								{{ t('assistantChat.retry') }}
 							</n8n-button>
 						</div>
 						<div v-else-if="message.type === 'code-diff'">

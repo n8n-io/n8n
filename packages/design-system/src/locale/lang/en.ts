@@ -46,5 +46,6 @@ export default {
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
+	'assistantChat.retry': 'Retry',
 	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;
