@@ -4,9 +4,9 @@ import { v4 as uuid } from 'uuid';
 
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 
 import { TOTPService } from './totp.service';
-import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 
 @Service()
 export class MfaService {
