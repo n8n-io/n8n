@@ -30,13 +30,11 @@ export class TaskRunnerModule {
 
 	private taskRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
-	private readonly logger: Logger;
-
 	constructor(
-		logger: Logger,
+		private readonly logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
 	) {
-		this.logger = logger.scoped('task-runner');
+		this.logger = this.logger.scoped('task-runner');
 	}
 
 	async start() {
