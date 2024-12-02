@@ -76,6 +76,7 @@ const repositories = [
 	'Tag',
 	'TestDefinition',
 	'TestMetric',
+	'TestRun',
 	'User',
 	'Variables',
 	'Webhook',
