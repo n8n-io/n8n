@@ -14,6 +14,7 @@ import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
+import * as utils from '../../v2/helpers/utils';
 
 const runQueries: QueriesRunner = jest.fn();
 
@@ -359,6 +360,70 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			items,
 			nodeOptions,
 		);
+	});
+
+	it('should call queries with multiple json key/value pairs', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement:
+					'={{ JSON.stringify({id: "7",id2: "848da11d-e72e-44c5-yyyy-c6fb9f17d366"}) }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should call queries with single json key/value pair', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '={{ JSON.stringify({id: "7"}) }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should call isJSON if there are queries which need to be resolved', async () => {
+		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query,
+			options: {
+				queryReplacement: '={{ JSON.stringify({id: "7"}) }}',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		jest.spyOn(utils, 'isJSON');
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(utils.isJSON).toHaveBeenCalledTimes(1);
 	});
 });
 
