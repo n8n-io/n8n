@@ -41,13 +41,14 @@ describe('Gong Node', () => {
 							},
 							{
 								parameters: {
-									resource: 'user',
+									resource: 'group',
 									operation: 'get',
-									user: {
+									group: {
 										__rl: true,
-										value: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
+										value: 'a8eb60e3-0145-4d7e-85ef-c6259784761b',
 										mode: 'id',
 									},
+									filter: '',
 									output: 'raw',
 									requestOptions: {},
 								},
@@ -82,7 +83,7 @@ describe('Gong Node', () => {
 				output: {
 					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.getUser],
+						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroup],
 					},
 				},
 			},
@@ -120,13 +121,13 @@ describe('Gong Node', () => {
 		});
 
 		nock(baseUrl)
-			.get(`/users/${microsoftEntraApiResponse.getUser.id}`)
+			.get(`/groups/${microsoftEntraApiResponse.getGroup.id}`)
 			.matchHeader(
 				'authorization',
 				'bearer ' + FAKE_CREDENTIALS_DATA.microsoftEntraOAuth2Api.oauthTokenData.access_token,
 			)
 			.reply(200, {
-				...microsoftEntraApiResponse.getUser,
+				...microsoftEntraApiResponse.getGroup,
 			});
 
 		const nodeTypes = Helpers.setup(tests);

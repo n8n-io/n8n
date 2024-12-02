@@ -9,8 +9,12 @@ import type {
 	IRequestOptions,
 	INodeExecutionData,
 	IN8nHttpFullResponse,
+	INodePropertyOptions,
+	INodeListSearchResult,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { parseStringPromise } from 'xml2js';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -227,4 +231,167 @@ export async function handleErrorPostReceive(
 	}
 
 	return data;
+}
+
+export async function getGroupProperties(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#groups');
+	const metadata = await parseStringPromise(response as string, {
+		explicitArray: false,
+	});
+
+	/* eslint-disable */
+	const entities = metadata['edmx:Edmx']['edmx:DataServices']['Schema']
+		.find((x: any) => x['$']['Namespace'] === 'microsoft.graph')
+		['EntityType'].filter((x: any) =>
+			['entity', 'directoryObject', 'group'].includes(x['$']['Name']),
+		);
+	let properties = entities
+		.flatMap((x: any) => x['Property'])
+		.map((x: any) => x['$']['Name']) as string[];
+	/* eslint-enable */
+
+	properties = properties.filter(
+		(x) => !['id', 'isArchived', 'hasMembersWithLicenseErrors'].includes(x),
+	);
+
+	properties = properties.sort();
+
+	for (const property of properties) {
+		returnData.push({
+			name: property,
+			value: property,
+		});
+	}
+
+	return returnData;
+}
+
+export async function getUserProperties(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#users');
+	const metadata = await parseStringPromise(response as string, {
+		explicitArray: false,
+	});
+
+	/* eslint-disable */
+	const entities = metadata['edmx:Edmx']['edmx:DataServices']['Schema']
+		.find((x: any) => x['$']['Namespace'] === 'microsoft.graph')
+		['EntityType'].filter((x: any) =>
+			['entity', 'directoryObject', 'user'].includes(x['$']['Name']),
+		);
+	let properties = entities
+		.flatMap((x: any) => x['Property'])
+		.map((x: any) => x['$']['Name']) as string[];
+	/* eslint-enable */
+
+	// signInActivity requires AuditLog.Read.All
+	// mailboxSettings MailboxSettings.Read
+	properties = properties.filter(
+		(x) =>
+			!['id', 'deviceEnrollmentLimit', 'mailboxSettings', 'print', 'signInActivity'].includes(x),
+	);
+
+	properties = properties.sort();
+
+	for (const property of properties) {
+		returnData.push({
+			name: property,
+			value: property,
+		});
+	}
+	return returnData;
+}
+
+export async function getGroups(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	let response: any;
+	if (paginationToken) {
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/groups',
+			{},
+			undefined,
+			undefined,
+			paginationToken,
+		);
+	} else {
+		const qs: IDataObject = {
+			$select: 'id,displayName',
+		};
+		const headers: IDataObject = {};
+		if (filter) {
+			headers.ConsistencyLevel = 'eventual';
+			qs.$search = `"displayName:${filter}"`;
+		}
+		response = await microsoftApiRequest.call(this, 'GET', '/groups', {}, qs, headers);
+	}
+
+	const groups: Array<{
+		id: string;
+		displayName: string;
+	}> = response.value;
+
+	const results: INodeListSearchItems[] = groups
+		.map((g) => ({
+			name: g.displayName,
+			value: g.id,
+		}))
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+		);
+
+	return { results, paginationToken: response['@odata.nextLink'] };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	let response: any;
+	if (paginationToken) {
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'/users',
+			{},
+			undefined,
+			undefined,
+			paginationToken,
+		);
+	} else {
+		const qs: IDataObject = {
+			$select: 'id,displayName',
+		};
+		const headers: IDataObject = {};
+		if (filter) {
+			qs.$filter = `startsWith(displayName, '${filter}') OR startsWith(userPrincipalName, '${filter}')`;
+		}
+		response = await microsoftApiRequest.call(this, 'GET', '/users', {}, qs, headers);
+	}
+
+	const users: Array<{
+		id: string;
+		displayName: string;
+	}> = response.value;
+
+	const results: INodeListSearchItems[] = users
+		.map((u) => ({
+			name: u.displayName,
+			value: u.id,
+		}))
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+		);
+
+	return { results, paginationToken: response['@odata.nextLink'] };
 }

@@ -298,10 +298,14 @@ const createFields: INodeProperties[] = [
 			{
 				name: 'Assigned',
 				value: '',
+				description:
+					'Lets you add specific users as members of a group and have unique permissions',
 			},
 			{
 				name: 'Dynamic',
 				value: 'DynamicMembership',
+				description:
+					'Lets you use rules for users to automatically add and remove users as members',
 			},
 		],
 		routing: {
@@ -356,14 +360,6 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Allow External Senders',
-				name: 'allowExternalSenders',
-				default: false,
-				description: 'Whether people external to the organization can send messages to the group',
-				type: 'boolean',
-				validateType: 'boolean',
-			},
 			{
 				displayName: 'Assignable to Role',
 				name: 'isAssignableToRole',
@@ -422,21 +418,62 @@ const createFields: INodeProperties[] = [
 				validateType: 'boolean',
 			},
 			{
-				displayName: 'Auto Subscribe New Members',
-				name: 'autoSubscribeNewMembers',
-				default: false,
-				description:
-					'Whether new members added to the group will be auto-subscribed to receive email notifications',
-				type: 'boolean',
-				validateType: 'boolean',
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				default: '',
 				description: 'Description for the group',
 				type: 'string',
 				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule',
+				name: 'membershipRule',
+				default: '',
+				description:
+					'The <a href="https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership">dynamic membership rules</a>',
+				displayOptions: {
+					show: {
+						'/membershipType': ['DynamicMembership'],
+					},
+				},
+				placeholder: 'e.g. user.department -eq "Marketing"',
+				routing: {
+					send: {
+						property: 'membershipRule',
+						type: 'body',
+					},
+				},
+				type: 'string',
+				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule Processing State',
+				name: 'membershipRuleProcessingState',
+				default: 'On',
+				description: 'Indicates whether the dynamic membership processing is on or paused',
+				displayOptions: {
+					show: {
+						'/membershipType': ['DynamicMembership'],
+					},
+				},
+				options: [
+					{
+						name: 'On',
+						value: 'On',
+					},
+					{
+						name: 'Paused',
+						value: 'Paused',
+					},
+				],
+				routing: {
+					send: {
+						property: 'membershipRuleProcessingState',
+						type: 'body',
+					},
+				},
+				type: 'options',
+				validateType: 'options',
 			},
 			{
 				displayName: 'Preferred Data Location',
@@ -492,7 +529,9 @@ const createFields: INodeProperties[] = [
 						for (const item of items) {
 							const groupId = item.json.id as string;
 							const fields = this.getNodeParameter('additionalFields', item.index) as IDataObject;
-							// delete fields.isAssignableToRole;
+							delete fields.isAssignableToRole;
+							delete fields.membershipRule;
+							delete fields.membershipRuleProcessingState;
 							if (Object.keys(fields).length) {
 								const body: IDataObject = {
 									...fields,
@@ -501,37 +540,9 @@ const createFields: INodeProperties[] = [
 									body.assignedLabels = [(body.assignedLabels as IDataObject).labelValues];
 								}
 
-								// To update the following properties, you must specify them in their own PATCH request, without including the other properties
-								const separateProperties = [
-									'allowExternalSenders',
-									'autoSubscribeNewMembers',
-									// 'hideFromAddressLists',
-									// 'hideFromOutlookClients',
-									// 'isSubscribedByMail',
-									// 'unseenCount',
-								];
-								const separateBody: IDataObject = {};
-								for (const [key, value] of Object.entries(body)) {
-									if (separateProperties.includes(key)) {
-										separateBody[key] = value;
-										delete body[key];
-									}
-								}
-
 								try {
-									if (Object.keys(body).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
-										merge(item.json, body);
-									}
-									if (Object.keys(separateBody).length) {
-										await microsoftApiRequest.call(
-											this,
-											'PATCH',
-											`/groups/${groupId}`,
-											separateBody,
-										);
-										merge(item.json, separateBody);
-									}
+									await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
+									merge(item.json, body);
 								} catch (error) {
 									try {
 										await microsoftApiRequest.call(this, 'DELETE', `/groups/${groupId}`);
@@ -852,7 +863,7 @@ const getAllFields: INodeProperties[] = [
 			},
 		},
 		typeOptions: {
-			loadOptionsMethod: 'getGroupProperties',
+			loadOptionsMethod: 'getGroupPropertiesGetAll',
 		},
 		type: 'multiOptions',
 	},
@@ -1004,6 +1015,46 @@ const updateFields: INodeProperties[] = [
 				},
 				type: 'string',
 				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule',
+				name: 'membershipRule',
+				default: '',
+				description:
+					'The <a href="https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership">dynamic membership rules</a>',
+				placeholder: 'e.g. user.department -eq "Marketing"',
+				routing: {
+					send: {
+						property: 'membershipRule',
+						type: 'body',
+					},
+				},
+				type: 'string',
+				validateType: 'string',
+			},
+			{
+				displayName: 'Membership Rule Processing State',
+				name: 'membershipRuleProcessingState',
+				default: 'On',
+				description: 'Indicates whether the dynamic membership processing is on or paused',
+				options: [
+					{
+						name: 'On',
+						value: 'On',
+					},
+					{
+						name: 'Paused',
+						value: 'Paused',
+					},
+				],
+				routing: {
+					send: {
+						property: 'membershipRuleProcessingState',
+						type: 'body',
+					},
+				},
+				type: 'options',
+				validateType: 'options',
 			},
 			{
 				displayName: 'Preferred Data Location',
