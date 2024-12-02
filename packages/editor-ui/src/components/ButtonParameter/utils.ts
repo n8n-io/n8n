@@ -57,75 +57,121 @@ export function getSchemas() {
 	};
 }
 
+//------ Reduce payload ------
+
 const calculateTokens = (item: object, averageTokenLength: number): number => {
 	return Math.ceil(JSON.stringify(item).length / averageTokenLength);
 };
 
+const calculateRemainingTokens = (error: Error) => {
+	const tokens = error.message.match(/\d+/g);
+
+	if (!tokens || tokens.length < 2) throw error;
+
+	const maxTokens = parseInt(tokens[0]);
+	const currentTokens = parseInt(tokens[1]);
+
+	return currentTokens - maxTokens;
+};
+
+const trimParentNodesSchema = (
+	payload: AskAiRequest.RequestPayload,
+	remainingTokensToReduce: number,
+	averageTokenLength: number,
+) => {
+	//check if parent nodes schema takes more tokens than available
+	let parentNodesTokenCount = calculateTokens(payload.context.schema, averageTokenLength);
+
+	if (remainingTokensToReduce > parentNodesTokenCount) {
+		remainingTokensToReduce -= parentNodesTokenCount;
+		payload.context.schema = [];
+	}
+
+	//remove parent nodes not referenced in the prompt
+	if (payload.context.schema.length) {
+		const nodes = [...payload.context.schema];
+
+		for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+			if (payload.question.includes(nodes[nodeIndex].nodeName)) continue;
+
+			const nodeTokens = calculateTokens(nodes[nodeIndex], averageTokenLength);
+			remainingTokensToReduce -= nodeTokens;
+			parentNodesTokenCount -= nodeTokens;
+			payload.context.schema.splice(nodeIndex, 1);
+
+			if (remainingTokensToReduce <= 0) break;
+		}
+	}
+
+	return [remainingTokensToReduce, parentNodesTokenCount];
+};
+
+const trimInputSchemaProperties = (
+	payload: AskAiRequest.RequestPayload,
+	remainingTokensToReduce: number,
+	averageTokenLength: number,
+	parentNodesTokenCount: number,
+) => {
+	if (remainingTokensToReduce <= 0) return remainingTokensToReduce;
+
+	//remove properties not referenced in the prompt from the input schema
+	if (Array.isArray(payload.context.inputSchema.schema.value)) {
+		const props = [...payload.context.inputSchema.schema.value];
+
+		for (let index = 0; index < props.length; index++) {
+			const key = props[index].key;
+
+			if (key && payload.question.includes(key)) continue;
+
+			const propTokens = calculateTokens(props[index], averageTokenLength);
+			remainingTokensToReduce -= propTokens;
+			payload.context.inputSchema.schema.value.splice(index, 1);
+
+			if (remainingTokensToReduce <= 0) break;
+		}
+	}
+
+	//if tokensToReduce is still remaining, remove all parent nodes
+	if (remainingTokensToReduce > 0) {
+		payload.context.schema = [];
+		remainingTokensToReduce -= parentNodesTokenCount;
+	}
+
+	return remainingTokensToReduce;
+};
+
+/**
+ * Attempts to reduce the size of the payload to fit within token limits or throws an error if unsuccessful,
+ * payload would be modified in place
+ *
+ * @param {AskAiRequest.RequestPayload} payload - The request payload to be trimmed,
+ * 'schema' and 'inputSchema.schema' will be modified.
+ * @param {Error} error - The error to throw if the token reduction fails.
+ * @param {number} [averageTokenLength=4] - The average token length used for estimation.
+ * @throws {Error} - Throws the provided error if the payload cannot be reduced sufficiently.
+ */
 export function reducePayloadSizeOrThrow(
 	payload: AskAiRequest.RequestPayload,
 	error: Error,
 	averageTokenLength = 4,
 ) {
 	try {
-		//calculate how many tokens has to be reduced
-		const tokens = error.message.match(/\d+/g);
-		if (!tokens || tokens.length < 2) throw error;
+		let remainingTokensToReduce = calculateRemainingTokens(error);
 
-		const maxTokens = parseInt(tokens[0]);
-		const currentTokens = parseInt(tokens[1]);
+		const [remaining, parentNodesTokenCount] = trimParentNodesSchema(
+			payload,
+			remainingTokensToReduce,
+			averageTokenLength,
+		);
 
-		let remainingTokensToReduce = currentTokens - maxTokens;
+		remainingTokensToReduce = remaining;
 
-		//check if parent nodes schema takes more tokens than available
-		let parentNodesTokenCount = calculateTokens(payload.context.schema, averageTokenLength);
-
-		if (remainingTokensToReduce > parentNodesTokenCount) {
-			remainingTokensToReduce -= parentNodesTokenCount;
-			payload.context.schema = [];
-		}
-
-		//remove parent nodes not referenced in the prompt
-		if (payload.context.schema.length) {
-			const nodes = [...payload.context.schema];
-
-			for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
-				if (payload.question.includes(nodes[nodeIndex].nodeName)) continue;
-
-				const nodeTokens = calculateTokens(nodes[nodeIndex], averageTokenLength);
-				remainingTokensToReduce -= nodeTokens;
-				parentNodesTokenCount -= nodeTokens;
-
-				payload.context.schema.splice(nodeIndex, 1);
-
-				if (remainingTokensToReduce <= 0) return;
-			}
-		}
-
-		if (remainingTokensToReduce <= 0) return;
-
-		//remove properties not referenced in the prompt from the input schema
-		if (Array.isArray(payload.context.inputSchema.schema.value)) {
-			const props = [...payload.context.inputSchema.schema.value];
-
-			for (let index = 0; index < props.length; index++) {
-				const key = props[index].key;
-				if (key && payload.question.includes(key)) continue;
-
-				const propTokens = calculateTokens(props[index], averageTokenLength);
-
-				remainingTokensToReduce -= propTokens;
-
-				payload.context.inputSchema.schema.value.splice(index, 1);
-
-				if (remainingTokensToReduce <= 0) return;
-			}
-		} else throw error;
-
-		//if tokensToReduce is still remaining, remove all parent nodes
-		if (remainingTokensToReduce > 0 && remainingTokensToReduce - parentNodesTokenCount <= 0) {
-			payload.context.schema = [];
-			return;
-		}
+		remainingTokensToReduce = trimInputSchemaProperties(
+			payload,
+			remainingTokensToReduce,
+			averageTokenLength,
+			parentNodesTokenCount,
+		);
 
 		if (remainingTokensToReduce > 0) throw error;
 	} catch (e) {
