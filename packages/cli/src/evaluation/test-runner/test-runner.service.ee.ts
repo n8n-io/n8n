@@ -1,9 +1,9 @@
 import { parse } from 'flatted';
 import type {
 	IDataObject,
-	IPinData,
 	IRun,
 	IRunData,
+	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -18,11 +18,11 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IExecutionResponse } from '@/interfaces';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
+import { createPinData, getPastExecutionStartNode } from './utils.ee';
 
 /**
  * This service orchestrates the running of test cases.
@@ -46,42 +46,29 @@ export class TestRunnerService {
 	) {}
 
 	/**
-	 * Extracts the execution data from the past execution.
-	 * Creates a pin data object from the past execution data
-	 * for the given workflow.
-	 * For now, it only pins trigger nodes.
-	 */
-	private createTestDataFromExecution(workflow: WorkflowEntity, execution: ExecutionEntity) {
-		const executionData = parse(execution.executionData.data) as IExecutionResponse['data'];
-
-		const triggerNodes = workflow.nodes.filter((node) => /trigger$/i.test(node.type));
-
-		const pinData = {} as IPinData;
-
-		for (const triggerNode of triggerNodes) {
-			const triggerData = executionData.resultData.runData[triggerNode.name];
-			if (triggerData?.[0]?.data?.main?.[0]) {
-				pinData[triggerNode.name] = triggerData[0]?.data?.main?.[0];
-			}
-		}
-
-		return { pinData, executionData };
-	}
-
-	/**
 	 * Runs a test case with the given pin data.
 	 * Waits for the workflow under test to finish execution.
 	 */
 	private async runTestCase(
 		workflow: WorkflowEntity,
-		testCasePinData: IPinData,
+		pastExecutionData: IRunExecutionData,
 		userId: string,
 	): Promise<IRun | undefined> {
+		// Create pin data from the past execution data
+		const pinData = createPinData(workflow, pastExecutionData);
+
+		// Determine the start node of the past execution
+		const pastExecutionStartNode = getPastExecutionStartNode(pastExecutionData);
+
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
+			destinationNode: pastExecutionData.startData?.destinationNode,
+			startNodes: pastExecutionStartNode
+				? [{ name: pastExecutionStartNode, sourceData: null }]
+				: undefined,
 			executionMode: 'evaluation',
 			runData: {},
-			pinData: testCasePinData,
+			pinData,
 			workflowData: workflow,
 			partialExecutionVersion: '-1',
 			userId,
@@ -206,11 +193,10 @@ export class TestRunnerService {
 			});
 			assert(pastExecution, 'Execution not found');
 
-			const testData = this.createTestDataFromExecution(workflow, pastExecution);
-			const { pinData, executionData } = testData;
+			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(workflow, pinData, user.id);
+			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);
 
 			// In case of a permission check issue, the test case execution will be undefined.
 			// Skip them and continue with the next test case
