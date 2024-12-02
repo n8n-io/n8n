@@ -5,6 +5,7 @@
 
 import type {
 	AddedNodesAndConnections,
+	IExecutionResponse,
 	INodeUi,
 	ITag,
 	IUsedCredential,
@@ -1849,6 +1850,32 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		deleteNodes(ids);
 	}
 
+	async function openExecution(executionId: string) {
+		let data: IExecutionResponse | undefined;
+		try {
+			data = await workflowsStore.getExecution(executionId);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+			return;
+		}
+
+		if (data === undefined) {
+			throw new Error(`Execution with id "${executionId}" could not be found!`);
+		}
+
+		initializeWorkspace(data.workflowData);
+
+		workflowsStore.setWorkflowExecutionData(data);
+
+		if (data.mode !== 'manual') {
+			workflowsStore.setWorkflowPinData({});
+		}
+
+		uiStore.stateIsDirty = false;
+
+		return data;
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -1891,5 +1918,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		resetWorkspace,
 		initializeWorkspace,
 		resolveNodeWebhook,
+		openExecution,
 	};
 }
