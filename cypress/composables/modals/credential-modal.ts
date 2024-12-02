@@ -40,6 +40,7 @@ export function saveCredential() {
 		.within(() => {
 			cy.get('button').should('not.exist');
 		});
+	getCredentialSaveButton().should('have.text', 'Saved');
 }
 
 export function closeCredentialModal() {
