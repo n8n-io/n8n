@@ -49,7 +49,7 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		cy.intercept('GET', '/rest/mfa/qr').as('getMfaQrCode');
 	});
 
-	it('Should be able to login with MFA token', () => {
+	it('Should be able to login with MFA code', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
@@ -59,16 +59,16 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to login with recovery code', () => {
+	it('Should be able to login with MFA recovery code', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		mfaLoginPage.actions.loginWithRecoveryCode(email, password, user.mfaRecoveryCodes[0]);
+		mfaLoginPage.actions.loginWithMfaRecoveryCode(email, password, user.mfaRecoveryCodes[0]);
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to disable MFA in account with MFA token ', () => {
+	it('Should be able to disable MFA in account with MFA code ', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();

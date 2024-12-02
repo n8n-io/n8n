@@ -43,12 +43,12 @@ export class MfaLoginPage extends BasePage {
 				},
 			);
 		},
-		loginWithRecoveryCode: (email: string, password: string, recoveryCode: string) => {
+		loginWithMfaRecoveryCode: (email: string, password: string, mfaRecoveryCode: string) => {
 			const signinPage = new SigninPage();
 			const workflowsPage = new WorkflowsPage();
 
 			cy.session(
-				[recoveryCode],
+				[mfaRecoveryCode],
 				() => {
 					cy.visit(signinPage.url);
 
@@ -61,7 +61,7 @@ export class MfaLoginPage extends BasePage {
 					this.getters.enterRecoveryCodeButton().click();
 
 					this.getters.form().within(() => {
-						this.getters.mfaRecoveryCode().type(recoveryCode);
+						this.getters.mfaRecoveryCode().type(mfaRecoveryCode);
 					});
 
 					// we should be redirected to /workflows
