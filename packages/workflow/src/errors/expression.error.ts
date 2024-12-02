@@ -30,7 +30,7 @@ export interface ExpressionErrorOptions {
  */
 export class ExpressionError extends ExecutionBaseError {
 	constructor(message: string, options?: ExpressionErrorOptions) {
-		super(message, { cause: options?.cause });
+		super(message, { cause: options?.cause, level: 'warning' });
 
 		if (options?.description !== undefined) {
 			this.description = options.description;

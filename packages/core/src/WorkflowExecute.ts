@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
+import { omit } from 'lodash';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
@@ -58,6 +59,7 @@ import {
 	cleanRunData,
 	recreateNodeExecutionStack,
 	handleCycles,
+	filterDisabledNodes,
 } from './PartialExecutionUtils';
 
 export class WorkflowExecute {
@@ -319,8 +321,9 @@ export class WorkflowExecute {
 	runPartialWorkflow2(
 		workflow: Workflow,
 		runData: IRunData,
+		pinData: IPinData = {},
+		dirtyNodeNames: string[] = [],
 		destinationNodeName?: string,
-		pinData?: IPinData,
 	): PCancelable<IRun> {
 		// TODO: Refactor the call-site to make `destinationNodeName` a required
 		// after removing the old partial execution flow.
@@ -345,11 +348,12 @@ export class WorkflowExecute {
 
 		// 2. Find the Subgraph
 		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph({ graph, destination, trigger });
+		const subgraph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = subgraph.getNodes();
 
 		// 3. Find the Start Nodes
-		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData });
+		runData = omit(runData, dirtyNodeNames);
+		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
 		// 5. Handle Cycles

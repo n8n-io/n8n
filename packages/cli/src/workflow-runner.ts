@@ -317,8 +317,9 @@ export class WorkflowRunner {
 					workflowExecution = workflowExecute.runPartialWorkflow2(
 						workflow,
 						data.runData,
-						data.destinationNode,
 						data.pinData,
+						data.dirtyNodeNames,
+						data.destinationNode,
 					);
 				} else {
 					workflowExecution = workflowExecute.runPartialWorkflow(

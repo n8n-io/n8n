@@ -470,6 +470,12 @@ export class DirectedGraph {
 		return graph;
 	}
 
+	clone() {
+		return new DirectedGraph()
+			.addNodes(...this.getNodes().values())
+			.addConnections(...this.getConnections().values());
+	}
+
 	private toIConnections() {
 		const result: IConnections = {};
 
