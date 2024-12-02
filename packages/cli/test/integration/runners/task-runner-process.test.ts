@@ -3,6 +3,7 @@ import Container from 'typedi';
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerProcessRestartLoopDetector } from '@/runners/task-runner-process-restart-loop-detector';
 import { retryUntil } from '@test-integration/retry-until';
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
@@ -83,5 +84,34 @@ describe('TaskRunnerProcess', () => {
 		expect(getNumConnectedRunners()).toBe(1);
 		expect(getNumRegisteredRunners()).toBe(1);
 		expect(runnerProcess.pid).not.toBe(processId);
+	});
+
+	it('should work together with restart loop detector', async () => {
+		// Arrange
+		const restartLoopDetector = new TaskRunnerProcessRestartLoopDetector(runnerProcess);
+		let restartLoopDetectedEventEmitted = false;
+		restartLoopDetector.once('restart-loop-detected', () => {
+			restartLoopDetectedEventEmitted = true;
+		});
+
+		// Act
+		await runnerProcess.start();
+
+		// Simulate a restart loop
+		for (let i = 0; i < 5; i++) {
+			await retryUntil(() => {
+				expect(runnerProcess.pid).toBeDefined();
+			});
+
+			// @ts-expect-error private property
+			runnerProcess.process?.kill();
+
+			await new Promise((resolve) => {
+				runnerProcess.once('exit', resolve);
+			});
+		}
+
+		// Assert
+		expect(restartLoopDetectedEventEmitted).toBe(true);
 	});
 });
