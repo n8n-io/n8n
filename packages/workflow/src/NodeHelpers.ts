@@ -320,7 +320,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 			],
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			noDataExpression: true,
