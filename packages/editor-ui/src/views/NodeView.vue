@@ -3580,7 +3580,6 @@ export default defineComponent({
 			if (node.type === STICKY_NODE_TYPE) {
 				this.$telemetry.track('User deleted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
-					is_welcome_note: false,
 				});
 			} else {
 				void this.externalHooks.run('node.deleteNode', { node });
