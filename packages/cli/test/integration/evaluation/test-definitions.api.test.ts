@@ -394,6 +394,57 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		expect(resp.statusCode).toBe(400);
 		expect(resp.body.message).toBe('Annotation tag not found');
 	});
+
+	test('should update pinned nodes', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			pinnedNodes: [
+				{
+					name: 'Schedule Trigger',
+				},
+			],
+		});
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data.pinnedNodes).toEqual([{ name: 'Schedule Trigger' }]);
+	});
+
+	test('should return error if pinned nodes are invalid', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			pinnedNodes: ['Simple string'],
+		});
+
+		expect(resp.statusCode).toBe(400);
+	});
+
+	test('should return error if pinned nodes are not in the workflow', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			pinnedNodes: [
+				{
+					name: 'Invalid Node',
+				},
+			],
+		});
+
+		expect(resp.statusCode).toBe(400);
+	});
 });
 
 describe('DELETE /evaluation/test-definitions/:id', () => {

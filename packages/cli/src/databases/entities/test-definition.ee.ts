@@ -5,7 +5,12 @@ import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.
 import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
+import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
+
+// Entity representing a node in a workflow under test which is pinned for a test definition
+export type PinnedNodeItem = {
+	name: string;
+};
 
 /**
  * Entity representing a Test Definition
@@ -57,4 +62,7 @@ export class TestDefinition extends WithTimestampsAndStringId {
 
 	@OneToMany('TestMetric', 'testDefinition')
 	metrics: TestMetric[];
+
+	@Column(jsonColumnType, { default: [] })
+	pinnedNodes: PinnedNodeItem[];
 }
