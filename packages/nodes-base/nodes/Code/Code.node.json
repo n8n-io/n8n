@@ -11,7 +11,7 @@
 			}
 		]
 	},
-	"alias": ["cpde", "Javascript", "JS", "Python", "Script", "Custom Code", "Function"],
+	"alias": ["code", "Javascript", "JS", "Python", "Script", "Custom Code", "Function"],
 	"subcategories": {
 		"Core Nodes": ["Helpers", "Data Transformation"]
 	}
