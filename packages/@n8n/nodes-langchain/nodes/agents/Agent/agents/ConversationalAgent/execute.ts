@@ -14,7 +14,7 @@ import {
 import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 import { getTracingConfig } from '../../../../../utils/tracing';
-import { extractParsedOutput } from '../utils';
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -31,8 +31,10 @@ export async function conversationalAgentExecute(
 		| BaseChatMemory
 		| undefined;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 	const outputParsers = await getOptionalOutputParsers(this);
+
+	await checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');
 
 	// TODO: Make it possible in the future to use values for other items than just 0
 	const options = this.getNodeParameter('options', 0, {}) as {

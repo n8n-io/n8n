@@ -94,7 +94,7 @@ export class DocumentGithubLoader implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		console.log('Supplying data for Github Document Loader');
+		this.logger.debug('Supplying data for Github Document Loader');
 
 		const repository = this.getNodeParameter('repository', itemIndex) as string;
 		const branch = this.getNodeParameter('branch', itemIndex) as string;

@@ -6,7 +6,7 @@ import {
 	type IPinData,
 	type IRunData,
 } from 'n8n-workflow';
-import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
+import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -82,23 +82,26 @@ export const executionFilterToQueryFilter = (
 	return queryFilter;
 };
 
-export const openPopUpWindow = (
-	url: string,
-	options?: { width?: number; height?: number; alwaysInNewTab?: boolean },
-) => {
-	const windowWidth = window.innerWidth;
-	const smallScreen = windowWidth <= 800;
-	if (options?.alwaysInNewTab || smallScreen) {
-		return window.open(url, '_blank');
-	} else {
-		const height = options?.width || 700;
-		const width = options?.height || window.innerHeight - 50;
+let formPopupWindow: Window | null = null;
+
+export const openFormPopupWindow = (url: string) => {
+	if (!formPopupWindow || formPopupWindow.closed) {
+		const height = 700;
+		const width = window.innerHeight - 50;
 		const left = (window.innerWidth - height) / 2;
 		const top = 50;
 		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
 		const windowName = `form-waiting-since-${Date.now()}`;
-		return window.open(url, windowName, features);
+		formPopupWindow = window.open(url, windowName, features);
+	} else {
+		formPopupWindow.location = url;
+		formPopupWindow.focus();
 	}
+};
+
+export const closeFormPopupWindow = () => {
+	formPopupWindow?.close();
+	formPopupWindow = null;
 };
 
 export function displayForm({
@@ -131,23 +134,22 @@ export function displayForm({
 		if (node.name === destinationNode || !node.disabled) {
 			let testUrl = '';
 			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-			if (testUrl && source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);
+			if (testUrl && source !== 'RunData.ManualChatMessage') openFormPopupWindow(testUrl);
 		}
 	}
 }
 
-export const waitingNodeTooltip = () => {
+export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
+	if (!node) return '';
 	try {
-		const lastNode =
-			useWorkflowsStore().workflowExecutionData?.data?.executionData?.nodeExecutionStack[0]?.node;
-		const resume = lastNode?.parameters?.resume;
+		const resume = node?.parameters?.resume;
 
 		if (resume) {
 			if (!['webhook', 'form'].includes(resume as string)) {
 				return i18n.baseText('ndv.output.waitNodeWaiting');
 			}
 
-			const { webhookSuffix } = (lastNode.parameters.options ?? {}) as { webhookSuffix: string };
+			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
 			const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 
 			let message = '';
@@ -168,13 +170,13 @@ export const waitingNodeTooltip = () => {
 			}
 		}
 
-		if (lastNode?.type === FORM_NODE_TYPE) {
+		if (node?.type === FORM_NODE_TYPE) {
 			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
 			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
 
-		if (lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION) {
+		if (node?.parameters.operation === SEND_AND_WAIT_OPERATION) {
 			return i18n.baseText('ndv.output.sendAndWaitWaitingApproval');
 		}
 	} catch (error) {

@@ -19,7 +19,7 @@ import {
 import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
 import { getTracingConfig } from '../../../../../utils/tracing';
-import { extractParsedOutput } from '../utils';
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -31,7 +31,9 @@ export async function reActAgentAgentExecute(
 		| BaseLanguageModel
 		| BaseChatModel;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
+
+	await checkForStructuredTools(tools, this.getNode(), 'ReAct Agent');
 
 	const outputParsers = await getOptionalOutputParsers(this);
 

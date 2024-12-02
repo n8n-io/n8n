@@ -2,14 +2,24 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
+import {
+	ExpressionError,
+	type IPinData,
+	type IRunData,
+	type Workflow,
+	type IExecuteData,
+} from 'n8n-workflow';
 
 import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import type { IExecutionResponse, IStartRunData, IWorkflowData } from '@/Interface';
+import type { IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useToast } from './useToast';
+import { useI18n } from '@/composables/useI18n';
+import { useLocalStorage } from '@vueuse/core';
+import { ref } from 'vue';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
@@ -24,8 +34,20 @@ vi.mock('@/stores/workflows.store', () => ({
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
 		nodeIssuesExit: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn(),
+		getParametersLastUpdate: vi.fn(),
 	}),
 }));
+
+vi.mock('@vueuse/core', async () => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+
+	return {
+		...originalModule, // Keep all original exports
+		useLocalStorage: vi.fn().mockReturnValue({ value: undefined }), // Mock useLocalStorage
+	};
+});
 
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
@@ -55,6 +77,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
 		setDocumentTitle: vi.fn(),
+		executeData: vi.fn(),
 	}),
 }));
 
@@ -71,6 +94,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRouter: vi.fn().mockReturnValue({
 			push: vi.fn(),
 		}),
+		useRoute: vi.fn(),
 	};
 });
 
@@ -96,6 +120,7 @@ describe('useRunWorkflow({ router })', () => {
 
 	beforeEach(() => {
 		uiStore.activeActions = [];
+		vi.clearAllMocks();
 	});
 
 	describe('runWorkflowApi()', () => {
@@ -162,6 +187,36 @@ describe('useRunWorkflow({ router })', () => {
 			expect(response).toEqual(mockResponse);
 			expect(workflowsStore.executionWaitingForWebhook).toBe(true);
 		});
+		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const toast = useToast();
+			const i18n = useI18n();
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(workflowsStore).isWorkflowActive = true;
+
+			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [
+					{
+						name: 'Slack',
+						type: 'n8n-nodes-base.slackTrigger',
+						disabled: false,
+					},
+				],
+			} as unknown as IWorkflowData);
+
+			const result = await runWorkflow({});
+
+			expect(result).toBeUndefined();
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: i18n.baseText('workflowRun.showError.deactivate'),
+				message: i18n.baseText('workflowRun.showError.productionActive', {
+					interpolate: { nodeName: 'Webhook' },
+				}),
+				type: 'error',
+			});
+		});
 	});
 
 	describe('runWorkflow()', () => {
@@ -214,6 +269,120 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should send dirty nodes for partial executions', async () => {
+			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
+			const composable = useRunWorkflow({ router });
+			const parentName = 'When clicking';
+			const executeName = 'Code';
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				[parentName]: [
+					{
+						startTime: 1,
+						executionTime: 0,
+						source: [],
+					},
+				],
+				[executeName]: [
+					{
+						startTime: 1,
+						executionTime: 8,
+						source: [
+							{
+								previousNode: parentName,
+							},
+						],
+					},
+				],
+			};
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+				getParentNodes: () => [parentName],
+				nodes: { [parentName]: {} },
+			} as unknown as Workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [],
+			} as unknown as IWorkflowData);
+			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
+				data: {},
+				node: {},
+				source: null,
+			} as IExecuteData);
+
+			vi.mocked(workflowsStore).checkIfNodeHasChatParent.mockReturnValue(false);
+			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation((name: string) => {
+				if (name === executeName) return 2;
+				return undefined;
+			});
+
+			const { runWorkflow } = composable;
+
+			await runWorkflow({ destinationNode: 'Code 1', source: 'Node.executeNode' });
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ dirtyNodeNames: [executeName] }),
+			);
+		});
+
+		it('does not use the original run data if `PartialExecution.version` is set to 0', async () => {
+			// ARRANGE
+			const mockExecutionResponse = { executionId: '123' };
+			const mockRunData = { nodeName: [] };
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(0));
+			vi.mocked(rootStore).pushConnectionActive = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+			} as Workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
+
+			// ACT
+			const result = await runWorkflow({});
+
+			// ASSERT
+			expect(result).toEqual(mockExecutionResponse);
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(workflowsStore.setWorkflowExecutionData).mock.calls[0][0]).toMatchObject({
+				data: { resultData: { runData: {} } },
+			});
+		});
+
+		it('retains the original run data if `PartialExecution.version` is set to 1', async () => {
+			// ARRANGE
+			const mockExecutionResponse = { executionId: '123' };
+			const mockRunData = { nodeName: [] };
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
+			vi.mocked(rootStore).pushConnectionActive = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+			} as Workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
+
+			// ACT
+			const result = await runWorkflow({});
+
+			// ASSERT
+			expect(result).toEqual(mockExecutionResponse);
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(workflowsStore.setWorkflowExecutionData).mock.calls[0][0]).toMatchObject({
+				data: { resultData: { runData: mockRunData } },
+			});
 		});
 	});
 
@@ -318,79 +487,6 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(result.startNodeNames).toContain('node1');
 			expect(result.runData).toEqual(undefined);
-		});
-	});
-
-	describe('useRunWorkflow({ router }) - runWorkflowResolvePending', () => {
-		let uiStore: ReturnType<typeof useUIStore>;
-		let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-		let router: ReturnType<typeof useRouter>;
-
-		beforeAll(() => {
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			rootStore = useRootStore();
-			uiStore = useUIStore();
-			workflowsStore = useWorkflowsStore();
-			router = useRouter();
-			workflowHelpers = useWorkflowHelpers({ router });
-		});
-
-		beforeEach(() => {
-			uiStore.activeActions = [];
-			vi.mocked(workflowsStore).runWorkflow.mockReset();
-		});
-
-		it('should resolve when runWorkflow finished', async () => {
-			const { runWorkflowResolvePending } = useRunWorkflow({ router });
-			const mockExecutionResponse = { executionId: '123' };
-
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).allNodes = [];
-			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
-				finished: true,
-				workflowData: { nodes: [] },
-			} as unknown as IExecutionResponse);
-			vi.mocked(workflowsStore).workflowExecutionData = {
-				id: '123',
-			} as unknown as IExecutionResponse;
-
-			const result = await runWorkflowResolvePending({});
-
-			expect(result).toEqual(mockExecutionResponse);
-		});
-
-		it('should return when workflowExecutionData is null', async () => {
-			const { runWorkflowResolvePending } = useRunWorkflow({ router });
-			const mockExecutionResponse = { executionId: '123' };
-
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).allNodes = [];
-			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
-				finished: true,
-			} as unknown as IExecutionResponse);
-			vi.mocked(workflowsStore).workflowExecutionData = null;
-
-			const result = await runWorkflowResolvePending({});
-
-			expect(result).toEqual(mockExecutionResponse);
-		});
-
-		it('should handle workflow execution error properly', async () => {
-			const { runWorkflowResolvePending } = useRunWorkflow({ router });
-			const mockExecutionResponse = { executionId: '123' };
-
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).allNodes = [];
-			vi.mocked(workflowsStore).getExecution.mockResolvedValue({
-				finished: false,
-				status: 'error',
-			} as unknown as IExecutionResponse);
-
-			await runWorkflowResolvePending({});
-
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalled();
-			expect(workflowsStore.workflowExecutionData).toBe(null);
 		});
 	});
 });

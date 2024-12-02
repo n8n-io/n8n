@@ -145,4 +145,50 @@ describe('WorkflowSettingsVue', () => {
 
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toHaveValue(cleanedUpWorkflowList);
 	});
+
+	test.each([
+		['workflow-settings-save-failed-executions', 'Default - Save', () => {}],
+		[
+			'workflow-settings-save-failed-executions',
+			'Default - Do not save',
+			() => {
+				settingsStore.saveDataErrorExecution = 'none';
+			},
+		],
+		['workflow-settings-save-success-executions', 'Default - Save', () => {}],
+		[
+			'workflow-settings-save-success-executions',
+			'Default - Do not save',
+			() => {
+				settingsStore.saveDataSuccessExecution = 'none';
+			},
+		],
+		[
+			'workflow-settings-save-manual-executions',
+			'Default - Save',
+			() => {
+				settingsStore.saveManualExecutions = true;
+			},
+		],
+		['workflow-settings-save-manual-executions', 'Default - Do not save', () => {}],
+		[
+			'workflow-settings-save-execution-progress',
+			'Default - Save',
+			() => {
+				settingsStore.saveDataProgressExecution = true;
+			},
+		],
+		['workflow-settings-save-execution-progress', 'Default - Do not save', () => {}],
+	])(
+		'should show %s dropdown correct default value as %s',
+		async (testId, optionText, storeSetter) => {
+			storeSetter();
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId(testId));
+
+			expect(dropdownItems[0]).toHaveTextContent(optionText);
+		},
+	);
 });

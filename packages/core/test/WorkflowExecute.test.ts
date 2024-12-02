@@ -1,4 +1,15 @@
-import type { IRun, WorkflowTestData } from 'n8n-workflow';
+// NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
+// If you update the tests, please update the diagrams as well.
+// If you add a test, please create a new diagram.
+//
+// Map
+// 0  means the output has no run data
+// 1  means the output has run data
+// ►► denotes the node that the user wants to execute to
+// XX denotes that the node is disabled
+// PD denotes that the node has pinned data
+
+import type { IPinData, IRun, IRunData, WorkflowTestData } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
@@ -6,17 +17,20 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { DirectedGraph } from '@/PartialExecutionUtils';
+import { createNodeData, toITaskData } from '@/PartialExecutionUtils/__tests__/helpers';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from './helpers/constants';
+
+const nodeTypes = Helpers.NodeTypes();
 
 describe('WorkflowExecute', () => {
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
 		const executionMode = 'manual';
-		const nodeTypes = Helpers.NodeTypes();
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
@@ -188,7 +202,11 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
-						return nodeData.data.main[0];
+						return nodeData.data.main[0]!.map((entry) => {
+							// remove pairedItem from entry if it is an error output test
+							if (testData.description.includes('error_outputs')) delete entry.pairedItem;
+							return entry;
+						});
 					});
 
 					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
@@ -202,7 +220,7 @@ describe('WorkflowExecute', () => {
 		}
 	});
 
-	describe('WorkflowExecute, NodeExecutionOutput type test', () => {
+	test('WorkflowExecute, NodeExecutionOutput type test', () => {
 		//TODO Add more tests here when execution hints are added to some node types
 		const nodeExecutionOutput = new NodeExecutionOutput(
 			[[{ json: { data: 123 } }]],
@@ -212,5 +230,99 @@ describe('WorkflowExecute', () => {
 		expect(nodeExecutionOutput).toBeInstanceOf(NodeExecutionOutput);
 		expect(nodeExecutionOutput[0][0].json.data).toEqual(123);
 		expect(nodeExecutionOutput.getHints()[0].message).toEqual('TEXT HINT');
+	});
+
+	describe('runPartialWorkflow2', () => {
+		//                Dirty         ►
+		// ┌───────┐1     ┌─────┐1     ┌─────┐
+		// │trigger├──────►node1├──────►node2│
+		// └───────┘      └─────┘      └─────┘
+		test("deletes dirty nodes' run data", async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }])],
+				[node1.name]: [toITaskData([{ data: { name: node1.name } }])],
+				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
+			};
+			const dirtyNodeNames = [node1.name];
+			const destinationNode = node2.name;
+
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			const fullRunData = workflowExecute.getFullRunData(new Date());
+			expect(fullRunData.data.resultData.runData).toHaveProperty(trigger.name);
+			expect(fullRunData.data.resultData.runData).not.toHaveProperty(node1.name);
+		});
+
+		//                 XX           ►►
+		// ┌───────┐1     ┌─────┐1     ┌─────┐
+		// │trigger├──────►node1├──────►node2│
+		// └───────┘      └─────┘      └─────┘
+		test('removes disabled nodes from the workflow', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1', disabled: true });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }])],
+				[node1.name]: [toITaskData([{ data: { name: node1.name } }])],
+				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+			const destinationNode = node2.name;
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			const nodes = Object.keys(processRunExecutionDataSpy.mock.calls[0][0].nodes);
+			expect(nodes).toContain(trigger.name);
+			expect(nodes).toContain(node2.name);
+			expect(nodes).not.toContain(node1.name);
+		});
 	});
 });

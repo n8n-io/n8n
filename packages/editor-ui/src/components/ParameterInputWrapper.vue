@@ -22,6 +22,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -144,7 +145,11 @@ const evaluatedExpressionValue = computed(() => {
 });
 
 const evaluatedExpressionString = computed(() => {
-	return stringifyExpressionResult(evaluatedExpression.value);
+	const hasRunData =
+		!!useWorkflowsStore().workflowExecutionData?.data?.resultData?.runData[
+			ndvStore.activeNode?.name ?? ''
+		];
+	return stringifyExpressionResult(evaluatedExpression.value, hasRunData);
 });
 
 const expressionOutput = computed(() => {

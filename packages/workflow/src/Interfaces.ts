@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
-import type { AxiosProxyConfig } from 'axios';
+import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
@@ -484,6 +484,7 @@ export interface ISourceDataConnections {
 
 export interface IExecuteData {
 	data: ITaskDataConnections;
+	metadata?: ITaskMetadata;
 	node: INode;
 	source: ITaskDataConnectionsSource | null;
 }
@@ -529,6 +530,7 @@ export interface IHttpRequestOptions {
 	};
 	timeout?: number;
 	json?: boolean;
+	abortSignal?: GenericAbortSignal;
 }
 
 /**
@@ -935,6 +937,7 @@ export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
+	setMetadata(metadata: ITaskMetadata): void;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -952,7 +955,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
 			parentCallbackManager?: CallbackManager,
-		): Promise<any>;
+			options?: {
+				doNotWaitToFinish?: boolean;
+				parentExecution?: RelatedExecution;
+			},
+		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
 			inputName: NodeConnectionType,
 			itemIndex: number,
@@ -975,6 +982,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			connectionType: NodeConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
+			metadata?: ITaskMetadata,
 		): void;
 
 		nodeHelpers: NodeHelperFunctions;
@@ -1207,6 +1215,9 @@ export interface INodeExecutionData {
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	metadata?: {
+		subExecution: RelatedExecution;
+	};
 	index?: number;
 }
 
@@ -1417,6 +1428,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
@@ -1543,6 +1555,11 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
+export interface ExecuteWorkflowData {
+	executionId: string;
+	data: Array<INodeExecutionData[] | null>;
+}
+
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export namespace MultiPartFormData {
@@ -1657,6 +1674,7 @@ export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
 	displayName?: string;
+	disabledOptions?: ICredentialsDisplayOptions;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
@@ -2080,6 +2098,9 @@ export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
 
 export interface IRun {
 	data: IRunExecutionData;
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	waitTill?: Date | null;
@@ -2114,6 +2135,7 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	waitTill?: Date;
+	pushRef?: string;
 }
 
 export interface IRunData {
@@ -2126,8 +2148,16 @@ export interface ITaskSubRunMetadata {
 	runIndex: number;
 }
 
+export interface RelatedExecution {
+	executionId: string;
+	workflowId: string;
+}
+
 export interface ITaskMetadata {
 	subRun?: ITaskSubRunMetadata[];
+	parentExecution?: RelatedExecution;
+	subExecution?: RelatedExecution;
+	subExecutionsCount?: number;
 }
 
 // The data that gets returned when a node runs
@@ -2214,7 +2244,7 @@ export interface IWorkflowExecuteHooks {
 	>;
 	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
 	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
-	workflowExecuteBefore?: Array<(workflow: Workflow, data: IRunExecutionData) => Promise<void>>;
+	workflowExecuteBefore?: Array<(workflow?: Workflow, data?: IRunExecutionData) => Promise<void>>;
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
@@ -2244,6 +2274,7 @@ export interface IWorkflowExecutionDataProcess {
 	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
 	 */
 	partialExecutionVersion?: string;
+	dirtyNodeNames?: string[];
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2254,6 +2285,8 @@ export interface ExecuteWorkflowOptions {
 	loadedRunData?: IWorkflowExecutionDataProcess;
 	parentWorkflowSettings?: IWorkflowSettings;
 	parentCallbackManager?: CallbackManager;
+	doNotWaitToFinish?: boolean;
+	parentExecution?: RelatedExecution;
 }
 
 export type AiEvent =
@@ -2287,7 +2320,7 @@ export interface IWorkflowExecuteAdditionalData {
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
-	) => Promise<any>;
+	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
@@ -2339,7 +2372,8 @@ export type WorkflowExecuteMode =
 	| 'manual'
 	| 'retry'
 	| 'trigger'
-	| 'webhook';
+	| 'webhook'
+	| 'evaluation';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2551,12 +2585,15 @@ export type AnnotationVote = 'up' | 'down';
 
 export interface ExecutionSummary {
 	id: string;
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string | null;
 	retrySuccessId?: string | null;
 	waitTill?: Date;
-	createdAt?: Date;
+	createdAt: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -2700,6 +2737,9 @@ export interface ExecutionOptions {
 }
 
 export interface ExecutionFilters {
+	/**
+	 * @deprecated Use status instead
+	 */
 	finished?: boolean;
 	mode?: WorkflowExecuteMode[];
 	retryOf?: string;

@@ -1,8 +1,10 @@
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
+import { DiagnosticsConfig } from './configs/diagnostics.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
+import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
@@ -10,7 +12,6 @@ import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
-import { PruningConfig } from './configs/pruning.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
@@ -25,7 +26,7 @@ import { Config, Env, Nested } from './decorators';
 export { Config, Env, Nested } from './decorators';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
-export { PruningConfig } from './configs/pruning.config';
+export { ExecutionsConfig } from './configs/executions.config';
 export { FrontendBetaFeatures, FrontendConfig } from './configs/frontend.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -116,5 +117,8 @@ export class GlobalConfig {
 	security: SecurityConfig;
 
 	@Nested
-	pruning: PruningConfig;
+	executions: ExecutionsConfig;
+
+	@Nested
+	diagnostics: DiagnosticsConfig;
 }

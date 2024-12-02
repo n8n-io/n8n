@@ -21,6 +21,7 @@ import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useStyles } from '@/composables/useStyles';
+import { useI18n } from '@/composables/useI18n';
 
 const props = withDefaults(
 	defineProps<{
@@ -56,12 +57,14 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const { APP_Z_INDEXES } = useStyles();
+const i18n = useI18n();
 
 const isResizing = ref<boolean>(false);
 const isTouchActive = ref<boolean>(false);
 const forceActions = ref(false);
 const isColorPopoverVisible = ref(false);
 const stickOptions = ref<HTMLElement>();
+const isEditing = ref(false);
 
 const setForceActions = (value: boolean) => {
 	forceActions.value = value;
@@ -147,8 +150,13 @@ const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const showActions = computed(
 	() =>
-		!(props.hideActions || props.isReadOnly || workflowRunning.value || isResizing.value) ||
-		forceActions.value,
+		!(
+			props.hideActions ||
+			isEditing.value ||
+			props.isReadOnly ||
+			workflowRunning.value ||
+			isResizing.value
+		) || forceActions.value,
 );
 
 onMounted(() => {
@@ -187,6 +195,7 @@ const changeColor = (index: number) => {
 };
 
 const onEdit = (edit: boolean) => {
+	isEditing.value = edit;
 	if (edit && !props.isActive && node.value) {
 		ndvStore.activeNodeName = node.value.name;
 	} else if (props.isActive && !edit) {
@@ -354,7 +363,7 @@ const onContextMenu = (e: MouseEvent): void => {
 					v-touch:tap="deleteNode"
 					class="option"
 					data-test-id="delete-sticky"
-					:title="$locale.baseText('node.delete')"
+					:title="i18n.baseText('node.delete')"
 				>
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -371,7 +380,7 @@ const onContextMenu = (e: MouseEvent): void => {
 						<div
 							class="option"
 							data-test-id="change-sticky-color"
-							:title="$locale.baseText('node.changeColor')"
+							:title="i18n.baseText('node.changeColor')"
 							@click="() => setColorPopoverVisible(!isColorPopoverVisible)"
 						>
 							<font-awesome-icon icon="palette" />

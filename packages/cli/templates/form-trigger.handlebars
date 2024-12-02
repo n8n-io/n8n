@@ -4,7 +4,7 @@
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
 		<link
-			href='http://fonts.googleapis.com/css?family=Open+Sans'
+			href='https://fonts.googleapis.com/css?family=Open+Sans'
 			rel='stylesheet'
 			type='text/css'
 		/>
@@ -226,6 +226,7 @@
 
 			.multiselect-checkbox {
 				vertical-align: middle;
+				min-width: 18px;
 			}
 
 			input[type='checkbox'] {
@@ -739,14 +740,6 @@
 							}
 
 							return;
-						}).then(() => {
-							window.addEventListener('storage', function(event) {
-								if (event.key === 'n8n_redirect_to_next_form_test_page' && event.newValue) {
-									const newUrl = event.newValue;
-									localStorage.removeItem('n8n_redirect_to_next_form_test_page');
-									window.location.replace(newUrl);
-								}
-							});
 						})
 						.catch(function (error) {
 							console.error('Error:', error);

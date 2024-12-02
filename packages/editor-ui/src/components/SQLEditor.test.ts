@@ -25,6 +25,7 @@ async function focusEditor(container: Element) {
 	await waitFor(() => expect(container.querySelector('.cm-line')).toBeInTheDocument());
 	await userEvent.click(container.querySelector('.cm-line') as Element);
 }
+
 const nodes = [
 	{
 		id: '1',
@@ -171,5 +172,24 @@ describe('SqlEditor.vue', () => {
 		expect(getByTestId('sql-editor-container').getElementsByClassName('cm-line').length).toEqual(
 			getByTestId(EXPRESSION_OUTPUT_TEST_ID).getElementsByClassName('cm-line').length,
 		);
+	});
+
+	it('should keep rendered output visible when clicking', async () => {
+		const { getByTestId, queryByTestId, container, baseElement } = renderComponent(SqlEditor, {
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				modelValue: 'SELECT * FROM users',
+			},
+		});
+
+		// Does not hide output when clicking inside the output
+		await focusEditor(container);
+		await userEvent.click(getByTestId(EXPRESSION_OUTPUT_TEST_ID));
+		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).toBeInTheDocument());
+
+		// Does hide output when clicking outside the container
+		await userEvent.click(baseElement);
+		await waitFor(() => expect(queryByTestId(EXPRESSION_OUTPUT_TEST_ID)).not.toBeInTheDocument());
 	});
 });

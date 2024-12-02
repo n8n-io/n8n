@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import type { IRunData, IRunExecutionData, NodeError, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IRunData,
+	type IRunExecutionData,
+	type NodeError,
+	type Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
@@ -209,6 +215,29 @@ const canPinData = computed(() => {
 	return pinnedData.isValidNodeType.value && !props.isReadOnly;
 });
 
+const allToolsWereUnusedNotice = computed(() => {
+	if (!node.value || runsCount.value === 0) return undefined;
+
+	// With pinned data there's no clear correct answer for whether
+	// we should use historic or current parents, so we don't show the notice,
+	// as it likely ends up unactionable noise to the user
+	if (pinnedData.hasData.value) return undefined;
+
+	const toolsAvailable = props.workflow.getParentNodes(
+		node.value.name,
+		NodeConnectionType.AiTool,
+		1,
+	);
+	const toolsUsedInLatestRun = toolsAvailable.filter(
+		(tool) => !!workflowRunData.value?.[tool]?.[props.runIndex],
+	);
+	if (toolsAvailable.length > 0 && toolsUsedInLatestRun.length === 0) {
+		return i18n.baseText('ndv.output.noToolUsedInfo');
+	} else {
+		return undefined;
+	}
+});
+
 // Methods
 
 const insertTestData = () => {
@@ -298,6 +327,7 @@ const activatePane = () => {
 		:hide-pagination="outputMode === 'logs'"
 		pane-type="output"
 		:data-output-type="outputMode"
+		:callout-message="allToolsWereUnusedNotice"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
@@ -352,7 +382,7 @@ const activatePane = () => {
 
 		<template #node-waiting>
 			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
-			<N8nText v-n8n-html="waitingNodeTooltip()"></N8nText>
+			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
 		</template>
 
 		<template #no-output-data>

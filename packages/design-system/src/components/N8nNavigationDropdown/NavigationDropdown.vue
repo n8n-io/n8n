@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
+import { ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import ConditionalRouterLink from '../ConditionalRouterLink';
@@ -17,28 +18,51 @@ type Item = BaseItem & {
 	submenu?: BaseItem[];
 };
 
+defineOptions({
+	name: 'N8nNavigationDropdown',
+});
+
 defineProps<{
 	menu: Item[];
+	disabled?: boolean;
+	teleport?: boolean;
 }>();
+
+const menuRef = ref<typeof ElMenu | null>(null);
+const menuIndex = ref('-1');
 
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
 }>();
+
+const close = () => {
+	menuRef.value?.close(menuIndex.value);
+};
+
+defineExpose({
+	close,
+});
 </script>
 
 <template>
 	<ElMenu
+		ref="menuRef"
 		mode="horizontal"
+		unique-opened
+		menu-trigger="click"
 		:ellipsis="false"
 		:class="$style.dropdown"
 		@select="emit('select', $event)"
+		@keyup.escape="close"
 	>
 		<ElSubMenu
-			index="-1"
+			:index="menuIndex"
 			:class="$style.trigger"
 			:popper-offset="-10"
 			:popper-class="$style.submenu"
+			:disabled
+			:teleported="teleport"
 		>
 			<template #title>
 				<slot />
@@ -49,7 +73,7 @@ const emit = defineEmits<{
 					<ElSubMenu :index="item.id" :popper-offset="-10" data-test-id="navigation-submenu">
 						<template #title>{{ item.title }}</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
-							<ConditionalRouterLink :to="subitem.route">
+							<ConditionalRouterLink :to="!subitem.disabled && subitem.route">
 								<ElMenuItem
 									data-test-id="navigation-submenu-item"
 									:index="subitem.id"
@@ -63,7 +87,7 @@ const emit = defineEmits<{
 						</template>
 					</ElSubMenu>
 				</template>
-				<ConditionalRouterLink v-else :to="item.route">
+				<ConditionalRouterLink v-else :to="!item.disabled && item.route">
 					<ElMenuItem
 						:index="item.id"
 						:disabled="item.disabled"
@@ -81,24 +105,29 @@ const emit = defineEmits<{
 :global(.el-menu).dropdown {
 	border-bottom: 0;
 	background-color: transparent;
-}
 
-:global(.el-sub-menu).trigger {
-	:global(.el-sub-menu__title) {
-		height: auto;
-		line-height: initial;
-		border-bottom: 0 !important;
-		:global(.el-sub-menu__icon-arrow) {
-			display: none;
+	> :global(.el-sub-menu) {
+		> :global(.el-sub-menu__title) {
+			height: auto;
+			line-height: initial;
+			border-bottom: 0 !important;
+			padding: 0;
+			:global(.el-sub-menu__icon-arrow) {
+				display: none;
+			}
 		}
-	}
 
-	:global(.el-sub-menu__title:hover) {
-		background-color: transparent;
+		&:global(.is-active) {
+			:global(.el-sub-menu__title) {
+				border: 0;
+			}
+		}
 	}
 }
 
 .submenu {
+	padding: 5px 0 !important;
+
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
 		color: var(--color-text-dark);
@@ -107,6 +136,15 @@ const emit = defineEmits<{
 	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
 		background-color: var(--color-foreground-base);
+	}
+
+	:global(.el-popper) {
+		padding: 0 10px !important;
+	}
+
+	:global(.el-menu--popup) {
+		border: 1px solid var(--color-foreground-base);
+		border-radius: var(--border-radius-base);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
