@@ -17,7 +17,6 @@ const WORKFLOW_INPUTS = 'workflowInputs';
 const INPUT_OPTIONS = 'inputOptions';
 const VALUES = 'values';
 const JSON_EXAMPLE = 'jsonExample';
-const JSON_SCHEMA = 'jsonSchema';
 const TYPE_OPTIONS: Array<{ name: string; value: FieldType | 'any' }> = [
 	{
 		name: 'Allow Any Type',
