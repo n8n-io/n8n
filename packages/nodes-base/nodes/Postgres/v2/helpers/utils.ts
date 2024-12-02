@@ -20,6 +20,15 @@ import type {
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
 
+export function isJSON(str: string) {
+	try {
+		JSON.parse(str);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
 		return [{ json: data }];
