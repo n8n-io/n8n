@@ -2,15 +2,17 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
-import type { IRun } from 'n8n-workflow';
+import type { GenericValue, IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -58,12 +60,38 @@ function mockExecutionData() {
 	});
 }
 
+function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
+	return mock<IRun>({
+		data: {
+			resultData: {
+				lastNodeExecuted: 'lastNode',
+				runData: {
+					lastNode: [
+						{
+							data: {
+								main: [
+									[
+										{
+											json: metrics,
+										},
+									],
+								],
+							},
+						},
+					],
+				},
+			},
+		},
+	});
+}
+
 describe('TestRunnerService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
+	const testMetricRepository = mock<TestMetricRepository>();
 
 	beforeEach(() => {
 		const executionsQbMock = mockDeep<SelectQueryBuilder<ExecutionEntity>>({
@@ -80,6 +108,11 @@ describe('TestRunnerService', () => {
 			.mockResolvedValueOnce(executionMocks[1]);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
+
+		testMetricRepository.find.mockResolvedValue([
+			mock<TestMetric>({ name: 'metric1' }),
+			mock<TestMetric>({ name: 'metric2' }),
+		]);
 	});
 
 	afterEach(() => {
@@ -97,6 +130,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testMetricRepository,
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
@@ -109,6 +143,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testMetricRepository,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -143,6 +178,7 @@ describe('TestRunnerService', () => {
 			executionRepository,
 			activeExecutions,
 			testRunRepository,
+			testMetricRepository,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -166,17 +202,17 @@ describe('TestRunnerService', () => {
 			.mockResolvedValue(mockExecutionData());
 
 		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-2')
+			.calledWith('some-execution-id-3')
 			.mockResolvedValue(mockExecutionData());
 
 		// Mock executions of evaluation workflow
 		activeExecutions.getPostExecutePromise
-			.calledWith('some-execution-id-3')
-			.mockResolvedValue(mockExecutionData());
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
 
 		activeExecutions.getPostExecutePromise
 			.calledWith('some-execution-id-4')
-			.mockResolvedValue(mockExecutionData());
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5 }));
 
 		await testRunnerService.runTest(
 			mock<User>(),
@@ -225,7 +261,8 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id');
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
-			success: false,
+			metric1: 0.75,
+			metric2: 0,
 		});
 	});
 });
