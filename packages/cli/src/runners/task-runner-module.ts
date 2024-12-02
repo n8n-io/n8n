@@ -113,7 +113,7 @@ export class TaskRunnerModule {
 		);
 	}
 
-	private onRunnerRestartLoopDetected = async (error: Error) => {
+	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {
 		this.logger.error(error.message);
 		ErrorReporterProxy.error(error);
 
