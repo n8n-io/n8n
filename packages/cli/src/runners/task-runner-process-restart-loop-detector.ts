@@ -3,8 +3,8 @@ import { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { TypedEmitter } from '@/typed-emitter';
 
-const RESTART_LOOP_COUNT_LIMIT = 5;
-const RESTART_LOOP_TIME_LIMIT = 5 * Time.seconds.toMilliseconds;
+const MAX_RESTARTS = 5;
+const RESTARTS_WINDOW = 5 * Time.seconds.toMilliseconds;
 
 export type TaskRunnerProcessRestartLoopDetectorEventMap = {
 	'restart-loop-detected': TaskRunnerRestartLoopError;
@@ -18,18 +18,18 @@ export class TaskRunnerProcessRestartLoopDetector extends TypedEmitter<TaskRunne
 	 * How many times the process needs to restart for it to be detected
 	 * being in a loop.
 	 */
-	private readonly maxCount = RESTART_LOOP_COUNT_LIMIT;
+	private readonly maxCount = MAX_RESTARTS;
 
 	/**
 	 * The time interval in which the process needs to restart `maxCount` times
 	 * to be detected as being in a loop.
 	 */
-	private readonly resetTimeInMs = RESTART_LOOP_TIME_LIMIT;
+	private readonly restartsWindow = RESTARTS_WINDOW;
 
-	private counter = 0;
+	private numRestarts = 0;
 
-	/** Time when the first restart of a loop happened */
-	private firstIncrementTime = Date.now();
+	/** Time when the first restart of a loop happened within a time window */
+	private firstRestartedAt = Date.now();
 
 	constructor(private readonly taskRunnerProcess: TaskRunnerProcess) {
 		super();
@@ -40,7 +40,7 @@ export class TaskRunnerProcessRestartLoopDetector extends TypedEmitter<TaskRunne
 			if (this.isMaxCountExceeded()) {
 				this.emit(
 					'restart-loop-detected',
-					new TaskRunnerRestartLoopError(this.counter, this.msSinceFirstIncrement()),
+					new TaskRunnerRestartLoopError(this.numRestarts, this.msSinceFirstIncrement()),
 				);
 			}
 		});
@@ -51,23 +51,23 @@ export class TaskRunnerProcessRestartLoopDetector extends TypedEmitter<TaskRunne
 	 */
 	private increment() {
 		const now = Date.now();
-		if (now > this.firstIncrementTime + this.resetTimeInMs) {
+		if (now > this.firstRestartedAt + this.restartsWindow) {
 			this.reset();
 		}
 
-		this.counter++;
+		this.numRestarts++;
 	}
 
 	private reset() {
-		this.counter = 0;
-		this.firstIncrementTime = Date.now();
+		this.numRestarts = 0;
+		this.firstRestartedAt = Date.now();
 	}
 
 	private isMaxCountExceeded() {
-		return this.counter >= this.maxCount;
+		return this.numRestarts >= this.maxCount;
 	}
 
 	private msSinceFirstIncrement() {
-		return Date.now() - this.firstIncrementTime;
+		return Date.now() - this.firstRestartedAt;
 	}
 }
