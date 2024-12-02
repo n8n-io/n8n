@@ -48,7 +48,7 @@ import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
@@ -549,13 +549,14 @@ export async function executeWebhook(
 			{ executionId },
 		);
 
+		const activeExecutions = Container.get(ActiveExecutions);
+
 		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-			executionId,
-		) as Promise<IExecutionDb | undefined>;
+		const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
 		if (parentExecution) {
+			// on child execution completion, resume parent execution
 			void executePromise.then(() => {
 				const waitTracker = Container.get(WaitTracker);
 				void waitTracker.startExecution(parentExecution.executionId);

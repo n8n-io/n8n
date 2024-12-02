@@ -115,14 +115,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	): Promise<ExecuteWorkflowData> {
 		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
 			...options,
-			parentWorkflowId: this.workflow.id?.toString(),
+			parentWorkflowId: this.workflow.id,
 			inputData,
 			parentWorkflowSettings: this.workflow.settings,
 			node: this.node,
 			parentCallbackManager,
 		});
 
-		// If a subworkflow goes into the waiting state, then put the parent workflow also into the waiting state
+		// If a sub-workflow execution goes into the waiting state, then put the parent workflow execution also into the waiting state
 		if (result.waitTill) {
 			await this.putExecutionToWait(result.waitTill);
 		}

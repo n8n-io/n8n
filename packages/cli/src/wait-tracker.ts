@@ -138,6 +138,7 @@ export class WaitTracker {
 
 		const { parentExecution } = fullExecutionData.data;
 		if (parentExecution) {
+			// on child execution completion, resume parent execution
 			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
 				void this.startExecution(parentExecution.executionId);
 			});
