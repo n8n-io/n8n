@@ -24,7 +24,6 @@ import {
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -3581,7 +3580,6 @@ export default defineComponent({
 			if (node.type === STICKY_NODE_TYPE) {
 				this.$telemetry.track('User deleted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
-					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
 				void this.externalHooks.run('node.deleteNode', { node });
