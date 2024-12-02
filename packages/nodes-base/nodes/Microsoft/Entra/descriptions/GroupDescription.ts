@@ -304,8 +304,7 @@ const createFields: INodeProperties[] = [
 			{
 				name: 'Dynamic',
 				value: 'DynamicMembership',
-				description:
-					'Lets you use rules for users to automatically add and remove users as members',
+				description: 'Lets you use rules to automatically add and remove users as members',
 			},
 		],
 		routing: {
@@ -918,7 +917,8 @@ const updateFields: INodeProperties[] = [
 				displayName: 'Allow External Senders',
 				name: 'allowExternalSenders',
 				default: false,
-				description: 'Whether people external to the organization can send messages to the group',
+				description:
+					'Whether people external to the organization can send messages to the group. Wait a few seconds before editing this field in a newly created group.',
 				type: 'boolean',
 				validateType: 'boolean',
 			},
@@ -927,7 +927,7 @@ const updateFields: INodeProperties[] = [
 				name: 'autoSubscribeNewMembers',
 				default: false,
 				description:
-					'Whether new members added to the group will be auto-subscribed to receive email notifications',
+					'Whether new members added to the group will be auto-subscribed to receive email notifications. Wait a few seconds before editing this field in a newly created group.',
 				type: 'boolean',
 				validateType: 'boolean',
 			},
