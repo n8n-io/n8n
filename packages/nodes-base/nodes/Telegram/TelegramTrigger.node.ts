@@ -276,7 +276,7 @@ export class TelegramTrigger implements INodeType {
 					) as IDataObject;
 
 					// When the image is sent from the desktop app telegram does not resize the image
-					// So return the only image avaiable
+					// So return the only image available
 					// Basically the Image Size parameter would work just when the images comes from the mobile app
 					if (image === undefined) {
 						image = bodyData[key]!.photo![0];
