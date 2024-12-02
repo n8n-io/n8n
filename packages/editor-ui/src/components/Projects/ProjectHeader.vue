@@ -9,6 +9,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { VIEWS } from '@/constants';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -82,17 +83,19 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</slot>
 				</N8nText>
 			</div>
+			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
+				<N8nNavigationDropdown
+					ref="createBtn"
+					data-test-id="resource-add"
+					:menu="menu"
+					@select="handleSelect"
+				>
+					<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
+				</N8nNavigationDropdown>
+			</div>
 		</div>
 		<div :class="$style.actions">
 			<ProjectTabs :show-settings="showSettings" />
-			<N8nNavigationDropdown
-				ref="createBtn"
-				data-test-id="resource-add"
-				:menu="menu"
-				@select="handleSelect"
-			>
-				<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
-			</N8nNavigationDropdown>
 		</div>
 	</div>
 </template>
@@ -104,6 +107,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	gap: 8px;
 	padding-bottom: var(--spacing-m);
 	min-height: 64px;
+}
+
+.headerActions {
+	margin-left: auto;
 }
 
 .icon {
