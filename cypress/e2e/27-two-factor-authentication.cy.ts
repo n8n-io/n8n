@@ -68,15 +68,27 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to disable MFA in account with MFA code ', () => {
+	it('Should be able to disable MFA in account with MFA code', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		const loginToken = generateOTPToken(user.mfaSecret);
-		mfaLoginPage.actions.loginWithMfaCode(email, password, loginToken);
+		const mfaCode = generateOTPToken(user.mfaSecret);
+		mfaLoginPage.actions.loginWithMfaCode(email, password, mfaCode);
 		const disableToken = generateOTPToken(user.mfaSecret);
 		personalSettingsPage.actions.disableMfa(disableToken);
+		personalSettingsPage.getters.enableMfaButton().should('exist');
+		mainSidebar.actions.signout();
+	});
+
+	it('Should be able to disable MFA in account with recovery code', () => {
+		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		mainSidebar.actions.signout();
+		const mfaCode = generateOTPToken(user.mfaSecret);
+		mfaLoginPage.actions.loginWithMfaCode(email, password, mfaCode);
+		personalSettingsPage.actions.disableMfa(user.mfaRecoveryCodes[0]);
 		personalSettingsPage.getters.enableMfaButton().should('exist');
 		mainSidebar.actions.signout();
 	});
