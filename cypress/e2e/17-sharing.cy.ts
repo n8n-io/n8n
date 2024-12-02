@@ -1,3 +1,4 @@
+import { saveCredential } from '../composables/modals/credential-modal';
 import * as projects from '../composables/projects';
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN, NOTION_NODE_NAME } from '../constants';
 import {
@@ -225,8 +226,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.filter(':contains("Development")')
 			.should('have.length', 1)
 			.click();
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.saveButton().should('have.text', 'Saved');
+		saveCredential();
 		credentialsModal.actions.close();
 
 		projects.getProjectTabWorkflows().click();
@@ -252,8 +252,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.actions.changeTab('Sharing');
 		credentialsModal.getters.usersSelect().click();
 		getVisibleSelect().find('li').should('have.length', 4).first().click();
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.saveButton().should('have.text', 'Saved');
+		saveCredential();
 		credentialsModal.actions.close();
 
 		credentialsPage.getters
