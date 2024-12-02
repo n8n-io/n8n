@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.69.0",
+  "version": "1.70.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -62,7 +62,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.1.2",
+    "turbo": "2.3.3",
     "typescript": "*",
     "zx": "^8.1.4"
   },

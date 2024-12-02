@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { ref, defineProps, defineEmits, defineOptions } from 'vue';
+import { ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import ConditionalRouterLink from '../ConditionalRouterLink';

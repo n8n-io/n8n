@@ -8,6 +8,7 @@ import {
 	testDefinitionCreateRequestBodySchema,
 	testDefinitionPatchRequestBodySchema,
 } from '@/evaluation/test-definition.schema';
+import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 
@@ -16,7 +17,10 @@ import { TestDefinitionsRequest } from './test-definitions.types.ee';
 
 @RestController('/evaluation/test-definitions')
 export class TestDefinitionsController {
-	constructor(private readonly testDefinitionService: TestDefinitionService) {}
+	constructor(
+		private readonly testDefinitionService: TestDefinitionService,
+		private readonly testRunnerService: TestRunnerService,
+	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: TestDefinitionsRequest.GetMany) {
@@ -124,5 +128,21 @@ export class TestDefinitionsController {
 		assert(testDefinition, 'Test definition not found');
 
 		return testDefinition;
+	}
+
+	@Post('/:id/run')
+	async runTest(req: TestDefinitionsRequest.Run, res: express.Response) {
+		const { id: testDefinitionId } = req.params;
+
+		const workflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		// Check test definition exists
+		const testDefinition = await this.testDefinitionService.findOne(testDefinitionId, workflowIds);
+		if (!testDefinition) throw new NotFoundError('Test definition not found');
+
+		// We do not await for the test run to complete
+		void this.testRunnerService.runTest(req.user, testDefinition);
+
+		res.status(202).json({ success: true });
 	}
 }
