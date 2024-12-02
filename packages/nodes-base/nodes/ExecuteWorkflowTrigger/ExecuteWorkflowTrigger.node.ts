@@ -217,6 +217,9 @@ If you don't provide fields, all data passed into the 'Execute Workflow' node wi
 				],
 				default: WORKFLOW_INPUTS,
 				noDataExpression: true,
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+				},
 			},
 			{
 				displayName:
