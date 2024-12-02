@@ -20,7 +20,7 @@
 		{
 			"parameters": {
 				"resource": "chat",
-				"chatId": "345429059"
+				"chatId": "123456789"
 			},
 			"type": "n8n-nodes-base.telegram",
 			"typeVersion": 1.2,
@@ -30,7 +30,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -47,7 +47,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			},
 			"onError": "continueErrorOutput"
@@ -62,7 +62,7 @@
 		},
 		{
 			"parameters": {
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"text": "a",
 				"additionalFields": {}
 			},
@@ -74,7 +74,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -97,7 +97,7 @@
 		{
 			"parameters": {
 				"operation": "sendMediaGroup",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"media": {
 					"media": [
 						{
@@ -118,14 +118,14 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
 		{
 			"parameters": {
 				"operation": "sendLocation",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"additionalFields": {
 					"reply_to_message_id": 40
 				}
@@ -138,7 +138,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -153,7 +153,7 @@
 		{
 			"parameters": {
 				"operation": "deleteMessage",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"messageId": "41"
 			},
 			"type": "n8n-nodes-base.telegram",
@@ -164,7 +164,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -179,7 +179,7 @@
 		{
 			"parameters": {
 				"operation": "pinChatMessage",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"messageId": "40",
 				"additionalFields": {
 					"disable_notification": true
@@ -193,7 +193,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -208,7 +208,7 @@
 		{
 			"parameters": {
 				"operation": "sendSticker",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"file": "https://www.gstatic.com/webp/gallery3/1_webp_ll.png",
 				"replyMarkup": "forceReply",
 				"forceReply": {
@@ -225,7 +225,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -248,7 +248,7 @@
 		{
 			"parameters": {
 				"operation": "editMessageText",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"messageId": "40",
 				"replyMarkup": "inlineKeyboard",
 				"text": "test",
@@ -288,7 +288,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -296,7 +296,7 @@
 			"parameters": {
 				"resource": "chat",
 				"operation": "setDescription",
-				"chatId": "-1002433089005",
+				"chatId": "-1000000000000",
 				"description": "Chat description"
 			},
 			"type": "n8n-nodes-base.telegram",
@@ -307,7 +307,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059"
+					"name": "n8n_com_test_bot - 123456789"
 				}
 			}
 		},
@@ -331,7 +331,7 @@
 			"parameters": {
 				"resource": "chat",
 				"operation": "administrators",
-				"chatId": "-1002433089005"
+				"chatId": "-1000000000000"
 			},
 			"type": "n8n-nodes-base.telegram",
 			"typeVersion": 1.2,
@@ -341,7 +341,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
@@ -349,7 +349,7 @@
 			"parameters": {
 				"resource": "chat",
 				"operation": "setTitle",
-				"chatId": "-1002433089005",
+				"chatId": "-1000000000000",
 				"title": "Test Chat Title"
 			},
 			"type": "n8n-nodes-base.telegram",
@@ -360,7 +360,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
@@ -391,7 +391,7 @@
 		{
 			"parameters": {
 				"operation": "unpinChatMessage",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"messageId": "40"
 			},
 			"type": "n8n-nodes-base.telegram",
@@ -402,14 +402,14 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
 		{
 			"parameters": {
 				"operation": "sendAnimation",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"file": "https://blog.emojipedia.org/content/images/2023/07/Telegram---Opening-Image.gif",
 				"additionalFields": {
 					"caption": "Animation",
@@ -424,14 +424,14 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
 		{
 			"parameters": {
 				"operation": "sendAudio",
-				"chatId": "345429059",
+				"chatId": "123456789",
 				"file": "https://download.samplelib.com/mp3/sample-3s.mp3",
 				"additionalFields": {}
 			},
@@ -443,7 +443,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
@@ -458,7 +458,7 @@
 		{
 			"parameters": {
 				"operation": "sendChatAction",
-				"chatId": "345429059"
+				"chatId": "123456789"
 			},
 			"type": "n8n-nodes-base.telegram",
 			"typeVersion": 1.2,
@@ -468,7 +468,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
@@ -484,7 +484,7 @@
 			"parameters": {
 				"resource": "chat",
 				"operation": "leave",
-				"chatId": "-1002433089005"
+				"chatId": "-1000000000000"
 			},
 			"type": "n8n-nodes-base.telegram",
 			"typeVersion": 1.2,
@@ -494,7 +494,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
@@ -510,7 +510,7 @@
 			"parameters": {
 				"resource": "chat",
 				"operation": "member",
-				"chatId": "-1002433089005",
+				"chatId": "-1000000000000",
 				"userId": "123456789"
 			},
 			"type": "n8n-nodes-base.telegram",
@@ -521,7 +521,7 @@
 			"credentials": {
 				"telegramApi": {
 					"id": "2nAyfFQ9FBSmeiBn",
-					"name": "n8n_com_test_bot - 345429059 - -1002433089005"
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
 				}
 			}
 		},
