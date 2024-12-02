@@ -136,7 +136,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		hints: [
 			{
 				message:
-					'We strongly recommend defining your input fields explicitly.<br>If no inputs are provided, all data from the calling workflow will be available, and issues will be more difficult to debug later on.',
+					'You need to define your input fields explicitly. Otherwise the parent cannot provide data and you will not receive input data.',
 				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
 				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON
