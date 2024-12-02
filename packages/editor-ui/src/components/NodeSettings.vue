@@ -416,8 +416,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
 
 				// Apply the new value
-				// @Problem: `parameterData[parameterName]` makes little sense to me, please investigate if this should be `parameterData.value[parameterName]`? But that doesn't really make sense either.
-				// @ts-expect-error This seems like a bug?
+				// @Problem: `parameterData[parameterName]` makes little sense to me, please investigate if this should be `parameterData.value[parameterName]`.
+				// @ts-expect-error This accesses via keys of parameterData.values. It likely is a bug, but has been unnoticed in production for two years.
 				if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
 					// Delete array item
 					const path = parameterPathArray[1];
