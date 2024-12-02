@@ -480,8 +480,10 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/settings',
+		name: VIEWS.SETTINGS,
 		component: SettingsView,
 		props: true,
+		redirect: { name: VIEWS.USAGE },
 		children: [
 			{
 				path: 'usage',
