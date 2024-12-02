@@ -6,7 +6,12 @@ import ResourcesListLayout, {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
+import {
+	EASY_AI_WORKFLOW_EXPERIMENT,
+	EnterpriseEditionFeature,
+	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
+	VIEWS,
+} from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -68,6 +73,7 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	tags: [],
 });
+const easyAICalloutVisible = ref(true);
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -107,6 +113,13 @@ const isOnboardingExperimentEnabled = computed(() => {
 	return (
 		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
 		MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
+	);
+});
+
+const isEasyAIWorkflowExperimentEnabled = computed(() => {
+	return (
+		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
+		EASY_AI_WORKFLOW_EXPERIMENT.variant
 	);
 });
 
@@ -286,6 +299,15 @@ onMounted(async () => {
 	await setFiltersFromQueryString();
 	void usersStore.showPersonalizationSurvey();
 });
+
+const openAIWorkflow = async () => {
+	await router.push({ name: VIEWS.NEW_WORKFLOW });
+};
+
+const dismissEasyAICallout = () => {
+	// TODO: Dismiss in local storage
+	easyAICalloutVisible.value = false;
+};
 </script>
 
 <template>
@@ -304,6 +326,30 @@ onMounted(async () => {
 	>
 		<template #header>
 			<ProjectHeader />
+		</template>
+		<template #callout>
+			<N8nCallout
+				v-if="isEasyAIWorkflowExperimentEnabled && easyAICalloutVisible"
+				theme="info"
+				iconless
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				{{ i18n.baseText('workflows.list.easyAI') }}
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<n8n-button data-test-id="easy-ai-button" size="small" @click="openAIWorkflow">
+							{{ i18n.baseText('generic.tryNow') }}
+						</n8n-button>
+						<N8nIcon
+							size="small"
+							icon="times"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="dismissEasyAICallout"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<WorkflowCard
@@ -343,6 +389,18 @@ onMounted(async () => {
 					<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
 					<N8nText size="large" class="mt-xs" color="text-dark">
 						{{ i18n.baseText('workflows.empty.startFromScratch') }}
+					</N8nText>
+				</N8nCard>
+				<N8nCard
+					v-if="isEasyAIWorkflowExperimentEnabled"
+					:class="$style.emptyStateCard"
+					hoverable
+					data-test-id="easy-ai-workflow-card"
+					@click="openAIWorkflow"
+				>
+					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
+					<N8nText size="large" class="mt-xs" color="text-dark">
+						{{ i18n.baseText('workflows.empty.easyAI') }}
 					</N8nText>
 				</N8nCard>
 				<a
@@ -428,6 +486,18 @@ onMounted(async () => {
 .actionsContainer {
 	display: flex;
 	justify-content: center;
+}
+
+.easy-ai-workflow-callout {
+	margin-top: var(--spacing-xs);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-m);
+
+	.callout-trailing-content {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-m);
+	}
 }
 
 .emptyStateCard {

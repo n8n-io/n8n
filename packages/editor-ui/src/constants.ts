@@ -706,12 +706,20 @@ export const CREDENTIAL_DOCS_EXPERIMENT = {
 	control: 'control',
 	variant: 'variant',
 };
+
+export const EASY_AI_WORKFLOW_EXPERIMENT = {
+	name: '026_easy_ai_workflow',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
+	EASY_AI_WORKFLOW_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
