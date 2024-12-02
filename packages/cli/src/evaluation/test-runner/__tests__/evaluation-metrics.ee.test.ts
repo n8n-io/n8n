@@ -1,28 +1,29 @@
 import { EvaluationMetrics } from '../evaluation-metrics.ee';
 
 describe('EvaluationMetrics', () => {
-	test('should roll up metrics correctly', () => {
+	test('should aggregate metrics correctly', () => {
 		const testMetricNames = new Set(['metric1', 'metric2']);
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		metrics.addResults({ metric1: 1, metric2: 0 });
 		metrics.addResults({ metric1: 0.5, metric2: 0.2 });
 
-		const rolledUpMetrics = metrics.getAggregatedMetrics();
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
-		expect(rolledUpMetrics).toEqual({ metric1: 0.75, metric2: 0.1 });
+		expect(aggregatedMetrics).toEqual({ metric1: 0.75, metric2: 0.1 });
 	});
 
-	test('should roll up only numbers', () => {
+	test('should aggregate only numbers', () => {
 		const testMetricNames = new Set(['metric1', 'metric2']);
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		metrics.addResults({ metric1: 1, metric2: 0 });
 		metrics.addResults({ metric1: '0.5', metric2: 0.2 });
+		metrics.addResults({ metric1: 'not a number', metric2: [1, 2, 3] });
 
-		const rolledUpMetrics = metrics.getAggregatedMetrics();
+		const aggregatedUpMetrics = metrics.getAggregatedMetrics();
 
-		expect(rolledUpMetrics).toEqual({ metric1: 1, metric2: 0.1 });
+		expect(aggregatedUpMetrics).toEqual({ metric1: 1, metric2: 0.1 });
 	});
 
 	test('should handle missing values', () => {
@@ -32,18 +33,18 @@ describe('EvaluationMetrics', () => {
 		metrics.addResults({ metric1: 1 });
 		metrics.addResults({ metric2: 0.2 });
 
-		const rolledUpMetrics = metrics.getAggregatedMetrics();
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
-		expect(rolledUpMetrics).toEqual({ metric1: 1, metric2: 0.2 });
+		expect(aggregatedMetrics).toEqual({ metric1: 1, metric2: 0.2 });
 	});
 
 	test('should handle empty metrics', () => {
 		const testMetricNames = new Set(['metric1', 'metric2']);
 		const metrics = new EvaluationMetrics(testMetricNames);
 
-		const rolledUpMetrics = metrics.getAggregatedMetrics();
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
-		expect(rolledUpMetrics).toEqual({});
+		expect(aggregatedMetrics).toEqual({});
 	});
 
 	test('should handle empty testMetrics', () => {
@@ -52,9 +53,9 @@ describe('EvaluationMetrics', () => {
 		metrics.addResults({ metric1: 1, metric2: 0 });
 		metrics.addResults({ metric1: 0.5, metric2: 0.2 });
 
-		const rolledUpMetrics = metrics.getAggregatedMetrics();
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
-		expect(rolledUpMetrics).toEqual({});
+		expect(aggregatedMetrics).toEqual({});
 	});
 
 	test('should ignore non-relevant values', () => {
@@ -64,8 +65,8 @@ describe('EvaluationMetrics', () => {
 		metrics.addResults({ metric1: 1, notRelevant: 0 });
 		metrics.addResults({ metric1: 0.5, notRelevant2: { foo: 'bar' } });
 
-		const rolledUpMetrics = metrics.getAggregatedMetrics();
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
-		expect(rolledUpMetrics).toEqual({ metric1: 0.75 });
+		expect(aggregatedMetrics).toEqual({ metric1: 0.75 });
 	});
 });
