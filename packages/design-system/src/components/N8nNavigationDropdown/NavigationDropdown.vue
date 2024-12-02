@@ -156,11 +156,12 @@ defineExpose({
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
 		color: var(--color-text-dark);
+		background-color: var(--color-menu-background);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
-		background-color: var(--color-foreground-base);
+		background-color: var(--color-menu-hover-background);
 	}
 
 	:global(.el-popper) {
