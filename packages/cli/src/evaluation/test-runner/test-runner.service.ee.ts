@@ -11,7 +11,7 @@ import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { PinnedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -52,10 +52,11 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		pinnedNodes: PinnedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, pastExecutionData);
+		const pinData = createPinData(workflow, pinnedNodes, pastExecutionData);
 
 		// Determine the start node of the past execution
 		const pastExecutionStartNode = getPastExecutionTriggerNode(pastExecutionData);
@@ -196,7 +197,12 @@ export class TestRunnerService {
 			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);
+			const testCaseExecution = await this.runTestCase(
+				workflow,
+				executionData,
+				test.pinnedNodes,
+				user.id,
+			);
 
 			// In case of a permission check issue, the test case execution will be undefined.
 			// Skip them and continue with the next test case
