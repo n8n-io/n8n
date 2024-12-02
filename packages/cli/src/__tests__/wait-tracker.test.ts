@@ -14,7 +14,7 @@ import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { mockLogger } from '@test/mocking';
 
-jest.useFakeTimers();
+jest.useFakeTimers({ advanceTimers: true });
 
 describe('WaitTracker', () => {
 	const activeExecutions = mock<ActiveExecutions>();
@@ -190,21 +190,21 @@ describe('WaitTracker', () => {
 			);
 
 			postExecutePromise.resolve(mock<IRun>());
-			jest.runAllTicks();
+			await jest.advanceTimersByTimeAsync(100);
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 			expect(workflowRunner.run).toHaveBeenNthCalledWith(
 				2,
 				{
-					executionMode: execution.mode,
-					executionData: execution.data,
-					workflowData: execution.workflowData,
+					executionMode: parentExecution.mode,
+					executionData: parentExecution.data,
+					workflowData: parentExecution.workflowData,
 					projectId: project.id,
-					pushRef: execution.data.pushRef,
+					pushRef: parentExecution.data.pushRef,
 				},
 				false,
 				false,
-				execution.id,
+				parentExecution.id,
 			);
 		});
 	});
