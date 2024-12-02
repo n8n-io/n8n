@@ -1070,6 +1070,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	helpers: RequestHelperFunctions & SSHTunnelFunctions;
 }
 
+export interface IWorkflowInputsLoadOptionsFunctions {
+	getWorkflowInputValues(): Array<{ name: string; type: FieldType }>;
+}
+
 export interface IPollFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	__emit(
@@ -1350,11 +1354,13 @@ export interface INodePropertyTypeOptions {
 	[key: string]: any;
 }
 
-export interface ResourceMapperTypeOptions {
-	resourceMapperMethod: string;
+export interface ResourceMapperTypeOptionsBase {
 	mode: 'add' | 'update' | 'upsert';
 	valuesLabel?: string;
-	fieldWords?: { singular: string; plural: string };
+	fieldWords?: {
+		singular: string;
+		plural: string;
+	};
 	addAllFields?: boolean;
 	noFieldsError?: string;
 	multiKeyMatch?: boolean;
@@ -1365,6 +1371,17 @@ export interface ResourceMapperTypeOptions {
 		hint?: string;
 	};
 }
+
+// Enforce at least one of resourceMapperMethod or workflowInputsMappingMethod
+export type ResourceMapperTypeOptions =
+	| (ResourceMapperTypeOptionsBase & {
+			resourceMapperMethod: string;
+			workflowInputsMappingMethod?: never;
+	  })
+	| (ResourceMapperTypeOptionsBase & {
+			workflowInputsMappingMethod: string;
+			resourceMapperMethod?: never;
+	  });
 
 type NonEmptyArray<T> = [T, ...T[]];
 
@@ -1627,6 +1644,11 @@ export interface INodeType {
 		};
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
+		workflowInputsMapping?: {
+			[functionName: string]: (
+				this: IWorkflowInputsLoadOptionsFunctions,
+			) => Promise<ResourceMapperFields>;
 		};
 		actionHandler?: {
 			[functionName: string]: (

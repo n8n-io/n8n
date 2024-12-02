@@ -244,25 +244,45 @@ async function loadFieldsToMap(): Promise<void> {
 		return;
 	}
 
-	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
-	if (typeof methodName !== 'string') {
-		return;
+	const resourceMapperMethod = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
+	const workflowInputsMappingMethod =
+		props.parameter.typeOptions?.resourceMapper?.workflowInputsMappingMethod;
+
+	let fetchedFields = null;
+
+	if (typeof resourceMapperMethod === 'string') {
+		const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
+			nodeTypeAndVersion: {
+				name: props.node?.type,
+				version: props.node.typeVersion,
+			},
+			currentNodeParameters: resolveRequiredParameters(
+				props.parameter,
+				props.node.parameters,
+			) as INodeParameters,
+			path: props.path,
+			methodName: resourceMapperMethod,
+			credentials: props.node.credentials,
+		};
+		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+	} else {
+		if (typeof workflowInputsMappingMethod === 'string') {
+			const requestParams: DynamicNodeParameters.WorkflowInputMappingFieldsRequest = {
+				nodeTypeAndVersion: {
+					name: props.node?.type,
+					version: props.node.typeVersion,
+				},
+				currentNodeParameters: resolveRequiredParameters(
+					props.parameter,
+					props.node.parameters,
+				) as INodeParameters,
+				path: props.path,
+				methodName: workflowInputsMappingMethod,
+			};
+			fetchedFields = await nodeTypesStore.getWorkflowInputFields(requestParams);
+		}
 	}
 
-	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
-		nodeTypeAndVersion: {
-			name: props.node?.type,
-			version: props.node.typeVersion,
-		},
-		currentNodeParameters: resolveRequiredParameters(
-			props.parameter,
-			props.node.parameters,
-		) as INodeParameters,
-		path: props.path,
-		methodName,
-		credentials: props.node.credentials,
-	};
-	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);

@@ -93,6 +93,26 @@ export class DynamicNodeParametersController {
 		);
 	}
 
+	@Post('/workflow-input-mapping-fields')
+	async getWorkflowInputMappingFields(
+		req: DynamicNodeParametersRequest.WorkflowInputMappingFields,
+	) {
+		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion } = req.body;
+
+		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
+
+		const additionalData = await getBase(req.user.id, currentNodeParameters);
+
+		return await this.service.getWorkflowInputMappingFields(
+			methodName,
+			path,
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
+			credentials,
+		);
+	}
+
 	@Post('/action-result')
 	async getActionResult(
 		req: DynamicNodeParametersRequest.ActionResult,

@@ -199,9 +199,10 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				required: true,
 				typeOptions: {
-					loadOptionsDependsOn: ['workflowId.value', 'workflowJson'],
+					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
-						resourceMapperMethod: 'getWorkflowInputs',
+						workflowInputsMappingMethod: 'getWorkflowInputs',
+						valuesLabel: 'Workflow Inputs',
 						mode: 'add',
 						fieldWords: {
 							singular: 'workflow input',
@@ -214,11 +215,11 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				displayOptions: {
 					show: {
+						source: ['database'],
 						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 					hide: {
 						workflowId: [''],
-						workflowJson: ['\n\n\n'],
 					},
 				},
 			},
@@ -264,7 +265,7 @@ export class ExecuteWorkflow implements INodeType {
 	};
 
 	methods = {
-		resourceMapping: {
+		workflowInputsMapping: {
 			getWorkflowInputs,
 		},
 	};

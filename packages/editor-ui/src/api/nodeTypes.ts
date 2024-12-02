@@ -59,6 +59,18 @@ export async function getResourceMapperFields(
 	);
 }
 
+export async function getWorkflowInputFields(
+	context: IRestApiContext,
+	sendData: DynamicNodeParameters.WorkflowInputMappingFieldsRequest,
+): Promise<ResourceMapperFields> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/dynamic-node-parameters/workflow-input-mapping-fields',
+		sendData,
+	);
+}
+
 export async function getNodeParameterActionResult(
 	context: IRestApiContext,
 	sendData: DynamicNodeParameters.ActionResultRequest,

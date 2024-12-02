@@ -1,34 +1,14 @@
 import type {
 	FieldType,
-	ILoadOptionsFunctions,
+	IWorkflowInputsLoadOptionsFunctions,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { getWorkflowInfo } from '../GenericFunctions';
-
 export async function getWorkflowInputs(
-	this: ILoadOptionsFunctions,
+	this: IWorkflowInputsLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const source = this.getNodeParameter('source', 0) as string;
-
-	const executeWorkflowInfo = await getWorkflowInfo.call(this, source);
-
-	if (executeWorkflowInfo.code === undefined) {
-		// executeWorkflowInfo.code = await getWorkflowById.call(this, executeWorkflowInfo.id as string);
-	}
-
-	const workflowInputs = (
-		Array.isArray(
-			executeWorkflowInfo.code?.nodes.find(
-				(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
-			)?.parameters.workflowInputs,
-		)
-			? executeWorkflowInfo.code?.nodes.find(
-					(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
-				)?.parameters.workflowInputs
-			: []
-	) as Array<{ name: string; type: FieldType }>;
+	const workflowInputs = this.getWorkflowInputValues() as Array<{ name: string; type: FieldType }>;
 
 	const fields: ResourceMapperField[] = workflowInputs.map((currentWorkflowInput) => ({
 		id: currentWorkflowInput.name,
@@ -36,7 +16,7 @@ export async function getWorkflowInputs(
 		required: false,
 		defaultMatch: true,
 		display: true,
-		type: currentWorkflowInput.type || 'string',
+		type: currentWorkflowInput.type,
 		canBeUsedToMatch: true,
 	}));
 

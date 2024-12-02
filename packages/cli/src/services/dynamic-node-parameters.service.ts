@@ -1,4 +1,4 @@
-import { LoadOptionsContext, NodeExecuteFunctions } from 'n8n-core';
+import { LoadOptionsContext, NodeExecuteFunctions, WorkflowInputsContext } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -17,11 +17,34 @@ import type {
 	INodeTypeNameVersion,
 	NodeParameterValueType,
 	IDataObject,
+	IWorkflowInputsLoadOptionsFunctions,
 } from 'n8n-workflow';
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
+
+type WorkflowInputsMappingMethod = (
+	this: IWorkflowInputsLoadOptionsFunctions,
+) => Promise<ResourceMapperFields>;
+type ListSearchMethod = (
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+) => Promise<INodeListSearchResult>;
+type LoadOptionsMethod = (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+type ActionHandlerMethod = (
+	this: ILoadOptionsFunctions,
+	payload?: string,
+) => Promise<NodeParameterValueType>;
+type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+
+type NodeMethod =
+	| WorkflowInputsMappingMethod
+	| ListSearchMethod
+	| LoadOptionsMethod
+	| ActionHandlerMethod
+	| ResourceMappingMethod;
 
 @Service()
 export class DynamicNodeParametersService {
@@ -159,6 +182,23 @@ export class DynamicNodeParametersService {
 		return method.call(thisArgs);
 	}
 
+	/** Returns the available workflow input mapping fields for the ResourceMapper component */
+	async getWorkflowInputMappingFields(
+		methodName: string,
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	): Promise<ResourceMapperFields> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const method = this.getMethod('workflowInputsMapping', methodName, nodeType);
+		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
+		const thisArgs = this.getWorkflowInputsContext(path, additionalData, workflow);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return method.call(thisArgs);
+	}
+
 	/** Returns the result of the action handler */
 	async getActionResult(
 		handler: string,
@@ -181,33 +221,34 @@ export class DynamicNodeParametersService {
 		type: 'resourceMapping',
 		methodName: string,
 		nodeType: INodeType,
-	): (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+	): ResourceMappingMethod;
 	private getMethod(
-		type: 'listSearch',
+		type: 'workflowInputsMapping',
 		methodName: string,
 		nodeType: INodeType,
-	): (
-		this: ILoadOptionsFunctions,
-		filter?: string | undefined,
-		paginationToken?: string | undefined,
-	) => Promise<INodeListSearchResult>;
+	): WorkflowInputsMappingMethod;
+	private getMethod(type: 'listSearch', methodName: string, nodeType: INodeType): ListSearchMethod;
 	private getMethod(
 		type: 'loadOptions',
 		methodName: string,
 		nodeType: INodeType,
-	): (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+	): LoadOptionsMethod;
 	private getMethod(
 		type: 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
-	): (this: ILoadOptionsFunctions, payload?: string) => Promise<NodeParameterValueType>;
-
+	): ActionHandlerMethod;
 	private getMethod(
-		type: 'resourceMapping' | 'listSearch' | 'loadOptions' | 'actionHandler',
+		type:
+			| 'resourceMapping'
+			| 'workflowInputsMapping'
+			| 'listSearch'
+			| 'loadOptions'
+			| 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
-	) {
-		const method = nodeType.methods?.[type]?.[methodName];
+	): NodeMethod {
+		const method = nodeType.methods?.[type]?.[methodName] as NodeMethod;
 		if (typeof method !== 'function') {
 			throw new ApplicationError('Node type does not have method defined', {
 				tags: { nodeType: nodeType.description.name },
@@ -254,5 +295,14 @@ export class DynamicNodeParametersService {
 	) {
 		const node = workflow.nodes['Temp-Node'];
 		return new LoadOptionsContext(workflow, node, additionalData, path);
+	}
+
+	private getWorkflowInputsContext(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		workflow: Workflow,
+	) {
+		const node = workflow.nodes['Temp-Node'];
+		return new WorkflowInputsContext(workflow, node, additionalData, path);
 	}
 }

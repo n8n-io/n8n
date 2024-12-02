@@ -1275,6 +1275,10 @@ export declare namespace DynamicNodeParameters {
 		methodName: string;
 	}
 
+	interface WorkflowInputMappingFieldsRequest extends BaseRequest {
+		methodName: string;
+	}
+
 	interface ActionResultRequest extends BaseRequest {
 		handler: string;
 		payload: IDataObject | string | undefined;

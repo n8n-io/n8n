@@ -95,10 +95,7 @@ function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
 	let result: ValueOptions[] | string = 'Internal Error: Invalid input source';
 	try {
 		if (inputSource === WORKFLOW_INPUTS) {
-			result = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, 0, []) as Array<{
-				name: string;
-				type: FieldType;
-			}>;
+			result = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, 0, []) as ValueOptions[];
 		} else if (inputSource === JSON_EXAMPLE) {
 			const schema = parseJsonExample(context);
 			result = parseJsonSchema(schema);
