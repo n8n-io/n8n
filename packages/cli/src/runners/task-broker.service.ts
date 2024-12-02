@@ -525,7 +525,7 @@ export class TaskBroker {
 				return;
 			}
 			if (e instanceof TaskDeferredError) {
-				this.logger.info(`Task (${taskId}) deferred until runner is ready`);
+				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
 				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
 			}

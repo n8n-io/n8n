@@ -164,3 +164,13 @@ export const LOWEST_SHUTDOWN_PRIORITY = 0;
 export const DEFAULT_SHUTDOWN_PRIORITY = 100;
 /** Highest priority, meaning shut down happens before all other groups */
 export const HIGHEST_SHUTDOWN_PRIORITY = 200;
+
+export const WsStatusCodes = {
+	CloseNormal: 1000,
+	CloseGoingAway: 1001,
+	CloseProtocolError: 1002,
+	CloseUnsupportedData: 1003,
+	CloseNoStatus: 1005,
+	CloseAbnormal: 1006,
+	CloseInvalidData: 1007,
+} as const;
