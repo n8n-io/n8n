@@ -1,5 +1,6 @@
 import { type ICredentialType } from 'n8n-workflow';
 
+import { getCredentialSaveButton, saveCredential } from '../composables/modals/credential-modal';
 import {
 	AGENT_NODE_NAME,
 	AI_TOOL_HTTP_NODE_NAME,
@@ -194,7 +195,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
-		credentialsModal.getters.saveButton().click();
+		saveCredential();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -212,7 +213,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME2);
-		credentialsModal.getters.saveButton().click();
+		saveCredential();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -237,7 +238,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
-		credentialsModal.getters.saveButton().click();
+		saveCredential();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -342,7 +343,8 @@ describe('Credentials', () => {
 		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
-		credentialsModal.getters.saveButton().click({ force: true });
+		getCredentialSaveButton().click();
+
 		errorToast().should('have.length', 1);
 		errorToast().should('be.visible');
 
