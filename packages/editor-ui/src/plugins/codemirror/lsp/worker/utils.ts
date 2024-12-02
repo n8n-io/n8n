@@ -1,7 +1,6 @@
 import type { Schema } from '@/Interface';
 import type { Diagnostic } from '@codemirror/lint';
-import { capitalize } from 'lodash-es';
-import { type CodeExecutionMode, type DocMetadata, type DocMetadataArgument } from 'n8n-workflow';
+import { type CodeExecutionMode } from 'n8n-workflow';
 import ts from 'typescript';
 
 export const FILE_NAME = 'index.js';
@@ -134,34 +133,6 @@ function processSchema(schema: Schema): string {
 
 export function schemaToTypescriptTypes(schema: Schema, interfaceName: string): string {
 	return `interface ${interfaceName} ${processSchema(schema)}`;
-}
-
-function docToTypescriptType(name: string, doc?: DocMetadata) {
-	if (!doc) return null;
-	return `${name}(${doc?.args?.map((arg) => argToTypescriptType(arg)) ?? ''}): ${doc?.returnType ?? 'any'};`;
-}
-
-function argToTypescriptType(arg: DocMetadataArgument) {
-	return `${arg.name}${arg.optional ? '?:' : ':'} ${arg.type ?? 'any'}`;
-}
-
-export async function generateExtensionTypes() {
-	const extensions = await import('n8n-workflow').then((module) => module.ExpressionExtensions);
-	const types = extensions
-		.map(
-			({ typeName, functions }) => `interface ${capitalize(typeName)} {
-${Object.entries(functions)
-	.map(([name, fn]) => docToTypescriptType(name, fn.doc))
-	.filter(Boolean)
-	.join('\n')}
-}`,
-		)
-		.join('\n');
-
-	return `export {}
-declare global {
-	${types}
-}`;
 }
 
 export function returnTypeForMode(mode: CodeExecutionMode): string {

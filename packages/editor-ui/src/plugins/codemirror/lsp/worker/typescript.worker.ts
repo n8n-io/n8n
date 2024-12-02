@@ -9,7 +9,6 @@ import {
 	cmPosToTs,
 	convertTSDiagnosticToCM,
 	fnPrefix,
-	generateExtensionTypes,
 	isDiagnosticWithLocation,
 	returnTypeForMode,
 	schemaToTypescriptTypes,
@@ -173,7 +172,6 @@ itemMatching(itemIndex: number): N8nInputItem;`
 			fsMap.set('globals.d.ts', globalTypes);
 			fsMap.set('n8n.d.ts', n8nTypes);
 			fsMap.set('luxon.d.ts', luxonTypes);
-			fsMap.set('n8n-extensions.d.ts', await generateExtensionTypes());
 			fsMap.set('n8n-dynamic.d.ts', 'export {}');
 			fsMap.set(
 				'n8n-dynamic-input.d.ts',
