@@ -1,12 +1,12 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class AddPinnedNodesColumnToTestDefinition1733133775640 implements ReversibleMigration {
-	async up({ runQuery, tablePrefix }: MigrationContext) {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// We have to use raw query migration instead of schemaBuilder helpers,
 		// because the typeorm schema builder implements addColumns by a table recreate for sqlite
 		// which causes weird issues with the migration
-		await runQuery(
-			`ALTER TABLE ${tablePrefix}test_definition ADD COLUMN pinnedNodes JSON DEFAULT '[]' NOT NULL`,
+		await queryRunner.query(
+			`ALTER TABLE ${tablePrefix}test_definition ADD COLUMN \`pinnedNodes\` JSON DEFAULT '[]' NOT NULL`,
 		);
 	}
 
