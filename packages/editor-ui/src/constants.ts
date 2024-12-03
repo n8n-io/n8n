@@ -900,43 +900,4 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW_ID = '0';
-
 export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
-
-export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
-	name: 'My Sub-Workflow',
-	nodes: [
-		{
-			parameters: {},
-			id: 'c055762a-8fe7-4141-a639-df2372f30060',
-			name: 'Execute Workflow Trigger',
-			type: 'n8n-nodes-base.executeWorkflowTrigger',
-			position: [260, 340],
-		},
-		{
-			parameters: {},
-			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
-			name: 'Replace me with your logic',
-			type: 'n8n-nodes-base.noOp',
-			position: [520, 340],
-		},
-	] as INodeUi[],
-	connections: {
-		'Execute Workflow Trigger': {
-			main: [
-				[
-					{
-						node: 'Replace me with your logic',
-						type: NodeConnectionType.Main,
-						index: 0,
-					},
-				],
-			],
-		},
-	},
-	settings: {
-		executionOrder: 'v1',
-	},
-	pinData: {},
-};

@@ -38,6 +38,7 @@ import {
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -301,11 +302,10 @@ onMounted(async () => {
 });
 
 const openAIWorkflow = async () => {
-	await router.push({ name: VIEWS.NEW_WORKFLOW });
+	window.open(`/workflows/onboarding/${EASY_AI_WORKFLOW_JSON.id}`);
 };
 
 const dismissEasyAICallout = () => {
-	// TODO: Dismiss in local storage
 	easyAICalloutVisible.value = false;
 };
 </script>
@@ -330,14 +330,18 @@ const dismissEasyAICallout = () => {
 		<template #callout>
 			<N8nCallout
 				v-if="isEasyAIWorkflowExperimentEnabled && easyAICalloutVisible"
-				theme="info"
-				iconless
+				theme="secondary"
 				:class="$style['easy-ai-workflow-callout']"
 			>
 				{{ i18n.baseText('workflows.list.easyAI') }}
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
-						<n8n-button data-test-id="easy-ai-button" size="small" @click="openAIWorkflow">
+						<n8n-button
+							data-test-id="easy-ai-button"
+							size="small"
+							type="secondary"
+							@click="openAIWorkflow"
+						>
 							{{ i18n.baseText('generic.tryNow') }}
 						</n8n-button>
 						<N8nIcon

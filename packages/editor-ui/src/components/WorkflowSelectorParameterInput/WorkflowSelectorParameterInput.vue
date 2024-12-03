@@ -20,7 +20,8 @@ import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorMod
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL, SAMPLE_SUBWORKFLOW_WORKFLOW_ID } from '@/constants';
+import { NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL } from '@/constants';
+import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 
 interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -231,7 +232,7 @@ const onAddResourceClicked = () => {
 	};
 
 	window.open(
-		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW_ID}?${urlSearchParams.toString()}`,
+		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW.id}?${urlSearchParams.toString()}`,
 		'_blank',
 	);
 };

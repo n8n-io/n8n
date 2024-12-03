@@ -1,0 +1,220 @@
+import { NodeConnectionType } from 'n8n-workflow';
+import type { INodeUi, IWorkflowDataCreate } from './Interface';
+
+export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
+	id: 'PT1i+zU92Ii5O2XCObkhfHJR5h9rNJTpiCIkYJk9jHU=',
+	name: 'Google Calendar AI Assistant',
+	nodes: [
+		{
+			parameters: {
+				operation: 'getAll',
+				calendar: {
+					__rl: true,
+					value: 'niklas@n8n.io',
+					mode: 'list',
+					cachedResultName: 'niklas@n8n.io',
+				},
+				returnAll: true,
+				options: {
+					timeMin:
+						"={{ $fromAI('after', 'The earliest datetime we want to look for events for') }}",
+					timeMax: "={{ $fromAI('before', 'The latest datetime we want to look for events for') }}",
+					query:
+						"={{ $fromAI('query', 'The search query to look for in the calendar. Leave empty if no search query is needed') }}",
+					singleEvents: true,
+				},
+			},
+			type: 'n8n-nodes-base.googleCalendarTool',
+			typeVersion: 1.2,
+			position: [880, 220],
+			id: '0d7e4666-bc0e-489a-9e8f-a5ef191f4954',
+			name: 'Google Calendar',
+		},
+		{
+			parameters: {
+				options: {},
+			},
+			id: '5b410409-5b0b-47bd-b413-5b9b1000a063',
+			name: 'When chat message received',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			typeVersion: 1.1,
+			position: [360, 20],
+			webhookId: 'a889d2ae-2159-402f-b326-5f61e90f602e',
+		},
+		{
+			parameters: {
+				options: {
+					systemMessage:
+						"=You're a helpful assistant that the user to answer questions about their calendar.\n\nToday is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}.",
+				},
+			},
+			type: '@n8n/n8n-nodes-langchain.agent',
+			typeVersion: 1.7,
+			position: [560, 20],
+			id: '29963449-1dc1-487d-96f2-7ff0a5c3cd97',
+			name: 'AI Agent',
+		},
+		{
+			parameters: {
+				content:
+					'## 1. 👋 Welcome to n8n!\nThis example shows how to build an AI Agent that interacts with your \ncalendar.\n\n### Ready to test it?\nClick Chat below and start asking questions! For example you can try `What meetings do I have today?`',
+				height: 228.76331360946745,
+				width: 319,
+				color: 6,
+			},
+			id: 'eae35513-07c2-4de2-a795-a153b6934c1b',
+			name: 'Sticky Note',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [0, 0],
+		},
+		{
+			parameters: {
+				content:
+					"\n\n\n\n\n\n\n\n\n\n\n\nDon't have **Google Calendar**? Simply exchange this with the **Microsoft Outlook** or other tools",
+				height: 253,
+				width: 226,
+				color: 7,
+			},
+			id: '68b59889-7aca-49fd-a49b-d86fa6239b96',
+			name: 'Sticky Note1',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [820, 200],
+		},
+		{
+			parameters: {
+				content:
+					'## 2. Customize your Agent\n1. Update the prompts to fit your needs.\n2. Add or remove tools for extra functionality, like creating events.\n3. Change the trigger, for example to be started by **Telegram**',
+				height: 160.49380868043997,
+				width: 316.88647732530984,
+				color: 6,
+			},
+			id: '999d0889-e0c7-47cf-a909-c543f4cfdcc9',
+			name: 'Sticky Note2',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [0, 240],
+		},
+		{
+			parameters: {
+				options: {},
+			},
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			typeVersion: 1,
+			position: [520, 220],
+			id: 'cbaedf86-9153-4778-b893-a7e50d3e04ba',
+			name: 'OpenAI Model',
+		},
+		{
+			parameters: {},
+			id: '75481370-bade-4d90-a878-3a3b0201edcc',
+			name: 'Memory',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.3,
+			position: [680, 220],
+		},
+		{
+			parameters: {
+				content:
+					'### 3. Want to learn more?\nWant to learn more about AI and how to apply it best in n8n? Have a look at our [new tutorial series on YouTube](https://www.youtube.com/watch?v=yzvLfHb0nqE&lc).',
+				height: 100,
+				width: 317,
+				color: 6,
+			},
+			id: '907552eb-6e0f-472e-9d90-4513a67a31db',
+			name: 'Sticky Note3',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [0, 420],
+		},
+	] as INodeUi[],
+	connections: {
+		'Google Calendar': {
+			ai_tool: [
+				[
+					{
+						node: 'AI Agent',
+						type: NodeConnectionType.AiTool,
+						index: 0,
+					},
+				],
+			],
+		},
+		'When chat message received': {
+			main: [
+				[
+					{
+						node: 'AI Agent',
+						type: NodeConnectionType.Main,
+						index: 0,
+					},
+				],
+			],
+		},
+		'OpenAI Model': {
+			ai_languageModel: [
+				[
+					{
+						node: 'AI Agent',
+						type: NodeConnectionType.AiLanguageModel,
+						index: 0,
+					},
+				],
+			],
+		},
+		Memory: {
+			ai_memory: [
+				[
+					{
+						node: 'AI Agent',
+						type: NodeConnectionType.AiMemory,
+						index: 0,
+					},
+				],
+			],
+		},
+	},
+	settings: {
+		executionOrder: 'v1',
+	},
+	pinData: {},
+};
+
+export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
+	id: '0',
+	name: 'My Sub-Workflow',
+	nodes: [
+		{
+			parameters: {},
+			id: 'c055762a-8fe7-4141-a639-df2372f30060',
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			position: [260, 340],
+		},
+		{
+			parameters: {},
+			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
+			name: 'Replace me with your logic',
+			type: 'n8n-nodes-base.noOp',
+			position: [520, 340],
+		},
+	] as INodeUi[],
+	connections: {
+		'Execute Workflow Trigger': {
+			main: [
+				[
+					{
+						node: 'Replace me with your logic',
+						type: NodeConnectionType.Main,
+						index: 0,
+					},
+				],
+			],
+		},
+	},
+	settings: {
+		executionOrder: 'v1',
+	},
+	pinData: {},
+};
