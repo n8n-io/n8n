@@ -1,21 +1,27 @@
+import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
-import { Workflow, NodeHelpers, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { BinaryDataService } from 'n8n-core';
+import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WaitTracker } from '@/wait-tracker';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { AbstractWebhookManager } from './abstract-webhooks';
 import type {
 	IWebhookResponseCallbackData,
-	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
@@ -26,14 +32,33 @@ import type {
  * (https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls)
  */
 @Service()
-export class LiveWebhooks implements IWebhookManager {
+export class LiveWebhooks extends AbstractWebhookManager {
 	constructor(
-		private readonly logger: Logger,
-		private readonly nodeTypes: NodeTypes,
+		globalConfig: GlobalConfig,
+		logger: Logger,
+		nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
-	) {}
+		activeExecutions: ActiveExecutions,
+		binaryDataService: BinaryDataService,
+		ownershipService: OwnershipService,
+		waitTracker: WaitTracker,
+		workflowRunner: WorkflowRunner,
+		workflowStatisticsService: WorkflowStatisticsService,
+	) {
+		super(
+			globalConfig,
+			logger,
+			nodeTypes,
+			activeExecutions,
+			binaryDataService,
+			ownershipService,
+			waitTracker,
+			workflowRunner,
+			workflowStatisticsService,
+		);
+	}
 
 	async getWebhookMethods(path: string) {
 		return await this.webhookService.getWebhookMethods(path);
@@ -66,7 +91,7 @@ export class LiveWebhooks implements IWebhookManager {
 	/**
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
-	async executeWebhook(
+	async handleWebhookRequest(
 		request: WebhookRequest,
 		response: Response,
 	): Promise<IWebhookResponseCallbackData> {
@@ -114,7 +139,7 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhookData = NodeHelpers.getNodeWebhooks(
+		const webhookData = this.getNodeWebhooks(
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
@@ -130,7 +155,7 @@ export class LiveWebhooks implements IWebhookManager {
 
 		return await new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
+			void this.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData,

@@ -81,7 +81,7 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 	}
 
-	async executeWebhook(
+	async handleWebhookRequest(
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {

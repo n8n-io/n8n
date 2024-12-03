@@ -1,12 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-import {
-	ActiveWorkflows,
-	InstanceSettings,
-	NodeExecuteFunctions,
-	PollContext,
-	TriggerContext,
-} from 'n8n-core';
+import { ActiveWorkflows, InstanceSettings, PollContext, TriggerContext } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -47,7 +40,7 @@ import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -71,6 +64,7 @@ export class ActiveWorkflowManager {
 		private readonly logger: Logger,
 		private readonly activeWorkflows: ActiveWorkflows,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly liveWebhooks: LiveWebhooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
@@ -151,7 +145,12 @@ export class ActiveWorkflowManager {
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	) {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+		const webhooks = this.liveWebhooks.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		);
 		let path = '';
 
 		if (webhooks.length === 0) return;
@@ -186,12 +185,7 @@ export class ActiveWorkflowManager {
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
 				await this.webhookService.storeWebhook(webhook);
-				await workflow.createWebhookIfNotExists(
-					webhookData,
-					NodeExecuteFunctions,
-					mode,
-					activation,
-				);
+				await this.liveWebhooks.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
 					// n8n does not remove the registered webhooks on exit.
@@ -258,10 +252,15 @@ export class ActiveWorkflowManager {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+		const webhooks = this.liveWebhooks.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		);
 
 		for (const webhookData of webhooks) {
-			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
+			await this.liveWebhooks.deleteWebhook(workflow, webhookData, mode, 'update');
 		}
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
@@ -611,7 +610,7 @@ export class ActiveWorkflowManager {
 		return (
 			workflow.queryNodes(triggerFilter).length +
 			workflow.getPollNodes().length +
-			WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true).length
+			this.liveWebhooks.getWorkflowWebhooks(workflow, additionalData, undefined, true).length
 		);
 	}
 

@@ -17,7 +17,6 @@ import type {
 	TestWebhookRegistration,
 } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
@@ -63,7 +62,6 @@ describe('TestWebhooks', () => {
 			const workflow = mock<Workflow>();
 
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const needsWebhook = await testWebhooks.needsWebhook(args);
 
@@ -77,7 +75,6 @@ describe('TestWebhooks', () => {
 		test('if webhook activation fails, should deactivate workflow webhooks', async () => {
 			const msg = 'Failed to add webhook to active webhooks';
 
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 			jest.spyOn(registrations, 'register').mockRejectedValueOnce(new Error(msg));
 			registrations.getAllRegistrations.mockResolvedValue([]);
 
@@ -88,7 +85,6 @@ describe('TestWebhooks', () => {
 
 		test('if no webhook is found to start workflow, should return false', async () => {
 			webhook.webhookDescription.restartWebhook = true;
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const result = await testWebhooks.needsWebhook(args);
 
@@ -146,7 +142,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
 			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
-			const promise = testWebhooks.executeWebhook(
+			const promise = testWebhooks.handleWebhookRequest(
 				mock<WebhookRequest>({ params: { path } }),
 				mock(),
 			);
@@ -165,7 +161,7 @@ describe('TestWebhooks', () => {
 
 			await registrations.register(registration);
 
-			const promise = testWebhooks.executeWebhook(
+			const promise = testWebhooks.handleWebhookRequest(
 				mock<WebhookRequest>({ params: { path } }),
 				mock<express.Response>(),
 			);

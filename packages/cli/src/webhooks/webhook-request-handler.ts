@@ -2,16 +2,14 @@ import type express from 'express';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as ResponseHelper from '@/response-helper';
-import type {
-	IWebhookManager,
-	WebhookOptionsRequest,
-	WebhookRequest,
-} from '@/webhooks/webhook.types';
+import type { WebhookOptionsRequest, WebhookRequest } from '@/webhooks/webhook.types';
+
+import type { AbstractWebhookManager } from './abstract-webhooks';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
-	constructor(private readonly webhookManager: IWebhookManager) {}
+	constructor(private readonly webhookManager: AbstractWebhookManager) {}
 
 	/**
 	 * Handles an incoming webhook request. Handles CORS and delegates the
@@ -40,7 +38,7 @@ class WebhookRequestHandler {
 		}
 
 		try {
-			const response = await this.webhookManager.executeWebhook(req, res);
+			const response = await this.webhookManager.handleWebhookRequest(req, res);
 
 			// Don't respond, if already responded
 			if (response.noWebhookResponse !== true) {
@@ -111,7 +109,8 @@ class WebhookRequestHandler {
 	}
 }
 
-export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
+// TODO: merge into AbstractWebhookManager
+export function createWebhookHandlerFor(webhookManager: AbstractWebhookManager) {
 	const handler = new WebhookRequestHandler(webhookManager);
 
 	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {

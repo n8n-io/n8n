@@ -6,14 +6,15 @@ import type { IHttpRequestMethods } from 'n8n-workflow';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import type {
-	IWebhookManager,
 	IWebhookResponseCallbackData,
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
 
+import type { AbstractWebhookManager } from '../abstract-webhooks';
+
 describe('WebhookRequestHandler', () => {
-	const webhookManager = mock<Required<IWebhookManager>>();
+	const webhookManager = mock<AbstractWebhookManager>();
 	const handler = createWebhookHandlerFor(webhookManager);
 
 	beforeEach(() => {
@@ -157,11 +158,11 @@ describe('WebhookRequestHandler', () => {
 					'x-custom-header': 'test',
 				},
 			};
-			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+			webhookManager.handleWebhookRequest.mockResolvedValueOnce(executeWebhookResponse);
 
 			await handler(req, res);
 
-			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(webhookManager.handleWebhookRequest).toHaveBeenCalledWith(req, res);
 			expect(res.status).toHaveBeenCalledWith(200);
 			expect(res.header).toHaveBeenCalledWith({
 				'x-custom-header': 'test',
@@ -179,13 +180,13 @@ describe('WebhookRequestHandler', () => {
 			const res = mock<Response>();
 			res.status.mockReturnValue(res);
 
-			webhookManager.executeWebhook.mockRejectedValueOnce(
+			webhookManager.handleWebhookRequest.mockRejectedValueOnce(
 				new TestError('Test error', 500, 100, 'Test hint'),
 			);
 
 			await handler(req, res);
 
-			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(webhookManager.handleWebhookRequest).toHaveBeenCalledWith(req, res);
 			expect(res.status).toHaveBeenCalledWith(500);
 			expect(res.json).toHaveBeenCalledWith({
 				code: 100,
@@ -207,11 +208,11 @@ describe('WebhookRequestHandler', () => {
 				const executeWebhookResponse: IWebhookResponseCallbackData = {
 					responseCode: 200,
 				};
-				webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+				webhookManager.handleWebhookRequest.mockResolvedValueOnce(executeWebhookResponse);
 
 				await handler(req, res);
 
-				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+				expect(webhookManager.handleWebhookRequest).toHaveBeenCalledWith(req, res);
 				expect(res.status).toHaveBeenCalledWith(200);
 				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 			},

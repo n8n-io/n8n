@@ -25,7 +25,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Act
 		 */
-		const promise = waitingWebhooks.executeWebhook(
+		const promise = waitingWebhooks.handleWebhookRequest(
 			mock<WaitingWebhookRequest>(),
 			mock<express.Response>(),
 		);
@@ -47,7 +47,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Act
 		 */
-		const promise = waitingWebhooks.executeWebhook(
+		const promise = waitingWebhooks.handleWebhookRequest(
 			mock<WaitingWebhookRequest>(),
 			mock<express.Response>(),
 		);
@@ -69,7 +69,7 @@ describe('WaitingWebhooks', () => {
 		/**
 		 * Act
 		 */
-		const promise = waitingWebhooks.executeWebhook(
+		const promise = waitingWebhooks.handleWebhookRequest(
 			mock<WaitingWebhookRequest>(),
 			mock<express.Response>(),
 		);

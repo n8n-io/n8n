@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
-
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
@@ -33,12 +29,9 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerResponse,
-	IWebhookData,
-	IWebhookResponseData,
 	IWorkflowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
-	WebhookSetupMethodNames,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	IConnection,
@@ -1059,62 +1052,6 @@ export class Workflow {
 		return this.__getStartNode(Object.keys(this.nodes));
 	}
 
-	async createWebhookIfNotExists(
-		webhookData: IWebhookData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	): Promise<void> {
-		const webhookExists = await this.runWebhookMethod(
-			'checkExists',
-			webhookData,
-			nodeExecuteFunctions,
-			mode,
-			activation,
-		);
-		if (!webhookExists) {
-			// If webhook does not exist yet create it
-			await this.runWebhookMethod('create', webhookData, nodeExecuteFunctions, mode, activation);
-		}
-	}
-
-	async deleteWebhook(
-		webhookData: IWebhookData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	) {
-		await this.runWebhookMethod('delete', webhookData, nodeExecuteFunctions, mode, activation);
-	}
-
-	private async runWebhookMethod(
-		method: WebhookSetupMethodNames,
-		webhookData: IWebhookData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	): Promise<boolean | undefined> {
-		const node = this.getNode(webhookData.node);
-
-		if (!node) return;
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
-		if (webhookFn === undefined) return;
-
-		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(
-			this,
-			node,
-			webhookData.workflowExecuteAdditionalData,
-			mode,
-			activation,
-			webhookData,
-		);
-
-		return await webhookFn.call(thisArgs);
-	}
-
 	/**
 	 * Runs the given trigger node so that it can trigger the workflow
 	 * when the node has data.
@@ -1230,48 +1167,7 @@ export class Workflow {
 	}
 
 	/**
-	 * Executes the webhook data to see what it should return and if the
-	 * workflow should be started or not
-	 *
-	 */
-	async runWebhook(
-		webhookData: IWebhookData,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
-		mode: WorkflowExecuteMode,
-		runExecutionData: IRunExecutionData | null,
-	): Promise<IWebhookResponseData> {
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (nodeType === undefined) {
-			throw new ApplicationError('Unknown node type of webhook node', {
-				extra: { nodeName: node.name },
-			});
-		} else if (nodeType.webhook === undefined) {
-			throw new ApplicationError('Node does not have any webhooks defined', {
-				extra: { nodeName: node.name },
-			});
-		}
-
-		const closeFunctions: CloseFunction[] = [];
-
-		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
-			this,
-			node,
-			additionalData,
-			mode,
-			webhookData,
-			closeFunctions,
-			runExecutionData,
-		);
-		return nodeType instanceof Node
-			? await nodeType.webhook(context)
-			: await nodeType.webhook.call(context);
-	}
-
-	/**
 	 * Executes the given node.
-	 *
 	 */
 	// eslint-disable-next-line complexity
 	async runNode(

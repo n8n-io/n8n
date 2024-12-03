@@ -1,5 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
-import * as NodeExecuteFunctions from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -9,25 +10,30 @@ import type {
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import type { IWorkflowDb } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { removeTrailingSlash } from '@/utils';
+import { WaitTracker } from '@/wait-tracker';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
+import { AbstractWebhookManager } from './abstract-webhooks';
 import type {
 	IWebhookResponseCallbackData,
-	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
@@ -37,14 +43,34 @@ import type {
  * that use the [Test URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls).
  */
 @Service()
-export class TestWebhooks implements IWebhookManager {
+export class TestWebhooks extends AbstractWebhookManager {
 	constructor(
+		globalConfig: GlobalConfig,
+		logger: Logger,
+		nodeTypes: NodeTypes,
 		private readonly push: Push,
-		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly publisher: Publisher,
-	) {}
+		activeExecutions: ActiveExecutions,
+		binaryDataService: BinaryDataService,
+		ownershipService: OwnershipService,
+		waitTracker: WaitTracker,
+		workflowRunner: WorkflowRunner,
+		workflowStatisticsService: WorkflowStatisticsService,
+	) {
+		super(
+			globalConfig,
+			logger,
+			nodeTypes,
+			activeExecutions,
+			binaryDataService,
+			ownershipService,
+			waitTracker,
+			workflowRunner,
+			workflowStatisticsService,
+		);
+	}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
 
@@ -52,7 +78,7 @@ export class TestWebhooks implements IWebhookManager {
 	 * Return a promise that resolves when the test webhook is called.
 	 * Also inform the FE of the result and remove the test webhook.
 	 */
-	async executeWebhook(
+	async handleWebhookRequest(
 		request: WebhookRequest,
 		response: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
@@ -115,7 +141,7 @@ export class TestWebhooks implements IWebhookManager {
 		return await new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
-				const executionId = await WebhookHelpers.executeWebhook(
+				const executionId = await this.executeWebhook(
 					workflow,
 					webhook,
 					workflowEntity,
@@ -242,12 +268,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		let webhooks = WebhookHelpers.getWorkflowWebhooks(
-			workflow,
-			additionalData,
-			destinationNode,
-			true,
-		);
+		let webhooks = this.getWorkflowWebhooks(workflow, additionalData, destinationNode, true);
 
 		// If we have a preferred trigger with data, we don't have to listen for a
 		// webhook.
@@ -314,7 +335,7 @@ export class TestWebhooks implements IWebhookManager {
 				 */
 				await this.registrations.register(registration);
 
-				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
+				await this.createWebhookIfNotExists(workflow, webhook, 'manual', 'manual');
 
 				cacheableWebhook.staticData = workflow.staticData;
 
@@ -431,7 +452,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (staticData) workflow.staticData = staticData;
 
-			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
+			await this.deleteWebhook(workflow, webhook, 'internal', 'update');
 		}
 
 		await this.registrations.deregisterAll();

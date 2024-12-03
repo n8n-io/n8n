@@ -60,7 +60,7 @@ describe('WebhookServer', () => {
 				it('should handle regular requests', async () => {
 					const pathPrefix = Container.get(GlobalConfig).endpoints[key];
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
-					manager.executeWebhook.mockResolvedValueOnce(
+					manager.handleWebhookRequest.mockResolvedValueOnce(
 						mockResponse({ test: true }, { key: 'value ' }),
 					);
 

@@ -42,7 +42,6 @@ import type {
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
-	IHookFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -58,9 +57,7 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	ITriggerFunctions,
-	IWebhookData,
 	IWebhookDescription,
-	IWebhookFunctions,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionWithMetadata,
@@ -126,11 +123,9 @@ import type { IResponseError } from './Interfaces';
 import {
 	ExecuteContext,
 	ExecuteSingleContext,
-	HookContext,
 	PollContext,
 	SupplyDataContext,
 	TriggerContext,
-	WebhookContext,
 } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
@@ -2904,42 +2899,4 @@ export function getCredentialTestFunctions(): ICredentialTestFunctions {
 			},
 		},
 	};
-}
-
-/**
- * Returns the execute functions regular nodes have access to in hook-function.
- */
-export function getExecuteHookFunctions(
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	activation: WorkflowActivateMode,
-	webhookData?: IWebhookData,
-): IHookFunctions {
-	return new HookContext(workflow, node, additionalData, mode, activation, webhookData);
-}
-
-/**
- * Returns the execute functions regular nodes have access to when webhook-function is defined.
- */
-// TODO: check where it is used and make sure close functions are called
-export function getExecuteWebhookFunctions(
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	webhookData: IWebhookData,
-	closeFunctions: CloseFunction[],
-	runExecutionData: IRunExecutionData | null,
-): IWebhookFunctions {
-	return new WebhookContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		webhookData,
-		closeFunctions,
-		runExecutionData,
-	);
 }

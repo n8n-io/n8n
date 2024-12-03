@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
+import type { WorkflowActivateMode } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -13,7 +13,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { SecretsHelper } from '@/secrets-helpers';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -167,9 +166,6 @@ describe('remove()', () => {
 		it('should remove all webhooks of a workflow from external service', async () => {
 			const dbWorkflow = await createActiveWorkflow();
 			const deleteWebhookSpy = jest.spyOn(Workflow.prototype, 'deleteWebhook');
-			jest
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
 
 			await activeWorkflowManager.init();
 			await activeWorkflowManager.remove(dbWorkflow.id);
@@ -233,10 +229,8 @@ describe('executeErrorWorkflow()', () => {
 
 describe('addWebhooks()', () => {
 	it('should call `WebhookService.storeWebhook()`', async () => {
-		const webhook = mock<IWebhookData>({ path: 'some-path' });
+		// const webhook = mock<IWebhookData>({ path: 'some-path' });
 		const webhookEntity = mock<WebhookEntity>({ webhookPath: 'some-path' });
-
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
 
@@ -283,6 +277,7 @@ describe('shouldAddWebhooks', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 			mock<InstanceSettings>({ isLeader: true, isFollower: false }),
 			mock(),
 		);
@@ -309,6 +304,7 @@ describe('shouldAddWebhooks', () => {
 
 	describe('if follower', () => {
 		const activeWorkflowManager = new ActiveWorkflowManager(
+			mock(),
 			mock(),
 			mock(),
 			mock(),
