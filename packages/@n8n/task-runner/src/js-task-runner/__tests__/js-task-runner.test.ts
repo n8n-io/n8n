@@ -34,7 +34,7 @@ describe('JsTaskRunner', () => {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
-				n8nUri: 'localhost',
+				taskBrokerUri: 'localhost',
 				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
@@ -311,10 +311,10 @@ describe('JsTaskRunner', () => {
 			});
 
 			it("should not expose task runner's env variables even if no env state is received", async () => {
-				process.env.N8N_RUNNERS_N8N_URI = 'http://127.0.0.1:5679';
+				process.env.N8N_RUNNERS_TASK_BROKER_URI = 'http://127.0.0.1:5679';
 				const outcome = await execTaskWithParams({
 					task: newTaskWithSettings({
-						code: 'return { val: $env.N8N_RUNNERS_N8N_URI }',
+						code: 'return { val: $env.N8N_RUNNERS_TASK_BROKER_URI }',
 						nodeMode: 'runOnceForAllItems',
 					}),
 					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
