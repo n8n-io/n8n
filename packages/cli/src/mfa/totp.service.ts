@@ -23,10 +23,14 @@ export class TOTPService {
 		}).toString();
 	}
 
-	verifySecret({ secret, token, window = 2 }: { secret: string; token: string; window?: number }) {
+	verifySecret({
+		secret,
+		mfaCode,
+		window = 2,
+	}: { secret: string; mfaCode: string; window?: number }) {
 		return new OTPAuth.TOTP({
 			secret: OTPAuth.Secret.fromBase32(secret),
-		}).validate({ token, window }) === null
+		}).validate({ token: mfaCode, window }) === null
 			? false
 			: true;
 	}

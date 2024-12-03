@@ -49,33 +49,35 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		cy.intercept('GET', '/rest/mfa/qr').as('getMfaQrCode');
 	});
 
-	it('Should be able to login with MFA token', () => {
+	it('Should be able to login with MFA code', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		const token = generateOTPToken(user.mfaSecret);
-		mfaLoginPage.actions.loginWithMfaToken(email, password, token);
+		const mfaCode = generateOTPToken(user.mfaSecret);
+		mfaLoginPage.actions.loginWithMfaCode(email, password, mfaCode);
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to login with recovery code', () => {
+	it('Should be able to login with MFA recovery code', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		mfaLoginPage.actions.loginWithRecoveryCode(email, password, user.mfaRecoveryCodes[0]);
+		mfaLoginPage.actions.loginWithMfaRecoveryCode(email, password, user.mfaRecoveryCodes[0]);
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to disable MFA in account', () => {
+	it('Should be able to disable MFA in account with MFA code ', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		const token = generateOTPToken(user.mfaSecret);
-		mfaLoginPage.actions.loginWithMfaToken(email, password, token);
-		personalSettingsPage.actions.disableMfa();
+		const loginToken = generateOTPToken(user.mfaSecret);
+		mfaLoginPage.actions.loginWithMfaCode(email, password, loginToken);
+		const disableToken = generateOTPToken(user.mfaSecret);
+		personalSettingsPage.actions.disableMfa(disableToken);
+		personalSettingsPage.getters.enableMfaButton().should('exist');
 		mainSidebar.actions.signout();
 	});
 });

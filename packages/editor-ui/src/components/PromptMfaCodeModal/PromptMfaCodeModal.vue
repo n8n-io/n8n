@@ -54,7 +54,7 @@ function onFormReady(isReady: boolean) {
 		<template #content>
 			<div :class="[$style.formContainer]">
 				<n8n-form-inputs
-					data-test-id="mfa-code-form"
+					data-test-id="mfa-code-or-recovery-code-input"
 					:inputs="formFields"
 					:event-bus="formBus"
 					@submit="onSubmit"
