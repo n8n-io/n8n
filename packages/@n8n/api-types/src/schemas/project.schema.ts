@@ -11,6 +11,12 @@ export const projectIconSchema = z.object({
 });
 export type ProjectIcon = z.infer<typeof projectIconSchema>;
 
+export const projectSettingsSchema = z.object({
+	dedicatedQueue: z.boolean().default(false).optional(),
+	// TODO: add timezone, callerPolicy, saving options, etc
+});
+export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
+
 export const projectRoleSchema = z.enum([
 	'project:personalOwner', // personalOwner is only used for personal projects
 	'project:admin',

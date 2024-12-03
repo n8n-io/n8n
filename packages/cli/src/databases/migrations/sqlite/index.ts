@@ -42,6 +42,7 @@ import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from './17286
 import { AddProjectIcons1729607673469 } from './1729607673469-AddProjectIcons';
 import { AddDescriptionToTestDefinition1731404028106 } from './1731404028106-AddDescriptionToTestDefinition';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
+import { AddProjectSettings1738496517619 } from './1738496517619-AddProjectSettings';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -152,6 +153,7 @@ const sqliteMigrations: Migration[] = [
 	AddProjectIcons1729607673469,
 	AddStatsColumnsToTestRun1736172058779,
 	CreateTestCaseExecutionTable1736947513045,
+	AddProjectSettings1738496517619,
 ];
 
 export { sqliteMigrations };

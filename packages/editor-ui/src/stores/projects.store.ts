@@ -32,7 +32,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const projectsCount = ref<ProjectsCount>({
 		personal: 0,
 		team: 0,
-		public: 0,
 	});
 	const projectNavActiveIdState = ref<string | string[] | null>(null);
 
@@ -114,20 +113,17 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		return newProject;
 	};
 
-	const updateProject = async (
-		id: Project['id'],
-		projectData: Required<UpdateProjectDto>,
-	): Promise<void> => {
+	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
 		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
 		const { name, icon } = projectData;
 		if (projectIndex !== -1) {
-			myProjects.value[projectIndex].name = name;
-			myProjects.value[projectIndex].icon = icon;
+			if (name) myProjects.value[projectIndex].name = name;
+			if (icon) myProjects.value[projectIndex].icon = icon;
 		}
 		if (currentProject.value) {
-			currentProject.value.name = name;
-			currentProject.value.icon = icon;
+			if (name) currentProject.value.name = name;
+			if (icon) currentProject.value.icon = icon;
 		}
 		if (projectData.relations) {
 			await getProject(id);

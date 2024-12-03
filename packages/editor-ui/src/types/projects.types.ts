@@ -1,3 +1,4 @@
+import type { ProjectIcon } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@/Interface';
 import type { ProjectRole } from '@/types/roles.types';
@@ -5,7 +6,6 @@ import type { ProjectRole } from '@/types/roles.types';
 export const ProjectTypes = {
 	Personal: 'personal',
 	Team: 'team',
-	Public: 'public',
 } as const;
 
 type ProjectTypeKeys = typeof ProjectTypes;
@@ -32,8 +32,3 @@ export type ProjectListItem = ProjectSharingData & {
 	scopes?: Scope[];
 };
 export type ProjectsCount = Record<ProjectType, number>;
-
-export type ProjectIcon = {
-	type: 'icon' | 'emoji';
-	value: string;
-};

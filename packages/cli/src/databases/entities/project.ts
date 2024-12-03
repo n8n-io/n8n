@@ -1,7 +1,7 @@
-import { ProjectIcon, ProjectType } from '@n8n/api-types';
+import { ProjectIcon, ProjectSettings, ProjectType } from '@n8n/api-types';
 import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
+import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
@@ -16,6 +16,9 @@ export class Project extends WithTimestampsAndStringId {
 
 	@Column({ type: 'json', nullable: true })
 	icon: ProjectIcon;
+
+	@Column({ type: jsonColumnType })
+	settings: ProjectSettings = {};
 
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];

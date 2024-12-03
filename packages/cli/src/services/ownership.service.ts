@@ -81,21 +81,18 @@ export class OwnershipService {
 
 		for (const sharedEntity of shared) {
 			const { project, role } = sharedEntity;
+			const slimProject = {
+				id: project.id,
+				type: project.type,
+				name: project.name,
+				icon: project.icon,
+				settings: project.settings,
+			};
 
 			if (role === 'credential:owner' || role === 'workflow:owner') {
-				entity.homeProject = {
-					id: project.id,
-					type: project.type,
-					name: project.name,
-					icon: project.icon,
-				};
+				entity.homeProject = slimProject;
 			} else {
-				entity.sharedWithProjects.push({
-					id: project.id,
-					type: project.type,
-					name: project.name,
-					icon: project.icon,
-				});
+				entity.sharedWithProjects.push(slimProject);
 			}
 		}
 

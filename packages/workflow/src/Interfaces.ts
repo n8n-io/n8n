@@ -126,7 +126,7 @@ export type ProjectSharingData = {
 	id: string;
 	name: string | null;
 	icon: { type: 'emoji' | 'icon'; value: string } | null;
-	type: 'personal' | 'team' | 'public';
+	type: 'personal' | 'team';
 	createdAt: string;
 	updatedAt: string;
 };
