@@ -1,11 +1,8 @@
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
-
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-
 import type {
 	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -14,8 +11,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
 import { generatePairedItemData } from '../../utils/utilities';
+import { KafkaCredential } from './types';
+import { getConnectionConfig } from './GenericFunctions';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -212,34 +212,9 @@ export class Kafka implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const credentials = credential.data as KafkaCredential;
 				try {
-					const brokers = ((credentials.brokers as string) || '')
-						.split(',')
-						.map((item) => item.trim());
-
-					const clientId = credentials.clientId as string;
-
-					const ssl = credentials.ssl as boolean;
-
-					const config: KafkaConfig = {
-						clientId,
-						brokers,
-						ssl,
-					};
-					if (credentials.authentication === true) {
-						if (!(credentials.username && credentials.password)) {
-							throw new ApplicationError('Username and password are required for authentication', {
-								level: 'warning',
-							});
-						}
-						config.sasl = {
-							username: credentials.username as string,
-							password: credentials.password as string,
-							mechanism: credentials.saslMechanism as string,
-						} as SASLOptions;
-					}
-
+					const config = getConnectionConfig(this, credentials);
 					const kafka = new apacheKafka(config);
 
 					await kafka.admin().connect();

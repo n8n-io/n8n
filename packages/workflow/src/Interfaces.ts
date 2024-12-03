@@ -1661,6 +1661,7 @@ export abstract class Node {
 	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+	trigger?(context: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 }
 
 export interface IVersionedNodeType {

@@ -1,19 +1,20 @@
-import type { KafkaConfig, SASLOptions } from 'kafkajs';
-import { Kafka as apacheKafka, logLevel } from 'kafkajs';
-
+import type { KafkaMessage } from 'kafkajs';
+import { Kafka as apacheKafka } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-
 import type {
 	ITriggerFunctions,
 	IDataObject,
-	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
 	IRun,
+	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { Node, NodeConnectionType } from 'n8n-workflow';
 
-export class KafkaTrigger implements INodeType {
+import type { KafkaCredential, TriggerNodeOptions } from './types';
+import { getConnectionConfig } from './GenericFunctions';
+
+export class KafkaTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka Trigger',
 		name: 'kafkaTrigger',
@@ -178,137 +179,97 @@ export class KafkaTrigger implements INodeType {
 		],
 	};
 
-	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const topic = this.getNodeParameter('topic') as string;
+	async parsePayload(
+		message: KafkaMessage,
+		messageTopic: string,
+		options: TriggerNodeOptions,
+		context: ITriggerFunctions,
+	): Promise<INodeExecutionData[][]> {
+		const data: IDataObject = {};
+		let value = message.value?.toString() as string;
 
-		const groupId = this.getNodeParameter('groupId') as string;
-
-		const credentials = await this.getCredentials('kafka');
-
-		const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
-
-		const clientId = credentials.clientId as string;
-
-		const ssl = credentials.ssl as boolean;
-
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-
-		options.nodeVersion = this.getNode().typeVersion;
-
-		const config: KafkaConfig = {
-			clientId,
-			brokers,
-			ssl,
-			logLevel: logLevel.ERROR,
-		};
-
-		if (credentials.authentication === true) {
-			if (!(credentials.username && credentials.password)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Username and password are required for authentication',
-				);
-			}
-			config.sasl = {
-				username: credentials.username as string,
-				password: credentials.password as string,
-				mechanism: credentials.saslMechanism as string,
-			} as SASLOptions;
+		if (options.jsonParseMessage) {
+			try {
+				value = JSON.parse(value);
+			} catch (error) {}
 		}
 
-		const kafka = new apacheKafka(config);
+		const useSchemaRegistry = context.getNodeParameter('useSchemaRegistry', 0) as boolean;
+		if (useSchemaRegistry) {
+			const schemaRegistryUrl = context.getNodeParameter('schemaRegistryUrl', 0) as string;
+			try {
+				const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+				value = await registry.decode(message.value as Buffer);
+			} catch (error) {}
+		}
 
-		const maxInFlightRequests = (
-			this.getNodeParameter('options.maxInFlightRequests', null) === 0
-				? null
-				: this.getNodeParameter('options.maxInFlightRequests', null)
-		) as number;
+		if (options.onlyMessage) {
+			return [context.helpers.returnJsonArray([value as unknown as IDataObject])];
+		}
+
+		if (options.returnHeaders && message.headers) {
+			const headers: { [key: string]: string } = {};
+			for (const key of Object.keys(message.headers)) {
+				const header = message.headers[key];
+				headers[key] = header?.toString('utf8') || '';
+			}
+
+			data.headers = headers;
+		}
+
+		data.message = value;
+		data.topic = messageTopic;
+
+		return [context.helpers.returnJsonArray([data])];
+	}
+
+	async trigger(context: ITriggerFunctions): Promise<ITriggerResponse> {
+		const topic = context.getNodeParameter('topic') as string;
+		const groupId = context.getNodeParameter('groupId') as string;
+
+		const options = context.getNodeParameter('options', {}) as TriggerNodeOptions;
+		const nodeVersion = context.getNode().typeVersion;
+
+		const credentials = await context.getCredentials<KafkaCredential>('kafka');
+		const config = getConnectionConfig(context, credentials);
+		const kafka = new apacheKafka(config);
 
 		const consumer = kafka.consumer({
 			groupId,
-			maxInFlightRequests,
-			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
-			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
+			maxInFlightRequests: options.maxInFlightRequests,
+			sessionTimeout: options.sessionTimeout ?? 30000,
+			heartbeatInterval: options.heartbeatInterval ?? 3000,
 		});
 
-		const parallelProcessing = options.parallelProcessing as boolean;
-
-		await consumer.connect();
-
-		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
-
-		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
-
-		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
-
 		const startConsumer = async () => {
+			await consumer.connect();
+			await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
+
 			await consumer.run({
-				autoCommitInterval: (options.autoCommitInterval as number) || null,
-				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
+				autoCommitInterval: options.autoCommitInterval || null,
+				autoCommitThreshold: options.autoCommitThreshold || null,
 				eachMessage: async ({ topic: messageTopic, message }) => {
-					let data: IDataObject = {};
-					let value = message.value?.toString() as string;
-
-					if (options.jsonParseMessage) {
-						try {
-							value = JSON.parse(value);
-						} catch (error) {}
-					}
-
-					if (useSchemaRegistry) {
-						try {
-							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-							value = await registry.decode(message.value as Buffer);
-						} catch (error) {}
-					}
-
-					if (options.returnHeaders && message.headers) {
-						const headers: { [key: string]: string } = {};
-						for (const key of Object.keys(message.headers)) {
-							const header = message.headers[key];
-							headers[key] = header?.toString('utf8') || '';
-						}
-
-						data.headers = headers;
-					}
-
-					data.message = value;
-					data.topic = messageTopic;
-
-					if (options.onlyMessage) {
-						//@ts-ignore
-						data = value;
-					}
-					let responsePromise = undefined;
-					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-						responsePromise = this.helpers.createDeferredPromise<IRun>();
-						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
-					} else {
-						this.emit([this.helpers.returnJsonArray([data])]);
-					}
-					if (responsePromise) {
-						await responsePromise.promise;
-					}
+					const data = await this.parsePayload(message, messageTopic, options, context);
+					const donePromise =
+						!options.parallelProcessing && nodeVersion > 1 && context.getMode() === 'trigger'
+							? context.helpers.createDeferredPromise<IRun>()
+							: undefined;
+					context.emit(data, undefined, donePromise);
+					await donePromise?.promise;
 				},
 			});
 		};
 
-		await startConsumer();
-
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
-			await consumer.disconnect();
-		}
-
-		// The "manualTriggerFunction" function gets called by n8n
-		// when a user is in the workflow editor and starts the
-		// workflow manually. So the function has to make sure that
-		// the emit() gets called with similar data like when it
-		// would trigger by itself so that the user knows what data
-		// to expect.
 		async function manualTriggerFunction() {
 			await startConsumer();
+		}
+
+		if (context.getMode() === 'trigger') {
+			await startConsumer();
+		}
+
+		async function closeFunction() {
+			await consumer.disconnect();
 		}
 
 		return {
