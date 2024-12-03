@@ -317,6 +317,7 @@ export class Supabase implements INodeType {
 
 					try {
 						let responseLength = 0;
+						qs.offset = 0;
 						do {
 							const newRows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseLength = newRows.length;
