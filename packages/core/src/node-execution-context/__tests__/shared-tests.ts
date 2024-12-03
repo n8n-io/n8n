@@ -14,7 +14,7 @@ import type {
 	RelatedExecution,
 	IExecuteWorkflowInfo,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers, WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
@@ -235,7 +235,7 @@ export const describeCommonTests = (
 			});
 
 			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
-			expect(runExecutionData.waitTill).toBe(waitTill);
+			expect(runExecutionData.waitTill).toEqual(new Date(WAIT_TIME_UNLIMITED));
 			expect(result.waitTill).toBe(waitTill);
 		});
 	});

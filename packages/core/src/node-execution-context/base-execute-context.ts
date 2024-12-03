@@ -22,7 +22,12 @@ import type {
 	ISourceData,
 	AiEvent,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WorkflowDataProxy } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeHelpers,
+	WAIT_TIME_UNLIMITED,
+	WorkflowDataProxy,
+} from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
@@ -122,9 +127,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentCallbackManager,
 		});
 
-		// If a sub-workflow execution goes into the waiting state, then put the parent workflow execution also into the waiting state
+		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
-			await this.putExecutionToWait(result.waitTill);
+			// then put the parent workflow execution also into the waiting state,
+			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
+			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
 		}
 
 		const data = await this.binaryDataService.duplicateBinaryData(
