@@ -16,6 +16,7 @@ import type { LanguageServiceWorker } from './types';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useEnvironmentsStore from '../../../stores/environments.ee.store';
 import { watch } from 'vue';
+import { useDebounce } from '../../../composables/useDebounce';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -86,11 +87,12 @@ export async function useTypescript(initialValue: string, mode: CodeExecutionMod
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const { debounce } = useDebounce();
 	const activeNodeName = ndvStore.activeNodeName;
 
 	watch(
 		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
-		async () => await worker.updateNodeTypes(),
+		debounce(async () => await worker.updateNodeTypes(), { debounceTime: 200, trailing: true }),
 	);
 
 	await worker.init(

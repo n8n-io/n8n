@@ -34,6 +34,7 @@ const worker = (): LanguageServiceWorker => {
 	let nodeDataFetcher: NodeDataFetcher = async () => undefined;
 	const loadedNodeTypesMap: Record<string, { type: string; typeName: string }> = {};
 	let inputNodeNames: string[];
+	let allNodeNames: string[];
 	let mode: CodeExecutionMode;
 
 	function updateFile(fileName: string, content: string) {
@@ -46,8 +47,6 @@ const worker = (): LanguageServiceWorker => {
 	}
 
 	async function loadNodeTypes(nodeName: string) {
-		if (loadedNodeTypesMap[nodeName]) return;
-
 		const data = await nodeDataFetcher(nodeName);
 
 		if (data?.json) {
@@ -60,9 +59,7 @@ const worker = (): LanguageServiceWorker => {
 				`export {};
 
 declare global {
-	type NodeName = ${Object.keys(loadedNodeTypesMap)
-		.map((name) => `'${name}'`)
-		.join(' | ')};
+	type NodeName = ${allNodeNames.map((name) => `'${name}'`).join(' | ')};
 
     ${Object.values(loadedNodeTypesMap)
 			.map(({ type }) => type)
@@ -144,6 +141,7 @@ itemMatching(itemIndex: number): N8nInputItem;`
 		async init(options, nodeDataFetcherArg) {
 			nodeDataFetcher = nodeDataFetcherArg;
 			inputNodeNames = options.inputNodeNames;
+			allNodeNames = options.allNodeNames;
 			mode = options.mode;
 
 			const compilerOptions: ts.CompilerOptions = {
@@ -312,7 +310,7 @@ declare global {
 		async updateNodeTypes() {
 			const nodeNames = Object.keys(loadedNodeTypesMap);
 
-			console.log('nodes to load', nodeNames);
+			console.log('nodes to load', nodeNames, inputNodeNames);
 			await Promise.all(nodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)));
 			await Promise.all(
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
