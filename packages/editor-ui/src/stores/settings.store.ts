@@ -162,6 +162,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		(settings.value.betaFeatures ?? []).includes('canvas_v2'),
 	);
 
+	const easyAIWorkflowOnboardingDone = computed(() => settings.value.easyAIWorkflowOnboarded);
+
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
@@ -443,5 +445,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
+		easyAIWorkflowOnboardingDone,
 	};
 });

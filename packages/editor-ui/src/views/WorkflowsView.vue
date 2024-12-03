@@ -117,11 +117,12 @@ const isOnboardingExperimentEnabled = computed(() => {
 	);
 });
 
-const isEasyAIWorkflowExperimentEnabled = computed(() => {
-	return (
+const showEasyAIWorkflowCallout = computed(() => {
+	const isEasyAIWorkflowExperimentEnabled =
 		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-		EASY_AI_WORKFLOW_EXPERIMENT.variant
-	);
+		EASY_AI_WORKFLOW_EXPERIMENT.variant;
+	const easyAIWorkflowOnboardingDone = settingsStore.easyAIWorkflowOnboardingDone;
+	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
 });
 
 const isSalesUser = computed(() => {
@@ -329,7 +330,7 @@ const dismissEasyAICallout = () => {
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="isEasyAIWorkflowExperimentEnabled && easyAICalloutVisible"
+				v-if="showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
 				:class="$style['easy-ai-workflow-callout']"
 			>
@@ -396,7 +397,7 @@ const dismissEasyAICallout = () => {
 					</N8nText>
 				</N8nCard>
 				<N8nCard
-					v-if="isEasyAIWorkflowExperimentEnabled"
+					v-if="showEasyAIWorkflowCallout"
 					:class="$style.emptyStateCard"
 					hoverable
 					data-test-id="easy-ai-workflow-card"
