@@ -228,13 +228,15 @@ export class TestWebhooks implements IWebhookManager {
 		destinationNode?: string;
 		preferredTrigger?: WorkflowRequest.ManualRunPayload['preferredTrigger'];
 	}) {
-		const userId = options.userId;
-		const workflowEntity = options.workflowEntity;
-		const additionalData = options.additionalData;
-		const runData = options.runData;
-		const pushRef = options.pushRef;
-		const destinationNode = options.destinationNode;
-		const preferredTrigger = options.preferredTrigger;
+		const {
+			userId,
+			workflowEntity,
+			additionalData,
+			runData,
+			pushRef,
+			destinationNode,
+			preferredTrigger,
+		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
