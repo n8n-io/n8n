@@ -15,6 +15,7 @@ export { passwordSchema } from './schemas/password.schema';
 export type {
 	ProjectType,
 	ProjectIcon,
+	ProjectSettings,
 	ProjectRole,
 	ProjectRelation,
 } from './schemas/project.schema';

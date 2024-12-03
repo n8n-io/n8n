@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProjectIcon } from '@/types/projects.types';
+import type { ProjectIcon } from '@n8n/api-types';
 
 type Props = {
 	icon: ProjectIcon;

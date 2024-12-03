@@ -3,11 +3,11 @@ import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput } from 'n8n-design-system';
+import type { ProjectIcon } from '@n8n/api-types';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectIcon } from '@/types/projects.types';
 import { type Project, type ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
@@ -194,7 +194,9 @@ const updateProject = async () => {
 	try {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name!,
-			icon: projectIcon.value,
+			settings: {
+				icon: projectIcon.value,
+			},
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
 				role: r.role,
@@ -269,8 +271,8 @@ watch(
 			: [];
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
-		if (projectsStore.currentProject?.icon) {
-			projectIcon.value = projectsStore.currentProject.icon;
+		if (projectsStore.currentProject?.settings.icon) {
+			projectIcon.value = projectsStore.currentProject.settings.icon;
 		}
 	},
 	{ immediate: true },

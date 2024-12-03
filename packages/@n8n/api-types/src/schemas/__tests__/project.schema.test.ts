@@ -1,9 +1,9 @@
 import {
 	projectNameSchema,
 	projectTypeSchema,
-	projectIconSchema,
 	projectRoleSchema,
 	projectRelationSchema,
+	projectSettingsSchema,
 } from '../project.schema';
 
 describe('project.schema', () => {
@@ -29,31 +29,33 @@ describe('project.schema', () => {
 		});
 	});
 
-	describe('projectIconSchema', () => {
-		test.each([
-			{
-				name: 'valid emoji icon',
-				value: { type: 'emoji', value: '🚀' },
-				expected: true,
-			},
-			{
-				name: 'valid icon',
-				value: { type: 'icon', value: 'blah' },
-				expected: true,
-			},
-			{
-				name: 'invalid icon type',
-				value: { type: 'invalid', value: '🚀' },
-				expected: false,
-			},
-			{
-				name: 'empty icon value',
-				value: { type: 'emoji', value: '' },
-				expected: false,
-			},
-		])('should validate $name', ({ value, expected }) => {
-			const result = projectIconSchema.safeParse(value);
-			expect(result.success).toBe(expected);
+	describe('projectSettingsSchema', () => {
+		describe('.icon', () => {
+			test.each([
+				{
+					name: 'valid emoji icon',
+					value: { type: 'emoji', value: '🚀' },
+					expected: true,
+				},
+				{
+					name: 'valid icon',
+					value: { type: 'icon', value: 'blah' },
+					expected: true,
+				},
+				{
+					name: 'invalid icon type',
+					value: { type: 'invalid', value: '🚀' },
+					expected: false,
+				},
+				{
+					name: 'empty icon value',
+					value: { type: 'emoji', value: '' },
+					expected: false,
+				},
+			])('should validate $name', ({ value, expected }) => {
+				const result = projectSettingsSchema.safeParse({ icon: value });
+				expect(result.success).toBe(expected);
+			});
 		});
 	});
 

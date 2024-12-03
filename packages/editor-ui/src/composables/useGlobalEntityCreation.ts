@@ -173,7 +173,9 @@ export const useGlobalEntityCreation = () => {
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
-				icon: { type: 'icon', value: 'layer-group' },
+				settings: {
+					icon: { type: 'icon', value: 'layer-group' },
+				},
 			});
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({

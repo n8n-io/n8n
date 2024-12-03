@@ -37,7 +37,9 @@ import type {
 
 @Service()
 export class ScalingService {
-	private queue: JobQueue;
+	private sharedQueue: JobQueue;
+
+	private readonly dedicatedQueues = new Map<string, JobQueue>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -63,7 +65,7 @@ export class ScalingService {
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
 		const prefix = service.toValidPrefix(bullPrefix);
 
-		this.queue = new BullQueue(QUEUE_NAME, {
+		this.sharedQueue = new BullQueue(QUEUE_NAME, {
 			prefix,
 			settings: this.globalConfig.queue.bull.settings,
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
@@ -90,7 +92,7 @@ export class ScalingService {
 		this.assertWorker();
 		this.assertQueue();
 
-		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		void this.sharedQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				if (!this.hasValidJobData(job)) {
 					throw new ApplicationError('Worker received invalid job', {
@@ -141,7 +143,7 @@ export class ScalingService {
 
 	private async stopMain() {
 		if (this.instanceSettings.isSingleMain) {
-			await this.queue.pause(true, true); // no more jobs will be picked up
+			await this.sharedQueue.pause(true, true); // no more jobs will be picked up
 			this.logger.debug('Queue paused');
 		}
 
@@ -164,7 +166,7 @@ export class ScalingService {
 	}
 
 	async pingQueue() {
-		await this.queue.client.ping();
+		await this.sharedQueue.client.ping();
 	}
 
 	// #endregion
@@ -172,7 +174,7 @@ export class ScalingService {
 	// #region Jobs
 
 	async getPendingJobCounts() {
-		const { active, waiting } = await this.queue.getJobCounts();
+		const { active, waiting } = await this.sharedQueue.getJobCounts();
 
 		return { active, waiting };
 	}
@@ -192,7 +194,9 @@ export class ScalingService {
 			removeOnFail: true,
 		};
 
-		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
+		const queue = this.dedicatedQueues.get(jobData.projectId!) ?? this.sharedQueue;
+
+		const job = await queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
 		const { executionId } = jobData;
 		const jobId = job.id;
@@ -203,11 +207,15 @@ export class ScalingService {
 	}
 
 	async getJob(jobId: JobId) {
-		return await this.queue.getJob(jobId);
+		// TODO: keep a jobId -> projectId mapping in redis
+		// TODO: use the project specific queue if available
+		return await this.sharedQueue.getJob(jobId);
 	}
 
 	async findJobsByStatus(statuses: JobStatus[]) {
-		const jobs = await this.queue.getJobs(statuses);
+		// TODO: keep a jobId -> projectId mapping in redis
+		// TODO: use the project specific queue if available
+		const jobs = await this.sharedQueue.getJobs(statuses);
 
 		return jobs.filter((job) => job !== null);
 	}
@@ -261,13 +269,13 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners() {
-		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+		this.sharedQueue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
-		this.queue.on('error', (error: Error) => {
+		this.sharedQueue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
 			/**
@@ -290,7 +298,7 @@ export class ScalingService {
 	 * Register listeners on a `main` or `webhook` process for Bull queue events.
 	 */
 	private registerMainOrWebhookListeners() {
-		this.queue.on('error', (error: Error) => {
+		this.sharedQueue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
 			this.logger.error('Queue errored', { error });
@@ -298,7 +306,7 @@ export class ScalingService {
 			throw error;
 		});
 
-		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+		this.sharedQueue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
 			// completion and failure are reported via `global:progress` to convey more details
@@ -338,8 +346,8 @@ export class ScalingService {
 		});
 
 		if (this.isQueueMetricsEnabled) {
-			this.queue.on('global:completed', () => this.jobCounters.completed++);
-			this.queue.on('global:failed', () => this.jobCounters.failed++);
+			this.sharedQueue.on('global:completed', () => this.jobCounters.completed++);
+			this.sharedQueue.on('global:failed', () => this.jobCounters.failed++);
 		}
 	}
 
@@ -367,7 +375,7 @@ export class ScalingService {
 	}
 
 	private assertQueue() {
-		if (this.queue) return;
+		if (this.sharedQueue) return;
 
 		throw new ApplicationError('This method must be called after `setupQueue`');
 	}

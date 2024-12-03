@@ -171,7 +171,7 @@ export class ProjectController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 	): Promise<ProjectRequest.ProjectWithRelations> {
-		const [{ id, name, icon, type }, relations] = await Promise.all([
+		const [{ id, name, type, settings }, relations] = await Promise.all([
 			this.projectsService.getProject(projectId),
 			this.projectsService.getProjectRelations(projectId),
 		]);
@@ -180,8 +180,8 @@ export class ProjectController {
 		return {
 			id,
 			name,
-			icon,
 			type,
+			settings,
 			relations: relations.map((r) => ({
 				id: r.user.id,
 				email: r.user.email,
@@ -206,9 +206,9 @@ export class ProjectController {
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
-		const { name, icon, relations } = payload;
-		if (name || icon) {
-			await this.projectsService.updateProject(projectId, { name, icon });
+		const { name, settings, relations } = payload;
+		if (name || settings) {
+			await this.projectsService.updateProject(projectId, { name, settings });
 		}
 		if (relations) {
 			try {

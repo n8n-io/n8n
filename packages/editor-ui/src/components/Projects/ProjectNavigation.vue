@@ -33,7 +33,7 @@ const home = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: project.icon,
+	icon: project.settings.icon,
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,

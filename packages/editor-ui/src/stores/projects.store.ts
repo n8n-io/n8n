@@ -32,7 +32,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const projectsCount = ref<ProjectsCount>({
 		personal: 0,
 		team: 0,
-		public: 0,
 	});
 	const projectNavActiveIdState = ref<string | string[] | null>(null);
 
@@ -120,14 +119,14 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	): Promise<void> => {
 		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name, icon } = projectData;
+		const { name, settings } = projectData;
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = name;
-			myProjects.value[projectIndex].icon = icon;
+			myProjects.value[projectIndex].settings = settings;
 		}
 		if (currentProject.value) {
 			currentProject.value.name = name;
-			currentProject.value.icon = icon;
+			currentProject.value.settings = settings;
 		}
 		if (projectData.relations) {
 			await getProject(id);

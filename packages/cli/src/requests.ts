@@ -1,4 +1,4 @@
-import type { ProjectIcon, ProjectRole, ProjectType } from '@n8n/api-types';
+import type { ProjectRole, ProjectType, ProjectSettings } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
@@ -119,7 +119,7 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'settings'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
@@ -383,8 +383,8 @@ export declare namespace ProjectRequest {
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
-		icon: ProjectIcon;
 		type: ProjectType;
+		settings: ProjectSettings;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
 	};

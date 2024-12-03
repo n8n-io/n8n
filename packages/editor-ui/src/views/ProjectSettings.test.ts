@@ -66,7 +66,7 @@ describe('ProjectSettings', () => {
 			id: '123',
 			type: 'team',
 			name: 'Test Project',
-			icon: { type: 'icon', value: 'folder' },
+			settings: { icon: { type: 'icon', value: 'folder' } },
 			relations: [],
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),

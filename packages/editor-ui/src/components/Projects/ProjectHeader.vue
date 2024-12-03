@@ -2,8 +2,9 @@
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton, N8nTooltip } from 'n8n-design-system';
+import type { ProjectIcon } from '@n8n/api-types';
 import { useI18n } from '@/composables/useI18n';
-import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
@@ -21,7 +22,7 @@ const headerIcon = computed((): ProjectIcon => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+		return projectsStore.currentProject.settings.icon ?? { type: 'icon', value: 'layer-group' };
 	} else {
 		return { type: 'icon', value: 'home' };
 	}

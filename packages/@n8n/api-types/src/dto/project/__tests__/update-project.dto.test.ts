@@ -13,9 +13,11 @@ describe('UpdateProjectDto', () => {
 				name: 'with name and emoji icon',
 				request: {
 					name: 'My Updated Project',
-					icon: {
-						type: 'emoji',
-						value: '🚀',
+					settings: {
+						icon: {
+							type: 'emoji',
+							value: '🚀',
+						},
 					},
 				},
 			},
@@ -23,9 +25,11 @@ describe('UpdateProjectDto', () => {
 				name: 'with name and regular icon',
 				request: {
 					name: 'My Updated Project',
-					icon: {
-						type: 'icon',
-						value: 'blah',
+					settings: {
+						icon: {
+							type: 'icon',
+							value: 'blah',
+						},
 					},
 				},
 			},
@@ -44,9 +48,11 @@ describe('UpdateProjectDto', () => {
 				name: 'with all fields',
 				request: {
 					name: 'My Updated Project',
-					icon: {
-						type: 'emoji',
-						value: '🚀',
+					settings: {
+						icon: {
+							type: 'emoji',
+							value: '🚀',
+						},
 					},
 					relations: [
 						{
@@ -76,13 +82,13 @@ describe('UpdateProjectDto', () => {
 			},
 			{
 				name: 'invalid icon type',
-				request: { icon: { type: 'invalid', value: '🚀' } },
-				expectedErrorPath: ['icon', 'type'],
+				request: { settings: { icon: { type: 'invalid', value: '🚀' } } },
+				expectedErrorPath: ['settings', 'icon', 'type'],
 			},
 			{
 				name: 'invalid icon value',
-				request: { icon: { type: 'emoji', value: '' } },
-				expectedErrorPath: ['icon', 'value'],
+				request: { settings: { icon: { type: 'emoji', value: '' } } },
+				expectedErrorPath: ['settings', 'icon', 'value'],
 			},
 			{
 				name: 'invalid relations userId',

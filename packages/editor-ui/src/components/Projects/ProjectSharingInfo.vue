@@ -21,8 +21,8 @@ const processedName = computed(() => {
 });
 
 const projectIcon = computed(() => {
-	if (props.project.icon) {
-		return props.project.icon;
+	if (props.project.settings.icon) {
+		return props.project.settings.icon;
 	}
 	return null;
 });

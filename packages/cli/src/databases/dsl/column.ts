@@ -129,6 +129,12 @@ export class Column {
 				options.default = isSqlite
 					? "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
 					: 'CURRENT_TIMESTAMP(3)';
+			}
+			if (type === 'json' && isSqlite) {
+				if (typeof this.defaultValue !== 'string') {
+					this.defaultValue = JSON.stringify(this.defaultValue);
+				}
+				options.default = `'${this.defaultValue as string}'`;
 			} else {
 				options.default = this.defaultValue;
 			}
