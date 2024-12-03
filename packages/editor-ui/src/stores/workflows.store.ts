@@ -494,7 +494,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
-			onboardingFlowEnabled: false,
 			settings: { ...defaults.settings },
 		};
 		try {

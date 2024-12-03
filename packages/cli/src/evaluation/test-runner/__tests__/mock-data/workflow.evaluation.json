@@ -57,6 +57,12 @@
 							"name": "success",
 							"value": true,
 							"type": "boolean"
+						},
+						{
+							"id": "877d1bf8-31a7-4571-9293-a6837b51d22b",
+							"name": "metric1",
+							"value": 0.1,
+							"type": "number"
 						}
 					]
 				},

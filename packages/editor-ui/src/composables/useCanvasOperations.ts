@@ -25,7 +25,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
-	QUICKSTART_NOTE_NAME,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
@@ -365,7 +364,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
 				workflow_id: workflowsStore.workflowId,
-				is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });

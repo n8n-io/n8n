@@ -219,7 +219,7 @@ const onUserActionToggle = (action: string) => {
 			onLogout();
 			break;
 		case 'settings':
-			void router.push({ name: VIEWS.PERSONAL_SETTINGS });
+			void router.push({ name: VIEWS.SETTINGS });
 			break;
 		default:
 			break;

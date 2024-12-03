@@ -1194,7 +1194,7 @@ export class WorkflowExecute {
 								}
 
 								if (nodeSuccessData instanceof NodeExecutionOutput) {
-									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
+									const hints = (nodeSuccessData as NodeExecutionOutput).getHints();
 
 									executionHints.push(...hints);
 								}

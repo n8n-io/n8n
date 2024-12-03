@@ -35,7 +35,6 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
-export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -487,6 +486,7 @@ export const enum VIEWS {
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
+	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
@@ -723,9 +723,9 @@ export const MFA_FORM = {
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
-export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+export const MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED = 997;
 
-export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+export const MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH = 6;
 
 export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 

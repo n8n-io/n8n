@@ -250,7 +250,6 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 
 export interface NewWorkflowResponse {
 	name: string;
-	onboardingFlowEnabled?: boolean;
 	defaultSettings: IWorkflowSettings;
 }
 
@@ -277,7 +276,6 @@ export interface IWorkflowTemplate {
 
 export interface INewWorkflowData {
 	name: string;
-	onboardingFlowEnabled: boolean;
 }
 
 export interface WorkflowMetadata {
