@@ -305,21 +305,17 @@ export class WorkflowRunner {
 					a.ok(node, `Could not find a node named "${data.name}" in the workflow.`);
 					return node;
 				});
+				const runData = { [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] };
 
 				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 					recreateNodeExecutionStack(
 						filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
 						new Set(startNodes),
-						{ [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] },
+						runData,
 						data.pinData ?? {},
 					);
 				const executionData: IRunExecutionData = {
-					resultData: {
-						runData: data.runData ?? {
-							[data.triggerToStartFrom.name]: [data.triggerToStartFrom.data],
-						},
-						pinData,
-					},
+					resultData: { runData, pinData },
 					executionData: {
 						contextData: {},
 						metadata: {},
