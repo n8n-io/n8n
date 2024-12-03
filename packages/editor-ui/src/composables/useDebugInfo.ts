@@ -96,7 +96,7 @@ export function useDebugInfo() {
 	};
 
 	const pruningInfo = () => {
-		if (!settingsStore.pruning.isEnabled) return { enabled: false } as const;
+		if (!settingsStore.pruning?.isEnabled) return { enabled: false } as const;
 
 		return {
 			enabled: true,
