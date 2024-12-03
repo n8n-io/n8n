@@ -2,13 +2,13 @@ import { Config, Env, Nested } from '@n8n/config';
 
 @Config
 class HealthcheckServerConfig {
-	@Env('N8N_RUNNERS_SERVER_ENABLED')
+	@Env('N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED')
 	enabled: boolean = false;
 
-	@Env('N8N_RUNNERS_SERVER_HOST')
+	@Env('N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST')
 	host: string = '127.0.0.1';
 
-	@Env('N8N_RUNNERS_SERVER_PORT')
+	@Env('N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT')
 	port: number = 5681;
 }
 
