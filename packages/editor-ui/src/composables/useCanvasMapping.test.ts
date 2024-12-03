@@ -237,7 +237,7 @@ describe('useCanvasMapping', () => {
 			expect(
 				mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output][
 					NodeConnectionType.Main
-				][0][0],
+				][0]?.[0],
 			).toEqual(
 				expect.objectContaining({
 					node: setNode.name,
@@ -252,7 +252,7 @@ describe('useCanvasMapping', () => {
 			expect(
 				mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input][
 					NodeConnectionType.Main
-				][0][0],
+				][0]?.[0],
 			).toEqual(
 				expect.objectContaining({
 					node: manualTriggerNode.name,

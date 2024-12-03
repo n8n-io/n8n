@@ -151,7 +151,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
 
 		for (const [index, connection] of activeNodeConections.entries()) {
-			for (const node of connection) {
+			for (const node of connection ?? []) {
 				if (!returnData[node.node]) {
 					returnData[node.node] = [];
 				}
