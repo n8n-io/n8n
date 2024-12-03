@@ -910,8 +910,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (!connectionExists) {
 			nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
 			const connections = nodeConnections[sourceData.index];
-			assert(connections);
-			connections.push(destinationData);
+			if (connections) {
+				connections.push(destinationData);
+			}
 		}
 	}
 
