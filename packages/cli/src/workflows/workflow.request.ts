@@ -30,7 +30,7 @@ export declare namespace WorkflowRequest {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		dirtyNodeNames?: string[];
-		preferredTrigger?: {
+		triggerToStartFrom?: {
 			name: string;
 			data?: ITaskData;
 		};

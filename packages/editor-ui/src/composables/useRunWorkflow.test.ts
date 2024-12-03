@@ -327,7 +327,7 @@ describe('useRunWorkflow({ router })', () => {
 			);
 		});
 
-		it('should send preferredTrigger if triggerNode and nodeData are passed in', async () => {
+		it('should send triggerToStartFrom if triggerNode and nodeData are passed in', async () => {
 			// ARRANGE
 			const composable = useRunWorkflow({ router });
 			const triggerNode = 'Chat Trigger';
@@ -347,7 +347,7 @@ describe('useRunWorkflow({ router })', () => {
 			// ASSERT
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
-					preferredTrigger: {
+					triggerToStartFrom: {
 						name: triggerNode,
 						data: nodeData,
 					},

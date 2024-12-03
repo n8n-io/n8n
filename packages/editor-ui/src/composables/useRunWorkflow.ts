@@ -150,7 +150,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
-			let preferredTrigger: IStartRunData['preferredTrigger'];
+			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
 				startNodeNames.length === 0 &&
 				'destinationNode' in options &&
@@ -164,7 +164,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
-				preferredTrigger = {
+				triggerToStartFrom = {
 					name: options.triggerNode,
 					data: options.nodeData,
 				};
@@ -261,7 +261,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// data to use and what to ignore.
 				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
 				startNodes,
-				preferredTrigger,
+				triggerToStartFrom,
 			};
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;

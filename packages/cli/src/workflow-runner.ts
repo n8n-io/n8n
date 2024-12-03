@@ -295,9 +295,9 @@ export class WorkflowRunner {
 					data.executionData,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
-			} else if (data.preferredTrigger?.data && data.startNodes && !data.destinationNode) {
+			} else if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
 				this.logger.debug(
-					`Execution ID ${executionId} had preferredTrigger. Starting from that trigger.`,
+					`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
 					{ executionId },
 				);
 				const startNodes = data.startNodes.map((data) => {
@@ -310,13 +310,13 @@ export class WorkflowRunner {
 					recreateNodeExecutionStack(
 						filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
 						new Set(startNodes),
-						{ [data.preferredTrigger.name]: [data.preferredTrigger.data] },
+						{ [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] },
 						data.pinData ?? {},
 					);
 				const executionData: IRunExecutionData = {
 					resultData: {
 						runData: data.runData ?? {
-							[data.preferredTrigger.name]: [data.preferredTrigger.data],
+							[data.triggerToStartFrom.name]: [data.triggerToStartFrom.data],
 						},
 						pinData,
 					},

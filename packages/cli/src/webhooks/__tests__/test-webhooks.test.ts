@@ -95,14 +95,14 @@ describe('TestWebhooks', () => {
 			expect(result).toBe(false);
 		});
 
-		test('returns false if a preferredTrigger with triggerData is given', async () => {
+		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
 			const workflow = mock<Workflow>();
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const needsWebhook = await testWebhooks.needsWebhook({
 				...args,
-				preferredTrigger: {
+				triggerToStartFrom: {
 					name: 'trigger',
 					data: mock<ITaskData>(),
 				},
@@ -111,7 +111,7 @@ describe('TestWebhooks', () => {
 			expect(needsWebhook).toBe(false);
 		});
 
-		test('returns true, registers and then creates webhook if preferredTrigger is given with no triggerData', async () => {
+		test('returns true, registers and then creates webhook if triggerToStartFrom is given with no triggerData', async () => {
 			// ARRANGE
 			const workflow = mock<Workflow>();
 			const webhook2 = mock<IWebhookData>({
@@ -127,7 +127,7 @@ describe('TestWebhooks', () => {
 			// ACT
 			const needsWebhook = await testWebhooks.needsWebhook({
 				...args,
-				preferredTrigger: { name: 'trigger' },
+				triggerToStartFrom: { name: 'trigger' },
 			});
 
 			// ASSERT

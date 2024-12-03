@@ -226,7 +226,7 @@ export class TestWebhooks implements IWebhookManager {
 		runData?: IRunData;
 		pushRef?: string;
 		destinationNode?: string;
-		preferredTrigger?: WorkflowRequest.ManualRunPayload['preferredTrigger'];
+		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
 	}) {
 		const {
 			userId,
@@ -235,7 +235,7 @@ export class TestWebhooks implements IWebhookManager {
 			runData,
 			pushRef,
 			destinationNode,
-			preferredTrigger,
+			triggerToStartFrom,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -251,17 +251,17 @@ export class TestWebhooks implements IWebhookManager {
 
 		// If we have a preferred trigger with data, we don't have to listen for a
 		// webhook.
-		if (preferredTrigger?.data) {
+		if (triggerToStartFrom?.data) {
 			return false;
 		}
 
 		// If we have a preferred trigger without data we only want to listen for
 		// that trigger, not the other ones.
-		if (preferredTrigger) {
-			webhooks = webhooks.filter((w) => w.node === preferredTrigger.name);
+		if (triggerToStartFrom) {
+			webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
 		}
 
-		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
+		if (webhooks.some((w) => w.webhookDescription.restartWebhook ?? false)) {
 			return false; // no webhooks found to start a workflow
 		}
 

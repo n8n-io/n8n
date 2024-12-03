@@ -126,7 +126,7 @@ describe('processError', () => {
 });
 
 describe('run', () => {
-	it('uses recreateNodeExecutionStack to create a partial execution if a preferredTrigger with data is sent', async () => {
+	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -151,7 +151,7 @@ describe('run', () => {
 			});
 
 		const data = mock<IWorkflowExecutionDataProcess>({
-			preferredTrigger: { name: 'trigger', data: mock<ITaskData>() },
+			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
 			workflowData: { nodes: [] },
 			executionData: undefined,
@@ -166,7 +166,7 @@ describe('run', () => {
 		expect(recreateNodeExecutionStackSpy).toHaveBeenCalled();
 	});
 
-	it('does not use recreateNodeExecutionStack to create a partial execution if a preferredTrigger without data is sent', async () => {
+	it('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -183,7 +183,7 @@ describe('run', () => {
 		const recreateNodeExecutionStackSpy = jest.spyOn(core, 'recreateNodeExecutionStack');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
-			preferredTrigger: { name: 'trigger', data: undefined },
+			triggerToStartFrom: { name: 'trigger', data: undefined },
 
 			workflowData: { nodes: [] },
 			executionData: undefined,

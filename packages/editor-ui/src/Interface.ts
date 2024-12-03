@@ -202,7 +202,7 @@ export interface IStartRunData {
 	destinationNode?: string;
 	runData?: IRunData;
 	dirtyNodeNames?: string[];
-	preferredTrigger?: {
+	triggerToStartFrom?: {
 		name: string;
 		data?: ITaskData;
 	};
