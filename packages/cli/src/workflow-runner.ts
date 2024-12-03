@@ -341,8 +341,8 @@ export class WorkflowRunner {
 				// be removed and the previous one can be merged into
 				// `workflowExecute.runPartialWorkflow2`.
 				// Partial executions then require either a destination node from which
-				// everything else can be derived, or a preferredTrigger with
-				// triggerData. Full Execution
+				// everything else can be derived, or a triggerToStartFrom with
+				// triggerData.
 				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
 					executionId,
 				});
