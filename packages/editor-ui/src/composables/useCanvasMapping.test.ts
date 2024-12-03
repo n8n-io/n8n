@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
-import { INode, NodeApiError, NodeConnectionType } from 'n8n-workflow';
-import type { Workflow } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { Workflow, INode, NodeApiError } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
