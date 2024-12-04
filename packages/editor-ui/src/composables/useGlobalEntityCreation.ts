@@ -211,7 +211,7 @@ export const useGlobalEntityCreation = (
 
 	const projectsLimitReachedMessage = computed(() => {
 		if (settingsStore.isCloudDeployment) {
-			i18n.baseText('projects.create.limitReached', {
+			return i18n.baseText('projects.create.limitReached', {
 				adjustToNumber: projectsStore.teamProjectsLimit,
 				interpolate: {
 					planName: cloudPlanStore.currentPlanData?.displayName ?? '',
