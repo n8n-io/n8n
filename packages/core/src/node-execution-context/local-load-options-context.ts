@@ -5,8 +5,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
 	ILocalLoadOptionsFunctions,
-	FieldValueOption,
 	IWorkflowLoader,
+	INode,
 } from 'n8n-workflow';
 
 export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
@@ -16,7 +16,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		private workflowLoader: IWorkflowLoader,
 	) {}
 
-	async getWorkflowInputValues(): Promise<FieldValueOption[]> {
+	async getExecuteWorkflowTriggerNode(): Promise<INode | undefined> {
 		const { value } = this.getCurrentNodeParameter('workflowId') as INodeParameterResourceLocator;
 
 		const workflowId = value as string;
@@ -26,17 +26,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const workflow = await this.workflowLoader.get(workflowId);
 
-		workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start');
-
-		// TODO: load the inputs from the workflow
-		const dummyFields = [
-			{ name: 'field1', type: 'string' as const },
-			{ name: 'field2', type: 'number' as const },
-			{ name: 'field3', type: 'boolean' as const },
-			{ name: 'field4', type: 'any' as const },
-		];
-
-		return dummyFields;
+		return workflow.nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
 	}
 
 	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined {

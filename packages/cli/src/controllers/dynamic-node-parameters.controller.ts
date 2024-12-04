@@ -95,7 +95,7 @@ export class DynamicNodeParametersController {
 
 	@Post('/local-resource-mapper-fields')
 	async getLocalResourceMappingFields(req: DynamicNodeParametersRequest.ResourceMapperFields) {
-		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion } = req.body;
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion } = req.body;
 
 		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
 
@@ -106,8 +106,6 @@ export class DynamicNodeParametersController {
 			path,
 			additionalData,
 			nodeTypeAndVersion,
-			currentNodeParameters,
-			credentials,
 		);
 	}
 

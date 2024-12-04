@@ -1073,7 +1073,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
 export interface ILocalLoadOptionsFunctions {
-	getWorkflowInputValues(): Promise<FieldValueOption[]>;
+	getExecuteWorkflowTriggerNode(): Promise<INode | undefined>;
 }
 
 export interface IWorkflowLoader {

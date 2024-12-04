@@ -193,8 +193,6 @@ export class DynamicNodeParametersService {
 		path: string,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeTypeAndVersion: INodeTypeNameVersion,
-		currentNodeParameters: INodeParameters,
-		credentials?: INodeCredentials,
 	): Promise<ResourceMapperFields> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
