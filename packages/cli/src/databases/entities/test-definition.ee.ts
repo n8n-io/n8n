@@ -8,7 +8,7 @@ import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
 
 // Entity representing a node in a workflow under test which is pinned for a test definition
-export type PinnedNodeItem = {
+export type MockedNodeItem = {
 	name: string;
 };
 
@@ -33,7 +33,7 @@ export class TestDefinition extends WithTimestampsAndStringId {
 	description: string;
 
 	@Column(jsonColumnType, { default: '[]' })
-	pinnedNodes: PinnedNodeItem[];
+	mockedNodes: MockedNodeItem[];
 
 	/**
 	 * Relation to the workflow under test

@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
-import type { PinnedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -32,7 +32,7 @@ export class TestDefinitionService {
 		evaluationWorkflowId?: string;
 		annotationTagId?: string;
 		id?: string;
-		pinnedNodes?: PinnedNodeItem[];
+		mockedNodes?: MockedNodeItem[];
 	}) {
 		const entity: TestDefinitionLike = {};
 
@@ -66,8 +66,8 @@ export class TestDefinitionService {
 			};
 		}
 
-		if (attrs.pinnedNodes) {
-			entity.pinnedNodes = attrs.pinnedNodes;
+		if (attrs.mockedNodes) {
+			entity.mockedNodes = attrs.mockedNodes;
 		}
 
 		return entity;
@@ -114,7 +114,7 @@ export class TestDefinitionService {
 		}
 
 		// If there are pinned nodes, validate them
-		if (attrs.pinnedNodes && attrs.pinnedNodes.length > 0) {
+		if (attrs.mockedNodes && attrs.mockedNodes.length > 0) {
 			const existingTestDefinition = await this.testDefinitionRepository.findOne({
 				where: {
 					id,
@@ -126,7 +126,7 @@ export class TestDefinitionService {
 
 			const existingNodeNames = new Set(existingTestDefinition.workflow.nodes.map((n) => n.name));
 
-			attrs.pinnedNodes.forEach((node) => {
+			attrs.mockedNodes.forEach((node) => {
 				if (!existingNodeNames.has(node.name)) {
 					throw new BadRequestError(`Pinned node not found in the workflow: ${node.name}`);
 				}

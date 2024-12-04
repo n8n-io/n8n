@@ -403,7 +403,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		await Container.get(TestDefinitionRepository).save(newTest);
 
 		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
-			pinnedNodes: [
+			mockedNodes: [
 				{
 					name: 'Schedule Trigger',
 				},
@@ -411,7 +411,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		});
 
 		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data.pinnedNodes).toEqual([{ name: 'Schedule Trigger' }]);
+		expect(resp.body.data.mockedNodes).toEqual([{ name: 'Schedule Trigger' }]);
 	});
 
 	test('should return error if pinned nodes are invalid', async () => {
@@ -422,7 +422,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		await Container.get(TestDefinitionRepository).save(newTest);
 
 		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
-			pinnedNodes: ['Simple string'],
+			mockedNodes: ['Simple string'],
 		});
 
 		expect(resp.statusCode).toBe(400);
@@ -436,7 +436,7 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		await Container.get(TestDefinitionRepository).save(newTest);
 
 		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
-			pinnedNodes: [
+			mockedNodes: [
 				{
 					name: 'Invalid Node',
 				},

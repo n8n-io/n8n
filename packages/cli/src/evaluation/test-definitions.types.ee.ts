@@ -1,4 +1,4 @@
-import type { PinnedNodeItem } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
@@ -31,7 +31,7 @@ export declare namespace TestDefinitionsRequest {
 			name?: string;
 			evaluationWorkflowId?: string;
 			annotationTagId?: string;
-			pinnedNodes?: PinnedNodeItem[];
+			mockedNodes?: MockedNodeItem[];
 		}
 	>;
 
