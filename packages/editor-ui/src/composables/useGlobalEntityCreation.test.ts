@@ -7,6 +7,8 @@ import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useSettingsStore } from '@/stores/settings.store';
+import type { FrontendSettings } from '@n8n/api-types';
 
 import { VIEWS } from '@/constants';
 import type { Project, ProjectListItem } from '@/types/projects.types';
@@ -153,6 +155,10 @@ describe('useGlobalEntityCreation', () => {
 	describe('global', () => {
 		it('should show personal + all team projects', () => {
 			const projectsStore = mockedStore(useProjectsStore);
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = {
+				enterprise: { projects: { team: { limit: -1 } } },
+			} as FrontendSettings;
 
 			const personalProjectId = 'personal-project';
 			projectsStore.isTeamProjectFeatureEnabled = true;
