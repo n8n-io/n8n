@@ -46,11 +46,12 @@
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:frontend",
     "unplugin-icons": "^0.19.0",
     "vite": "catalog:frontend",
     "vitest": "catalog:frontend",
-    "vite-plugin-dts": "^4.2.3",
+    "vite-plugin-dts": "^4.3.0",
     "vue-tsc": "catalog:frontend"
   },
   "files": [
