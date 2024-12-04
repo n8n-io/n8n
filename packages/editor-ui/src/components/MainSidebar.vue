@@ -338,7 +338,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							:size="'mini'"
 							style="margin-left: auto"
 							type="tertiary"
-							@click="handleMenuSelect(CREATE_PROJECT_ID)"
+							@click="handleMenuSelect(item.id)"
 						>
 							Upgrade
 						</N8nButton>
