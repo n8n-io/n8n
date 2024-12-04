@@ -291,7 +291,12 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	}
 };
 
-const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
+const {
+	menu,
+	handleSelect: handleMenuSelect,
+	CREATE_PROJECT_ID,
+	projectsLimitReachedMessage,
+} = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
 });
@@ -322,7 +327,23 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				:menu="menu"
 				@select="handleMenuSelect"
 			>
-				<N8nIconButton icon="plus" type="secondary" outline />
+				<n8n-icon-button icon="plus" type="secondary" outline />
+				<template #[`item.append.${CREATE_PROJECT_ID}`]="{ item }">
+					<n8n-tooltip
+						v-if="item.disabled"
+						placement="right"
+						:content="projectsLimitReachedMessage"
+					>
+						<N8nButton
+							:size="'mini'"
+							style="margin-left: auto"
+							type="tertiary"
+							@click="handleMenuSelect(CREATE_PROJECT_ID)"
+						>
+							Upgrade
+						</N8nButton>
+					</n8n-tooltip>
+				</template>
 			</N8nNavigationDropdown>
 		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">

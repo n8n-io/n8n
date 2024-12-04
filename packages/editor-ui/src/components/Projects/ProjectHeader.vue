@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, type Ref, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nNavigationDropdown } from 'n8n-design-system';
+import { N8nNavigationDropdown, N8nButton, N8nIconButton, N8nTooltip } from 'n8n-design-system';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
@@ -48,9 +48,8 @@ const showSettings = computed(
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
-const { menu, handleSelect } = useGlobalEntityCreation(
-	computed(() => !Boolean(projectsStore.currentProject)),
-);
+const { menu, handleSelect, CREATE_PROJECT_ID, projectsLimitReachedMessage } =
+	useGlobalEntityCreation(computed(() => !Boolean(projectsStore.currentProject)));
 
 const createLabel = computed(() => {
 	if (!projectsStore.currentProject) {
@@ -91,6 +90,22 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					@select="handleSelect"
 				>
 					<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
+					<template #[`item.append.${CREATE_PROJECT_ID}`]="{ item }">
+						<N8nTooltip
+							v-if="item.disabled"
+							placement="right"
+							:content="projectsLimitReachedMessage"
+						>
+							<N8nButton
+								:size="'mini'"
+								style="margin-left: auto"
+								type="tertiary"
+								@click="handleSelect(CREATE_PROJECT_ID)"
+							>
+								{{ i18n.baseText('generic.upgrade') }}
+							</N8nButton>
+						</N8nTooltip>
+					</template>
 				</N8nNavigationDropdown>
 			</div>
 		</div>

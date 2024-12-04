@@ -100,6 +100,7 @@ defineExpose({
 								>
 									<N8nIcon v-if="subitem.icon" :icon="subitem.icon" :class="$style.submenu__icon" />
 									{{ subitem.title }}
+									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
 								</ElMenuItem>
 							</ConditionalRouterLink>
 						</template>
@@ -112,6 +113,7 @@ defineExpose({
 						data-test-id="navigation-menu-item"
 					>
 						{{ item.title }}
+						<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
 					</ElMenuItem>
 				</ConditionalRouterLink>
 			</template>
