@@ -32,7 +32,9 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 			[{ json: { action: 'parse', text } }],
 		]);
 		try {
-			const parsed = await super.parse(text);
+			const jsonString = text.includes('```') ? text.split(/```(?:json)?/)[1] : text;
+			const json = JSON.parse(jsonString.trim());
+			const parsed = await this.schema.parseAsync(json);
 
 			const result = (get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
 				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??

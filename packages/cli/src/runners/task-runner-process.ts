@@ -54,6 +54,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private readonly passthroughEnvVars = [
 		'PATH',
+		'GENERIC_TIMEZONE',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 		'N8N_SENTRY_DSN',

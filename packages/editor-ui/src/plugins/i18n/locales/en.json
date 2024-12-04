@@ -1381,7 +1381,6 @@
 	"nodeWebhooks.webhookUrls": "Webhook URLs",
 	"nodeWebhooks.webhookUrls.formTrigger": "Form URLs",
 	"nodeWebhooks.webhookUrls.chatTrigger": "Chat URL",
-	"onboardingWorkflow.stickyContent": "## 👇 Get started faster \nLightning tour of the key concepts [4 min] \n\n[![n8n quickstart video](/static/quickstart_thumbnail.png#full-width)](https://www.youtube.com/watch?v=1MwSoB0gnM4)",
 	"openWorkflow.workflowImportError": "Could not import workflow",
 	"openWorkflow.workflowNotFoundError": "Could not find workflow",
 	"parameterInput.expressionResult": "e.g. {result}",
