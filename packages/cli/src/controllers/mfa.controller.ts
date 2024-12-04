@@ -93,8 +93,10 @@ export class MFAController {
 
 		const mfaRecoveryCodeDefined = mfaRecoveryCode && typeof mfaRecoveryCode === 'string';
 
-		if (!!mfaCodeDefined == !!mfaRecoveryCodeDefined) {
-			throw new BadRequestError('Either MFA code or recovery code is required to disable MFA feature');
+		if (!mfaCodeDefined === !mfaRecoveryCodeDefined) {
+			throw new BadRequestError(
+				'Either MFA code or recovery code is required to disable MFA feature',
+			);
 		}
 
 		if (mfaCodeDefined) {
