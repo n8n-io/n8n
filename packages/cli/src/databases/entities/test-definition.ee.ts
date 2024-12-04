@@ -7,7 +7,7 @@ import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
 
-// Entity representing a node in a workflow under test which is pinned for a test definition
+// Entity representing a node in a workflow under test, for which data should be mocked during test execution
 export type MockedNodeItem = {
 	name: string;
 };
