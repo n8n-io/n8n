@@ -6,6 +6,8 @@ import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from 'n8n-design-system';
 import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { mockedStore } from '@/__tests__/utils';
 
 const eventBus = createEventBus();
 
@@ -48,6 +50,7 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 describe('SourceControlPushModal', () => {
 	beforeEach(() => {
 		route = useRoute();
+		createTestingPinia();
 	});
 
 	it('mounts', () => {
@@ -92,7 +95,6 @@ describe('SourceControlPushModal', () => {
 		vi.spyOn(route, 'fullPath', 'get').mockReturnValue('/home/workflows');
 
 		const { getByTestId, getAllByTestId } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -155,5 +157,73 @@ describe('SourceControlPushModal', () => {
 		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
 		expect(within(files[0]).getByRole('checkbox')).not.toBeChecked();
 		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+	});
+
+	it('should push non workflow entities', async () => {
+		const status: SourceControlAggregatedFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'credential',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'variables',
+				type: 'variables',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+			{
+				id: 'mappings',
+				name: 'tags',
+				type: 'tags',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/tags.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
+		];
+
+		const sourceControlStore = mockedStore(useSourceControlStore);
+
+		const { getByTestId, getByText } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		const submitButton = getByTestId('source-control-push-modal-submit');
+		const commitMessage = 'commit message';
+		expect(submitButton).toBeDisabled();
+		expect(
+			getByText(
+				'No workflow changes to push. Only modified credentials, variables, and tags will be pushed.',
+			),
+		).toBeInTheDocument();
+
+		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
+
+		expect(submitButton).not.toBeDisabled();
+		await userEvent.click(submitButton);
+
+		expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+			expect.objectContaining({
+				commitMessage,
+				fileNames: expect.arrayContaining(status),
+				force: true,
+			}),
+		);
 	});
 });
