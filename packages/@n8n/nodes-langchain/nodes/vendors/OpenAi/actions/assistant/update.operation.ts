@@ -163,6 +163,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			code_interpreter: {
 				file_ids: files,
 			},
+			// file_ids not supported by OpenAI API
+			// only vector_store_ids, support for this to be added ADO-2968
+			// https://platform.openai.com/docs/api-reference/assistants/modifyAssistant
 		};
 	}
 
