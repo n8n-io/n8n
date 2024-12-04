@@ -2,39 +2,31 @@ import { get } from 'lodash';
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	INodeParameterResourceLocator,
-	IGetNodeParameterOptions,
-	INode,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
-	Workflow,
 	ILocalLoadOptionsFunctions,
 	FieldValueOption,
+	IWorkflowLoader,
 } from 'n8n-workflow';
 
-import { extractValue } from '@/ExtractValue';
-
-import { NodeExecutionContext } from './node-execution-context';
-
-export class LocalLoadOptionsContext
-	extends NodeExecutionContext
-	implements ILocalLoadOptionsFunctions
-{
+export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 	constructor(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		private readonly path: string,
-	) {
-		super(workflow, node, additionalData, 'internal');
-	}
+		private additionalData: IWorkflowExecuteAdditionalData,
+		private path: string,
+		private workflowLoader: IWorkflowLoader,
+	) {}
 
-	getWorkflowInputValues(): FieldValueOption[] {
+	async getWorkflowInputValues(): Promise<FieldValueOption[]> {
 		const { value } = this.getCurrentNodeParameter('workflowId') as INodeParameterResourceLocator;
 
 		const workflowId = value as string;
 		if (!workflowId) {
 			throw new ApplicationError('No workflowId parameter defined on node!');
 		}
+
+		const workflow = await this.workflowLoader.get(workflowId);
+
+		workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start');
 
 		// TODO: load the inputs from the workflow
 		const dummyFields = [
@@ -47,31 +39,14 @@ export class LocalLoadOptionsContext
 		return dummyFields;
 	}
 
-	getCurrentNodeParameter(
-		parameterPath: string,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object | undefined {
+	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined {
 		const nodeParameters = this.additionalData.currentNodeParameters;
 
 		if (parameterPath.startsWith('&')) {
 			parameterPath = `${this.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 		}
 
-		let returnData = get(nodeParameters, parameterPath);
-
-		// This is outside the try/catch because it throws errors with proper messages
-		if (options?.extractValue) {
-			const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
-				this.node.type,
-				this.node.typeVersion,
-			);
-			returnData = extractValue(
-				returnData,
-				parameterPath,
-				this.node,
-				nodeType,
-			) as NodeParameterValueType;
-		}
+		const returnData = get(nodeParameters, parameterPath);
 
 		return returnData;
 	}

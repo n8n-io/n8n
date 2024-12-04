@@ -24,6 +24,8 @@ import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 
+import { WorkflowLoaderService } from './workflow-loader.service';
+
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
 ) => Promise<ResourceMapperFields>;
@@ -48,7 +50,10 @@ type NodeMethod =
 
 @Service()
 export class DynamicNodeParametersService {
-	constructor(private nodeTypes: NodeTypes) {}
+	constructor(
+		private nodeTypes: NodeTypes,
+		private workflowLoaderService: WorkflowLoaderService,
+	) {}
 
 	/** Returns the available options via a predefined method */
 	async getOptionsViaMethodName(
@@ -193,8 +198,7 @@ export class DynamicNodeParametersService {
 	): Promise<ResourceMapperFields> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
-		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
-		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData, workflow);
+		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return method.call(thisArgs);
 	}
@@ -297,12 +301,7 @@ export class DynamicNodeParametersService {
 		return new LoadOptionsContext(workflow, node, additionalData, path);
 	}
 
-	private getLocalLoadOptionsContext(
-		path: string,
-		additionalData: IWorkflowExecuteAdditionalData,
-		workflow: Workflow,
-	) {
-		const node = workflow.nodes['Temp-Node'];
-		return new LocalLoadOptionsContext(workflow, node, additionalData, path);
+	private getLocalLoadOptionsContext(path: string, additionalData: IWorkflowExecuteAdditionalData) {
+		return new LocalLoadOptionsContext(additionalData, path, this.workflowLoaderService);
 	}
 }

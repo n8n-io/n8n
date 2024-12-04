@@ -8,7 +8,7 @@ import type {
 export async function getWorkflowInputs(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const workflowInputFields = this.getWorkflowInputValues() as FieldValueOption[];
+	const workflowInputFields = (await this.getWorkflowInputValues()) as FieldValueOption[];
 
 	const fields: ResourceMapperField[] = workflowInputFields.map((currentWorkflowInput) => {
 		const field: ResourceMapperField = {
