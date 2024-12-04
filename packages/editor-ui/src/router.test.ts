@@ -126,4 +126,9 @@ describe('router', () => {
 		},
 		10000,
 	);
+
+	it('Settings should redirect to Personal settings', async () => {
+		await router.push('/settings');
+		expect(router.currentRoute.value.name).toBe(VIEWS.PERSONAL_SETTINGS);
+	});
 });
