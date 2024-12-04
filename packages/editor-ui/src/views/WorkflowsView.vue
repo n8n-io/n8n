@@ -302,9 +302,12 @@ onMounted(async () => {
 	void usersStore.showPersonalizationSurvey();
 });
 
-const openAIWorkflow = () => {
+const openAIWorkflow = async () => {
 	dismissEasyAICallout();
-	window.open(`/workflows/onboarding/${EASY_AI_WORKFLOW_JSON.id}`, '_self');
+	await router.push({
+		name: VIEWS.WORKFLOW_ONBOARDING,
+		params: { id: EASY_AI_WORKFLOW_JSON.id },
+	});
 };
 
 const dismissEasyAICallout = () => {
