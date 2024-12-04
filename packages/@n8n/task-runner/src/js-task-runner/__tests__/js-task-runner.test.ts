@@ -341,8 +341,8 @@ describe('JsTaskRunner', () => {
 					taskData,
 				});
 
-				const newYorkTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(newYorkTimeNow, 1);
+				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
 			});
 
 			it('should use the default timezone', async () => {
@@ -358,8 +358,8 @@ describe('JsTaskRunner', () => {
 					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {}),
 				});
 
-				const newYorkTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(newYorkTimeNow, 1);
+				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
 			});
 		});
 
