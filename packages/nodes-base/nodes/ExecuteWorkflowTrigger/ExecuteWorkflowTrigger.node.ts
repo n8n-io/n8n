@@ -10,6 +10,7 @@ import {
 	validateFieldType,
 	type FieldType,
 	jsonParse,
+	FieldValueOption,
 } from 'n8n-workflow';
 
 const INPUT_SOURCE = 'inputSource';
@@ -48,9 +49,7 @@ const SUPPORTED_TYPES = TYPE_OPTIONS.map((x) => x.value);
 
 const DEFAULT_PLACEHOLDER = null;
 
-type ValueOptions = { name: string; type: FieldType | 'any' };
-
-function parseJsonSchema(schema: JSONSchema7): ValueOptions[] | string {
+function parseJsonSchema(schema: JSONSchema7): FieldValueOption[] | string {
 	if (!schema?.properties) {
 		return 'Invalid JSON schema. Missing key `properties` in schema';
 	}
@@ -59,7 +58,7 @@ function parseJsonSchema(schema: JSONSchema7): ValueOptions[] | string {
 		return 'Invalid JSON schema. Key `properties` is not an object';
 	}
 
-	const result: ValueOptions[] = [];
+	const result: FieldValueOption[] = [];
 	for (const [name, v] of Object.entries(schema.properties)) {
 		if (typeof v !== 'object') {
 			return `Invalid JSON schema. Value for property '${name}' is not an object`;
@@ -90,12 +89,16 @@ function parseJsonExample(context: IExecuteFunctions): JSONSchema7 {
 	return generateSchemaFromExample(json) as JSONSchema7;
 }
 
-function getFieldEntries(context: IExecuteFunctions): ValueOptions[] {
+function getFieldEntries(context: IExecuteFunctions): FieldValueOption[] {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0) as string;
-	let result: ValueOptions[] | string = 'Internal Error: Invalid input source';
+	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
 		if (inputSource === WORKFLOW_INPUTS) {
-			result = context.getNodeParameter(`${WORKFLOW_INPUTS}.${VALUES}`, 0, []) as ValueOptions[];
+			result = context.getNodeParameter(
+				`${WORKFLOW_INPUTS}.${VALUES}`,
+				0,
+				[],
+			) as FieldValueOption[];
 		} else if (inputSource === JSON_EXAMPLE) {
 			const schema = parseJsonExample(context);
 			result = parseJsonSchema(schema);

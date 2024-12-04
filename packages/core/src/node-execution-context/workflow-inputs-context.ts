@@ -14,7 +14,6 @@ import type {
 import { extractValue } from '@/ExtractValue';
 
 import { NodeExecutionContext } from './node-execution-context';
-// eslint-disable-next-line import/no-cycle
 
 export class WorkflowInputsContext
 	extends NodeExecutionContext
@@ -53,7 +52,7 @@ export class WorkflowInputsContext
 	): NodeParameterValueType | object | undefined {
 		const nodeParameters = this.additionalData.currentNodeParameters;
 
-		if (parameterPath.charAt(0) === '&') {
+		if (parameterPath.startsWith('&')) {
 			parameterPath = `${this.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 		}
 

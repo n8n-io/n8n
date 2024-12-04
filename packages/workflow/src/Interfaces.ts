@@ -1070,8 +1070,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	helpers: RequestHelperFunctions & SSHTunnelFunctions;
 }
 
+export type FieldValueOption = { name: string; type: FieldType | 'any' };
+
 export interface IWorkflowInputsLoadOptionsFunctions {
-	getWorkflowInputValues(): Array<{ name: string; type: FieldType }>;
+	getWorkflowInputValues(): FieldValueOption[];
 }
 
 export interface IPollFunctions
