@@ -1,3 +1,13 @@
+## [1.70.2](https://github.com/n8n-io/n8n/compare/n8n@1.70.1...n8n@1.70.2) (2024-12-04)
+
+
+### Bug Fixes
+
+* **core:** Opt-out from optimizations if `$item` is used ([#12036](https://github.com/n8n-io/n8n/issues/12036)) ([dfa1806](https://github.com/n8n-io/n8n/commit/dfa1806fd40b17081e4315abaaa934ab068d1036))
+* **core:** Use the configured timezone in task runner ([#12032](https://github.com/n8n-io/n8n/issues/12032)) ([b0f6c6f](https://github.com/n8n-io/n8n/commit/b0f6c6f0648a89ab4565274ed37cad7225cbc6da))
+
+
+
 ## [1.70.1](https://github.com/n8n-io/n8n/compare/n8n@1.70.0...n8n@1.70.1) (2024-11-29)
 
 
