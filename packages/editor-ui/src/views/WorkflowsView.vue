@@ -121,12 +121,12 @@ const showEasyAIWorkflowCallout = computed(() => {
 	const isEasyAIWorkflowExperimentEnabled =
 		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
 		EASY_AI_WORKFLOW_EXPERIMENT.variant;
-	const easyAIWorkflowOnboardingDone = settingsStore.easyAIWorkflowOnboardingDone;
+	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
 	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
 });
 
 const isSalesUser = computed(() => {
-	return ['Sales', 'sales-and-marketing'].includes(userRole.value || '');
+	return ['Sales', 'sales-and-marketing'].includes(userRole.value ?? '');
 });
 
 const projectPermissions = computed(() => {
@@ -332,6 +332,7 @@ const dismissEasyAICallout = () => {
 			<N8nCallout
 				v-if="showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
+				icon="robot"
 				:class="$style['easy-ai-workflow-callout']"
 			>
 				{{ i18n.baseText('workflows.list.easyAI') }}
@@ -494,6 +495,7 @@ const dismissEasyAICallout = () => {
 }
 
 .easy-ai-workflow-callout {
+	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing-xs);
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-m);
