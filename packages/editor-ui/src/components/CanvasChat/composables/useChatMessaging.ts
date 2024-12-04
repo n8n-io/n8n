@@ -256,7 +256,7 @@ export function useChatMessaging({
 			];
 		if (!connectedMemoryInputs) return [];
 
-		const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
+		const memoryConnection = (connectedMemoryInputs ?? []).find((i) => (i ?? []).length > 0)?.[0];
 
 		if (!memoryConnection) return [];
 
