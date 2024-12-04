@@ -9,7 +9,7 @@ import type {
 
 import { getWorkflowInfo } from './GenericFunctions';
 import { getWorkflowInputs } from './methods/resourceMapping';
-import { generatePairedItemData } from '../../utils/utilities';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
