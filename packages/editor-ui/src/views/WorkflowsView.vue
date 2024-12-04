@@ -302,8 +302,9 @@ onMounted(async () => {
 	void usersStore.showPersonalizationSurvey();
 });
 
-const openAIWorkflow = async () => {
-	window.open(`/workflows/onboarding/${EASY_AI_WORKFLOW_JSON.id}`);
+const openAIWorkflow = () => {
+	dismissEasyAICallout();
+	window.open(`/workflows/onboarding/${EASY_AI_WORKFLOW_JSON.id}`, '_self');
 };
 
 const dismissEasyAICallout = () => {
