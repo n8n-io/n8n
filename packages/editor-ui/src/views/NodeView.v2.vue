@@ -256,7 +256,7 @@ const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
 
 async function initializeData() {
 	const loadPromises = (() => {
-		if (settingsStore.isPreviewMode && isDemoRoute.value) return [nodeTypesStore.getNodeTypes()];
+		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
 
 		const promises: Array<Promise<unknown>> = [
 			workflowsStore.fetchActiveWorkflows(),
@@ -272,12 +272,12 @@ async function initializeData() {
 			promises.push(externalSecretsStore.fetchAllSecrets());
 		}
 
-		if (nodeTypesStore.allNodeTypes.length === 0) {
-			promises.push(nodeTypesStore.getNodeTypes());
-		}
-
 		return promises;
 	})();
+
+	if (nodeTypesStore.allNodeTypes.length === 0) {
+		loadPromises.push(nodeTypesStore.getNodeTypes());
+	}
 
 	try {
 		await Promise.all(loadPromises);
