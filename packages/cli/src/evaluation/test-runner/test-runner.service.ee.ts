@@ -30,9 +30,7 @@ import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
  * past executions, creates pin data from them,
  * and runs the workflow-under-test with the pin data.
  * After the workflow-under-test finishes, it runs the evaluation workflow
- * with the original and new run data.
- * TODO: Node mocking
- * TODO: Collect metrics
+ * with the original and new run data, and collects the metrics.
  */
 @Service()
 export class TestRunnerService {
