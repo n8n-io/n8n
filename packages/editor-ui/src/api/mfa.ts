@@ -26,7 +26,8 @@ export async function verifyMfaCode(
 }
 
 export type DisableMfaParams = {
-	mfaCode: string;
+	mfaCode?: string;
+	mfaRecoveryCode?: string;
 };
 
 export async function disableMfa(context: IRestApiContext, data: DisableMfaParams): Promise<void> {
