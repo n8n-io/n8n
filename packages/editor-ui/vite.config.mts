@@ -1,4 +1,5 @@
 import vue from '@vitejs/plugin-vue';
+import legacy from '@vitejs/plugin-legacy';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 
@@ -54,6 +55,7 @@ const plugins = [
 		],
 	}),
 	vue(),
+	legacy(),
 ];
 
 const { RELEASE: release } = process.env;

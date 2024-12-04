@@ -94,6 +94,7 @@
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "catalog:",
+    "@vitejs/plugin-legacy": "^6.0.0",
     "@vitest/coverage-v8": "catalog:frontend",
     "miragejs": "^0.1.48",
     "unplugin-icons": "^0.19.0",
