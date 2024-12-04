@@ -255,7 +255,6 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/workflow/:name/evaluation',
-		name: VIEWS.TEST_DEFINITION,
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],

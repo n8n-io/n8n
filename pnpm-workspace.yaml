@@ -31,13 +31,14 @@ catalog:
 
 catalogs:
   frontend:
-    '@vitest/coverage-v8': ^2.1.2
+    '@vitest/coverage-v8': ^2.1.6
+    '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1
-    vite: ^5.4.8
-    vitest: ^2.1.2
+    vite: ^6.0.2
+    vitest: ^2.1.8
     vitest-mock-extended: ^2.0.2
-    vue: ^3.5.11
-    vue-router: ^4.4.5
-    vue-tsc: ^2.1.6
+    vue: ^3.5.13
+    vue-router: ^4.5.0
+    vue-tsc: ^2.1.10
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
