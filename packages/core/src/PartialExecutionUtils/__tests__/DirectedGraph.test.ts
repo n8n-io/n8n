@@ -42,6 +42,28 @@ describe('DirectedGraph', () => {
 		);
 	});
 
+	//    ┌─────┐    ┌─────┐──► null
+	//    │node1├───►│node2|   ┌─────┐
+	//    └─────┘    └─────┘──►│node3|
+	//                         └─────┘
+	//
+	test('linear workflow with null connections', () => {
+		// ARRANGE
+		const node1 = createNodeData({ name: 'Node1' });
+		const node2 = createNodeData({ name: 'Node2' });
+		const node3 = createNodeData({ name: 'Node3' });
+
+		// ACT
+		const graph = new DirectedGraph()
+			.addNodes(node1, node2, node3)
+			.addConnections({ from: node1, to: node2 }, { from: node2, to: node3, outputIndex: 1 });
+
+		// ASSERT
+		expect(DirectedGraph.fromWorkflow(graph.toWorkflow({ ...defaultWorkflowParameter }))).toEqual(
+			graph,
+		);
+	});
+
 	describe('getChildren', () => {
 		// ┌─────┐    ┌─────┐   ┌─────┐
 		// │node1├───►│node2├──►│node3│

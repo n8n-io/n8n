@@ -1394,7 +1394,11 @@ export default defineComponent({
 					lastSelectedNode.name,
 				);
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1428,7 +1432,11 @@ export default defineComponent({
 
 				const connections = workflow.connectionsByDestinationNode[lastSelectedNode.name];
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1460,7 +1468,11 @@ export default defineComponent({
 					return;
 				}
 
-				const parentNode = connections.main[0][0].node;
+				const parentNode = connections.main[0]?.[0].node;
+				if (!parentNode) {
+					return;
+				}
+
 				const connectionsParent = this.workflowsStore.outgoingConnectionsByNodeName(parentNode);
 
 				if (!Array.isArray(connectionsParent.main) || !connectionsParent.main.length) {
@@ -1472,7 +1484,7 @@ export default defineComponent({
 				let lastCheckedNodePosition = e.key === 'ArrowUp' ? -99999999 : 99999999;
 				let nextSelectNode: string | null = null;
 				for (const ouputConnections of connectionsParent.main) {
-					for (const ouputConnection of ouputConnections) {
+					for (const ouputConnection of ouputConnections ?? []) {
 						if (ouputConnection.node === lastSelectedNode.name) {
 							// Ignore current node
 							continue;
@@ -3877,13 +3889,10 @@ export default defineComponent({
 						sourceIndex++
 					) {
 						const nodeSourceConnections = [];
-						if (currentConnections[sourceNode][type][sourceIndex]) {
-							for (
-								connectionIndex = 0;
-								connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
-								connectionIndex++
-							) {
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+						const connections = currentConnections[sourceNode][type][sourceIndex];
+						if (connections) {
+							for (connectionIndex = 0; connectionIndex < connections.length; connectionIndex++) {
+								connectionData = connections[connectionIndex];
 								if (!createNodeNames.includes(connectionData.node)) {
 									// Node does not get created so skip input connection
 									continue;
@@ -4013,14 +4022,17 @@ export default defineComponent({
 				for (type of Object.keys(connections)) {
 					for (sourceIndex = 0; sourceIndex < connections[type].length; sourceIndex++) {
 						connectionToKeep = [];
-						for (
-							connectionIndex = 0;
-							connectionIndex < connections[type][sourceIndex].length;
-							connectionIndex++
-						) {
-							connectionData = connections[type][sourceIndex][connectionIndex];
-							if (exportNodeNames.indexOf(connectionData.node) !== -1) {
-								connectionToKeep.push(connectionData);
+						const connectionsToCheck = connections[type][sourceIndex];
+						if (connectionsToCheck) {
+							for (
+								connectionIndex = 0;
+								connectionIndex < connectionsToCheck.length;
+								connectionIndex++
+							) {
+								connectionData = connectionsToCheck[connectionIndex];
+								if (exportNodeNames.indexOf(connectionData.node) !== -1) {
+									connectionToKeep.push(connectionData);
+								}
 							}
 						}
 
