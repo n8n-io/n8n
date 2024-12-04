@@ -79,7 +79,7 @@ export default mergeConfig(
 		},
 		build: {
 			minify: !!release,
-			sourcemap: !!release,
+			sourcemap: true,
 		},
 	}),
 	vitestConfig,
