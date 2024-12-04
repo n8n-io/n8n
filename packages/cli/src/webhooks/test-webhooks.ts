@@ -261,7 +261,7 @@ export class TestWebhooks implements IWebhookManager {
 			webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
 		}
 
-		if (webhooks.some((w) => w.webhookDescription.restartWebhook ?? false)) {
+		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
 		}
 
