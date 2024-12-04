@@ -86,9 +86,6 @@ const formConfig: IFormBoxConfig = reactive({
 const onSubmit = async (values: { [key: string]: string | boolean }) => {
 	try {
 		const forceRedirectedHere = settingsStore.showSetupPage;
-		const isEasyAIWorkflowExperimentEnabled =
-			posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-			EASY_AI_WORKFLOW_EXPERIMENT.variant;
 		loading.value = true;
 		await usersStore.createOwner(
 			values as { firstName: string; lastName: string; email: string; password: string },
@@ -100,14 +97,7 @@ const onSubmit = async (values: { [key: string]: string | boolean }) => {
 			} catch {}
 		}
 		if (forceRedirectedHere) {
-			if (isEasyAIWorkflowExperimentEnabled) {
-				await router.push({
-					name: VIEWS.WORKFLOW_ONBOARDING,
-					params: { id: EASY_AI_WORKFLOW_JSON.id },
-				});
-			} else {
-				await router.push({ name: VIEWS.HOMEPAGE });
-			}
+			await router.push({ name: VIEWS.HOMEPAGE });
 		} else {
 			await router.push({ name: VIEWS.USERS_SETTINGS });
 		}

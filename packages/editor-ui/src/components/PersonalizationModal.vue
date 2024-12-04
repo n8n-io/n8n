@@ -553,17 +553,9 @@ const onSave = () => {
 };
 
 const closeCallback = () => {
-	const isEasyAIWorkflowExperimentEnabled =
-		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-		EASY_AI_WORKFLOW_EXPERIMENT.variant;
 	// In case the redirect to homepage for new users didn't happen
 	// we try again after closing the modal
-	if (isEasyAIWorkflowExperimentEnabled) {
-		void router.push({
-			name: VIEWS.WORKFLOW_ONBOARDING,
-			params: { id: EASY_AI_WORKFLOW_JSON.id },
-		});
-	} else if (route.name !== VIEWS.HOMEPAGE) {
+	if (route.name !== VIEWS.HOMEPAGE) {
 		void router.replace({ name: VIEWS.HOMEPAGE });
 	}
 };
