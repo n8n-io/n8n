@@ -1589,7 +1589,6 @@ export type ApiKey = {
 };
 
 export type InputPanel = {
-	displayMode: IRunDataDisplayMode;
 	nodeName?: string;
 	run?: number;
 	branch?: number;
@@ -1600,7 +1599,6 @@ export type InputPanel = {
 
 export type OutputPanel = {
 	branch?: number;
-	displayMode: IRunDataDisplayMode;
 	data: {
 		isEmpty: boolean;
 	};
