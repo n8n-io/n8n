@@ -191,30 +191,32 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-		...(nodeViewVersion.value === '2'
-			? nodeViewSwitcherDiscovered.value || isNewUser.value
-				? {}
-				: {
-						badge: locale.baseText('menuActions.badge.new'),
-					}
-			: nodeViewSwitcherDiscovered.value
-				? {
-						badge: locale.baseText('menuActions.badge.beta'),
-						badgeProps: {
-							theme: 'tertiary',
-						},
-					}
-				: {
-						badge: locale.baseText('menuActions.badge.new'),
-					}),
-		label:
-			nodeViewVersion.value === '2'
-				? locale.baseText('menuActions.switchToOldNodeViewVersion')
-				: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-		disabled: !onWorkflowPage.value,
-	});
+	if (settingsStore.isCanvasV2Enabled) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
+			...(nodeViewVersion.value === '2'
+				? nodeViewSwitcherDiscovered.value || isNewUser.value
+					? {}
+					: {
+							badge: locale.baseText('menuActions.badge.new'),
+						}
+				: nodeViewSwitcherDiscovered.value
+					? {
+							badge: locale.baseText('menuActions.badge.beta'),
+							badgeProps: {
+								theme: 'tertiary',
+							},
+						}
+					: {
+							badge: locale.baseText('menuActions.badge.new'),
+						}),
+			label:
+				nodeViewVersion.value === '2'
+					? locale.baseText('menuActions.switchToOldNodeViewVersion')
+					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({

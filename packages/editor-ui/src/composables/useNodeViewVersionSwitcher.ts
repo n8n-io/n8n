@@ -3,15 +3,18 @@ import { useLocalStorage } from '@vueuse/core';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export function useNodeViewVersionSwitcher() {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const telemetry = useTelemetry();
+	const settingsStore = useSettingsStore();
 
 	const isNewUser = computed(() => workflowsStore.activeWorkflows.length === 0);
 
-	const nodeViewVersion = useLocalStorage('NodeView.version', '2');
+	const defaultVersion = settingsStore.isCanvasV2Enabled ? '2' : '1';
+	const nodeViewVersion = useLocalStorage('NodeView.version', defaultVersion);
 	const nodeViewVersionMigrated = useLocalStorage('NodeView.migrated', false);
 
 	function setNodeViewSwitcherDropdownOpened(visible: boolean) {
