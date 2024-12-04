@@ -76,6 +76,10 @@ export function getCanvasNodes() {
 	);
 }
 
+export function getCanvasNodeByName(nodeName: string) {
+	return getCanvasNodes().filter(`:contains(${nodeName})`);
+}
+
 export function getSaveButton() {
 	return cy.getByTestId('workflow-save-button');
 }
@@ -193,4 +197,9 @@ export function pasteWorkflow(workflow: object) {
 
 export function clickZoomToFit() {
 	getZoomToFitButton().click();
+}
+
+export function deleteNode(name: string) {
+	getCanvasNodeByName(name).first().click();
+	cy.get('body').type('{del}');
 }

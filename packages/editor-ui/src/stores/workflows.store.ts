@@ -494,7 +494,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
-			onboardingFlowEnabled: false,
 			settings: { ...defaults.settings },
 		};
 		try {
@@ -892,23 +891,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let propertyName: keyof IConnection;
 		let connectionExists = false;
 
-		connectionLoop: for (const existingConnection of workflow.value.connections[sourceData.node][
-			sourceData.type
-		][sourceData.index]) {
-			for (propertyName of checkProperties) {
-				if (existingConnection[propertyName] !== destinationData[propertyName]) {
-					continue connectionLoop;
+		const nodeConnections = workflow.value.connections[sourceData.node][sourceData.type];
+		const connectionsToCheck = nodeConnections[sourceData.index];
+
+		if (connectionsToCheck) {
+			connectionLoop: for (const existingConnection of connectionsToCheck) {
+				for (propertyName of checkProperties) {
+					if (existingConnection[propertyName] !== destinationData[propertyName]) {
+						continue connectionLoop;
+					}
 				}
+				connectionExists = true;
+				break;
 			}
-			connectionExists = true;
-			break;
 		}
 
 		// Add the new connection if it does not exist already
 		if (!connectionExists) {
-			workflow.value.connections[sourceData.node][sourceData.type][sourceData.index].push(
-				destinationData,
-			);
+			nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
+			const connections = nodeConnections[sourceData.index];
+			if (connections) {
+				connections.push(destinationData);
+			}
 		}
 	}
 
@@ -935,6 +939,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const connections =
 			workflow.value.connections[sourceData.node][sourceData.type][sourceData.index];
+		if (!connections) {
+			return;
+		}
+
 		for (const index in connections) {
 			if (
 				connections[index].node === destinationData.node &&
@@ -980,23 +988,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			for (type of Object.keys(workflow.value.connections[sourceNode])) {
 				for (sourceIndex of Object.keys(workflow.value.connections[sourceNode][type])) {
 					indexesToRemove.length = 0;
-					for (connectionIndex of Object.keys(
-						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)],
-					)) {
-						connectionData =
-							workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)][
-								parseInt(connectionIndex, 10)
-							];
-						if (connectionData.node === node.name) {
-							indexesToRemove.push(connectionIndex);
+					const connectionsToRemove =
+						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)];
+					if (connectionsToRemove) {
+						for (connectionIndex of Object.keys(connectionsToRemove)) {
+							connectionData = connectionsToRemove[parseInt(connectionIndex, 10)];
+							if (connectionData.node === node.name) {
+								indexesToRemove.push(connectionIndex);
+							}
 						}
+						indexesToRemove.forEach((index) => {
+							connectionsToRemove.splice(parseInt(index, 10), 1);
+						});
 					}
-					indexesToRemove.forEach((index) => {
-						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)].splice(
-							parseInt(index, 10),
-							1,
-						);
-					});
 				}
 			}
 		}
