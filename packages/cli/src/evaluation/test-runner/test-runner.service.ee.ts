@@ -11,7 +11,7 @@ import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { PinnedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -31,7 +31,7 @@ import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
  * and runs the workflow-under-test with the pin data.
  * After the workflow-under-test finishes, it runs the evaluation workflow
  * with the original and new run data.
- * TODO: Node pinning
+ * TODO: Node mocking
  * TODO: Collect metrics
  */
 @Service()
@@ -52,11 +52,11 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
-		pinnedNodes: PinnedNodeItem[],
+		mockedNodes: MockedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, pinnedNodes, pastExecutionData);
+		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
 
 		// Determine the start node of the past execution
 		const pastExecutionStartNode = getPastExecutionTriggerNode(pastExecutionData);
@@ -200,7 +200,7 @@ export class TestRunnerService {
 			const testCaseExecution = await this.runTestCase(
 				workflow,
 				executionData,
-				test.pinnedNodes,
+				test.mockedNodes,
 				user.id,
 			);
 

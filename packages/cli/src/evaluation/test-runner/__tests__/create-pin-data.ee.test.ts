@@ -13,9 +13,9 @@ const executionDataJson = JSON.parse(
 
 describe('createPinData', () => {
 	test('should create pin data from past execution data', () => {
-		const pinnedNodes = ['When clicking ‘Test workflow’'].map((name) => ({ name }));
+		const mockedNodes = ['When clicking ‘Test workflow’'].map((name) => ({ name }));
 
-		const pinData = createPinData(wfUnderTestJson, pinnedNodes, executionDataJson);
+		const pinData = createPinData(wfUnderTestJson, mockedNodes, executionDataJson);
 
 		expect(pinData).toEqual(
 			expect.objectContaining({
@@ -24,20 +24,20 @@ describe('createPinData', () => {
 		);
 	});
 
-	test('should not create pin data for non-existing pinned nodes', () => {
-		const pinnedNodes = ['Non-existing node'].map((name) => ({ name }));
+	test('should not create pin data for non-existing mocked nodes', () => {
+		const mockedNodes = ['Non-existing node'].map((name) => ({ name }));
 
-		const pinData = createPinData(wfUnderTestJson, pinnedNodes, executionDataJson);
+		const pinData = createPinData(wfUnderTestJson, mockedNodes, executionDataJson);
 
 		expect(pinData).toEqual({});
 	});
 
-	test('should create pin data for all pinned nodes', () => {
-		const pinnedNodes = ['When clicking ‘Test workflow’', 'Edit Fields', 'Code'].map((name) => ({
+	test('should create pin data for all mocked nodes', () => {
+		const mockedNodes = ['When clicking ‘Test workflow’', 'Edit Fields', 'Code'].map((name) => ({
 			name,
 		}));
 
-		const pinData = createPinData(wfUnderTestJson, pinnedNodes, executionDataJson);
+		const pinData = createPinData(wfUnderTestJson, mockedNodes, executionDataJson);
 
 		expect(pinData).toEqual(
 			expect.objectContaining({
@@ -48,7 +48,7 @@ describe('createPinData', () => {
 		);
 	});
 
-	test('should return empty object if no pinned nodes are provided', () => {
+	test('should return empty object if no mocked nodes are provided', () => {
 		const pinData = createPinData(wfUnderTestJson, [], executionDataJson);
 
 		expect(pinData).toEqual({});

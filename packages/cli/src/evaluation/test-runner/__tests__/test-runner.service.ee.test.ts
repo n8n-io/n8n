@@ -163,7 +163,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				pinnedNodes: [],
+				mockedNodes: [],
 			}),
 		);
 
@@ -220,7 +220,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				pinnedNodes: [{ name: 'When clicking ‘Test workflow’' }],
+				mockedNodes: [{ name: 'When clicking ‘Test workflow’' }],
 			}),
 		);
 

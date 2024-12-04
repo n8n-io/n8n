@@ -1,27 +1,26 @@
 import type { IRunExecutionData, IPinData } from 'n8n-workflow';
 
-import type { PinnedNodeItem } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 /**
  * Extracts the execution data from the past execution
  * and creates a pin data object from it for the given workflow.
- * For now, it only pins trigger nodes.
+ * It uses a list of mocked nodes defined in a test definition
+ * to decide which nodes to pin.
  */
 export function createPinData(
 	workflow: WorkflowEntity,
-	pinnedNodes: PinnedNodeItem[],
+	mockedNodes: MockedNodeItem[],
 	executionData: IRunExecutionData,
 ) {
-	// const triggerNodes = workflow.nodes.filter((node) => /trigger$/i.test(node.type));
-
 	const pinData = {} as IPinData;
 
-	for (const pinnedNode of pinnedNodes) {
-		if (workflow.nodes.find((node) => node.name === pinnedNode.name)) {
-			const nodeData = executionData.resultData.runData[pinnedNode.name];
+	for (const mockedNode of mockedNodes) {
+		if (workflow.nodes.find((node) => node.name === mockedNode.name)) {
+			const nodeData = executionData.resultData.runData[mockedNode.name];
 			if (nodeData?.[0]?.data?.main?.[0]) {
-				pinData[pinnedNode.name] = nodeData[0]?.data?.main?.[0];
+				pinData[mockedNode.name] = nodeData[0]?.data?.main?.[0];
 			}
 		}
 	}
