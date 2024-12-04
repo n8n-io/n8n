@@ -95,6 +95,7 @@ export class WorkflowExecutionService {
 			startNodes,
 			destinationNode,
 			dirtyNodeNames,
+			triggerToStartFrom,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -117,14 +118,15 @@ export class WorkflowExecutionService {
 		) {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhook(
-				user.id,
-				workflowData,
+			const needsWebhook = await this.testWebhooks.needsWebhook({
+				userId: user.id,
+				workflowEntity: workflowData,
 				additionalData,
 				runData,
 				pushRef,
 				destinationNode,
-			);
+				triggerToStartFrom,
+			});
 
 			if (needsWebhook) return { waitingForWebhook: true };
 		}
@@ -144,6 +146,7 @@ export class WorkflowExecutionService {
 			userId: user.id,
 			partialExecutionVersion: partialExecutionVersion ?? '0',
 			dirtyNodeNames,
+			triggerToStartFrom,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
