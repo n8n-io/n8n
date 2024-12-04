@@ -428,6 +428,10 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 		justify-content: space-between;
 		align-items: center;
 	}
+
+	:global(.el-checkbox__inner) {
+		transition: none;
+	}
 }
 
 .badges {
