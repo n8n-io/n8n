@@ -20,9 +20,17 @@ vi.mock('vue-router', () => ({
 
 let route: ReturnType<typeof useRoute>;
 
+const RecycleScroller = {
+	props: {
+		items: Array,
+	},
+	template: '<div><template v-for="item in items"><slot v-bind="{ item }"></slot></template></div>',
+};
+
 const renderModal = createComponentRenderer(SourceControlPushModal, {
 	global: {
 		stubs: {
+			RecycleScroller,
 			Modal: {
 				template: `
 					<div>
@@ -45,7 +53,7 @@ describe('SourceControlPushModal', () => {
 	it('mounts', () => {
 		vi.spyOn(route, 'fullPath', 'get').mockReturnValue('');
 
-		const { getByTitle } = renderModal({
+		const { getByText } = renderModal({
 			pinia: createTestingPinia(),
 			props: {
 				data: {
@@ -54,7 +62,7 @@ describe('SourceControlPushModal', () => {
 				},
 			},
 		});
-		expect(getByTitle('Commit and push changes')).toBeInTheDocument();
+		expect(getByText('Commit and push changes')).toBeInTheDocument();
 	});
 
 	it('should toggle checkboxes', async () => {
