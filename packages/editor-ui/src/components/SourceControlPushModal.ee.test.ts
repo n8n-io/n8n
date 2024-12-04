@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from 'n8n-design-system';
-import type { SourceControlAggregatedFile } from '@/Interface';
+import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 
 const eventBus = createEventBus();
 

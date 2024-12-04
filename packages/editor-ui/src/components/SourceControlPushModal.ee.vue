@@ -30,7 +30,7 @@ import {
 	SOURCE_CONTROL_FILE_LOCATION,
 	type SourceControlledFileStatus,
 	type SourceControlAggregatedFile,
-} from '@/Interface';
+} from '@/types/sourceControl.types';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
@@ -116,18 +116,20 @@ const maybeSelectCurrentWorkflow = (workflow?: SourceControlAggregatedFile) =>
 	workflow && selectedChanges.value.add(workflow.id);
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
-const statusPriority: Record<string, number> = {
-	modified: 1,
-	renamed: 2,
-	created: 3,
-	deleted: 4,
-};
+const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
+	[SOURCE_CONTROL_FILE_STATUS.MODIFIED]: 1,
+	[SOURCE_CONTROL_FILE_STATUS.RENAMED]: 2,
+	[SOURCE_CONTROL_FILE_STATUS.CREATED]: 3,
+	[SOURCE_CONTROL_FILE_STATUS.DELETED]: 4,
+} as const;
+const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
+	statusPriority[status] ?? 0;
 
 const sortedWorkflowsByStatus = computed(() => {
 	const sorted = changes.value.workflows.toSorted((a, b) => {
-		if (statusPriority[a.status] < statusPriority[b.status]) {
+		if (getPriorityByStatus(a.status) < getPriorityByStatus(b.status)) {
 			return -1;
-		} else if (statusPriority[a.status] > statusPriority[b.status]) {
+		} else if (getPriorityByStatus(a.status) > getPriorityByStatus(b.status)) {
 			return 1;
 		}
 
