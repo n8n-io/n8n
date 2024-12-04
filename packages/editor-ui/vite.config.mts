@@ -1,6 +1,7 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
+import svgLoader from 'vite-svg-loader';
 
 import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
@@ -54,6 +55,7 @@ const plugins = [
 		],
 	}),
 	vue(),
+	svgLoader(),
 ];
 
 const { RELEASE: release } = process.env;
