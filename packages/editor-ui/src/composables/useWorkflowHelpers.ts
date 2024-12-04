@@ -413,7 +413,7 @@ export function executeData(
 					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
 						currentNode
 					].main) {
-						for (const connection of mainConnections) {
+						for (const connection of mainConnections ?? []) {
 							if (
 								connection.type === NodeConnectionType.Main &&
 								connection.node === parentNodeName
