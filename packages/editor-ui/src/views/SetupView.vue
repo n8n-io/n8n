@@ -11,7 +11,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 
 import AuthView from '@/views/AuthView.vue';
 
@@ -85,9 +85,6 @@ const formConfig: IFormBoxConfig = reactive({
 const onSubmit = async (values: { [key: string]: string | boolean }) => {
 	try {
 		const forceRedirectedHere = settingsStore.showSetupPage;
-		const isPartOfOnboardingExperiment =
-			posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-			MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant;
 		loading.value = true;
 		await usersStore.createOwner(
 			values as { firstName: string; lastName: string; email: string; password: string },
@@ -100,11 +97,7 @@ const onSubmit = async (values: { [key: string]: string | boolean }) => {
 		}
 
 		if (forceRedirectedHere) {
-			if (isPartOfOnboardingExperiment) {
-				await router.push({ name: VIEWS.WORKFLOWS });
-			} else {
-				await router.push({ name: VIEWS.HOMEPAGE });
-			}
+			await router.push({ name: VIEWS.HOMEPAGE });
 		} else {
 			await router.push({ name: VIEWS.USERS_SETTINGS });
 		}

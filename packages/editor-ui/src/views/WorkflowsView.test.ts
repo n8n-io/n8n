@@ -5,7 +5,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
-import { STORES, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
+import { STORES, VIEWS } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import type { Cloud, IUser, IWorkflowDb } from '@/Interface';
@@ -73,9 +73,7 @@ describe('WorkflowsView', () => {
 
 		describe('when onboardingExperiment -> False', () => {
 			const pinia = createTestingPinia({ initialState });
-			const posthog = mockedStore(usePostHog);
 			const sourceControl = mockedStore(useSourceControlStore);
-			posthog.getVariant.mockReturnValue(MORE_ONBOARDING_OPTIONS_EXPERIMENT.control);
 
 			const projectsStore = mockedStore(useProjectsStore);
 
@@ -141,9 +139,6 @@ describe('WorkflowsView', () => {
 
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const posthog = mockedStore(usePostHog);
-			posthog.getVariant.mockReturnValue(MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant);
 
 			const { getAllByTestId } = renderComponent({ pinia });
 

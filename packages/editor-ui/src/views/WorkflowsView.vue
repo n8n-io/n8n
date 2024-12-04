@@ -6,12 +6,7 @@ import ResourcesListLayout, {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import {
-	EASY_AI_WORKFLOW_EXPERIMENT,
-	EnterpriseEditionFeature,
-	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
-	VIEWS,
-} from '@/constants';
+import { EASY_AI_WORKFLOW_EXPERIMENT, EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -110,23 +105,12 @@ const userRole = computed(() => {
 	return undefined;
 });
 
-const isOnboardingExperimentEnabled = computed(() => {
-	return (
-		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-		MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
-	);
-});
-
 const showEasyAIWorkflowCallout = computed(() => {
 	const isEasyAIWorkflowExperimentEnabled =
 		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
 		EASY_AI_WORKFLOW_EXPERIMENT.variant;
 	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
 	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
-});
-
-const isSalesUser = computed(() => {
-	return ['Sales', 'sales-and-marketing'].includes(userRole.value ?? '');
 });
 
 const projectPermissions = computed(() => {
@@ -184,21 +168,9 @@ const addWorkflow = () => {
 	trackEmptyCardClick('blank');
 };
 
-const getTemplateRepositoryURL = () => templatesStore.websiteTemplateRepositoryURL;
-
 const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 	telemetry.track('User clicked empty page option', {
 		option,
-	});
-	if (option === 'templates' && isSalesUser.value) {
-		trackCategoryLinkClick('Sales');
-	}
-};
-
-const trackCategoryLinkClick = (category: string) => {
-	telemetry.track(`User clicked Browse ${category} Templates`, {
-		role: usersStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
 	});
 };
 
@@ -382,7 +354,7 @@ const dismissEasyAICallout = () => {
 							: i18n.baseText('workflows.empty.heading.userNotSetup')
 					}}
 				</N8nHeading>
-				<N8nText v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
+				<N8nText size="large" color="text-base">
 					{{ emptyListDescription }}
 				</N8nText>
 			</div>
@@ -413,40 +385,6 @@ const dismissEasyAICallout = () => {
 						{{ i18n.baseText('workflows.empty.easyAI') }}
 					</N8nText>
 				</N8nCard>
-				<a
-					v-if="isSalesUser || isOnboardingExperimentEnabled"
-					href="https://docs.n8n.io/courses/#available-courses"
-					:class="$style.emptyStateCard"
-					target="_blank"
-				>
-					<N8nCard
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="trackEmptyCardClick('courses')"
-					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
-						<N8nText size="large" class="mt-xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.learnN8n') }}
-						</N8nText>
-					</N8nCard>
-				</a>
-				<a
-					v-if="isSalesUser || isOnboardingExperimentEnabled"
-					:href="getTemplateRepositoryURL()"
-					:class="$style.emptyStateCard"
-					target="_blank"
-				>
-					<N8nCard
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="trackEmptyCardClick('templates')"
-					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="box-open" />
-						<N8nText size="large" class="mt-xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.browseTemplates') }}
-						</N8nText>
-					</N8nCard>
-				</a>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
