@@ -4,7 +4,10 @@ import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from 'n8n-design-system';
-import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
+import type { TestMetricRecord, UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
+import type { ITag } from '@/Interface';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
+// import type { TestMetricRecord } from '@/api/testMetric.ee';
 
 interface EditableField {
 	value: string;
@@ -15,12 +18,9 @@ interface EditableField {
 export interface IEvaluationFormState {
 	name: EditableField;
 	description: string;
-	tags: {
-		isEditing: boolean;
-		appliedTagIds: string[];
-	};
+	tags: ITag[];
 	evaluationWorkflow: INodeParameterResourceLocator;
-	metrics: string[];
+	metrics: TestMetricRecord[];
 }
 
 type FormRefs = {
@@ -31,25 +31,23 @@ type FormRefs = {
 export function useTestDefinitionForm() {
 	// Stores
 	const evaluationsStore = useTestDefinitionStore();
+	const tagsStore = useAnnotationTagsStore();
 
 	// Form state
 	const state = ref<IEvaluationFormState>({
 		description: '',
 		name: {
-			value: `My Test [${new Date().toLocaleString(undefined, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })}]`,
+			value: `My Test ${evaluationsStore.allTestDefinitions.length + 1}`,
 			isEditing: false,
 			tempValue: '',
 		},
-		tags: {
-			isEditing: false,
-			appliedTagIds: [],
-		},
+		tags: [],
 		evaluationWorkflow: {
 			mode: 'list',
 			value: '',
 			__rl: true,
 		},
-		metrics: [''],
+		metrics: [],
 	});
 
 	// Loading states
@@ -59,6 +57,9 @@ export function useTestDefinitionForm() {
 	// Field refs
 	const fields = ref<FormRefs>({} as FormRefs);
 
+	const tagIdToITag = (tagId: string) => {
+		return tagsStore.tagsById[tagId];
+	};
 	// Methods
 	const loadTestData = async (testId: string) => {
 		try {
@@ -66,6 +67,10 @@ export function useTestDefinitionForm() {
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
 
 			if (testDefinition) {
+				// Fetch metrics for this test definition
+				const metrics = await evaluationsStore.fetchMetrics(testId);
+				console.log('Loaded metrics:', metrics);
+
 				state.value = {
 					description: testDefinition.description ?? '',
 					name: {
@@ -73,20 +78,16 @@ export function useTestDefinitionForm() {
 						isEditing: false,
 						tempValue: '',
 					},
-					tags: {
-						isEditing: false,
-						appliedTagIds: testDefinition.annotationTagId ? [testDefinition.annotationTagId] : [],
-					},
+					tags: testDefinition.annotationTagId ? [tagIdToITag(testDefinition.annotationTagId)] : [],
 					evaluationWorkflow: {
 						mode: 'list',
 						value: testDefinition.evaluationWorkflowId ?? '',
 						__rl: true,
 					},
-					metrics: [''],
+					metrics, // Use the fetched metrics
 				};
 			}
 		} catch (error) {
-			// TODO: Throw better errors
 			console.error('Failed to load test data', error);
 		}
 	};
@@ -114,6 +115,33 @@ export function useTestDefinitionForm() {
 		}
 	};
 
+	const deleteMetric = async (metricId: string, testId: string) => {
+		await evaluationsStore.deleteMetric({ id: metricId, testDefinitionId: testId });
+		state.value.metrics = state.value.metrics.filter((metric) => metric.id !== metricId);
+	};
+
+	const updateMetrics = async (testId: string) => {
+		const updatePromises = state.value.metrics.map(async (metric) => {
+			if (!metric.name) return;
+
+			if (!metric.id) {
+				const createdMetric = await evaluationsStore.createMetric({
+					name: metric.name,
+					testDefinitionId: testId,
+				});
+				metric.id = createdMetric.id;
+			} else {
+				await evaluationsStore.updateMetric({
+					name: metric.name,
+					id: metric.id,
+					testDefinitionId: testId,
+				});
+			}
+		});
+
+		await Promise.all(updatePromises);
+	};
+
 	const updateTest = async (testId: string) => {
 		if (isSaving.value) return;
 
@@ -135,12 +163,14 @@ export function useTestDefinitionForm() {
 				params.evaluationWorkflowId = state.value.evaluationWorkflow.value.toString();
 			}
 
-			const annotationTagId = state.value.tags.appliedTagIds[0];
+			const annotationTagId = state.value.tags?.[0]?.id;
 			if (annotationTagId) {
 				params.annotationTagId = annotationTagId;
 			}
 			// Update the existing test
-			return await evaluationsStore.update({ ...params, id: testId });
+			const updatedTest = await evaluationsStore.update({ ...params, id: testId });
+
+			return updatedTest;
 		} catch (error) {
 			throw error;
 		} finally {
@@ -152,8 +182,6 @@ export function useTestDefinitionForm() {
 		if (field === 'name') {
 			state.value.name.tempValue = state.value.name.value;
 			state.value.name.isEditing = true;
-		} else {
-			state.value.tags.isEditing = true;
 		}
 	};
 
@@ -161,8 +189,6 @@ export function useTestDefinitionForm() {
 		if (field === 'name') {
 			state.value.name.value = state.value.name.tempValue;
 			state.value.name.isEditing = false;
-		} else {
-			state.value.tags.isEditing = false;
 		}
 	};
 
@@ -170,8 +196,6 @@ export function useTestDefinitionForm() {
 		if (field === 'name') {
 			state.value.name.isEditing = false;
 			state.value.name.tempValue = '';
-		} else {
-			state.value.tags.isEditing = false;
 		}
 	};
 
@@ -189,6 +213,8 @@ export function useTestDefinitionForm() {
 		fields,
 		isSaving: computed(() => isSaving.value),
 		fieldsIssues: computed(() => fieldsIssues.value),
+		deleteMetric,
+		updateMetrics,
 		loadTestData,
 		createTest,
 		updateTest,

@@ -2741,7 +2741,7 @@
 	"testDefinition.edit.description": "Description",
 	"testDefinition.edit.tagName": "Tag name",
 	"testDefinition.edit.step.intro": "When running a test",
-	"testDefinition.edit.step.executions": "Fetch 5 past executions",
+	"testDefinition.edit.step.executions": "Fetch past executions | Fetch {count} past execution | Fetch {count} past executions",
 	"testDefinition.edit.step.nodes": "Mock nodes",
 	"testDefinition.edit.step.mockedNodes": "No nodes mocked | {count} node mocked | {count} nodes mocked",
 	"testDefinition.edit.step.reRunExecutions": "Re-run executions",
