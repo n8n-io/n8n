@@ -374,7 +374,7 @@ export function useCanvasMapping({
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
 			} else {
-				acc[node.id] = Object.keys(node?.issues ?? {}).length > 0;
+				acc[node.id] = nodeIssuesById.value[node.id].length > 0;
 			}
 
 			return acc;
@@ -647,6 +647,8 @@ export function useCanvasMapping({
 	return {
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
+		nodeIssuesById,
+		nodeHasIssuesById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
 	};
