@@ -256,7 +256,7 @@ const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
 
 async function initializeData() {
 	const loadPromises = (() => {
-		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
+		if (settingsStore.isPreviewMode && isDemoRoute.value) return [nodeTypesStore.getNodeTypes()];
 
 		const promises: Array<Promise<unknown>> = [
 			workflowsStore.fetchActiveWorkflows(),
