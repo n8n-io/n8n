@@ -1,4 +1,4 @@
-import { within } from '@testing-library/dom';
+import { within, waitFor } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import { useRoute } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -8,11 +8,13 @@ import { createEventBus } from 'n8n-design-system';
 import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/constants';
 
 const eventBus = createEventBus();
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
+		name: vi.fn(),
 		params: vi.fn(),
 		fullPath: vi.fn(),
 	}),
@@ -91,8 +93,6 @@ describe('SourceControlPushModal', () => {
 				updatedAt: '2024-09-20T14:42:51.968Z',
 			},
 		];
-
-		vi.spyOn(route, 'fullPath', 'get').mockReturnValue('/home/workflows');
 
 		const { getByTestId, getAllByTestId } = renderModal({
 			props: {
@@ -225,5 +225,54 @@ describe('SourceControlPushModal', () => {
 				force: true,
 			}),
 		);
+	});
+
+	it('should auto select currentWorkflow', async () => {
+		const status: SourceControlAggregatedFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'My workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		vi.spyOn(route, 'name', 'get').mockReturnValue(VIEWS.WORKFLOW);
+		vi.spyOn(route, 'params', 'get').mockReturnValue({ name: 'gTbbBkkYTnNyX1jD' });
+
+		const { getByTestId, getAllByTestId } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		const submitButton = getByTestId('source-control-push-modal-submit');
+		expect(submitButton).toBeDisabled();
+
+		const files = getAllByTestId('source-control-push-modal-file-checkbox');
+		expect(files).toHaveLength(2);
+
+		await waitFor(() => expect(within(files[0]).getByRole('checkbox')).toBeChecked());
+		expect(within(files[1]).getByRole('checkbox')).not.toBeChecked();
+
+		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
+		expect(submitButton).not.toBeDisabled();
 	});
 });
