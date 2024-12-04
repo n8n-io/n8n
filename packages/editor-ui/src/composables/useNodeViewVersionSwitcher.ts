@@ -36,6 +36,10 @@ export function useNodeViewVersionSwitcher() {
 	function switchNodeViewVersion() {
 		const toVersion = nodeViewVersion.value === '2' ? '1' : '2';
 
+		if (!nodeViewVersionMigrated.value) {
+			nodeViewVersionMigrated.value = true;
+		}
+
 		telemetry.track('User switched canvas version', {
 			to_version: toVersion,
 		});
@@ -49,7 +53,6 @@ export function useNodeViewVersionSwitcher() {
 		}
 
 		switchNodeViewVersion();
-		nodeViewVersionMigrated.value = true;
 	}
 
 	return {
