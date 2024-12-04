@@ -1,11 +1,8 @@
 import {
-	type INodeExecutionData,
 	NodeConnectionType,
-	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
-	validateFieldType,
 } from 'n8n-workflow';
 
 import {
@@ -14,10 +11,9 @@ import {
 	JSON_EXAMPLE,
 	VALUES,
 	INPUT_OPTIONS,
-	DEFAULT_PLACEHOLDER,
 	TYPE_OPTIONS,
 } from '../constants';
-import { getFieldEntries } from '../GenericFunctions';
+import { getFieldEntries, getWorkflowInputData } from '../GenericFunctions';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -202,83 +198,9 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		if (this.getNode().typeVersion < 1.1) {
 			return [inputData];
 		} else {
-			const items: INodeExecutionData[] = [];
+			const newParams = getFieldEntries(this);
 
-			for (const [itemIndex, item] of inputData.entries()) {
-				const attemptToConvertTypes = this.getNodeParameter(
-					`${INPUT_OPTIONS}.attemptToConvertTypes`,
-					itemIndex,
-					false,
-				);
-				const ignoreTypeErrors = this.getNodeParameter(
-					`${INPUT_OPTIONS}.ignoreTypeErrors`,
-					itemIndex,
-					false,
-				);
-
-				// Fields listed here will explicitly overwrite original fields
-				const newItem: INodeExecutionData = {
-					json: {},
-					index: itemIndex,
-					// TODO: Ensure we handle sub-execution jumps correctly.
-					// metadata: {
-					// 	subExecution: {
-					// 		executionId: 'uhh',
-					// 		workflowId: 'maybe?',
-					// 	},
-					// },
-					pairedItem: { item: itemIndex },
-				};
-				try {
-					const newParams = getFieldEntries(this);
-
-					for (const { name, type } of newParams) {
-						if (!item.json.hasOwnProperty(name)) {
-							newItem.json[name] = DEFAULT_PLACEHOLDER;
-							continue;
-						}
-
-						const result =
-							type === 'any'
-								? ({ valid: true, newValue: item.json[name] } as const)
-								: validateFieldType(name, item.json[name], type, {
-										strict: !attemptToConvertTypes,
-										parseStrings: true, // Default behavior is to accept anything as a string, this is a good opportunity for a stricter boundary
-									});
-
-						if (!result.valid) {
-							if (ignoreTypeErrors) {
-								newItem.json[name] = item.json[name];
-								continue;
-							}
-
-							throw new NodeOperationError(this.getNode(), result.errorMessage, {
-								itemIndex,
-							});
-						} else {
-							// If the value is `null` or `undefined`, then `newValue` is not in the returned object
-							if (result.hasOwnProperty('newValue')) {
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-								newItem.json[name] = result.newValue;
-							} else {
-								newItem.json[name] = item.json[name];
-							}
-						}
-					}
-
-					items.push(newItem);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						/** todo error case? */
-					} else {
-						throw new NodeOperationError(this.getNode(), error, {
-							itemIndex,
-						});
-					}
-				}
-			}
-
-			return [items];
+			return [getWorkflowInputData.call(this, inputData, newParams)];
 		}
 	}
 }

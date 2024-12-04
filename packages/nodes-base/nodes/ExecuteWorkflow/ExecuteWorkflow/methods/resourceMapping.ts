@@ -7,7 +7,7 @@ import {
 
 import { getFieldEntries } from '../../GenericFunctions';
 
-export async function getWorkflowInputs(
+export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);

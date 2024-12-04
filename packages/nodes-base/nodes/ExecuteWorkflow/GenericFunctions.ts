@@ -1,9 +1,23 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import type { FieldValueOption, FieldType, IWorkflowNodeContext } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import type {
+	FieldValueOption,
+	FieldType,
+	IWorkflowNodeContext,
+	INodeExecutionData,
+	IExecuteFunctions,
+} from 'n8n-workflow';
+import { jsonParse, NodeOperationError, validateFieldType } from 'n8n-workflow';
 
-import { JSON_EXAMPLE, INPUT_SOURCE, WORKFLOW_INPUTS, VALUES, TYPE_OPTIONS } from './constants';
+import {
+	JSON_EXAMPLE,
+	INPUT_SOURCE,
+	WORKFLOW_INPUTS,
+	VALUES,
+	TYPE_OPTIONS,
+	INPUT_OPTIONS,
+	DEFAULT_PLACEHOLDER,
+} from './constants';
 
 const SUPPORTED_TYPES = TYPE_OPTIONS.map((x) => x.value);
 
@@ -72,4 +86,86 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 		return result;
 	}
 	throw new NodeOperationError(context.getNode(), result);
+}
+
+export function getWorkflowInputData(
+	this: IExecuteFunctions,
+	inputData: INodeExecutionData[],
+	newParams: FieldValueOption[],
+): INodeExecutionData[] {
+	const items: INodeExecutionData[] = [];
+
+	for (const [itemIndex, item] of inputData.entries()) {
+		const attemptToConvertTypes = this.getNodeParameter(
+			`${INPUT_OPTIONS}.attemptToConvertTypes`,
+			itemIndex,
+			false,
+		);
+		const ignoreTypeErrors = this.getNodeParameter(
+			`${INPUT_OPTIONS}.ignoreTypeErrors`,
+			itemIndex,
+			false,
+		);
+
+		// Fields listed here will explicitly overwrite original fields
+		const newItem: INodeExecutionData = {
+			json: {},
+			index: itemIndex,
+			// TODO: Ensure we handle sub-execution jumps correctly.
+			// metadata: {
+			// 	subExecution: {
+			// 		executionId: 'uhh',
+			// 		workflowId: 'maybe?',
+			// 	},
+			// },
+			pairedItem: { item: itemIndex },
+		};
+		try {
+			for (const { name, type } of newParams) {
+				if (!item.json.hasOwnProperty(name)) {
+					newItem.json[name] = DEFAULT_PLACEHOLDER;
+					continue;
+				}
+
+				const result =
+					type === 'any'
+						? ({ valid: true, newValue: item.json[name] } as const)
+						: validateFieldType(name, item.json[name], type, {
+								strict: !attemptToConvertTypes,
+								parseStrings: true, // Default behavior is to accept anything as a string, this is a good opportunity for a stricter boundary
+							});
+
+				if (!result.valid) {
+					if (ignoreTypeErrors) {
+						newItem.json[name] = item.json[name];
+						continue;
+					}
+
+					throw new NodeOperationError(this.getNode(), result.errorMessage, {
+						itemIndex,
+					});
+				} else {
+					// If the value is `null` or `undefined`, then `newValue` is not in the returned object
+					if (result.hasOwnProperty('newValue')) {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						newItem.json[name] = result.newValue;
+					} else {
+						newItem.json[name] = item.json[name];
+					}
+				}
+			}
+
+			items.push(newItem);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				/** todo error case? */
+			} else {
+				throw new NodeOperationError(this.getNode(), error, {
+					itemIndex,
+				});
+			}
+		}
+	}
+
+	return items;
 }

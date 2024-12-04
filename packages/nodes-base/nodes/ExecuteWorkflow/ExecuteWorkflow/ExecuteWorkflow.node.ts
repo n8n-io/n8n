@@ -1,15 +1,34 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
+	FieldValueOption,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ResourceMapperField,
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
-import { getWorkflowInputs } from './methods/resourceMapping';
+import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
+import { getWorkflowInputData } from '../GenericFunctions';
+
+function getCurrentWorkflowInputData(this: IExecuteFunctions) {
+	const inputData = this.getInputData();
+
+	if (this.getNode().typeVersion < 1.2) {
+		return inputData;
+	} else {
+		const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
+		const newParams = schema
+			.filter((x) => !x.removed)
+			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
+
+		// TODO: map every row to field values so we can set the static value or expression later on
+		return getWorkflowInputData.call(this, inputData, newParams);
+	}
+}
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -201,7 +220,7 @@ export class ExecuteWorkflow implements INodeType {
 				typeOptions: {
 					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
-						localResourceMapperMethod: 'getWorkflowInputs',
+						localResourceMapperMethod: 'loadWorkflowInputMappings',
 						valuesLabel: 'Workflow Inputs',
 						mode: 'add',
 						fieldWords: {
@@ -266,14 +285,14 @@ export class ExecuteWorkflow implements INodeType {
 
 	methods = {
 		localResourceMapping: {
-			getWorkflowInputs,
+			loadWorkflowInputMappings,
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
 		const mode = this.getNodeParameter('mode', 0, false) as string;
-		const items = this.getInputData();
+		const items = getCurrentWorkflowInputData.call(this);
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
 		const currentWorkflowId = workflowProxy.$workflow.id as string;
