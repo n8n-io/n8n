@@ -10,6 +10,41 @@ import { NodeApiError } from 'n8n-workflow';
 
 import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
+export async function baserowFileUploadRequest(
+	this: IExecuteFunctions,
+	jwtToken: string,
+	file: Buffer,
+	fileName: string,
+	mimeType: string,
+) {
+	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
+
+	const options: OptionsWithUri = {
+		headers: {
+			Authorization: `JWT ${jwtToken}`,
+			'Content-Type': 'multipart/form-data',
+		},
+		method: 'POST',
+		uri: `${credentials.host}/api/user-files/upload-file/`,
+		json: false,
+		body: {
+			file: {
+				value: file,
+				options: {
+					filename: fileName,
+					contentType: mimeType,
+				},
+			},
+		},
+	};
+
+	try {
+		return await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 /**
  * Make a request to Baserow API.
  */
@@ -33,6 +68,16 @@ export async function baserowApiRequest(
 		uri: `${credentials.host}${endpoint}`,
 		json: true,
 	};
+
+	if (body.formData) {
+		options.json = false;
+		// set content type to multipart/form-data
+		options.headers = {
+			...options.headers,
+			'Content-Type': 'multipart/form-data',
+		};
+		options.body.resolveWithFullResponse = true;
+	}
 
 	if (Object.keys(qs).length === 0) {
 		delete options.qs;
