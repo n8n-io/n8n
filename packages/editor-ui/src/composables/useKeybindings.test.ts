@@ -110,6 +110,18 @@ describe('useKeybindings', () => {
 		expect(handler).toHaveBeenCalled();
 	});
 
+	it('should normalize shortcut strings containing splitting key correctly', async () => {
+		const handler = vi.fn();
+		const keymap = ref({ 'ctrl_+': handler });
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: '+', ctrlKey: true });
+		document.dispatchEvent(event);
+
+		expect(handler).toHaveBeenCalled();
+	});
+
 	it('should normalize shortcut string alternatives correctly', async () => {
 		const handler = vi.fn();
 		const keymap = ref({ 'a|b': handler });

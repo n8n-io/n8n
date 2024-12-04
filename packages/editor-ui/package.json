@@ -1,12 +1,13 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.70.0",
+  "version": "1.71.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
     "typecheck": "vue-tsc --noEmit",
+    "typecheck:watch": "vue-tsc --watch --noEmit",
     "dev": "pnpm serve",
     "lint": "eslint src --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint src --ext .js,.ts,.vue --fix",

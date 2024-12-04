@@ -7,6 +7,7 @@
 			"args": ["/usr/local/lib/node_modules/n8n/node_modules/@n8n/task-runner/dist/start.js"],
 			"allowed-env": [
 				"PATH",
+				"GENERIC_TIMEZONE",
 				"N8N_RUNNERS_GRANT_TOKEN",
 				"N8N_RUNNERS_N8N_URI",
 				"N8N_RUNNERS_MAX_PAYLOAD",

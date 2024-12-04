@@ -120,7 +120,7 @@ export class PasswordResetController {
 				publicApi: false,
 			});
 			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+				throw new InternalServerError(`Please contact your administrator: ${error.message}`, error);
 			}
 		}
 
