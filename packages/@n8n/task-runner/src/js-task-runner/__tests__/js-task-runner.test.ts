@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
+import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -323,6 +323,43 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
+			});
+		});
+
+		describe('timezone', () => {
+			it('should use the specified timezone in the workflow', async () => {
+				const taskData = newDataRequestResponse(inputItems.map(wrapIntoJson), {});
+				taskData.workflow.settings = {
+					timezone: 'Europe/Helsinki',
+				};
+
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $now.toSeconds() }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData,
+				});
+
+				const newYorkTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(newYorkTimeNow, 1);
+			});
+
+			it('should use the default timezone', async () => {
+				setGlobalState({
+					defaultTimezone: 'Europe/Helsinki',
+				});
+
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $now.toSeconds() }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {}),
+				});
+
+				const newYorkTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(newYorkTimeNow, 1);
 			});
 		});
 
