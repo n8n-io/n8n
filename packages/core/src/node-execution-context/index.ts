@@ -3,7 +3,7 @@ export { ExecuteContext } from './execute-context';
 export { ExecuteSingleContext } from './execute-single-context';
 export { HookContext } from './hook-context';
 export { LoadOptionsContext } from './load-options-context';
-export { WorkflowInputsContext } from './workflow-inputs-context';
+export { LocalLoadOptionsContext } from './local-load-options-context';
 export { PollContext } from './poll-context';
 export { SupplyDataContext } from './supply-data-context';
 export { TriggerContext } from './trigger-context';

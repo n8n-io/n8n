@@ -245,8 +245,8 @@ async function loadFieldsToMap(): Promise<void> {
 	}
 
 	const resourceMapperMethod = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
-	const workflowInputsMappingMethod =
-		props.parameter.typeOptions?.resourceMapper?.workflowInputsMappingMethod;
+	const localResourceMapperMethod =
+		props.parameter.typeOptions?.resourceMapper?.localResourceMapperMethod;
 
 	let fetchedFields = null;
 
@@ -266,8 +266,8 @@ async function loadFieldsToMap(): Promise<void> {
 		};
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else {
-		if (typeof workflowInputsMappingMethod === 'string') {
-			const requestParams: DynamicNodeParameters.WorkflowInputMappingFieldsRequest = {
+		if (typeof localResourceMapperMethod === 'string') {
+			const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 				nodeTypeAndVersion: {
 					name: props.node?.type,
 					version: props.node.typeVersion,
@@ -277,9 +277,9 @@ async function loadFieldsToMap(): Promise<void> {
 					props.node.parameters,
 				) as INodeParameters,
 				path: props.path,
-				methodName: workflowInputsMappingMethod,
+				methodName: localResourceMapperMethod,
 			};
-			fetchedFields = await nodeTypesStore.getWorkflowInputFields(requestParams);
+			fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 		}
 	}
 

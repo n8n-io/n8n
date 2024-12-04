@@ -385,11 +385,6 @@ export declare namespace DynamicNodeParametersRequest {
 		methodName: string;
 	}>;
 
-	/** POST dynamic-node-parameters/workflow-input-mapping-fields */
-	type WorkflowInputMappingFields = BaseRequest<{
-		methodName: string;
-	}>;
-
 	/** POST /dynamic-node-parameters/action-result */
 	type ActionResult = BaseRequest<{
 		handler: string;

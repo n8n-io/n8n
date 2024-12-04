@@ -302,11 +302,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
-	const getWorkflowInputFields = async (
-		sendData: DynamicNodeParameters.WorkflowInputMappingFieldsRequest,
+	const getLocalResourceMapperFields = async (
+		sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
 	) => {
 		try {
-			return await nodeTypesApi.getWorkflowInputFields(rootStore.restApiContext, sendData);
+			return await nodeTypesApi.getLocalResourceMapperFields(rootStore.restApiContext, sendData);
 		} catch (error) {
 			return null;
 		}
@@ -336,7 +336,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		getResourceMapperFields,
-		getWorkflowInputFields,
+		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,

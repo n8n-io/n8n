@@ -201,7 +201,7 @@ export class ExecuteWorkflow implements INodeType {
 				typeOptions: {
 					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
-						workflowInputsMappingMethod: 'getWorkflowInputs',
+						localResourceMapperMethod: 'getWorkflowInputs',
 						valuesLabel: 'Workflow Inputs',
 						mode: 'add',
 						fieldWords: {
@@ -265,7 +265,7 @@ export class ExecuteWorkflow implements INodeType {
 	};
 
 	methods = {
-		workflowInputsMapping: {
+		localResourceMapping: {
 			getWorkflowInputs,
 		},
 	};

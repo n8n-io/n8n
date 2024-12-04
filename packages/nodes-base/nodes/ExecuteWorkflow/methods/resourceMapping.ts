@@ -1,24 +1,30 @@
 import type {
-	FieldType,
-	IWorkflowInputsLoadOptionsFunctions,
+	FieldValueOption,
+	ILocalLoadOptionsFunctions,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
 export async function getWorkflowInputs(
-	this: IWorkflowInputsLoadOptionsFunctions,
+	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const workflowInputs = this.getWorkflowInputValues() as Array<{ name: string; type: FieldType }>;
+	const workflowInputFields = this.getWorkflowInputValues() as FieldValueOption[];
 
-	const fields: ResourceMapperField[] = workflowInputs.map((currentWorkflowInput) => ({
-		id: currentWorkflowInput.name,
-		displayName: currentWorkflowInput.name,
-		required: false,
-		defaultMatch: true,
-		display: true,
-		type: currentWorkflowInput.type,
-		canBeUsedToMatch: true,
-	}));
+	const fields: ResourceMapperField[] = workflowInputFields.map((currentWorkflowInput) => {
+		const field: ResourceMapperField = {
+			id: currentWorkflowInput.name,
+			displayName: currentWorkflowInput.name,
+			required: false,
+			defaultMatch: true,
+			display: true,
+			canBeUsedToMatch: true,
+		};
 
+		if (currentWorkflowInput.type !== 'any') {
+			field.type = currentWorkflowInput.type;
+		}
+
+		return field;
+	});
 	return { fields };
 }

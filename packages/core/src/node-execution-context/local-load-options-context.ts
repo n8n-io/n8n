@@ -7,17 +7,17 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
 	Workflow,
-	IWorkflowInputsLoadOptionsFunctions,
-	FieldType,
+	ILocalLoadOptionsFunctions,
+	FieldValueOption,
 } from 'n8n-workflow';
 
 import { extractValue } from '@/ExtractValue';
 
 import { NodeExecutionContext } from './node-execution-context';
 
-export class WorkflowInputsContext
+export class LocalLoadOptionsContext
 	extends NodeExecutionContext
-	implements IWorkflowInputsLoadOptionsFunctions
+	implements ILocalLoadOptionsFunctions
 {
 	constructor(
 		workflow: Workflow,
@@ -28,12 +28,12 @@ export class WorkflowInputsContext
 		super(workflow, node, additionalData, 'internal');
 	}
 
-	getWorkflowInputValues(): Array<{ name: string; type: FieldType }> {
+	getWorkflowInputValues(): FieldValueOption[] {
 		const { value } = this.getCurrentNodeParameter('workflowId') as INodeParameterResourceLocator;
 
 		const workflowId = value as string;
 		if (!workflowId) {
-			throw new ApplicationError('No workflowId defined on node!');
+			throw new ApplicationError('No workflowId parameter defined on node!');
 		}
 
 		// TODO: load the inputs from the workflow
@@ -41,6 +41,7 @@ export class WorkflowInputsContext
 			{ name: 'field1', type: 'string' as const },
 			{ name: 'field2', type: 'number' as const },
 			{ name: 'field3', type: 'boolean' as const },
+			{ name: 'field4', type: 'any' as const },
 		];
 
 		return dummyFields;

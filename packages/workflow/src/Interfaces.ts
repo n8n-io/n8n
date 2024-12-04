@@ -1072,7 +1072,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
-export interface IWorkflowInputsLoadOptionsFunctions {
+export interface ILocalLoadOptionsFunctions {
 	getWorkflowInputValues(): FieldValueOption[];
 }
 
@@ -1374,14 +1374,14 @@ export interface ResourceMapperTypeOptionsBase {
 	};
 }
 
-// Enforce at least one of resourceMapperMethod or workflowInputsMappingMethod
+// Enforce at least one of resourceMapperMethod or localResourceMapperMethod
 export type ResourceMapperTypeOptions =
 	| (ResourceMapperTypeOptionsBase & {
 			resourceMapperMethod: string;
-			workflowInputsMappingMethod?: never;
+			localResourceMapperMethod?: never;
 	  })
 	| (ResourceMapperTypeOptionsBase & {
-			workflowInputsMappingMethod: string;
+			localResourceMapperMethod: string;
 			resourceMapperMethod?: never;
 	  });
 
@@ -1647,10 +1647,8 @@ export interface INodeType {
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 		};
-		workflowInputsMapping?: {
-			[functionName: string]: (
-				this: IWorkflowInputsLoadOptionsFunctions,
-			) => Promise<ResourceMapperFields>;
+		localResourceMapping?: {
+			[functionName: string]: (this: ILocalLoadOptionsFunctions) => Promise<ResourceMapperFields>;
 		};
 		actionHandler?: {
 			[functionName: string]: (
