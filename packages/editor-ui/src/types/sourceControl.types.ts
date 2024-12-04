@@ -20,7 +20,7 @@ export const SOURCE_CONTROL_FILE_LOCATION = {
 export const SOURCE_CONTROL_FILE_TYPE = {
 	CREDENTIAL: 'credential',
 	WORKFLOW: 'workflow',
-	TAGS: 'mappings',
+	TAGS: 'tags',
 	VARIABLES: 'variables',
 	FILE: 'file',
 } as const;
