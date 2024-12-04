@@ -1067,13 +1067,17 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
+
 	helpers: RequestHelperFunctions & SSHTunnelFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
+export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
+	Pick<FunctionsBase, 'getNode'>;
+
 export interface ILocalLoadOptionsFunctions {
-	getExecuteWorkflowTriggerNode(): Promise<INode | undefined>;
+	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
 }
 
 export interface IWorkflowLoader {

@@ -300,6 +300,11 @@ export class DynamicNodeParametersService {
 	}
 
 	private getLocalLoadOptionsContext(path: string, additionalData: IWorkflowExecuteAdditionalData) {
-		return new LocalLoadOptionsContext(additionalData, path, this.workflowLoaderService);
+		return new LocalLoadOptionsContext(
+			this.nodeTypes,
+			additionalData,
+			path,
+			this.workflowLoaderService,
+		);
 	}
 }

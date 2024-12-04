@@ -1,39 +1,37 @@
-import type {
-	ILocalLoadOptionsFunctions,
-	INode,
-	ResourceMapperField,
-	ResourceMapperFields,
+import {
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type ILocalLoadOptionsFunctions,
+	type ResourceMapperField,
+	type ResourceMapperFields,
 } from 'n8n-workflow';
+
+import { getFieldEntries } from '../../GenericFunctions';
 
 export async function getWorkflowInputs(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const executeWorkflowTriggerNode = (await this.getExecuteWorkflowTriggerNode()) as INode;
+	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
+	let fields: ResourceMapperField[] = [];
 
-	// const fieldValues = getFieldEntries(executeWorkflowTriggerNode);
+	if (nodeLoadContext) {
+		const fieldValues = getFieldEntries(nodeLoadContext);
 
-	const workflowInputFields = [
-		{ name: 'field1', type: 'string' as const },
-		{ name: 'field2', type: 'number' as const },
-		{ name: 'field3', type: 'boolean' as const },
-		{ name: 'field4', type: 'any' as const },
-	];
+		fields = fieldValues.map((currentWorkflowInput) => {
+			const field: ResourceMapperField = {
+				id: currentWorkflowInput.name,
+				displayName: currentWorkflowInput.name,
+				required: false,
+				defaultMatch: true,
+				display: true,
+				canBeUsedToMatch: true,
+			};
 
-	const fields: ResourceMapperField[] = workflowInputFields.map((currentWorkflowInput) => {
-		const field: ResourceMapperField = {
-			id: currentWorkflowInput.name,
-			displayName: currentWorkflowInput.name,
-			required: false,
-			defaultMatch: true,
-			display: true,
-			canBeUsedToMatch: true,
-		};
+			if (currentWorkflowInput.type !== 'any') {
+				field.type = currentWorkflowInput.type;
+			}
 
-		if (currentWorkflowInput.type !== 'any') {
-			field.type = currentWorkflowInput.type;
-		}
-
-		return field;
-	});
+			return field;
+		});
+	}
 	return { fields };
 }

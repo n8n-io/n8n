@@ -1,6 +1,6 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import type { FieldValueOption, FieldType, IExecuteFunctions } from 'n8n-workflow';
+import type { FieldValueOption, FieldType, IWorkflowNodeContext } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { JSON_EXAMPLE, INPUT_SOURCE, WORKFLOW_INPUTS, VALUES, TYPE_OPTIONS } from './constants';
@@ -40,14 +40,14 @@ function parseJsonSchema(schema: JSONSchema7): FieldValueOption[] | string {
 	return result;
 }
 
-function parseJsonExample(context: IExecuteFunctions): JSONSchema7 {
+function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 	const jsonString = context.getNodeParameter(JSON_EXAMPLE, 0, '') as string;
 	const json = jsonParse<SchemaObject>(jsonString);
 
 	return generateSchemaFromExample(json) as JSONSchema7;
 }
 
-export function getFieldEntries(context: IExecuteFunctions): FieldValueOption[] {
+export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption[] {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
