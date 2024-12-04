@@ -1294,7 +1294,11 @@ export class Workflow {
 				if (inputData.main[0] === null) {
 					return { data: undefined };
 				}
-				return { data: [inputData.main[0]] };
+				// make it works on the case that multiple main outputs are connected.
+				// example: a multi-branch custom webhook node
+				return {
+					data: inputData.main.map((item) => (item === null ? [] : item)),
+				};
 			}
 			return { data: undefined };
 		}
