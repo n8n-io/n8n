@@ -23,6 +23,7 @@ import {
 	N8nIcon,
 	N8nButton,
 	N8nBadge,
+	N8nNotice,
 } from 'n8n-design-system';
 import {
 	SOURCE_CONTROL_FILE_STATUS,
@@ -275,14 +276,26 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 			<N8nHeading tag="h1" size="xlarge">
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
-			<N8nText tag="div" class="mb-l mt-l">
-				{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
-				<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-					{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
-				</N8nLink>
-			</N8nText>
+			<div class="mb-l mt-l">
+				<N8nText tag="div">
+					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
+					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+					</N8nLink>
+				</N8nText>
 
-			<div>
+				<N8nNotice v-if="!changes.workflows.length" class="mt-xs">
+					<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
+						<template #link>
+							<N8nLink size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
+								{{ i18n.baseText('settings.sourceControl.modals.push.noWorkflowChanges.moreInfo') }}
+							</N8nLink>
+						</template>
+					</i18n-t>
+				</N8nNotice>
+			</div>
+
+			<div :class="[$style.filers]">
 				<N8nCheckbox
 					:class="$style.selectAll"
 					:indeterminate="selectAllIndeterminate"
@@ -309,54 +322,48 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 			</div>
 		</template>
 		<template #content>
-			<div :class="$style.container">
-				<RecycleScroller
-					class="scroller"
-					style="min-height: 385px"
-					:items="filteredWorkflows"
-					:item-size="69"
-					key-field="id"
-				>
-					<template #default="{ item: file }">
-						<N8nCheckbox
-							:class="['scopedListItem', $style.listItem]"
-							data-test-id="source-control-push-modal-file-checkbox"
-							:model-value="selectedChanges.has(file.id)"
-							@update:model-value="toggleSelected(file.id)"
-						>
-							<span>
-								<N8nText
-									v-if="file.status === SOURCE_CONTROL_FILE_STATUS.DELETED"
-									color="text-light"
-								>
-									<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW">
-										Deleted Workflow:
-									</span>
-									<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.CREDENTIAL">
-										Deleted Credential:
-									</span>
-									<strong>{{ file.name || file.id }}</strong>
-								</N8nText>
-								<N8nText v-else bold> {{ file.name }} </N8nText>
-								<N8nText v-if="file.updatedAt" tag="p" class="mt-0" color="text-light" size="small">
-									{{ renderUpdatedAt(file) }}
-								</N8nText>
-							</span>
-							<span :class="[$style.badges]">
-								<N8nBadge
-									v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
-									class="mr-2xs"
-								>
-									Current workflow
-								</N8nBadge>
-								<N8nBadge :theme="getStatusTheme(file.status)">
-									{{ getStatusText(file.status) }}
-								</N8nBadge>
-							</span>
-						</N8nCheckbox>
-					</template>
-				</RecycleScroller>
-			</div>
+			<RecycleScroller
+				:class="[$style.scroller]"
+				:items="filteredWorkflows"
+				:item-size="69"
+				key-field="id"
+			>
+				<template #default="{ item: file }">
+					<N8nCheckbox
+						:class="['scopedListItem', $style.listItem]"
+						data-test-id="source-control-push-modal-file-checkbox"
+						:model-value="selectedChanges.has(file.id)"
+						@update:model-value="toggleSelected(file.id)"
+					>
+						<span>
+							<N8nText v-if="file.status === SOURCE_CONTROL_FILE_STATUS.DELETED" color="text-light">
+								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW">
+									Deleted Workflow:
+								</span>
+								<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.CREDENTIAL">
+									Deleted Credential:
+								</span>
+								<strong>{{ file.name || file.id }}</strong>
+							</N8nText>
+							<N8nText v-else bold> {{ file.name }} </N8nText>
+							<N8nText v-if="file.updatedAt" tag="p" class="mt-0" color="text-light" size="small">
+								{{ renderUpdatedAt(file) }}
+							</N8nText>
+						</span>
+						<span :class="[$style.badges]">
+							<N8nBadge
+								v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
+								class="mr-2xs"
+							>
+								Current workflow
+							</N8nBadge>
+							<N8nBadge :theme="getStatusTheme(file.status)">
+								{{ getStatusText(file.status) }}
+							</N8nBadge>
+						</span>
+					</N8nCheckbox>
+				</template>
+			</RecycleScroller>
 		</template>
 
 		<template #footer>
@@ -365,7 +372,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 			</N8nText>
 			<N8nInput
 				v-model="commitMessage"
-				type="text"
+				data-test-id="source-control-push-modal-commit"
 				:placeholder="i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')"
 				@keydown.enter="onCommitKeyDownEnter"
 			/>
@@ -374,7 +381,12 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
 				</N8nButton>
-				<N8nButton type="primary" :disabled="isSubmitDisabled" @click="commitAndPush">
+				<N8nButton
+					data-test-id="source-control-push-modal-submit"
+					type="primary"
+					:disabled="isSubmitDisabled"
+					@click="commitAndPush"
+				>
 					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
 				</N8nButton>
 			</div>
@@ -383,6 +395,22 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 </template>
 
 <style module lang="scss">
+.filers {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.selectAll {
+	flex-shrink: 0;
+	margin-bottom: 0;
+}
+
+.scroller {
+	height: 380px;
+	max-height: 100%;
+}
+
 .listItem {
 	align-items: center;
 	padding: var(--spacing-xs);
