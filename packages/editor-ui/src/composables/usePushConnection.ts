@@ -36,6 +36,7 @@ import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
+import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -197,6 +198,20 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			if (!uiStore.isActionActive['workflowRunning']) {
 				// No workflow is running so ignore the messages
 				return false;
+			}
+
+			if (receivedData.type === 'executionFinished') {
+				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
+				const isEasyAIWorkflow = workflow.meta?.templateId === EASY_AI_WORKFLOW_JSON.id;
+				if (isEasyAIWorkflow) {
+					telemetry.track(
+						'User executed test AI workflow',
+						{
+							status: receivedData.data.status,
+						},
+						{ withPostHog: true },
+					);
+				}
 			}
 
 			const { executionId } = receivedData.data;

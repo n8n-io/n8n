@@ -1,9 +1,13 @@
 import { NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDataCreate } from './Interface';
 
+export const EASY_AI_WORKFLOW_ID = 'PT1i+zU92Ii5O2XCObkhfHJR5h9rNJTpiCIkYJk9jHU=';
+
 export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
-	id: 'PT1i+zU92Ii5O2XCObkhfHJR5h9rNJTpiCIkYJk9jHU=',
-	name: 'Google Calendar AI Assistant',
+	name: 'Demo: My first AI Agent in n8n',
+	meta: {
+		templateId: EASY_AI_WORKFLOW_ID,
+	},
 	nodes: [
 		{
 			parameters: {
@@ -57,8 +61,8 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 		{
 			parameters: {
 				content:
-					'## 1. 👋 Welcome to n8n!\nThis example shows how to build an AI Agent that interacts with your \ncalendar.\n\n### Ready to test it?\nClick Chat below and start asking questions! For example you can try `What meetings do I have today?`',
-				height: 228.76331360946745,
+					'## 👋 Welcome to n8n!\nThis example shows how to build an AI Agent that interacts with your \ncalendar.\n\n### 1. Connect your OpenAI account\nMake sure you set up your [OpenAI credentials](https://docs.n8n.io/integrations/builtin/credentials/openai/?utm_source=n8n_app&utm_medium=credential_settings&utm_campaign=create_new_credentials_modal) in the `OpenAI Model` node\n\n### 2. Ready to test it?\nClick Chat below and start asking questions! For example you can try `What meetings do I have today?`',
+				height: 329,
 				width: 319,
 				color: 6,
 			},
@@ -84,20 +88,6 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 		},
 		{
 			parameters: {
-				content:
-					'## 2. Customize your Agent\n1. Update the prompts to fit your needs.\n2. Add or remove tools for extra functionality, like creating events.\n3. Change the trigger, for example to be started by **Telegram**',
-				height: 160.49380868043997,
-				width: 316.88647732530984,
-				color: 6,
-			},
-			id: '999d0889-e0c7-47cf-a909-c543f4cfdcc9',
-			name: 'Sticky Note2',
-			type: 'n8n-nodes-base.stickyNote',
-			typeVersion: 1,
-			position: [0, 240],
-		},
-		{
-			parameters: {
 				options: {},
 			},
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -117,7 +107,7 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 		{
 			parameters: {
 				content:
-					'### 3. Want to learn more?\nWant to learn more about AI and how to apply it best in n8n? Have a look at our [new tutorial series on YouTube](https://www.youtube.com/watch?v=yzvLfHb0nqE&lc).',
+					'### Want to learn more?\nWant to learn more about AI and how to apply it best in n8n? Have a look at our [new tutorial series on YouTube](https://www.youtube.com/watch?v=yzvLfHb0nqE&lc).',
 				height: 100,
 				width: 317,
 				color: 6,
@@ -126,9 +116,9 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 			name: 'Sticky Note3',
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
-			position: [0, 420],
+			position: [0, 340],
 		},
-	] as INodeUi[],
+	],
 	connections: {
 		'Google Calendar': {
 			ai_tool: [

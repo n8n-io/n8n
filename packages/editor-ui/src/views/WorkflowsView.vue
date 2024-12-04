@@ -274,8 +274,15 @@ onMounted(async () => {
 	void usersStore.showPersonalizationSurvey();
 });
 
-const openAIWorkflow = async () => {
+const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
+	telemetry.track(
+		'User clicked test AI workflow',
+		{
+			source,
+		},
+		{ withPostHog: true },
+	);
 	await router.push({
 		name: VIEWS.WORKFLOW_ONBOARDING,
 		params: { id: EASY_AI_WORKFLOW_JSON.id },
@@ -318,7 +325,7 @@ const dismissEasyAICallout = () => {
 							data-test-id="easy-ai-button"
 							size="small"
 							type="secondary"
-							@click="openAIWorkflow"
+							@click="openAIWorkflow('callout')"
 						>
 							{{ i18n.baseText('generic.tryNow') }}
 						</n8n-button>
@@ -378,7 +385,7 @@ const dismissEasyAICallout = () => {
 					:class="$style.emptyStateCard"
 					hoverable
 					data-test-id="easy-ai-workflow-card"
-					@click="openAIWorkflow"
+					@click="openAIWorkflow('empty')"
 				>
 					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
 					<N8nText size="large" class="mt-xs" color="text-dark">
