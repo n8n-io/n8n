@@ -86,13 +86,24 @@ export class MFAController {
 	@Post('/disable', { rateLimit: true })
 	async disableMFA(req: MFA.Disable) {
 		const { id: userId } = req.user;
-		const { mfaCode = null } = req.body;
 
-		if (typeof mfaCode !== 'string' || !mfaCode) {
-			throw new BadRequestError('Token is required to disable MFA feature');
+		const { mfaCode, mfaRecoveryCode } = req.body;
+
+		const mfaCodeDefined = mfaCode && typeof mfaCode === 'string';
+
+		const mfaRecoveryCodeDefined = mfaRecoveryCode && typeof mfaRecoveryCode === 'string';
+
+		if (!mfaCodeDefined === !mfaRecoveryCodeDefined) {
+			throw new BadRequestError(
+				'Either MFA code or recovery code is required to disable MFA feature',
+			);
 		}
 
-		await this.mfaService.disableMfa(userId, mfaCode);
+		if (mfaCodeDefined) {
+			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
+		} else if (mfaRecoveryCodeDefined) {
+			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
+		}
 	}
 
 	@Post('/verify', { rateLimit: true })
