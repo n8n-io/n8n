@@ -483,7 +483,13 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SETTINGS,
 		component: SettingsView,
 		props: true,
-		redirect: { name: VIEWS.USAGE },
+		redirect: () => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.settings.hideUsagePage) {
+				return { name: VIEWS.PERSONAL_SETTINGS };
+			}
+			return { name: VIEWS.USAGE };
+		},
 		children: [
 			{
 				path: 'usage',
