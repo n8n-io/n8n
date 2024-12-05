@@ -16,8 +16,9 @@ export abstract class ResponseError extends ApplicationError {
 		readonly errorCode: number = httpStatusCode,
 		// The error hint the response
 		readonly hint: string | undefined = undefined,
+		cause?: unknown,
 	) {
-		super(message);
+		super(message, { cause });
 		this.name = 'ResponseError';
 	}
 }
