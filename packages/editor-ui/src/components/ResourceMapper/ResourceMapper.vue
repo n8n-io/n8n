@@ -239,47 +239,48 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
+const createRequestParams = (methodName: string) => {
+	if (!props.node) {
+		return;
+	}
+	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
+		nodeTypeAndVersion: {
+			name: props.node?.type,
+			version: props.node?.typeVersion,
+		},
+		currentNodeParameters: resolveRequiredParameters(
+			props.parameter,
+			props.node.parameters,
+		) as INodeParameters,
+		path: props.path,
+		methodName,
+		credentials: props.node.credentials,
+	};
+
+	return requestParams;
+};
+
 async function loadFieldsToMap(): Promise<void> {
 	if (!props.node) {
 		return;
 	}
 
-	const { resourceMapperMethod = undefined, localResourceMapperMethod = undefined } =
+	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields = null;
 
 	if (typeof resourceMapperMethod === 'string') {
-		const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
-			nodeTypeAndVersion: {
-				name: props.node?.type,
-				version: props.node.typeVersion,
-			},
-			currentNodeParameters: resolveRequiredParameters(
-				props.parameter,
-				props.node.parameters,
-			) as INodeParameters,
-			path: props.path,
-			methodName: resourceMapperMethod,
-			credentials: props.node.credentials,
-		};
+		const requestParams = createRequestParams(
+			resourceMapperMethod,
+		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
-	} else {
-		if (typeof localResourceMapperMethod === 'string') {
-			const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
-				nodeTypeAndVersion: {
-					name: props.node?.type,
-					version: props.node.typeVersion,
-				},
-				currentNodeParameters: resolveRequiredParameters(
-					props.parameter,
-					props.node.parameters,
-				) as INodeParameters,
-				path: props.path,
-				methodName: localResourceMapperMethod,
-			};
-			fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
-		}
+	} else if (typeof localResourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			localResourceMapperMethod,
+		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+
+		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
 
 	if (fetchedFields !== null) {
