@@ -5,18 +5,15 @@ import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { EASY_AI_WORKFLOW_EXPERIMENT, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 
 import AuthView from '@/views/AuthView.vue';
-import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
-const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();

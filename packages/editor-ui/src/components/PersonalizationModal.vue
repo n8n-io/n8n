@@ -80,7 +80,6 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
-	EASY_AI_WORKFLOW_EXPERIMENT,
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
@@ -94,7 +93,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { getResourcePermissions } from '@/permissions';
-import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 const SURVEY_VERSION = 'v4';
 

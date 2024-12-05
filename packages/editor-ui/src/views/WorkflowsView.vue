@@ -15,7 +15,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -45,7 +44,6 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const posthogStore = usePostHog();
 const projectsStore = useProjectsStore();
-const templatesStore = useTemplatesStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
@@ -92,18 +90,6 @@ const statusFilterOptions = computed(() => [
 		value: StatusFilter.DEACTIVATED,
 	},
 ]);
-
-const userRole = computed(() => {
-	const role = usersStore.currentUserCloudInfo?.role;
-	if (role) return role;
-
-	const answers = usersStore.currentUser?.personalizationAnswers;
-	if (answers && 'role' in answers) {
-		return answers.role;
-	}
-
-	return undefined;
-});
 
 const showEasyAIWorkflowCallout = computed(() => {
 	const isEasyAIWorkflowExperimentEnabled =

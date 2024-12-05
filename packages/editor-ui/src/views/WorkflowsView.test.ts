@@ -7,7 +7,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES, VIEWS } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
-import { usePostHog } from '@/stores/posthog.store';
 import type { Cloud, IUser, IWorkflowDb } from '@/Interface';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { Project } from '@/types/projects.types';
