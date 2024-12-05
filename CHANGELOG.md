@@ -1,3 +1,16 @@
+## [1.70.3](https://github.com/n8n-io/n8n/compare/n8n@1.70.2...n8n@1.70.3) (2024-12-05)
+
+
+### Bug Fixes
+
+* **editor:** Don't reset all Parameter Inputs when switched to read-only  ([#12063](https://github.com/n8n-io/n8n/issues/12063)) ([86b80e4](https://github.com/n8n-io/n8n/commit/86b80e4900bc404238e4c81a8334cd14a51b845f))
+* **editor:** Fix Nodeview.v2 reinitialise based on route changes ([#12062](https://github.com/n8n-io/n8n/issues/12062)) ([92e2773](https://github.com/n8n-io/n8n/commit/92e27737b3d7246b9cbd39c54e8ea4aa271224c5))
+* **editor:** Fix switching from v2 to v1 ([#12050](https://github.com/n8n-io/n8n/issues/12050)) ([deaab8b](https://github.com/n8n-io/n8n/commit/deaab8b8d99be7b520327ff1dd9df5dd743b258a))
+* **editor:** Load node types in demo and preview modes ([#12048](https://github.com/n8n-io/n8n/issues/12048)) ([104d56e](https://github.com/n8n-io/n8n/commit/104d56e7b19e89f4371b0fe5db96ca1c4dda81d4))
+* **editor:** Polyfill crypto.randomUUID ([#12052](https://github.com/n8n-io/n8n/issues/12052)) ([6f4ea58](https://github.com/n8n-io/n8n/commit/6f4ea58ef666ce91e6471bf6fadea1b08a1ce68d))
+
+
+
 ## [1.70.2](https://github.com/n8n-io/n8n/compare/n8n@1.70.1...n8n@1.70.2) (2024-12-04)
 
 
