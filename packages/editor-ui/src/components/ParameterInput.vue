@@ -1430,6 +1430,7 @@ onUpdated(async () => {
 					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
+					data-test-id="parameter-input-item"
 				>
 					<div class="list-option">
 						<div
