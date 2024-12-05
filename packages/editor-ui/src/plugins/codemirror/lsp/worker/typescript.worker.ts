@@ -18,7 +18,6 @@ import {
 
 import { pascalCase } from 'change-case';
 import type { CodeExecutionMode } from 'n8n-workflow';
-import globalTypes from './type-declarations/globals.d.ts?raw';
 import luxonTypes from './type-declarations/luxon.d.ts?raw';
 import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
 import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
@@ -98,42 +97,47 @@ itemMatching(itemIndex: number): N8nInputItem;`
 		);
 	}
 
-	async function loadTypesIfNeeded(pos: number) {
-		function findNode(node: ts.Node, check: (node: ts.Node) => boolean): ts.Node | undefined {
+	async function loadTypesIfNeeded() {
+		function findNodes(node: ts.Node, check: (node: ts.Node) => boolean): ts.Node[] {
+			const result: ts.Node[] = [];
+
+			// If the current node matches the condition, add it to the result
 			if (check(node)) {
-				return node;
+				result.push(node);
 			}
 
-			return ts.forEachChild(node, (n) => findNode(n, check));
+			// Recursively check all child nodes
+			node.forEachChild((child) => {
+				result.push(...findNodes(child, check));
+			});
+
+			return result;
 		}
 
 		const file = env.getSourceFile(FILE_NAME);
 		// If we are completing a N8nJson type -> fetch types first
 		// $('Node A').item.json.
 		if (file) {
-			const node = findNode(
+			const callExpressions = findNodes(
 				file,
-				(n) =>
-					n.getStart() <= pos - 1 && n.getEnd() >= pos - 1 && n.kind === ts.SyntaxKind.Identifier,
-			);
-
-			if (!node) return;
-
-			const callExpression = findNode(
-				node.parent,
 				(n) =>
 					n.kind === ts.SyntaxKind.CallExpression &&
 					(n as ts.CallExpression).expression.getText() === '$',
 			);
 
-			if (!callExpression) return;
+			if (callExpressions.length === 0) return;
 
-			const nodeName = ((callExpression as ts.CallExpression).arguments.at(0) as ts.StringLiteral)
-				?.text;
+			const nodeNames = (callExpressions as ts.CallExpression[]).map(
+				(e) => (e.arguments.at(0) as ts.StringLiteral)?.text,
+			);
 
-			if (!nodeName) return;
+			if (nodeNames.length === 0) return;
 
-			await loadNodeTypes(nodeName);
+			for (const nodeName of nodeNames) {
+				if (!loadedNodeTypesMap[nodeName]) {
+					await loadNodeTypes(nodeName);
+				}
+			}
 		}
 	}
 
@@ -148,7 +152,7 @@ itemMatching(itemIndex: number): N8nInputItem;`
 				allowJs: true,
 				checkJs: true,
 				target: ts.ScriptTarget.ESNext,
-				noLib: true,
+				lib: ['es2023'],
 				module: ts.ModuleKind.ESNext,
 				strict: true,
 				importHelpers: false,
@@ -167,7 +171,18 @@ itemMatching(itemIndex: number): N8nInputItem;`
 				cache,
 			);
 
-			fsMap.set('globals.d.ts', globalTypes);
+			for (const [name] of fsMap.entries()) {
+				if (
+					name === 'lib.d.ts' ||
+					name.startsWith('/lib.dom') ||
+					name.startsWith('/lib.webworker') ||
+					name.startsWith('/lib.scripthost') ||
+					name.endsWith('.full.d.ts')
+				) {
+					fsMap.delete(name);
+				}
+			}
+
 			fsMap.set('n8n.d.ts', n8nTypes);
 			fsMap.set('luxon.d.ts', luxonTypes);
 			fsMap.set('n8n-dynamic.d.ts', 'export {}');
@@ -227,6 +242,7 @@ declare global {
 				});
 			}
 
+			await loadTypesIfNeeded();
 			await Promise.all(
 				options.inputNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)),
 			);
@@ -234,11 +250,12 @@ declare global {
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),
 			);
 		},
-		updateFile: (content) => updateFile(FILE_NAME, wrapInFunction(content, mode)),
-		async getCompletionsAtPos(pos) {
+		updateFile: async (content) => {
+			updateFile(FILE_NAME, wrapInFunction(content, mode));
+			await loadTypesIfNeeded();
+		},
+		async getCompletionsAtPos(pos, word) {
 			const tsPos = cmPosToTs(pos, fnPrefix(returnTypeForMode(mode)));
-
-			await loadTypesIfNeeded(tsPos);
 
 			const completionInfo = env.languageService.getCompletionsAtPosition(FILE_NAME, tsPos, {}, {});
 
@@ -310,7 +327,6 @@ declare global {
 		async updateNodeTypes() {
 			const nodeNames = Object.keys(loadedNodeTypesMap);
 
-			console.log('nodes to load', nodeNames, inputNodeNames);
 			await Promise.all(nodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)));
 			await Promise.all(
 				inputNodeNames.map(async (nodeName) => await setInputNodeTypes(nodeName, mode)),

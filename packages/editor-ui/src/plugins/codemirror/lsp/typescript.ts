@@ -14,9 +14,9 @@ import { autocompletableNodeNames } from '../completions/utils';
 import { n8nAutocompletion } from '../n8nLang';
 import type { LanguageServiceWorker } from './types';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import useEnvironmentsStore from '../../../stores/environments.ee.store';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { watch } from 'vue';
-import { useDebounce } from '../../../composables/useDebounce';
+import { useDebounce } from '@/composables/useDebounce';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -36,7 +36,7 @@ const tsCompletions: CompletionSource = async (context) => {
 		word = context.matchBefore(/\./);
 	}
 
-	const result = await worker.getCompletionsAtPos(context.pos);
+	const result = await worker.getCompletionsAtPos(context.pos, word?.text ?? '');
 
 	if (context.aborted) return null;
 	if (!result) return result;

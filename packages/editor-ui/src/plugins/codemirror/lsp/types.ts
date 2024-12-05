@@ -28,7 +28,7 @@ export type LanguageServiceWorker = {
 	updateFile(content: string): void;
 	updateMode(mode: CodeExecutionMode): void;
 	updateNodeTypes(): void;
-	getCompletionsAtPos(pos: number): Promise<CompletionResult | null>;
+	getCompletionsAtPos(pos: number, wordBefore: string): Promise<CompletionResult | null>;
 	getDiagnostics(): Diagnostic[];
 	getHoverTooltip(pos: number): HoverInfo | null;
 };
