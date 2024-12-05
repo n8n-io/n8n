@@ -113,7 +113,7 @@ export class TestDefinitionService {
 			}
 		}
 
-		// If there are pinned nodes, validate them
+		// If there are mocked nodes, validate them
 		if (attrs.mockedNodes && attrs.mockedNodes.length > 0) {
 			const existingTestDefinition = await this.testDefinitionRepository.findOne({
 				where: {
