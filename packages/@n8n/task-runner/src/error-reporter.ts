@@ -1,4 +1,4 @@
-import { RewriteFrames } from '@sentry/integrations';
+import { rewriteFramesIntegration } from '@sentry/integrations';
 import { init, setTag, captureException, close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import * as a from 'assert/strict';
@@ -52,7 +52,7 @@ export class ErrorReporter {
 			beforeSend: async (event, hint) => await this.beforeSend(event, hint),
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => ENABLED_INTEGRATIONS.includes(name)),
-				new RewriteFrames({ root: process.cwd() }),
+				rewriteFramesIntegration({ root: process.cwd() }),
 			],
 		});
 

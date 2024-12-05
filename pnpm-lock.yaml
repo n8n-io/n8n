@@ -10,11 +10,11 @@ catalogs:
       specifier: 0.3.19
       version: 0.3.19
     '@sentry/integrations':
-      specifier: 7.87.0
-      version: 7.87.0
+      specifier: 7.119.2
+      version: 7.119.2
     '@sentry/node':
-      specifier: 7.87.0
-      version: 7.87.0
+      specifier: 7.119.2
+      version: 7.119.2
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -286,7 +286,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.7.4
+        version: 1.7.4(debug@4.3.7)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -357,7 +357,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.7.4
+        version: 1.7.4(debug@4.3.7)
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -431,7 +431,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu))
+        version: 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -458,7 +458,7 @@ importers:
         version: 0.3.1(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.15
-        version: 0.3.15(vc5hvyy27o4cmm4jplsptc2fqm)
+        version: 0.3.15(v4qhcw25bevfr6xzz4fnsvjiqe)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
@@ -500,7 +500,7 @@ importers:
         version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
+        version: 0.3.20-12(@sentry/node@7.119.2)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
       '@n8n/vm2':
         specifier: 3.9.25
         version: 3.9.25
@@ -545,7 +545,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.6
-        version: 0.3.6(e4rnrwhosnp2xiru36mqgdy2bu)
+        version: 0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -668,10 +668,10 @@ importers:
         version: link:../config
       '@sentry/integrations':
         specifier: 'catalog:'
-        version: 7.87.0
+        version: 7.119.2
       '@sentry/node':
         specifier: 'catalog:'
-        version: 7.87.0
+        version: 7.119.2
       acorn:
         specifier: 8.14.0
         version: 8.14.0
@@ -780,7 +780,7 @@ importers:
         version: link:../@n8n/task-runner
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
+        version: 0.3.20-12(@sentry/node@7.119.2)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
       '@n8n_io/ai-assistant-sdk':
         specifier: 1.12.0
         version: 1.12.0
@@ -795,16 +795,16 @@ importers:
         version: 2.0.9(tslib@2.6.2)
       '@sentry/integrations':
         specifier: 'catalog:'
-        version: 7.87.0
+        version: 7.119.2
       '@sentry/node':
         specifier: 'catalog:'
-        version: 7.87.0
+        version: 7.119.2
       aws4:
         specifier: 1.11.0
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4
+        version: 1.7.4(debug@4.3.7)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1135,7 +1135,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4
+        version: 1.7.4(debug@4.3.7)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1428,7 +1428,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
-        version: 1.7.4
+        version: 1.7.4(debug@4.3.7)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -1914,7 +1914,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.7.4
+        version: 1.7.4(debug@4.3.7)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -4106,40 +4106,40 @@ packages:
     resolution: {integrity: sha512-fm4coIOjmanU29NOVN9MyaP4fUCOYytbtFqVSKRFNZQ/xAgNeySiBIbUd6IjujMmnOk9bY0WEUMcdm3Uotjdog==}
     engines: {node: '>=14.18'}
 
-  '@sentry-internal/tracing@7.87.0':
-    resolution: {integrity: sha512-HYa0+rfFmYQ/DadXoiuarTSxrcnYDCd/fm0pFuOHjICtfja8IcLegVYP2/r3CgwB+IjquCtJ5kDcqS/NTgUcpA==}
+  '@sentry-internal/tracing@7.119.2':
+    resolution: {integrity: sha512-V2W+STWrafyGJhQv3ulMFXYDwWHiU6wHQAQBShsHVACiFaDrJ2kPRet38FKv4dMLlLlP2xN+ss2e5zv3tYlTiQ==}
     engines: {node: '>=8'}
 
   '@sentry/browser@8.33.1':
     resolution: {integrity: sha512-c6zI/igexkLwZuGk+u8Rj26ChjxGgkhe6ZbKFsXCYaKAp5ep5X7HQRkkqgbxApiqlC0LduHdd/ymzh139JLg8w==}
     engines: {node: '>=14.18'}
 
-  '@sentry/core@7.87.0':
-    resolution: {integrity: sha512-jkoXqK/nuYh8DYS+n7uaSuSIdw4HJemyRkXsWjAEPtEgD7taGMafZGbP5pl+XE38SE59jTBxmKnkUEZOFMgZGA==}
+  '@sentry/core@7.119.2':
+    resolution: {integrity: sha512-hQr3d2yWq/2lMvoyBPOwXw1IHqTrCjOsU1vYKhAa6w9vGbJZFGhKGGE2KEi/92c3gqGn+gW/PC7cV6waCTDuVA==}
     engines: {node: '>=8'}
 
   '@sentry/core@8.33.1':
     resolution: {integrity: sha512-3SS41suXLFzxL3OQvTMZ6q92ZapELVq2l2SoWlZopcamWhog2Ru0dp2vkunq97kFHb2TzKRTlFH4+4gbT8SJug==}
     engines: {node: '>=14.18'}
 
-  '@sentry/integrations@7.87.0':
-    resolution: {integrity: sha512-xbyOQeyfG1sF2PBMIOz3c3i0Y3+8q4UlxoeOhpFe6Vpjek+I/g7onZT6YevT6cWG083cg+rS0VCgPQSUV2lxIw==}
+  '@sentry/integrations@7.119.2':
+    resolution: {integrity: sha512-dCuXKvbUE3gXVVa696SYMjlhSP6CxpMH/gl4Jk26naEB8Xjsn98z/hqEoXLg6Nab73rjR9c/9AdKqBbwVMHyrQ==}
     engines: {node: '>=8'}
 
-  '@sentry/node@7.87.0':
-    resolution: {integrity: sha512-mGcZMCL3/IMTLIRcWLF+H9z2Bb2d34gKmg2rhXqI8BqhhUA551jMRlZv/y4za2Osjy550KwVoNsA1qtEe5mYyQ==}
+  '@sentry/node@7.119.2':
+    resolution: {integrity: sha512-TPNnqxh+Myooe4jTyRiXrzrM2SH08R4+nrmBls4T7lKp2E5R/3mDSe/YTn5rRcUt1k1hPx1NgO/taG0DoS5cXA==}
     engines: {node: '>=8'}
 
-  '@sentry/types@7.87.0':
-    resolution: {integrity: sha512-w8jKFHq/Llupmr2FezmFgQsnm3y/CnqLjb7s6PstI78E409wrhH7p7oqX/OEuzccH1qNCNwes/3QKvPTRQDB4Q==}
+  '@sentry/types@7.119.2':
+    resolution: {integrity: sha512-ydq1tWsdG7QW+yFaTp0gFaowMLNVikIqM70wxWNK+u98QzKnVY/3XTixxNLsUtnAB4Y+isAzFhrc6Vb5GFdFeg==}
     engines: {node: '>=8'}
 
   '@sentry/types@8.33.1':
     resolution: {integrity: sha512-GjoAMvwtpIemoF/IiwZ7A60g4nQv3qwzR21GvJqDVUoKD0e8pv9OLX+HyXoUat4wEDGSuDUcUyUKD2G+od73QA==}
     engines: {node: '>=14.18'}
 
-  '@sentry/utils@7.87.0':
-    resolution: {integrity: sha512-7xgtPTnTNP/4IznFMFXxltuaXfLvzznrYCDMv9ny8EeUjJqlLX3CVA8Qq3YALsLCQCKcrGRARbAcd/EGG//w2w==}
+  '@sentry/utils@7.119.2':
+    resolution: {integrity: sha512-TLdUCvcNgzKP0r9YD7tgCL1PEUp42TObISridsPJ5rhpVGQJvpr+Six0zIkfDUxerLYWZoK8QMm9KgFlPLNQzA==}
     engines: {node: '>=8'}
 
   '@sentry/utils@8.33.1':
@@ -14116,7 +14116,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -14125,7 +14125,7 @@ snapshots:
       zod: 3.23.8
     optionalDependencies:
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
-      langchain: 0.3.6(e4rnrwhosnp2xiru36mqgdy2bu)
+      langchain: 0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i)
     transitivePeerDependencies:
       - encoding
 
@@ -14590,7 +14590,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.15(vc5hvyy27o4cmm4jplsptc2fqm)':
+  '@langchain/community@0.3.15(v4qhcw25bevfr6xzz4fnsvjiqe)':
     dependencies:
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
@@ -14600,7 +14600,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.6(e4rnrwhosnp2xiru36mqgdy2bu)
+      langchain: 0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i)
       langsmith: 0.2.3(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
       uuid: 10.0.0
       zod: 3.23.8
@@ -14613,7 +14613,7 @@ snapshots:
       '@aws-sdk/client-s3': 3.666.0
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -14950,7 +14950,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@7.119.2)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -14970,7 +14970,7 @@ snapshots:
       uuid: 9.0.1
       yargs: 17.7.2
     optionalDependencies:
-      '@sentry/node': 7.87.0
+      '@sentry/node': 7.119.2
       ioredis: 5.3.2
       mssql: 10.0.2
       mysql2: 3.11.0
@@ -14981,7 +14981,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@7.119.2)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -15001,7 +15001,7 @@ snapshots:
       uuid: 9.0.1
       yargs: 17.7.2
     optionalDependencies:
-      '@sentry/node': 7.87.0
+      '@sentry/node': 7.119.2
       ioredis: 5.3.2
       mssql: 10.0.2
       mysql2: 3.11.0
@@ -15322,7 +15322,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
     dependencies:
-      axios: 1.7.4
+      axios: 1.7.4(debug@4.3.7)
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -15405,11 +15405,11 @@ snapshots:
       '@sentry/types': 8.33.1
       '@sentry/utils': 8.33.1
 
-  '@sentry-internal/tracing@7.87.0':
+  '@sentry-internal/tracing@7.119.2':
     dependencies:
-      '@sentry/core': 7.87.0
-      '@sentry/types': 7.87.0
-      '@sentry/utils': 7.87.0
+      '@sentry/core': 7.119.2
+      '@sentry/types': 7.119.2
+      '@sentry/utils': 7.119.2
 
   '@sentry/browser@8.33.1':
     dependencies:
@@ -15421,40 +15421,38 @@ snapshots:
       '@sentry/types': 8.33.1
       '@sentry/utils': 8.33.1
 
-  '@sentry/core@7.87.0':
+  '@sentry/core@7.119.2':
     dependencies:
-      '@sentry/types': 7.87.0
-      '@sentry/utils': 7.87.0
+      '@sentry/types': 7.119.2
+      '@sentry/utils': 7.119.2
 
   '@sentry/core@8.33.1':
     dependencies:
       '@sentry/types': 8.33.1
       '@sentry/utils': 8.33.1
 
-  '@sentry/integrations@7.87.0':
+  '@sentry/integrations@7.119.2':
     dependencies:
-      '@sentry/core': 7.87.0
-      '@sentry/types': 7.87.0
-      '@sentry/utils': 7.87.0
+      '@sentry/core': 7.119.2
+      '@sentry/types': 7.119.2
+      '@sentry/utils': 7.119.2
       localforage: 1.10.0
 
-  '@sentry/node@7.87.0':
+  '@sentry/node@7.119.2':
     dependencies:
-      '@sentry-internal/tracing': 7.87.0
-      '@sentry/core': 7.87.0
-      '@sentry/types': 7.87.0
-      '@sentry/utils': 7.87.0
-      https-proxy-agent: 5.0.1
-    transitivePeerDependencies:
-      - supports-color
+      '@sentry-internal/tracing': 7.119.2
+      '@sentry/core': 7.119.2
+      '@sentry/integrations': 7.119.2
+      '@sentry/types': 7.119.2
+      '@sentry/utils': 7.119.2
 
-  '@sentry/types@7.87.0': {}
+  '@sentry/types@7.119.2': {}
 
   '@sentry/types@8.33.1': {}
 
-  '@sentry/utils@7.87.0':
+  '@sentry/utils@7.119.2':
     dependencies:
-      '@sentry/types': 7.87.0
+      '@sentry/types': 7.119.2
 
   '@sentry/utils@8.33.1':
     dependencies:
@@ -17557,17 +17555,9 @@ snapshots:
       '@babel/runtime': 7.24.7
       is-retry-allowed: 2.2.0
 
-  axios@1.7.4:
-    dependencies:
-      follow-redirects: 1.15.6(debug@4.3.6)
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   axios@1.7.4(debug@4.3.7):
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.7)
+      follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -21360,7 +21350,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu):
+  langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i):
     dependencies:
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
       '@langchain/openai': 0.3.14(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
@@ -21384,7 +21374,7 @@ snapshots:
       '@langchain/groq': 0.1.2(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.0(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))
       '@langchain/ollama': 0.1.2(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))
-      axios: 1.7.4
+      axios: 1.7.4(debug@4.3.7)
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
