@@ -136,7 +136,7 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByText('first')).toBeVisible();
 	});
 
-	it('should nested level on hover', async () => {
+	it('should toggle nested level on mouseenter / mouseleave', async () => {
 		const { getByTestId, getByText } = render(NavigationDropdown, {
 			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
 			props: {
@@ -156,5 +156,11 @@ describe('N8nNavigationDropdown', () => {
 		expect(getByText('nested')).not.toBeVisible();
 		await userEvent.hover(getByTestId('navigation-submenu'));
 		await waitFor(() => expect(getByText('nested')).toBeVisible());
+
+		await userEvent.pointer([
+			{ target: getByTestId('navigation-submenu') },
+			{ target: getByTestId('test-trigger') },
+		]);
+		await waitFor(() => expect(getByText('nested')).not.toBeVisible());
 	});
 });
