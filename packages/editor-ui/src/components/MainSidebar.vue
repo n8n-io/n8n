@@ -327,7 +327,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				:menu="menu"
 				@select="handleMenuSelect"
 			>
-				<n8n-icon-button icon="plus" type="secondary" outline />
+				<N8nIconButton icon="plus" type="secondary" outline />
 				<template #[`item.append.${CREATE_PROJECT_ID}`]="{ item }">
 					<n8n-tooltip
 						v-if="item.disabled"
