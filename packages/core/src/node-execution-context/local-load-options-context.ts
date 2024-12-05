@@ -26,25 +26,29 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const workflowId = value as string;
 		if (!workflowId) {
-			throw new ApplicationError('No workflowId parameter defined on node!');
+			throw new ApplicationError(`No workflowId parameter defined on node of type "${nodeType}"!`);
 		}
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		const workflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType) as INode;
+		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType) as INode;
 
-		if (workflowNode) {
-			const workflow = new Workflow({
-				nodes: [workflowNode],
+		if (selectedWorkflowNode) {
+			const selectedSingleNodeWorkflow = new Workflow({
+				nodes: [selectedWorkflowNode],
 				connections: {},
 				active: false,
 				nodeTypes: this.nodeTypes,
 			});
 
-			const workflowAdditionalData = deepCopy(this.additionalData);
-			workflowAdditionalData.currentNodeParameters = workflowNode.parameters;
+			const workflowAdditionalData = { ...this.additionalData };
+			workflowAdditionalData.currentNodeParameters = selectedWorkflowNode.parameters;
 
-			return new LoadWorkflowNodeContext(workflow, workflowNode, workflowAdditionalData);
+			return new LoadWorkflowNodeContext(
+				selectedSingleNodeWorkflow,
+				selectedWorkflowNode,
+				workflowAdditionalData,
+			);
 		}
 
 		return null;
