@@ -15,6 +15,7 @@ export interface TagsInputProps {
 	startEditing: (field: string) => void;
 	saveChanges: (field: string) => void;
 	cancelEditing: (field: string) => void;
+	createTag?: (name: string) => Promise<ITag>;
 }
 
 const props = withDefaults(defineProps<TagsInputProps>(), {
@@ -22,6 +23,7 @@ const props = withDefaults(defineProps<TagsInputProps>(), {
 		isEditing: false,
 		appliedTagIds: [],
 	}),
+	createTag: undefined,
 });
 
 const emit = defineEmits<{ 'update:modelValue': [value: TagsInputProps['modelValue']] }>();
@@ -70,20 +72,19 @@ function updateTags(tags: string[]) {
 				v-else
 				:model-value="modelValue.appliedTagIds"
 				:placeholder="locale.baseText('executionAnnotationView.chooseOrCreateATag')"
-				:create-enabled="false"
+				:create-enabled="modelValue.appliedTagIds.length === 0"
 				:all-tags="allTags"
 				:is-loading="isLoading"
 				:tags-by-id="tagsById"
 				data-test-id="workflow-tags-dropdown"
 				:event-bus="tagsEventBus"
+				:create-tag="createTag"
+				:manage-enabled="false"
 				@update:model-value="updateTags"
 				@esc="cancelEditing('tags')"
 				@blur="saveChanges('tags')"
 			/>
 		</n8n-input-label>
-		<n8n-text size="small" color="text-light">{{
-			locale.baseText('testDefinition.edit.tagsHelpText')
-		}}</n8n-text>
 	</div>
 </template>
 

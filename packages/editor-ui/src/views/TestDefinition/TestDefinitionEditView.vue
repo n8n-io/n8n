@@ -24,8 +24,11 @@ const route = useRoute();
 const locale = useI18n();
 const { debounce } = useDebounce();
 const toast = useToast();
-const { isLoading, allTags, tagsById, fetchAll } = useAnnotationTagsStore();
+const tagsStore = useAnnotationTagsStore();
 
+const isLoading = computed(() => tagsStore.isLoading);
+const allTags = computed(() => tagsStore.allTags);
+const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 const buttonLabel = computed(() =>
@@ -48,7 +51,7 @@ const {
 } = useTestDefinitionForm();
 
 onMounted(async () => {
-	await fetchAll();
+	await tagsStore.fetchAll();
 	if (testId.value) {
 		await loadTestData(testId.value);
 	} else {
@@ -81,6 +84,16 @@ async function onSaveTest() {
 
 function hasIssues(key: string) {
 	return fieldsIssues.value.some((issue) => issue.field === key);
+}
+
+async function handleCreateTag(tagName: string) {
+	try {
+		const newTag = await tagsStore.create(tagName);
+		return newTag;
+	} catch (error) {
+		toast.showError(error, 'Error', error.message);
+		throw error;
+	}
 }
 
 watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: true });
@@ -126,6 +139,7 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 							:start-editing="startEditing"
 							:save-changes="saveChanges"
 							:cancel-editing="cancelEditing"
+							:create-tag="handleCreateTag"
 						/>
 					</template>
 				</EvaluationStep>
