@@ -37,7 +37,22 @@ export async function mondayComApiRequest(
 		if (authenticationMethod === 'oAuth2') {
 			credentialType = 'mondayComOAuth2Api';
 		}
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+
+		const responseData = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
+
+		if (
+			responseData.hasOwnProperty('error_message') ||
+			responseData.hasOwnProperty('error_code') ||
+			responseData.hasOwnProperty('errors')
+		) {
+			throw new NodeApiError(this.getNode(), responseData as JsonObject);
+		}
+
+		return responseData;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -87,6 +102,14 @@ export async function mondayComApiPaginatedRequest(
 					},
 				})) as IDataObject
 			).data as { next_items_page: { cursor: string; items: IDataObject[] } };
+
+			if (
+				responseData.hasOwnProperty('error_message') ||
+				responseData.hasOwnProperty('error_code') ||
+				responseData.hasOwnProperty('errors')
+			) {
+				throw new NodeApiError(this.getNode(), responseData as JsonObject);
+			}
 
 			if (responseData && responseData.next_items_page) {
 				returnData.push.apply(returnData, responseData.next_items_page.items);
