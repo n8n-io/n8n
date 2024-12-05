@@ -70,6 +70,7 @@ export class TestRunnerService {
 			runData: {},
 			pinData,
 			workflowData: workflow,
+			partialExecutionVersion: '-1',
 			userId,
 		};
 
