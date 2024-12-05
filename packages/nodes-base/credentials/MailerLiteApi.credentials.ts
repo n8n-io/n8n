@@ -26,6 +26,8 @@ export class MailerLiteApi implements ICredentialType {
 			name: 'classicApi',
 			type: 'boolean',
 			default: true,
+			description:
+				'If the Classic API should be used, If this is your first time using this node this should be false.',
 		},
 	];
 
