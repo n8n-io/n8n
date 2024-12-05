@@ -482,8 +482,13 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.SETTINGS,
 		component: SettingsView,
 		props: true,
-		// Redirect to Personal settings and not to Usage and plan because Usage and plan is not available on cloud
-		redirect: { name: VIEWS.PERSONAL_SETTINGS },
+		redirect: () => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.settings.hideUsagePage) {
+				return { name: VIEWS.PERSONAL_SETTINGS };
+			}
+			return { name: VIEWS.USAGE };
+		},
 		children: [
 			{
 				path: 'usage',
