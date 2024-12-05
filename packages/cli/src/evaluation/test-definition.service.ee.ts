@@ -1,4 +1,3 @@
-import assert from 'node:assert';
 import { Service } from 'typedi';
 
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
@@ -115,14 +114,12 @@ export class TestDefinitionService {
 
 		// If there are mocked nodes, validate them
 		if (attrs.mockedNodes && attrs.mockedNodes.length > 0) {
-			const existingTestDefinition = await this.testDefinitionRepository.findOne({
+			const existingTestDefinition = await this.testDefinitionRepository.findOneOrFail({
 				where: {
 					id,
 				},
 				relations: ['workflow'],
 			});
-
-			assert(existingTestDefinition, 'Test definition not found');
 
 			const existingNodeNames = new Set(existingTestDefinition.workflow.nodes.map((n) => n.name));
 
