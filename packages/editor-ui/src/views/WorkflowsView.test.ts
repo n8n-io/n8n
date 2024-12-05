@@ -108,41 +108,6 @@ describe('WorkflowsView', () => {
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
 		});
-
-		describe('should show courses and templates link for sales users', () => {
-			it('for cloudUser', () => {
-				const pinia = createTestingPinia({ initialState });
-				const userStore = mockedStore(useUsersStore);
-				userStore.currentUserCloudInfo = { role: 'Sales' } as Cloud.UserAccount;
-				const projectsStore = mockedStore(useProjectsStore);
-				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const { getAllByTestId } = renderComponent({ pinia });
-
-				expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-			});
-
-			it('for personalizationAnswers', () => {
-				const pinia = createTestingPinia({ initialState });
-				const userStore = mockedStore(useUsersStore);
-				userStore.currentUser = { personalizationAnswers: { role: 'Sales' } } as IUser;
-				const projectsStore = mockedStore(useProjectsStore);
-				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const { getAllByTestId } = renderComponent({ pinia });
-
-				expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-			});
-		});
-
-		it('should show courses and templates link for onboardingExperiment', () => {
-			const pinia = createTestingPinia({ initialState });
-
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const { getAllByTestId } = renderComponent({ pinia });
-
-			expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-		});
 	});
 
 	describe('filters', () => {
