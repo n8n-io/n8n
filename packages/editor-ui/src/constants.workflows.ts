@@ -12,9 +12,7 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 				operation: 'getAll',
 				calendar: {
 					__rl: true,
-					value: 'niklas@n8n.io',
 					mode: 'list',
-					cachedResultName: 'niklas@n8n.io',
 				},
 				returnAll: true,
 				options: {
@@ -59,8 +57,8 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 		{
 			parameters: {
 				content:
-					'## 👋 Welcome to n8n!\nThis example shows how to build an AI Agent that interacts with your \ncalendar.\n\n### 1. Connect your OpenAI account\nMake sure you set up your [OpenAI credentials](https://docs.n8n.io/integrations/builtin/credentials/openai/?utm_source=n8n_app&utm_medium=credential_settings&utm_campaign=create_new_credentials_modal) in the `OpenAI Model` node\n\n### 2. Ready to test it?\nClick Chat below and start asking questions! For example you can try `What meetings do I have today?`',
-				height: 329,
+					'## 👋 Welcome to n8n!\nThis example shows how to build an AI Agent that interacts with your \ncalendar.\n\n### 1. Connect your accounts\n- Set up your [OpenAI credentials](https://docs.n8n.io/integrations/builtin/credentials/openai/?utm_source=n8n_app&utm_medium=credential_settings&utm_campaign=create_new_credentials_modal) in the `OpenAI Model` node\n- Connect your Google account in the `Google Calendar` node credentials section\n\n### 2. Ready to test it?\nClick Chat below and start asking questions! For example you can try `What meetings do I have today?`',
+				height: 389,
 				width: 319,
 				color: 6,
 			},
@@ -114,9 +112,9 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 			name: 'Sticky Note3',
 			type: 'n8n-nodes-base.stickyNote',
 			typeVersion: 1,
-			position: [0, 340],
+			position: [0, 400],
 		},
-	],
+	] as INodeUi[],
 	connections: {
 		'Google Calendar': {
 			ai_tool: [
@@ -170,8 +168,10 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 };
 
 export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
-	id: '0',
 	name: 'My Sub-Workflow',
+	meta: {
+		templateId: 'VMiAxXa3lCAizGB5f7dVZQSFfg3FtHkdTKvLuupqBls=',
+	},
 	nodes: [
 		{
 			parameters: {},

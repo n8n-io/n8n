@@ -1183,7 +1183,8 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 	/**
 	 * Check if workflow contains AI nodes
-	 * This is just a quick check based on the node type name used in the EASY_AI_WORKFLOW_EXPERIMENT
+	 * This is just a quick check based on the node type name.
+	 * This is currently only used in the EASY_AI_WORKFLOW_EXPERIMENT
 	 */
 	const isAIWorkflow = (workflow: IWorkflowDb) => {
 		return workflow.nodes.some((node) => node.type.startsWith('@n8n/n8n-nodes-langchain'));

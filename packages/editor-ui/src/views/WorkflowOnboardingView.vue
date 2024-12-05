@@ -17,7 +17,7 @@ const route = useRoute();
 const i18n = useI18n();
 
 const openWorkflowTemplate = async (templateId: string) => {
-	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW.id) {
+	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW.meta?.templateId) {
 		await openSampleSubworkflow();
 		return;
 	}
