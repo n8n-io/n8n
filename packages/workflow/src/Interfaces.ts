@@ -1384,15 +1384,18 @@ export interface ResourceMapperTypeOptionsBase {
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
-export type ResourceMapperTypeOptions =
-	| (ResourceMapperTypeOptionsBase & {
-			resourceMapperMethod: string;
-			localResourceMapperMethod?: never;
-	  })
-	| (ResourceMapperTypeOptionsBase & {
-			localResourceMapperMethod: string;
-			resourceMapperMethod?: never;
-	  });
+export type ResourceMapperTypeOptionsLocal = {
+	resourceMapperMethod: string;
+	localResourceMapperMethod?: never; // Explicitly disallows this property
+};
+
+export type ResourceMapperTypeOptionsExternal = {
+	localResourceMapperMethod: string;
+	resourceMapperMethod?: never; // Explicitly disallows this property
+};
+
+export type ResourceMapperTypeOptions = ResourceMapperTypeOptionsBase &
+	(ResourceMapperTypeOptionsLocal | ResourceMapperTypeOptionsExternal);
 
 type NonEmptyArray<T> = [T, ...T[]];
 
