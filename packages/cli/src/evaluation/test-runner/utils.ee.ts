@@ -26,7 +26,7 @@ export function createPinData(workflow: WorkflowEntity, executionData: IRunExecu
  * Returns the start node of the past execution.
  * The start node is the node that has no source and has run data.
  */
-export function getPastExecutionStartNode(executionData: IRunExecutionData) {
+export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 	return Object.keys(executionData.resultData.runData).find((nodeName) => {
 		const data = executionData.resultData.runData[nodeName];
 		return !data[0].source || data[0].source.length === 0 || data[0].source[0] === null;
