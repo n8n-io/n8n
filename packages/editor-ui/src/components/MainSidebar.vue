@@ -294,7 +294,7 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 const {
 	menu,
 	handleSelect: handleMenuSelect,
-	CREATE_PROJECT_ID,
+	createProjectAppendSlotName,
 	projectsLimitReachedMessage,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
@@ -328,7 +328,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				@select="handleMenuSelect"
 			>
 				<N8nIconButton icon="plus" type="secondary" outline />
-				<template #[`item.append.${CREATE_PROJECT_ID}`]="{ item }">
+				<template #[createProjectAppendSlotName]="{ item }">
 					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
 						<N8nButton
 							:size="'mini'"

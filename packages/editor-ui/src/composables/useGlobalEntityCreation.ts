@@ -223,5 +223,7 @@ export const useGlobalEntityCreation = (
 		return i18n.baseText('projects.create.limitReached.self');
 	});
 
-	return { menu, handleSelect, CREATE_PROJECT_ID, projectsLimitReachedMessage };
+	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
+
+	return { menu, handleSelect, createProjectAppendSlotName, projectsLimitReachedMessage };
 };

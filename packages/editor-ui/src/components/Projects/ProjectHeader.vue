@@ -48,7 +48,7 @@ const showSettings = computed(
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
-const { menu, handleSelect, CREATE_PROJECT_ID, projectsLimitReachedMessage } =
+const { menu, handleSelect, createProjectAppendSlotName, projectsLimitReachedMessage } =
 	useGlobalEntityCreation(computed(() => !Boolean(projectsStore.currentProject)));
 
 const createLabel = computed(() => {
@@ -90,7 +90,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					@select="handleSelect"
 				>
 					<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
-					<template #[`item.append.${CREATE_PROJECT_ID}`]="{ item }">
+					<template #[createProjectAppendSlotName]="{ item }">
 						<N8nTooltip
 							v-if="item.disabled"
 							placement="right"
