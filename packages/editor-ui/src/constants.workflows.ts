@@ -1,12 +1,10 @@
 import { NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDataCreate } from './Interface';
 
-export const EASY_AI_WORKFLOW_ID = 'PT1i+zU92Ii5O2XCObkhfHJR5h9rNJTpiCIkYJk9jHU=';
-
 export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 	name: 'Demo: My first AI Agent in n8n',
 	meta: {
-		templateId: EASY_AI_WORKFLOW_ID,
+		templateId: 'PT1i+zU92Ii5O2XCObkhfHJR5h9rNJTpiCIkYJk9jHU=',
 	},
 	nodes: [
 		{

@@ -21,7 +21,7 @@ const openWorkflowTemplate = async (templateId: string) => {
 		await openSampleSubworkflow();
 		return;
 	}
-	if (templateId === EASY_AI_WORKFLOW_JSON.id) {
+	if (templateId === EASY_AI_WORKFLOW_JSON.meta?.templateId) {
 		await openEasyAIWorkflow();
 		return;
 	}

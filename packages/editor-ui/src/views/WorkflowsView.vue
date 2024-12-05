@@ -271,7 +271,7 @@ const openAIWorkflow = async (source: string) => {
 	);
 	await router.push({
 		name: VIEWS.WORKFLOW_ONBOARDING,
-		params: { id: EASY_AI_WORKFLOW_JSON.id },
+		params: { id: EASY_AI_WORKFLOW_JSON.meta?.templateId },
 	});
 };
 
