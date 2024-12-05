@@ -19,7 +19,7 @@ export class GraphQL implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:graphql.png',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Makes a GraphQL request and returns the received data',
 		defaults: {
 			name: 'GraphQL',
@@ -175,6 +175,30 @@ export class GraphQL implements INodeType {
 				required: true,
 				options: [
 					{
+						name: 'GraphQL (Raw)',
+						value: 'graphql',
+					},
+					{
+						name: 'JSON',
+						value: 'json',
+					},
+				],
+				displayOptions: {
+					show: {
+						requestMethod: ['POST'],
+						'@version': [1],
+					},
+				},
+				default: 'graphql',
+				description: 'The format for the query payload',
+			},
+			{
+				displayName: 'Request Format',
+				name: 'requestFormat',
+				type: 'options',
+				required: true,
+				options: [
+					{
 						name: 'JSON (Recommended)',
 						value: 'json',
 						description:
@@ -190,6 +214,7 @@ export class GraphQL implements INodeType {
 				displayOptions: {
 					show: {
 						requestMethod: ['POST'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
 					},
 				},
 				default: 'json',
