@@ -77,6 +77,7 @@ import { addCursorAtEachSelectionLine, addCursorDown, addCursorUp } from './mult
 import { foldAll, foldCode, unfoldAll, unfoldCode } from '@codemirror/language';
 import { nextDiagnostic, previousDiagnostic, openLintPanel } from '@codemirror/lint';
 import { EditorSelection } from '@codemirror/state';
+import { formatDocument } from './format';
 
 const SELECTED_AUTOCOMPLETE_OPTION_SELECTOR = '.cm-tooltip-autocomplete li[aria-selected]';
 const onAutocompleteNavigate = (dir: 'up' | 'down') => (view: EditorView) => {
@@ -279,4 +280,6 @@ export const editorKeymap: KeyBinding[] = [
 	{ key: 'Mod-Shift-m', run: openLintPanel },
 	{ key: 'F8', run: nextDiagnostic },
 	{ key: 'Shift-F8', run: previousDiagnostic },
+
+	{ key: 'Shift-Alt-f', linux: 'Ctrl-Shift-i', run: formatDocument },
 ];
