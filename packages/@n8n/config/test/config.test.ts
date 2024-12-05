@@ -150,7 +150,6 @@ describe('GlobalConfig', () => {
 		},
 		workflows: {
 			defaultName: 'My workflow',
-			onboardingFlowDisabled: false,
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 		},
 		endpoints: {
@@ -231,7 +230,6 @@ describe('GlobalConfig', () => {
 			port: 5679,
 			maxOldSpaceSize: '',
 			maxConcurrency: 5,
-			assertDeduplicationOutput: false,
 			taskTimeout: 60,
 			heartbeatInterval: 30,
 		},

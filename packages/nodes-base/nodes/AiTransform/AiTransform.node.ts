@@ -121,7 +121,7 @@ export class AiTransform implements INodeType {
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
-					? this.sendMessageToUI
+					? this.sendMessageToUI.bind(this)
 					: CODE_ENABLE_STDOUT === 'true'
 						? (...args) =>
 								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)

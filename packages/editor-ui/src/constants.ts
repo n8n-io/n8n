@@ -35,7 +35,6 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
-export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -438,6 +437,8 @@ export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
+export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
+export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -487,6 +488,7 @@ export const enum VIEWS {
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
+	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
@@ -495,6 +497,9 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
+	TEST_DEFINITION = 'TestDefinition',
+	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
+	NEW_TEST_DEFINITION = 'NewTestDefinition',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -591,6 +596,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
+	TEST_DEFINITION = 'testDefinition',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -652,6 +658,7 @@ export const enum STORES {
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
+	TEST_DEFINITION = 'testDefinition',
 }
 
 export const enum SignInType {
@@ -709,6 +716,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 ];
 
+export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
+
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
 	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
@@ -716,9 +725,9 @@ export const MFA_FORM = {
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
-export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+export const MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED = 997;
 
-export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+export const MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH = 6;
 
 export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 

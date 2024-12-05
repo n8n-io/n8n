@@ -43,10 +43,6 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 5;
 
-	/** Should the output of deduplication be asserted for correctness */
-	@Env('N8N_RUNNERS_ASSERT_DEDUPLICATION_OUTPUT')
-	assertDeduplicationOutput: boolean = false;
-
 	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted and the runner restarted. Must be greater than 0. */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 60;

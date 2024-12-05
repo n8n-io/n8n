@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.69.0",
+  "version": "1.71.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -47,6 +47,7 @@
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "catalog:",
+    "iconv-lite": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",

@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
+import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -10,7 +10,7 @@ import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
-import type { DataRequestResponse } from '@/runner-types';
+import type { DataRequestResponse, InputDataChunkDefinition } from '@/runner-types';
 import type { Task } from '@/task-runner';
 
 import {
@@ -95,17 +95,19 @@ describe('JsTaskRunner', () => {
 		inputItems,
 		settings,
 		runner,
+		chunk,
 	}: {
 		code: string;
 		inputItems: IDataObject[];
 		settings?: Partial<JSExecSettings>;
-
 		runner?: JsTaskRunner;
+		chunk?: InputDataChunkDefinition;
 	}) => {
 		return await execTaskWithParams({
 			task: newTaskWithSettings({
 				code,
 				nodeMode: 'runOnceForEachItem',
+				chunk,
 				...settings,
 			}),
 			taskData: newDataRequestResponse(inputItems.map(wrapIntoJson)),
@@ -324,6 +326,43 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
+		describe('timezone', () => {
+			it('should use the specified timezone in the workflow', async () => {
+				const taskData = newDataRequestResponse(inputItems.map(wrapIntoJson), {});
+				taskData.workflow.settings = {
+					timezone: 'Europe/Helsinki',
+				};
+
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $now.toSeconds() }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData,
+				});
+
+				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+			});
+
+			it('should use the default timezone', async () => {
+				setGlobalState({
+					defaultTimezone: 'Europe/Helsinki',
+				});
+
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $now.toSeconds() }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {}),
+				});
+
+				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+			});
+		});
+
 		it('should allow access to Node.js Buffers', async () => {
 			const outcomeAll = await execTaskWithParams({
 				task: newTaskWithSettings({
@@ -507,6 +546,28 @@ describe('JsTaskRunner', () => {
 					).rejects.toThrow(ValidationError);
 				},
 			);
+		});
+
+		describe('chunked execution', () => {
+			it('should use correct index for each item', async () => {
+				const outcome = await executeForEachItem({
+					code: 'return { ...$json, idx: $itemIndex }',
+					inputItems: [{ a: 1 }, { b: 2 }, { c: 3 }],
+					chunk: {
+						startIndex: 100,
+						count: 3,
+					},
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						withPairedItem(100, wrapIntoJson({ a: 1, idx: 100 })),
+						withPairedItem(101, wrapIntoJson({ b: 2, idx: 101 })),
+						withPairedItem(102, wrapIntoJson({ c: 3, idx: 102 })),
+					],
+					customData: undefined,
+				});
+			});
 		});
 
 		it('should return static items', async () => {
@@ -801,7 +862,6 @@ describe('JsTaskRunner', () => {
 				code: 'unknown; return []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,
-				mode: 'manual',
 				workflowMode: 'manual',
 			});
 			runner.runningTasks.set(taskId, task);

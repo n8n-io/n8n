@@ -1,21 +1,15 @@
-import { TaskRunnersConfig } from '@n8n/config';
 import Container from 'typedi';
 
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';
 import { TaskRunnerProcess } from '@/runners/task-runner-process';
-import { TaskRunnerServer } from '@/runners/task-runner-server';
 import { retryUntil } from '@test-integration/retry-until';
+import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
 describe('TaskRunnerProcess', () => {
-	const authToken = 'token';
-	const runnerConfig = Container.get(TaskRunnersConfig);
-	runnerConfig.enabled = true;
-	runnerConfig.mode = 'internal';
-	runnerConfig.authToken = authToken;
-	runnerConfig.port = 0; // Use any port
-	const taskRunnerServer = Container.get(TaskRunnerServer);
-
+	const { config, server: taskRunnerServer } = setupBrokerTestServer({
+		mode: 'internal',
+	});
 	const runnerProcess = Container.get(TaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
 	const taskRunnerService = Container.get(TaskRunnerWsServer);
@@ -23,7 +17,7 @@ describe('TaskRunnerProcess', () => {
 	beforeAll(async () => {
 		await taskRunnerServer.start();
 		// Set the port to the actually used port
-		runnerConfig.port = taskRunnerServer.port;
+		config.port = taskRunnerServer.port;
 	});
 
 	afterAll(async () => {

@@ -9,7 +9,7 @@ class HealthcheckServerConfig {
 	host: string = '127.0.0.1';
 
 	@Env('N8N_RUNNERS_SERVER_PORT')
-	port: number = 5680;
+	port: number = 5681;
 }
 
 @Config
@@ -33,6 +33,9 @@ export class BaseRunnerConfig {
 	 */
 	@Env('N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT')
 	idleTimeout: number = 0;
+
+	@Env('GENERIC_TIMEZONE')
+	timezone: string = 'America/New_York';
 
 	@Nested
 	healthcheckServer!: HealthcheckServerConfig;

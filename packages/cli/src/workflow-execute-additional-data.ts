@@ -52,7 +52,7 @@ import type { IWorkflowErrorData, UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
+import { findSubworkflowStart, isObjectLiteral, isWorkflowIdValid } from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
@@ -80,11 +80,20 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	if (errorObject instanceof Error) {
 		// If it's already an Error instance, return it as is.
 		return errorObject;
-	} else if (errorObject && typeof errorObject === 'object' && 'message' in errorObject) {
+	} else if (
+		isObjectLiteral(errorObject) &&
+		'message' in errorObject &&
+		typeof errorObject.message === 'string'
+	) {
 		// If it's an object with a 'message' property, create a new Error instance.
 		let error: Error | undefined;
-		if ('node' in errorObject) {
-			const node = workflow.getNode((errorObject.node as { name: string }).name);
+		if (
+			'node' in errorObject &&
+			isObjectLiteral(errorObject.node) &&
+			typeof errorObject.node.name === 'string'
+		) {
+			const node = workflow.getNode(errorObject.node.name);
+
 			if (node) {
 				error = new NodeOperationError(
 					node,
@@ -95,7 +104,7 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 		}
 
 		if (error === undefined) {
-			error = new Error(errorObject.message as string);
+			error = new Error(errorObject.message);
 		}
 
 		if ('description' in errorObject) {
@@ -281,7 +290,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteBefore: [
-			async function (this: WorkflowHooks): Promise<void> {
+			async function (this: WorkflowHooks, _workflow, data): Promise<void> {
 				const { pushRef, executionId } = this;
 				const { id: workflowId, name: workflowName } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
@@ -302,6 +311,9 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						retryOf: this.retryOf,
 						workflowId,
 						workflowName,
+						flattedRunData: data?.resultData.runData
+							? stringify(data.resultData.runData)
+							: stringify({}),
 					},
 					pushRef,
 				);

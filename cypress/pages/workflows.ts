@@ -56,6 +56,8 @@ export class WorkflowsPage extends BasePage {
 				.parents('[data-test-id="resources-list-item"]'),
 		workflowTags: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-tags'),
+		workflowCardContent: (workflowName: string) =>
+			this.getters.workflowCard(workflowName).findChildByTestId('card-content'),
 		workflowActivator: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-activator'),
 		workflowActivatorStatus: (workflowName: string) =>

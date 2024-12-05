@@ -2,7 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
+import * as a from 'assert/strict';
+import {
+	DirectedGraph,
+	InstanceSettings,
+	WorkflowExecute,
+	filterDisabledNodes,
+	recreateNodeExecutionStack,
+} from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -12,6 +19,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -137,7 +145,10 @@ export class WorkflowRunner {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
 			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
+			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
@@ -200,6 +211,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
+	// eslint-disable-next-line complexity
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
@@ -283,12 +295,50 @@ export class WorkflowRunner {
 					data.executionData,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+			} else if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
+				this.logger.debug(
+					`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
+					{ executionId },
+				);
+				const startNodes = data.startNodes.map((data) => {
+					const node = workflow.getNode(data.name);
+					a.ok(node, `Could not find a node named "${data.name}" in the workflow.`);
+					return node;
+				});
+				const runData = { [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] };
+
+				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+					recreateNodeExecutionStack(
+						filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
+						new Set(startNodes),
+						runData,
+						data.pinData ?? {},
+					);
+				const executionData: IRunExecutionData = {
+					resultData: { runData, pinData },
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack,
+						waitingExecution,
+						waitingExecutionSource,
+					},
+				};
+
+				const workflowExecute = new WorkflowExecute(additionalData, 'manual', executionData);
+				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else if (
 				data.runData === undefined ||
 				data.startNodes === undefined ||
 				data.startNodes.length === 0
 			) {
 				// Full Execution
+				// TODO: When the old partial execution logic is removed this block can
+				// be removed and the previous one can be merged into
+				// `workflowExecute.runPartialWorkflow2`.
+				// Partial executions then require either a destination node from which
+				// everything else can be derived, or a triggerToStartFrom with
+				// triggerData.
 				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
 					executionId,
 				});
@@ -314,8 +364,9 @@ export class WorkflowRunner {
 					workflowExecution = workflowExecute.runPartialWorkflow2(
 						workflow,
 						data.runData,
-						data.destinationNode,
 						data.pinData,
+						data.dirtyNodeNames,
+						data.destinationNode,
 					);
 				} else {
 					workflowExecution = workflowExecute.runPartialWorkflow(
@@ -401,7 +452,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', []);
+			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.

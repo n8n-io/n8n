@@ -84,7 +84,8 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
-import { openPopUpWindow } from '@/utils/executionUtils';
+import { closeFormPopupWindow, openFormPopupWindow } from '@/utils/executionUtils';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -117,6 +118,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
+	const nodeHelpers = useNodeHelpers();
 
 	// -1 means the backend chooses the default
 	// 0 is the old flow
@@ -141,7 +143,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const isChatPanelOpen = ref(false);
 	const isLogsPanelOpen = ref(false);
-	const formPopupWindow = ref<Window | null>(null);
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -493,7 +494,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
-			onboardingFlowEnabled: false,
 			settings: { ...defaults.settings },
 		};
 		try {
@@ -891,23 +891,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let propertyName: keyof IConnection;
 		let connectionExists = false;
 
-		connectionLoop: for (const existingConnection of workflow.value.connections[sourceData.node][
-			sourceData.type
-		][sourceData.index]) {
-			for (propertyName of checkProperties) {
-				if (existingConnection[propertyName] !== destinationData[propertyName]) {
-					continue connectionLoop;
+		const nodeConnections = workflow.value.connections[sourceData.node][sourceData.type];
+		const connectionsToCheck = nodeConnections[sourceData.index];
+
+		if (connectionsToCheck) {
+			connectionLoop: for (const existingConnection of connectionsToCheck) {
+				for (propertyName of checkProperties) {
+					if (existingConnection[propertyName] !== destinationData[propertyName]) {
+						continue connectionLoop;
+					}
 				}
+				connectionExists = true;
+				break;
 			}
-			connectionExists = true;
-			break;
 		}
 
 		// Add the new connection if it does not exist already
 		if (!connectionExists) {
-			workflow.value.connections[sourceData.node][sourceData.type][sourceData.index].push(
-				destinationData,
-			);
+			nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
+			const connections = nodeConnections[sourceData.index];
+			if (connections) {
+				connections.push(destinationData);
+			}
 		}
 	}
 
@@ -934,6 +939,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const connections =
 			workflow.value.connections[sourceData.node][sourceData.type][sourceData.index];
+		if (!connections) {
+			return;
+		}
+
 		for (const index in connections) {
 			if (
 				connections[index].node === destinationData.node &&
@@ -979,23 +988,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			for (type of Object.keys(workflow.value.connections[sourceNode])) {
 				for (sourceIndex of Object.keys(workflow.value.connections[sourceNode][type])) {
 					indexesToRemove.length = 0;
-					for (connectionIndex of Object.keys(
-						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)],
-					)) {
-						connectionData =
-							workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)][
-								parseInt(connectionIndex, 10)
-							];
-						if (connectionData.node === node.name) {
-							indexesToRemove.push(connectionIndex);
+					const connectionsToRemove =
+						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)];
+					if (connectionsToRemove) {
+						for (connectionIndex of Object.keys(connectionsToRemove)) {
+							connectionData = connectionsToRemove[parseInt(connectionIndex, 10)];
+							if (connectionData.node === node.name) {
+								indexesToRemove.push(connectionIndex);
+							}
 						}
+						indexesToRemove.forEach((index) => {
+							connectionsToRemove.splice(parseInt(index, 10), 1);
+						});
 					}
-					indexesToRemove.forEach((index) => {
-						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)].splice(
-							parseInt(index, 10),
-							1,
-						);
-					});
 				}
 			}
 		}
@@ -1037,10 +1042,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
-		nodeMetadata.value = nodes.reduce<NodeMetadataMap>((acc, node) => {
-			acc[node.name] = { pristine: true };
-			return acc;
-		}, {});
+		nodes.forEach((node) => {
+			if (!node.id) {
+				nodeHelpers.assignNodeId(node);
+			}
+
+			if (!nodeMetadata.value[node.name]) {
+				nodeMetadata.value[node.name] = { pristine: true };
+			}
+		});
 	}
 
 	function setConnections(connections: IConnections, updateWorkflow = false): void {
@@ -1194,6 +1204,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeAtIndex(nodeIndex, {
 			[updateInformation.key]: updateInformation.value,
 		});
+
+		if (updateInformation.key !== 'position') {
+			nodeMetadata.value[workflow.value.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+		}
 	}
 
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
@@ -1312,12 +1326,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
 			) {
 				const testUrl = getFormResumeUrl(node, executionId);
-				if (!formPopupWindow.value || formPopupWindow.value.closed) {
-					formPopupWindow.value = openPopUpWindow(testUrl);
-				} else {
-					formPopupWindow.value.location = testUrl;
-					formPopupWindow.value.focus();
-				}
+				openFormPopupWindow(testUrl);
 			}
 		} else {
 			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
@@ -1570,8 +1579,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
 
-		formPopupWindow.value?.close();
-		formPopupWindow.value = null;
+		closeFormPopupWindow();
 
 		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
 		for (const nodeName in runData) {

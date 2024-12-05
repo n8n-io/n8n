@@ -18,6 +18,7 @@ const workflow: DataRequestResponse['workflow'] = mock<DataRequestResponse['work
 const debugHelperNodeOutItems: INodeExecutionData[] = [
 	{
 		json: {
+			idx: 0,
 			uid: 'abb74fd4-bef2-4fae-9d53-ea24e9eb3032',
 			email: 'Dan.Schmidt31@yahoo.com',
 			firstname: 'Toni',
@@ -26,6 +27,31 @@ const debugHelperNodeOutItems: INodeExecutionData[] = [
 		},
 		pairedItem: {
 			item: 0,
+		},
+	},
+	{
+		json: {
+			idx: 1,
+			uid: '4620e4-c1b4-dd8b-9a45-d0f9a29a3b7f',
+			email: 'bob.johnson@domain.com',
+			firstName: 'Bob',
+			lastName: 'Johnson',
+			password: '6e41b5ecf',
+		},
+		pairedItem: {
+			item: 1,
+		},
+	},
+	{
+		json: {
+			idx: 2,
+			email: '4358d3-418b-a8b3-49cb-076b1180f402',
+			firstName: 'Eve',
+			lastName: 'Johnson',
+			password: 'e2414620e',
+		},
+		pairedItem: {
+			item: 2,
 		},
 	},
 ];
@@ -137,7 +163,9 @@ describe('DataRequestResponseStripper', () => {
 	const allDataParam: TaskDataRequestParams = {
 		dataOfNodes: 'all',
 		env: true,
-		input: true,
+		input: {
+			include: true,
+		},
 		prevNode: true,
 	};
 
@@ -177,7 +205,9 @@ describe('DataRequestResponseStripper', () => {
 
 	describe('input data', () => {
 		const allExceptInputParam = newRequestParam({
-			input: false,
+			input: {
+				include: false,
+			},
 		});
 
 		it('drops input data from result', () => {
@@ -186,10 +216,23 @@ describe('DataRequestResponseStripper', () => {
 			expect(result.inputData).toStrictEqual({});
 		});
 
-		it('drops input data from result', () => {
-			const result = new DataRequestResponseStripper(taskData, allExceptInputParam).strip();
+		it('returns only chunked data', () => {
+			const result = new DataRequestResponseStripper(
+				taskData,
+				newRequestParam({
+					input: {
+						include: true,
+						chunk: {
+							startIndex: 1,
+							count: 1,
+						},
+					},
+				}),
+			).strip();
 
-			expect(result.inputData).toStrictEqual({});
+			expect(result.inputData).toStrictEqual({
+				main: [debugHelperNodeOutItems.slice(1, 2)],
+			});
 		});
 	});
 
