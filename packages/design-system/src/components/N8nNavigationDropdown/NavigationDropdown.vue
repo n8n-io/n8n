@@ -91,7 +91,7 @@ defineExpose({
 					>
 						<template #title>{{ item.title }}</template>
 						<template v-for="subitem in item.submenu" :key="subitem.id">
-							<ConditionalRouterLink :to="!subitem.disabled && subitem.route">
+							<ConditionalRouterLink :to="(!subitem.disabled && subitem.route) ?? undefined">
 								<ElMenuItem
 									data-test-id="navigation-submenu-item"
 									:index="subitem.id"
@@ -106,7 +106,7 @@ defineExpose({
 						</template>
 					</ElSubMenu>
 				</template>
-				<ConditionalRouterLink v-else :to="!item.disabled && item.route">
+				<ConditionalRouterLink v-else :to="(!item.disabled && item.route) ?? undefined">
 					<ElMenuItem
 						:index="item.id"
 						:disabled="item.disabled"
