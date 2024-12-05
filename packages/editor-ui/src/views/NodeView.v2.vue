@@ -300,6 +300,7 @@ async function initializeRoute() {
 	}
 
 	const isAlreadyInitialized =
+		route.params.name === initializedWorkflowId.value &&
 		initializedWorkflowId.value &&
 		[NEW_WORKFLOW_ID, workflowId.value].includes(initializedWorkflowId.value);
 
@@ -1488,7 +1489,7 @@ function unregisterCustomActions() {
  */
 
 watch(
-	() => route.name,
+	() => route.params.name,
 	async () => {
 		await initializeRoute();
 	},
