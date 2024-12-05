@@ -1,7 +1,6 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import { handleErrorPostReceive, handlePagination } from '../GenericFunctions';
+import { handleErrorPostReceive, handlePagination, presendPath } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -92,7 +91,7 @@ export const groupOperations: INodeProperties[] = [
 						},
 						qs: {
 							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
+								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
 						},
 						ignoreHttpStatusErrors: true,
 					},
@@ -257,38 +256,13 @@ const createFields: INodeProperties[] = [
 					send: {
 						property: 'Path',
 						type: 'body',
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const path = this.getNodeParameter('path', '/') as string;
-
-								// Length validation
-								if (path.length < 1 || path.length > 512) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must be between 1 and 512 characters.',
-									);
-								}
-
-								// Regex validation
-								if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must begin and end with a forward slash and contain valid ASCII characters.',
-									);
-								}
-
-								return requestOptions;
-							},
-						],
+						preSend: [presendPath],
 					},
 				},
 			},
 			{
 				displayName: 'Role ARN',
-				name: 'RoleArn',
+				name: 'Arn',
 				default: '',
 				placeholder: 'e.g. arn:aws:iam::123456789012:role/GroupRole',
 				description: 'The role ARN for the group, used for setting claims in tokens',
@@ -296,7 +270,7 @@ const createFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'RoleArn',
+						property: 'Arn',
 					},
 				},
 			},
@@ -510,91 +484,9 @@ const getFields: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Include Members',
-		name: 'includeMembers',
-		type: 'boolean',
-		default: false,
-		description: 'Whether include members of the group in the result',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['get'],
-			},
-		},
-		routing: {
-			send: {
-				property: '$expand',
-				type: 'query',
-				value:
-					'={{ $value ? "members($select=CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId)" : undefined }}',
-			},
-		},
-	},
-	{
-		displayName: 'Include Group Policy',
-		name: 'includeGroupPolicy',
-		type: 'boolean',
-		default: false,
-		description: 'Whether include group policy details in the result',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['get'],
-			},
-		},
-		routing: {
-			send: {
-				property: '$expand',
-				type: 'query',
-				value: '={{ $value ? "groupPolicy($select=policyName,policyType)" : undefined }}',
-			},
-		},
-	},
-	{
-		displayName: 'Simplified',
-		name: 'simplified',
-		type: 'boolean',
-		default: false,
-		description: 'Whether simplify the response if there are more than 10 fields',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['get'],
-			},
-		},
-		routing: {
-			send: {
-				property: '$select',
-				type: 'query',
-				value: 'CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId',
-			},
-		},
-	},
 ];
 
 const getAllFields: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: { show: { resource: ['group'], operation: ['getAll'] } },
-		type: 'boolean',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		required: true,
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 20,
-		description: 'Max number of results to return',
-		displayOptions: { show: { resource: ['group'], operation: ['getAll'], returnAll: [false] } },
-		routing: { send: { type: 'body', property: 'Limit' } },
-	},
 	{
 		displayName: 'User Pool ID',
 		name: 'userPoolId',
@@ -633,65 +525,25 @@ const getAllFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Include Members',
-		name: 'includeMembers',
-		type: 'boolean',
+		displayName: 'Return All',
+		name: 'returnAll',
 		default: false,
-		description: 'Whether include members of the group in the result',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			send: {
-				property: '$expand',
-				type: 'query',
-				value:
-					'={{ $value ? "members($select=CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId)" : undefined }}',
-			},
-		},
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: { show: { resource: ['group'], operation: ['getAll'] } },
+		type: 'boolean',
 	},
 	{
-		displayName: 'Include Group Policy',
-		name: 'includeGroupPolicy',
-		type: 'boolean',
-		default: false,
-		description: 'Whether include group policy details in the result',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-			},
+		displayName: 'Limit',
+		name: 'limit',
+		required: true,
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
 		},
-		routing: {
-			send: {
-				property: '$expand',
-				type: 'query',
-				value: '={{ $value ? "groupPolicy($select=policyName,policyType)" : undefined }}',
-			},
-		},
-	},
-	{
-		displayName: 'Simplified',
-		name: 'simplified',
-		type: 'boolean',
-		default: false,
-		description: 'Whether simplify the response if there are more than 10 fields',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			send: {
-				property: '$select',
-				type: 'query',
-				value: 'CreatedDate,Description,GroupName,LastModifiedDate,Precedence,UserPoolId',
-			},
-		},
+		default: 20,
+		description: 'Max number of results to return',
+		displayOptions: { show: { resource: ['group'], operation: ['getAll'], returnAll: [false] } },
+		routing: { send: { type: 'body', property: 'Limit' } },
 	},
 ];
 
@@ -848,38 +700,13 @@ const updateFields: INodeProperties[] = [
 					send: {
 						property: 'Path',
 						type: 'body',
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const path = this.getNodeParameter('path', '/') as string;
-
-								// Length validation
-								if (path.length < 1 || path.length > 512) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must be between 1 and 512 characters.',
-									);
-								}
-
-								// Regex validation
-								if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must begin and end with a forward slash and contain valid ASCII characters.',
-									);
-								}
-
-								return requestOptions;
-							},
-						],
+						preSend: [presendPath],
 					},
 				},
 			},
 			{
 				displayName: 'Role ARN',
-				name: 'RoleArn',
+				name: 'Arn',
 				default: '',
 				placeholder: 'e.g. arn:aws:iam::123456789012:role/GroupRole',
 				description:
@@ -888,7 +715,7 @@ const updateFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'body',
-						property: 'RoleArn',
+						property: 'Arn',
 					},
 				},
 			},

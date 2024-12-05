@@ -34,7 +34,15 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "added": true } }}',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -114,7 +122,7 @@ export const userOperations: INodeProperties[] = [
 						},
 						qs: {
 							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
+								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
 						},
 						ignoreHttpStatusErrors: true,
 					},
@@ -138,7 +146,15 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "removed": true } }}',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -262,7 +278,7 @@ const createFields: INodeProperties[] = [
 				displayName: 'Client Metadata',
 				name: 'clientMetadata',
 				type: 'fixedCollection',
-				placeholder: 'Add Metadata Pair',
+				placeholder: 'Add Metadata',
 				default: { metadata: [] },
 				description: 'A map of custom key-value pairs for workflows triggered by this action',
 				typeOptions: {
@@ -318,7 +334,7 @@ const createFields: INodeProperties[] = [
 				name: 'MessageAction',
 				default: 'RESEND',
 				description:
-					"Set to RESEND to resend the invitation message to a user that already exists and reset the expiration limit on the user's account. Set to SUPPRESS to suppress sending the message. You can specify only one value.",
+					"Set to RESEND to resend the invitation message to a user that already exists and reset the expiration limit on the user's account. Set to SUPPRESS to suppress sending the message.",
 				type: 'options',
 				options: [
 					{
@@ -685,7 +701,13 @@ const getAllFields: INodeProperties[] = [
 				name: 'filterAttribute',
 				type: 'options',
 				default: 'username',
+				hint: 'Make sure to select an attribute, type, and provide a value before submitting.',
 				description: 'The attribute to search for',
+				routing: {
+					send: {
+						preSend: [presendFilter],
+					},
+				},
 				options: [
 					{ name: 'Cognito User Status', value: 'cognito:user_status' },
 					{ name: 'Email', value: 'email' },
@@ -716,11 +738,6 @@ const getAllFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The value of the attribute to search for',
-				routing: {
-					send: {
-						preSend: [presendFilter],
-					},
-				},
 			},
 		],
 	},

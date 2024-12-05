@@ -14,16 +14,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-/* Function which helps while developing the node */
-// ToDo: Remove before completing the pull request
-export async function presendTest(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	console.log('requestOptions', requestOptions);
-	return requestOptions;
-}
-
 /*
  * Helper function which stringifies the body before sending the request.
  * It is added to the routing property in the "resource" parameter thus for all requests.
@@ -47,31 +37,73 @@ export async function presendFilter(
 	let filterType = additionalFields.filterType as string;
 	const filterValue = additionalFields.filterValue as string;
 
-	if (filterAttribute && filterType && filterValue) {
-		// Convert the filterType to the format the API expects
-		const filterTypeMapping: { [key: string]: string } = {
-			exactMatch: '=',
-			startsWith: '^=',
-		};
-		filterType = filterTypeMapping[filterType] || filterType;
+	console.log('Attribute', filterAttribute, 'Type', filterType, 'Value', filterValue);
 
-		// Parse the body if it's a string to add the new property
-		let body: IDataObject;
-		if (typeof requestOptions.body === 'string') {
-			try {
-				body = JSON.parse(requestOptions.body) as IDataObject;
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Failed to parse requestOptions body');
-			}
-		} else {
-			body = requestOptions.body as IDataObject;
+	if (!filterAttribute || !filterType || !filterValue) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Please provide Filter Attribute, Filter Type, and Filter Value to use filtering.',
+		);
+	}
+
+	const filterTypeMapping: { [key: string]: string } = {
+		exactMatch: '=',
+		startsWith: '^=',
+	};
+	filterType = filterTypeMapping[filterType] || filterType;
+
+	let body: IDataObject;
+	if (typeof requestOptions.body === 'string') {
+		try {
+			body = JSON.parse(requestOptions.body) as IDataObject;
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), 'Failed to parse requestOptions body');
 		}
-
-		requestOptions.body = JSON.stringify({
-			...body,
-			Filter: `${filterAttribute} ${filterType} "${filterValue}"`,
-		});
 	} else {
+		body = requestOptions.body as IDataObject;
+	}
+
+	requestOptions.body = JSON.stringify({
+		...body,
+		Filter: `${filterAttribute} ${filterType} "${filterValue}"`,
+	});
+
+	return requestOptions;
+}
+
+export async function presendOptions(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const options = this.getNodeParameter('options', {}) as IDataObject;
+
+	const hasOptions = options.Description || options.Precedence || options.Path || options.RoleArn;
+
+	if (!hasOptions) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'At least one of the options (Description, Precedence, Path, or RoleArn) must be provided to update the group.',
+		);
+	}
+
+	return requestOptions;
+}
+
+export async function presendPath(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const path = this.getNodeParameter('path', '/') as string;
+
+	if (path.length < 1 || path.length > 512) {
+		throw new NodeOperationError(this.getNode(), 'Path must be between 1 and 512 characters.');
+	}
+
+	if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Path must begin and end with a forward slash and contain valid ASCII characters.',
+		);
 	}
 
 	return requestOptions;
@@ -176,34 +208,33 @@ export async function handleErrorPostReceive(
 		const errorType = responseBody.__type ?? response.headers?.['x-amzn-errortype'];
 		const errorMessage = responseBody.message ?? response.headers?.['x-amzn-errormessage'];
 
-		// Resource/Operation specific errors
 		if (resource === 'group') {
 			if (operation === 'delete') {
 				if (errorType === 'ResourceNotFoundException' || errorType === 'NoSuchEntity') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: "The required group doesn't match any existing one",
-						description: "Double-check the value in the parameter 'Group' and try again",
+						message: 'The group you are deleting could not be found.',
+						description: 'Adjust the "Group" parameter setting to delete the group correctly.',
 					});
 				}
 			} else if (operation === 'get') {
 				if (errorType === 'ResourceNotFoundException' || errorType === 'NoSuchEntity') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: "The required group doesn't match any existing one",
-						description: "Double-check the value in the parameter 'Group' and try again",
+						message: 'The group you are requesting could not be found.',
+						description: 'Adjust the "Group" parameter setting to retrieve the group correctly.',
 					});
 				}
 			} else if (operation === 'update') {
 				if (errorType === 'ResourceNotFoundException' || errorType === 'NoSuchEntity') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: "The required group doesn't match any existing one",
-						description: "Double-check the value in the parameter 'Group' and try again",
+						message: 'The group you are updating could not be found.',
+						description: 'Adjust the "Group" parameter setting to update the group correctly.',
 					});
 				}
 			} else if (operation === 'create') {
 				if (errorType === 'EntityAlreadyExists' || errorType === 'GroupExistsException') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: 'The group is already created',
-						description: "Double-check the value in the parameter 'Group Name' and try again",
+						message: 'The group you are trying to create already exists',
+						description: 'Adjust the "Group Name" parameter setting to create the group correctly.',
 					});
 				}
 			}
@@ -214,19 +245,18 @@ export async function handleErrorPostReceive(
 					errorMessage === 'User account already exists'
 				) {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: 'The user is already created',
-						description: "Double-check the value in the parameter 'User Name' and try again",
+						message: 'The user you are trying to create already exists',
+						description: 'Adjust the "User Name" parameter setting to create the user correctly.',
 					});
 				}
 			} else if (operation === 'addToGroup') {
-				// Group or user doesn't exist
 				if (errorType === 'UserNotFoundException') {
 					const user = this.getNodeParameter('user.value', '') as string;
 
 					if (typeof errorMessage === 'string' && errorMessage.includes(user)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: "The required user doesn't match any existing one",
-							description: "Double-check the value in the parameter 'User' and try again.",
+							message: 'The user you are requesting could not be found.',
+							description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
 						});
 					}
 				} else if (errorType === 'ResourceNotFoundException') {
@@ -234,34 +264,33 @@ export async function handleErrorPostReceive(
 
 					if (typeof errorMessage === 'string' && errorMessage.includes(group)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: "The required group doesn't match any existing one",
-							description: "Double-check the value in the parameter 'Group' and try again.",
+							message: 'The group you are requesting could not be found.',
+							description: 'Adjust the "Group" parameter setting to retrieve the post correctly.',
 						});
 					}
 				}
 			} else if (operation === 'delete') {
 				if (errorType === 'UserNotFoundException') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: "The required user doesn't match any existing one",
-						description: "Double-check the value in the parameter 'User' and try again",
+						message: 'The user you are requesting could not be found.',
+						description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
 					});
 				}
 			} else if (operation === 'get') {
 				if (errorType === 'UserNotFoundException') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: "The required user doesn't match any existing one",
-						description: "Double-check the value in the parameter 'User' and try again",
+						message: 'The user you are requesting could not be found.',
+						description: 'Adjust the "User" parameter setting to retrieve the post correctly.',
 					});
 				}
 			} else if (operation === 'removeFromGroup') {
-				// Group or user doesn't exist
 				if (errorType === 'UserNotFoundException') {
 					const user = this.getNodeParameter('user.value', '') as string;
 
 					if (typeof errorMessage === 'string' && errorMessage.includes(user)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: "The required user doesn't match any existing one",
-							description: "Double-check the value in the parameter 'User' and try again.",
+							message: 'The user you are deleting could not be found.',
+							description: 'Adjust the "User" parameter setting to delete the user correctly.',
 						});
 					}
 				} else if (errorType === 'ResourceNotFoundException') {
@@ -269,72 +298,21 @@ export async function handleErrorPostReceive(
 
 					if (typeof errorMessage === 'string' && errorMessage.includes(group)) {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: "The required group doesn't match any existing one",
-							description: "Double-check the value in the parameter 'Group' and try again.",
+							message: 'The group you are requesting could not be found.',
+							description: 'Adjust the "Group" parameter setting to delete the user correctly.',
 						});
 					}
 				}
 			} else if (operation === 'update') {
 				if (errorType === 'UserNotFoundException') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: "The required user doesn't match any existing one",
-						description: "Double-check the value in the parameter 'User' and try again",
+						message: 'The user you are updating could not be found.',
+						description: 'Adjust the "User" parameter setting to update the user correctly.',
 					});
 				}
 			}
 		}
 
-		// Generic Error Handling
-		if (errorType === 'InvalidParameterException') {
-			const group = this.getNodeParameter('group.value', '') as string;
-			const parameterResource =
-				resource === 'group' || (typeof errorMessage === 'string' && errorMessage.includes(group))
-					? 'group'
-					: 'user';
-
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: `The ${parameterResource} ID is invalid`,
-				description: 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
-			});
-		}
-
-		if (errorType === 'InternalErrorException') {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: 'Internal Server Error',
-				description: 'Amazon Cognito encountered an internal error. Try again later.',
-			});
-		}
-
-		if (errorType === 'TooManyRequestsException') {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: 'Too Many Requests',
-				description: 'You have exceeded the allowed number of requests. Try again later.',
-			});
-		}
-
-		if (errorType === 'NotAuthorizedException') {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: 'Unauthorized Access',
-				description:
-					'You are not authorized to perform this operation. Check your permissions and try again.',
-			});
-		}
-
-		if (errorType === 'ServiceFailure') {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: 'Service Failure',
-				description:
-					'The request processing has failed because of an unknown error, exception, or failure. Try again later.',
-			});
-		}
-
-		if (errorType === 'LimitExceeded') {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message: 'Limit Exceeded',
-				description:
-					'The request was rejected because it attempted to create resources beyond the current AWS account limits. Check your AWS limits and try again.',
-			});
-		}
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 
@@ -401,13 +379,13 @@ export async function searchUserPools(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const opts: IHttpRequestOptions = {
-		url: '', // the base url is set in "awsRequest"
+		url: '',
 		method: 'POST',
 		headers: {
 			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUserPools',
 		},
 		body: JSON.stringify({
-			MaxResults: 60, // the maximum number by documentation is 60
+			MaxResults: 60,
 			NextToken: paginationToken ?? undefined,
 		}),
 	};
@@ -432,7 +410,7 @@ export async function searchUserPools(
 			return 0;
 		});
 
-	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
+	return { results, paginationToken: responseData.NextToken };
 }
 
 export async function searchUsers(
@@ -440,20 +418,16 @@ export async function searchUsers(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	// Get the userPoolId from the input
 	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
 
-	// Extract the actual value
 	const userPoolId = userPoolIdRaw.value as string;
 
-	// Ensure that userPoolId is provided
 	if (!userPoolId) {
 		throw new ApplicationError('User Pool ID is required to search users');
 	}
 
-	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '', // the base URL is set in "awsRequest"
+		url: '',
 		method: 'POST',
 		headers: {
 			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
@@ -465,30 +439,23 @@ export async function searchUsers(
 		}),
 	};
 
-	// Make the AWS request
 	const responseData: IDataObject = await awsRequest.call(this, opts);
 
-	// Extract users from the response
 	const users = responseData.Users as IDataObject[] | undefined;
 
-	// Handle cases where no users are returned
 	if (!users) {
 		console.warn('No users found in the response');
 		return { results: [] };
 	}
 
-	// Map and filter the response data to create results
 	const results: INodeListSearchItems[] = users
 		.map((user) => {
-			// Extract user attributes, if any
 			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
 
-			// Find the `email` or `sub` attribute, fallback to `Username`
 			const email = attributes?.find((attr) => attr.Name === 'email')?.Value;
 			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
 			const username = user.Username as string;
 
-			// Use email, sub, or Username as the user name and value
 			const name = email || sub || username;
 			const value = username;
 
@@ -504,7 +471,6 @@ export async function searchUsers(
 			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 		});
 
-	// Return the results and the pagination token
 	return { results, paginationToken: responseData.NextToken as string | undefined };
 }
 
@@ -513,17 +479,13 @@ export async function searchGroups(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	// Get the userPoolId from the input
 	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
 
-	// Extract the actual value
 	const userPoolId = userPoolIdRaw.value as string;
 
-	// Ensure that userPoolId is provided
 	if (!userPoolId) {
 		throw new ApplicationError('User Pool ID is required to search groups');
 	}
-	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
 		url: '',
 		method: 'POST',
@@ -541,12 +503,10 @@ export async function searchGroups(
 
 	const groups = responseData.Groups as Array<{ GroupName?: string }> | undefined;
 
-	// If no groups exist, return an empty list
 	if (!groups) {
 		return { results: [] };
 	}
 
-	// Map and filter the response
 	const results: INodeListSearchItems[] = groups
 		.filter((group) => group.GroupName)
 		.map((group) => ({
