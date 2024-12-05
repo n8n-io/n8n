@@ -1,5 +1,5 @@
 import { get } from 'lodash';
-import { ApplicationError, deepCopy, Workflow } from 'n8n-workflow';
+import { ApplicationError, Workflow } from 'n8n-workflow';
 import type {
 	INodeParameterResourceLocator,
 	IWorkflowExecuteAdditionalData,

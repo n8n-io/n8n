@@ -33,4 +33,4 @@ export const TYPE_OPTIONS: Array<{ name: string; value: FieldType | 'any' }> = [
 	// Intentional omission of `dateTime`, `time`, `string-alphanumeric`, `form-fields`, `jwt` and `url`
 ];
 
-export const DEFAULT_PLACEHOLDER = null;
+export const FALLBACK_DEFAULT_VALUE = null;

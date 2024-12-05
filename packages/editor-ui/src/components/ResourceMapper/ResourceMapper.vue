@@ -244,9 +244,8 @@ async function loadFieldsToMap(): Promise<void> {
 		return;
 	}
 
-	const resourceMapperMethod = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
-	const localResourceMapperMethod =
-		props.parameter.typeOptions?.resourceMapper?.localResourceMapperMethod;
+	const { resourceMapperMethod = undefined, localResourceMapperMethod = undefined } =
+		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields = null;
 

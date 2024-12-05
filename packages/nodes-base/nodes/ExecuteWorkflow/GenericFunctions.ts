@@ -16,7 +16,7 @@ import {
 	VALUES,
 	TYPE_OPTIONS,
 	INPUT_OPTIONS,
-	DEFAULT_PLACEHOLDER,
+	FALLBACK_DEFAULT_VALUE,
 } from './constants';
 
 const SUPPORTED_TYPES = TYPE_OPTIONS.map((x) => x.value);
@@ -123,7 +123,7 @@ export function getWorkflowInputData(
 		try {
 			for (const { name, type } of newParams) {
 				if (!item.json.hasOwnProperty(name)) {
-					newItem.json[name] = DEFAULT_PLACEHOLDER;
+					newItem.json[name] = FALLBACK_DEFAULT_VALUE;
 					continue;
 				}
 
