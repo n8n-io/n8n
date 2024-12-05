@@ -186,6 +186,7 @@ function scrollToActiveCard(): void {
 				v-if="settingsStore.isConcurrencyEnabled"
 				:running-executions-count="runningExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
+				:is-cloud-deployment="settingsStore.isCloudDeployment"
 			/>
 		</div>
 		<div :class="$style.controls">

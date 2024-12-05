@@ -330,6 +330,7 @@ async function onAutoRefreshToggle(value: boolean) {
 						class="mr-xl"
 						:running-executions-count="runningExecutionsCount"
 						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
 					/>
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
@@ -400,6 +401,7 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
 						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
 						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
