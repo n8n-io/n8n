@@ -125,8 +125,24 @@ export class BuiltInsParser {
 	private visitIdentifier = (node: Identifier, state: BuiltInsParserState) => {
 		if (node.name === '$env') {
 			state.markEnvAsNeeded();
-		} else if (node.name === '$input' || node.name === '$json') {
+		} else if (node.name === '$item') {
+			// $item is legacy syntax that is basically an alias for WorkflowDataProxy
+			// and allows accessing any data. We need to support it for backwards
+			// compatibility, but we're not gonna implement any optimizations
+			state.markNeedsAllNodes();
+		} else if (
+			node.name === '$input' ||
+			node.name === '$json' ||
+			node.name === 'items' ||
+			// item is deprecated but we still need to support it
+			node.name === 'item'
+		) {
 			state.markInputAsNeeded();
+		} else if (node.name === '$node') {
+			// $node is legacy way of accessing any node's output. We need to
+			// support it for backward compatibility, but we're not gonna
+			// implement any optimizations
+			state.markNeedsAllNodes();
 		} else if (node.name === '$execution') {
 			state.markExecutionAsNeeded();
 		} else if (node.name === '$prevNode') {

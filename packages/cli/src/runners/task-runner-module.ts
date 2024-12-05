@@ -2,8 +2,10 @@ import { TaskRunnersConfig } from '@n8n/config';
 import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
+import { OnShutdown } from '@/decorators/on-shutdown';
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 
+import { MissingAuthTokenError } from './errors/missing-auth-token.error';
 import { TaskRunnerWsServer } from './runner-ws-server';
 import type { LocalTaskManager } from './task-managers/local-task-manager';
 import type { TaskRunnerServer } from './task-runner-server';
@@ -26,35 +28,43 @@ export class TaskRunnerModule {
 	constructor(private readonly runnerConfig: TaskRunnersConfig) {}
 
 	async start() {
-		a.ok(!this.runnerConfig.disabled, 'Task runner is disabled');
+		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
+
+		const { mode, authToken } = this.runnerConfig;
+
+		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
 
 		await this.loadTaskManager();
 		await this.loadTaskRunnerServer();
 
-		if (
-			this.runnerConfig.mode === 'internal_childprocess' ||
-			this.runnerConfig.mode === 'internal_launcher'
-		) {
+		if (mode === 'internal') {
 			await this.startInternalTaskRunner();
 		}
 	}
 
+	@OnShutdown()
 	async stop() {
-		if (this.taskRunnerProcess) {
-			await this.taskRunnerProcess.stop();
-			this.taskRunnerProcess = undefined;
-		}
+		const stopRunnerProcessTask = (async () => {
+			if (this.taskRunnerProcess) {
+				await this.taskRunnerProcess.stop();
+				this.taskRunnerProcess = undefined;
+			}
+		})();
 
-		if (this.taskRunnerHttpServer) {
-			await this.taskRunnerHttpServer.stop();
-			this.taskRunnerHttpServer = undefined;
-		}
+		const stopRunnerServerTask = (async () => {
+			if (this.taskRunnerHttpServer) {
+				await this.taskRunnerHttpServer.stop();
+				this.taskRunnerHttpServer = undefined;
+			}
+		})();
+
+		await Promise.all([stopRunnerProcessTask, stopRunnerServerTask]);
 	}
 
 	private async loadTaskManager() {
 		const { TaskManager } = await import('@/runners/task-managers/task-manager');
 		const { LocalTaskManager } = await import('@/runners/task-managers/local-task-manager');
-		this.taskManager = new LocalTaskManager();
+		this.taskManager = Container.get(LocalTaskManager);
 		Container.set(TaskManager, this.taskManager);
 	}
 

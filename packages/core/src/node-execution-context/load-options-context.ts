@@ -3,9 +3,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
 	INode,
-	INodeExecutionData,
 	ILoadOptionsFunctions,
-	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
 	Workflow,
@@ -13,10 +11,8 @@ import type {
 
 import { extractValue } from '@/ExtractValue';
 // eslint-disable-next-line import/no-cycle
-import { getAdditionalKeys, getCredentials, getNodeParameter } from '@/NodeExecuteFunctions';
+import { getRequestHelperFunctions, getSSHTunnelFunctions } from '@/NodeExecuteFunctions';
 
-import { RequestHelpers } from './helpers/request-helpers';
-import { SSHTunnelHelpers } from './helpers/ssh-tunnel-helpers';
 import { NodeExecutionContext } from './node-execution-context';
 
 export class LoadOptionsContext extends NodeExecutionContext implements ILoadOptionsFunctions {
@@ -31,13 +27,13 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 		super(workflow, node, additionalData, 'internal');
 
 		this.helpers = {
-			...new RequestHelpers(this, workflow, node, additionalData).exported,
-			...new SSHTunnelHelpers().exported,
+			...getSSHTunnelFunctions(),
+			...getRequestHelperFunctions(workflow, node, additionalData),
 		};
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await getCredentials<T>(this.workflow, this.node, type, this.additionalData, this.mode);
+		return await this._getCredentials<T>(type);
 	}
 
 	getCurrentNodeParameter(
@@ -71,32 +67,5 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 
 	getCurrentNodeParameters() {
 		return this.additionalData.currentNodeParameters;
-	}
-
-	getNodeParameter(
-		parameterName: string,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object {
-		const runExecutionData: IRunExecutionData | null = null;
-		const itemIndex = 0;
-		const runIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-
-		return getNodeParameter(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			this.node,
-			parameterName,
-			itemIndex,
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, runExecutionData),
-			undefined,
-			fallbackValue,
-			options,
-		);
 	}
 }

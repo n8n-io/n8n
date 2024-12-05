@@ -15,7 +15,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
@@ -24,7 +23,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
-	N8nButton,
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
@@ -32,9 +30,9 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -114,12 +112,6 @@ const isOnboardingExperimentEnabled = computed(() => {
 
 const isSalesUser = computed(() => {
 	return ['Sales', 'sales-and-marketing'].includes(userRole.value || '');
-});
-
-const addWorkflowButtonText = computed(() => {
-	return projectsStore.currentProject
-		? i18n.baseText('workflows.project.add')
-		: i18n.baseText('workflows.add');
 });
 
 const projectPermissions = computed(() => {
@@ -311,31 +303,7 @@ onMounted(async () => {
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<N8nTooltip :disabled="!readOnlyEnv">
-				<div>
-					<N8nButton
-						size="large"
-						block
-						:disabled="disabled"
-						data-test-id="resources-list-add"
-						@click="addWorkflow"
-					>
-						{{ addWorkflowButtonText }}
-					</N8nButton>
-				</div>
-				<template #content>
-					<i18n-t tag="span" keypath="mainSidebar.workflows.readOnlyEnv.tooltip">
-						<template #link>
-							<a target="_blank" href="https://docs.n8n.io/source-control-environments/">
-								{{ i18n.baseText('mainSidebar.workflows.readOnlyEnv.tooltip.link') }}
-							</a>
-						</template>
-					</i18n-t>
-				</template>
-			</N8nTooltip>
+			<ProjectHeader />
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<WorkflowCard

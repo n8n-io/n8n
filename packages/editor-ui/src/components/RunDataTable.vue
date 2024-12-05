@@ -1,389 +1,414 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { shorten } from '@/utils/typesUtils';
-import { getPairedItemId } from '@/utils/pairedItemUtils';
-import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import Draggable from './Draggable.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import MappingPill from './MappingPill.vue';
-import { getMappedExpression } from '@/utils/mappingUtils';
+<script setup lang="ts">
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getMappedExpression } from '@/utils/mappingUtils';
+import { getPairedItemId } from '@/utils/pairedItemUtils';
+import { shorten } from '@/utils/typesUtils';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { computed, onMounted, ref, watch } from 'vue';
+import Draggable from './Draggable.vue';
+import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from 'n8n-design-system';
+import { storeToRefs } from 'pinia';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
 
-export default defineComponent({
-	name: 'RunDataTable',
-	components: { Draggable, MappingPill, TextWithHighlights },
-	props: {
-		node: {
-			type: Object as PropType<INodeUi>,
-			required: true,
-		},
-		inputData: {
-			type: Array as PropType<INodeExecutionData[]>,
-			required: true,
-		},
-		mappingEnabled: {
-			type: Boolean,
-		},
-		distanceFromActive: {
-			type: Number,
-			required: true,
-		},
-		runIndex: {
-			type: Number,
-		},
-		outputIndex: {
-			type: Number,
-		},
-		totalRuns: {
-			type: Number,
-		},
-		pageOffset: {
-			type: Number,
-			required: true,
-		},
-		hasDefaultHoverState: {
-			type: Boolean,
-		},
-		search: {
-			type: String,
-		},
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-		return {
-			externalHooks,
-		};
-	},
-	data() {
-		return {
-			activeColumn: -1,
-			forceShowGrip: false,
-			draggedColumn: false,
-			draggingPath: null as null | string,
-			hoveringPath: null as null | string,
-			mappingHintVisible: false,
-			activeRow: null as number | null,
-			columnLimit: MAX_COLUMNS_LIMIT,
-			columnLimitExceeded: false,
-		};
-	},
-	mounted() {
-		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper as HTMLElement;
-			if (tbody) {
-				this.$emit('mounted', {
-					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
-				});
-			}
+type Props = {
+	node: INodeUi;
+	inputData: INodeExecutionData[];
+	distanceFromActive: number;
+	pageOffset: number;
+	runIndex?: number;
+	outputIndex?: number;
+	totalRuns?: number;
+	mappingEnabled?: boolean;
+	hasDefaultHoverState?: boolean;
+	search?: string;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	runIndex: 0,
+	outputIndex: 0,
+	totalRuns: 0,
+	mappingEnabled: false,
+	hasDefaultHoverState: false,
+	search: '',
+});
+const emit = defineEmits<{
+	activeRowChanged: [row: number | null];
+	displayModeChange: [mode: IRunDataDisplayMode];
+	mounted: [data: { avgRowHeight: number }];
+}>();
+
+const externalHooks = useExternalHooks();
+const activeColumn = ref(-1);
+const forceShowGrip = ref(false);
+const draggedColumn = ref(false);
+const draggingPath = ref<string | null>(null);
+const hoveringPath = ref<string | null>(null);
+const activeRow = ref<number | null>(null);
+const columnLimit = ref(MAX_COLUMNS_LIMIT);
+const columnLimitExceeded = ref(false);
+const draggableRef = ref<DraggableRef>();
+
+const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
+const telemetry = useTelemetry();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
+
+const {
+	hoveringItem,
+	focusedMappableInput,
+	highlightDraggables: highlight,
+} = storeToRefs(ndvStore);
+const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
+const tableData = computed(() => convertToTable(props.inputData));
+
+onMounted(() => {
+	if (tableData.value?.columns && draggableRef.value) {
+		const tbody = draggableRef.value.$refs.wrapper as HTMLElement;
+		if (tbody) {
+			emit('mounted', {
+				avgRowHeight: tbody.offsetHeight / tableData.value.data.length,
+			});
 		}
-	},
-	computed: {
-		...mapStores(useNDVStore, useWorkflowsStore),
-		hoveringItem(): NDVState['hoveringItem'] {
-			return this.ndvStore.hoveringItem;
-		},
-		pairedItemMappings(): { [itemId: string]: Set<string> } {
-			return this.workflowsStore.workflowExecutionPairedItemMappings;
-		},
-		tableData(): ITableData {
-			return this.convertToTable(this.inputData);
-		},
-		focusedMappableInput(): string {
-			return this.ndvStore.focusedMappableInput;
-		},
-		highlight(): boolean {
-			return this.ndvStore.highlightDraggables;
-		},
-	},
-	methods: {
-		shorten,
-		isHoveringRow(row: number): boolean {
-			if (row === this.activeRow) {
-				return true;
-			}
+	}
+});
 
-			const itemIndex = this.pageOffset + row;
-			if (
-				itemIndex === 0 &&
-				!this.hoveringItem &&
-				this.hasDefaultHoverState &&
-				this.distanceFromActive === 1
-			) {
-				return true;
-			}
-			const itemNodeId = getPairedItemId(
-				this.node?.name ?? '',
-				this.runIndex || 0,
-				this.outputIndex || 0,
-				itemIndex,
-			);
-			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
-				return false;
-			}
+function isHoveringRow(row: number): boolean {
+	if (row === activeRow.value) {
+		return true;
+	}
 
-			const hoveringItemId = getPairedItemId(
-				this.hoveringItem.nodeName,
-				this.hoveringItem.runIndex,
-				this.hoveringItem.outputIndex,
-				this.hoveringItem.itemIndex,
-			);
-			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
-		},
-		onMouseEnterCell(e: MouseEvent) {
-			const target = e.target;
-			if (target && this.mappingEnabled) {
-				const col = (target as HTMLElement).dataset.col;
-				if (col && !isNaN(parseInt(col, 10))) {
-					this.activeColumn = parseInt(col, 10);
-				}
+	const itemIndex = props.pageOffset + row;
+	if (
+		itemIndex === 0 &&
+		!hoveringItem.value &&
+		props.hasDefaultHoverState &&
+		props.distanceFromActive === 1
+	) {
+		return true;
+	}
+	const itemNodeId = getPairedItemId(
+		props.node?.name ?? '',
+		props.runIndex || 0,
+		props.outputIndex || 0,
+		itemIndex,
+	);
+	if (!hoveringItem.value || !pairedItemMappings.value[itemNodeId]) {
+		return false;
+	}
+
+	const hoveringItemId = getPairedItemId(
+		hoveringItem.value.nodeName,
+		hoveringItem.value.runIndex,
+		hoveringItem.value.outputIndex,
+		hoveringItem.value.itemIndex,
+	);
+	return pairedItemMappings.value[itemNodeId].has(hoveringItemId);
+}
+
+function showExecutionLink(index: number) {
+	if (index === activeRow.value) {
+		return true;
+	}
+
+	if (activeRow.value === null) {
+		return index === 0;
+	}
+
+	return false;
+}
+
+function onMouseEnterCell(e: MouseEvent) {
+	const target = e.target;
+	if (target && props.mappingEnabled) {
+		const col = (target as HTMLElement).dataset.col;
+		if (col && !isNaN(parseInt(col, 10))) {
+			activeColumn.value = parseInt(col, 10);
+		}
+	}
+
+	if (target) {
+		const row = (target as HTMLElement).dataset.row;
+		if (row && !isNaN(parseInt(row, 10))) {
+			activeRow.value = parseInt(row, 10);
+			emit('activeRowChanged', props.pageOffset + activeRow.value);
+		}
+	}
+}
+
+function onMouseLeaveCell() {
+	activeColumn.value = -1;
+	activeRow.value = null;
+	emit('activeRowChanged', null);
+}
+
+function onMouseEnterKey(path: Array<string | number>, colIndex: number) {
+	hoveringPath.value = getCellExpression(path, colIndex);
+}
+
+function onMouseLeaveKey() {
+	hoveringPath.value = null;
+}
+
+function isHovering(path: Array<string | number>, colIndex: number) {
+	const expr = getCellExpression(path, colIndex);
+
+	return hoveringPath.value === expr;
+}
+
+function getExpression(column: string) {
+	if (!props.node) {
+		return '';
+	}
+
+	return getMappedExpression({
+		nodeName: props.node.name,
+		distanceFromActive: props.distanceFromActive,
+		path: [column],
+	});
+}
+
+function getPathNameFromTarget(el?: HTMLElement) {
+	if (!el) {
+		return '';
+	}
+	return el.dataset.name;
+}
+
+function getCellPathName(path: Array<string | number>, colIndex: number) {
+	const lastKey = path[path.length - 1];
+	if (typeof lastKey === 'string') {
+		return lastKey;
+	}
+	if (path.length > 1) {
+		const prevKey = path[path.length - 2];
+		return `${prevKey}[${lastKey}]`;
+	}
+	const column = tableData.value.columns[colIndex];
+	return `${column}[${lastKey}]`;
+}
+
+function getCellExpression(path: Array<string | number>, colIndex: number) {
+	if (!props.node) {
+		return '';
+	}
+	const column = tableData.value.columns[colIndex];
+	return getMappedExpression({
+		nodeName: props.node.name,
+		distanceFromActive: props.distanceFromActive,
+		path: [column, ...path],
+	});
+}
+
+function isEmpty(value: unknown): boolean {
+	return (
+		value === '' ||
+		(Array.isArray(value) && value.length === 0) ||
+		(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
+		value === null ||
+		value === undefined
+	);
+}
+
+function getValueToRender(value: unknown): string {
+	if (value === '') {
+		return i18n.baseText('runData.emptyString');
+	}
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (Array.isArray(value) && value.length === 0) {
+		return i18n.baseText('runData.emptyArray');
+	}
+	if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+		return i18n.baseText('runData.emptyObject');
+	}
+	if (value === null || value === undefined) {
+		return `[${value}]`;
+	}
+	if (value === true || value === false || typeof value === 'number') {
+		return value.toString();
+	}
+	return JSON.stringify(value);
+}
+
+function onDragStart() {
+	draggedColumn.value = true;
+	ndvStore.resetMappingTelemetry();
+}
+
+function onCellDragStart(el: HTMLElement) {
+	if (el?.dataset.value) {
+		draggingPath.value = el.dataset.value;
+	}
+
+	onDragStart();
+}
+
+function onCellDragEnd(el: HTMLElement) {
+	draggingPath.value = null;
+
+	onDragEnd(el.dataset.name ?? '', 'tree', el.dataset.depth ?? '0');
+}
+
+function isDraggingKey(path: Array<string | number>, colIndex: number) {
+	if (!draggingPath.value) {
+		return;
+	}
+
+	return draggingPath.value === getCellExpression(path, colIndex);
+}
+
+function onDragEnd(column: string, src: string, depth = '0') {
+	setTimeout(() => {
+		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const telemetryPayload = {
+			src_node_type: props.node.type,
+			src_field_name: column,
+			src_nodes_back: props.distanceFromActive,
+			src_run_index: props.runIndex,
+			src_runs_total: props.totalRuns,
+			src_field_nest_level: parseInt(depth, 10),
+			src_view: 'table',
+			src_element: src,
+			success: false,
+			...mappingTelemetry,
+		};
+
+		void externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
+
+		telemetry.track('User dragged data for mapping', telemetryPayload, {
+			withPostHog: true,
+		});
+	}, 1000); // ensure dest data gets set if drop
+}
+
+function isSimple(data: GenericValue): data is string | number | boolean | null | undefined {
+	return (
+		typeof data !== 'object' ||
+		data === null ||
+		(Array.isArray(data) && data.length === 0) ||
+		(typeof data === 'object' && Object.keys(data).length === 0)
+	);
+}
+
+function isObject(data: GenericValue): data is Record<string, unknown> {
+	return !isSimple(data);
+}
+
+function hasJsonInColumn(colIndex: number): boolean {
+	return tableData.value.hasJson[tableData.value.columns[colIndex]];
+}
+
+function convertToTable(inputData: INodeExecutionData[]): ITableData {
+	const resultTableData: GenericValue[][] = [];
+	const tableColumns: string[] = [];
+	let leftEntryColumns: string[], entryRows: GenericValue[];
+	// Go over all entries
+	let entry: IDataObject;
+
+	const metadata: ITableData['metadata'] = {
+		hasExecutionIds: false,
+		data: [],
+	};
+	const hasJson: { [key: string]: boolean } = {};
+	inputData.forEach((data) => {
+		if (!data.hasOwnProperty('json')) {
+			return;
+		}
+		entry = data.json;
+
+		// Go over all keys of entry
+		entryRows = [];
+		const entryColumns = Object.keys(entry || {});
+
+		if (entryColumns.length > MAX_COLUMNS_LIMIT) {
+			columnLimitExceeded.value = true;
+			leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
+		} else {
+			leftEntryColumns = entryColumns;
+		}
+
+		if (data.metadata?.subExecution) {
+			metadata.data.push(data.metadata);
+			metadata.hasExecutionIds = true;
+		} else {
+			metadata.data.push(undefined);
+		}
+
+		// Go over all the already existing column-keys
+		tableColumns.forEach((key) => {
+			if (entry.hasOwnProperty(key)) {
+				// Entry does have key so add its value
+				entryRows.push(entry[key]);
+				// Remove key so that we know that it got added
+				leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
+
+				hasJson[key] =
+					hasJson[key] ||
+					(typeof entry[key] === 'object' && Object.keys(entry[key] ?? {}).length > 0) ||
+					false;
+			} else {
+				// Entry does not have key so add undefined
+				entryRows.push(undefined);
 			}
+		});
 
-			if (target) {
-				const row = (target as HTMLElement).dataset.row;
-				if (row && !isNaN(parseInt(row, 10))) {
-					this.activeRow = parseInt(row, 10);
-					this.$emit('activeRowChanged', this.pageOffset + this.activeRow);
-				}
-			}
-		},
-		onMouseLeaveCell() {
-			this.activeColumn = -1;
-			this.activeRow = null;
-			this.$emit('activeRowChanged', null);
-		},
-		onMouseEnterKey(path: string[], colIndex: number) {
-			this.hoveringPath = this.getCellExpression(path, colIndex);
-		},
-		onMouseLeaveKey() {
-			this.hoveringPath = null;
-		},
-		isHovering(path: string[], colIndex: number) {
-			const expr = this.getCellExpression(path, colIndex);
+		// Go over all the columns the entry has but did not exist yet
+		leftEntryColumns.forEach((key) => {
+			// Add the key for all runs in the future
+			tableColumns.push(key);
+			// Add the value
+			entryRows.push(entry[key]);
+			hasJson[key] =
+				hasJson[key] ||
+				(typeof entry[key] === 'object' && Object.keys(entry[key] ?? {}).length > 0) ||
+				false;
+		});
 
-			return this.hoveringPath === expr;
-		},
-		getExpression(column: string) {
-			if (!this.node) {
-				return '';
-			}
+		// Add the data of the entry
+		resultTableData.push(entryRows);
+	});
 
-			return getMappedExpression({
-				nodeName: this.node.name,
-				distanceFromActive: this.distanceFromActive,
-				path: [column],
-			});
-		},
-		getPathNameFromTarget(el?: HTMLElement) {
-			if (!el) {
-				return '';
-			}
-			return el.dataset.name;
-		},
-		getCellPathName(path: Array<string | number>, colIndex: number) {
-			const lastKey = path[path.length - 1];
-			if (typeof lastKey === 'string') {
-				return lastKey;
-			}
-			if (path.length > 1) {
-				const prevKey = path[path.length - 2];
-				return `${prevKey}[${lastKey}]`;
-			}
-			const column = this.tableData.columns[colIndex];
-			return `${column}[${lastKey}]`;
-		},
-		getCellExpression(path: Array<string | number>, colIndex: number) {
-			if (!this.node) {
-				return '';
-			}
-			const column = this.tableData.columns[colIndex];
-			return getMappedExpression({
-				nodeName: this.node.name,
-				distanceFromActive: this.distanceFromActive,
-				path: [column, ...path],
-			});
-		},
-		isEmpty(value: unknown): boolean {
-			return (
-				value === '' ||
-				(Array.isArray(value) && value.length === 0) ||
-				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
-				value === null ||
-				value === undefined
-			);
-		},
-		getValueToRender(value: unknown): string {
-			if (value === '') {
-				return this.$locale.baseText('runData.emptyString');
-			}
-			if (typeof value === 'string') {
-				return value;
-			}
-			if (Array.isArray(value) && value.length === 0) {
-				return this.$locale.baseText('runData.emptyArray');
-			}
-			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-				return this.$locale.baseText('runData.emptyObject');
-			}
-			if (value === null || value === undefined) {
-				return `[${value}]`;
-			}
-			if (value === true || value === false || typeof value === 'number') {
-				return value.toString();
-			}
-			return JSON.stringify(value);
-		},
-		onDragStart() {
-			this.draggedColumn = true;
-			this.ndvStore.resetMappingTelemetry();
-		},
-		onCellDragStart(el: HTMLElement) {
-			if (el?.dataset.value) {
-				this.draggingPath = el.dataset.value;
-			}
+	// Make sure that all entry-rows have the same length
+	resultTableData.forEach((rows) => {
+		if (tableColumns.length > rows.length) {
+			// Has fewer entries so add the missing ones
+			rows.push(...new Array(tableColumns.length - rows.length));
+		}
+	});
 
-			this.onDragStart();
+	return {
+		hasJson,
+		columns: tableColumns,
+		data: resultTableData,
+		metadata,
+	};
+}
+
+function switchToJsonView() {
+	emit('displayModeChange', 'json');
+}
+
+watch(focusedMappableInput, (curr) => {
+	setTimeout(
+		() => {
+			forceShowGrip.value = !!focusedMappableInput.value;
 		},
-		onCellDragEnd(el: HTMLElement) {
-			this.draggingPath = null;
-
-			this.onDragEnd(el.dataset.name || '', 'tree', el.dataset.depth || '0');
-		},
-		isDraggingKey(path: Array<string | number>, colIndex: number) {
-			if (!this.draggingPath) {
-				return;
-			}
-
-			return this.draggingPath === this.getCellExpression(path, colIndex);
-		},
-		onDragEnd(column: string, src: string, depth = '0') {
-			setTimeout(() => {
-				const mappingTelemetry = this.ndvStore.mappingTelemetry;
-				const telemetryPayload = {
-					src_node_type: this.node.type,
-					src_field_name: column,
-					src_nodes_back: this.distanceFromActive,
-					src_run_index: this.runIndex,
-					src_runs_total: this.totalRuns,
-					src_field_nest_level: parseInt(depth, 10),
-					src_view: 'table',
-					src_element: src,
-					success: false,
-					...mappingTelemetry,
-				};
-
-				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
-
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
-					withPostHog: true,
-				});
-			}, 1000); // ensure dest data gets set if drop
-		},
-		isSimple(data: unknown): boolean {
-			return (
-				typeof data !== 'object' ||
-				data === null ||
-				(Array.isArray(data) && data.length === 0) ||
-				(typeof data === 'object' && Object.keys(data).length === 0)
-			);
-		},
-		hasJsonInColumn(colIndex: number): boolean {
-			return this.tableData.hasJson[this.tableData.columns[colIndex]];
-		},
-		convertToTable(inputData: INodeExecutionData[]): ITableData {
-			const tableData: GenericValue[][] = [];
-			const tableColumns: string[] = [];
-			let leftEntryColumns: string[], entryRows: GenericValue[];
-			// Go over all entries
-			let entry: IDataObject;
-			const hasJson: { [key: string]: boolean } = {};
-			inputData.forEach((data) => {
-				if (!data.hasOwnProperty('json')) {
-					return;
-				}
-				entry = data.json;
-
-				// Go over all keys of entry
-				entryRows = [];
-				const entryColumns = Object.keys(entry || {});
-
-				if (entryColumns.length > MAX_COLUMNS_LIMIT) {
-					this.columnLimitExceeded = true;
-					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
-				} else {
-					leftEntryColumns = entryColumns;
-				}
-
-				// Go over all the already existing column-keys
-				tableColumns.forEach((key) => {
-					if (entry.hasOwnProperty(key)) {
-						// Entry does have key so add its value
-						entryRows.push(entry[key]);
-						// Remove key so that we know that it got added
-						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
-
-						hasJson[key] =
-							hasJson[key] ||
-							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
-							false;
-					} else {
-						// Entry does not have key so add undefined
-						entryRows.push(undefined);
-					}
-				});
-
-				// Go over all the columns the entry has but did not exist yet
-				leftEntryColumns.forEach((key) => {
-					// Add the key for all runs in the future
-					tableColumns.push(key);
-					// Add the value
-					entryRows.push(entry[key]);
-					hasJson[key] =
-						hasJson[key] ||
-						(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
-						false;
-				});
-
-				// Add the data of the entry
-				tableData.push(entryRows);
-			});
-
-			// Make sure that all entry-rows have the same length
-			tableData.forEach((entryRows) => {
-				if (tableColumns.length > entryRows.length) {
-					// Has fewer entries so add the missing ones
-					entryRows.push(...new Array(tableColumns.length - entryRows.length));
-				}
-			});
-
-			return {
-				hasJson,
-				columns: tableColumns,
-				data: tableData,
-			};
-		},
-		switchToJsonView() {
-			this.$emit('displayModeChange', 'json');
-		},
-	},
-	watch: {
-		focusedMappableInput(curr: boolean) {
-			setTimeout(
-				() => {
-					this.forceShowGrip = !!this.focusedMappableInput;
-				},
-				curr ? 300 : 150,
-			);
-		},
-	},
+		curr ? 300 : 150,
+	);
 });
 </script>
 
@@ -392,6 +417,9 @@ export default defineComponent({
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<thead>
 				<tr>
+					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
+						<!-- column for execution link -->
+					</th>
 					<th :class="$style.emptyCell"></th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
@@ -403,12 +431,43 @@ export default defineComponent({
 					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
 				>
 					<td
+						v-if="tableData.metadata.hasExecutionIds"
+						:data-row="index1"
+						:class="$style.executionLinkCell"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<N8nTooltip
+							:content="
+								i18n.baseText('runData.table.inspectSubExecution', {
+									interpolate: {
+										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
+									},
+								})
+							"
+							placement="left"
+							:hide-after="0"
+						>
+							<N8nIconButton
+								v-if="tableData.metadata.data[index1]"
+								v-show="showExecutionLink(index1)"
+								type="secondary"
+								icon="external-link-alt"
+								data-test-id="debug-sub-execution"
+								size="mini"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
+								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
+							/>
+						</N8nTooltip>
+					</td>
+					<td
 						:data-row="index1"
 						:data-col="0"
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
+						<N8nInfoTip>{{ i18n.baseText('runData.emptyItemHint') }}</N8nInfoTip>
 					</td>
 					<td :class="$style.tableRightMargin"></td>
 				</tr>
@@ -417,12 +476,15 @@ export default defineComponent({
 		<table v-else :class="$style.table">
 			<thead>
 				<tr>
+					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
+						<!-- column for execution link -->
+					</th>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
+						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
 								<div>
 									<img src="/static/data-mapping-gif.gif" />
-									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+									{{ i18n.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
 							<Draggable
@@ -455,17 +517,17 @@ export default defineComponent({
 									</div>
 								</template>
 							</Draggable>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
-						<n8n-tooltip placement="bottom-end">
+						<N8nTooltip placement="bottom-end">
 							<template #content>
 								<div>
 									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
-												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+												i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
 									</i18n-t>
@@ -476,15 +538,15 @@ export default defineComponent({
 									:class="$style['warningTooltip']"
 									icon="exclamation-triangle"
 								></font-awesome-icon>
-								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
-						</n8n-tooltip>
+						</N8nTooltip>
 					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
 			<Draggable
-				ref="draggable"
+				ref="draggableRef"
 				tag="tbody"
 				type="mapping"
 				target-data-key="mappable"
@@ -505,6 +567,40 @@ export default defineComponent({
 					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 				>
 					<td
+						v-if="tableData.metadata.hasExecutionIds"
+						:data-row="index1"
+						:class="$style.executionLinkCell"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						<N8nTooltip
+							:content="
+								i18n.baseText('runData.table.inspectSubExecution', {
+									interpolate: {
+										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
+									},
+								})
+							"
+							placement="left"
+							:hide-after="0"
+						>
+							<a
+								v-if="tableData.metadata.data[index1]"
+								v-show="showExecutionLink(index1)"
+								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
+								target="_blank"
+								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
+							>
+								<N8nIconButton
+									type="secondary"
+									icon="external-link-alt"
+									data-test-id="debug-sub-execution"
+									size="mini"
+								/>
+							</a>
+						</N8nTooltip>
+					</td>
+					<td
 						v-for="(data, index2) in row"
 						:key="index2"
 						:data-row="index1"
@@ -519,7 +615,7 @@ export default defineComponent({
 							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 						/>
-						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
+						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<span
 									:class="{
@@ -534,9 +630,10 @@ export default defineComponent({
 									:data-depth="path.length"
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
-									>{{ label || $locale.baseText('runData.unnamedField') }}</span
+									>{{ label || i18n.baseText('runData.unnamedField') }}</span
 								>
 							</template>
+
 							<template #value="{ value }">
 								<TextWithHighlights
 									:content="getValueToRender(value)"
@@ -544,7 +641,7 @@ export default defineComponent({
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
 							</template>
-						</n8n-tree>
+						</N8nTree>
 					</td>
 					<td v-if="columnLimitExceeded"></td>
 					<td :class="$style.tableRightMargin"></td>
@@ -736,5 +833,13 @@ export default defineComponent({
 
 .warningTooltip {
 	color: var(--color-warning);
+}
+
+.executionLinkCell {
+	padding: var(--spacing-3xs) !important;
+}
+
+.executionLinkRowHeader {
+	width: var(--spacing-m);
 }
 </style>

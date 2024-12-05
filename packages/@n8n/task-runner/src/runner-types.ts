@@ -8,11 +8,24 @@ import type {
 	INodeParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
+	ITaskDataConnectionsSource,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowParameters,
 } from 'n8n-workflow';
+
+export interface InputDataChunkDefinition {
+	startIndex: number;
+	count: number;
+}
+
+export interface InputDataRequestParams {
+	/** Whether to include the input data in the response */
+	include: boolean;
+	/** Optionally request only a specific chunk of data instead of all input data */
+	chunk?: InputDataChunkDefinition;
+}
 
 /**
  * Specifies what data should be included for a task data request.
@@ -21,7 +34,7 @@ export interface TaskDataRequestParams {
 	dataOfNodes: string[] | 'all';
 	prevNode: boolean;
 	/** Whether input data for the node should be included */
-	input: boolean;
+	input: InputDataRequestParams;
 	/** Whether env provider's state should be included */
 	env: boolean;
 }
@@ -29,17 +42,16 @@ export interface TaskDataRequestParams {
 export interface DataRequestResponse {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
+	connectionInputSource: ITaskDataConnectionsSource | null;
 	node: INode;
 
 	runExecutionData: IRunExecutionData;
 	runIndex: number;
 	itemIndex: number;
 	activeNodeName: string;
-	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
 	envProviderState: EnvProviderState;
-	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
 	contextNodeName: string;
@@ -112,3 +124,6 @@ export const RPC_ALLOW_LIST = [
 	'helpers.httpRequest',
 	'logNodeOutput',
 ] as const;
+
+/** Node types needed for the runner to execute a task. */
+export type NeededNodeType = { name: string; version: number };

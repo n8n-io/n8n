@@ -46,6 +46,7 @@ import type {
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
+	ITaskData,
 } from 'n8n-workflow';
 
 import type {
@@ -182,6 +183,10 @@ export interface IAiDataContent {
 	metadata: {
 		executionTime: number;
 		startTime: number;
+		subExecution?: {
+			workflowId: string;
+			executionId: string;
+		};
 	};
 }
 
@@ -196,12 +201,21 @@ export interface IStartRunData {
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
+	dirtyNodeNames?: string[];
+	triggerToStartFrom?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
+	metadata: {
+		hasExecutionIds: boolean;
+		data: Array<INodeExecutionData['metadata'] | undefined>;
+	};
 }
 
 // Simple version of n8n-workflow.Workflow
@@ -231,13 +245,16 @@ export interface IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 }
 
+export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
+	projectId?: string;
+}
+
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
 
 export interface NewWorkflowResponse {
 	name: string;
-	onboardingFlowEnabled?: boolean;
 	defaultSettings: IWorkflowSettings;
 }
 
@@ -264,7 +281,6 @@ export interface IWorkflowTemplate {
 
 export interface INewWorkflowData {
 	name: string;
-	onboardingFlowEnabled: boolean;
 }
 
 export interface WorkflowMetadata {
@@ -357,6 +373,7 @@ export interface IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
+	createdAt: Date;
 	stoppedAt?: Date;
 	workflowId?: string; // To be able to filter executions easily //
 }
@@ -392,15 +409,10 @@ export interface IExecutionsListResponse {
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
-	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
-	retryOf?: string | null;
-	retrySuccessId?: string | null;
 	startedAt: Date;
-	stoppedAt?: Date;
 	workflowId: string;
-	workflowName?: string;
 }
 
 export interface IExecutionsStopData {
@@ -626,7 +638,6 @@ export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromA
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
 	maxExecutionTimeout?: number;
@@ -840,14 +851,12 @@ export interface IUsedCredential {
 }
 
 export interface WorkflowsState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeWorkflowExecution: ExecutionSummary | null;
 	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
-	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
@@ -1084,11 +1093,6 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
-export interface IWorkflowsState {
-	currentWorkflowExecutions: ExecutionSummary[];
-	activeWorkflowExecution: ExecutionSummary | null;
-	finishedExecutionsCount: number;
-}
 export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
@@ -1129,8 +1133,8 @@ export interface IInviteResponse {
 	error?: string;
 }
 
-export interface ITab {
-	value: string | number;
+export interface ITab<Value extends string | number = string | number> {
+	value: Value;
 	label?: string;
 	href?: string;
 	icon?: string;
@@ -1306,6 +1310,7 @@ export type ExecutionFilterType = {
 
 export type ExecutionsQueryFilter = {
 	status?: ExecutionStatus[];
+	projectId?: string;
 	workflowId?: string;
 	finished?: boolean;
 	waitTill?: boolean;
@@ -1473,6 +1478,7 @@ export interface ExternalSecretsProvider {
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'
 	| 'canvas-nav'
+	| 'concurrency'
 	| 'custom-data-filter'
 	| 'workflow_sharing'
 	| 'credential_sharing'
@@ -1495,6 +1501,7 @@ export type CloudUpdateLinkSourceType =
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
+	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
 	| 'upgrade-api'
@@ -1585,3 +1592,42 @@ export type ApiKey = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+export type InputPanel = {
+	nodeName?: string;
+	run?: number;
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+};
+
+export type OutputPanel = {
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+	editMode: {
+		enabled: boolean;
+		value: string;
+	};
+};
+
+export type Draggable = {
+	isDragging: boolean;
+	type: string;
+	data: string;
+	dimensions: DOMRect | null;
+	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
+};
+
+export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
+
+export type MainPanelDimensions = Record<
+	MainPanelType,
+	{
+		relativeLeft: number;
+		relativeRight: number;
+		relativeWidth: number;
+	}
+>;

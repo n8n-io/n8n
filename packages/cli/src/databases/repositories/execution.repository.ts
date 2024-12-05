@@ -163,7 +163,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData', 'metadata');
+
+			if (Array.isArray(queryParams.relations)) {
+				queryParams.relations.push('executionData', 'metadata');
+			} else {
+				queryParams.relations.executionData = true;
+				queryParams.relations.metadata = true;
+			}
 		}
 
 		const executions = await this.find(queryParams);
@@ -459,7 +465,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const { maxAge, maxCount } = this.globalConfig.pruning;
+		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -470,18 +476,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
+		date.setHours(date.getHours() - pruneDataMaxAge);
 
 		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
 			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
 
-		if (maxCount > 0) {
+		if (pruneDataMaxCount > 0) {
 			const executions = await this.createQueryBuilder('execution')
 				.select('execution.id')
 				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(maxCount)
+				.skip(pruneDataMaxCount)
 				.take(1)
 				.orderBy('execution.id', 'DESC')
 				.getMany();
@@ -515,7 +521,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - this.globalConfig.pruning.hardDeleteBuffer);
+		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
@@ -981,7 +987,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (projectId) {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
-				.where('sw.projectId = :projectId', { projectId });
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;

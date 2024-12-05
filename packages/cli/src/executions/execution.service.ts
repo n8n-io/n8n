@@ -66,6 +66,7 @@ export const schemaGetExecutionsQueryFilter = {
 		startedBefore: { type: 'date-time' },
 		annotationTags: { type: 'array', items: { type: 'string' } },
 		vote: { type: 'string' },
+		projectId: { type: 'string' },
 	},
 	$defs: {
 		metadata: {
@@ -250,7 +251,7 @@ export class ExecutionService {
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.', error);
 			}
 		}
 

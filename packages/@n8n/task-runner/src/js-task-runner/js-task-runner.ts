@@ -1,27 +1,30 @@
 import { getAdditionalKeys } from 'n8n-core';
-import {
-	WorkflowDataProxy,
-	// type IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-} from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
-	INode,
-	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
-	WorkflowParameters,
 	IDataObject,
-	IExecuteData,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	WorkflowExecuteMode,
+	WorkflowParameters,
+	ITaskDataConnections,
+	INode,
+	IRunExecutionData,
 	EnvProviderState,
+	IExecuteData,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
-import type { TaskResultData } from '@/runner-types';
+import type { MainConfig } from '@/config/main-config';
+import type {
+	DataRequestResponse,
+	InputDataChunkDefinition,
+	PartialAdditionalData,
+	TaskResultData,
+} from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
@@ -32,46 +35,30 @@ import { makeSerializable } from './errors/serializable-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
-import type { MainConfig } from '../config/main-config';
+import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
 export interface JSExecSettings {
 	code: string;
 	nodeMode: CodeExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
-
-	// For workflow data proxy
-	mode: WorkflowExecuteMode;
+	// For executing partial input data
+	chunk?: InputDataChunkDefinition;
 }
 
-export interface PartialAdditionalData {
-	executionId?: string;
-	restartExecutionId?: string;
-	restApiUrl: string;
-	instanceBaseUrl: string;
-	formWaitingBaseUrl: string;
-	webhookBaseUrl: string;
-	webhookWaitingBaseUrl: string;
-	webhookTestBaseUrl: string;
-	currentNodeParameters?: INodeParameters;
-	executionTimeoutTimestamp?: number;
-	userId?: string;
-	variables: IDataObject;
-}
-
-export interface DataRequestResponse {
+export interface JsTaskData {
 	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
 	inputData: ITaskDataConnections;
+	connectionInputData: INodeExecutionData[];
 	node: INode;
 
 	runExecutionData: IRunExecutionData;
 	runIndex: number;
 	itemIndex: number;
 	activeNodeName: string;
-	connectionInputData: INodeExecutionData[];
 	siblingParameters: INodeParameters;
 	mode: WorkflowExecuteMode;
-	envProviderState?: EnvProviderState;
+	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
 	defaultReturnRunIndex: number;
 	selfData: IDataObject;
@@ -87,6 +74,8 @@ export class JsTaskRunner extends TaskRunner {
 	private readonly requireResolver: RequireResolver;
 
 	private readonly builtInsParser = new BuiltInsParser();
+
+	private readonly taskDataReconstruct = new DataRequestResponseReconstruct();
 
 	constructor(config: MainConfig, name = 'JS Task Runner') {
 		super({
@@ -109,15 +98,21 @@ export class JsTaskRunner extends TaskRunner {
 		const settings = task.settings;
 		a.ok(settings, 'JS Code not sent to runner');
 
+		this.validateTaskSettings(settings);
+
 		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
 		const neededBuiltIns = neededBuiltInsResult.ok
 			? neededBuiltInsResult.result
 			: BuiltInsParserState.newNeedsAllDataState();
 
-		const data = await this.requestData<DataRequestResponse>(
+		const dataResponse = await this.requestData<DataRequestResponse>(
 			task.taskId,
-			neededBuiltIns.toDataRequestParams(),
+			neededBuiltIns.toDataRequestParams(settings.chunk),
 		);
+
+		const data = this.reconstructTaskData(dataResponse, settings.chunk);
+
+		await this.requestNodeTypeIfNeeded(neededBuiltIns, data.workflow, task.taskId);
 
 		const workflowParams = data.workflow;
 		const workflow = new Workflow({
@@ -145,6 +140,14 @@ export class JsTaskRunner extends TaskRunner {
 			result,
 			customData: data.runExecutionData.resultData.metadata,
 		};
+	}
+
+	private validateTaskSettings(settings: JSExecSettings) {
+		a.ok(settings.code, 'No code to execute');
+
+		if (settings.nodeMode === 'runOnceForAllItems') {
+			a.ok(settings.chunk === undefined, 'Chunking is not supported for runOnceForAllItems');
+		}
 	}
 
 	private getNativeVariables() {
@@ -177,7 +180,7 @@ export class JsTaskRunner extends TaskRunner {
 	private async runForAllItems(
 		taskId: string,
 		settings: JSExecSettings,
-		data: DataRequestResponse,
+		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
 	): Promise<INodeExecutionData[]> {
@@ -224,14 +227,20 @@ export class JsTaskRunner extends TaskRunner {
 	private async runForEachItem(
 		taskId: string,
 		settings: JSExecSettings,
-		data: DataRequestResponse,
+		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
 	): Promise<INodeExecutionData[]> {
 		const inputItems = data.connectionInputData;
 		const returnData: INodeExecutionData[] = [];
 
-		for (let index = 0; index < inputItems.length; index++) {
+		// If a chunk was requested, only process the items in the chunk
+		const chunkStartIdx = settings.chunk ? settings.chunk.startIndex : 0;
+		const chunkEndIdx = settings.chunk
+			? settings.chunk.startIndex + settings.chunk.count
+			: inputItems.length;
+
+		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
 			const context: Context = {
@@ -291,7 +300,7 @@ export class JsTaskRunner extends TaskRunner {
 		return returnData;
 	}
 
-	private createDataProxy(data: DataRequestResponse, workflow: Workflow, itemIndex: number) {
+	private createDataProxy(data: JsTaskData, workflow: Workflow, itemIndex: number) {
 		return new WorkflowDataProxy(
 			workflow,
 			data.runExecutionData,
@@ -334,5 +343,55 @@ export class JsTaskRunner extends TaskRunner {
 		}
 
 		return new ExecutionError({ message: JSON.stringify(error) });
+	}
+
+	private reconstructTaskData(
+		response: DataRequestResponse,
+		chunk?: InputDataChunkDefinition,
+	): JsTaskData {
+		const inputData = this.taskDataReconstruct.reconstructConnectionInputItems(
+			response.inputData,
+			chunk,
+			// This type assertion is intentional. Chunking is only supported in
+			// runOnceForEachItem mode and if a chunk was requested, we intentionally
+			// fill the array with undefined values for the items outside the chunk.
+			// We only iterate over the chunk items but WorkflowDataProxy expects
+			// the full array of items.
+		) as INodeExecutionData[];
+
+		return {
+			...response,
+			connectionInputData: inputData,
+			executeData: this.taskDataReconstruct.reconstructExecuteData(response, inputData),
+		};
+	}
+
+	private async requestNodeTypeIfNeeded(
+		neededBuiltIns: BuiltInsParserState,
+		workflow: JsTaskData['workflow'],
+		taskId: string,
+	) {
+		/**
+		 * We request node types only when we know a task needs all nodes, because
+		 * needing all nodes means that the task relies on paired item functionality,
+		 * which is the same requirement for needing node types.
+		 */
+		if (neededBuiltIns.needsAllNodes) {
+			const uniqueNodeTypes = new Map(
+				workflow.nodes.map((node) => [
+					`${node.type}|${node.typeVersion}`,
+					{ name: node.type, version: node.typeVersion },
+				]),
+			);
+
+			const unknownNodeTypes = this.nodeTypes.onlyUnknown([...uniqueNodeTypes.values()]);
+
+			const nodeTypes = await this.requestNodeTypes<INodeTypeDescription[]>(
+				taskId,
+				unknownNodeTypes,
+			);
+
+			this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
+		}
 	}
 }

@@ -1,14 +1,17 @@
 import { BuiltInsParserState } from '../built-ins-parser-state';
 
 describe('BuiltInsParserState', () => {
-	describe('toDataRequestSpecification', () => {
+	describe('toDataRequestParams', () => {
 		it('should return empty array when no properties are marked as needed', () => {
 			const state = new BuiltInsParserState();
 
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: [],
 				env: false,
-				input: false,
+				input: {
+					chunk: undefined,
+					include: false,
+				},
 				prevNode: false,
 			});
 		});
@@ -20,7 +23,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: 'all',
 				env: false,
-				input: true,
+				input: {
+					chunk: undefined,
+					include: true,
+				},
 				prevNode: false,
 			});
 		});
@@ -33,7 +39,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: ['Node1', 'Node2'],
 				env: false,
-				input: false,
+				input: {
+					chunk: undefined,
+					include: false,
+				},
 				prevNode: false,
 			});
 		});
@@ -47,7 +56,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: 'all',
 				env: false,
-				input: true,
+				input: {
+					chunk: undefined,
+					include: true,
+				},
 				prevNode: false,
 			});
 		});
@@ -59,7 +71,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: [],
 				env: true,
-				input: false,
+				input: {
+					chunk: undefined,
+					include: false,
+				},
 				prevNode: false,
 			});
 		});
@@ -71,7 +86,33 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: [],
 				env: false,
-				input: true,
+				input: {
+					chunk: undefined,
+					include: true,
+				},
+				prevNode: false,
+			});
+		});
+
+		it('should use the given chunk', () => {
+			const state = new BuiltInsParserState();
+			state.markInputAsNeeded();
+
+			expect(
+				state.toDataRequestParams({
+					count: 10,
+					startIndex: 5,
+				}),
+			).toEqual({
+				dataOfNodes: [],
+				env: false,
+				input: {
+					chunk: {
+						count: 10,
+						startIndex: 5,
+					},
+					include: true,
+				},
 				prevNode: false,
 			});
 		});
@@ -83,7 +124,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: [],
 				env: false,
-				input: false,
+				input: {
+					chunk: undefined,
+					include: false,
+				},
 				prevNode: true,
 			});
 		});
@@ -98,7 +142,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: 'all',
 				env: true,
-				input: true,
+				input: {
+					chunk: undefined,
+					include: true,
+				},
 				prevNode: true,
 			});
 		});
@@ -109,7 +156,10 @@ describe('BuiltInsParserState', () => {
 			expect(state.toDataRequestParams()).toEqual({
 				dataOfNodes: 'all',
 				env: true,
-				input: true,
+				input: {
+					chunk: undefined,
+					include: true,
+				},
 				prevNode: true,
 			});
 		});

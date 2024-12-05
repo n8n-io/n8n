@@ -110,7 +110,7 @@ const versionDescription: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues (Insecure)',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,

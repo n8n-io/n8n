@@ -1,63 +1,35 @@
+import type { DataRequestResponse, PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import type {
-	DataRequestResponse,
-	BrokerMessage,
-	PartialAdditionalData,
-	TaskData,
-} from '@n8n/task-runner';
-import type {
-	EnvProviderState,
-	IExecuteData,
-	INodeExecutionData,
-	IPinData,
-	IRunData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowParameters,
 } from 'n8n-workflow';
 
 /**
- * Builds the response to a data request coming from a Task Runner. Tries to minimize
- * the amount of data that is sent to the runner by only providing what is requested.
+ * Transforms TaskData to DataRequestResponse. The main purpose of the
+ * transformation is to make sure there is no duplication in the data
+ * (e.g. connectionInputData and executeData.data can be derived from
+ * inputData).
  */
 export class DataRequestResponseBuilder {
-	private requestedNodeNames = new Set<string>();
-
-	constructor(
-		private readonly taskData: TaskData,
-		private readonly requestParams: BrokerMessage.ToRequester.TaskDataRequest['requestParams'],
-	) {
-		this.requestedNodeNames = new Set(requestParams.dataOfNodes);
-
-		if (this.requestParams.prevNode && this.requestParams.dataOfNodes !== 'all') {
-			this.requestedNodeNames.add(this.determinePrevNodeName());
-		}
-	}
-
-	/**
-	 * Builds a response to the data request
-	 */
-	build(): DataRequestResponse {
-		const { taskData: td } = this;
-
+	buildFromTaskData(taskData: TaskData): DataRequestResponse {
 		return {
-			workflow: this.buildWorkflow(td.workflow),
-			connectionInputData: this.buildConnectionInputData(td.connectionInputData),
-			inputData: this.buildInputData(td.inputData),
-			itemIndex: td.itemIndex,
-			activeNodeName: td.activeNodeName,
-			contextNodeName: td.contextNodeName,
-			defaultReturnRunIndex: td.defaultReturnRunIndex,
-			mode: td.mode,
-			envProviderState: this.buildEnvProviderState(td.envProviderState),
-			node: td.node, // The current node being executed
-			runExecutionData: this.buildRunExecutionData(td.runExecutionData),
-			runIndex: td.runIndex,
-			selfData: td.selfData,
-			siblingParameters: td.siblingParameters,
-			executeData: this.buildExecuteData(td.executeData),
-			additionalData: this.buildAdditionalData(td.additionalData),
+			workflow: this.buildWorkflow(taskData.workflow),
+			inputData: taskData.inputData,
+			connectionInputSource: taskData.executeData?.source ?? null,
+			itemIndex: taskData.itemIndex,
+			activeNodeName: taskData.activeNodeName,
+			contextNodeName: taskData.contextNodeName,
+			defaultReturnRunIndex: taskData.defaultReturnRunIndex,
+			mode: taskData.mode,
+			envProviderState: taskData.envProviderState,
+			node: taskData.node,
+			runExecutionData: this.buildRunExecutionData(taskData.runExecutionData),
+			runIndex: taskData.runIndex,
+			selfData: taskData.selfData,
+			siblingParameters: taskData.siblingParameters,
+			additionalData: this.buildAdditionalData(taskData.additionalData),
 		};
 	}
 
@@ -80,86 +52,6 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	private buildExecuteData(executeData: IExecuteData | undefined): IExecuteData | undefined {
-		if (executeData === undefined) {
-			return undefined;
-		}
-
-		return {
-			node: executeData.node, // The current node being executed
-			data: this.requestParams.input ? executeData.data : {},
-			source: executeData.source,
-		};
-	}
-
-	private buildRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
-		if (this.requestParams.dataOfNodes === 'all') {
-			return runExecutionData;
-		}
-
-		return {
-			startData: runExecutionData.startData,
-			resultData: {
-				error: runExecutionData.resultData.error,
-				lastNodeExecuted: runExecutionData.resultData.lastNodeExecuted,
-				metadata: runExecutionData.resultData.metadata,
-				runData: this.buildRunData(runExecutionData.resultData.runData),
-				pinData: this.buildPinData(runExecutionData.resultData.pinData),
-			},
-			executionData: runExecutionData.executionData
-				? {
-						// TODO: Figure out what these two are and can they be filtered
-						contextData: runExecutionData.executionData?.contextData,
-						nodeExecutionStack: runExecutionData.executionData.nodeExecutionStack,
-
-						metadata: runExecutionData.executionData.metadata,
-						waitingExecution: runExecutionData.executionData.waitingExecution,
-						waitingExecutionSource: runExecutionData.executionData.waitingExecutionSource,
-					}
-				: undefined,
-		};
-	}
-
-	private buildRunData(runData: IRunData): IRunData {
-		return this.filterObjectByNodeNames(runData);
-	}
-
-	private buildPinData(pinData: IPinData | undefined): IPinData | undefined {
-		return pinData ? this.filterObjectByNodeNames(pinData) : undefined;
-	}
-
-	private buildEnvProviderState(envProviderState: EnvProviderState): EnvProviderState {
-		if (this.requestParams.env) {
-			// In case `isEnvAccessBlocked` = true, the provider state has already sanitized
-			// the environment variables and we can return it as is.
-			return envProviderState;
-		}
-
-		return {
-			env: {},
-			isEnvAccessBlocked: envProviderState.isEnvAccessBlocked,
-			isProcessAvailable: envProviderState.isProcessAvailable,
-		};
-	}
-
-	private buildInputData(inputData: ITaskDataConnections): ITaskDataConnections {
-		if (this.requestParams.input) {
-			return inputData;
-		}
-
-		return {};
-	}
-
-	private buildConnectionInputData(
-		connectionInputData: INodeExecutionData[],
-	): INodeExecutionData[] {
-		if (this.requestParams.input) {
-			return connectionInputData;
-		}
-
-		return [];
-	}
-
 	private buildWorkflow(workflow: Workflow): Omit<WorkflowParameters, 'nodeTypes'> {
 		return {
 			id: workflow.id,
@@ -173,36 +65,22 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	/**
-	 * Assuming the given `obj` is an object where the keys are node names,
-	 * filters the object to only include the node names that are requested.
-	 */
-	private filterObjectByNodeNames<T extends Record<string, unknown>>(obj: T): T {
-		if (this.requestParams.dataOfNodes === 'all') {
-			return obj;
-		}
+	private buildRunExecutionData(runExecutionData: IRunExecutionData) {
+		return {
+			startData: runExecutionData.startData,
+			resultData: runExecutionData.resultData,
+			executionData: runExecutionData.executionData
+				? {
+						contextData: runExecutionData.executionData.contextData,
+						metadata: runExecutionData.executionData.metadata,
 
-		const filteredObj: T = {} as T;
-
-		for (const nodeName in obj) {
-			if (!Object.prototype.hasOwnProperty.call(obj, nodeName)) {
-				continue;
-			}
-
-			if (this.requestedNodeNames.has(nodeName)) {
-				filteredObj[nodeName] = obj[nodeName];
-			}
-		}
-
-		return filteredObj;
-	}
-
-	private determinePrevNodeName(): string {
-		const sourceData = this.taskData.executeData?.source?.main?.[0];
-		if (!sourceData) {
-			return '';
-		}
-
-		return sourceData.previousNode;
+						// These are related to workflow execution and are not something
+						// that are accessible by nodes, so we always omit them
+						nodeExecutionStack: [],
+						waitingExecution: {},
+						waitingExecutionSource: null,
+					}
+				: undefined,
+		};
 	}
 }

@@ -1,11 +1,11 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="Value extends string | number">
 import { onMounted, onUnmounted, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import N8nIcon from '../N8nIcon';
 
 interface TabOptions {
-	value: string;
+	value: Value;
 	label?: string;
 	icon?: string;
 	href?: string;
@@ -15,7 +15,7 @@ interface TabOptions {
 }
 
 interface TabsProps {
-	modelValue?: string;
+	modelValue?: Value;
 	options?: TabOptions[];
 }
 
@@ -56,12 +56,12 @@ onUnmounted(() => {
 });
 
 const emit = defineEmits<{
-	tooltipClick: [tab: string, e: MouseEvent];
-	'update:modelValue': [tab: string];
+	tooltipClick: [tab: Value, e: MouseEvent];
+	'update:modelValue': [tab: Value];
 }>();
 
-const handleTooltipClick = (tab: string, event: MouseEvent) => emit('tooltipClick', tab, event);
-const handleTabClick = (tab: string) => emit('update:modelValue', tab);
+const handleTooltipClick = (tab: Value, event: MouseEvent) => emit('tooltipClick', tab, event);
+const handleTabClick = (tab: Value) => emit('update:modelValue', tab);
 
 const scroll = (left: number) => {
 	const container = tabs.value;
@@ -84,7 +84,7 @@ const scrollRight = () => scroll(50);
 		<div ref="tabs" :class="$style.tabs">
 			<div
 				v-for="option in options"
-				:id="option.value"
+				:id="option.value.toString()"
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>

@@ -1,6 +1,7 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
 	pruning: {
@@ -63,8 +64,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 	pushBackend: 'websocket',
-	saveDataErrorExecution: 'DEFAULT',
-	saveDataSuccessExecution: 'DEFAULT',
+	saveDataErrorExecution: 'all',
+	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
@@ -125,4 +126,5 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 	},
 	betaFeatures: [],
+	virtualSchemaView: false,
 };

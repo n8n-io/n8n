@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.56.0",
+  "version": "1.61.0",
   "main": "src/main.ts",
   "import": "src/main.ts",
   "scripts": {
@@ -27,7 +27,7 @@
     "@types/markdown-it-emoji": "^2.0.2",
     "@types/markdown-it-link-attributes": "^3.0.5",
     "@types/sanitize-html": "^2.11.0",
-    "@vitejs/plugin-vue": "^5.1.4",
+    "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:frontend",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",

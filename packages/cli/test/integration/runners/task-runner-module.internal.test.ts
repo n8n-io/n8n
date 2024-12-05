@@ -6,10 +6,11 @@ import { TaskRunnerModule } from '@/runners/task-runner-module';
 import { InternalTaskRunnerDisconnectAnalyzer } from '../../../src/runners/internal-task-runner-disconnect-analyzer';
 import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
 
-describe('TaskRunnerModule in internal_childprocess mode', () => {
+describe('TaskRunnerModule in internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.port = 0; // Random port
-	runnerConfig.mode = 'internal_childprocess';
+	runnerConfig.mode = 'internal';
+	runnerConfig.enabled = true;
 	const module = Container.get(TaskRunnerModule);
 
 	afterEach(async () => {
@@ -18,14 +19,14 @@ describe('TaskRunnerModule in internal_childprocess mode', () => {
 
 	describe('start', () => {
 		it('should throw if the task runner is disabled', async () => {
-			runnerConfig.disabled = true;
+			runnerConfig.enabled = false;
 
 			// Act
 			await expect(module.start()).rejects.toThrow('Task runner is disabled');
 		});
 
 		it('should start the task runner', async () => {
-			runnerConfig.disabled = false;
+			runnerConfig.enabled = true;
 
 			// Act
 			await module.start();

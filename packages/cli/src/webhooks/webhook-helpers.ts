@@ -464,6 +464,11 @@ export async function executeWebhook(
 			projectId: project?.id,
 		};
 
+		// When resuming from a wait node, copy over the pushRef from the execution-data
+		if (!runData.pushRef) {
+			runData.pushRef = runExecutionData.pushRef;
+		}
+
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
 			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
@@ -757,7 +762,7 @@ export async function executeWebhook(
 						);
 					}
 
-					const internalServerError = new InternalServerError(e.message);
+					const internalServerError = new InternalServerError(e.message, e);
 					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
 					throw internalServerError;
 				});

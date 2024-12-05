@@ -605,8 +605,8 @@ const onSubmit = async (values: IPersonalizationLatestVersion) => {
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="$locale.baseText('personalizationModal.customizeN8n')"
-		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
+		:title="i18n.baseText('personalizationModal.customizeN8n')"
+		:subtitle="i18n.baseText('personalizationModal.theseQuestionsHelpUs')"
 		:center-title="true"
 		:show-close="false"
 		:event-bus="modalBus"
@@ -633,7 +633,7 @@ const onSubmit = async (values: IPersonalizationLatestVersion) => {
 			<div>
 				<n8n-button
 					:loading="isSaving"
-					:label="$locale.baseText('personalizationModal.getStarted')"
+					:label="i18n.baseText('personalizationModal.getStarted')"
 					float="right"
 					@click="onSave"
 				/>

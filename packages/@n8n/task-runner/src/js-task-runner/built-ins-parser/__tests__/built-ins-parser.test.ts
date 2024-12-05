@@ -1,8 +1,13 @@
 import { getAdditionalKeys } from 'n8n-core';
-import type { IDataObject, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteData,
+	INodeType,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { Workflow, WorkflowDataProxy } from 'n8n-workflow';
 
-import { newCodeTaskData } from '../../__tests__/test-data';
+import { newDataRequestResponse } from '../../__tests__/test-data';
 import { BuiltInsParser } from '../built-ins-parser';
 import { BuiltInsParserState } from '../built-ins-parser-state';
 
@@ -12,7 +17,7 @@ describe('BuiltInsParser', () => {
 	const parseAndExpectOk = (code: string) => {
 		const result = parser.parseUsedBuiltIns(code);
 		if (!result.ok) {
-			fail(result.error);
+			throw result.error;
 		}
 
 		return result.result;
@@ -57,6 +62,15 @@ describe('BuiltInsParser', () => {
 
 			expect(state).toEqual(new BuiltInsParserState({ needs$input: true }));
 		});
+
+		test.each([['items'], ['item']])(
+			'should mark input as needed when %s is used',
+			(identifier) => {
+				const state = parseAndExpectOk(`return ${identifier};`);
+
+				expect(state).toEqual(new BuiltInsParserState({ needs$input: true }));
+			},
+		);
 	});
 
 	describe('$(...)', () => {
@@ -130,6 +144,20 @@ describe('BuiltInsParser', () => {
 		);
 	});
 
+	describe('$node', () => {
+		it('should require all nodes when $node is used', () => {
+			const state = parseAndExpectOk('return $node["name"];');
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
+		});
+	});
+
+	describe('$item', () => {
+		it('should require all nodes and input when $item is used', () => {
+			const state = parseAndExpectOk('$item("0").$node["my node"].json["title"]');
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
+		});
+	});
+
 	describe('ECMAScript syntax', () => {
 		describe('ES2020', () => {
 			it('should parse optional chaining', () => {
@@ -159,7 +187,12 @@ describe('BuiltInsParser', () => {
 
 	describe('WorkflowDataProxy built-ins', () => {
 		it('should have a known list of built-ins', () => {
-			const data = newCodeTaskData([]);
+			const data = newDataRequestResponse([]);
+			const executeData: IExecuteData = {
+				data: {},
+				node: data.node,
+				source: data.connectionInputSource,
+			};
 			const dataProxy = new WorkflowDataProxy(
 				new Workflow({
 					...data.workflow,
@@ -179,7 +212,7 @@ describe('BuiltInsParser', () => {
 				data.runIndex,
 				0,
 				data.activeNodeName,
-				data.connectionInputData,
+				[],
 				data.siblingParameters,
 				data.mode,
 				getAdditionalKeys(
@@ -187,7 +220,7 @@ describe('BuiltInsParser', () => {
 					data.mode,
 					data.runExecutionData,
 				),
-				data.executeData,
+				executeData,
 				data.defaultReturnRunIndex,
 				data.selfData,
 				data.contextNodeName,

@@ -1,6 +1,11 @@
 import type { INodeTypeBaseDescription } from 'n8n-workflow';
 
-import type { RPC_ALLOW_LIST, TaskDataRequestParams, TaskResultData } from './runner-types';
+import type {
+	NeededNodeType,
+	RPC_ALLOW_LIST,
+	TaskDataRequestParams,
+	TaskResultData,
+} from './runner-types';
 
 export namespace BrokerMessage {
 	export namespace ToRunner {
@@ -47,6 +52,8 @@ export namespace BrokerMessage {
 
 		export interface NodeTypes {
 			type: 'broker:nodetypes';
+			taskId: string;
+			requestId: string;
 			nodeTypes: INodeTypeBaseDescription[];
 		}
 
@@ -87,6 +94,13 @@ export namespace BrokerMessage {
 			requestParams: TaskDataRequestParams;
 		}
 
+		export interface NodeTypesRequest {
+			type: 'broker:nodetypesrequest';
+			taskId: string;
+			requestId: string;
+			requestParams: NeededNodeType[];
+		}
+
 		export interface RPC {
 			type: 'broker:rpc';
 			callId: string;
@@ -95,7 +109,7 @@ export namespace BrokerMessage {
 			params: unknown[];
 		}
 
-		export type All = TaskReady | TaskDone | TaskError | TaskDataRequest | RPC;
+		export type All = TaskReady | TaskDone | TaskError | TaskDataRequest | NodeTypesRequest | RPC;
 	}
 }
 
@@ -120,6 +134,13 @@ export namespace RequesterMessage {
 			data: unknown;
 		}
 
+		export interface NodeTypesResponse {
+			type: 'requester:nodetypesresponse';
+			taskId: string;
+			requestId: string;
+			nodeTypes: INodeTypeBaseDescription[];
+		}
+
 		export interface RPCResponse {
 			type: 'requester:rpcresponse';
 			taskId: string;
@@ -134,7 +155,13 @@ export namespace RequesterMessage {
 			taskType: string;
 		}
 
-		export type All = TaskSettings | TaskCancel | RPCResponse | TaskDataResponse | TaskRequest;
+		export type All =
+			| TaskSettings
+			| TaskCancel
+			| RPCResponse
+			| TaskDataResponse
+			| NodeTypesResponse
+			| TaskRequest;
 	}
 }
 
@@ -155,6 +182,12 @@ export namespace RunnerMessage {
 			type: 'runner:taskrejected';
 			taskId: string;
 			reason: string;
+		}
+
+		/** Message where launcher (impersonating runner) requests broker to hold task until runner is ready. */
+		export interface TaskDeferred {
+			type: 'runner:taskdeferred';
+			taskId: string;
 		}
 
 		export interface TaskDone {
@@ -183,6 +216,25 @@ export namespace RunnerMessage {
 			requestParams: TaskDataRequestParams;
 		}
 
+		export interface NodeTypesRequest {
+			type: 'runner:nodetypesrequest';
+			taskId: string;
+			requestId: string;
+
+			/**
+			 * Which node types should be included in the runner's node types request.
+			 *
+			 * Node types are needed only when the script relies on paired item functionality.
+			 * If so, we need only the node types not already cached in the runner.
+			 *
+			 * TODO: In future we can trim this down to only node types in the paired item chain,
+			 * rather than assuming we need all node types in the workflow.
+			 *
+			 * @example [{ name: 'n8n-nodes-base.httpRequest', version: 1 }]
+			 */
+			requestParams: NeededNodeType[];
+		}
+
 		export interface RPC {
 			type: 'runner:rpc';
 			callId: string;
@@ -197,8 +249,10 @@ export namespace RunnerMessage {
 			| TaskError
 			| TaskAccepted
 			| TaskRejected
+			| TaskDeferred
 			| TaskOffer
 			| RPC
-			| TaskDataRequest;
+			| TaskDataRequest
+			| NodeTypesRequest;
 	}
 }

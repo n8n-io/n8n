@@ -2,15 +2,14 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { createHmac } from 'crypto';
 import { Response } from 'express';
+import { ensureError, jsonStringify } from 'n8n-workflow';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import { Get, RestController } from '@/decorators';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OAuthRequest } from '@/requests';
-import { sendErrorResponse } from '@/response-helper';
 
-import { AbstractOAuthController, type CsrfStateParam } from './abstract-oauth.controller';
+import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
 interface OAuth1CredentialData {
 	signatureMethod: 'HMAC-SHA256' | 'HMAC-SHA512' | 'HMAC-SHA1';
@@ -42,7 +41,10 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			decryptedDataOriginal,
 			additionalData,
 		);
-		const [csrfSecret, state] = this.createCsrfState(credential.id);
+		const [csrfSecret, state] = this.createCsrfState(
+			credential.id,
+			skipAuthOnOAuthCallback ? undefined : req.user.id,
+		);
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -101,7 +103,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: true })
+	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
 	async handleCallback(req: OAuthRequest.OAuth1Credential.Callback, res: Response) {
 		try {
 			const { oauth_verifier, oauth_token, state: encodedState } = req.query;
@@ -114,71 +116,36 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 				);
 			}
 
-			let state: CsrfStateParam;
-			try {
-				state = this.decodeCsrfState(encodedState);
-			} catch (error) {
-				return this.renderCallbackError(res, (error as Error).message);
-			}
+			const [credential, decryptedDataOriginal, oauthCredentials] =
+				await this.resolveCredential<OAuth1CredentialData>(req);
 
-			const credentialId = state.cid;
-			const credential = await this.getCredentialWithoutUser(credentialId);
-			if (!credential) {
-				const errorMessage = 'OAuth1 callback failed because of insufficient permissions';
-				this.logger.error(errorMessage, { credentialId });
-				return this.renderCallbackError(res, errorMessage);
-			}
-
-			const additionalData = await this.getAdditionalData();
-			const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
-			const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth1CredentialData>(
-				credential,
-				decryptedDataOriginal,
-				additionalData,
-			);
-
-			if (this.verifyCsrfState(decryptedDataOriginal, state)) {
-				const errorMessage = 'The OAuth1 callback state is invalid!';
-				this.logger.debug(errorMessage, { credentialId });
-				return this.renderCallbackError(res, errorMessage);
-			}
-
-			const options: AxiosRequestConfig = {
-				method: 'POST',
-				url: oauthCredentials.accessTokenUrl,
-				params: {
-					oauth_token,
-					oauth_verifier,
-				},
-			};
-
-			let oauthToken;
-
-			try {
-				oauthToken = await axios.request(options);
-			} catch (error) {
-				this.logger.error('Unable to fetch tokens for OAuth1 callback', { credentialId });
-				const errorResponse = new NotFoundError('Unable to get access tokens!');
-				return sendErrorResponse(res, errorResponse);
-			}
+			const oauthToken = await axios.post<string>(oauthCredentials.accessTokenUrl, {
+				oauth_token,
+				oauth_verifier,
+			});
 
 			// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-			const paramParser = new URLSearchParams(oauthToken.data as string);
+			const paramParser = new URLSearchParams(oauthToken.data);
 
 			const oauthTokenJson = Object.fromEntries(paramParser.entries());
 
+			delete decryptedDataOriginal.csrfSecret;
 			decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
 			await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
 			this.logger.debug('OAuth1 callback successful for new credential', {
-				credentialId,
+				credentialId: credential.id,
 			});
 			return res.render('oauth-callback');
-		} catch (error) {
-			this.logger.error('OAuth1 callback failed because of insufficient user permissions');
-			return sendErrorResponse(res, error as Error);
+		} catch (e) {
+			const error = ensureError(e);
+			return this.renderCallbackError(
+				res,
+				error.message,
+				'body' in error ? jsonStringify(error.body) : undefined,
+			);
 		}
 	}
 }

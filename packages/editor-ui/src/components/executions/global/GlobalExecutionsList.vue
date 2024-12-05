@@ -14,6 +14,8 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -68,6 +70,10 @@ const workflows = computed<IWorkflowDb[]>(() => {
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
+
+const runningExecutionsCount = computed(() => {
+	return props.executions.filter((execution) => execution.status === 'running').length;
+});
 
 watch(
 	() => props.executions,
@@ -315,12 +321,16 @@ async function onAutoRefreshToggle(value: boolean) {
 
 <template>
 	<div :class="$style.execListWrapper">
+		<ProjectHeader />
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<N8nHeading tag="h1" size="2xlarge">
-					{{ i18n.baseText('executionsList.workflowExecutions') }}
-				</N8nHeading>
 				<div :class="$style.execListHeaderControls">
+					<ConcurrentExecutionsHeader
+						v-if="settingsStore.isConcurrencyEnabled"
+						class="mr-xl"
+						:running-executions-count="runningExecutionsCount"
+						:concurrency-cap="settingsStore.concurrency"
+					/>
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
 						v-else
@@ -334,6 +344,7 @@ async function onAutoRefreshToggle(value: boolean) {
 					<ExecutionsFilter
 						v-show="isMounted"
 						:workflows="workflows"
+						class="execFilter"
 						@filter-changed="onFilterChanged"
 					/>
 				</div>
@@ -388,6 +399,7 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-name="getExecutionWorkflowName(execution)"
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						:concurrency-cap="settingsStore.concurrency"
 						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
@@ -455,27 +467,24 @@ async function onAutoRefreshToggle(value: boolean) {
 <style module lang="scss">
 .execListWrapper {
 	display: grid;
-	grid-template-rows: 1fr 0;
+	grid-template-rows: auto auto 1fr 0;
 	position: relative;
 	height: 100%;
 	width: 100%;
-	max-width: 1280px;
+	padding: var(--spacing-l) var(--spacing-2xl) 0;
+	max-width: var(--content-container-width);
 }
 
 .execList {
 	position: relative;
 	height: 100%;
 	overflow: auto;
-	padding: var(--spacing-l) var(--spacing-l) 0;
-	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
-	}
 }
 
 .execListHeader {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-start;
 	margin-bottom: var(--spacing-s);
 }
 
@@ -586,5 +595,17 @@ async function onAutoRefreshToggle(value: boolean) {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+</style>
+
+<style lang="scss" scoped>
+.execFilter:deep(button) {
+	height: 40px;
+}
+
+:deep(.el-checkbox) {
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
 }
 </style>

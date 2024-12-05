@@ -60,7 +60,6 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -155,8 +154,7 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { runWorkflow, runWorkflowResolvePending, stopCurrentExecution, stopWaitingForWebhook } =
-	useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	updateNodesPosition,
@@ -187,6 +185,7 @@ const {
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
 	initializeWorkspace,
+	openExecution,
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
@@ -249,6 +248,8 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
+const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+
 /**
  * Initialization
  */
@@ -271,12 +272,12 @@ async function initializeData() {
 			promises.push(externalSecretsStore.fetchAllSecrets());
 		}
 
-		if (nodeTypesStore.allNodeTypes.length === 0) {
-			promises.push(nodeTypesStore.getNodeTypes());
-		}
-
 		return promises;
 	})();
+
+	if (nodeTypesStore.allNodeTypes.length === 0) {
+		loadPromises.push(nodeTypesStore.getNodeTypes());
+	}
 
 	try {
 		await Promise.all(loadPromises);
@@ -354,7 +355,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		await openWorkflow(workflowData);
+		openWorkflow(workflowData);
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
@@ -379,11 +380,11 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
  * Workflow
  */
 
-async function openWorkflow(data: IWorkflowDb) {
+function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
 
-	await initializeWorkspace(data);
+	initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -815,7 +816,8 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 	resetWorkspace();
 
 	await initializeData();
-	await initializeWorkspace({
+
+	initializeWorkspace({
 		...workflowData,
 		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
@@ -1009,11 +1011,7 @@ const workflowExecutionData = computed(() => workflowsStore.workflowExecutionDat
 async function onRunWorkflow() {
 	trackRunWorkflow();
 
-	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
-		void runWorkflowResolvePending({});
-	} else {
-		void runWorkflow({});
-	}
+	void runWorkflow({});
 }
 
 function trackRunWorkflow() {
@@ -1039,11 +1037,7 @@ async function onRunWorkflowToNode(id: string) {
 
 	trackRunWorkflowToNode(node);
 
-	if (!isExecutionPreview.value && workflowsStore.isWaitingExecution) {
-		void runWorkflowResolvePending({ destinationNode: node.name, source: 'Node.executeNode' });
-	} else {
-		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
-	}
+	void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1058,28 +1052,18 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function openExecution(executionId: string) {
+async function onOpenExecution(executionId: string) {
 	canvasStore.startLoading();
-	resetWorkspace();
 
-	let data: IExecutionResponse | undefined;
-	try {
-		data = await workflowsStore.getExecution(executionId);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+	resetWorkspace();
+	await initializeData();
+
+	const data = await openExecution(executionId);
+	if (!data) {
 		return;
 	}
-	if (data === undefined) {
-		throw new Error(`Execution with id "${executionId}" could not be found!`);
-	}
 
-	await initializeData();
-	await initializeWorkspace(data.workflowData);
-	workflowsStore.setWorkflowExecutionData(data);
-
-	uiStore.stateIsDirty = false;
 	canvasStore.stopLoading();
-
 	fitView();
 
 	canvasEventBus.emit('open:execution', data);
@@ -1204,7 +1188,7 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 async function onOpenChat() {
-	uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+	workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
 
 	const payload = {
 		workflow_id: workflowId.value,
@@ -1254,7 +1238,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
-				await openWorkflow(workflowData);
+				openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
@@ -1325,7 +1309,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				// so everything it needs has to be sent using post messages and passed down to child components
 				isProductionExecutionPreview.value = json.executionMode !== 'manual';
 
-				await openExecution(json.executionId);
+				await onOpenExecution(json.executionId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = true;
@@ -1630,7 +1614,12 @@ onBeforeUnmount(() => {
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="onRunWorkflow"
 			/>
-			<CanvasChatButton v-if="containsChatTriggerNodes" @click="onOpenChat" />
+			<CanvasChatButton
+				v-if="containsChatTriggerNodes"
+				:type="isChatOpen ? 'tertiary' : 'primary'"
+				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
+				@click="onOpenChat"
+			/>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
 				:stopping="isStoppingExecution"
