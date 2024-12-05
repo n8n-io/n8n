@@ -1149,11 +1149,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			for (const type of Object.keys(connections[nodeName])) {
 				for (const index of Object.keys(connections[nodeName][type])) {
-					for (const connectionIndex of Object.keys(
-						connections[nodeName][type][parseInt(index, 10)],
-					)) {
-						const connectionData =
-							connections[nodeName][type][parseInt(index, 10)][parseInt(connectionIndex, 10)];
+					const connectionsToDelete = connections[nodeName][type][parseInt(index, 10)] ?? [];
+					for (const connectionIndex of Object.keys(connectionsToDelete)) {
+						const connectionData = connectionsToDelete[parseInt(connectionIndex, 10)];
 						if (!connectionData) {
 							continue;
 						}
@@ -1490,13 +1488,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					sourceIndex++
 				) {
 					const nodeSourceConnections = [];
-					if (currentConnections[sourceNode][type][sourceIndex]) {
+					const connectionsToCheck = currentConnections[sourceNode][type][sourceIndex];
+					if (connectionsToCheck) {
 						for (
 							connectionIndex = 0;
-							connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
+							connectionIndex < connectionsToCheck.length;
 							connectionIndex++
 						) {
-							connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+							connectionData = connectionsToCheck[connectionIndex];
 							if (!createNodeNames.includes(connectionData.node)) {
 								// Node does not get created so skip input connection
 								continue;
@@ -1814,7 +1813,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		for (const [type, typeConnections] of Object.entries(connections)) {
 			const validConnections = typeConnections.map((sourceConnections) =>
-				sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
+				(sourceConnections ?? []).filter((connection) => includeNodeNames.has(connection.node)),
 			);
 
 			if (validConnections.length) {

@@ -802,6 +802,82 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(nodes[1].id);
 			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
+
+		it('should handle nodes with null connections for unconnected indexes', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+
+			const nodes = [
+				createTestNode({
+					id: 'input',
+					type: SET_NODE_TYPE,
+					position: [10, 20],
+					name: 'Input Node',
+				}),
+				createTestNode({
+					id: 'middle',
+					type: SET_NODE_TYPE,
+					position: [10, 20],
+					name: 'Middle Node',
+				}),
+				createTestNode({
+					id: 'output',
+					type: SET_NODE_TYPE,
+					position: [10, 20],
+					name: 'Output Node',
+				}),
+			];
+
+			workflowsStore.getNodeByName = vi
+				.fn()
+				.mockImplementation((name: string) => nodes.find((node) => node.name === name));
+
+			workflowsStore.workflow.nodes = nodes;
+			workflowsStore.workflow.connections = {
+				[nodes[0].name]: {
+					main: [
+						null,
+						[
+							{
+								node: nodes[1].name,
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+				[nodes[1].name]: {
+					main: [
+						// null here to simulate no connection at index
+						null,
+						[
+							{
+								node: nodes[2].name,
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			};
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.incomingConnectionsByNodeName.mockReturnValue({});
+
+			workflowsStore.getNodeById.mockReturnValue(nodes[1]);
+
+			const { deleteNode } = useCanvasOperations({ router });
+			deleteNode(nodes[1].id);
+
+			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
+			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(nodes[1].id);
+			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
+		});
 	});
 
 	describe('revertDeleteNode', () => {

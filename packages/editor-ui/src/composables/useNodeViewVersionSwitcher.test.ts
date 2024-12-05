@@ -16,6 +16,11 @@ describe('useNodeViewVersionSwitcher', () => {
 	const initialState = {
 		[STORES.WORKFLOWS]: {},
 		[STORES.NDV]: {},
+		[STORES.SETTINGS]: {
+			settings: {
+				betaFeatures: ['canvas_v2'],
+			},
+		},
 	};
 
 	beforeEach(() => {

@@ -46,6 +46,7 @@ import type {
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
+	ITaskData,
 } from 'n8n-workflow';
 
 import type {
@@ -201,6 +202,10 @@ export interface IStartRunData {
 	destinationNode?: string;
 	runData?: IRunData;
 	dirtyNodeNames?: string[];
+	triggerToStartFrom?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ITableData {
@@ -1544,7 +1549,6 @@ export type ApiKey = {
 };
 
 export type InputPanel = {
-	displayMode: IRunDataDisplayMode;
 	nodeName?: string;
 	run?: number;
 	branch?: number;
@@ -1555,7 +1559,6 @@ export type InputPanel = {
 
 export type OutputPanel = {
 	branch?: number;
-	displayMode: IRunDataDisplayMode;
 	data: {
 		isEmpty: boolean;
 	};
