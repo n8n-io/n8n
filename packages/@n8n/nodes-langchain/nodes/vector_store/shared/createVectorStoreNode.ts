@@ -2,7 +2,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { VectorStore } from '@langchain/core/vectorstores';
+import { VectorDBQAChain } from 'langchain/chains';
+import { VectorStoreQATool } from 'langchain/tools';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -129,6 +132,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			defaults: {
 				name: args.meta.displayName,
 			},
+			usableAsTool: true,
 			codex: {
 				categories: ['AI'],
 				subcategories: {
@@ -143,11 +147,13 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				},
 			},
 			credentials: args.meta.credentials,
+			// todo add model input only if used as tool
+			// todo use model from parent by default only show model input if custom mode is used
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
-				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
+				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}, {displayName: 'Model', maxConnections: 1, type: "${NodeConnectionType.AiLanguageModel}", required: true}]
 
 				if (['insert', 'load', 'update'].includes(mode)) {
 					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
@@ -381,24 +387,54 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			);
 		}
 
+		// here vector stores supply data to parent nodes
 		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
-			const filter = getMetadataFiltersValues(this, itemIndex);
+			// todo allow name and description to be configurable
+			const name = 'vector_store_tool'; //this.getNodeParameter('name', itemIndex) as string;
+			const toolDescription = 'get data'; //this.getNodeParameter('description', itemIndex) as string;
+			const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionType.AiEmbedding,
 				0,
 			)) as Embeddings;
 
-			if (mode === 'retrieve') {
-				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
-				return {
-					response: logWrapper(vectorStore, this),
-				};
-			}
+			const filter = getMetadataFiltersValues(this, itemIndex);
+			const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only the "retrieve" operation mode is supported to supply data',
-			);
+			const llm = (await this.getInputConnectionData(
+				NodeConnectionType.AiLanguageModel,
+				0,
+			)) as BaseLanguageModel;
+
+			const description = VectorStoreQATool.getDescription(name, toolDescription);
+			const vectorStoreTool = new VectorStoreQATool(name, description, {
+				llm,
+				vectorStore,
+			});
+
+			vectorStoreTool.chain = VectorDBQAChain.fromLLM(llm, vectorStore, {
+				k: topK,
+			});
+
+			return {
+				response: logWrapper(vectorStoreTool, this),
+			};
+
+			// todo make this backward compatible, allowing to be used directly as a vector store
+			// const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
+			// const filter = getMetadataFiltersValues(this, itemIndex);
+
+			// if (mode === 'retrieve') {
+			// 	const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
+			// 	return {
+			// 		response: logWrapper(vectorStore, this),
+			// 	};
+			// }
+
+			// throw new NodeOperationError(
+			// 	this.getNode(),
+			// 	'Only the "retrieve" operation mode is supported to supply data',
+			// );
 		}
 	};

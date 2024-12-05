@@ -2238,12 +2238,15 @@ export async function getInputConnectionData(
 			}
 
 			try {
+				// here sub-node supplyData function gets called
+				// passing data to parent nodes
 				const response = await nodeType.supplyData.call(context, itemIndex);
 				if (response.closeFunction) {
 					closeFunctions.push(response.closeFunction);
 				}
 				return response;
 			} catch (error) {
+				console.log('e', error);
 				// Propagate errors from sub-nodes
 				if (error.functionality === 'configuration-node') throw error;
 				if (!(error instanceof ExecutionBaseError)) {
