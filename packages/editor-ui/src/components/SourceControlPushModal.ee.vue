@@ -32,6 +32,7 @@ import {
 	type SourceControlledFileStatus,
 	type SourceControlAggregatedFile,
 } from '@/types/sourceControl.types';
+import { orderBy } from 'lodash-es';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
@@ -79,7 +80,6 @@ const classifyFilesByType = (
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW && currentWorkflowId === file.id) {
 				acc.currentWorkflow = file;
-				return acc;
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.WORKFLOW) {
@@ -117,6 +117,20 @@ const maybeSelectCurrentWorkflow = (workflow?: SourceControlAggregatedFile) =>
 	workflow && selectedChanges.value.add(workflow.id);
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
+const search = ref('');
+const debouncedSearch = refDebounced(search, 250);
+const filteredWorkflows = computed(() => {
+	if (!debouncedSearch.value) {
+		return changes.value.workflows;
+	}
+
+	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
+
+	return changes.value.workflows.filter((workflow) => {
+		return workflow.name.toLocaleLowerCase().includes(searchQuery);
+	});
+});
+
 const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
 	[SOURCE_CONTROL_FILE_STATUS.MODIFIED]: 1,
 	[SOURCE_CONTROL_FILE_STATUS.RENAMED]: 2,
@@ -126,38 +140,19 @@ const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
 const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
 	statusPriority[status] ?? 0;
 
-const sortedWorkflowsByStatus = computed(() => {
-	const sorted = changes.value.workflows.toSorted((a, b) => {
-		if (getPriorityByStatus(a.status) < getPriorityByStatus(b.status)) {
-			return -1;
-		} else if (getPriorityByStatus(a.status) > getPriorityByStatus(b.status)) {
-			return 1;
-		}
+const sortedWorkflows = computed(() => {
+	const sorted = orderBy(
+		filteredWorkflows.value,
+		[
+			// keep the current workflow at the top of the list
+			({ id }) => id === changes.value.currentWorkflow?.id,
+			({ status }) => getPriorityByStatus(status),
+			'updatedAt',
+		],
+		['desc', 'asc', 'desc'],
+	);
 
-		return (a.updatedAt ?? 0) < (b.updatedAt ?? 0)
-			? 1
-			: (a.updatedAt ?? 0) > (b.updatedAt ?? 0)
-				? -1
-				: 0;
-	});
-
-	// keep the current workflow at the top of the list
-	return [...(changes.value.currentWorkflow ? [changes.value.currentWorkflow] : [])].concat(sorted);
-});
-
-const search = ref('');
-const debouncedSearch = refDebounced(search, 250);
-
-const filteredWorkflows = computed(() => {
-	if (!search.value) {
-		return sortedWorkflowsByStatus.value;
-	}
-
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return sortedWorkflowsByStatus.value.filter((workflow) => {
-		return workflow.name.toLocaleLowerCase().includes(searchQuery);
-	});
+	return sorted;
 });
 
 const commitMessage = ref('');
@@ -180,21 +175,18 @@ const isSubmitDisabled = computed(() => {
 
 const selectAll = computed(
 	() =>
-		selectedChanges.value.size > 0 &&
-		selectedChanges.value.size === sortedWorkflowsByStatus.value.length,
+		selectedChanges.value.size > 0 && selectedChanges.value.size === sortedWorkflows.value.length,
 );
 
 const selectAllIndeterminate = computed(
-	() =>
-		selectedChanges.value.size > 0 &&
-		selectedChanges.value.size < sortedWorkflowsByStatus.value.length,
+	() => selectedChanges.value.size > 0 && selectedChanges.value.size < sortedWorkflows.value.length,
 );
 
 function onToggleSelectAll() {
 	if (selectAll.value) {
 		selectedChanges.value.clear();
 	} else {
-		selectedChanges.value = new Set([...sortedWorkflowsByStatus.value.map((file) => file.id)]);
+		selectedChanges.value = new Set(changes.value.workflows.map((file) => file.id));
 	}
 }
 
@@ -307,7 +299,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 						{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
 					</N8nText>
 					<N8nText tag="strong">
-						({{ selectedChanges.size }}/{{ sortedWorkflowsByStatus.length }})
+						({{ selectedChanges.size }}/{{ sortedWorkflows.length }})
 					</N8nText>
 				</N8nCheckbox>
 				<N8nInput
@@ -324,7 +316,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 		<template #content>
 			<RecycleScroller
 				:class="[$style.scroller]"
-				:items="filteredWorkflows"
+				:items="sortedWorkflows"
 				:item-size="69"
 				key-field="id"
 			>
