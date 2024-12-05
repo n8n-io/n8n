@@ -762,7 +762,7 @@ export async function executeWebhook(
 						);
 					}
 
-					const internalServerError = new InternalServerError(e.message);
+					const internalServerError = new InternalServerError(e.message, e);
 					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
 					throw internalServerError;
 				});

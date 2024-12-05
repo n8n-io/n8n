@@ -35,7 +35,6 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
-export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -438,6 +437,8 @@ export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
+export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
+export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -487,6 +488,7 @@ export const enum VIEWS {
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
+	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
@@ -723,9 +725,9 @@ export const MFA_FORM = {
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
-export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+export const MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED = 997;
 
-export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+export const MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH = 6;
 
 export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
@@ -900,22 +902,35 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Sub-Workflow',
 	nodes: [
 		{
+			parameters: {
+				content: '## Define your inputs in this node',
+				height: 220,
+				width: 300,
+			},
+			id: 'c055762a-8fe7-4141-a639-df2372f30059',
+			name: 'Define your inputs in this node',
+			type: STICKY_NODE_TYPE,
+			position: [120, 280],
+		},
+		{
 			parameters: {},
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
-			name: 'Execute Workflow Trigger',
-			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			name: 'When called by another workflow',
+			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			typeVersion: 1.1,
 			position: [260, 340],
 		},
 		{
 			parameters: {},
 			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
 			name: 'Replace me with your logic',
-			type: 'n8n-nodes-base.noOp',
+			type: NO_OP_NODE_TYPE,
+			typeVersion: 1,
 			position: [520, 340],
 		},
 	] as INodeUi[],
 	connections: {
-		'Execute Workflow Trigger': {
+		'When called by another workflow': {
 			main: [
 				[
 					{
