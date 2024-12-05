@@ -331,10 +331,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const disableMfa = async (mfaCode: string) => {
-		await mfaApi.disableMfa(rootStore.restApiContext, {
-			mfaCode,
-		});
+	const disableMfa = async (data: mfaApi.DisableMfaParams) => {
+		await mfaApi.disableMfa(rootStore.restApiContext, data);
 
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = false;
