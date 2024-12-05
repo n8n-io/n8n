@@ -24,7 +24,7 @@ export class TaskRunnersConfig {
 	authToken: string = '';
 
 	/** IP address task runners server should listen on */
-	@Env('N8N_RUNNERS_SERVER_PORT')
+	@Env('N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT')
 	port: number = 5679;
 
 	/** IP address task runners server should listen on */
