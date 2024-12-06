@@ -300,7 +300,6 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
-export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';

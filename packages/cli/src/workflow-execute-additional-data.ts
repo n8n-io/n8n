@@ -709,6 +709,7 @@ export async function getRunData(
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
+		parentExecution,
 	};
 
 	return {
@@ -944,6 +945,7 @@ async function startExecution(
 		return {
 			executionId,
 			data: returnData!.data!.main,
+			waitTill: data.waitTill,
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
