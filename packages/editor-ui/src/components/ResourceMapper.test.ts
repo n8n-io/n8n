@@ -74,6 +74,27 @@ describe('ResourceMapper.vue', () => {
 		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
 	});
 
+	it('renders map mode properly', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								mode: 'map',
+							},
+						},
+					},
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// This mode doesn't render matching column selector
+		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
+	});
+
 	it('renders multi-key match selector properly', async () => {
 		const { container, getByTestId } = renderComponent(
 			{
