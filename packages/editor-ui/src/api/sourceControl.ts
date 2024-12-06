@@ -1,11 +1,12 @@
 import type { IDataObject } from 'n8n-workflow';
+import type { IRestApiContext } from '@/Interface';
 import type {
-	IRestApiContext,
 	SourceControlAggregatedFile,
 	SourceControlPreferences,
 	SourceControlStatus,
 	SshKeyTypes,
-} from '@/Interface';
+} from '@/types/sourceControl.types';
+
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 

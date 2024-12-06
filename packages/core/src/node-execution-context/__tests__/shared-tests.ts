@@ -1,4 +1,4 @@
-import { captor, mock } from 'jest-mock-extended';
+import { captor, mock, type MockProxy } from 'jest-mock-extended';
 import type {
 	IRunExecutionData,
 	ContextType,
@@ -9,10 +9,20 @@ import type {
 	ITaskMetadata,
 	ISourceData,
 	IExecuteData,
+	IWorkflowExecuteAdditionalData,
+	ExecuteWorkflowData,
+	RelatedExecution,
+	IExecuteWorkflowInfo,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import Container from 'typedi';
+
+import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 
 import type { BaseExecuteContext } from '../base-execute-context';
+
+const binaryDataService = mock<BinaryDataService>();
+Container.set(BinaryDataService, binaryDataService);
 
 export const describeCommonTests = (
 	context: BaseExecuteContext,
@@ -31,7 +41,7 @@ export const describeCommonTests = (
 	},
 ) => {
 	// @ts-expect-error `additionalData` is private
-	const { additionalData } = context;
+	const additionalData = context.additionalData as MockProxy<IWorkflowExecuteAdditionalData>;
 
 	describe('getExecutionCancelSignal', () => {
 		it('should return the abort signal', () => {
@@ -176,6 +186,57 @@ export const describeCommonTests = (
 			);
 
 			resolveSimpleParameterValueSpy.mockRestore();
+		});
+	});
+
+	describe('putExecutionToWait', () => {
+		it('should set waitTill and execution status', async () => {
+			const waitTill = new Date();
+
+			await context.putExecutionToWait(waitTill);
+
+			expect(runExecutionData.waitTill).toEqual(waitTill);
+			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+	});
+
+	describe('executeWorkflow', () => {
+		const data = [[{ json: { test: true } }]];
+		const executeWorkflowData = mock<ExecuteWorkflowData>();
+		const workflowInfo = mock<IExecuteWorkflowInfo>();
+		const parentExecution: RelatedExecution = {
+			executionId: 'parent_execution_id',
+			workflowId: 'parent_workflow_id',
+		};
+
+		it('should execute workflow and return data', async () => {
+			additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
+
+			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
+				parentExecution,
+			});
+
+			expect(result.data).toEqual(data);
+			expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledWith(
+				workflow.id,
+				additionalData.executionId,
+				executeWorkflowData.data,
+			);
+		});
+
+		it('should put execution to wait if waitTill is returned', async () => {
+			const waitTill = new Date();
+			additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData, waitTill });
+			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
+
+			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
+				parentExecution,
+			});
+
+			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+			expect(runExecutionData.waitTill).toEqual(WAIT_INDEFINITELY);
+			expect(result.waitTill).toBe(waitTill);
 		});
 	});
 };
