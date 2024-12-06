@@ -1,30 +1,10 @@
 import { ref, computed } from 'vue';
-import type { ComponentPublicInstance } from 'vue';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import type { ComponentPublicInstance, ComputedRef } from 'vue';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from 'n8n-design-system';
-import type { TestMetricRecord, UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
-import type { ITag } from '@/Interface';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
-// import type { TestMetricRecord } from '@/api/testMetric.ee';
-
-interface EditableField {
-	value: string;
-	isEditing: boolean;
-	tempValue: string;
-}
-
-export interface IEvaluationFormState {
-	name: EditableField;
-	description: string;
-	tags: {
-		isEditing: boolean;
-		appliedTagIds: string[];
-	};
-	evaluationWorkflow: INodeParameterResourceLocator;
-	metrics: TestMetricRecord[];
-}
+import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
+import type { EditableField, EditableFormState, EvaluationFormState } from '../types';
 
 type FormRefs = {
 	nameInput: ComponentPublicInstance<typeof N8nInput>;
@@ -32,22 +12,21 @@ type FormRefs = {
 };
 
 export function useTestDefinitionForm() {
-	// Stores
 	const evaluationsStore = useTestDefinitionStore();
-	const tagsStore = useAnnotationTagsStore();
 
-	// Form state
-	const state = ref<IEvaluationFormState>({
-		description: '',
+	// State initialization
+	const state = ref<EvaluationFormState>({
 		name: {
 			value: `My Test ${evaluationsStore.allTestDefinitions.length + 1}`,
-			isEditing: false,
 			tempValue: '',
+			isEditing: false,
 		},
 		tags: {
+			value: [],
+			tempValue: [],
 			isEditing: false,
-			appliedTagIds: [],
 		},
+		description: '',
 		evaluationWorkflow: {
 			mode: 'list',
 			value: '',
@@ -56,45 +35,48 @@ export function useTestDefinitionForm() {
 		metrics: [],
 	});
 
-	// Loading states
 	const isSaving = ref(false);
 	const fieldsIssues = ref<Array<{ field: string; message: string }>>([]);
-
-	// Field refs
 	const fields = ref<FormRefs>({} as FormRefs);
 
-	const tagIdToITag = (tagId: string) => {
-		return tagsStore.tagsById[tagId];
-	};
-	// Methods
+	// A computed mapping of editable fields to their states
+	// This ensures TS knows the exact type of each field.
+	const editableFields: ComputedRef<{
+		name: EditableField<string>;
+		tags: EditableField<string[]>;
+	}> = computed(() => ({
+		name: state.value.name,
+		tags: state.value.tags,
+	}));
+
+	/**
+	 * Load test data including metrics.
+	 */
 	const loadTestData = async (testId: string) => {
 		try {
 			await evaluationsStore.fetchAll({ force: true });
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
 
 			if (testDefinition) {
-				// Fetch metrics for this test definition
 				const metrics = await evaluationsStore.fetchMetrics(testId);
-				console.log('Loaded metrics:', metrics);
 
-				state.value = {
-					description: testDefinition.description ?? '',
-					name: {
-						value: testDefinition.name ?? '',
-						isEditing: false,
-						tempValue: '',
-					},
-					tags: {
-						isEditing: false,
-						appliedTagIds: testDefinition.annotationTagId ? [testDefinition.annotationTagId] : [],
-					},
-					evaluationWorkflow: {
-						mode: 'list',
-						value: testDefinition.evaluationWorkflowId ?? '',
-						__rl: true,
-					},
-					metrics, // Use the fetched metrics
+				state.value.description = testDefinition.description ?? '';
+				state.value.name = {
+					value: testDefinition.name ?? '',
+					isEditing: false,
+					tempValue: '',
 				};
+				state.value.tags = {
+					isEditing: false,
+					value: testDefinition.annotationTagId ? [testDefinition.annotationTagId] : [],
+					tempValue: [],
+				};
+				state.value.evaluationWorkflow = {
+					mode: 'list',
+					value: testDefinition.evaluationWorkflowId ?? '',
+					__rl: true,
+				};
+				state.value.metrics = metrics;
 			}
 		} catch (error) {
 			console.error('Failed to load test data', error);
@@ -108,17 +90,12 @@ export function useTestDefinitionForm() {
 		fieldsIssues.value = [];
 
 		try {
-			// Prepare parameters for creating a new test
 			const params = {
 				name: state.value.name.value,
 				workflowId,
 				description: state.value.description,
 			};
-
-			const newTest = await evaluationsStore.create(params);
-			return newTest;
-		} catch (error) {
-			throw error;
+			return await evaluationsStore.create(params);
 		} finally {
 			isSaving.value = false;
 		}
@@ -130,9 +107,8 @@ export function useTestDefinitionForm() {
 	};
 
 	const updateMetrics = async (testId: string) => {
-		const updatePromises = state.value.metrics.map(async (metric) => {
+		const promises = state.value.metrics.map(async (metric) => {
 			if (!metric.name) return;
-
 			if (!metric.id) {
 				const createdMetric = await evaluationsStore.createMetric({
 					name: metric.name,
@@ -148,7 +124,7 @@ export function useTestDefinitionForm() {
 			}
 		});
 
-		await Promise.all(updatePromises);
+		await Promise.all(promises);
 	};
 
 	const updateTest = async (testId: string) => {
@@ -158,64 +134,82 @@ export function useTestDefinitionForm() {
 		fieldsIssues.value = [];
 
 		try {
-			// Check if the test ID is provided
 			if (!testId) {
 				throw new Error('Test ID is required for updating a test');
 			}
 
-			// Prepare parameters for updating the existing test
 			const params: UpdateTestDefinitionParams = {
 				name: state.value.name.value,
 				description: state.value.description,
 			};
+
 			if (state.value.evaluationWorkflow.value) {
 				params.evaluationWorkflowId = state.value.evaluationWorkflow.value.toString();
 			}
 
-			const annotationTagId = state.value.tags?.[0]?.id;
+			const annotationTagId = state.value.tags.value[0];
 			if (annotationTagId) {
 				params.annotationTagId = annotationTagId;
 			}
-			// Update the existing test
-			const updatedTest = await evaluationsStore.update({ ...params, id: testId });
 
-			return updatedTest;
-		} catch (error) {
-			throw error;
+			return await evaluationsStore.update({ ...params, id: testId });
 		} finally {
 			isSaving.value = false;
 		}
 	};
 
-	const startEditing = async (field: string) => {
-		if (field === 'name') {
-			state.value.name.tempValue = state.value.name.value;
-			state.value.name.isEditing = true;
+	/**
+	 * Start editing an editable field by copying `value` to `tempValue`.
+	 */
+	function startEditing<T extends keyof EditableFormState>(field: T) {
+		const fieldObj = editableFields.value[field];
+		if (fieldObj.isEditing) {
+			// Already editing, do nothing
+			return;
 		}
-	};
 
-	const saveChanges = (field: string) => {
-		if (field === 'name') {
-			state.value.name.value = state.value.name.tempValue;
-			state.value.name.isEditing = false;
+		if (Array.isArray(fieldObj.value)) {
+			fieldObj.tempValue = [...fieldObj.value];
+		} else {
+			fieldObj.tempValue = fieldObj.value;
 		}
-	};
+		fieldObj.isEditing = true;
+	}
+	/**
+	 * Save changes by copying `tempValue` back into `value`.
+	 */
+	function saveChanges<T extends keyof EditableFormState>(field: T) {
+		const fieldObj = editableFields.value[field];
+		fieldObj.value = Array.isArray(fieldObj.tempValue)
+			? [...fieldObj.tempValue]
+			: fieldObj.tempValue;
+		fieldObj.isEditing = false;
+	}
 
-	const cancelEditing = (field: string) => {
-		if (field === 'name') {
-			state.value.name.isEditing = false;
-			state.value.name.tempValue = '';
+	/**
+	 * Cancel editing and revert `tempValue` from `value`.
+	 */
+	function cancelEditing<T extends keyof EditableFormState>(field: T) {
+		const fieldObj = editableFields.value[field];
+		if (Array.isArray(fieldObj.value)) {
+			fieldObj.tempValue = [...fieldObj.value];
+		} else {
+			fieldObj.tempValue = fieldObj.value;
 		}
-	};
+		fieldObj.isEditing = false;
+	}
 
-	const handleKeydown = (event: KeyboardEvent, field: string) => {
+	/**
+	 * Handle keyboard events during editing.
+	 */
+	function handleKeydown<T extends keyof EditableFormState>(event: KeyboardEvent, field: T) {
 		if (event.key === 'Escape') {
 			cancelEditing(field);
 		} else if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			saveChanges(field);
 		}
-	};
+	}
 
 	return {
 		state,

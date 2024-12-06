@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import type { EditableField } from '../types';
 
 export interface EvaluationHeaderProps {
-	modelValue: {
-		value: string;
-		isEditing: boolean;
-		tempValue: string;
-	};
-	startEditing: (field: string) => void;
-	saveChanges: (field: string) => void;
-	handleKeydown: (e: KeyboardEvent, field: string) => void;
+	modelValue: EditableField<string>;
+	startEditing: (field: 'name') => void;
+	saveChanges: (field: 'name') => void;
+	handleKeydown: (e: KeyboardEvent, field: 'name') => void;
 }
 
-defineEmits<{ 'update:modelValue': [value: EvaluationHeaderProps['modelValue']] }>();
+defineEmits<{ 'update:modelValue': [value: EditableField<string>] }>();
 defineProps<EvaluationHeaderProps>();
 
 const locale = useI18n();

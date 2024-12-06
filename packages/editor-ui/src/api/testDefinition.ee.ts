@@ -1,5 +1,6 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
+
 export interface TestDefinitionRecord {
 	id: string;
 	name: string;
@@ -9,7 +10,9 @@ export interface TestDefinitionRecord {
 	description?: string | null;
 	updatedAt?: string;
 	createdAt?: string;
+	annotationTag: string | null;
 }
+
 interface CreateTestDefinitionParams {
 	name: string;
 	workflowId: string;
@@ -22,16 +25,17 @@ export interface UpdateTestDefinitionParams {
 	annotationTagId?: string | null;
 	description?: string | null;
 }
+
 export interface UpdateTestResponse {
 	createdAt: string;
 	updatedAt: string;
 	id: string;
 	name: string;
 	workflowId: string;
-	description: string | null;
-	annotationTag: string | null;
-	evaluationWorkflowId: string | null;
-	annotationTagId: string | null;
+	description?: string | null;
+	annotationTag?: string | null;
+	evaluationWorkflowId?: string | null;
+	annotationTagId?: string | null;
 }
 
 const endpoint = '/evaluation/test-definitions';

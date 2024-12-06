@@ -63,7 +63,8 @@ onMounted(async () => {
 	await tagsStore.fetchAll();
 	if (testId.value) {
 		await loadTestData(testId.value);
-		if (state.value.tags.appliedTagIds.length > 0) {
+		// Now tags are in state.tags.value instead of appliedTagIds
+		if (state.value.tags.value.length > 0) {
 			await fetchSelectedExecutions();
 		}
 	} else {
@@ -105,23 +106,24 @@ async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
 }
 
 async function fetchSelectedExecutions() {
+	// Use state.tags.value for the annotationTags
 	const executionsForTags = await fetchExecutions({
-		annotationTags: state.value.tags.appliedTagIds,
+		annotationTags: state.value.tags.value,
 	});
 	matchedExecutions.value = executionsForTags.results;
 }
 
-watch(
-	[() => state.value.name, () => state.value.description, () => state.value.evaluationWorkflow],
-	debounce(onSaveTest, { debounceTime: 400 }),
-	{ deep: true },
-);
+// Debounced watchers for auto-saving
+watch([() => state.value.evaluationWorkflow], debounce(onSaveTest, { debounceTime: 400 }), {
+	deep: true,
+});
 
 watch(
-	[() => state.value.metrics],
+	() => state.value.metrics,
 	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
 	{ deep: true },
 );
+
 async function handleCreateTag(tagName: string) {
 	try {
 		const newTag = await tagsStore.create(tagName);
@@ -266,7 +268,6 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 .panelBlock {
 	max-width: var(--evaluation-edit-panel-width, 24rem);
 	display: grid;
-
 	justify-items: end;
 }
 .panelIntro {
