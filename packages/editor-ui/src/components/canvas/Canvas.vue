@@ -663,7 +663,11 @@ provide(CanvasKey, {
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
 				@add="onClickNodeAdd"
-			/>
+			>
+				<template v-if="$slots['node-controls']" #node-controls="canvasNodeProps">
+					<slot name="node-controls" v-bind="canvasNodeProps" />
+				</template>
+			</Node>
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">

@@ -75,6 +75,7 @@ const isDisabled = computed(() => props.data.disabled);
 const nodeTypeDescription = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+const slotClasses = ref<Record<string, boolean>>({});
 
 const classes = computed(() => ({
 	[style.canvasNode]: true,
@@ -82,6 +83,7 @@ const classes = computed(() => ({
 	hovered: props.hovered,
 	selected: props.selected,
 	'bring-to-front': props.bringToFront,
+	...slotClasses.value,
 }));
 
 /**
@@ -232,6 +234,14 @@ function onMove(position: XYPosition) {
 	emit('move', props.id, position);
 }
 
+function toggleSlotClass(className: string) {
+	if (slotClasses.value[className]) {
+		delete slotClasses.value[className];
+	} else {
+		slotClasses.value[className] = true;
+	}
+}
+
 /**
  * Provide
  */
@@ -310,8 +320,12 @@ onBeforeUnmount(() => {
 			/>
 		</template>
 
+		<div v-if="$slots['node-controls']" :class="$style.nodeControls">
+			<slot name="node-controls" v-bind="{ data, toggleSlotClass }" />
+		</div>
+
 		<CanvasNodeToolbar
-			v-if="nodeTypeDescription"
+			v-else-if="nodeTypeDescription"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
@@ -363,5 +377,15 @@ onBeforeUnmount(() => {
 	&:hover {
 		opacity: 1;
 	}
+}
+
+.nodeControls {
+	position: absolute;
+	bottom: 100%;
+	z-index: 1;
+	width: 100%;
+	margin: auto;
+	display: flex;
+	justify-content: center;
 }
 </style>

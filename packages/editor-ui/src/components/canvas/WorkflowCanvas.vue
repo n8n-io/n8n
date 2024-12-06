@@ -74,7 +74,11 @@ onNodesInitialized(() => {
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"
-			/>
+			>
+				<template v-if="$slots['node-controls']" #node-controls="canvasNodeProps">
+					<slot name="node-controls" v-bind="canvasNodeProps" />
+				</template>
+			</Canvas>
 		</div>
 		<slot />
 	</div>
