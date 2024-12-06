@@ -24,6 +24,10 @@ import {
 	N8nButton,
 	N8nBadge,
 	N8nNotice,
+	N8nPopover,
+	N8nSelect,
+	N8nOption,
+	N8nInputLabel,
 } from 'n8n-design-system';
 import {
 	SOURCE_CONTROL_FILE_STATUS,
@@ -117,17 +121,44 @@ const maybeSelectCurrentWorkflow = (workflow?: SourceControlAggregatedFile) =>
 	workflow && selectedChanges.value.add(workflow.id);
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
+const filters = ref<{ status?: SourceControlledFileStatus }>({
+	status: undefined,
+});
+const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
+	{
+		label: 'New',
+		value: SOURCE_CONTROL_FILE_STATUS.CREATED,
+	},
+	{
+		label: 'Modified',
+		value: SOURCE_CONTROL_FILE_STATUS.MODIFIED,
+	},
+	{
+		label: 'Deleted',
+		value: SOURCE_CONTROL_FILE_STATUS.DELETED,
+	},
+] as const;
+
 const search = ref('');
 const debouncedSearch = refDebounced(search, 250);
-const filteredWorkflows = computed(() => {
-	if (!debouncedSearch.value) {
-		return changes.value.workflows;
-	}
 
+const filterCount = computed(() =>
+	Object.values(filters.value).reduce((acc, item) => (item ? acc + 1 : acc), 0),
+);
+
+const filteredWorkflows = computed(() => {
 	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
 
 	return changes.value.workflows.filter((workflow) => {
-		return workflow.name.toLocaleLowerCase().includes(searchQuery);
+		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
+			return false;
+		}
+
+		if (filters.value.status && filters.value.status !== workflow.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -302,8 +333,41 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 						({{ selectedChanges.size }}/{{ sortedWorkflows.length }})
 					</N8nText>
 				</N8nCheckbox>
+				<N8nPopover trigger="click" width="304" style="align-self: normal">
+					<template #reference>
+						<N8nButton
+							icon="filter"
+							type="tertiary"
+							style="height: 100%"
+							:active="Boolean(filterCount)"
+							data-test-id="source-control-filter-dropdown"
+						>
+							<N8nBadge v-show="filterCount" theme="primary" class="mr-4xs">
+								{{ filterCount }}
+							</N8nBadge>
+							{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+						</N8nButton>
+					</template>
+					<N8nInputLabel
+						:label="i18n.baseText('workflows.filters.status')"
+						:bold="false"
+						size="small"
+						color="text-base"
+						class="mb-3xs"
+					/>
+					<N8nSelect v-model="filters.status" data-test-id="source-control-status-filter" clearable>
+						<N8nOption
+							v-for="option in statusFilterOptions"
+							:key="option.label"
+							data-test-id="source-control-status-filter-option"
+							v-bind="option"
+						>
+						</N8nOption>
+					</N8nSelect>
+				</N8nPopover>
 				<N8nInput
 					v-model="search"
+					data-test-id="source-control-push-search"
 					:placeholder="i18n.baseText('workflows.search.placeholder')"
 					clearable
 				>

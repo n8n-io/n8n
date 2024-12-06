@@ -275,4 +275,105 @@ describe('SourceControlPushModal', () => {
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
 		expect(submitButton).not.toBeDisabled();
 	});
+
+	describe('filters', () => {
+		it('should filter by name', async () => {
+			const status: SourceControlAggregatedFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'My workflow 1',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'My workflow 2',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			const { getByTestId, getAllByTestId } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+
+			await userEvent.type(getByTestId('source-control-push-search'), '1');
+			await waitFor(() =>
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1),
+			);
+		});
+
+		it('should filter by status', async () => {
+			const status: SourceControlAggregatedFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'Created Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'Modified workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+
+			expect(getByTestId('source-control-status-filter')).toBeVisible();
+
+			await userEvent.click(
+				within(getByTestId('source-control-status-filter')).getByRole('combobox'),
+			);
+
+			await waitFor(() =>
+				expect(getAllByTestId('source-control-status-filter-option')[0]).toBeVisible(),
+			);
+
+			const menu = getAllByTestId('source-control-status-filter-option')[0]
+				.parentElement as HTMLElement;
+
+			await userEvent.click(within(menu).getByText('New'));
+			await waitFor(() => {
+				const items = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(items).toHaveLength(1);
+				expect(items[0]).toHaveTextContent('Created Workflow');
+			});
+		});
+	});
 });
