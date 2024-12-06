@@ -1,3 +1,4 @@
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
@@ -5,6 +6,7 @@ import type { Cipher } from 'n8n-core';
 import config from '@/config';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import type { EventService } from '@/events/event.service';
 import {
 	BINARY_AD_ATTRIBUTES,
 	LDAP_LOGIN_ENABLED,
@@ -14,6 +16,14 @@ import {
 import { LdapService } from '@/ldap/ldap.service.ee';
 import type { LdapConfig } from '@/ldap/types';
 import { mockInstance, mockLogger } from '@test/mocking';
+
+import {
+	getLdapIds,
+	createFilter,
+	resolveBinaryAttributes,
+	processUsers,
+	mapLdapUserToDbUser,
+} from '../helpers.ee';
 
 // Mock ldapts client
 jest.mock('ldapts', () => {
@@ -26,6 +36,14 @@ jest.mock('ldapts', () => {
 
 	return { Client: ClientMock };
 });
+
+jest.mock('../helpers.ee', () => ({
+	...jest.requireActual('../helpers.ee'),
+	getLdapIds: jest.fn(),
+	saveLdapSynchronization: jest.fn(),
+	resolveBinaryAttributes: jest.fn(),
+	processUsers: jest.fn(),
+}));
 
 describe('LdapService', () => {
 	const ldapConfig: LdapConfig = {
@@ -43,7 +61,7 @@ describe('LdapService', () => {
 		emailAttribute: 'mail',
 		loginIdAttribute: 'uid',
 		ldapIdAttribute: 'uid',
-		userFilter: '',
+		userFilter: '(uid=jdoe)',
 		synchronizationEnabled: true,
 		synchronizationInterval: 60,
 		searchPageSize: 1,
@@ -874,17 +892,228 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe('runSync()', () => {
-		it.todo('should search for users with expected parameters');
-		it.todo('should resolve binary attributes');
-		it.todo('should throw expected error if search fails');
-		it.todo('should process users if mode is "live"');
+	describe.only('runSync()', () => {
+		it('should search for users with expected parameters', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const searchWithAdminBindingSpy = jest.spyOn(ldapService, 'searchWithAdminBinding');
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const expectedParameter = createFilter(
+				`(${ldapConfig.loginIdAttribute}=*)`,
+				ldapConfig.userFilter,
+			);
+
+			await ldapService.init();
+			await ldapService.runSync('dry');
+
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledTimes(1);
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledWith(expectedParameter);
+		});
+
+		it('should resolve binary attributes for users', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+					jpegPhoto: [Buffer.from('89504E470D0A1A0A', 'hex')],
+				},
+			];
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('dry');
+
+			expect(resolveBinaryAttributes).toHaveBeenCalledTimes(1);
+			expect(resolveBinaryAttributes).toHaveBeenCalledWith(foundUsers);
+		});
+
+		it('should throw expected error if search fails', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockRejectedValue(new Error('Error finding users'));
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await expect(ldapService.runSync('dry')).rejects.toThrowError('Error finding users');
+		});
+
+		it.skip('should process users if mode is "live"', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify({ ldapConfig }),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const foundUsers = [
+				// New user
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					givenName: 'John',
+					sn: 'Doe',
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+				// Existing user
+				// User to delete
+			];
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const createDatabaseUser = mapLdapUserToDbUser(foundUsers[0], ldapConfig, true);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			expect(processUsers).toHaveBeenCalledWith([createDatabaseUser], [], []);
+		});
+
 		it.todo('should write expected data to the database');
 		it.todo(
 			'should write expected data to the database with an error message if processing users fails',
 		);
-		it.todo('should emit expected event if synchronization is enabled');
-		it.todo('should emit expected event if synchronization is disabled');
+
+		it('should emit expected event if synchronization is enabled', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const eventServiceMock = mock<EventService>({
+				emit: jest.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+			);
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('dry');
+
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
+				error: '',
+				succeeded: true,
+				type: 'manual_dry',
+				usersSynced: 0,
+			});
+		});
+
+		it('should emit expected event if synchronization is disabled', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const eventServiceMock = mock<EventService>({
+				emit: jest.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+			);
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			ldapService.stopSync();
+			await ldapService.runSync('dry');
+
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
+				error: '',
+				succeeded: true,
+				type: 'scheduled',
+				usersSynced: 0,
+			});
+		});
+
+		it('should emit expected event if processUsers fails', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const eventServiceMock = mock<EventService>({
+				emit: jest.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+			);
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const mockedProcessUsers = processUsers as jest.Mock;
+			mockedProcessUsers.mockRejectedValue(
+				new QueryFailedError('Query', [], new Error('Error processing users')),
+			);
+
+			await ldapService.init();
+			ldapService.stopSync();
+			await ldapService.runSync('live');
+
+			expect(mockedProcessUsers).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
+				error: 'Error processing users',
+				succeeded: true,
+				type: 'scheduled',
+				usersSynced: 0,
+			});
+		});
 	});
 
 	describe('stopSync()', () => {
