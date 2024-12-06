@@ -3,11 +3,13 @@ import { within } from '@testing-library/dom';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestProject } from '@/__tests__/data/projects';
-import { useRoute } from 'vue-router';
+import * as router from 'vue-router';
+import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
+import { VIEWS } from '@/constants';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -35,13 +37,13 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 	},
 });
 
-let route: ReturnType<typeof useRoute>;
+let route: ReturnType<typeof router.useRoute>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		route = useRoute();
+		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 
 		projectsStore.teamProjectsLimit = -1;
@@ -158,5 +160,22 @@ describe('ProjectHeader', () => {
 		});
 
 		expect(within(getByTestId('resource-add')).getByRole('button', { name: label })).toBeVisible();
+	});
+
+	it('should not render creation button in setting page', async () => {
+		projectsStore.currentProject = createTestProject({ type: ProjectTypes.Personal });
+		vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECT_SETTINGS,
+		} as RouteLocationNormalizedLoadedGeneric);
+		const { queryByTestId } = renderComponent({
+			global: {
+				stubs: {
+					N8nNavigationDropdown: {
+						template: '<div><slot></slot></div>',
+					},
+				},
+			},
+		});
+		expect(queryByTestId('resource-add')).not.toBeInTheDocument();
 	});
 });
