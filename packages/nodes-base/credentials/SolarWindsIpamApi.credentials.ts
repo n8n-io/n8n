@@ -19,31 +19,48 @@ export class SolarWindsIpamApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Instance URL',
+			displayName: 'Base URL',
 			name: 'url',
+			required: true,
 			type: 'string',
 			default: '',
-			required: true,
-			description:
-				'Base URL of your SolarWinds IPAM instance (e.g., https://your-instance.solarwinds.com).',
+			placeholder: 'https://your-ipam-server',
+			description: 'The base URL of your SolarWinds IPAM server.',
 		},
 		{
-			displayName: 'API Token',
-			name: 'apiToken',
+			displayName: 'Server Type',
+			name: 'serverType',
+			required: true,
 			type: 'string',
 			default: '',
+			placeholder: 'Enter server type (e.g., Orion v3)',
+			description: 'Enter the server type for SolarWinds IPAM connection.',
+		},
+		{
+			displayName: 'Username',
+			name: 'username',
 			required: true,
+			type: 'string',
+			default: '',
+			description: 'The username for SolarWinds IPAM API.',
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			required: true,
+			type: 'string',
 			typeOptions: { password: true },
-			description: 'Your API token for authenticating requests to SolarWinds IPAM.',
+			default: '',
+			description: 'The password for SolarWinds IPAM API.',
 		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.apiToken}}',
-				'Content-Type': 'application/json',
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
 			},
 		},
 	};
@@ -51,7 +68,7 @@ export class SolarWindsIpamApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
-			url: '', //TODO
+			url: '/SolarWinds/InformationService/v3/Json/Query',
 			method: 'GET',
 		},
 		rules: [
