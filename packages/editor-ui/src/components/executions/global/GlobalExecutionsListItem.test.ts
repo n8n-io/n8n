@@ -1,9 +1,9 @@
 import { vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
+import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -149,7 +149,7 @@ describe('GlobalExecutionsListItem', () => {
 			props: {
 				execution: {
 					status: 'waiting',
-					waitTill: WAIT_TIME_UNLIMITED,
+					waitTill: WAIT_INDEFINITELY,
 					id: 123,
 					workflowName: 'Test Workflow',
 				},
