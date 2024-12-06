@@ -46,13 +46,14 @@ describe('ConcurrentExecutionsHeader', () => {
 		},
 	);
 
-	it('should show tooltip on hover and call "goToUpgrade" on click', async () => {
+	it('should show tooltip on hover and call "goToUpgrade" on click when on cloud', async () => {
 		const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
 		const { container, getByText, getByRole, queryByRole } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
 				concurrencyCap: 5,
+				isCloudDeployment: true,
 			},
 		});
 
@@ -69,5 +70,24 @@ describe('ConcurrentExecutionsHeader', () => {
 		await userEvent.click(getByText('Upgrade now'));
 
 		expect(windowOpenSpy).toHaveBeenCalled();
+	});
+
+	it('should show tooltip on hover and Viev docs link when self-hosted', async () => {
+		const { container, getByText, getByRole, queryByRole } = renderComponent({
+			props: {
+				runningExecutionsCount: 2,
+				concurrencyCap: 5,
+			},
+		});
+
+		const tooltipTrigger = container.querySelector('svg') as SVGSVGElement;
+
+		expect(tooltipTrigger).toBeVisible();
+		expect(queryByRole('tooltip')).not.toBeInTheDocument();
+
+		await userEvent.hover(tooltipTrigger);
+
+		expect(getByRole('tooltip')).toBeVisible();
+		expect(getByText('View docs')).toBeVisible();
 	});
 });
