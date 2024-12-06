@@ -172,6 +172,15 @@ export async function getFieldNamesAndIds(
 	};
 }
 
+export async function getTableFields(
+	this: IExecuteFunctions,
+	table: string,
+	jwtToken: string,
+): Promise<LoadedResource[]> {
+	const endpoint = `/api/database/fields/table/${table}/`;
+	return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
+}
+
 export const toOptions = (items: LoadedResource[]) =>
 	items.map(({ name, id }) => ({ name, value: id }));
 
@@ -184,15 +193,6 @@ export class TableFieldMapper {
 	idToNameMapping: Record<string, string> = {};
 
 	mapIds = true;
-
-	async getTableFields(
-		this: IExecuteFunctions,
-		table: string,
-		jwtToken: string,
-	): Promise<LoadedResource[]> {
-		const endpoint = `/api/database/fields/table/${table}/`;
-		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
-	}
 
 	createMappings(tableFields: LoadedResource[]) {
 		this.nameToIdMapping = this.createNameToIdMapping(tableFields);

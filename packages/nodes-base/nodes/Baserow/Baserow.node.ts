@@ -15,6 +15,7 @@ import {
 	getJwtToken,
 	TableFieldMapper,
 	toOptions,
+	getTableFields,
 } from './GenericFunctions';
 
 import type {
@@ -228,9 +229,10 @@ export class Baserow implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'row') {
-					const mapper = new TableFieldMapper();
 					const tableId = this.getNodeParameter('tableId', 0) as string;
-					const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
+					const fields = await getTableFields.call(this, tableId, jwtToken);
+
+					const mapper = new TableFieldMapper();
 					mapper.createMappings(fields);
 
 					if (operation === 'getAll') {
