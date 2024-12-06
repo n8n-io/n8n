@@ -1,4 +1,5 @@
 import {
+	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
@@ -86,6 +87,8 @@ import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { closeFormPopupWindow, openFormPopupWindow } from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useUsersStore } from '@/stores/users.store';
+import { updateCurrentUserSettings } from '@/api/users';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -119,6 +122,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
+	const usersStore = useUsersStore();
 
 	// -1 means the backend chooses the default
 	// 0 is the old flow
@@ -1415,12 +1419,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
 		}
 
-		return await makeRestApiRequest(
+		const newWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
 			'/workflows',
 			sendData as unknown as IDataObject,
 		);
+
+		const isAIWorkflow = workflowHelpers.containsNodeFromPackage(
+			newWorkflow,
+			AI_NODES_PACKAGE_NAME,
+		);
+		if (isAIWorkflow && !usersStore.isEasyAIWorkflowOnboardingDone) {
+			await updateCurrentUserSettings(rootStore.restApiContext, {
+				easyAIWorkflowOnboarded: true,
+			});
+			usersStore.setEasyAIWorkflowOnboardingDone();
+		}
+
+		return newWorkflow;
 	}
 
 	async function updateWorkflow(
@@ -1432,12 +1449,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			data.settings = undefined;
 		}
 
-		return await makeRestApiRequest(
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'PATCH',
 			`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
 			data as unknown as IDataObject,
 		);
+
+		if (
+			workflowHelpers.containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
+			!usersStore.isEasyAIWorkflowOnboardingDone
+		) {
+			await updateCurrentUserSettings(rootStore.restApiContext, {
+				easyAIWorkflowOnboarded: true,
+			});
+			usersStore.setEasyAIWorkflowOnboardingDone();
+		}
+
+		return updatedWorkflow;
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
