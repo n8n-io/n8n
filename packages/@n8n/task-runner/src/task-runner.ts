@@ -92,7 +92,9 @@ export abstract class TaskRunner extends EventEmitter {
 		this.maxConcurrency = opts.maxConcurrency;
 		this.idleTimeout = opts.idleTimeout;
 
-		const wsUrl = `ws://${opts.n8nUri}/runners/_ws?id=${this.id}`;
+		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
+
+		const wsUrl = `ws://${taskBrokerHost}/runners/_ws?id=${this.id}`;
 		this.ws = new WebSocket(wsUrl, {
 			headers: {
 				authorization: `Bearer ${opts.grantToken}`,
@@ -109,11 +111,11 @@ export abstract class TaskRunner extends EventEmitter {
 				['ECONNREFUSED', 'ENOTFOUND'].some((code) => code === error.code)
 			) {
 				console.error(
-					`Error: Failed to connect to n8n. Please ensure n8n is reachable at: ${opts.n8nUri}`,
+					`Error: Failed to connect to n8n task broker. Please ensure n8n task broker is reachable at: ${taskBrokerHost}`,
 				);
 				process.exit(1);
 			} else {
-				console.error(`Error: Failed to connect to n8n at ${opts.n8nUri}`);
+				console.error(`Error: Failed to connect to n8n task broker at ${taskBrokerHost}`);
 				console.error('Details:', event.message || 'Unknown error');
 			}
 		});

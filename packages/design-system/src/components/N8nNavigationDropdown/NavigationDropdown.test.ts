@@ -33,7 +33,7 @@ describe('N8nNavigationDropdown', () => {
 	it('default slot should trigger first level', async () => {
 		const { getByTestId, queryByTestId } = render(NavigationDropdown, {
 			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
-			props: { menu: [{ id: 'aaa', title: 'aaa', route: { name: 'projects' } }] },
+			props: { menu: [{ id: 'first', title: 'first', route: { name: 'projects' } }] },
 			global: {
 				plugins: [router],
 			},
@@ -51,9 +51,9 @@ describe('N8nNavigationDropdown', () => {
 			props: {
 				menu: [
 					{
-						id: 'aaa',
-						title: 'aaa',
-						submenu: [{ id: 'bbb', title: 'bbb', route: { name: 'projects' } }],
+						id: 'first',
+						title: 'first',
+						submenu: [{ id: 'nested', title: 'nested', route: { name: 'projects' } }],
 					},
 				],
 			},
@@ -80,9 +80,9 @@ describe('N8nNavigationDropdown', () => {
 			props: {
 				menu: [
 					{
-						id: 'aaa',
-						title: 'aaa',
-						submenu: [{ id: 'bbb', title: 'bbb', route: { name: 'projects' }, icon: 'user' }],
+						id: 'first',
+						title: 'first',
+						submenu: [{ id: 'nested', title: 'nested', route: { name: 'projects' }, icon: 'user' }],
 					},
 				],
 			},
@@ -100,9 +100,9 @@ describe('N8nNavigationDropdown', () => {
 			props: {
 				menu: [
 					{
-						id: 'aaa',
-						title: 'aaa',
-						submenu: [{ id: 'bbb', title: 'bbb', route: { name: 'projects' }, icon: 'user' }],
+						id: 'first',
+						title: 'first',
+						submenu: [{ id: 'nested', title: 'nested', route: { name: 'projects' }, icon: 'user' }],
 					},
 				],
 			},
@@ -114,8 +114,53 @@ describe('N8nNavigationDropdown', () => {
 		await userEvent.click(getByTestId('navigation-submenu-item'));
 
 		expect(emitted('itemClick')).toStrictEqual([
-			[{ active: true, index: 'bbb', indexPath: ['-1', 'aaa', 'bbb'] }],
+			[{ active: true, index: 'nested', indexPath: ['-1', 'first', 'nested'] }],
 		]);
-		expect(emitted('select')).toStrictEqual([['bbb']]);
+		expect(emitted('select')).toStrictEqual([['nested']]);
+	});
+
+	it('should open first level on click', async () => {
+		const { getByTestId, getByText } = render(NavigationDropdown, {
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
+			props: {
+				menu: [
+					{
+						id: 'first',
+						title: 'first',
+					},
+				],
+			},
+		});
+		expect(getByText('first')).not.toBeVisible();
+		await userEvent.click(getByTestId('test-trigger'));
+		expect(getByText('first')).toBeVisible();
+	});
+
+	it('should toggle nested level on mouseenter / mouseleave', async () => {
+		const { getByTestId, getByText } = render(NavigationDropdown, {
+			slots: { default: h('button', { 'data-test-id': 'test-trigger' }) },
+			props: {
+				menu: [
+					{
+						id: 'first',
+						title: 'first',
+						submenu: [{ id: 'nested', title: 'nested' }],
+					},
+				],
+			},
+		});
+		expect(getByText('first')).not.toBeVisible();
+		await userEvent.click(getByTestId('test-trigger'));
+		expect(getByText('first')).toBeVisible();
+
+		expect(getByText('nested')).not.toBeVisible();
+		await userEvent.hover(getByTestId('navigation-submenu'));
+		await waitFor(() => expect(getByText('nested')).toBeVisible());
+
+		await userEvent.pointer([
+			{ target: getByTestId('navigation-submenu') },
+			{ target: getByTestId('test-trigger') },
+		]);
+		await waitFor(() => expect(getByText('nested')).not.toBeVisible());
 	});
 });
