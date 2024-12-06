@@ -21,11 +21,9 @@ export const groupOperations: INodeProperties[] = [
 				value: 'create',
 				description: 'Create a new group',
 				routing: {
-					send: {
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-					},
 					request: {
 						method: 'POST',
+						url: '=?Action=CreateGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -44,9 +42,6 @@ export const groupOperations: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSIAM.DeleteGroup', //TODO
-						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -144,13 +139,6 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		routing: {
-			send: {
-				property: 'GroupName',
-				type: 'body',
-				paginate: true,
-			},
-		},
 		type: 'string',
 		validateType: 'string',
 	},
