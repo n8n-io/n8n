@@ -1,30 +1,12 @@
+import { clickGetBackToCanvas, getOutputTableHeaders } from '../composables/ndv';
 import {
-	getExecutionPreviewOutputPanelRelatedExecutionLink,
-	getExecutionsSidebar,
-	getWorkflowExecutionPreviewIframe,
-	openExecutionPreviewNode,
-} from '../composables/executions';
-import {
-	changeOutputRunSelector,
-	clickGetBackToCanvas,
-	getOutputPanelItemsCount,
-	getOutputPanelRelatedExecutionLink,
-	getOutputRunSelectorInput,
-	getOutputTableHeaders,
-	getOutputTableRows,
-	getOutputTbodyCell,
-} from '../composables/ndv';
-import {
-	addNodeToCanvas,
-	clickExecuteWorkflowButton,
 	clickZoomToFit,
-	getCanvasNodes,
 	navigateToNewWorkflowPage,
 	openNode,
 	pasteWorkflow,
 	saveWorkflowOnButtonClick,
 } from '../composables/workflow';
-import SUB_WORKFLOW_PARENT from '../fixtures/Test_Subworkflow-parent.json';
+import SUB_WORKFLOW_INPUTS from '../fixtures/Test_Subworkflow-Inputs.json';
 import { NDV, WorkflowsPage } from '../pages';
 import { getVisiblePopper } from '../utils';
 
@@ -137,7 +119,7 @@ function validateAndReturnToParent(fields: string[]) {
 describe('Sub-workflow creation', () => {
 	beforeEach(() => {
 		navigateToNewWorkflowPage();
-		pasteWorkflow(SUB_WORKFLOW_PARENT);
+		pasteWorkflow(SUB_WORKFLOW_INPUTS);
 		saveWorkflowOnButtonClick();
 		clickZoomToFit();
 

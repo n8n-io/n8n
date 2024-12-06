@@ -28,7 +28,7 @@
 			"id": "ddc82976-edd9-4488-a5a5-7f558a7d905b",
 			"name": "Execute Workflow",
 			"type": "n8n-nodes-base.executeWorkflow",
-			"typeVersion": 1.2,
+			"typeVersion": 1.1,
 			"position": [500, 240]
 		}
 	],
