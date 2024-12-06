@@ -2,12 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { userOperations, userFields, groupOperations, groupFields } from './descriptions';
-import {
-	presendStringifyBody,
-	searchUserPools,
-	searchGroups,
-	searchUsers,
-} from './GenericFunctions';
+import { searchUserPools, searchGroups, searchUsers } from './GenericFunctions';
 
 export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,11 +34,11 @@ export class AwsIam implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '=https://iam.amazonaws.com/', // TODO
+			baseURL: '=https://iam.amazonaws.com',
 			url: '',
 			json: true,
 			headers: {
-				'Content-Type': 'application/x-amz-json-1.1',
+				'Content-Type': 'application/x-www-form-urlencoded',
 			},
 		},
 		properties: [
@@ -53,11 +48,6 @@ export class AwsIam implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				default: 'user',
-				routing: {
-					send: {
-						preSend: [presendStringifyBody],
-					},
-				},
 				options: [
 					{
 						name: 'User',

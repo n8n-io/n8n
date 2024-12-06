@@ -1,7 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive, presendTest, processGroupsResponse } from '../GenericFunctions';
+import { handleErrorPostReceive, presendTest } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -26,14 +26,7 @@ export const groupOperations: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSIAM.CreateGroup', //TODO
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
 						ignoreHttpStatusErrors: true,
-						qs: {
-							Version: '2010-05-08',
-						},
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -96,23 +89,13 @@ export const groupOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of groups',
 				routing: {
-					send: {
-						paginate: true,
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-					},
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSIAM.ListGroups', //TODO
-						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
-						},
+						url: '=/?Action=ListGroups&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive, processGroupsResponse], //TODO Test if we need processGroupResponse
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Get many groups',
