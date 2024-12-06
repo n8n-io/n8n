@@ -10,7 +10,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import CopyInput from '@/components/CopyInput.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
-import type { SshKeyTypes } from '@/Interface';
+import type { SshKeyTypes } from '@/types/sourceControl.types';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const locale = useI18n();
