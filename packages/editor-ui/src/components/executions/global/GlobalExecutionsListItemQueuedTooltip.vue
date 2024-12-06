@@ -1,8 +1,6 @@
 <script lang="ts" setup="">
-import { defineProps } from 'vue';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
 	status: ExecutionStatus;
@@ -10,12 +8,11 @@ const props = defineProps<{
 	isCloudDeployment?: boolean;
 }>();
 
-const i18n = useI18n();
-const pageRedirectionHelper = usePageRedirectionHelper();
+const emit = defineEmits<{
+	goToUpgrade: [];
+}>();
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
-};
+const i18n = useI18n();
 </script>
 
 <template>
@@ -36,7 +33,7 @@ const goToUpgrade = () => {
 					>
 						<template #concurrencyCap>{{ props.concurrencyCap }}</template>
 						<template #link>
-							<N8nLink bold size="small" :class="$style.link" @click="goToUpgrade">
+							<N8nLink bold size="small" :class="$style.link" @click="emit('goToUpgrade')">
 								{{ i18n.baseText('generic.upgradeNow') }}
 							</N8nLink>
 						</template>

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { computed, defineProps } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
 	runningExecutionsCount: number;
@@ -9,8 +8,11 @@ const props = defineProps<{
 	isCloudDeployment?: boolean;
 }>();
 
+const emit = defineEmits<{
+	goToUpgrade: [];
+}>();
+
 const i18n = useI18n();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const tooltipText = computed(() =>
 	i18n.baseText('executionsList.activeExecutions.tooltip', {
@@ -32,10 +34,6 @@ const headerText = computed(() => {
 		},
 	});
 });
-
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
-};
 </script>
 
 <template>
@@ -49,7 +47,7 @@ const goToUpgrade = () => {
 						bold
 						size="small"
 						:class="$style.link"
-						@click="goToUpgrade"
+						@click="emit('goToUpgrade')"
 					>
 						{{ i18n.baseText('generic.upgradeNow') }}
 					</N8nLink>

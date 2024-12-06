@@ -18,6 +18,7 @@ const emit = defineEmits<{
 	retrySaved: [data: ExecutionSummary];
 	retryOriginal: [data: ExecutionSummary];
 	delete: [data: ExecutionSummary];
+	goToUpgrade: [];
 }>();
 
 const props = withDefaults(
@@ -202,6 +203,7 @@ async function handleActionItemClick(commandData: Command) {
 					:status="props.execution.status"
 					:concurrency-cap="props.concurrencyCap"
 					:is-cloud-deployment="props.isCloudDeployment"
+					@go-to-upgrade="emit('goToUpgrade')"
 				>
 					<span :class="$style.status">{{ statusText }}</span>
 				</GlobalExecutionsListItemQueuedTooltip>

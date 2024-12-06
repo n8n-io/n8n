@@ -47,9 +47,7 @@ describe('ConcurrentExecutionsHeader', () => {
 	);
 
 	it('should show tooltip on hover and call "goToUpgrade" on click when on cloud', async () => {
-		const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-
-		const { container, getByText, getByRole, queryByRole } = renderComponent({
+		const { container, getByText, getByRole, queryByRole, emitted } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
 				concurrencyCap: 5,
@@ -69,7 +67,7 @@ describe('ConcurrentExecutionsHeader', () => {
 
 		await userEvent.click(getByText('Upgrade now'));
 
-		expect(windowOpenSpy).toHaveBeenCalled();
+		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
 
 	it('should show tooltip on hover and Viev docs link when self-hosted', async () => {
