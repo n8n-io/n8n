@@ -18,7 +18,10 @@ interface EditableField {
 export interface IEvaluationFormState {
 	name: EditableField;
 	description: string;
-	tags: ITag[];
+	tags: {
+		isEditing: boolean;
+		appliedTagIds: string[];
+	};
 	evaluationWorkflow: INodeParameterResourceLocator;
 	metrics: TestMetricRecord[];
 }
@@ -41,7 +44,10 @@ export function useTestDefinitionForm() {
 			isEditing: false,
 			tempValue: '',
 		},
-		tags: [],
+		tags: {
+			isEditing: false,
+			appliedTagIds: [],
+		},
 		evaluationWorkflow: {
 			mode: 'list',
 			value: '',
@@ -78,7 +84,10 @@ export function useTestDefinitionForm() {
 						isEditing: false,
 						tempValue: '',
 					},
-					tags: testDefinition.annotationTagId ? [tagIdToITag(testDefinition.annotationTagId)] : [],
+					tags: {
+						isEditing: false,
+						appliedTagIds: testDefinition.annotationTagId ? [testDefinition.annotationTagId] : [],
+					},
 					evaluationWorkflow: {
 						mode: 'list',
 						value: testDefinition.evaluationWorkflowId ?? '',
