@@ -1457,7 +1457,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 
 		if (
-			workflowHelpers.isAIWorkflow(updatedWorkflow) &&
+			workflowHelpers.containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
 			!usersStore.isEasyAIWorkflowOnboardingDone
 		) {
 			await updateCurrentUserSettings(rootStore.restApiContext, {
