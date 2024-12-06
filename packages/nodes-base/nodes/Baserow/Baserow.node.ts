@@ -17,8 +17,6 @@ import {
 	toOptions,
 } from './GenericFunctions';
 
-import { operationFields } from './OperationDescription';
-
 import type {
 	BaserowCredentials,
 	FieldsUiValues,

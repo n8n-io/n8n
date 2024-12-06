@@ -1,9 +1,10 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHookFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -11,21 +12,21 @@ import { NodeApiError } from 'n8n-workflow';
 import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
 export async function baserowFileUploadRequest(
-	this: IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	jwtToken: string,
 	file: Buffer,
 	fileName: string,
 	mimeType: string,
 ) {
-	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
+	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `JWT ${jwtToken}`,
 			'Content-Type': 'multipart/form-data',
 		},
 		method: 'POST',
-		uri: `${credentials.host}/api/user-files/upload-file/`,
+		url: `${credentials.host}/api/user-files/upload-file/`,
 		json: false,
 		body: {
 			file: {
@@ -39,7 +40,7 @@ export async function baserowFileUploadRequest(
 	};
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -49,7 +50,7 @@ export async function baserowFileUploadRequest(
  * Make a request to Baserow API.
  */
 export async function baserowApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	jwtToken: string,
@@ -58,25 +59,24 @@ export async function baserowApiRequest(
 ) {
 	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `JWT ${jwtToken}`,
 		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.host}${endpoint}`,
+		url: `${credentials.host}${endpoint}`,
 		json: true,
 	};
 
 	if (body.formData) {
 		options.json = false;
-		// set content type to multipart/form-data
 		options.headers = {
 			...options.headers,
 			'Content-Type': 'multipart/form-data',
 		};
-		options.body.resolveWithFullResponse = true;
+		options.returnFullResponse = true;
 	}
 
 	if (Object.keys(qs).length === 0) {
@@ -88,7 +88,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -135,13 +135,13 @@ export async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ username, password, host }: BaserowCredentials,
 ) {
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
 		body: {
 			username,
 			password,
 		},
-		uri: `${host}/api/user/token-auth/`,
+		url: `${host}/api/user/token-auth/`,
 		json: true,
 	};
 
