@@ -80,7 +80,6 @@ export class WorkflowService {
 				});
 			}
 
-			console.log(workflows.length);
 			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
 		}
 
