@@ -342,7 +342,7 @@ describe('SourceControlPushModal', () => {
 				},
 			];
 
-			const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
+			const { getByTestId, getAllByTestId } = renderModal({
 				props: {
 					data: {
 						eventBus,
