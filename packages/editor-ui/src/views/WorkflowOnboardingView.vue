@@ -17,11 +17,11 @@ const route = useRoute();
 const i18n = useI18n();
 
 const openWorkflowTemplate = async (templateId: string) => {
-	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW.meta?.templateId) {
+	if (templateId === SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId) {
 		await openSampleSubworkflow();
 		return;
 	}
-	if (templateId === EASY_AI_WORKFLOW_JSON.meta?.templateId) {
+	if (templateId === EASY_AI_WORKFLOW_JSON.meta.templateId) {
 		await openEasyAIWorkflow();
 		return;
 	}

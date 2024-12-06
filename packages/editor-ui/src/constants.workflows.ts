@@ -1,7 +1,7 @@
 import { NodeConnectionType } from 'n8n-workflow';
-import type { INodeUi, IWorkflowDataCreate } from './Interface';
+import type { INodeUi, WorkflowDataWithTemplateId } from './Interface';
 
-export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
+export const EASY_AI_WORKFLOW_JSON: WorkflowDataWithTemplateId = {
 	name: 'Demo: My first AI Agent in n8n',
 	meta: {
 		templateId: 'PT1i+zU92Ii5O2XCObkhfHJR5h9rNJTpiCIkYJk9jHU=',
@@ -167,7 +167,7 @@ export const EASY_AI_WORKFLOW_JSON: IWorkflowDataCreate = {
 	pinData: {},
 };
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
+export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
 	name: 'My Sub-Workflow',
 	meta: {
 		templateId: 'VMiAxXa3lCAizGB5f7dVZQSFfg3FtHkdTKvLuupqBls=',

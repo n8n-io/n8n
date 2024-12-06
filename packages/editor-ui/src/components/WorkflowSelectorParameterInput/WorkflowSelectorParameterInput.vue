@@ -232,7 +232,7 @@ const onAddResourceClicked = () => {
 	};
 
 	window.open(
-		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW.meta?.templateId}?${urlSearchParams.toString()}`,
+		`/workflows/onboarding/${SAMPLE_SUBWORKFLOW_WORKFLOW.meta.templateId}?${urlSearchParams.toString()}`,
 		'_blank',
 	);
 };

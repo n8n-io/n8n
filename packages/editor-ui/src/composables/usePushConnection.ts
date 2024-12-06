@@ -202,16 +202,18 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			if (receivedData.type === 'executionFinished') {
 				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
-				const isEasyAIWorkflow =
-					workflow?.meta?.templateId === EASY_AI_WORKFLOW_JSON.meta?.templateId;
-				if (isEasyAIWorkflow) {
-					telemetry.track(
-						'User executed test AI workflow',
-						{
-							status: receivedData.data.status,
-						},
-						{ withPostHog: true },
-					);
+				if (workflow?.meta?.templateId) {
+					const isEasyAIWorkflow =
+						workflow.meta.templateId === EASY_AI_WORKFLOW_JSON.meta.templateId;
+					if (isEasyAIWorkflow) {
+						telemetry.track(
+							'User executed test AI workflow',
+							{
+								status: receivedData.data.status,
+							},
+							{ withPostHog: true },
+						);
+					}
 				}
 			}
 
