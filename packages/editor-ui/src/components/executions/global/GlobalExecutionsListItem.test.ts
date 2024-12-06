@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
-import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
+import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
 import { WAIT_TIME_UNLIMITED } from '@/constants';
