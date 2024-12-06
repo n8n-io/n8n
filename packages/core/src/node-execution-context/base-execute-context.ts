@@ -22,7 +22,7 @@ import type {
 	ISourceData,
 	AiEvent,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WorkflowDataProxy } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers, NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
@@ -145,7 +145,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	getInputSourceData(inputIndex = 0, inputName = 'main'): ISourceData {
+	getInputSourceData(inputIndex = 0, inputName = NodeConnectionType.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
 			throw new ApplicationError('Source data is missing');

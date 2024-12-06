@@ -9,11 +9,10 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -122,7 +121,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		);
 	}
 
-	getInputData(inputIndex = 0, inputName = 'main') {
+	getInputData(inputIndex = 0, inputName = NodeConnectionType.AiTool) {
 		if (!this.inputData.hasOwnProperty(inputName)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
@@ -172,6 +171,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				}`,
 			);
 		});
+
+		if (!Array.isArray(this.inputData[connectionType])) {
+			this.inputData[connectionType] = [];
+		}
+		this.inputData[connectionType].push(...data);
 
 		return { index: currentNodeRunIndex };
 	}
