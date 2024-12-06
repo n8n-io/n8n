@@ -66,6 +66,21 @@ export class WorkflowService {
 		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
 
 		if (hasSharing(workflows)) {
+			// Since we're filtering using project ID as part of the relation,
+			// we end up filtering out all the other relations, meaning that if
+			// it's shared to a project, it won't be able to find the home project.
+			// To solve this, we have to get all the relation now, even though
+			// we're deleting them later.
+			if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
+				const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(
+					workflows.map((c) => c.id),
+				);
+				workflows.forEach((c) => {
+					c.shared = relations.filter((r) => r.workflowId === c.id);
+				});
+			}
+
+			console.log(workflows.length);
 			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
 		}
 
@@ -75,8 +90,8 @@ export class WorkflowService {
 		}
 
 		workflows.forEach((w) => {
-			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
-			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// This is to emulate the old behaviour of removing the shared field as
+			// part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
 			// though. So to avoid leaking the information we just delete it.
 			delete w.shared;
 		});
