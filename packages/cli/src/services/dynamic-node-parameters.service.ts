@@ -1,4 +1,4 @@
-import { LoadOptionsContext, NodeExecuteFunctions } from 'n8n-core';
+import { LoadOptionsContext, NodeExecuteFunctions, LocalLoadOptionsContext } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -17,15 +17,43 @@ import type {
 	INodeTypeNameVersion,
 	NodeParameterValueType,
 	IDataObject,
+	ILocalLoadOptionsFunctions,
 } from 'n8n-workflow';
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 
+import { WorkflowLoaderService } from './workflow-loader.service';
+
+type LocalResourceMappingMethod = (
+	this: ILocalLoadOptionsFunctions,
+) => Promise<ResourceMapperFields>;
+type ListSearchMethod = (
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+) => Promise<INodeListSearchResult>;
+type LoadOptionsMethod = (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+type ActionHandlerMethod = (
+	this: ILoadOptionsFunctions,
+	payload?: string,
+) => Promise<NodeParameterValueType>;
+type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+
+type NodeMethod =
+	| LocalResourceMappingMethod
+	| ListSearchMethod
+	| LoadOptionsMethod
+	| ActionHandlerMethod
+	| ResourceMappingMethod;
+
 @Service()
 export class DynamicNodeParametersService {
-	constructor(private nodeTypes: NodeTypes) {}
+	constructor(
+		private nodeTypes: NodeTypes,
+		private workflowLoaderService: WorkflowLoaderService,
+	) {}
 
 	/** Returns the available options via a predefined method */
 	async getOptionsViaMethodName(
@@ -159,6 +187,20 @@ export class DynamicNodeParametersService {
 		return method.call(thisArgs);
 	}
 
+	/** Returns the available workflow input mapping fields for the ResourceMapper component */
+	async getLocalResourceMappingFields(
+		methodName: string,
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+	): Promise<ResourceMapperFields> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const method = this.getMethod('localResourceMapping', methodName, nodeType);
+		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return method.call(thisArgs);
+	}
+
 	/** Returns the result of the action handler */
 	async getActionResult(
 		handler: string,
@@ -181,33 +223,34 @@ export class DynamicNodeParametersService {
 		type: 'resourceMapping',
 		methodName: string,
 		nodeType: INodeType,
-	): (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+	): ResourceMappingMethod;
 	private getMethod(
-		type: 'listSearch',
+		type: 'localResourceMapping',
 		methodName: string,
 		nodeType: INodeType,
-	): (
-		this: ILoadOptionsFunctions,
-		filter?: string | undefined,
-		paginationToken?: string | undefined,
-	) => Promise<INodeListSearchResult>;
+	): LocalResourceMappingMethod;
+	private getMethod(type: 'listSearch', methodName: string, nodeType: INodeType): ListSearchMethod;
 	private getMethod(
 		type: 'loadOptions',
 		methodName: string,
 		nodeType: INodeType,
-	): (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+	): LoadOptionsMethod;
 	private getMethod(
 		type: 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
-	): (this: ILoadOptionsFunctions, payload?: string) => Promise<NodeParameterValueType>;
-
+	): ActionHandlerMethod;
 	private getMethod(
-		type: 'resourceMapping' | 'listSearch' | 'loadOptions' | 'actionHandler',
+		type:
+			| 'resourceMapping'
+			| 'localResourceMapping'
+			| 'listSearch'
+			| 'loadOptions'
+			| 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
-	) {
-		const method = nodeType.methods?.[type]?.[methodName];
+	): NodeMethod {
+		const method = nodeType.methods?.[type]?.[methodName] as NodeMethod;
 		if (typeof method !== 'function') {
 			throw new ApplicationError('Node type does not have method defined', {
 				tags: { nodeType: nodeType.description.name },
@@ -254,5 +297,17 @@ export class DynamicNodeParametersService {
 	) {
 		const node = workflow.nodes['Temp-Node'];
 		return new LoadOptionsContext(workflow, node, additionalData, path);
+	}
+
+	private getLocalLoadOptionsContext(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): ILocalLoadOptionsFunctions {
+		return new LocalLoadOptionsContext(
+			this.nodeTypes,
+			additionalData,
+			path,
+			this.workflowLoaderService,
+		);
 	}
 }

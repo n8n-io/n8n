@@ -902,23 +902,35 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Sub-Workflow',
 	nodes: [
 		{
+			parameters: {
+				content: '## Define your inputs in this node',
+				height: 220,
+				width: 300,
+			},
+			id: 'c055762a-8fe7-4141-a639-df2372f30059',
+			name: 'Define your inputs in this node',
+			type: STICKY_NODE_TYPE,
+			position: [120, 280],
+		},
+		{
 			parameters: {},
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
-			name: 'Workflow Input Trigger',
+			name: 'When called by another workflow',
+			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 			typeVersion: 1.1,
-			type: 'n8n-nodes-base.executeWorkflowTrigger',
 			position: [260, 340],
 		},
 		{
 			parameters: {},
 			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
 			name: 'Replace me with your logic',
-			type: 'n8n-nodes-base.noOp',
+			type: NO_OP_NODE_TYPE,
+			typeVersion: 1,
 			position: [520, 340],
 		},
 	] as INodeUi[],
 	connections: {
-		'Workflow Input Trigger': {
+		'When called by another workflow': {
 			main: [
 				[
 					{
