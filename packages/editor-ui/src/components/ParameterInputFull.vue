@@ -194,8 +194,7 @@ function onDrop(newParamValue: string) {
 watch(
 	() => props.isReadOnly,
 	(isReadOnly) => {
-		// Patch fix, see https://linear.app/n8n/issue/ADO-2974/resource-mapper-values-are-emptied-when-refreshing-the-columns
-		if (isReadOnly && props.parameter.disabledOptions !== undefined) {
+		if (isReadOnly) {
 			valueChanged({ name: props.path, value: props.parameter.default });
 		}
 	},
