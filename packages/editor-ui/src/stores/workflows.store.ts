@@ -1,4 +1,5 @@
 import {
+	AI_NODES_PACKAGE_NAME,
 	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
@@ -1425,7 +1426,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			sendData as unknown as IDataObject,
 		);
 
-		if (workflowHelpers.isAIWorkflow(newWorkflow) && !usersStore.isEasyAIWorkflowOnboardingDone) {
+		const isAIWorkflow = workflowHelpers.containsNodeFromPackage(
+			newWorkflow,
+			AI_NODES_PACKAGE_NAME,
+		);
+		if (isAIWorkflow && !usersStore.isEasyAIWorkflowOnboardingDone) {
 			await updateCurrentUserSettings(rootStore.restApiContext, {
 				easyAIWorkflowOnboarded: true,
 			});
