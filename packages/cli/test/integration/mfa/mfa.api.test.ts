@@ -184,7 +184,19 @@ describe('Disable MFA setup', () => {
 		expect(dbUser.mfaRecoveryCodes.length).toBe(0);
 	});
 
-	test('POST /disable should fail if invalid mfaCode is given', async () => {
+	test('POST /disable should fail if invalid MFA recovery code is given', async () => {
+		const { user } = await createUserWithMfaEnabled();
+
+		await testServer
+			.authAgentFor(user)
+			.post('/mfa/disable')
+			.send({
+				mfaRecoveryCode: 'invalid token',
+			})
+			.expect(403);
+	});
+
+	test('POST /disable should fail if invalid MFA code is given', async () => {
 		const { user } = await createUserWithMfaEnabled();
 
 		await testServer
@@ -194,6 +206,12 @@ describe('Disable MFA setup', () => {
 				mfaCode: 'invalid token',
 			})
 			.expect(403);
+	});
+
+	test('POST /disable should fail if neither MFA code nor recovery code is sent', async () => {
+		const { user } = await createUserWithMfaEnabled();
+
+		await testServer.authAgentFor(user).post('/mfa/disable').send({ anotherParam: '' }).expect(400);
 	});
 });
 

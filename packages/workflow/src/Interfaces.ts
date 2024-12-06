@@ -364,7 +364,8 @@ export interface ICredentialDataDecryptedObject {
 
 // First array index: The output/input-index (if node has multiple inputs/outputs of the same type)
 // Second array index: The different connections (if one node is connected to multiple nodes)
-export type NodeInputConnections = IConnection[][];
+// Any index can be null, for example in a switch node with multiple indexes some of which are not connected
+export type NodeInputConnections = Array<IConnection[] | null>;
 
 export interface INodeConnection {
 	sourceIndex: number;
@@ -2285,6 +2286,10 @@ export interface IWorkflowExecutionDataProcess {
 	 */
 	partialExecutionVersion?: string;
 	dirtyNodeNames?: string[];
+	triggerToStartFrom?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ExecuteWorkflowOptions {
