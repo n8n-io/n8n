@@ -5,6 +5,7 @@
 
 import type {
 	AddedNodesAndConnections,
+	IExecutionResponse,
 	INodeUi,
 	ITag,
 	IUsedCredential,
@@ -24,7 +25,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
-	QUICKSTART_NOTE_NAME,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
@@ -364,7 +364,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
 				workflow_id: workflowsStore.workflowId,
-				is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });
@@ -1150,11 +1149,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			for (const type of Object.keys(connections[nodeName])) {
 				for (const index of Object.keys(connections[nodeName][type])) {
-					for (const connectionIndex of Object.keys(
-						connections[nodeName][type][parseInt(index, 10)],
-					)) {
-						const connectionData =
-							connections[nodeName][type][parseInt(index, 10)][parseInt(connectionIndex, 10)];
+					const connectionsToDelete = connections[nodeName][type][parseInt(index, 10)] ?? [];
+					for (const connectionIndex of Object.keys(connectionsToDelete)) {
+						const connectionData = connectionsToDelete[parseInt(connectionIndex, 10)];
 						if (!connectionData) {
 							continue;
 						}
@@ -1491,13 +1488,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					sourceIndex++
 				) {
 					const nodeSourceConnections = [];
-					if (currentConnections[sourceNode][type][sourceIndex]) {
+					const connectionsToCheck = currentConnections[sourceNode][type][sourceIndex];
+					if (connectionsToCheck) {
 						for (
 							connectionIndex = 0;
-							connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
+							connectionIndex < connectionsToCheck.length;
 							connectionIndex++
 						) {
-							connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+							connectionData = connectionsToCheck[connectionIndex];
 							if (!createNodeNames.includes(connectionData.node)) {
 								// Node does not get created so skip input connection
 								continue;
@@ -1815,7 +1813,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		for (const [type, typeConnections] of Object.entries(connections)) {
 			const validConnections = typeConnections.map((sourceConnections) =>
-				sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
+				(sourceConnections ?? []).filter((connection) => includeNodeNames.has(connection.node)),
 			);
 
 			if (validConnections.length) {
@@ -1847,6 +1845,32 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function cutNodes(ids: string[]) {
 		await copyNodes(ids);
 		deleteNodes(ids);
+	}
+
+	async function openExecution(executionId: string) {
+		let data: IExecutionResponse | undefined;
+		try {
+			data = await workflowsStore.getExecution(executionId);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+			return;
+		}
+
+		if (data === undefined) {
+			throw new Error(`Execution with id "${executionId}" could not be found!`);
+		}
+
+		initializeWorkspace(data.workflowData);
+
+		workflowsStore.setWorkflowExecutionData(data);
+
+		if (data.mode !== 'manual') {
+			workflowsStore.setWorkflowPinData({});
+		}
+
+		uiStore.stateIsDirty = false;
+
+		return data;
 	}
 
 	return {
@@ -1891,5 +1915,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		resetWorkspace,
 		initializeWorkspace,
 		resolveNodeWebhook,
+		openExecution,
 	};
 }

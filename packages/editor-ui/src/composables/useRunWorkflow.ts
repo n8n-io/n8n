@@ -37,6 +37,25 @@ import { get } from 'lodash-es';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useLocalStorage } from '@vueuse/core';
 
+const getDirtyNodeNames = (
+	runData: IRunData,
+	getParametersLastUpdate: (nodeName: string) => number | undefined,
+): string[] | undefined => {
+	const dirtyNodeNames = Object.entries(runData).reduce<string[]>((acc, [nodeName, tasks]) => {
+		if (!tasks.length) return acc;
+
+		const updatedAt = getParametersLastUpdate(nodeName) ?? 0;
+
+		if (updatedAt > tasks[0].startTime) {
+			acc.push(nodeName);
+		}
+
+		return acc;
+	}, []);
+
+	return dirtyNodeNames.length ? dirtyNodeNames : undefined;
+};
+
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
@@ -131,6 +150,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
+			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
 				startNodeNames.length === 0 &&
 				'destinationNode' in options &&
@@ -138,14 +158,16 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			) {
 				executedNode = options.destinationNode;
 				startNodeNames.push(options.destinationNode);
-			} else if ('triggerNode' in options && 'nodeData' in options) {
+			} else if (options.triggerNode && options.nodeData) {
 				startNodeNames.push(
-					...workflow.getChildNodes(options.triggerNode as string, NodeConnectionType.Main, 1),
+					...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
 				);
-				newRunData = {
-					[options.triggerNode as string]: [options.nodeData],
-				} as IRunData;
+				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
+				triggerToStartFrom = {
+					name: options.triggerNode,
+					data: options.nodeData,
+				};
 			}
 
 			// If the destination node is specified, check if it is a chat node or has a chat parent
@@ -239,9 +261,17 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// data to use and what to ignore.
 				runData: partialExecutionVersion.value === 1 ? (runData ?? undefined) : newRunData,
 				startNodes,
+				triggerToStartFrom,
 			};
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
+			}
+
+			if (startRunData.runData) {
+				startRunData.dirtyNodeNames = getDirtyNodeNames(
+					startRunData.runData,
+					workflowsStore.getParametersLastUpdate,
+				);
 			}
 
 			// Init the execution data to represent the start of the execution

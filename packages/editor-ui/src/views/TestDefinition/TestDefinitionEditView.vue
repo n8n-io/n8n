@@ -15,9 +15,8 @@ import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue'
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import type { TestMetricRecord } from '@/api/testDefinition.ee';
-import { useMessage } from '@/composables/useMessage';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { IExecutionsListResponse } from '@/Interface';
+import type { IExecutionsListResponse } from '@/Interface';
 
 const props = defineProps<{
 	testId?: string;
@@ -28,9 +27,12 @@ const route = useRoute();
 const locale = useI18n();
 const { debounce } = useDebounce();
 const toast = useToast();
-const { isLoading, allTags, tagsById, fetchAll, create: createTag } = useAnnotationTagsStore();
 const { fetchExecutions } = useExecutionsStore();
+const tagsStore = useAnnotationTagsStore();
 
+const isLoading = computed(() => tagsStore.isLoading);
+const allTags = computed(() => tagsStore.allTags);
+const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 
@@ -46,6 +48,7 @@ const {
 	state,
 	fieldsIssues,
 	isSaving,
+	cancelEditing,
 	loadTestData,
 	createTest,
 	updateTest,
@@ -57,10 +60,10 @@ const {
 } = useTestDefinitionForm();
 
 onMounted(async () => {
-	await fetchAll();
+	await tagsStore.fetchAll();
 	if (testId.value) {
 		await loadTestData(testId.value);
-		if (state.value.tags.length > 0) {
+		if (state.value.tags.appliedTagIds.length > 0) {
 			await fetchSelectedExecutions();
 		}
 	} else {
@@ -103,31 +106,11 @@ async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
 
 async function fetchSelectedExecutions() {
 	const executionsForTags = await fetchExecutions({
-		annotationTags: state.value.tags.map((tag) => tag.id),
+		annotationTags: state.value.tags.appliedTagIds,
 	});
 	matchedExecutions.value = executionsForTags.results;
 }
 
-async function onAddTag() {
-	const currentTags = state.value.tags;
-
-	if (currentTags.length === 0) {
-		const { prompt } = useMessage();
-		const tagName = await prompt('Enter tag name');
-		const newTag = await createTag(tagName.value);
-
-		state.value.tags = [newTag];
-		console.log('🚀 ~ onSelectExecutions ~ newWindow:', newTag);
-	}
-
-	const newWindow = window.open(`/workflow/${currentWorkflowId.value}/executions`, '_blank');
-	if (newWindow) {
-		newWindow.onload = () =>
-			(newWindow.onbeforeunload = async () => {
-				await fetchSelectedExecutions();
-			});
-	}
-}
 watch(
 	[() => state.value.name, () => state.value.description, () => state.value.evaluationWorkflow],
 	debounce(onSaveTest, { debounceTime: 400 }),
@@ -139,6 +122,17 @@ watch(
 	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
 	{ deep: true },
 );
+async function handleCreateTag(tagName: string) {
+	try {
+		const newTag = await tagsStore.create(tagName);
+		return newTag;
+	} catch (error) {
+		toast.showError(error, 'Error', error.message);
+		throw error;
+	}
+}
+
+watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: true });
 </script>
 
 <template>
@@ -176,7 +170,17 @@ watch(
 				>
 					<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 					<template #cardContent>
-						<TagsInput v-model="state.tags" :selected-tags="state.tags" @add-tag="onAddTag" />
+						<TagsInput
+							v-model="state.tags"
+							:class="{ 'has-issues': hasIssues('tags') }"
+							:all-tags="allTags"
+							:tags-by-id="tagsById"
+							:is-loading="isLoading"
+							:start-editing="startEditing"
+							:save-changes="saveChanges"
+							:cancel-editing="cancelEditing"
+							:create-tag="handleCreateTag"
+						/>
 					</template>
 				</EvaluationStep>
 				<div :class="$style.evaluationArrows">

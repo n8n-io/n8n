@@ -1,31 +1,89 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { useMessage } from '@/composables/useMessage';
 import type { ITag } from '@/Interface';
+import { createEventBus } from 'n8n-design-system';
+import { computed } from 'vue';
 
 export interface TagsInputProps {
-	selectedTags: ITag[];
+	modelValue?: {
+		isEditing: boolean;
+		appliedTagIds: string[];
+	};
+	allTags: ITag[];
+	tagsById: Record<string, ITag>;
+	isLoading: boolean;
+	startEditing: (field: string) => void;
+	saveChanges: (field: string) => void;
+	cancelEditing: (field: string) => void;
+	createTag?: (name: string) => Promise<ITag>;
 }
+
 const props = withDefaults(defineProps<TagsInputProps>(), {
-	selectedTags: () => [],
+	modelValue: () => ({
+		isEditing: false,
+		appliedTagIds: [],
+	}),
+	createTag: undefined,
 });
 
-const emit = defineEmits<{
-	addTag: [];
-}>();
+const emit = defineEmits<{ 'update:modelValue': [value: TagsInputProps['modelValue']] }>();
+
+const locale = useI18n();
+const tagsEventBus = createEventBus();
+const getTagName = computed(() => (tagId: string) => {
+	return props.tagsById[tagId]?.name ?? '';
+});
+
+function updateTags(tags: string[]) {
+	const newTags = tags[0] ? [tags[0]] : [];
+	emit('update:modelValue', {
+		...props.modelValue,
+		appliedTagIds: newTags,
+	});
+}
 </script>
 
 <template>
 	<div data-test-id="workflow-tags-field">
-		<n8n-input-label :bold="false" size="small">
-			<div :class="$style.tagsRead">
-				Use all executions that are tagged with {{ selectedTags[0]?.name }}
-				<br />
-				<br />
-				<n8n-button type="primary" size="small" transparent @click="emit('addTag')"
-					>Select Executions</n8n-button
-				>
+		<n8n-input-label
+			:label="locale.baseText('testDefinition.edit.tagName')"
+			:bold="false"
+			size="small"
+		>
+			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
+				<n8n-text v-if="modelValue.appliedTagIds.length === 0" size="small">
+					{{ locale.baseText('testDefinition.edit.selectTag') }}
+				</n8n-text>
+				<n8n-tag
+					v-for="tagId in modelValue.appliedTagIds"
+					:key="tagId"
+					:text="getTagName(tagId)"
+					data-test-id="evaluation-tag-field"
+				/>
+				<n8n-icon-button
+					:class="$style.editInputButton"
+					icon="pen"
+					type="tertiary"
+					size="small"
+					transparent
+				/>
 			</div>
+			<TagsDropdown
+				v-else
+				:model-value="modelValue.appliedTagIds"
+				:placeholder="locale.baseText('executionAnnotationView.chooseOrCreateATag')"
+				:create-enabled="modelValue.appliedTagIds.length === 0"
+				:all-tags="allTags"
+				:is-loading="isLoading"
+				:tags-by-id="tagsById"
+				data-test-id="workflow-tags-dropdown"
+				:event-bus="tagsEventBus"
+				:create-tag="createTag"
+				:manage-enabled="false"
+				@update:model-value="updateTags"
+				@esc="cancelEditing('tags')"
+				@blur="saveChanges('tags')"
+			/>
 		</n8n-input-label>
 	</div>
 </template>

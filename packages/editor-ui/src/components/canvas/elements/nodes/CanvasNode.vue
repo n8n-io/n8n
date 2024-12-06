@@ -36,7 +36,6 @@ type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
-	bringToFront?: boolean; // Determines if entire nodes layer should be brought to front
 };
 
 const emit = defineEmits<{
@@ -82,7 +81,6 @@ const classes = computed(() => ({
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
 	selected: props.selected,
-	'bring-to-front': props.bringToFront,
 	...slotClasses.value,
 }));
 

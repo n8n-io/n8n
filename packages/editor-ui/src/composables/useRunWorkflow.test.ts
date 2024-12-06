@@ -2,7 +2,14 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
+import {
+	ExpressionError,
+	type IPinData,
+	type IRunData,
+	type Workflow,
+	type IExecuteData,
+	type ITaskData,
+} from 'n8n-workflow';
 
 import { useRootStore } from '@/stores/root.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -14,6 +21,7 @@ import { useToast } from './useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useLocalStorage } from '@vueuse/core';
 import { ref } from 'vue';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
@@ -28,6 +36,8 @@ vi.mock('@/stores/workflows.store', () => ({
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
 		nodeIssuesExit: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn(),
+		getParametersLastUpdate: vi.fn(),
 	}),
 }));
 
@@ -69,6 +79,7 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
 		setDocumentTitle: vi.fn(),
+		executeData: vi.fn(),
 	}),
 }));
 
@@ -260,6 +271,88 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should send dirty nodes for partial executions', async () => {
+			vi.mocked(useLocalStorage).mockReturnValueOnce(ref(1));
+			const composable = useRunWorkflow({ router });
+			const parentName = 'When clicking';
+			const executeName = 'Code';
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				[parentName]: [
+					{
+						startTime: 1,
+						executionTime: 0,
+						source: [],
+					},
+				],
+				[executeName]: [
+					{
+						startTime: 1,
+						executionTime: 8,
+						source: [
+							{
+								previousNode: parentName,
+							},
+						],
+					},
+				],
+			};
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+				getParentNodes: () => [parentName],
+				nodes: { [parentName]: {} },
+			} as unknown as Workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [],
+			} as unknown as IWorkflowData);
+			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
+				data: {},
+				node: {},
+				source: null,
+			} as IExecuteData);
+
+			vi.mocked(workflowsStore).checkIfNodeHasChatParent.mockReturnValue(false);
+			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation((name: string) => {
+				if (name === executeName) return 2;
+				return undefined;
+			});
+
+			const { runWorkflow } = composable;
+
+			await runWorkflow({ destinationNode: 'Code 1', source: 'Node.executeNode' });
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ dirtyNodeNames: [executeName] }),
+			);
+		});
+
+		it('should send triggerToStartFrom if triggerNode and nodeData are passed in', async () => {
+			// ARRANGE
+			const composable = useRunWorkflow({ router });
+			const triggerNode = 'Chat Trigger';
+			const nodeData = mock<ITaskData>();
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(
+				mock<Workflow>({ getChildNodes: vi.fn().mockReturnValue([]) }),
+			);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+				mock<IWorkflowData>({ nodes: [] }),
+			);
+
+			const { runWorkflow } = composable;
+
+			// ACT
+			await runWorkflow({ triggerNode, nodeData });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						name: triggerNode,
+						data: nodeData,
+					},
+				}),
+			);
 		});
 
 		it('does not use the original run data if `PartialExecution.version` is set to 0', async () => {

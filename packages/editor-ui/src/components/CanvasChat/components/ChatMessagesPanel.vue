@@ -17,6 +17,7 @@ interface Props {
 	pastChatMessages: string[];
 	messages: ChatMessage[];
 	sessionId: string;
+	showCloseButton?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
 	refreshSession: [];
+	close: [];
 }>();
 
 const messageComposable = useMessage();
@@ -142,7 +144,7 @@ function copySessionId() {
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<header :class="$style.chatHeader">
-			<span>{{ locale.baseText('chat.window.title') }}</span>
+			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">
 				<span>{{ locale.baseText('chat.window.session.title') }}</span>
 				<n8n-tooltip placement="left">
@@ -154,19 +156,28 @@ function copySessionId() {
 					}}</span>
 				</n8n-tooltip>
 				<n8n-icon-button
-					:class="$style.refreshSession"
+					:class="$style.headerButton"
 					data-test-id="refresh-session-button"
-					type="tertiary"
-					text
+					outline
+					type="secondary"
 					size="mini"
 					icon="undo"
 					:title="locale.baseText('chat.window.session.reset.confirm')"
 					@click="onRefreshSession"
 				/>
+				<n8n-icon-button
+					v-if="showCloseButton"
+					:class="$style.headerButton"
+					outline
+					type="secondary"
+					size="mini"
+					icon="times"
+					@click="emit('close')"
+				/>
 			</div>
 		</header>
 		<main :class="$style.chatBody">
-			<MessagesList :messages="messages" :class="[$style.messages, 'ignore-key-press-canvas']">
+			<MessagesList :messages="messages" :class="$style.messages">
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
 						v-if="message.sender === 'bot' && !message.id.includes('preload')"
@@ -199,29 +210,32 @@ function copySessionId() {
 		</main>
 
 		<div :class="$style.messagesInput">
-			<div v-if="pastChatMessages.length > 0" :class="$style.messagesHistory">
-				<n8n-button
-					title="Navigate to previous message"
-					icon="chevron-up"
-					type="tertiary"
-					text
-					size="mini"
-					@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
-				/>
-				<n8n-button
-					title="Navigate to next message"
-					icon="chevron-down"
-					type="tertiary"
-					text
-					size="mini"
-					@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
-				/>
-			</div>
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"
 				@arrow-key-down="onArrowKeyDown"
-			/>
+			>
+				<template v-if="pastChatMessages.length > 0" #leftPanel>
+					<div :class="$style.messagesHistory">
+						<n8n-button
+							title="Navigate to previous message"
+							icon="chevron-up"
+							type="tertiary"
+							text
+							size="mini"
+							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
+						/>
+						<n8n-button
+							title="Navigate to next message"
+							icon="chevron-down"
+							type="tertiary"
+							text
+							size="mini"
+							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
+						/>
+					</div>
+				</template>
+			</ChatInput>
 		</div>
 	</div>
 </template>
@@ -229,19 +243,22 @@ function copySessionId() {
 <style lang="scss" module>
 .chat {
 	--chat--spacing: var(--spacing-xs);
-	--chat--message--padding: var(--spacing-xs);
-	--chat--message--font-size: var(--font-size-s);
+	--chat--message--padding: var(--spacing-2xs);
+	--chat--message--font-size: var(--font-size-xs);
 	--chat--input--font-size: var(--font-size-s);
+	--chat--input--placeholder--font-size: var(--font-size-xs);
 	--chat--message--bot--background: transparent;
 	--chat--message--user--background: var(--color-text-lighter);
 	--chat--message--bot--color: var(--color-text-dark);
 	--chat--message--user--color: var(--color-text-dark);
 	--chat--message--bot--border: none;
 	--chat--message--user--border: none;
+	--chat--message--user--border: none;
+	--chat--input--padding: var(--spacing-xs);
 	--chat--color-typing: var(--color-text-light);
-	--chat--textarea--max-height: calc(var(--panel-height) * 0.5);
+	--chat--textarea--max-height: calc(var(--panel-height) * 0.3);
 	--chat--message--pre--background: var(--color-foreground-light);
-
+	--chat--textarea--height: 2.5rem;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -260,6 +277,9 @@ function copySessionId() {
 	justify-content: space-between;
 	align-items: center;
 }
+.chatTitle {
+	font-weight: 600;
+}
 .session {
 	display: flex;
 	align-items: center;
@@ -275,8 +295,9 @@ function copySessionId() {
 
 	cursor: pointer;
 }
-.refreshSession {
+.headerButton {
 	max-height: 1.1rem;
+	border: none;
 }
 .chatBody {
 	display: flex;
@@ -306,7 +327,7 @@ function copySessionId() {
 	--chat--input--file--button--background: transparent;
 	--chat--input--file--button--color: var(--color-primary);
 	--chat--input--border-active: var(--input-focus-border-color, var(--color-secondary));
-	--chat--files-spacing: var(--spacing-2xs) 0;
+	--chat--files-spacing: var(--spacing-2xs);
 	--chat--input--background: transparent;
 	--chat--input--file--button--color: var(--color-button-secondary-font);
 	--chat--input--file--button--color-hover: var(--color-primary);
@@ -318,7 +339,7 @@ function copySessionId() {
 		--chat--input--text-color: var(--input-font-color, var(--color-text-dark));
 	}
 
-	padding: 0 0 0 var(--spacing-xs);
+	padding: var(--spacing-5xs);
 	margin: 0 var(--chat--spacing) var(--chat--spacing);
 	flex-grow: 1;
 	display: flex;
@@ -331,18 +352,6 @@ function copySessionId() {
 
 	&:focus-within {
 		--input-border-color: #4538a3;
-	}
-}
-
-.messagesHistory {
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
-	margin-bottom: var(--spacing-3xs);
-
-	button:first-child {
-		margin-top: var(--spacing-4xs);
-		margin-bottom: calc(-1 * var(--spacing-4xs));
 	}
 }
 </style>

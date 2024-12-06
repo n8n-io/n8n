@@ -260,12 +260,13 @@ onMounted(() => {
 .contentText {
 	padding-top: var(--spacing-s);
 	padding-left: var(--spacing-m);
+	padding-right: var(--spacing-m);
 	font-size: var(--font-size-s);
 }
 .block {
-	padding: 0 0 var(--spacing-2xs) var(--spacing-2xs);
-	background: var(--color-foreground-light);
-	margin-top: var(--spacing-xl);
+	padding: var(--spacing-s) 0 var(--spacing-2xs) var(--spacing-2xs);
+	border: 1px solid var(--color-foreground-light);
+	margin-top: var(--spacing-s);
 	border-radius: var(--border-radius-base);
 }
 :root .blockContent {

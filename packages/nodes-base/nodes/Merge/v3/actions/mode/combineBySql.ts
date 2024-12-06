@@ -41,7 +41,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const nodeId = this.getNode().id;
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
@@ -132,5 +132,5 @@ export async function execute(
 
 	delete alasql.databases[nodeId];
 
-	return returnData;
+	return [returnData];
 }

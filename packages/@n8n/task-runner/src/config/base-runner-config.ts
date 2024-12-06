@@ -34,6 +34,9 @@ export class BaseRunnerConfig {
 	@Env('N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT')
 	idleTimeout: number = 0;
 
+	@Env('GENERIC_TIMEZONE')
+	timezone: string = 'America/New_York';
+
 	@Nested
 	healthcheckServer!: HealthcheckServerConfig;
 }
