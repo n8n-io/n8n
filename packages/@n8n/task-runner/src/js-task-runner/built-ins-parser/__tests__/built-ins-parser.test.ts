@@ -17,7 +17,7 @@ describe('BuiltInsParser', () => {
 	const parseAndExpectOk = (code: string) => {
 		const result = parser.parseUsedBuiltIns(code);
 		if (!result.ok) {
-			fail(result.error);
+			throw result.error;
 		}
 
 		return result.result;
@@ -147,6 +147,13 @@ describe('BuiltInsParser', () => {
 	describe('$node', () => {
 		it('should require all nodes when $node is used', () => {
 			const state = parseAndExpectOk('return $node["name"];');
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
+		});
+	});
+
+	describe('$item', () => {
+		it('should require all nodes and input when $item is used', () => {
+			const state = parseAndExpectOk('$item("0").$node["my node"].json["title"]');
 			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
 		});
 	});
