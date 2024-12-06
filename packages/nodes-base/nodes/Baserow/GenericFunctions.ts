@@ -146,7 +146,7 @@ export async function getJwtToken(
 	};
 
 	try {
-		const { token } = (await this.helpers.request(options)) as { token: string };
+		const { token } = (await this.helpers.httpRequest(options)) as { token: string };
 		return token;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

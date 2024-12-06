@@ -7,7 +7,9 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
-import { baserowApiRequest, baserowFileUploadRequest } from '../GenericFunctions';
+import { baserowApiRequest, baserowFileUploadRequest, getJwtToken } from '../GenericFunctions';
+import { username } from 'minifaker';
+import { httpRequest } from 'n8n-core';
 
 export const node: INode = {
 	id: 'c4a5ca75-18c7-4cc8-bf7d-5d57bb7d84da',
@@ -21,7 +23,27 @@ export const node: INode = {
 	},
 };
 
-describe('Baserow', () => {
+describe('Baserow GenericFunctions', () => {
+	describe('getJwtToken', () => {
+		const mockThis = {
+			helpers: {
+				httpRequest: jest.fn().mockResolvedValue({
+					token: 'jwt',
+				}),
+			},
+		} as unknown as IExecuteFunctions | ILoadOptionsFunctions;
+
+		it('should return the JWT token', async () => {
+			const jwtToken = await getJwtToken.call(mockThis, {
+				username: 'user',
+				password: 'password',
+				host: 'https://my-host.com',
+			});
+
+			expect(jwtToken).toBe('jwt');
+		});
+	});
+
 	describe('baserowApiRequest', () => {
 		const mockThis = {
 			helpers: {
@@ -33,7 +55,7 @@ describe('Baserow', () => {
 			},
 			getCredentials: jest.fn(),
 			getNodeParameter: jest.fn(),
-		} as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
+		} as unknown as IExecuteFunctions | ILoadOptionsFunctions;
 
 		it('should upload a file via url', async () => {
 			mockThis.getCredentials.mockResolvedValue({
@@ -98,7 +120,7 @@ describe('Baserow', () => {
 			},
 			getCredentials: jest.fn(),
 			getNodeParameter: jest.fn(),
-		} as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
+		} as unknown as IExecuteFunctions | ILoadOptionsFunctions;
 
 		it('should make an authenticated API file-upload request to Baserow', async () => {
 			mockThis.getCredentials.mockResolvedValue({
