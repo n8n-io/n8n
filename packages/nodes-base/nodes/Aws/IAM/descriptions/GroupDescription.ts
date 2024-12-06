@@ -47,12 +47,12 @@ export const groupOperations: INodeProperties[] = [
 					output: {
 						postReceive: [
 							handleErrorPostReceive,
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "deleted": true } }}',
-								},
-							},
+							// {
+							// 	type: 'set',
+							// 	properties: {
+							// 		value: '={{ { "deleted": true } }}',
+							// 	},
+							// },
 						],
 					},
 				},
@@ -63,14 +63,12 @@ export const groupOperations: INodeProperties[] = [
 				value: 'get',
 				description: 'Retrieve details of an existing group',
 				routing: {
-					send: {
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-					},
+					// send: {
+					// 	preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+					// },
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSIAM.GetGroup', //TODO
-						},
+						url: '=?Action=GetGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -102,20 +100,18 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSIAM.UpdateGroup', //TODO
-						},
+						url: '=?Action=UpdateGroup&GroupName={{$parameter["GroupName"]}}&NewGroupName={{$parameter["NewGroupName"]}}&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [
 							handleErrorPostReceive,
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "updated": true } }}',
-								},
-							},
+							// {
+							// 	type: 'set',
+							// 	properties: {
+							// 		value: '={{ { "updated": true } }}',
+							// 	},
+							// },
 						],
 					},
 				},
@@ -267,12 +263,6 @@ const getFields: INodeProperties[] = [
 			show: {
 				resource: ['group'],
 				operation: ['get'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'GroupName',
 			},
 		},
 		modes: [
@@ -443,12 +433,6 @@ const updateFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'GroupName',
-			},
-		},
 		modes: [
 			{
 				displayName: 'From list',
@@ -492,13 +476,6 @@ const updateFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		routing: {
-			send: {
-				property: 'NewGroupName',
-				type: 'body',
-				paginate: true,
-			},
-		},
 		type: 'string',
 		validateType: 'string',
 	},
