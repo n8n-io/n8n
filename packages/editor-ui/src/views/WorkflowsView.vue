@@ -374,7 +374,7 @@ const dismissEasyAICallout = () => {
 					@click="openAIWorkflow('empty')"
 				>
 					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-					<N8nText size="large" class="mt-xs" color="text-dark">
+					<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
 						{{ i18n.baseText('workflows.empty.easyAI') }}
 					</N8nText>
 				</N8nCard>

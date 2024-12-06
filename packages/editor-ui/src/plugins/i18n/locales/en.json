@@ -2297,7 +2297,7 @@
 	"workflows.empty.learnN8n": "Learn n8n",
 	"workflows.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create workflows",
 	"workflows.empty.easyAI": "Test a ready-to-go AI Agent example",
-	"workflows.list.easyAI": "Test the power of AI in n8n with this ready-to-go News Agent Workflow",
+	"workflows.list.easyAI": "Test the power of AI in n8n with this ready-to-go AI Agent Workflow",
 	"workflows.shareModal.title": "Share '{name}'",
 	"workflows.shareModal.title.static": "Shared with {projectName}",
 	"workflows.shareModal.select.placeholder": "Add users...",
