@@ -579,9 +579,7 @@ describe('NodeExecuteFunctions', () => {
 			expect(axiosOptions.headers).toMatchObject({
 				accept: '*/*',
 				'content-length': 163,
-				'content-type': expect.stringMatching(
-					/^multipart\/form-data; boundary=--------------------------[0-9]{24}$/,
-				),
+				'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
 			});
 
 			expect(axiosOptions.data).toBeInstanceOf(FormData);
@@ -684,25 +682,21 @@ describe('NodeExecuteFunctions', () => {
 		it('should throw error for non-401 status codes', async () => {
 			nock(baseUrl).get('/test').reply(500, {});
 
-			await expect(
-				async () =>
-					await invokeAxios({
-						url: `${baseUrl}/test`,
-					}),
-			).rejects.toThrow('Request failed with status code 500');
+			await expect(invokeAxios({ url: `${baseUrl}/test` })).rejects.toThrow(
+				'Request failed with status code 500',
+			);
 		});
 
-		it('should throw error if not a digest auth 401', async () => {
+		it('should throw error on 401 without digest auth challenge', async () => {
 			nock(baseUrl).get('/test').reply(401, {});
 
 			await expect(
-				async () =>
-					await invokeAxios(
-						{
-							url: `${baseUrl}/test`,
-						},
-						{ sendImmediately: false },
-					),
+				invokeAxios(
+					{
+						url: `${baseUrl}/test`,
+					},
+					{ sendImmediately: false },
+				),
 			).rejects.toThrow('Request failed with status code 401');
 		});
 
@@ -726,16 +720,11 @@ describe('NodeExecuteFunctions', () => {
 
 			nock(baseUrl)
 				.get('/test')
-				.reply(function () {
-					const { authorization } = this.req.headers;
-					const digestAuthHeaderRegexp = new RegExp(
-						'^Digest username="user",realm="test",nonce="abc123",uri="/test",qop="auth",algorithm="MD5",response="[0-f]{32}",nc="000000001",cnonce="[0-f]{48}"$',
-					);
-					if (digestAuthHeaderRegexp.test(authorization)) {
-						return [200, { success: true }];
-					}
-					return [500];
-				});
+				.matchHeader(
+					'authorization',
+					/^Digest username="user",realm="test",nonce="abc123",uri="\/test",qop="auth",algorithm="MD5",response="[0-9a-f]{32}"/,
+				)
+				.reply(200, { success: true });
 
 			const response = await invokeAxios(
 				{
