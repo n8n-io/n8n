@@ -2,8 +2,8 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	handleErrorPostReceive,
-	handlePagination,
 	presendFilter,
+	presendTest,
 	processAttributes,
 	processUsersResponse,
 } from '../GenericFunctions';
@@ -30,7 +30,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminAddUserToGroup',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AddUserToGroup',
 						},
 						ignoreHttpStatusErrors: true,
 					},
@@ -47,9 +47,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminCreateUser',
-						},
+						url: '=/?Action=CreateUser&Version=2010-05-08&Path={{$parameter["Path"]}&UserName={{$parameter["UserName"]}}&PermissionsBoundary={{$parameter["PermissionsBoundary"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -65,9 +63,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminDeleteUser',
-						},
+						url: '=/?Action=DeleteUser&Version=2010-05-08&UserName={{$parameter["UserName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -91,9 +87,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminGetUser',
-						},
+						url: '=/?Action=GetUser&Version=2010-05-08&UserName={{$parameter["UserName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -111,13 +105,7 @@ export const userOperations: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
-						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}', // The API allows maximum 60 results per page
-						},
+						url: '=/?Action=ListUsers&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -135,7 +123,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminRemoveUserFromGroup',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.RemoveUserFromGroup',
 						},
 						ignoreHttpStatusErrors: true,
 					},
@@ -153,7 +141,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						headers: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminUpdateUserAttributes',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.UpdateUser',
 						},
 						ignoreHttpStatusErrors: true,
 					},
@@ -176,58 +164,8 @@ export const userOperations: INodeProperties[] = [
 
 const createFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'The user pool ID where the users are managed',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'UserPoolId',
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user pool ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
-						},
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'User Name',
-		name: 'Username',
+		name: 'UserName',
 		default: '',
 		description: 'The username of the new user to create',
 		placeholder: 'e.g. JohnSmith',
@@ -238,12 +176,6 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		routing: {
-			send: {
-				property: 'Username',
-				type: 'body',
-			},
-		},
 		type: 'string',
 		validateType: 'string',
 	},
@@ -253,216 +185,67 @@ const createFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create'],
-			},
-		},
+		displayOptions: { show: { resource: ['user'], operation: ['create'] } },
 		options: [
 			{
-				displayName: 'Client Metadata',
-				name: 'clientMetadata',
+				displayName: 'Path',
+				name: 'Path',
+				default: '',
+				description: 'The path for the user name',
+				placeholder: 'e.g. /division_abc/subdivision_xyz/',
+				type: 'string',
+				validateType: 'string',
+				routing: {
+					send: {
+						preSend: [presendTest],
+					},
+				},
+			},
+			{
+				//TODO-Check format of this field
+				displayName: 'Permissions Boundary',
+				name: 'PermissionsBoundary',
+				default: '',
+				description:
+					'The ARN of the managed policy that is used to set the permissions boundary for the user.',
+				placeholder: 'e.g. iam:arn',
+				type: 'string',
+				validateType: 'string',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
 				type: 'fixedCollection',
-				placeholder: 'Add Metadata Pair',
-				default: { metadata: [] },
-				description: 'A map of custom key-value pairs for workflows triggered by this action',
+				description: 'A list of tags that you want to attach to the new user.',
+				default: [],
+				placeholder: 'Add Tag',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Metadata',
-						name: 'metadata',
+						name: 'tag',
+						displayName: 'Tag',
 						values: [
 							{
 								displayName: 'Key',
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'The key of the metadata attribute',
+								placeholder: 'e.g., Department',
+								description: 'The key name of the tag.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value of the metadata attribute',
+								placeholder: 'e.g., Engineering',
+								description: 'The value associated with the key.',
 							},
 						],
 					},
 				],
-				routing: {
-					send: {
-						type: 'body',
-						property: 'ClientMetadata',
-						value:
-							'={{ $value.metadata && $value.metadata.length > 0 ? Object.fromEntries($value.metadata.map(attribute => [attribute.Name, attribute.Value])) : {} }}',
-					},
-				},
-			},
-			{
-				displayName: 'Temporary Password',
-				name: 'TemporaryPassword',
-				default: '',
-				description: "The user's temporary password",
-				routing: {
-					send: {
-						property: 'TemporaryPassword',
-						type: 'body',
-					},
-				},
-				type: 'string',
-				typeOptions: { password: true },
-			},
-			{
-				displayName: 'Message Action',
-				name: 'MessageAction',
-				default: 'RESEND',
-				description:
-					"Set to RESEND to resend the invitation message to a user that already exists and reset the expiration limit on the user's account. Set to SUPPRESS to suppress sending the message. You can specify only one value.",
-				type: 'options',
-				options: [
-					{
-						name: 'Resend',
-						value: 'RESEND',
-					},
-					{
-						name: 'Suppress',
-						value: 'SUPPRESS',
-					},
-				],
-				routing: {
-					send: {
-						property: 'MessageAction',
-						type: 'body',
-					},
-				},
-			},
-			{
-				displayName: 'Force Alias Creation',
-				name: 'ForceAliasCreation',
-				type: 'boolean',
-				validateType: 'boolean',
-				default: false,
-				description:
-					'Whether this parameter is used only if the phone_number_verified or email_verified attribute is set to True. Otherwise, it is ignored. If set to True, and the phone number or email address specified in the UserAttributes parameter already exists as an alias with a different user, the alias will be migrated. If set to False, an AliasExistsException error is thrown if the alias already exists',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'ForceAliasCreation',
-					},
-				},
-			},
-			{
-				displayName: 'Desired Delivery Mediums',
-				name: 'DesiredDeliveryMediums',
-				default: ['SMS'],
-				description:
-					'Specify EMAIL if email will be used to send the welcome message. Specify SMS if the phone number will be used. The default value is SMS. You can specify more than one value.',
-				type: 'multiOptions',
-				options: [
-					{
-						name: 'SMS',
-						value: 'SMS',
-					},
-					{
-						name: 'Email',
-						value: 'EMAIL',
-					},
-				],
-				routing: {
-					send: {
-						property: 'DesiredDeliveryMediums',
-						type: 'body',
-					},
-				},
-			},
-			{
-				displayName: 'User Attributes',
-				name: 'UserAttributes',
-				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
-				default: {
-					attributes: [],
-				},
-				description: 'Attributes to add for the user',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Attributes',
-						name: 'attributes',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'Name',
-								type: 'string',
-								default: '',
-								description: 'The name of the attribute (e.g., custom:deliverables)',
-							},
-							{
-								displayName: 'Value',
-								name: 'Value',
-								type: 'string',
-								default: '',
-								description: 'The value of the attribute',
-							},
-						],
-					},
-				],
-				routing: {
-					send: {
-						type: 'body',
-						property: 'UserAttributes',
-						value:
-							'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
-						preSend: [processAttributes],
-					},
-				},
-			},
-			{
-				displayName: 'Validation Data',
-				name: 'ValidationData',
-				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
-				default: {
-					attributes: [],
-				},
-				description: 'Validation data to add for the user',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Data',
-						name: 'data',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'Key',
-								type: 'string',
-								default: '',
-								description: 'The name of the data (e.g., custom:deliverables)',
-							},
-							{
-								displayName: 'Value',
-								name: 'Value',
-								type: 'string',
-								default: '',
-								description: 'The value of the data',
-							},
-						],
-					},
-				],
-				routing: {
-					send: {
-						type: 'body',
-						property: 'ValidationData',
-						value: '={{ $value.data?.map(data => ({ Name: data.Key, Value: data.Value })) || [] }}',
-					},
-				},
 			},
 		],
 	},
@@ -470,158 +253,24 @@ const createFields: INodeProperties[] = [
 
 const getFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'The user pool ID where the users are managed',
+		displayName: 'User Name',
+		name: 'UserName',
+		default: '',
+		description: 'The username of the user to retrieve',
+		placeholder: 'e.g. JohnSmith',
 		displayOptions: {
 			show: {
 				resource: ['user'],
 				operation: ['get'],
 			},
 		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'UserPoolId',
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user pool ID',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
-						},
-					},
-				],
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-			},
-		],
-	},
-	{
-		displayName: 'User',
-		name: 'Username',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the user you want to retrieve',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['get'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user ID',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
-						},
-					},
-				],
-			},
-		],
-		routing: {
-			send: {
-				type: 'body',
-				property: 'Username',
-			},
-		},
 		required: true,
-		type: 'resourceLocator',
+		type: 'string',
+		validateType: 'string',
 	},
 ];
 
 const getAllFields: INodeProperties[] = [
-	{
-		displayName: 'User Pool ID',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'The user pool ID where the users are managed',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'UserPoolId',
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user pool ID',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
-						},
-					},
-				],
-			},
-		],
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -633,14 +282,14 @@ const getAllFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		routing: {
-			send: {
-				paginate: '={{ $value }}',
-			},
-			operations: {
-				pagination: handlePagination,
-			},
-		},
+		// routing: {
+		// 	send: {
+		// 		paginate: '={{ $value }}',
+		// 	},
+		// 	operations: {
+		// 		pagination: handlePagination,
+		// 	},
+		// },
 		type: 'boolean',
 	},
 	{
@@ -657,9 +306,10 @@ const getAllFields: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				property: 'limit',
-				type: 'body',
+				property: 'Limit',
+				type: 'query',
 				value: '={{ $value }}',
+				preSend: [presendTest],
 			},
 		},
 		type: 'number',
@@ -669,7 +319,7 @@ const getAllFields: INodeProperties[] = [
 		validateType: 'number',
 	},
 	{
-		displayName: 'Additional Fields', // ToDo: Test additional parameters with the API
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -687,7 +337,7 @@ const getAllFields: INodeProperties[] = [
 					'The attributes to return in the response. They can be only required attributes in your user pool, or in conjunction with Filter.' +
 					'Amazon Cognito returns an error if not all users in the results have set a value for the attribute you request.' +
 					"Attributes that you can't filter on, including custom attributes, must have a value set in every " +
-					'user profile before an AttributesToGet parameter returns results. e.g. ToDo', // ToDo: Improve description
+					'user profile before an AttributesToGet parameter returns results. e.g. ToDo',
 				options: [
 					{
 						name: 'metadataValues',
@@ -759,104 +409,20 @@ const getAllFields: INodeProperties[] = [
 
 const deleteFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'The user pool ID where the users are managed',
+		displayName: 'User Name',
+		name: 'UserName',
+		default: '',
+		description: 'The username of the user to delete',
+		placeholder: 'e.g. JohnSmith',
 		displayOptions: {
 			show: {
 				resource: ['user'],
 				operation: ['delete'],
 			},
 		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'UserPoolId',
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user pool ID',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
-						},
-					},
-				],
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-			},
-		],
-	},
-	{
-		displayName: 'User',
-		name: 'Username',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the user you want to delete',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['delete'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				hint: 'Enter the user ID',
-				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
-						},
-					},
-				],
-			},
-		],
-		routing: {
-			send: {
-				type: 'body',
-				property: 'Username',
-			},
-		},
 		required: true,
-		type: 'resourceLocator',
+		type: 'string',
+		validateType: 'string',
 	},
 ];
 

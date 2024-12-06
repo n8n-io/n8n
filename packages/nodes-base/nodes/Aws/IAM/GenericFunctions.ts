@@ -140,13 +140,16 @@ export async function processUsersResponse(
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const responseBody = response.body as { Users: IDataObject[] };
+	const responseBody = response.body as {
+		ListUsersResponse: { ListUsersResult: { Users: IDataObject[] } };
+	};
+	const data = responseBody.ListUsersResponse.ListUsersResult.Users;
 
-	if (!responseBody || !Array.isArray(responseBody.Users)) {
+	if (!responseBody || !Array.isArray(data)) {
 		throw new ApplicationError('Unexpected response format: No users found.');
 	}
 
-	const executionData: INodeExecutionData[] = responseBody.Users.map((user) => ({
+	const executionData: INodeExecutionData[] = data.map((user) => ({
 		json: user,
 	}));
 
@@ -154,7 +157,7 @@ export async function processUsersResponse(
 }
 
 /* Helper function to handle pagination */
-const possibleRootProperties = ['Attributes'];
+const possibleRootProperties = ['Users', 'Attributes'];
 // ToDo: Test if pagination works
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
@@ -164,7 +167,7 @@ export async function handlePagination(
 	let nextPageToken: string | undefined;
 	const returnAll = this.getNodeParameter('returnAll') as boolean;
 	let limit = 60;
-
+	console.log('Entered pagination!!!!');
 	// Update limit if 'returnAll' is not selected
 	if (!returnAll) {
 		limit = this.getNodeParameter('limit') as number;
