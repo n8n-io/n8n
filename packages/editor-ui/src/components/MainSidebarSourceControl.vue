@@ -8,7 +8,7 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
-import type { SourceControlAggregatedFile } from '../Interface';
+import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 
 defineProps<{
