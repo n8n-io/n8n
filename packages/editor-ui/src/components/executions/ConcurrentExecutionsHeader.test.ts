@@ -46,7 +46,7 @@ describe('ConcurrentExecutionsHeader', () => {
 		},
 	);
 
-	it('should show tooltip on hover and call "goToUpgrade" on click when on cloud', async () => {
+	it('should show tooltip on hover with Upgrade link and emit "goToUpgrade" on click when on cloud', async () => {
 		const { container, getByText, getByRole, queryByRole, emitted } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
@@ -70,7 +70,7 @@ describe('ConcurrentExecutionsHeader', () => {
 		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
 
-	it('should show tooltip on hover and Viev docs link when self-hosted', async () => {
+	it('should show tooltip on hover with Viev docs link when self-hosted', async () => {
 		const { container, getByText, getByRole, queryByRole } = renderComponent({
 			props: {
 				runningExecutionsCount: 2,
