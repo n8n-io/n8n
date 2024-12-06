@@ -1559,6 +1559,7 @@ export interface ITriggerResponse {
 export interface ExecuteWorkflowData {
 	executionId: string;
 	data: Array<INodeExecutionData[] | null>;
+	waitTill?: Date | null;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2143,6 +2144,7 @@ export interface IRunExecutionData {
 		waitingExecution: IWaitingForExecution;
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
+	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
 }
