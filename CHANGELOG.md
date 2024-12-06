@@ -1,3 +1,17 @@
+## [1.71.1](https://github.com/n8n-io/n8n/compare/n8n@1.71.0...n8n@1.71.1) (2024-12-06)
+
+
+### Bug Fixes
+
+* **editor:** Don't reset all Parameter Inputs when switched to read-only  ([#12063](https://github.com/n8n-io/n8n/issues/12063)) ([728dba2](https://github.com/n8n-io/n8n/commit/728dba26c94cb026b26cdafc8d19a8f5ecd3135a))
+* **editor:** Fix Nodeview.v2 reinitialise based on route changes ([#12062](https://github.com/n8n-io/n8n/issues/12062)) ([4b6db26](https://github.com/n8n-io/n8n/commit/4b6db264c56544b8fc0cf64140b43ee9eda331ce))
+* **editor:** Fix switching from v2 to v1 ([#12050](https://github.com/n8n-io/n8n/issues/12050)) ([1d0c4e0](https://github.com/n8n-io/n8n/commit/1d0c4e0cea9f5897e2fbc0963565f4582ce17c3e))
+* **editor:** Load node types in demo and preview modes ([#12048](https://github.com/n8n-io/n8n/issues/12048)) ([c24602f](https://github.com/n8n-io/n8n/commit/c24602f0cded1f0d1c9ce384a9a19bddd96780ed))
+* **editor:** Polyfill crypto.randomUUID ([#12052](https://github.com/n8n-io/n8n/issues/12052)) ([3ca8521](https://github.com/n8n-io/n8n/commit/3ca85217de2d467c436c2499d203df2cbb4f6bcf))
+* **editor:** Redirect Settings to the proper sub page depending on the instance type (cloud or not) ([#12053](https://github.com/n8n-io/n8n/issues/12053)) ([7a0a9e4](https://github.com/n8n-io/n8n/commit/7a0a9e4a7bcbe164df2e28497b464d3328e78225))
+
+
+
 # [1.71.0](https://github.com/n8n-io/n8n/compare/n8n@1.70.0...n8n@1.71.0) (2024-12-04)
 
 
