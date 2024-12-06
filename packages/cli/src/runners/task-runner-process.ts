@@ -95,19 +95,19 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 		const grantToken = await this.authService.createGrantToken();
 
-		const n8nUri = `127.0.0.1:${this.runnerConfig.port}`;
-		this.process = this.startNode(grantToken, n8nUri);
+		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
+		this.process = this.startNode(grantToken, taskBrokerUri);
 
 		forwardToLogger(this.logger, this.process, '[Task Runner]: ');
 
 		this.monitorProcess(this.process);
 	}
 
-	startNode(grantToken: string, n8nUri: string) {
+	startNode(grantToken: string, taskBrokerUri: string) {
 		const startScript = require.resolve('@n8n/task-runner/start');
 
 		return spawn('node', [startScript], {
-			env: this.getProcessEnvVars(grantToken, n8nUri),
+			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
 		});
 	}
 
@@ -159,10 +159,10 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		}
 	}
 
-	private getProcessEnvVars(grantToken: string, n8nUri: string) {
+	private getProcessEnvVars(grantToken: string, taskBrokerUri: string) {
 		const envVars: Record<string, string> = {
 			N8N_RUNNERS_GRANT_TOKEN: grantToken,
-			N8N_RUNNERS_N8N_URI: n8nUri,
+			N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 			N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
 			...this.getPassthroughEnvVars(),

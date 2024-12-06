@@ -173,4 +173,5 @@ export interface FrontendSettings {
 	};
 	betaFeatures: FrontendBetaFeatures[];
 	virtualSchemaView: boolean;
+	easyAIWorkflowOnboarded: boolean;
 }

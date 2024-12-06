@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { ref, computed, useCssModule } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
+import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
@@ -55,7 +55,7 @@ const isWaitTillIndefinite = computed(() => {
 		return false;
 	}
 
-	return new Date(props.execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
+	return new Date(props.execution.waitTill).getTime() === WAIT_INDEFINITELY.getTime();
 });
 
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
