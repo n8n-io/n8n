@@ -136,7 +136,7 @@ describe('Sub-workflow creation', () => {
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
 
-		openNode('Workflow Input Trigger');
+		openNode('When called by another workflow');
 	});
 
 	it('works with Fields input source into JSON input source', () => {
@@ -166,7 +166,7 @@ describe('Sub-workflow creation', () => {
 		});
 		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
 
-		openNode('Workflow Input Trigger');
+		openNode('When called by another workflow');
 
 		cy.getByTestId('parameter-input').eq(0).click();
 
@@ -184,6 +184,7 @@ describe('Sub-workflow creation', () => {
 			.eq(0)
 			.type(`{selectAll}{backspace}${exampleJson}{enter}`);
 
+		// first one doens't work for some reason, might need to wait for something?
 		ndv.actions.execute();
 		ndv.actions.execute();
 
