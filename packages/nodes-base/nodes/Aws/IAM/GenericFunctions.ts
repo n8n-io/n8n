@@ -12,7 +12,7 @@ import type {
 	DeclarativeRestApiSettings,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 /* Function which helps while developing the node */
 // ToDo: Remove before completing the pull request
@@ -38,45 +38,57 @@ export async function presendStringifyBody(
 	return requestOptions;
 }
 
-export async function presendFilter(
+export async function presendFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
+	let userName: string;
+	let groupName: string | undefined;
+	let pathPrefix: string | undefined;
+
 	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-	const filterAttribute = additionalFields.filterAttribute as string;
-	let filterType = additionalFields.filterType as string;
-	const filterValue = additionalFields.filterValue as string;
 
-	if (filterAttribute && filterType && filterValue) {
-		// Convert the filterType to the format the API expects
-		const filterTypeMapping: { [key: string]: string } = {
-			exactMatch: '=',
-			startsWith: '^=',
-		};
-		filterType = filterTypeMapping[filterType] || filterType;
+	let url = requestOptions.url;
 
-		// Parse the body if it's a string to add the new property
-		let body: IDataObject;
-		if (typeof requestOptions.body === 'string') {
-			try {
-				body = JSON.parse(requestOptions.body) as IDataObject;
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Failed to parse requestOptions body');
-			}
-		} else {
-			body = requestOptions.body as IDataObject;
+	if (url.includes('CreateUser')) {
+		userName = this.getNodeParameter('UserName') as string;
+		if (additionalFields.PermissionsBoundary) {
+			url += `&PermissionsBoundary=${additionalFields.PermissionsBoundary}`;
 		}
+		if (additionalFields.Path) {
+			url += `&Path=${additionalFields.Path}`;
+		}
+	} else if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {
+		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
+		userName = userNameParam.value;
 
-		requestOptions.body = JSON.stringify({
-			...body,
-			Filter: `${filterAttribute} ${filterType} "${filterValue}"`,
-		});
-
-		console.log('requestOptions with filter', requestOptions); // ToDo: Remove
+		const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
+		groupName = groupNameParam.value;
 	} else {
-		// ToDo: Return warning that all three parameters are needed, don't throw an error but don't send the request
-		console.log('no filter is added', requestOptions); // ToDo: Remove
+		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
+		userName = userNameParam.value;
+
+		if (url.includes('UpdateUser')) {
+			if (additionalFields.NewUserName) {
+				url += `&NewUserName=${additionalFields.NewUserName}`;
+			}
+			if (additionalFields.NewPath) {
+				url += `&NewPath=${additionalFields.NewPath}`;
+			}
+		}
 	}
+
+	url += `&UserName=${userName}`;
+
+	if (groupName) {
+		url += `&GroupName=${groupName}`;
+	}
+
+	if (additionalFields.PathPrefix) {
+		url += `&PathPrefix=${additionalFields.PathPrefix}`;
+	}
+
+	requestOptions.url = url;
 
 	return requestOptions;
 }
@@ -405,15 +417,12 @@ export async function awsRequest(
 	this: ILoadOptionsFunctions | IPollFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IDataObject> {
-	const region = (await this.getCredentials('aws')).region as string;
-
 	const requestOptions: IHttpRequestOptions = {
 		...opts,
-		baseURL: `https://cognito-idp.${region}.amazonaws.com`,
+		baseURL: 'https://iam.amazonaws.com',
 		json: true,
 		headers: {
-			'Content-Type': 'application/x-amz-json-1.1',
-			...opts.headers,
+			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 	};
 
@@ -424,7 +433,6 @@ export async function awsRequest(
 			requestOptions,
 		)) as IDataObject;
 	} catch (error) {
-		// ToDo: Check if this error handling is correct/needed. It is taken from another AWS node.
 		const statusCode = (error.statusCode || error.cause?.statusCode) as number;
 		let errorMessage = (error.response?.body?.message ||
 			error.response?.body?.Message ||
@@ -455,173 +463,71 @@ export async function awsRequest(
 }
 
 /* listSearch methods */
-export async function searchUserPools(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-	paginationToken?: string,
-): Promise<INodeListSearchResult> {
-	const opts: IHttpRequestOptions = {
-		url: '', // the base url is set in "awsRequest"
-		method: 'POST',
-		headers: {
-			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUserPools',
-		},
-		body: JSON.stringify({
-			MaxResults: 60, // the maximum number by documentation is 60
-			NextToken: paginationToken ?? undefined,
-		}),
-	};
-	const responseData: IDataObject = await awsRequest.call(this, opts);
-
-	const userPools = responseData.UserPools as Array<{ Name: string; Id: string }>;
-
-	const results: INodeListSearchItems[] = userPools
-		.map((a) => ({
-			name: a.Name,
-			value: a.Id,
-		}))
-		.filter(
-			(a) =>
-				!filter ||
-				a.name.toLowerCase().includes(filter.toLowerCase()) ||
-				a.value.toLowerCase().includes(filter.toLowerCase()),
-		)
-		.sort((a, b) => {
-			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
-			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
-			return 0;
-		});
-
-	return { results, paginationToken: responseData.NextToken }; // ToDo: Test if pagination for the search methods works
-}
 
 export async function searchUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
-	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	// Get the userPoolId from the input
-	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
-
-	// Extract the actual value
-	const userPoolId = userPoolIdRaw.value as string;
-
-	// Ensure that userPoolId is provided
-	if (!userPoolId) {
-		throw new ApplicationError('User Pool ID is required to search users');
-	}
-
-	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '', // the base URL is set in "awsRequest"
 		method: 'POST',
-		headers: {
-			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
-		},
-		body: JSON.stringify({
-			UserPoolId: userPoolId,
-			MaxResults: 60,
-			NextToken: paginationToken ?? undefined,
-		}),
+		url: '/?Action=ListUsers&Version=2010-05-08',
 	};
 
-	// Make the AWS request
 	const responseData: IDataObject = await awsRequest.call(this, opts);
 
-	// Extract users from the response
-	const users = responseData.Users as IDataObject[] | undefined;
+	const responseBody = responseData as {
+		ListUsersResponse: { ListUsersResult: { Users: IDataObject[] } };
+	};
+	const users = responseBody.ListUsersResponse.ListUsersResult.Users;
 
-	// Handle cases where no users are returned
 	if (!users) {
 		console.warn('No users found in the response');
 		return { results: [] };
 	}
 
-	// Map and filter the response data to create results
 	const results: INodeListSearchItems[] = users
-		.map((user) => {
-			// Extract user attributes, if any
-			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
+		.map((user) => ({
+			name: String(user.UserName),
+			value: String(user.UserName),
+		}))
+		.filter((user) => !filter || user.name.includes(filter))
+		.sort((a, b) => a.name.localeCompare(b.name));
 
-			// Find the `email` or `sub` attribute, fallback to `Username`
-			const email = attributes?.find((attr) => attr.Name === 'email')?.Value;
-			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
-			const username = user.Username as string;
-
-			// Use email, sub, or Username as the user name and value
-			const name = email || sub || username;
-			const value = username;
-
-			return { name, value };
-		})
-		.filter(
-			(user) =>
-				!filter ||
-				user.name.toLowerCase().includes(filter.toLowerCase()) ||
-				user.value.toLowerCase().includes(filter.toLowerCase()),
-		)
-		.sort((a, b) => {
-			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-		});
-
-	// Return the results and the pagination token
-	return { results, paginationToken: responseData.NextToken as string | undefined };
+	return {
+		results,
+	};
 }
 
 export async function searchGroups(
 	this: ILoadOptionsFunctions,
 	filter?: string,
-	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	// Get the userPoolId from the input
-	const userPoolIdRaw = this.getNodeParameter('userPoolId', '') as IDataObject;
-
-	// Extract the actual value
-	const userPoolId = userPoolIdRaw.value as string;
-
-	// Ensure that userPoolId is provided
-	if (!userPoolId) {
-		throw new ApplicationError('User Pool ID is required to search groups');
-	}
-	// Setup the options for the AWS request
 	const opts: IHttpRequestOptions = {
-		url: '',
 		method: 'POST',
-		headers: {
-			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
-		},
-		body: JSON.stringify({
-			UserPoolId: userPoolId,
-			MaxResults: 60,
-			NextToken: paginationToken ?? undefined,
-		}),
+		url: '/?Action=ListGroups&Version=2010-05-08',
 	};
 
 	const responseData: IDataObject = await awsRequest.call(this, opts);
 
-	const groups = responseData.Groups as Array<{ GroupName?: string }> | undefined;
+	const responseBody = responseData as {
+		ListGroupsResponse: { ListGroupsResult: { Groups: IDataObject[] } };
+	};
+	const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups;
 
-	// If no groups exist, return an empty list
 	if (!groups) {
+		console.warn('No groups found in the response');
 		return { results: [] };
 	}
 
-	// Map and filter the response
 	const results: INodeListSearchItems[] = groups
-		.filter((group) => group.GroupName)
 		.map((group) => ({
-			name: group.GroupName as string,
-			value: group.GroupName as string,
+			name: String(group.GroupName),
+			value: String(group.GroupName),
 		}))
-		.filter(
-			(group) =>
-				!filter ||
-				group.name.toLowerCase().includes(filter.toLowerCase()) ||
-				group.value.toLowerCase().includes(filter.toLowerCase()),
-		)
-		.sort((a, b) => {
-			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-		});
+		.filter((group) => !filter || group.name.includes(filter))
+		.sort((a, b) => a.name.localeCompare(b.name));
 
-	return { results, paginationToken: responseData.NextToken };
+	return {
+		results,
+	};
 }

@@ -2,7 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { userOperations, userFields, groupOperations, groupFields } from './descriptions';
-import { searchUserPools, searchGroups, searchUsers } from './GenericFunctions';
+import { searchGroups, searchUsers } from './GenericFunctions';
 
 export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,10 +68,8 @@ export class AwsIam implements INodeType {
 
 	methods = {
 		listSearch: {
-			searchUserPools,
 			searchGroups,
 			searchUsers,
-			// Todo: Add more search methods
 		},
 	};
 }
