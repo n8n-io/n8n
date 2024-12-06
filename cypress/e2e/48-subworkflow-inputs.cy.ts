@@ -83,7 +83,7 @@ function navigateWorkflowSelectionDropdown(index: number, expectedText: string) 
 
 // This function starts off in the Child Workflow Input Trigger, assuming we just defined the input fields
 // It then navigates back to the parent and validates output
-function validateAndReturnToParent(fields: string[]) {
+function validateAndReturnToParent(targetChild: string, offset: number, fields: string[]) {
 	ndv.actions.execute();
 
 	// + 1 to account for formatting-only column
@@ -103,11 +103,14 @@ function validateAndReturnToParent(fields: string[]) {
 
 	// Note that outside of e2e tests this will be pre-selected correctly.
 	// Due to our workaround to remain in the same tab we need to select the correct tab manually
-
-	// TODO: This gets repeated, can extract based on item index and workflow name
-	navigateWorkflowSelectionDropdown(1, DEFAULT_SUBWORKFLOW_NAME_1);
+	navigateWorkflowSelectionDropdown(offset, targetChild);
 
 	ndv.actions.execute();
+
+	getOutputTableHeaders().should('have.length', fields.length + 1);
+	for (const [i, name] of fields.entries()) {
+		getOutputTableHeaders().eq(i).should('have.text', name);
+	}
 
 	// todo: verify the fields appear and show the correct types
 
@@ -157,7 +160,11 @@ describe('Sub-workflow creation', () => {
 		] as const;
 		populateFields(fields);
 
-		validateAndReturnToParent(fields.map((f) => f[0]));
+		validateAndReturnToParent(
+			DEFAULT_SUBWORKFLOW_NAME_1,
+			1,
+			fields.map((f) => f[0]),
+		);
 
 		cy.window().then((win) => {
 			cy.stub(win, 'open').callsFake((url) => {
@@ -184,9 +191,15 @@ describe('Sub-workflow creation', () => {
 			.eq(0)
 			.type(`{selectAll}{backspace}${exampleJson}{enter}`);
 
-		// first one doens't work for some reason, might need to wait for something?
+		// first one doesn't work for some reason, might need to wait for something?
 		ndv.actions.execute();
 		ndv.actions.execute();
+
+		validateAndReturnToParent(
+			DEFAULT_SUBWORKFLOW_NAME_2,
+			2,
+			fields.map((f) => f[0]),
+		);
 
 		// populateJson(fields);
 
