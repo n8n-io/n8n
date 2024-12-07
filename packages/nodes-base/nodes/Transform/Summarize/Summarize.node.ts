@@ -6,7 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import { generatePairedItemData } from '../../../utils/utilities';
+
 import {
 	type Aggregations,
 	NUMERICAL_AGGREGATIONS,
@@ -318,9 +318,7 @@ export class Summarize implements INodeType {
 				checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
 			} catch (error) {
 				if (options.continueIfFieldNotFound) {
-					const itemData = generatePairedItemData(items.length);
-
-					return [[{ json: {}, pairedItem: itemData }]];
+					return [[{ json: {} }]];
 				} else {
 					throw error;
 				}

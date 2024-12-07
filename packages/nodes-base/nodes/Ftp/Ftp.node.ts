@@ -18,7 +18,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
+import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;
@@ -549,9 +549,7 @@ export class Ftp implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const pairedItem = generatePairedItemData(items.length);
-
-					return [[{ json: { error: error.message }, pairedItem }]];
+					return [[{ json: { error: error.message } }]];
 				}
 				throw error;
 			}
