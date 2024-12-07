@@ -23,7 +23,7 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=?Action=CreateGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
+						url: '=?Action=CreateGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}&Path={{$parameter["options.path"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -100,7 +100,7 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=?Action=UpdateGroup&GroupName={{$parameter["GroupName"]}}&NewGroupName={{$parameter["NewGroupName"]}}&Version=2010-05-08',
+						url: '=?Action=UpdateGroup&GroupName={{$parameter["GroupName"]}}&NewGroupName={{$parameter["NewGroupName"]}}&Version=2010-05-08&Path={{$parameter["options.path"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -153,13 +153,13 @@ const createFields: INodeProperties[] = [
 				displayName: 'Path',
 				name: 'path',
 				type: 'string',
-				default: '',
+				default: '/',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
 				routing: {
 					send: {
-						property: 'Path',
-						type: 'body',
+						property: 'path',
+						type: 'query',
 						preSend: [
 							async function (
 								this: IExecuteSingleFunctions,
@@ -499,8 +499,8 @@ const updateFields: INodeProperties[] = [
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
 				routing: {
 					send: {
-						property: 'Path',
-						type: 'body',
+						property: 'path',
+						type: 'query',
 						preSend: [
 							async function (
 								this: IExecuteSingleFunctions,
