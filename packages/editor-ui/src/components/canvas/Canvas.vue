@@ -205,8 +205,8 @@ const keyMap = computed(() => ({
 	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
 	ctrl_a: () => addSelectedNodes(graphNodes.value),
-	'+|=': async () => await onZoomIn(),
-	'-|_': async () => await onZoomOut(),
+	'shift_+|+|=': async () => await onZoomIn(),
+	'shift+_|-|_': async () => await onZoomOut(),
 	0: async () => await onResetZoom(),
 	1: async () => await onFitView(),
 	ArrowUp: emitWithLastSelectedNode(selectUpperSiblingNode),
@@ -215,7 +215,6 @@ const keyMap = computed(() => ({
 	ArrowRight: emitWithLastSelectedNode(selectRightNode),
 	shift_ArrowLeft: emitWithLastSelectedNode(selectUpstreamNodes),
 	shift_ArrowRight: emitWithLastSelectedNode(selectDownstreamNodes),
-	// @TODO implement arrow key shortcuts to modify selection
 
 	...(props.readOnly
 		? {}
@@ -687,8 +686,13 @@ provide(CanvasKey, {
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
-			<template v-if="readOnly" #pattern-container>
-				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+			<template v-if="readOnly" #pattern-container="patternProps">
+				<CanvasBackgroundStripedPattern
+					:id="patternProps.id"
+					:x="viewport.x"
+					:y="viewport.y"
+					:zoom="viewport.zoom"
+				/>
 			</template>
 		</Background>
 

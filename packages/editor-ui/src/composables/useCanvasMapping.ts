@@ -37,15 +37,14 @@ import type {
 	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
 import {
-	CUSTOM_API_CALL_KEY,
-	FORM_NODE_TYPE,
-	STICKY_NODE_TYPE,
-	WAIT_NODE_TYPE,
-	WAIT_TIME_UNLIMITED,
-} from '@/constants';
+	NodeConnectionType,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import { CUSTOM_API_CALL_KEY, FORM_NODE_TYPE, STICKY_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
@@ -374,7 +373,7 @@ export function useCanvasMapping({
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
 			} else {
-				acc[node.id] = Object.keys(node?.issues ?? {}).length > 0;
+				acc[node.id] = nodeIssuesById.value[node.id].length > 0;
 			}
 
 			return acc;
@@ -419,7 +418,7 @@ export function useCanvasMapping({
 
 					const waitDate = new Date(workflowExecution.waitTill);
 
-					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
+					if (waitDate.getTime() === WAIT_INDEFINITELY.getTime()) {
 						acc[node.id] = i18n.baseText(
 							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
 						);
@@ -647,6 +646,8 @@ export function useCanvasMapping({
 	return {
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
+		nodeIssuesById,
+		nodeHasIssuesById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
 	};
