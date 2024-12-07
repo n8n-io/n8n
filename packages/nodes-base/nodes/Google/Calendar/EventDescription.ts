@@ -554,6 +554,18 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
+				displayName: 'Return Next Instance of Recurring Event',
+				name: 'returnNextInstance',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return next instances of recurring event, instead of event itself',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Timezone',
 				name: 'timeZone',
 				type: 'resourceLocator',
@@ -630,6 +642,34 @@ export const eventFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'After',
+		name: 'timeMin',
+		type: 'dateTime',
+		default: '',
+		description: 'At least some part of the event must be after this time',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				operation: ['getAll'],
+				resource: ['event'],
+			},
+		},
+	},
+	{
+		displayName: 'Before',
+		name: 'timeMax',
+		type: 'dateTime',
+		default: '',
+		description: 'At least some part of the event must be before this time',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				operation: ['getAll'],
+				resource: ['event'],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -648,6 +688,11 @@ export const eventFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'At least some part of the event must be after this time',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Before',
@@ -655,6 +700,24 @@ export const eventFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'At least some part of the event must be before this time',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Expand Events',
+				name: 'singleEvents',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Fields',
@@ -709,6 +772,34 @@ export const eventFields: INodeProperties[] = [
 					'Free text search terms to find events that match these terms in any field, except for extended properties',
 			},
 			{
+				displayName: 'Recurring Event Handling',
+				name: 'recurringEventHandling',
+				type: 'options',
+				default: 'expand',
+				options: [
+					{
+						name: 'All Occurrences',
+						value: 'expand',
+						description: 'Return all instances of recurring event for specified time range',
+					},
+					{
+						name: 'First Occurrence',
+						value: 'first',
+						description: 'Return event with specified recurrence rule',
+					},
+					{
+						name: 'Next Occurrence',
+						value: 'next',
+						description: 'Return next instance of recurring event',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
@@ -722,14 +813,6 @@ export const eventFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include hidden invitations in the result',
-			},
-			{
-				displayName: 'Single Events',
-				name: 'singleEvents',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
 			},
 			{
 				displayName: 'Timezone',
@@ -796,6 +879,30 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+	},
+	{
+		displayName: 'Modify',
+		name: 'modifyTarget',
+		type: 'options',
+		options: [
+			{
+				name: 'Reccuring Event Instance',
+				value: 'instance',
+			},
+			{
+				name: 'Reccuring Event',
+				value: 'event',
+			},
+		],
+		default: 'instance',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				resource: ['event'],
+				operation: ['update'],
+				eventId: [{ _cnd: { includes: '_' } }],
+			},
+		},
 	},
 	{
 		displayName: 'Use Default Reminders',
