@@ -1,3 +1,4 @@
+import { getCredentialSaveButton, saveCredential } from '../../composables/modals/credential-modal';
 import { getVisibleSelect } from '../../utils';
 import { BasePage } from '../base';
 
@@ -13,8 +14,6 @@ export class CredentialsModal extends BasePage {
 			this.getters.credentialInputs().find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
-		// Saving of the credentials takes a while on the CI so we need to increase the timeout
-		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 5000 }),
 		deleteButton: () => cy.getByTestId('credential-delete-button'),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
 		oauthConnectButton: () => cy.getByTestId('oauth-connect-button'),
@@ -41,17 +40,17 @@ export class CredentialsModal extends BasePage {
 		},
 		save: (test = false) => {
 			cy.intercept('POST', '/rest/credentials').as('saveCredential');
-			this.getters.saveButton().click({ force: true });
+			saveCredential();
 
 			cy.wait('@saveCredential');
 			if (test) cy.wait('@testCredential');
-			this.getters.saveButton().should('contain.text', 'Saved');
+			getCredentialSaveButton().should('contain.text', 'Saved');
 		},
 		saveSharing: () => {
 			cy.intercept('PUT', '/rest/credentials/*/share').as('shareCredential');
-			this.getters.saveButton().click({ force: true });
+			saveCredential();
 			cy.wait('@shareCredential');
-			this.getters.saveButton().should('contain.text', 'Saved');
+			getCredentialSaveButton().should('contain.text', 'Saved');
 		},
 		close: () => {
 			this.getters.closeButton().click();
@@ -65,7 +64,7 @@ export class CredentialsModal extends BasePage {
 				.each(($el) => {
 					cy.wrap($el).type('test');
 				});
-			this.getters.saveButton().click();
+			saveCredential();
 			if (closeModal) {
 				this.getters.closeButton().click();
 			}

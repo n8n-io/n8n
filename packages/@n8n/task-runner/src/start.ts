@@ -1,4 +1,4 @@
-import { ensureError } from 'n8n-workflow';
+import { ensureError, setGlobalState } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
@@ -43,6 +43,10 @@ function createSignalHandler(signal: string) {
 
 void (async function start() {
 	const config = Container.get(MainConfig);
+
+	setGlobalState({
+		defaultTimezone: config.baseRunnerConfig.timezone,
+	});
 
 	if (config.sentryConfig.sentryDsn) {
 		const { ErrorReporter } = await import('@/error-reporter');

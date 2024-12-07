@@ -150,7 +150,6 @@ describe('GlobalConfig', () => {
 		},
 		workflows: {
 			defaultName: 'My workflow',
-			onboardingFlowDisabled: false,
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 		},
 		endpoints: {

@@ -16,6 +16,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDataSchema } from './useDataSchema';
 import { VIEWS } from '@/constants';
 import { useI18n } from './useI18n';
+import type { IWorkflowDb } from '@/Interface';
 
 const CANVAS_VIEWS = [VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOW, VIEWS.EXECUTION_DEBUG];
 const EXECUTION_VIEWS = [VIEWS.EXECUTION_PREVIEW];
@@ -225,13 +226,13 @@ export const useAIAssistantHelpers = () => {
 			simplifiedResultData.error = data.error;
 		}
 		// Map runData, excluding the `data` field from ITaskData
-		Object.keys(data.runData).forEach((key) => {
+		for (const key of Object.keys(data.runData)) {
 			const taskDataArray = data.runData[key];
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
 				const { data: taskDataContent, ...taskDataWithoutData } = taskData;
 				return taskDataWithoutData;
 			});
-		});
+		}
 		// Handle lastNodeExecuted if it exists
 		if (data.lastNodeExecuted) {
 			simplifiedResultData.lastNodeExecuted = data.lastNodeExecuted;
@@ -243,6 +244,13 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
+	const simplifyWorkflowForAssistant = (workflow: IWorkflowDb): Partial<IWorkflowDb> => ({
+		name: workflow.name,
+		active: workflow.active,
+		connections: workflow.connections,
+		nodes: workflow.nodes,
+	});
+
 	return {
 		processNodeForAssistant,
 		getNodeInfoForAssistant,
@@ -252,5 +260,6 @@ export const useAIAssistantHelpers = () => {
 		getCurrentViewDescription,
 		getReferencedNodes,
 		simplifyResultData,
+		simplifyWorkflowForAssistant,
 	};
 };

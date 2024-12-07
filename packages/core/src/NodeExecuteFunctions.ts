@@ -13,13 +13,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import type {
-	AxiosError,
-	AxiosHeaders,
-	AxiosPromise,
-	AxiosRequestConfig,
-	AxiosResponse,
-} from 'axios';
+import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FileType from 'file-type';
@@ -748,6 +742,26 @@ export async function binaryToString(body: Buffer | Readable, encoding?: string)
 	return iconv.decode(buffer, encoding ?? 'utf-8');
 }
 
+export async function invokeAxios(
+	axiosConfig: AxiosRequestConfig,
+	authOptions: IRequestOptions['auth'] = {},
+) {
+	try {
+		return await axios(axiosConfig);
+	} catch (error) {
+		if (authOptions.sendImmediately !== false || !(error instanceof axios.AxiosError)) throw error;
+		// for digest-auth
+		const { response } = error;
+		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+			throw error;
+		}
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
+		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
+		return await axios(axiosConfig);
+	}
+}
+
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
@@ -768,29 +782,8 @@ export async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	let requestFn: () => AxiosPromise;
-	if (configObject.auth?.sendImmediately === false) {
-		// for digest-auth
-		requestFn = async () => {
-			try {
-				return await axios(axiosConfig);
-			} catch (error) {
-				const { response } = error;
-				if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-					throw error;
-				}
-				const { auth } = axiosConfig;
-				delete axiosConfig.auth;
-				axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
-				return await axios(axiosConfig);
-			}
-		};
-	} else {
-		requestFn = async () => await axios(axiosConfig);
-	}
-
 	try {
-		const response = await requestFn();
+		const response = await invokeAxios(axiosConfig, configObject.auth);
 		let body = response.data;
 		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
 			parseIncomingMessage(body);
@@ -982,7 +975,7 @@ export async function httpRequest(
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	let axiosRequest = convertN8nRequestToAxios(requestOptions);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
@@ -990,23 +983,7 @@ export async function httpRequest(
 		delete axiosRequest.data;
 	}
 
-	let result: AxiosResponse<any>;
-	try {
-		result = await axios(axiosRequest);
-	} catch (error) {
-		if (requestOptions.auth?.sendImmediately === false) {
-			const { response } = error;
-			if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-				throw error;
-			}
-
-			const { auth } = axiosRequest;
-			delete axiosRequest.auth;
-			axiosRequest = digestAuthAxiosConfig(axiosRequest, response, auth);
-			result = await axios(axiosRequest);
-		}
-		throw error;
-	}
+	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
 	if (requestOptions.returnFullResponse) {
 		return {

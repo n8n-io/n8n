@@ -112,7 +112,7 @@ export class TestMetricsController {
 	}
 
 	@Delete('/:testDefinitionId/metrics/:id')
-	async delete(req: TestMetricsRequest.GetOne) {
+	async delete(req: TestMetricsRequest.Delete) {
 		const { id: metricId, testDefinitionId } = req.params;
 
 		await this.getTestDefinition(req);
