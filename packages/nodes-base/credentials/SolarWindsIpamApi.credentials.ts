@@ -27,15 +27,15 @@ export class SolarWindsIpamApi implements ICredentialType {
 			placeholder: 'https://your-ipam-server',
 			description: 'The base URL of your SolarWinds IPAM server.',
 		},
-		{
-			displayName: 'Server Type',
-			name: 'serverType',
-			required: true,
-			type: 'string',
-			default: '',
-			placeholder: 'Enter server type (e.g., Orion v3)',
-			description: 'Enter the server type for SolarWinds IPAM connection.',
-		},
+		// {
+		// 	displayName: 'Server Type',
+		// 	name: 'serverType',
+		// 	required: true,
+		// 	type: 'string',
+		// 	default: '',
+		// 	placeholder: 'Enter server type (e.g., Orion v3)',
+		// 	description: 'Enter the server type for SolarWinds IPAM connection.',
+		// },
 		{
 			displayName: 'Username',
 			name: 'username',
@@ -75,9 +75,9 @@ export class SolarWindsIpamApi implements ICredentialType {
 			{
 				type: 'responseSuccessBody',
 				properties: {
-					key: 'error',
-					value: 'invalid_auth',
-					message: 'Invalid access token',
+					key: 'result',
+					value: undefined,
+					message: 'Invalid credentials',
 				},
 			},
 		],
