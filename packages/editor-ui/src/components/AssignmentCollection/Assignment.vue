@@ -281,9 +281,10 @@ const onBlur = (): void => {
 .remove {
 	position: absolute;
 	left: 0;
-	top: calc(14px + var(--spacing-l));
+	top: calc(20px + var(--spacing-l));
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
 }
 
 .drag {
@@ -292,6 +293,7 @@ const onBlur = (): void => {
 	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
 }
 
 .status {

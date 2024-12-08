@@ -381,9 +381,23 @@ const onDragChange = (optionName: string) => {
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			.delete-option {
-				top: 14px;
+			.drag-option {
+				top: calc(1.2 * var(--spacing-s));
 			}
+			.delete-option {
+				top: calc(2.2 * var(--spacing-s));
+			}
+		}
+	}
+}
+
+.parameter-item:first-of-type {
+	.parameter-item-wrapper {
+		.drag-option {
+			top: var(--spacing-3xs);
+		}
+		.delete-option {
+			top: var(--spacing-l);
 		}
 	}
 }
@@ -398,11 +412,16 @@ const onDragChange = (optionName: string) => {
 
 .ghost {
 	background-color: var(--color-background-base);
+	border-radius: var(--border-radius-base);
+	padding-right: var(--spacing-xs);
 }
 .dragging {
 	background-color: var(--color-background-xlight);
 	.parameter-item-wrapper {
 		border: none;
 	}
+	border-radius: var(--border-radius-base);
+	opacity: 0.7;
+	padding-right: var(--spacing-xs);
 }
 </style>

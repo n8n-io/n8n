@@ -281,8 +281,16 @@ function getIssues(index: number): string[] {
 }
 .ghost {
 	background-color: var(--color-background-base);
+	border-radius: var(--border-radius-base);
+	padding-right: var(--spacing-xs);
 }
 .dragging {
 	background-color: var(--color-background-xlight);
+	border-radius: var(--border-radius-base);
+	opacity: 0.7;
+	padding-right: var(--spacing-xs);
+}
+.dragging > .combinator {
+	display: none;
 }
 </style>
