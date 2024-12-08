@@ -356,6 +356,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
  * as an AI Agent Tool.
  * Returns the modified item (not copied)
  */
+// convert any node into ai tool
 export function convertNodeToAiTool<
 	T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
 >(item: T): T {
@@ -366,7 +367,8 @@ export function convertNodeToAiTool<
 
 	if (isFullDescription(item.description)) {
 		item.description.name += 'Tool';
-		item.description.inputs = [];
+		// todo if vector store keep inputs
+		// item.description.inputs = [];
 		item.description.outputs = [NodeConnectionType.AiTool];
 		item.description.displayName += ' Tool';
 		delete item.description.usableAsTool;
