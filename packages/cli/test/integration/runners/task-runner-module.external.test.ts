@@ -1,4 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
 
 import { MissingAuthTokenError } from '@/runners/errors/missing-auth-token.error';
@@ -32,7 +33,7 @@ describe('TaskRunnerModule in external mode', () => {
 			runnerConfig.enabled = true;
 			runnerConfig.authToken = '';
 
-			const module = new TaskRunnerModule(runnerConfig);
+			const module = new TaskRunnerModule(mock(), runnerConfig);
 
 			await expect(module.start()).rejects.toThrowError(MissingAuthTokenError);
 		});

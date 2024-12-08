@@ -1,9 +1,13 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { ErrorReporterProxy, sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logging/logger.service';
+import type { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart-loop-error';
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerProcessRestartLoopDetector } from '@/runners/task-runner-process-restart-loop-detector';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
 import { TaskRunnerWsServer } from './runner-ws-server';
@@ -25,7 +29,14 @@ export class TaskRunnerModule {
 
 	private taskRunnerProcess: TaskRunnerProcess | undefined;
 
-	constructor(private readonly runnerConfig: TaskRunnersConfig) {}
+	private taskRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly runnerConfig: TaskRunnersConfig,
+	) {
+		this.logger = this.logger.scoped('task-runner');
+	}
 
 	async start() {
 		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
@@ -83,6 +94,14 @@ export class TaskRunnerModule {
 
 		const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
 		this.taskRunnerProcess = Container.get(TaskRunnerProcess);
+		this.taskRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+			this.taskRunnerProcess,
+		);
+		this.taskRunnerProcessRestartLoopDetector.on(
+			'restart-loop-detected',
+			this.onRunnerRestartLoopDetected,
+		);
+
 		await this.taskRunnerProcess.start();
 
 		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
@@ -92,4 +111,13 @@ export class TaskRunnerModule {
 			Container.get(InternalTaskRunnerDisconnectAnalyzer),
 		);
 	}
+
+	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {
+		this.logger.error(error.message);
+		ErrorReporterProxy.error(error);
+
+		// Allow some time for the error to be flushed
+		await sleep(1000);
+		process.exit(1);
+	};
 }
