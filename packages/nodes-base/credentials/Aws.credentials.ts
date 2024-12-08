@@ -354,6 +354,7 @@ export class Aws implements ICredentialType {
 				} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
 					endpointString = credentials.rekognitionEndpoint;
 				} else if (service === 'sqs' && credentials.sqsEndpoint) {
+					//ToDo: should we remove the duplicate?
 					endpointString = credentials.sqsEndpoint;
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
