@@ -130,12 +130,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 								node,
 							);
 
-							// @ts-ignore
+							// @ts-expect-error These transfer all properties from a type subset to a wider type
 							if (!requestOptions[outerKey]) {
-								// @ts-ignore
+								// @ts-expect-error These transfer all properties from a type subset to a wider type
 								requestOptions[outerKey] = {};
 							}
-							// @ts-ignore
+							// @ts-expect-error These transfer all properties from a type subset to a wider type
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});

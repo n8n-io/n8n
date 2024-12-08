@@ -261,12 +261,12 @@ const mapCookies = (cookies: CurlJson['cookies']): { cookie: string } | {} => {
 };
 
 export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
-	Object.keys(obj).reduce((acc, k) => {
+	Object.keys(obj).reduce<Record<string, unknown>>((acc, k) => {
 		const pre = prefix.length ? prefix + '.' : '';
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
-		//@ts-ignore
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		// @Problem: `typeof null` is `object`, which creates a bug here
+		if (typeof obj[k] === 'object')
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			Object.assign(acc, flattenObject(obj[k], pre + k));
 		else acc[pre + k] = obj[k];
 		return acc;
 	}, {});
@@ -465,12 +465,14 @@ export class CurlService {
 		}
 
 		if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
-			// @ts-ignore
+			// @Cleanup: Type `options.redirect` as optional and fix type errors
+			// @ts-expect-error Options is typed as non-optional
 			delete httpNodeParameters.options.redirect;
 		}
 
 		if (!Object.keys(httpNodeParameters.options.response.response).length) {
-			// @ts-ignore
+			// @Cleanup: Type `options.response` as optional and fix type errors
+			// @ts-expect-error Options is typed as non-optional
 			delete httpNodeParameters.options.response;
 		}
 

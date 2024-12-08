@@ -76,8 +76,7 @@ export class CodeFlow {
 		const data =
 			typeof url.search === 'string' ? qs.parse(url.search.substring(1)) : url.search || {};
 
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
+		// @ts-expect-error getAuthError is not correctly typed
 		const error = getAuthError(data);
 		if (error) throw error;
 

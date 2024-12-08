@@ -70,9 +70,8 @@ const vModel = reactive(
 					return filter[key];
 				},
 				set(value) {
-					// TODO: find out what exactly is typechecker complaining about
-
-					// @ts-ignore
+					// @Cleanup: Type the `computed<>()` call correctly or swap reduce for an easier to type solution
+					// @ts-expect-error We lose type info on value because we set this up in a reduce loop
 					filter[key] = value;
 					emit('filterChanged', filter);
 				},

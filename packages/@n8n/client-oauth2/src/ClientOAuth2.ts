@@ -115,8 +115,7 @@ export class ClientOAuth2 {
 
 		const body = this.parseResponseBody<T>(response.data);
 
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
+		// @ts-expect-error getAuthError is not correctly typed
 		const authErr = getAuthError(body);
 		if (authErr) throw authErr;
 

@@ -68,7 +68,7 @@ export class LoadNodesAndCredentials {
 		const delimiter = process.platform === 'win32' ? ';' : ':';
 		process.env.NODE_PATH = module.paths.join(delimiter);
 
-		// @ts-ignore
+		// @ts-expect-error This is a NodeJS internal function @Internal
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 

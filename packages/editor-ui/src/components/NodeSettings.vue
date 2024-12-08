@@ -403,7 +403,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 		if (parameterData.value && typeof parameterData.value === 'object') {
 			for (const parameterName of Object.keys(parameterData.value)) {
-				//@ts-ignore
+				// @Cleanup: Instead use `Object.entries()` to get both key and value
+				// @ts-expect-error this breaks the connection of keys and values
 				newValue = parameterData.value[parameterName];
 
 				// Remove the 'parameters.' from the beginning to just have the
@@ -415,7 +416,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
 
 				// Apply the new value
-				//@ts-ignore
+				// @Problem: `parameterData[parameterName]` makes little sense to me, please investigate if this should be `parameterData.value[parameterName]`.
+				// @ts-expect-error This accesses via keys of parameterData.values. It likely is a bug, but has been unnoticed in production for two years.
 				if (parameterData[parameterName] === undefined && parameterPathArray !== null) {
 					// Delete array item
 					const path = parameterPathArray[1];

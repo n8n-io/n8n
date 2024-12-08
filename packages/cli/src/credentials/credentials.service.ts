@@ -289,7 +289,8 @@ export class CredentialsService {
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
 		if (decryptedData.oauthTokenData) {
-			// @ts-ignore
+			// @Cleanup We should instead properly define the type of `updateData`
+			// @ts-expect-error updateData has an incorrect type due to the cast in its definition
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 		return updateData;

@@ -49,7 +49,7 @@ if (!inE2ETests && !inTest) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 					const innerData = data[prefix];
 					if (prefix in globalConfig) {
-						// @ts-ignore
+						// @ts-expect-error We verify `prefix` is in `globalConfig` above
 						merge(globalConfig[prefix], innerData);
 					} else {
 						const flattenedData: Record<string, string> = flatten(innerData);
@@ -69,7 +69,8 @@ if (!inE2ETests && !inTest) {
 	Object.entries(process.env).forEach(([envName, fileName]) => {
 		if (envName.endsWith('_FILE') && fileName) {
 			const configEnvName = envName.replace(/_FILE$/, '');
-			// @ts-ignore
+			// @Cleanup: Check if we can use `config.getEnv(configEnvName)` instead
+			// @ts-expect-error This uses the private `_env` property @Internal
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const key = config._env[configEnvName]?.[0] as string;
 			if (key) {

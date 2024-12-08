@@ -111,7 +111,8 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	// Encrypt the data
 	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
 
-	// @ts-ignore
+	// @Cleanup Investigate whether ICredentialsEncrypted['data'] is incorrect and a change is feasible
+	// @ts-expect-error Either this is mistyped, or `ICredentialsEncrypted['data']` is mistyped
 	coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;

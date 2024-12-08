@@ -1,3 +1,4 @@
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -17,8 +18,8 @@ export async function encryptCredentialData(
 	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
-	// @ts-ignore
-	coreCredential.setData(credential.data);
+	// data column is actually an object despite the type
+	coreCredential.setData(credential.data as unknown as ICredentialDataDecryptedObject);
 
 	return Object.assign(credential, coreCredential.getDataToSave());
 }

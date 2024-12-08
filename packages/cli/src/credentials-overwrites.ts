@@ -51,8 +51,7 @@ export class CredentialsOverwrites {
 		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set
 		for (const key of Object.keys(overwrites)) {
-			// @ts-ignore
-			if ([null, undefined, ''].includes(returnData[key])) {
+			if (([null, undefined, ''] as unknown[]).includes(returnData[key])) {
 				returnData[key] = overwrites[key];
 			}
 		}
