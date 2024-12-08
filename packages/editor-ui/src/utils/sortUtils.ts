@@ -8,6 +8,7 @@ const SEQUENTIAL_BONUS = 60; // bonus for adjacent matches
 const SEPARATOR_BONUS = 30; // bonus if match occurs after a separator
 const CAMEL_BONUS = 30; // bonus if match is uppercase and prev is lower
 const FIRST_LETTER_BONUS = 15; // bonus if the first letter is matched
+const WHOLE_WORD_BONUS = 50; // bonus if whole word is matched
 
 const LEADING_LETTER_PENALTY = -20; // penalty applied for every letter in str before the first match
 const MAX_LEADING_LETTER_PENALTY = -200; // maximum penalty for leading letters
@@ -73,6 +74,11 @@ function fuzzyMatchRecursive(
 	recursionCount: number,
 	recursionLimit: number,
 ): { matched: boolean; outScore: number } {
+	const containsWord = (text: string, word: string): boolean => {
+		const regex = new RegExp(`\\b${word}\\b`, 'i');
+		return regex.test(text);
+	};
+
 	let outScore = 0;
 
 	// Return if recursion limit is reached.
@@ -159,6 +165,11 @@ function fuzzyMatchRecursive(
 				if (currIdx === prevIdx + 1) {
 					outScore += SEQUENTIAL_BONUS;
 				}
+			}
+
+			// Apply whole word bonus
+			if (containsWord(target, pattern)) {
+				outScore += WHOLE_WORD_BONUS;
 			}
 
 			// Check for bonuses based on neighbor character value.
