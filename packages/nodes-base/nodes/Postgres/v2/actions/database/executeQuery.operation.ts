@@ -48,6 +48,15 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+const isJSON = (str: string) => {
+	try {
+		JSON.parse(str);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
 export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
@@ -55,20 +64,19 @@ export async function execute(
 	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
-	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
-
-	const queries: QueryWithValues[] = [];
-
-	for (let i = 0; i < items.length; i++) {
-		let query = this.getNodeParameter('query', i) as string;
+	const queries: QueryWithValues[] = replaceEmptyStringsByNulls(
+		items,
+		nodeOptions.replaceEmptyStrings as boolean,
+	).map((_, index) => {
+		let query = this.getNodeParameter('query', index) as string;
 
 		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
 		}
 
 		let values: Array<IDataObject | string> = [];
 
-		let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
+		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
 		if (typeof queryReplacement === 'number') {
 			queryReplacement = String(queryReplacement);
@@ -95,7 +103,11 @@ export async function execute(
 					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							const evaluatedValues = stringToArray(this.evaluateExpression(`${resolvable}`, i));
+							const evaluatedExpression = this.evaluateExpression(`${resolvable}`, index) as string;
+							const evaluatedValues = isJSON(evaluatedExpression)
+								? [evaluatedExpression]
+								: stringToArray(evaluatedExpression);
+
 							if (evaluatedValues.length) values.push(...evaluatedValues);
 						}
 					} else {
@@ -113,7 +125,7 @@ export async function execute(
 
 						if (resolvables.length) {
 							for (const resolvable of resolvables) {
-								values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+								values.push(this.evaluateExpression(`${resolvable}`, index) as IDataObject);
 							}
 						} else {
 							values.push(rawValue);
@@ -128,7 +140,7 @@ export async function execute(
 				throw new NodeOperationError(
 					this.getNode(),
 					'Query Parameters must be a string of comma-separated values or an array of values',
-					{ itemIndex: i },
+					{ itemIndex: index },
 				);
 			}
 		}
@@ -143,8 +155,8 @@ export async function execute(
 			}
 		}
 
-		queries.push({ query, values });
-	}
+		return { query, values };
+	});
 
 	return await runQueries(queries, items, nodeOptions);
 }
