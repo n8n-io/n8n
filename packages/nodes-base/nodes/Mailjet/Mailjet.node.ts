@@ -193,6 +193,12 @@ export class Mailjet implements INodeType {
 						if (additionalFields.priority) {
 							body.Priority = additionalFields.priority as number;
 						}
+						if (additionalFields.customCampaign) {
+							body.CustomCampaign = additionalFields.customCampaign as string;
+						}
+						if (additionalFields.deduplicateCampaign) {
+							body.DeduplicateCampaign = additionalFields.deduplicateCampaign as boolean;
+						}
 						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
 							Messages: [body],
 						});
@@ -281,6 +287,12 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.priority) {
 							body.Priority = additionalFields.priority as number;
+						}
+						if (additionalFields.customCampaign) {
+							body.CustomCampaign = additionalFields.customCampaign as string;
+						}
+						if (additionalFields.deduplicateCampaign) {
+							body.DeduplicateCampaign = additionalFields.deduplicateCampaign as boolean;
 						}
 						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
 							Messages: [body],
