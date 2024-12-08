@@ -1,20 +1,56 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHookFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
+export async function baserowFileUploadRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	jwtToken: string,
+	file: Buffer,
+	fileName: string,
+	mimeType: string,
+) {
+	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
+
+	const options: IHttpRequestOptions = {
+		headers: {
+			Authorization: `JWT ${jwtToken}`,
+			'Content-Type': 'multipart/form-data',
+		},
+		method: 'POST',
+		url: `${credentials.host}/api/user-files/upload-file/`,
+		json: false,
+		body: {
+			file: {
+				value: file,
+				options: {
+					filename: fileName,
+					contentType: mimeType,
+				},
+			},
+		},
+	};
+
+	try {
+		return await this.helpers.httpRequest(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 /**
  * Make a request to Baserow API.
  */
 export async function baserowApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	jwtToken: string,
@@ -23,16 +59,25 @@ export async function baserowApiRequest(
 ) {
 	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Authorization: `JWT ${jwtToken}`,
 		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.host}${endpoint}`,
+		url: `${credentials.host}${endpoint}`,
 		json: true,
 	};
+
+	if (body.formData) {
+		options.json = false;
+		options.headers = {
+			...options.headers,
+			'Content-Type': 'multipart/form-data',
+		};
+		options.returnFullResponse = true;
+	}
 
 	if (Object.keys(qs).length === 0) {
 		delete options.qs;
@@ -43,7 +88,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -90,18 +135,18 @@ export async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ username, password, host }: BaserowCredentials,
 ) {
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
 		body: {
 			username,
 			password,
 		},
-		uri: `${host}/api/user/token-auth/`,
+		url: `${host}/api/user/token-auth/`,
 		json: true,
 	};
 
 	try {
-		const { token } = (await this.helpers.request(options)) as { token: string };
+		const { token } = (await this.helpers.httpRequest(options)) as { token: string };
 		return token;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -127,6 +172,15 @@ export async function getFieldNamesAndIds(
 	};
 }
 
+export async function getTableFields(
+	this: IExecuteFunctions,
+	table: string,
+	jwtToken: string,
+): Promise<LoadedResource[]> {
+	const endpoint = `/api/database/fields/table/${table}/`;
+	return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
+}
+
 export const toOptions = (items: LoadedResource[]) =>
 	items.map(({ name, id }) => ({ name, value: id }));
 
@@ -139,15 +193,6 @@ export class TableFieldMapper {
 	idToNameMapping: Record<string, string> = {};
 
 	mapIds = true;
-
-	async getTableFields(
-		this: IExecuteFunctions,
-		table: string,
-		jwtToken: string,
-	): Promise<LoadedResource[]> {
-		const endpoint = `/api/database/fields/table/${table}/`;
-		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
-	}
 
 	createMappings(tableFields: LoadedResource[]) {
 		this.nameToIdMapping = this.createNameToIdMapping(tableFields);
