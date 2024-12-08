@@ -77,14 +77,6 @@ export function addAdditionalFields(
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	if (operation === 'sendMessage') {
-		const attributionText = 'This message was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-			'n8n-nodes-base.telegram',
-		)}${instanceId ? '_' + instanceId : ''}`;
-
-		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
-			additionalFields.appendAttribution = true;
-		}
 
 		if (!additionalFields.parse_mode) {
 			additionalFields.parse_mode = 'Markdown';
@@ -97,12 +89,10 @@ export function addAdditionalFields(
 			body.disable_web_page_preview = true;
 		}
 
-		if (additionalFields.appendAttribution) {
-			if (additionalFields.parse_mode === 'Markdown') {
-				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
-			} else if (additionalFields.parse_mode === 'HTML') {
-				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
-			}
+		if (additionalFields.parse_mode === 'Markdown') {
+			body.text = `${body.text}\n\n`;
+		} else if (additionalFields.parse_mode === 'HTML') {
+			body.text = `${body.text}\n\n`;
 		}
 
 		if (
@@ -113,7 +103,6 @@ export function addAdditionalFields(
 			body.disable_web_page_preview = true;
 		}
 
-		delete additionalFields.appendAttribution;
 	}
 
 	Object.assign(body, additionalFields);
