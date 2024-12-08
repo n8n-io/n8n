@@ -1,6 +1,12 @@
-import { RewriteFrames } from '@sentry/integrations';
-import { init, setTag, captureException, close } from '@sentry/node';
-import type { ErrorEvent, EventHint } from '@sentry/types';
+import {
+	init,
+	setTag,
+	captureException,
+	close,
+	rewriteFramesIntegration,
+	type EventHint,
+	type ErrorEvent,
+} from '@sentry/node';
 import * as a from 'assert/strict';
 import { createHash } from 'crypto';
 import { ApplicationError } from 'n8n-workflow';
@@ -52,7 +58,7 @@ export class ErrorReporter {
 			beforeSend: async (event, hint) => await this.beforeSend(event, hint),
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => ENABLED_INTEGRATIONS.includes(name)),
-				new RewriteFrames({ root: process.cwd() }),
+				rewriteFramesIntegration({ root: process.cwd() }),
 			],
 		});
 

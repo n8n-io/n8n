@@ -94,11 +94,8 @@ export abstract class AbstractServer {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
-		const {
-			Handlers: { requestHandler, errorHandler },
-		} = await import('@sentry/node');
-		app.use(requestHandler());
-		app.use(errorHandler());
+		const { setupExpressErrorHandler } = await import('@sentry/node');
+		setupExpressErrorHandler(app);
 	}
 
 	private setupCommonMiddlewares() {
