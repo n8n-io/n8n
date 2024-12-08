@@ -857,6 +857,7 @@
     "aws4": "1.11.0",
     "basic-auth": "catalog:",
     "change-case": "4.1.2",
+    "chardet": "^2.0.0",
     "cheerio": "1.0.0-rc.6",
     "chokidar": "catalog:",
     "cron": "3.1.7",

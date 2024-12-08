@@ -1,3 +1,4 @@
+import chardet from 'chardet';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -121,8 +122,8 @@ export async function execute(
 
 			if (!value) continue;
 
-			const encoding = (options.encoding as string) || 'utf8';
 			const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+			const encoding = (options.encoding as string) || (chardet.detect(buffer) as string);
 
 			if (options.keepSource && options.keepSource !== 'binary') {
 				newItem.json = deepCopy(item.json);
