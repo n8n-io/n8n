@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateCodeForAiTransform } from './utils';
+import { generateCodeForAiTransform, reducePayloadSizeOrThrow } from './utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { generateCodeForPrompt } from '@/api/ai';
+import type { AskAiRequest } from '@/types/assistant.types';
+import type { Schema } from '@/Interface';
 
 vi.mock('./utils', async () => {
 	const actual = await vi.importActual('./utils');
@@ -84,5 +86,71 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 			value: 'formatted-const example = "no retries needed";',
 		});
 		expect(generateCodeForPrompt).toHaveBeenCalledTimes(1);
+	});
+});
+
+const mockPayload = () =>
+	({
+		context: {
+			schema: [
+				{ nodeName: 'node1', data: 'some data' },
+				{ nodeName: 'node2', data: 'other data' },
+			],
+			inputSchema: {
+				schema: {
+					value: [
+						{ key: 'prop1', value: 'value1' },
+						{ key: 'prop2', value: 'value2' },
+					],
+				},
+			},
+		},
+		question: 'What is node1 and prop1?',
+	}) as unknown as AskAiRequest.RequestPayload;
+
+describe('reducePayloadSizeOrThrow', () => {
+	it('reduces schema size when tokens exceed the limit', () => {
+		const payload = mockPayload();
+		const error = new Error('Limit is 100 tokens, but 104 were provided');
+
+		reducePayloadSizeOrThrow(payload, error);
+
+		expect(payload.context.schema.length).toBe(1);
+		expect(payload.context.schema[0]).toEqual({ nodeName: 'node1', data: 'some data' });
+	});
+
+	it('removes unreferenced properties in input schema', () => {
+		const payload = mockPayload();
+		const error = new Error('Limit is 100 tokens, but 150 were provided');
+
+		reducePayloadSizeOrThrow(payload, error);
+
+		expect(payload.context.inputSchema.schema.value.length).toBe(1);
+		expect((payload.context.inputSchema.schema.value as Schema[])[0].key).toBe('prop1');
+	});
+
+	it('removes all parent nodes if needed', () => {
+		const payload = mockPayload();
+		const error = new Error('Limit is 100 tokens, but 150 were provided');
+
+		payload.question = '';
+
+		reducePayloadSizeOrThrow(payload, error);
+
+		expect(payload.context.schema.length).toBe(0);
+	});
+
+	it('throws error if tokens still exceed after reductions', () => {
+		const payload = mockPayload();
+		const error = new Error('Limit is 100 tokens, but 200 were provided');
+
+		expect(() => reducePayloadSizeOrThrow(payload, error)).toThrowError(error);
+	});
+
+	it('throws error if message format is invalid', () => {
+		const payload = mockPayload();
+		const error = new Error('Invalid token message format');
+
+		expect(() => reducePayloadSizeOrThrow(payload, error)).toThrowError(error);
 	});
 });
