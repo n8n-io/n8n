@@ -5,6 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeExecutionOutput,
+	type NodeExecutionHint,
 } from 'n8n-workflow';
 import { generatePairedItemData } from '../../../utils/utilities';
 import {
@@ -24,7 +26,7 @@ export class Summarize implements INodeType {
 		icon: 'file:summarize.svg',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Sum, count, max, etc. across items',
 		defaults: {
 			name: 'Summarize',
@@ -247,7 +249,12 @@ export class Summarize implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							"Whether to continue if field to summarize can't be found in any items and return single empty item, owerwise an error would be thrown",
+							"Whether to continue if field to summarize can't be found in any items and return single empty item, otherwise an error would be thrown",
+						displayOptions: {
+							hide: {
+								'@version': [1.1],
+							},
+						},
 					},
 					{
 						displayName: 'Disable Dot Notation',
@@ -313,17 +320,18 @@ export class Summarize implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 
-		if (nodeVersion < 2.1) {
-			try {
-				checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
-			} catch (error) {
-				if (options.continueIfFieldNotFound) {
-					const itemData = generatePairedItemData(items.length);
-
-					return [[{ json: {}, pairedItem: itemData }]];
-				} else {
-					throw error;
-				}
+		try {
+			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+		} catch (error) {
+			if (nodeVersion > 1 || options.continueIfFieldNotFound) {
+				const itemData = generatePairedItemData(items.length);
+				const fieldNotFoundHint: NodeExecutionHint = {
+					message: error.message,
+					location: 'outputPane',
+				};
+				return new NodeExecutionOutput([[{ json: {}, pairedItem: itemData }]], [fieldNotFoundHint]);
+			} else {
+				throw error;
 			}
 		}
 
