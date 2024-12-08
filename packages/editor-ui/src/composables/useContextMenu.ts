@@ -33,13 +33,20 @@ export type ContextMenuAction =
 	| 'add_sticky'
 	| 'change_color';
 
+export type ContextMenuOptions = {
+	shortcuts?: Record<ContextMenuAction, { metaKey?: boolean; keys: string[] }>;
+};
+
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
 const target = ref<ContextMenuTarget>();
 const actions = ref<ActionDropdownItem[]>([]);
 const actionCallback = ref<ContextMenuActionCallback>(() => {});
 
-export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) => {
+export const useContextMenu = (
+	onAction: ContextMenuActionCallback = () => {},
+	options: ContextMenuOptions = {},
+) => {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
@@ -219,7 +226,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 							{
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
-								shortcut: { keys: ['F2'] },
+								shortcut: options.shortcuts?.rename ?? { keys: ['F2'] },
 								disabled: isReadOnly.value,
 							},
 						];
