@@ -9,6 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import { pick } from 'lodash';
 import type { IPinData, IRun, IRunData, WorkflowTestData } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -18,6 +19,7 @@ import {
 } from 'n8n-workflow';
 
 import { DirectedGraph } from '@/PartialExecutionUtils';
+import * as partialExecutionUtils from '@/PartialExecutionUtils';
 import { createNodeData, toITaskData } from '@/PartialExecutionUtils/__tests__/helpers';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
@@ -323,6 +325,73 @@ describe('WorkflowExecute', () => {
 			expect(nodes).toContain(trigger.name);
 			expect(nodes).toContain(node2.name);
 			expect(nodes).not.toContain(node1.name);
+		});
+
+		//                            ►►
+		//               ┌────┐0     ┌─────────┐
+		//┌───────┐1     │    ├──────►afterLoop│
+		//│trigger├───┬──►loop│1     └─────────┘
+		//└───────┘   │  │    ├─┐
+		//            │  └────┘ │
+		//            │         │ ┌──────┐1
+		//            │         └─►inLoop├─┐
+		//            │           └──────┘ │
+		//            └────────────────────┘
+		test('passes filtered run data to `recreateNodeExecutionStack`', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const loop = createNodeData({ name: 'loop', type: 'n8n-nodes-base.splitInBatches' });
+			const inLoop = createNodeData({ name: 'inLoop' });
+			const afterLoop = createNodeData({ name: 'afterLoop' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, loop, inLoop, afterLoop)
+				.addConnections(
+					{ from: trigger, to: loop },
+					{ from: loop, to: afterLoop },
+					{ from: loop, to: inLoop, outputIndex: 1 },
+					{ from: inLoop, to: loop },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[loop.name]: [toITaskData([{ data: { nodeName: loop.name }, outputIndex: 1 }])],
+				[inLoop.name]: [toITaskData([{ data: { nodeName: inLoop.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			const recreateNodeExecutionStackSpy = jest.spyOn(
+				partialExecutionUtils,
+				'recreateNodeExecutionStack',
+			);
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				afterLoop.name,
+			);
+
+			// ASSERT
+			expect(recreateNodeExecutionStackSpy).toHaveBeenNthCalledWith(
+				1,
+				expect.any(DirectedGraph),
+				expect.any(Set),
+				// The run data should only contain the trigger node because the loop
+				// node has no data on the done branch. That means we have to rerun the
+				// whole loop, because we don't know how many iterations would be left.
+				pick(runData, trigger.name),
+				expect.any(Object),
+			);
 		});
 	});
 });

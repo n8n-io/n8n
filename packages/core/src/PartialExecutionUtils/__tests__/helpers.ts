@@ -5,7 +5,7 @@ interface StubNode {
 	name: string;
 	parameters?: INodeParameters;
 	disabled?: boolean;
-	type?: string;
+	type?: 'n8n-nodes-base.manualTrigger' | 'n8n-nodes-base.splitInBatches' | (string & {});
 }
 
 export function createNodeData(stubData: StubNode): INode {
