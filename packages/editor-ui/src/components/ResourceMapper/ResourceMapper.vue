@@ -239,20 +239,14 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
-async function loadFieldsToMap(): Promise<void> {
+const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-
-	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
-	if (typeof methodName !== 'string') {
-		return;
-	}
-
 	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 		nodeTypeAndVersion: {
 			name: props.node?.type,
-			version: props.node.typeVersion,
+			version: props.node?.typeVersion,
 		},
 		currentNodeParameters: resolveRequiredParameters(
 			props.parameter,
@@ -262,7 +256,33 @@ async function loadFieldsToMap(): Promise<void> {
 		methodName,
 		credentials: props.node.credentials,
 	};
-	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+
+	return requestParams;
+};
+
+async function loadFieldsToMap(): Promise<void> {
+	if (!props.node) {
+		return;
+	}
+
+	const { resourceMapperMethod, localResourceMapperMethod } =
+		props.parameter.typeOptions?.resourceMapper ?? {};
+
+	let fetchedFields = null;
+
+	if (typeof resourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			resourceMapperMethod,
+		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+	} else if (typeof localResourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			localResourceMapperMethod,
+		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+
+		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
+	}
+
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
