@@ -13,6 +13,7 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   axios: 1.7.4
+  proxy-agent: 6.4.0
   basic-auth: 2.0.1
   chokidar: 4.0.1
   fast-glob: 3.2.12

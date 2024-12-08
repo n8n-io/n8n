@@ -134,6 +134,8 @@ import {
 } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
+import { ProxyAgent } from 'proxy-agent';
+import https from 'https';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -487,8 +489,8 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
 
-	axiosConfig.httpsAgent = new Agent(agentOptions);
-
+	axiosConfig.httpsAgent = new ProxyAgent({ httpsAgent: new https.Agent(agentOptions) });
+	axiosConfig.proxy = false;
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
 
 	if (requestObject.timeout !== undefined) {
@@ -892,8 +894,8 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	axiosRequest.httpsAgent = new Agent(agentOptions);
-
+	axiosRequest.httpsAgent = new ProxyAgent({ httpsAgent: new https.Agent(agentOptions) });
+	axiosRequest.proxy = false;
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest);
 
 	if (n8nRequest.arrayFormat !== undefined) {
