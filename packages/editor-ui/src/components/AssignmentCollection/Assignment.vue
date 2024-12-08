@@ -152,6 +152,14 @@ const onBlur = (): void => {
 		}"
 		data-test-id="assignment"
 	>
+		<N8nIconButton
+			v-if="!isReadOnly"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:class="[$style.drag, 'drag-handle']"
+		></N8nIconButton>
 		<n8n-icon-button
 			v-if="!isReadOnly"
 			type="tertiary"
@@ -241,7 +249,8 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.remove,
+		.drag {
 			opacity: 1;
 		}
 	}
@@ -272,9 +281,19 @@ const onBlur = (): void => {
 .remove {
 	position: absolute;
 	left: 0;
+	top: calc(20px + var(--spacing-l));
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
+}
+
+.drag {
+	position: absolute;
+	left: 0;
 	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
 }
 
 .status {

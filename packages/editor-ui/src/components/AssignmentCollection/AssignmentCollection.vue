@@ -15,6 +15,7 @@ import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import Draggable from 'vuedraggable';
 
 interface Props {
 	parameter: INodeProperties;
@@ -133,19 +134,27 @@ function optionSelected(action: string) {
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.assignments">
-				<div v-for="(assignment, index) of state.paramValue.assignments" :key="assignment.id">
-					<Assignment
-						:model-value="assignment"
-						:index="index"
-						:path="`${path}.${index}`"
-						:issues="getIssues(index)"
-						:class="$style.assignment"
-						:is-read-only="isReadOnly"
-						@update:model-value="(value) => onAssignmentUpdate(index, value)"
-						@remove="() => onAssignmentRemove(index)"
-					>
-					</Assignment>
-				</div>
+				<Draggable
+					v-model="state.paramValue.assignments"
+					item-key="id"
+					handle=".drag-handle"
+					:drag-class="$style.dragging"
+					:ghost-class="$style.ghost"
+				>
+					<template #item="{ index, element: assignment }">
+						<Assignment
+							:model-value="assignment"
+							:index="index"
+							:path="`${path}.${index}`"
+							:issues="getIssues(index)"
+							:class="$style.assignment"
+							:is-read-only="isReadOnly"
+							@update:model-value="(value) => onAssignmentUpdate(index, value)"
+							@remove="() => onAssignmentRemove(index)"
+						>
+						</Assignment>
+					</template>
+				</Draggable>
 			</div>
 			<div
 				v-if="!isReadOnly"
@@ -264,5 +273,14 @@ function optionSelected(action: string) {
 
 .icon {
 	font-size: var(--font-size-2xl);
+}
+.ghost {
+	background-color: var(--color-background-base);
+	border-radius: var(--border-radius-base);
+}
+.dragging {
+	background-color: var(--color-background-xlight);
+	border-radius: var(--border-radius-base);
+	opacity: 0.7;
 }
 </style>

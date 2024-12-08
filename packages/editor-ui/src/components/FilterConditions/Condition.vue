@@ -33,6 +33,7 @@ interface Props {
 	canRemove?: boolean;
 	readOnly?: boolean;
 	index?: number;
+	canDrag?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	fixedLeftValue: false,
 	readOnly: false,
 	index: 0,
+	canDrag: true,
 });
 
 const emit = defineEmits<{
@@ -152,6 +154,15 @@ const onBlur = (): void => {
 		}"
 		data-test-id="filter-condition"
 	>
+		<N8nIconButton
+			v-if="canDrag && !readOnly"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:title="i18n.baseText('filter.dragCondition')"
+			:class="[$style.drag, 'drag-handle']"
+		></N8nIconButton>
 		<n8n-icon-button
 			v-if="canRemove && !readOnly"
 			type="tertiary"
@@ -248,7 +259,8 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.remove,
+		.drag {
 			opacity: 1;
 		}
 	}
@@ -261,13 +273,23 @@ const onBlur = (): void => {
 
 .statusIcon {
 	padding-left: var(--spacing-4xs);
+	padding-right: var(--spacing-4xs);
 }
 
 .remove {
 	position: absolute;
 	left: 0;
-	top: var(--spacing-l);
+	top: calc(14px + var(--spacing-m));
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
+}
+.drag {
+	position: absolute;
+	left: 0;
+	top: var(--spacing-m);
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
 }
 </style>
