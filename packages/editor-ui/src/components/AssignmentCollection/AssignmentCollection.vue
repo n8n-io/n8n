@@ -135,8 +135,8 @@ function optionSelected(action: string) {
 		<div :class="$style.content">
 			<div :class="$style.assignments">
 				<Draggable
-					:key="JSON.stringify(state.paramValue.assignments.map((a) => a.id))"
 					v-model="state.paramValue.assignments"
+					item-key="id"
 					handle=".drag-handle"
 					:drag-class="$style.dragging"
 					:ghost-class="$style.ghost"

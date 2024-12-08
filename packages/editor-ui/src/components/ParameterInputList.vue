@@ -689,7 +689,6 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing-xs) 0;
-		// width: calc(100% - 28px);
 	}
 	.parameter-item:hover > .drag-option,
 	.multi-parameter:hover > .drag-option,

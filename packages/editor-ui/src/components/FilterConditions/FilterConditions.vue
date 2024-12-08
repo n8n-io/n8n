@@ -163,7 +163,7 @@ function getIssues(index: number): string[] {
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<Draggable
-					:key="JSON.stringify(state.paramValue.conditions.map((c) => c.id))"
+					item-key="id"
 					v-model="state.paramValue.conditions"
 					handle=".drag-handle"
 					:drag-class="$style.dragging"
