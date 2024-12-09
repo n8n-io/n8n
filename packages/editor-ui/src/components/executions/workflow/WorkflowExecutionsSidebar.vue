@@ -192,17 +192,9 @@ const goToUpgrade = () => {
 				v-if="settingsStore.isConcurrencyEnabled"
 				:running-executions-count="runningExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
-			>
-				<N8nLink
-					v-if="settingsStore.isCloudDeployment"
-					bold
-					size="small"
-					:class="$style.tooltipLink"
-					@click="goToUpgrade"
-				>
-					{{ i18n.baseText('generic.upgradeNow') }}
-				</N8nLink>
-			</ConcurrentExecutionsHeader>
+				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				@go-to-upgrade="goToUpgrade"
+			/>
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
@@ -334,11 +326,6 @@ const goToUpgrade = () => {
 	width: 100%;
 	margin-top: var(--spacing-2xl);
 	text-align: center;
-}
-
-.tooltipLink {
-	display: inline-block;
-	margin-top: var(--spacing-xs);
 }
 </style>
 

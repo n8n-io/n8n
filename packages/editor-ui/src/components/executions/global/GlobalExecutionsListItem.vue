@@ -202,18 +202,10 @@ async function handleActionItemClick(commandData: Command) {
 					v-else
 					:status="props.execution.status"
 					:concurrency-cap="props.concurrencyCap"
+					:is-cloud-deployment="props.isCloudDeployment"
+					@go-to-upgrade="emit('goToUpgrade')"
 				>
 					<span :class="$style.status">{{ statusText }}</span>
-					<template v-if="!props.isCloudDeployment" #content>
-						<i18n-t keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity.cloud">
-							<template #concurrencyCap>{{ props.concurrencyCap }}</template>
-							<template #link>
-								<N8nLink bold size="small" :class="$style.tooltipLink" @click="emit('goToUpgrade')">
-									{{ i18n.baseText('generic.upgradeNow') }}
-								</N8nLink>
-							</template>
-						</i18n-t>
-					</template>
 				</GlobalExecutionsListItemQueuedTooltip>
 			</div>
 		</td>
@@ -427,10 +419,5 @@ async function handleActionItemClick(commandData: Command) {
 			transform: translateX(0);
 		}
 	}
-}
-
-.tooltipLink {
-	display: inline-block;
-	margin-top: var(--spacing-xs);
 }
 </style>

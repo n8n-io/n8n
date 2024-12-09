@@ -5,6 +5,11 @@ import { useI18n } from '@/composables/useI18n';
 const props = defineProps<{
 	runningExecutionsCount: number;
 	concurrencyCap: number;
+	isCloudDeployment?: boolean;
+}>();
+
+const emit = defineEmits<{
+	goToUpgrade: [];
 }>();
 
 const i18n = useI18n();
@@ -32,19 +37,27 @@ const headerText = computed(() => {
 </script>
 
 <template>
-	<div data-test-id="concurrent-executions-header" class="mr-s">
+	<div data-test-id="concurrent-executions-header">
 		<n8n-tooltip>
 			<template #content>
 				<div :class="$style.tooltip">
 					{{ tooltipText }}
-					<slot>
-						<N8nLink
-							:class="$style.link"
-							:href="i18n.baseText('executions.concurrency.docsLink')"
-							target="_blank"
-							>{{ i18n.baseText('generic.viewDocs') }}</N8nLink
-						>
-					</slot>
+					<N8nLink
+						v-if="props.isCloudDeployment"
+						bold
+						size="small"
+						:class="$style.link"
+						@click="emit('goToUpgrade')"
+					>
+						{{ i18n.baseText('generic.upgradeNow') }}
+					</N8nLink>
+					<N8nLink
+						v-else
+						:class="$style.link"
+						:href="i18n.baseText('executions.concurrency.docsLink')"
+						target="_blank"
+						>{{ i18n.baseText('generic.viewDocs') }}</N8nLink
+					>
 				</div>
 			</template>
 			<font-awesome-icon icon="info-circle" class="mr-2xs" />
@@ -59,7 +72,6 @@ const headerText = computed(() => {
 	flex-direction: column;
 }
 .link {
-	display: inline-block;
 	margin-top: var(--spacing-xs);
 }
 </style>
