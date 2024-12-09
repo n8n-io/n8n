@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../utils/utilities';
 import type { IRecord } from './GenericFunction';
 import { apiRequest, apiRequestAllItems } from './GenericFunction';
 
@@ -283,11 +282,7 @@ export class Stackby implements INodeType {
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const itemData = generatePairedItemData(items.length);
-					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
-						{ itemData },
-					);
+					const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
 					returnData.push(...executionErrorData);
 				} else {
 					throw error;
