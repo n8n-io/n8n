@@ -721,7 +721,7 @@ describe('TaskBroker', () => {
 
 		beforeAll(() => {
 			jest.useFakeTimers();
-			config = mock<TaskRunnersConfig>({ taskTimeout: 30 });
+			config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'internal' });
 			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
 		});
 
