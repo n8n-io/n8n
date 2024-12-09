@@ -62,7 +62,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="containerClasses">
+	<div :class="containerClasses" data-test-id="n8n-logo">
 		<LogoIcon :class="$style.logo" ref="logo" />
 		<LogoText v-if="showLogoText" :class="$style.logoText" />
 		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">
