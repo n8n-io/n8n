@@ -8,6 +8,7 @@ export class TaskRunnerTimeoutError extends ApplicationError {
 			`Task execution timed out after ${taskTimeout} ${taskTimeout === 1 ? 'second' : 'seconds'}`,
 		);
 
+		// @TODO: Adjust for external mode "and restarted"
 		const subtitle =
 			'The task runner was taking too long on this task, so it was suspected of being unresponsive and restarted, and the task was aborted. You can try the following:';
 
