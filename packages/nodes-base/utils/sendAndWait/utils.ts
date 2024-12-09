@@ -1,13 +1,20 @@
 import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
-import type { INodeProperties, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	INodeProperties,
+	IExecuteFunctions,
+	IWebhookFunctions,
+	IDataObject,
+} from 'n8n-workflow';
 import type { IEmail } from './interfaces';
 import { escapeHtml } from '../utilities';
 import {
 	ACTION_RECORDED_PAGE,
+	BUTTON_STYLE_INFO,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
 	createEmailBody,
 } from './email-templates';
+import { prepareFormData } from '../../nodes/Form/utils';
 
 type SendAndWaitConfig = {
 	title: string;
@@ -59,6 +66,45 @@ export function getSendAndWaitProperties(
 			typeOptions: {
 				rows: 5,
 			},
+			displayOptions: {
+				show: {
+					responseType: ['approval'],
+				},
+			},
+		},
+		{
+			displayName: 'Expected Input Description',
+			name: 'message',
+			type: 'string',
+			default: '',
+			required: true,
+			placeholder: 'e.g. your full name',
+			typeOptions: {
+				rows: 5,
+			},
+			displayOptions: {
+				show: {
+					responseType: ['freeText'],
+				},
+			},
+		},
+		{
+			displayName: 'Response Type',
+			name: 'responseType',
+			type: 'options',
+			default: 'approval',
+			options: [
+				{
+					name: 'Approval',
+					value: 'approval',
+					description: 'User will be able to approve or disapprove',
+				},
+				{
+					name: 'Free Text',
+					value: 'freeText',
+					description: 'Input would be shown to the user to provide text response',
+				},
+			],
 		},
 		{
 			displayName: 'Approval Options',
@@ -134,6 +180,11 @@ export function getSendAndWaitProperties(
 					],
 				},
 			],
+			displayOptions: {
+				show: {
+					responseType: ['approval'],
+				},
+			},
 		},
 		...additionalProperties,
 		{
@@ -158,6 +209,46 @@ export function getSendAndWaitProperties(
 
 // Webhook Function --------------------------------------------------------------
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
+	const responseType = this.getNodeParameter('responseType', 'approval') as string;
+
+	if (responseType === 'freeText') {
+		if (this.getRequestObject().method === 'GET') {
+			const res = this.getResponseObject();
+
+			const data = prepareFormData({
+				formTitle: 'Provide Input',
+				formDescription: '',
+				formSubmittedHeader: 'Got it, thanks',
+				formSubmittedText: 'This page can be closed now',
+				buttonLabel: 'Submit',
+				redirectUrl: undefined,
+				formFields: [
+					{
+						fieldLabel: 'Input',
+						fieldType: 'textarea',
+						requiredField: true,
+					},
+				],
+				testRun: false,
+				query: {},
+			});
+
+			res.render('form-trigger', data);
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+		if (this.getRequestObject().method === 'POST') {
+			const data = this.getBodyData().data as IDataObject;
+
+			return {
+				webhookResponse: ACTION_RECORDED_PAGE,
+				workflowData: [[{ json: { data: { text: data['field-0'] } } }]],
+			};
+		}
+	}
+
 	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
@@ -187,7 +278,16 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		options: [],
 	};
 
-	if (approvalOptions.approvalType === 'double') {
+	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
+
+	if (responseType === 'freeText') {
+		config.message = 'You need to input ' + message;
+		config.options.push({
+			label: 'Click here',
+			value: 'true',
+			style: 'info',
+		});
+	} else if (approvalOptions.approvalType === 'double') {
 		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
 		const buttonApprovalStyle = approvalOptions.buttonApprovalStyle || 'primary';
 		const disapproveLabel = escapeHtml(approvalOptions.disapproveLabel || 'Disapprove');
@@ -220,6 +320,9 @@ function createButton(url: string, label: string, approved: string, style: strin
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
+	}
+	if (style === 'info') {
+		buttonStyle = BUTTON_STYLE_INFO;
 	}
 	return `<a href="${url}?approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
 }
