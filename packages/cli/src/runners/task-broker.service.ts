@@ -462,7 +462,11 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.mode === 'internal') {
 			this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
 		} else if (this.taskRunnersConfig.mode === 'external') {
-			await this.cancelTask(taskId, 'Task execution timed out');
+			await this.messageRunner(task.runnerId, {
+				type: 'broker:taskcancel',
+				taskId,
+				reason: 'Task execution timed out',
+			});
 		}
 
 		await this.taskErrorHandler(
