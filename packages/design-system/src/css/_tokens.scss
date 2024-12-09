@@ -544,6 +544,11 @@
 	--color-secondary-link: var(--color-secondary);
 	--color-secondary-link-hover: var(--color-secondary-shade-1);
 
+	// Menu
+	--color-menu-background: var(--prim-gray-0);
+	--color-menu-hover-background: var(--prim-gray-120);
+	--color-menu-active-background: var(--prim-gray-120);
+
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	@each $color in ('neutral', 'success', 'warning', 'danger') {

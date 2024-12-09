@@ -33,7 +33,6 @@ import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service';
 import { TagService } from '@/services/tag.service';
-import { UserOnboardingService } from '@/services/user-onboarding.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -55,7 +54,6 @@ export class WorkflowsController {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
-		private readonly userOnboardingService: UserOnboardingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
@@ -213,13 +211,7 @@ export class WorkflowsController {
 		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
-
-		const onboardingFlowEnabled =
-			!this.globalConfig.workflows.onboardingFlowDisabled &&
-			!req.user.settings?.isOnboarded &&
-			(await this.userOnboardingService.isBelowThreshold(req.user));
-
-		return { name, onboardingFlowEnabled };
+		return { name };
 	}
 
 	@Get('/from-url')

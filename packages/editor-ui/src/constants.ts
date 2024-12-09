@@ -1,8 +1,6 @@
 import type {
 	EnterpriseEditionFeatureKey,
 	EnterpriseEditionFeatureValue,
-	INodeUi,
-	IWorkflowDataCreate,
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -35,7 +33,6 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
-export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -301,7 +298,6 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
-export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
@@ -438,6 +434,8 @@ export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
+export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
+export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -696,23 +694,24 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
-	name: '022_more_onboarding_options',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',
 	variant: 'variant',
 };
+
+export const EASY_AI_WORKFLOW_EXPERIMENT = {
+	name: '026_easy_ai_workflow',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
-	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
+	EASY_AI_WORKFLOW_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
@@ -724,9 +723,9 @@ export const MFA_FORM = {
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
-export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+export const MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED = 997;
 
-export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+export const MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH = 6;
 
 export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
@@ -893,43 +892,6 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW_ID = '0';
-
 export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
-	name: 'My Sub-Workflow',
-	nodes: [
-		{
-			parameters: {},
-			id: 'c055762a-8fe7-4141-a639-df2372f30060',
-			name: 'Execute Workflow Trigger',
-			type: 'n8n-nodes-base.executeWorkflowTrigger',
-			position: [260, 340],
-		},
-		{
-			parameters: {},
-			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
-			name: 'Replace me with your logic',
-			type: 'n8n-nodes-base.noOp',
-			position: [520, 340],
-		},
-	] as INodeUi[],
-	connections: {
-		'Execute Workflow Trigger': {
-			main: [
-				[
-					{
-						node: 'Replace me with your logic',
-						type: NodeConnectionType.Main,
-						index: 0,
-					},
-				],
-			],
-		},
-	},
-	settings: {
-		executionOrder: 'v1',
-	},
-	pinData: {},
-};
+export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';

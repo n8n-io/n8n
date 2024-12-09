@@ -90,6 +90,17 @@ export const initErrorHandling = async () => {
 				if (tags) event.tags = { ...event.tags, ...tags };
 			}
 
+			if (
+				originalException instanceof Error &&
+				'cause' in originalException &&
+				originalException.cause instanceof Error &&
+				'level' in originalException.cause &&
+				originalException.cause.level === 'warning'
+			) {
+				// handle underlying errors propagating from dependencies like ai-assistant-sdk
+				return null;
+			}
+
 			if (originalException instanceof Error && originalException.stack) {
 				const eventHash = createHash('sha1').update(originalException.stack).digest('base64');
 				if (seenErrors.has(eventHash)) return null;

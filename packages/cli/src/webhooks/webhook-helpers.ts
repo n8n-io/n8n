@@ -48,11 +48,12 @@ import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WaitTracker } from '@/wait-tracker';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -548,11 +549,21 @@ export async function executeWebhook(
 			{ executionId },
 		);
 
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		// Get a promise which resolves when the workflow did execute and send then response
+		const executePromise = activeExecutions.getPostExecutePromise(executionId);
+
+		const { parentExecution } = runExecutionData;
+		if (parentExecution) {
+			// on child execution completion, resume parent execution
+			void executePromise.then(() => {
+				const waitTracker = Container.get(WaitTracker);
+				void waitTracker.startExecution(parentExecution.executionId);
+			});
+		}
+
 		if (!didSendResponse) {
-			// Get a promise which resolves when the workflow did execute and send then response
-			const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-				executionId,
-			) as Promise<IExecutionDb | undefined>;
 			executePromise
 				// eslint-disable-next-line complexity
 				.then(async (data) => {
@@ -762,7 +773,7 @@ export async function executeWebhook(
 						);
 					}
 
-					const internalServerError = new InternalServerError(e.message);
+					const internalServerError = new InternalServerError(e.message, e);
 					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
 					throw internalServerError;
 				});

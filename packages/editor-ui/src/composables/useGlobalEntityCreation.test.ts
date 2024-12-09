@@ -7,6 +7,9 @@ import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/constants';
 import type { Project, ProjectListItem } from '@/types/projects.types';
@@ -153,6 +156,7 @@ describe('useGlobalEntityCreation', () => {
 	describe('global', () => {
 		it('should show personal + all team projects', () => {
 			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.teamProjectsLimit = -1;
 
 			const personalProjectId = 'personal-project';
 			projectsStore.isTeamProjectFeatureEnabled = true;
@@ -221,5 +225,26 @@ describe('useGlobalEntityCreation', () => {
 			handleSelect('create-project');
 			expect(redirect.goToUpgrade).toHaveBeenCalled();
 		});
+	});
+
+	it('should show plan and limit according to deployment type', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+
+		const cloudPlanStore = mockedStore(useCloudPlanStore);
+		cloudPlanStore.currentPlanData = { displayName: 'Pro' } as CloudPlanState['data'];
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.isTeamProjectFeatureEnabled = true;
+		projectsStore.teamProjectsLimit = 10;
+
+		settingsStore.isCloudDeployment = true;
+		const { projectsLimitReachedMessage } = useGlobalEntityCreation(true);
+		expect(projectsLimitReachedMessage.value).toContain(
+			'You have reached the Pro plan limit of 10.',
+		);
+
+		settingsStore.isCloudDeployment = false;
+		expect(projectsLimitReachedMessage.value).toContain(
+			'Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows',
+		);
 	});
 });

@@ -127,4 +127,5 @@ export const defaultSettings: FrontendSettings = {
 	},
 	betaFeatures: [],
 	virtualSchemaView: false,
+	easyAIWorkflowOnboarded: false,
 };
