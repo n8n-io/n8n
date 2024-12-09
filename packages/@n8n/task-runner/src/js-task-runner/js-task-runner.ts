@@ -208,11 +208,6 @@ export class JsTaskRunner extends TaskRunner {
 		};
 
 		try {
-			// const result = (await runInNewContext(
-			// 	`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-			// 	context,
-			// )) as TaskResultData['result'];
-
 			const result = await new Promise<TaskResultData['result']>((resolve, reject) => {
 				signal.addEventListener(
 					'abort',
