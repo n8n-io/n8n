@@ -3,7 +3,6 @@ import type { Diagnostic } from '@codemirror/lint';
 import { type CodeExecutionMode } from 'n8n-workflow';
 import ts from 'typescript';
 
-export const FILE_NAME = 'index.js';
 export const fnPrefix = (returnType: string) => `(
 /**
  * @returns {${returnType}}

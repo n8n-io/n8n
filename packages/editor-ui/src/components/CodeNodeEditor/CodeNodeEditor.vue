@@ -19,6 +19,7 @@ import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
 import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
+import { v4 as uuid } from 'uuid';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -28,6 +29,7 @@ type Props = {
 	language?: CodeNodeEditorLanguage;
 	isReadOnly?: boolean;
 	rows?: number;
+	id?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -36,6 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	language: 'javaScript',
 	isReadOnly: false,
 	rows: 4,
+	id: uuid(),
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -65,6 +68,7 @@ const dragAndDropEnabled = computed(() => {
 });
 
 const { highlightLine, readEditorValue, editor } = useCodeEditor({
+	id: props.id,
 	editorRef: codeNodeEditorRef,
 	language: () => props.language,
 	languageParams: () => ({ mode: props.mode }),

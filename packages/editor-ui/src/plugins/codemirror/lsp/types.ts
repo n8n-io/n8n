@@ -12,6 +12,7 @@ export interface HoverInfo {
 }
 
 export type WorkerInitOptions = {
+	id: string;
 	content: string;
 	allNodeNames: string[];
 	inputNodeNames: string[];

@@ -5,7 +5,6 @@ import ts, { type DiagnosticWithLocation } from 'typescript';
 import type { LanguageServiceWorker, NodeDataFetcher } from '../types';
 import { indexedDbCache } from './cache';
 import {
-	FILE_NAME,
 	cmPosToTs,
 	convertTSDiagnosticToCM,
 	fnPrefix,
@@ -35,6 +34,7 @@ const worker = (): LanguageServiceWorker => {
 	let inputNodeNames: string[];
 	let allNodeNames: string[];
 	let mode: CodeExecutionMode;
+	let fileName: string;
 
 	function updateFile(fileName: string, content: string) {
 		const exists = env.getSourceFile(fileName);
@@ -114,7 +114,7 @@ itemMatching(itemIndex: number): N8nInputItem;`
 			return result;
 		}
 
-		const file = env.getSourceFile(FILE_NAME);
+		const file = env.getSourceFile(fileName);
 		// If we are completing a N8nJson type -> fetch types first
 		// $('Node A').item.json.
 		if (file) {
@@ -147,6 +147,7 @@ itemMatching(itemIndex: number): N8nInputItem;`
 			inputNodeNames = options.inputNodeNames;
 			allNodeNames = options.allNodeNames;
 			mode = options.mode;
+			fileName = `${options.id}.js`;
 
 			const compilerOptions: ts.CompilerOptions = {
 				allowJs: true,
@@ -155,6 +156,8 @@ itemMatching(itemIndex: number): N8nInputItem;`
 				lib: ['es2023'],
 				module: ts.ModuleKind.ESNext,
 				strict: true,
+				noUnusedLocals: true,
+				noUnusedParameters: true,
 				importHelpers: false,
 				skipDefaultLibCheck: true,
 				noEmit: true,
@@ -202,7 +205,7 @@ declare global {
   }
 }`,
 			);
-			fsMap.set(FILE_NAME, wrapInFunction(options.content, mode));
+			fsMap.set(fileName, wrapInFunction(options.content, mode));
 
 			fsMap.set(
 				'n8n-mode-specific.d.ts',
@@ -251,14 +254,15 @@ declare global {
 			);
 		},
 		updateFile: async (content) => {
-			updateFile(FILE_NAME, wrapInFunction(content, mode));
+			updateFile(fileName, wrapInFunction(content, mode));
 			await loadTypesIfNeeded();
 		},
 		async getCompletionsAtPos(pos, word) {
 			const tsPos = cmPosToTs(pos, fnPrefix(returnTypeForMode(mode)));
 
-			const completionInfo = env.languageService.getCompletionsAtPosition(FILE_NAME, tsPos, {}, {});
+			const completionInfo = env.languageService.getCompletionsAtPosition(fileName, tsPos, {}, {});
 
+			console.log(completionInfo);
 			if (!completionInfo) return null;
 
 			const options = completionInfo.entries
@@ -281,12 +285,12 @@ declare global {
 			};
 		},
 		getDiagnostics() {
-			const exists = env.getSourceFile(FILE_NAME);
+			const exists = env.getSourceFile(fileName);
 			if (!exists) return [];
 
 			const tsDiagnostics = [
-				...env.languageService.getSemanticDiagnostics(FILE_NAME),
-				...env.languageService.getSyntacticDiagnostics(FILE_NAME),
+				...env.languageService.getSemanticDiagnostics(fileName),
+				...env.languageService.getSyntacticDiagnostics(fileName),
 			];
 
 			const diagnostics = tsDiagnostics.filter((diagnostic): diagnostic is DiagnosticWithLocation =>
@@ -297,15 +301,17 @@ declare global {
 		},
 		getHoverTooltip(pos) {
 			const tsPos = cmPosToTs(pos, fnPrefix(returnTypeForMode(mode)));
-			const quickInfo = env.languageService.getQuickInfoAtPosition(FILE_NAME, tsPos);
+			const quickInfo = env.languageService.getQuickInfoAtPosition(fileName, tsPos);
 
 			if (!quickInfo) return null;
 
 			const start = tsPosToCm(quickInfo.textSpan.start, fnPrefix(returnTypeForMode(mode)));
 
 			const typeDef =
-				env.languageService.getTypeDefinitionAtPosition(FILE_NAME, tsPos) ??
-				env.languageService.getDefinitionAtPosition(FILE_NAME, tsPos);
+				env.languageService.getTypeDefinitionAtPosition(fileName, tsPos) ??
+				env.languageService.getDefinitionAtPosition(fileName, tsPos);
+
+			console.log(quickInfo, typeDef);
 
 			return {
 				start,

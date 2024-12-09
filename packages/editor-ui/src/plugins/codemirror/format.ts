@@ -1,21 +1,44 @@
+import { EditorSelection, Facet } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { format } from 'prettier';
-import jsParser from 'prettier/plugins/babel';
-import * as estree from 'prettier/plugins/estree';
+import { formatWithCursor, type BuiltInParserName } from 'prettier';
+
+export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
+
+export const languageFacet = Facet.define<CodeEditorLanguage, CodeEditorLanguage>({
+	combine: (values) => values[0] ?? 'javaScript',
+});
 
 export function formatDocument(view: EditorView) {
-	void format(view.state.doc.toString(), {
-		parser: 'babel',
-		plugins: [jsParser, estree],
-	}).then((formatted) => {
-		view.dispatch({
-			changes: {
-				from: 0,
-				to: view.state.doc.length,
-				insert: formatted,
-			},
+	function format(parser: BuiltInParserName) {
+		void formatWithCursor(view.state.doc.toString(), {
+			cursorOffset: view.state.selection.main.anchor,
+			parser,
+		}).then(({ formatted, cursorOffset }) => {
+			view.dispatch({
+				changes: {
+					from: 0,
+					to: view.state.doc.length,
+					insert: formatted,
+				},
+				selection: EditorSelection.single(cursorOffset),
+			});
 		});
-	});
+	}
+
+	const langauge = view.state.facet(languageFacet);
+	switch (langauge) {
+		case 'javaScript':
+			format('babel');
+			break;
+		case 'html':
+			format('html');
+			break;
+		case 'json':
+			format('json');
+			break;
+		default:
+			return false;
+	}
 
 	return true;
 }

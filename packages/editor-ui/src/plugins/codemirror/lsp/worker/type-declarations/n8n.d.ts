@@ -3,6 +3,14 @@ import type { DateTime } from 'luxon';
 export {};
 
 declare global {
+	/** [MDN Reference](https://developer.mozilla.org/docs/Web/API/console) */
+	interface Console {
+		/** [MDN Reference](https://developer.mozilla.org/docs/Web/API/console/log_static) */
+		log(...data: any[]): void;
+	}
+
+	var console: Console;
+
 	interface N8nJson {
 		[key: string]: number | boolean | string | Object | Array<any> | Date | DateTime;
 	}

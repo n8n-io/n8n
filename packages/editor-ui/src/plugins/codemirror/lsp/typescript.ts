@@ -1,7 +1,15 @@
 import { useDataSchema } from '@/composables/useDataSchema';
+import { useDebounce } from '@/composables/useDebounce';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { type CompletionSource } from '@codemirror/autocomplete';
+import {
+	completeFromList,
+	snippetCompletion,
+	type CompletionSource,
+} from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { LanguageSupport } from '@codemirror/language';
 import { linter, type LintSource } from '@codemirror/lint';
@@ -9,14 +17,10 @@ import { combineConfig, Facet } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv.store';
+import { watch } from 'vue';
 import { autocompletableNodeNames } from '../completions/utils';
 import { n8nAutocompletion } from '../n8nLang';
 import type { LanguageServiceWorker } from './types';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { watch } from 'vue';
-import { useDebounce } from '@/composables/useDebounce';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -80,7 +84,7 @@ const tsHover: HoverSource = async (view, pos) => {
 	};
 };
 
-export async function useTypescript(initialValue: string, mode: CodeExecutionMode) {
+export async function useTypescript(initialValue: string, mode: CodeExecutionMode, id: string) {
 	const worker = Comlink.wrap<LanguageServiceWorker>(
 		new Worker(new URL('./worker/typescript.worker.ts', import.meta.url), { type: 'module' }),
 	);
@@ -90,6 +94,8 @@ export async function useTypescript(initialValue: string, mode: CodeExecutionMod
 	const { debounce } = useDebounce();
 	const activeNodeName = ndvStore.activeNodeName;
 
+	console.log('init');
+
 	watch(
 		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
 		debounce(async () => await worker.updateNodeTypes(), { debounceTime: 200, trailing: true }),
@@ -97,6 +103,7 @@ export async function useTypescript(initialValue: string, mode: CodeExecutionMod
 
 	await worker.init(
 		{
+			id,
 			content: initialValue,
 			allNodeNames: autocompletableNodeNames(),
 			variables: useEnvironmentsStore().variables.map((v) => v.key),
@@ -133,10 +140,63 @@ export async function useTypescript(initialValue: string, mode: CodeExecutionMod
 	return {
 		extension: [
 			tsFacet.of({ worker }),
-			new LanguageSupport(
-				javascriptLanguage,
+			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: tsCompletions }),
-			),
+				javascriptLanguage.data.of({
+					autocomplete: completeFromList([
+						snippetCompletion('console.log(#{})', { label: 'log', detail: 'Log to console' }),
+						snippetCompletion('for (const #{1:element} of #{2:array}) {\n\t#{}\n}', {
+							label: 'forof',
+							detail: 'For-of Loop',
+						}),
+						snippetCompletion(
+							'for (const #{1:key} in #{2:object}) {\n\tif (Object.prototype.hasOwnProperty.call(#{2:object}, #{1:key})) {\n\t\tconst #{3:element} = #{2:object}[#{1:key}];\n\t\t#{}\n\t}\n}',
+							{
+								label: 'forin',
+								detail: 'For-in Loop',
+							},
+						),
+						snippetCompletion(
+							'for (let #{1:index} = 0; #{1:index} < #{2:array}.length; #{1:index}++) {\n\tconst #{3:element} = #{2:array}[#{1:index}];\n\t#{}\n}',
+							{
+								label: 'for',
+								detail: 'For Loop',
+							},
+						),
+						snippetCompletion('if (#{1:condition}) {\n\t#{}\n}', {
+							label: 'if',
+							detail: 'If Statement',
+						}),
+						snippetCompletion('if (#{1:condition}) {\n\t#{}\n} else {\n\t\n}', {
+							label: 'ifelse',
+							detail: 'If-Else Statement',
+						}),
+						snippetCompletion('function #{1:name}(#{2:params}) {\n\t#{}\n}', {
+							label: 'function',
+							detail: 'Function Statement',
+						}),
+						snippetCompletion('function #{1:name}(#{2:params}) {\n\t#{}\n}', {
+							label: 'fn',
+							detail: 'Function Statement',
+						}),
+						snippetCompletion(
+							'switch (#{1:key}) {\n\tcase #{2:value}:\n\t\t#{}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
+							{
+								label: 'switch',
+								detail: 'Switch Statement',
+							},
+						),
+						snippetCompletion('try {\n\t#{}\n} catch (#{1:error}) {\n\t\n}', {
+							label: 'trycatch',
+							detail: 'Try-Catch Statement',
+						}),
+						snippetCompletion('while (#{1:condition}) {\n\t#{}\n}', {
+							label: 'while',
+							detail: 'While Statement',
+						}),
+					]),
+				}),
+			]),
 			n8nAutocompletion(),
 			linter(tsLint),
 			hoverTooltip(tsHover, {
