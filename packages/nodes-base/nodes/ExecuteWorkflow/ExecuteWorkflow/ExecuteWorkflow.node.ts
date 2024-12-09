@@ -21,8 +21,6 @@ function getCurrentWorkflowInputData(this: IExecuteFunctions) {
 	if (schema.length === 0) {
 		return inputData;
 	} else {
-		console.log('===> ', schema);
-
 		const newParams = schema
 			.filter((x) => !x.removed)
 			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
