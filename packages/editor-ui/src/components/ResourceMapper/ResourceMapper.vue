@@ -164,7 +164,7 @@ const showMappingModeSelect = computed<boolean>(() => {
 const showMatchingColumnsSelector = computed<boolean>(() => {
 	return (
 		!state.loading &&
-		props.parameter.typeOptions?.resourceMapper?.mode !== 'add' &&
+		['upsert', 'update'].includes(props.parameter.typeOptions?.resourceMapper?.mode ?? '') &&
 		state.paramValue.schema.length > 0
 	);
 });

@@ -1366,7 +1366,7 @@ export interface INodePropertyTypeOptions {
 }
 
 export interface ResourceMapperTypeOptionsBase {
-	mode: 'add' | 'update' | 'upsert';
+	mode: 'add' | 'update' | 'upsert' | 'map';
 	valuesLabel?: string;
 	fieldWords?: {
 		singular: string;
