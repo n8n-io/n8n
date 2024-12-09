@@ -59,7 +59,7 @@ import type {
 	ROLE,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 
@@ -247,6 +247,16 @@ export interface IWorkflowDataUpdate {
 
 export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
+}
+
+/**
+ * Workflow data with mandatory `templateId`
+ * This is used to identify sample workflows that we create for onboarding
+ */
+export interface WorkflowDataWithTemplateId extends Omit<IWorkflowDataCreate, 'meta'> {
+	meta: WorkflowMetadata & {
+		templateId: Required<WorkflowMetadata>['templateId'];
+	};
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -1360,51 +1370,6 @@ export type SamlPreferencesExtractedData = {
 	entityID: string;
 	returnUrl: string;
 };
-
-export type SshKeyTypes = ['ed25519', 'rsa'];
-
-export type SourceControlPreferences = {
-	connected: boolean;
-	repositoryUrl: string;
-	branchName: string;
-	branches: string[];
-	branchReadOnly: boolean;
-	branchColor: string;
-	publicKey?: string;
-	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
-	currentBranch?: string;
-};
-
-export interface SourceControlStatus {
-	ahead: number;
-	behind: number;
-	conflicted: string[];
-	created: string[];
-	current: string;
-	deleted: string[];
-	detached: boolean;
-	files: Array<{
-		path: string;
-		index: string;
-		working_dir: string;
-	}>;
-	modified: string[];
-	not_added: string[];
-	renamed: string[];
-	staged: string[];
-	tracking: null;
-}
-
-export interface SourceControlAggregatedFile {
-	conflict: boolean;
-	file: string;
-	id: string;
-	location: string;
-	name: string;
-	status: string;
-	type: string;
-	updatedAt?: string;
-}
 
 export declare namespace Cloud {
 	export interface PlanData {
