@@ -1,5 +1,5 @@
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ApplicationError } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -32,6 +32,7 @@ import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
 import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
 import { makeSerializable } from './errors/serializable-error';
+import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
@@ -94,7 +95,7 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
-	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {
+	async executeTask(task: Task<JSExecSettings>, signal: AbortSignal): Promise<TaskResultData> {
 		const settings = task.settings;
 		a.ok(settings, 'JS Code not sent to runner');
 
@@ -110,9 +111,17 @@ export class JsTaskRunner extends TaskRunner {
 			neededBuiltIns.toDataRequestParams(settings.chunk),
 		);
 
+		if (signal.aborted) {
+			throw new ApplicationError('Task cancelled');
+		}
+
 		const data = this.reconstructTaskData(dataResponse, settings.chunk);
 
 		await this.requestNodeTypeIfNeeded(neededBuiltIns, data.workflow, task.taskId);
+
+		if (signal.aborted) {
+			throw new ApplicationError('Task cancelled');
+		}
 
 		const workflowParams = data.workflow;
 		const workflow = new Workflow({
@@ -133,8 +142,8 @@ export class JsTaskRunner extends TaskRunner {
 
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
-				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole)
-				: await this.runForEachItem(task.taskId, settings, data, workflow, customConsole);
+				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
+				: await this.runForEachItem(task.taskId, settings, data, workflow, customConsole, signal);
 
 		return {
 			result,
@@ -183,6 +192,7 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
+		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
@@ -199,10 +209,26 @@ export class JsTaskRunner extends TaskRunner {
 		};
 
 		try {
-			const result = (await runInNewContext(
-				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-				context,
-			)) as TaskResultData['result'];
+			const result = await new Promise<TaskResultData['result']>((resolve, reject) => {
+				signal.addEventListener(
+					'abort',
+					() => {
+						reject(new TimeoutError(this.taskTimeout));
+					},
+					{ once: true },
+				);
+
+				async function execute() {
+					const vmResult = (await runInNewContext(
+						`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+						context,
+					)) as TaskResultData['result'];
+
+					resolve(vmResult);
+				}
+
+				void execute().catch(reject);
+			});
 
 			if (result === null) {
 				return [];
@@ -230,6 +256,7 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
+		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const inputItems = data.connectionInputData;
 		const returnData: INodeExecutionData[] = [];
@@ -255,10 +282,26 @@ export class JsTaskRunner extends TaskRunner {
 			};
 
 			try {
-				let result = (await runInNewContext(
-					`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-					context,
-				)) as INodeExecutionData | undefined;
+				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
+					signal.addEventListener(
+						'abort',
+						() => {
+							reject(new TimeoutError(this.taskTimeout));
+						},
+						{ once: true },
+					);
+
+					async function execute() {
+						const vmResult = (await runInNewContext(
+							`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+							context,
+						)) as INodeExecutionData;
+
+						resolve(vmResult);
+					}
+
+					void execute().catch(reject);
+				});
 
 				// Filter out null values
 				if (result === null) {

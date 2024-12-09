@@ -21,6 +21,7 @@ describe('TestRunner', () => {
 				maxPayloadSize: 1024,
 				taskBrokerUri: 'http://localhost:8080',
 				timezone: 'America/New_York',
+				taskTimeout: 60,
 				healthcheckServer: {
 					enabled: false,
 					host: 'localhost',
@@ -48,6 +49,7 @@ describe('TestRunner', () => {
 				maxPayloadSize: 1024,
 				taskBrokerUri: 'https://example.com:3000/path',
 				timezone: 'America/New_York',
+				taskTimeout: 60,
 				healthcheckServer: {
 					enabled: false,
 					host: 'localhost',
@@ -77,6 +79,7 @@ describe('TestRunner', () => {
 						maxPayloadSize: 1024,
 						taskBrokerUri: 'not-a-valid-uri',
 						timezone: 'America/New_York',
+						taskTimeout: 60,
 						healthcheckServer: {
 							enabled: false,
 							host: 'localhost',

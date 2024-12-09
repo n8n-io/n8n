@@ -82,14 +82,20 @@ export abstract class TaskRunner extends EventEmitter {
 
 	private idleTimer: NodeJS.Timeout | undefined;
 
+	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. */
+	protected readonly taskTimeout: number;
+
 	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
+
+	protected taskCancellations = new Map<Task['taskId'], AbortController>();
 
 	constructor(opts: TaskRunnerOpts) {
 		super();
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
+		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
 
 		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
@@ -291,11 +297,15 @@ export abstract class TaskRunner extends EventEmitter {
 			return;
 		}
 		task.cancelled = true;
-		if (task.active) {
-			// TODO
-		} else {
-			this.runningTasks.delete(taskId);
+
+		const controller = this.taskCancellations.get(taskId);
+		if (controller) {
+			controller.abort();
+			this.taskCancellations.delete(taskId);
 		}
+
+		if (!task.active) this.runningTasks.delete(taskId);
+
 		this.sendOffers();
 	}
 
@@ -328,20 +338,33 @@ export abstract class TaskRunner extends EventEmitter {
 			this.runningTasks.delete(taskId);
 			return;
 		}
+
+		const controller = new AbortController();
+		this.taskCancellations.set(taskId, controller);
+
+		const taskTimeout = setTimeout(() => {
+			if (!task.cancelled) {
+				controller.abort();
+				this.taskCancellations.delete(taskId);
+			}
+		}, this.taskTimeout * 1_000);
+
 		task.settings = settings;
 		task.active = true;
 		try {
-			const data = await this.executeTask(task);
+			const data = await this.executeTask(task, controller.signal);
 			this.taskDone(taskId, data);
 		} catch (error) {
-			this.taskErrored(taskId, error);
+			clearTimeout(taskTimeout);
+			if (!task.cancelled) this.taskErrored(taskId, error);
 		} finally {
+			this.taskCancellations.delete(taskId);
 			this.resetIdleTimer();
 		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	async executeTask(_task: Task): Promise<TaskResultData> {
+	async executeTask(_task: Task, _signal: AbortSignal): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
 	}
 

@@ -459,14 +459,25 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
-		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+		if (this.taskRunnersConfig.mode === 'internal') {
+			this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+		} else if (this.taskRunnersConfig.mode === 'external') {
+			await this.messageRunner(task.runnerId, {
+				type: 'broker:taskcancel',
+				taskId,
+				reason: 'Task execution timed out',
+			});
+		}
+
+		const { taskTimeout, mode } = this.taskRunnersConfig;
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerTimeoutError(
-				this.taskRunnersConfig.taskTimeout,
-				config.getEnv('deployment.type') !== 'cloud',
-			),
+			new TaskRunnerTimeoutError({
+				taskTimeout,
+				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
+				mode,
+			}),
 		);
 	}
 
