@@ -15,12 +15,14 @@ import { generatePairedItemData } from '../../../utils/utilities';
 import { getWorkflowInputData } from '../GenericFunctions';
 
 function getCurrentWorkflowInputData(this: IExecuteFunctions) {
+	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
 	const inputData = this.getInputData();
 
-	if (this.getNode().typeVersion < 1.2) {
+	if (schema.length === 0) {
 		return inputData;
 	} else {
-		const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
+		console.log('===> ', schema);
+
 		const newParams = schema
 			.filter((x) => !x.removed)
 			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];

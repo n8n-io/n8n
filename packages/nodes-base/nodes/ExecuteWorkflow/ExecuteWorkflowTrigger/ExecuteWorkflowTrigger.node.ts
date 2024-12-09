@@ -12,6 +12,7 @@ import {
 	VALUES,
 	INPUT_OPTIONS,
 	TYPE_OPTIONS,
+	PASSTHROUGH,
 } from '../constants';
 import { getFieldEntries, getWorkflowInputData } from '../GenericFunctions';
 
@@ -76,6 +77,11 @@ export class ExecuteWorkflowTrigger implements INodeType {
 						name: 'Using JSON Example',
 						value: JSON_EXAMPLE,
 						description: 'Infer JSON schema via JSON example output',
+					},
+					{
+						name: 'Pass Through Input Data',
+						value: PASSTHROUGH,
+						description: 'Pass all incoming data from the parent workflow through',
 					},
 				],
 				default: WORKFLOW_INPUTS,
@@ -194,8 +200,9 @@ export class ExecuteWorkflowTrigger implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const inputData = this.getInputData();
+		const inputSource = this.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH) as string;
 
-		if (this.getNode().typeVersion < 1.1) {
+		if (inputSource === PASSTHROUGH) {
 			return [inputData];
 		} else {
 			const newParams = getFieldEntries(this);
