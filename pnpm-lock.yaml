@@ -1659,6 +1659,9 @@ importers:
       change-case:
         specifier: 4.1.2
         version: 4.1.2
+      chardet:
+        specifier: ^2.0.0
+        version: 2.0.0
       cheerio:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6
@@ -6052,6 +6055,9 @@ packages:
 
   chardet@0.7.0:
     resolution: {integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==}
+
+  chardet@2.0.0:
+    resolution: {integrity: sha512-xVgPpulCooDjY6zH4m9YW3jbkaBe3FKIAvF5sj5t7aBNsVl2ljIE+xwJ4iNgiDZHFQvNIpjdKdVOQvvk5ZfxbQ==}
 
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==}
@@ -17944,6 +17950,8 @@ snapshots:
       is-regex: 1.1.4
 
   chardet@0.7.0: {}
+
+  chardet@2.0.0: {}
 
   charenc@0.0.2: {}
 
