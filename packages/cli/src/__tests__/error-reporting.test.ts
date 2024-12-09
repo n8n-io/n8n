@@ -7,7 +7,6 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 
 const init = jest.fn();
 
-jest.mock('@sentry/integrations');
 jest.mock('@sentry/node', () => ({
 	init,
 	setTag: jest.fn(),
