@@ -179,7 +179,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			cursor: BASE_STYLING.diagnosticButton.cursor,
 		},
 		'.cm-diagnostic-error': {
-			backgroundColor: 'var(--color-background-base)',
+			backgroundColor: 'var(--color-infobox-background)',
 		},
 		'.cm-diagnosticText': {
 			color: 'var(--color-text-base)',

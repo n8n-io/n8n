@@ -97,6 +97,10 @@
 	&:has(.cm-tooltip-lint) {
 		padding: 0;
 		overflow: hidden;
+
+		.cm-diagnostic-error {
+			border-left: none;
+		}
 	}
 
 	.autocomplete-info-container {
@@ -259,6 +263,30 @@
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-bold);
 	}
+
+	// Syntax highlighting
+	.ts-keyword,
+	.ts-punctuation {
+		color: var(--color-code-tags-keyword);
+	}
+
+	.ts-stringLiteral,
+	.ts-primitive {
+		color: var(--color-code-tags-primitive);
+	}
+
+	.ts-localName,
+	.ts-parameterName,
+	.ts-methodName {
+		color: var(--color-code-tags-variable);
+	}
+
+	.ts-typeName,
+	.ts-interfaceName,
+	.ts-className,
+	.ts-aliasName {
+		color: var(--color-code-tags-class);
+	}
 }
 
 .cm-editor .cm-tooltip.cm-completionInfo {
@@ -312,6 +340,10 @@
 	line-height: var(--font-line-height-loose);
 	padding: 0;
 	max-width: 320px;
+
+	.cm-tooltip-section:not(:first-child) {
+		border-top: var(--border-base);
+	}
 
 	.autocomplete-info-container {
 		height: auto;

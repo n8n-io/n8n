@@ -70,12 +70,30 @@ const tsHover: HoverSource = async (view, pos) => {
 	return {
 		pos: info.start,
 		end: info.end,
+		above: true,
 		create: () => {
 			const div = document.createElement('div');
+			div.classList.add('cm-tooltip-lint');
+			const wrapper = document.createElement('div');
+			wrapper.classList.add('cm-diagnostic');
+			div.appendChild(wrapper);
+			const text = document.createElement('div');
+			text.classList.add('cm-diagnosticText');
+			wrapper.appendChild(text);
+
 			if (info.quickInfo?.displayParts) {
 				for (const part of info.quickInfo.displayParts) {
-					const span = div.appendChild(document.createElement('span'));
-					span.className = `quick-info-${part.kind}`;
+					const span = text.appendChild(document.createElement('span'));
+					if (
+						part.kind === 'keyword' &&
+						['string', 'number', 'boolean', 'object'].includes(part.text)
+					) {
+						span.className = 'ts-primitive';
+					} else if (part.kind === 'punctuation' && ['(', ')'].includes(part.text)) {
+						span.className = 'ts-text';
+					} else {
+						span.className = `ts-${part.kind}`;
+					}
 					span.innerText = part.text;
 				}
 			}
