@@ -12,6 +12,7 @@ import { Service } from 'typedi';
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -36,6 +37,8 @@ import { createPinData, getPastExecutionStartNode } from './utils.ee';
  */
 @Service()
 export class TestRunnerService {
+	private abortControllers: Map<TestRun['id'], AbortController> = new Map();
+
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
@@ -161,6 +164,12 @@ export class TestRunnerService {
 		const testRun = await this.testRunRepository.createTestRun(test.id);
 		assert(testRun, 'Unable to create a test run');
 
+		// 0.1 Initialize AbortController
+		const abortController = new AbortController();
+		this.abortControllers.set(testRun.id, abortController);
+
+		const abortSignal = abortController.signal;
+
 		// 1. Make test cases from previous executions
 
 		// Select executions with the annotation tag and workflow ID of the test.
@@ -186,6 +195,14 @@ export class TestRunnerService {
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
+			console.log('Running test case with past execution:', pastExecutionId);
+
+			if (abortSignal.aborted) {
+				console.log('Test run was cancelled');
+				await this.testRunRepository.markAsCancelled(testRun.id);
+				break;
+			}
+
 			// Fetch past execution with data
 			const pastExecution = await this.executionRepository.findOne({
 				where: { id: pastExecutionId },
@@ -222,8 +239,18 @@ export class TestRunnerService {
 			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
-		const aggregatedMetrics = metrics.getAggregatedMetrics();
+		if (!abortSignal.aborted) {
+			const aggregatedMetrics = metrics.getAggregatedMetrics();
+			await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+		}
+	}
 
-		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+	public async cancelTestRun(testRunId: string) {
+		const abortController = this.abortControllers.get(testRunId);
+		if (abortController) {
+			console.log(`Test run ${testRunId} was cancelled`);
+			abortController.abort();
+			this.abortControllers.delete(testRunId);
+		}
 	}
 }
