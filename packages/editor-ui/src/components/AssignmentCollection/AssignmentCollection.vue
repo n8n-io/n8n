@@ -274,17 +274,17 @@ function optionSelected(action: string) {
 .icon {
 	font-size: var(--font-size-2xl);
 }
-.ghost {
-	background-color: var(--color-background-base);
+.ghost,
+.dragging {
 	border-radius: var(--border-radius-base);
 	padding-right: var(--spacing-xs);
 	padding-bottom: var(--spacing-xs);
 }
+.ghost {
+	background-color: var(--color-background-base);
+}
 .dragging {
 	background-color: var(--color-background-xlight);
-	border-radius: var(--border-radius-base);
 	opacity: 0.7;
-	padding-right: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
 }
 </style>

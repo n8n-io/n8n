@@ -650,7 +650,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	.drag-option {
+	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: 0;
@@ -660,20 +660,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 			color: var(--color-icon-base);
 		}
 	}
-	.delete-option {
-		position: absolute;
-		opacity: 0;
-		left: calc(-0.5 * var(--spacing-2xs));
-		transition: opacity 100ms ease-in;
-		Button {
-			color: var(--color-icon-base);
-		}
-	}
-	.drag-option + .delete-option {
-		top: 20px;
-	}
-	.drag-option > Button:hover,
-	.delete-option > Button:hover {
+	.icon-button > Button:hover {
 		color: var(--color-icon-hover);
 	}
 
@@ -694,10 +681,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 		position: relative;
 		margin: var(--spacing-xs) 0;
 	}
-	.parameter-item:hover > .drag-option,
-	.multi-parameter:hover > .drag-option,
-	.parameter-item:hover > .delete-option,
-	.multi-parameter:hover > .delete-option {
+	.parameter-item:hover > .icon-button,
+	.multi-parameter:hover > .icon-button {
 		opacity: 1;
 	}
 

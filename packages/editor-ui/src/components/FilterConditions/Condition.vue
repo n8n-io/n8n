@@ -161,7 +161,7 @@ const onBlur = (): void => {
 			size="mini"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
-			:class="[$style.drag, 'drag-handle']"
+			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		></N8nIconButton>
 		<n8n-icon-button
 			v-if="canRemove && !readOnly"
@@ -171,7 +171,7 @@ const onBlur = (): void => {
 			icon="trash"
 			data-test-id="filter-remove-condition"
 			:title="i18n.baseText('filter.removeCondition')"
-			:class="$style.remove"
+			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
 		></n8n-icon-button>
 		<InputTriple>
@@ -259,8 +259,7 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove,
-		.drag {
+		.iconButton {
 			opacity: 1;
 		}
 	}
@@ -276,20 +275,18 @@ const onBlur = (): void => {
 	padding-right: var(--spacing-4xs);
 }
 
-.remove {
+.iconButton {
 	position: absolute;
 	left: 0;
-	top: calc(14px + var(--spacing-m));
 	opacity: 0;
 	transition: opacity 100ms ease-in;
 	color: var(--icon-base-color);
 }
-.drag {
-	position: absolute;
-	left: 0;
+
+.defaultTopPadding {
 	top: var(--spacing-m);
-	opacity: 0;
-	transition: opacity 100ms ease-in;
-	color: var(--icon-base-color);
+}
+.extraTopPadding {
+	top: calc(14px + var(--spacing-m));
 }
 </style>
