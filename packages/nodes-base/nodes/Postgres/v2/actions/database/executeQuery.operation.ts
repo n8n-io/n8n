@@ -143,7 +143,7 @@ export async function execute(
 			}
 		}
 
-		queries.push({ query, values });
+		queries.push({ query, values, options: { partial: true } });
 	}
 
 	return await runQueries(queries, items, nodeOptions);

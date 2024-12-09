@@ -217,7 +217,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
-			[{ query: 'select * from $1:name;', values: ['my_table'] }],
+			[{ query: 'select * from $1:name;', values: ['my_table'], options: { partial: true } }],
 			items,
 			nodeOptions,
 		);
@@ -239,7 +239,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
-			[{ query: 'select $1;', values: ['$1'] }],
+			[{ query: 'select $1;', values: ['$1'], options: { partial: true } }],
 			items,
 			nodeOptions,
 		);
@@ -263,7 +263,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
-			[{ query: "select '$1';", values: ['my_table'] }],
+			[{ query: "select '$1';", values: ['my_table'], options: { partial: true } }],
 			items,
 			nodeOptions,
 		);
@@ -288,7 +288,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
-			[{ query: 'select $2;', values: ['my_table', '$1'] }],
+			[{ query: 'select $2;', values: ['my_table', '$1'], options: { partial: true } }],
 			items,
 			nodeOptions,
 		);
@@ -312,6 +312,54 @@ describe('Test PostgresV2, executeQuery operation', () => {
 				nodeOptions,
 			);
 		}).not.toThrow();
+	});
+
+	it('should allow users to use $$ instead of strings', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO dollar_bug (description) VALUES ($$34test$$);',
+			options: {},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should allow users to use $$ instead of strings while using query parameters', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO dollar_bug (description) VALUES ($1 || $$4more text$$)',
+			options: {
+				queryReplacement: '={{ $3This is a test }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO dollar_bug (description) VALUES ($1 || $$4more text$$)',
+					values: [' $3This is a test '],
+					options: { partial: true },
+				},
+			],
+			items,
+			nodeOptions,
+		);
 	});
 });
 
