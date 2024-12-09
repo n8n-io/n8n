@@ -7,7 +7,7 @@ import {
 } from '@/databases/entities/abstract-entity';
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 
-type TestRunStatus = 'new' | 'running' | 'completed' | 'error';
+type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
