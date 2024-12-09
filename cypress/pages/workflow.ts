@@ -3,6 +3,7 @@ import { NodeCreator } from './features/node-creator';
 import { META_KEY } from '../constants';
 import { getVisibleSelect } from '../utils';
 import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
+import type { OpenContextMenuOptions } from '../types';
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
@@ -272,14 +273,14 @@ export class WorkflowPage extends BasePage {
 		},
 		openContextMenu: (
 			nodeTypeName?: string,
-			method: 'right-click' | 'overflow-button' = 'right-click',
+			{ method = 'right-click', anchor = 'center' }: OpenContextMenuOptions = {},
 		) => {
 			const target = nodeTypeName
 				? this.getters.canvasNodeByName(nodeTypeName)
 				: this.getters.nodeViewBackground();
 
 			if (method === 'right-click') {
-				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
+				target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
 			} else {
 				target.realHover();
 				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
@@ -296,8 +297,8 @@ export class WorkflowPage extends BasePage {
 			this.actions.openContextMenu(nodeTypeName);
 			this.actions.contextMenuAction('delete');
 		},
-		executeNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
+		executeNode: (nodeTypeName: string, options?: OpenContextMenuOptions) => {
+			this.actions.openContextMenu(nodeTypeName, options);
 			this.actions.contextMenuAction('execute');
 		},
 		addStickyFromContextMenu: () => {
