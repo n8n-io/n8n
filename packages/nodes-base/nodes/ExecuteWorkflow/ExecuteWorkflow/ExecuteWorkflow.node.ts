@@ -14,8 +14,28 @@ import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
 import { getWorkflowInputData } from '../GenericFunctions';
 
-function getCurrentWorkflowInputData(this: IExecuteFunctions) {
+function getWorkflowInputValues(this: IExecuteFunctions) {
+	const newItems: INodeExecutionData[] = [];
 	const inputData = this.getInputData();
+
+	for (const [itemIndex, item] of inputData.entries()) {
+		const itemFieldValues = this.getNodeParameter('workflowInputs.value', itemIndex, {}) as {};
+
+		const newItem: INodeExecutionData = {
+			json: { ...item.json, ...itemFieldValues },
+			index: itemIndex,
+
+			pairedItem: { item: itemIndex },
+		};
+
+		newItems.push(newItem);
+	}
+
+	return newItems;
+}
+
+function getCurrentWorkflowInputData(this: IExecuteFunctions) {
+	const inputData = getWorkflowInputValues.call(this);
 
 	if (this.getNode().typeVersion < 1.2) {
 		return inputData;
@@ -25,7 +45,6 @@ function getCurrentWorkflowInputData(this: IExecuteFunctions) {
 			.filter((x) => !x.removed)
 			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
 
-		// TODO: map every row to field values so we can set the static value or expression later on
 		return getWorkflowInputData.call(this, inputData, newParams);
 	}
 }
