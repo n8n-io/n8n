@@ -147,10 +147,12 @@ const selectionKeyCode = ref<true | null>(true);
 
 onKeyDown(panningKeyCode.value, () => {
 	selectionKeyCode.value = null;
+	panningMouseButton.value = [0, 1];
 });
 
 onKeyUp(panningKeyCode.value, () => {
 	selectionKeyCode.value = true;
+	panningMouseButton.value = [1];
 });
 
 function selectLeftNode(id: string) {
@@ -642,7 +644,7 @@ provide(CanvasKey, {
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
-		@contextmenu="onOpenContextMenu"
+		@pane-context-menu="onOpenContextMenu"
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
