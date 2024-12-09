@@ -214,9 +214,10 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	if (responseType === 'freeText') {
 		if (this.getRequestObject().method === 'GET') {
 			const res = this.getResponseObject();
+			const message = this.getNodeParameter('message', '') as string;
 
 			const data = prepareFormData({
-				formTitle: 'Provide Input',
+				formTitle: 'You need to input ' + message,
 				formDescription: '',
 				formSubmittedHeader: 'Got it, thanks',
 				formSubmittedText: 'This page can be closed now',
