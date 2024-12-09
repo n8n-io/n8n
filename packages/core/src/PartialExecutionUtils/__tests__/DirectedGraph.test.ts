@@ -473,17 +473,14 @@ describe('DirectedGraph', () => {
 		});
 	});
 
-	describe('getNode', () => {
+	describe('hasNode', () => {
 		test("returns node if it's part of the graph", () => {
 			// ARRANGE
 			const node = createNodeData({ name: 'node' });
 			const graph = new DirectedGraph().addNodes(node);
 
-			// ACT
-			const gotNode = graph.getNode(node.name);
-
-			// ASSERT
-			expect(gotNode).toBe(node);
+			// ACT & ASSERT
+			expect(graph.hasNode(node.name)).toBe(true);
 		});
 
 		test('returns undefined if there is no node with that name in the graph', () => {
@@ -491,11 +488,8 @@ describe('DirectedGraph', () => {
 			const node = createNodeData({ name: 'node' });
 			const graph = new DirectedGraph().addNodes(node);
 
-			// ACT
-			const gotNode = graph.getNode(node.name + 'foo');
-
-			// ASSERT
-			expect(gotNode).toBeUndefined();
+			// ACT & ASSERT
+			expect(graph.hasNode(node.name + 'foo')).toBe(false);
 		});
 	});
 });
