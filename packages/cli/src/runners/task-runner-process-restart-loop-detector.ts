@@ -6,7 +6,7 @@ import { TypedEmitter } from '@/typed-emitter';
 const MAX_RESTARTS = 5;
 const RESTARTS_WINDOW = 2 * Time.seconds.toMilliseconds;
 
-export type TaskRunnerProcessRestartLoopDetectorEventMap = {
+type TaskRunnerProcessRestartLoopDetectorEventMap = {
 	'restart-loop-detected': TaskRunnerRestartLoopError;
 };
 
