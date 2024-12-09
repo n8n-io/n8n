@@ -1,4 +1,4 @@
-import { computed, toValue, type ComputedRef, type Ref } from 'vue';
+import { computed } from 'vue';
 import { VIEWS } from '@/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
@@ -25,9 +25,7 @@ type Item = BaseItem & {
 	submenu?: BaseItem[];
 };
 
-export const useGlobalEntityCreation = (
-	multipleProjects: Ref<boolean> | ComputedRef<boolean> | boolean = true,
-) => {
+export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 
 	const settingsStore = useSettingsStore();
@@ -73,35 +71,6 @@ export const useGlobalEntityCreation = (
 						name: VIEWS.CREDENTIALS,
 						params: {
 							projectId: projectsStore.personalProject?.id,
-							credentialId: 'create',
-						},
-					},
-				},
-			];
-		}
-
-		// single project
-		if (!toValue(multipleProjects)) {
-			return [
-				{
-					id: 'workflow',
-					title: 'Workflow',
-					disabled: disabledWorkflow(projectsStore.currentProject?.scopes),
-					route: {
-						name: VIEWS.NEW_WORKFLOW,
-						query: {
-							projectId: projectsStore.currentProject?.id,
-						},
-					},
-				},
-				{
-					id: 'credential',
-					title: 'Credential',
-					disabled: disabledCredential(projectsStore.currentProject?.scopes),
-					route: {
-						name: VIEWS.PROJECTS_CREDENTIALS,
-						params: {
-							projectId: projectsStore.currentProject?.id,
 							credentialId: 'create',
 						},
 					},
