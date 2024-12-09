@@ -56,6 +56,7 @@ export class TestRunnerService {
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
 		userId: string,
+		abortSignal: AbortSignal,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
 		const pinData = createPinData(workflow, pastExecutionData);
@@ -81,6 +82,11 @@ export class TestRunnerService {
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
+		// Listen to the abort signal to stop the execution in case test run is cancelled
+		abortSignal.addEventListener('abort', () => {
+			this.activeExecutions.stopExecution(executionId);
+		});
+
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
@@ -94,6 +100,7 @@ export class TestRunnerService {
 		evaluationWorkflow: WorkflowEntity,
 		expectedData: IRunData,
 		actualData: IRunData,
+		abortSignal: AbortSignal,
 	) {
 		// Prepare the evaluation wf input data.
 		// Provide both the expected data and the actual data
@@ -112,6 +119,11 @@ export class TestRunnerService {
 		// Trigger the evaluation workflow
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
+
+		// Listen to the abort signal to stop the execution in case test run is cancelled
+		abortSignal.addEventListener('abort', () => {
+			this.activeExecutions.stopExecution(executionId);
+		});
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -209,7 +221,12 @@ export class TestRunnerService {
 			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);
+			const testCaseExecution = await this.runTestCase(
+				workflow,
+				executionData,
+				user.id,
+				abortSignal,
+			);
 
 			// In case of a permission check issue, the test case execution will be undefined.
 			// Skip them and continue with the next test case
@@ -228,6 +245,7 @@ export class TestRunnerService {
 				evaluationWorkflow,
 				originalRunData,
 				testCaseRunData,
+				abortSignal,
 			);
 			assert(evalExecution);
 
@@ -242,6 +260,9 @@ export class TestRunnerService {
 			const aggregatedMetrics = metrics.getAggregatedMetrics();
 			await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 		}
+
+		// Clean up abort controller
+		this.abortControllers.delete(testRun.id);
 	}
 
 	/**
