@@ -82,6 +82,9 @@ export abstract class TaskRunner extends EventEmitter {
 
 	private idleTimer: NodeJS.Timeout | undefined;
 
+	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. */
+	protected readonly taskTimeout: number;
+
 	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
 
@@ -92,6 +95,7 @@ export abstract class TaskRunner extends EventEmitter {
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
+		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
 
 		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
@@ -338,12 +342,20 @@ export abstract class TaskRunner extends EventEmitter {
 		const controller = new AbortController();
 		this.taskCancellations.set(taskId, controller);
 
+		const taskTimeout = setTimeout(() => {
+			if (!task.cancelled) {
+				controller.abort();
+				this.taskCancellations.delete(taskId);
+			}
+		}, this.taskTimeout * 1_000);
+
 		task.settings = settings;
 		task.active = true;
 		try {
 			const data = await this.executeTask(task, controller.signal);
 			this.taskDone(taskId, data);
 		} catch (error) {
+			clearTimeout(taskTimeout);
 			if (!task.cancelled) this.taskErrored(taskId, error);
 		} finally {
 			this.taskCancellations.delete(taskId);

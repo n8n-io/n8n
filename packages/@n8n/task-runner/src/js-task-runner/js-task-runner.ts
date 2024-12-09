@@ -32,6 +32,7 @@ import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
 import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
 import { makeSerializable } from './errors/serializable-error';
+import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
@@ -212,7 +213,7 @@ export class JsTaskRunner extends TaskRunner {
 				signal.addEventListener(
 					'abort',
 					() => {
-						reject(new Error('Task cancelled'));
+						reject(new TimeoutError(this.taskTimeout));
 					},
 					{ once: true },
 				);
@@ -285,7 +286,7 @@ export class JsTaskRunner extends TaskRunner {
 					signal.addEventListener(
 						'abort',
 						() => {
-							reject(new Error('Task cancelled'));
+							reject(new TimeoutError(this.taskTimeout));
 						},
 						{ once: true },
 					);
