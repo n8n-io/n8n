@@ -472,4 +472,30 @@ describe('DirectedGraph', () => {
 			expect(graph).toEqual(expectedGraph);
 		});
 	});
+
+	describe('getNode', () => {
+		test("returns node if it's part of the graph", () => {
+			// ARRANGE
+			const node = createNodeData({ name: 'node' });
+			const graph = new DirectedGraph().addNodes(node);
+
+			// ACT
+			const gotNode = graph.getNode(node.name);
+
+			// ASSERT
+			expect(gotNode).toBe(node);
+		});
+
+		test('returns undefined if there is no node with that name in the graph', () => {
+			// ARRANGE
+			const node = createNodeData({ name: 'node' });
+			const graph = new DirectedGraph().addNodes(node);
+
+			// ACT
+			const gotNode = graph.getNode(node.name + 'foo');
+
+			// ASSERT
+			expect(gotNode).toBeUndefined();
+		});
+	});
 });
