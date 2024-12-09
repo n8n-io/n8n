@@ -5,6 +5,7 @@
  */
 import { computed } from 'vue';
 const props = defineProps<{
+	id: string;
 	x: number;
 	y: number;
 	zoom: number;
@@ -16,7 +17,7 @@ const patternOffset = computed(() => scaledGap.value / 2);
 
 <template>
 	<pattern
-		id="diagonalHatch"
+		:id="id"
 		patternUnits="userSpaceOnUse"
 		:x="x % scaledGap"
 		:y="y % scaledGap"
@@ -26,7 +27,6 @@ const patternOffset = computed(() => scaledGap.value / 2);
 	>
 		<path :d="`M0 ${scaledGap / 2} H${scaledGap}`" :stroke-width="scaledGap / 2" />
 	</pattern>
-	<rect x="0" y="0" width="100%" height="100%" fill="url(#diagonalHatch)" />
 </template>
 
 <style scoped>
