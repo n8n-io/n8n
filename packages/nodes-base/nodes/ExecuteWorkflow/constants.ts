@@ -5,6 +5,7 @@ export const WORKFLOW_INPUTS = 'workflowInputs';
 export const INPUT_OPTIONS = 'inputOptions';
 export const VALUES = 'values';
 export const JSON_EXAMPLE = 'jsonExample';
+export const PASSTHROUGH = 'passthrough';
 export const TYPE_OPTIONS: Array<{ name: string; value: FieldType | 'any' }> = [
 	{
 		name: 'Allow Any Type',

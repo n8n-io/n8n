@@ -37,10 +37,11 @@ function getWorkflowInputValues(this: IExecuteFunctions) {
 function getCurrentWorkflowInputData(this: IExecuteFunctions) {
 	const inputData = getWorkflowInputValues.call(this);
 
-	if (this.getNode().typeVersion < 1.2) {
+	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
+
+	if (schema.length === 0) {
 		return inputData;
 	} else {
-		const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
 		const newParams = schema
 			.filter((x) => !x.removed)
 			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
