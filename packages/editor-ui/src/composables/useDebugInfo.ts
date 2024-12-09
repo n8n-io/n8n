@@ -100,8 +100,8 @@ export function useDebugInfo() {
 
 		return {
 			enabled: true,
-			maxAge: `${settingsStore.pruning.maxAge} hours`,
-			maxCount: `${settingsStore.pruning.maxCount} executions`,
+			maxAge: `${settingsStore.pruning?.maxAge} hours`,
+			maxCount: `${settingsStore.pruning?.maxCount} executions`,
 		} as const;
 	};
 
