@@ -4,7 +4,7 @@ import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { TypedEmitter } from '@/typed-emitter';
 
 const MAX_RESTARTS = 5;
-const RESTARTS_WINDOW = 5 * Time.seconds.toMilliseconds;
+const RESTARTS_WINDOW = 2 * Time.seconds.toMilliseconds;
 
 export type TaskRunnerProcessRestartLoopDetectorEventMap = {
 	'restart-loop-detected': TaskRunnerRestartLoopError;
