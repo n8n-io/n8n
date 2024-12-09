@@ -5,6 +5,7 @@ import {
 	presendFields,
 	presendTest,
 	processUsersResponse,
+	validatePath,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -27,7 +28,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Add user to group',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [
+							presendTest, // ToDo: Remove this line before completing the pull request
+							presendFields,
+						],
 					},
 					request: {
 						method: 'POST',
@@ -46,7 +50,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Create user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [
+							presendTest, // ToDo: Remove this line before completing the pull request
+							presendFields,
+						],
 					},
 					request: {
 						method: 'POST',
@@ -65,11 +72,14 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [
+							presendTest, // ToDo: Remove this line before completing the pull request
+							presendFields,
+						],
 					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=DeleteUser&Version=2010-05-08',
+						url: '/?Action=DeleteUser&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -80,15 +90,18 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve information of a user',
+				description: 'Retrieve information of an user',
 				action: 'Get user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [
+							presendTest, // ToDo: Remove this line before completing the pull request
+							presendFields,
+						],
 					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=GetUser&Version=2010-05-08',
+						url: '/?Action=GetUser&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -101,13 +114,16 @@ export const userOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
+					// send: {
+					// 	paginate: true,
+					//  preSend: [presendFields]
+					// },
 					send: {
-						paginate: true,
-						// preSend: [presendFields]
+						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
 					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=ListUsers&Version=2010-05-08',
+						url: '/?Action=ListUsers&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -123,7 +139,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Remove user from group',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [
+							presendTest, // ToDo: Remove this line before completing the pull request
+							presendFields,
+						],
 					},
 					request: {
 						method: 'POST',
@@ -142,7 +161,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Update user',
 				routing: {
 					send: {
-						preSend: [presendFields],
+						preSend: [
+							presendTest, // ToDo: Remove this line before completing the pull request
+							presendFields,
+						],
 					},
 					request: {
 						method: 'POST',
@@ -186,11 +208,16 @@ const createFields: INodeProperties[] = [
 			{
 				displayName: 'Path',
 				name: 'Path',
+				type: 'string',
+				validateType: 'string',
 				default: '',
 				description: 'The path for the user name',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
-				type: 'string',
-				validateType: 'string',
+				routing: {
+					send: {
+						preSend: [validatePath],
+					},
+				},
 			},
 			{
 				//TODO-Check format of this field
@@ -199,14 +226,13 @@ const createFields: INodeProperties[] = [
 				default: '',
 				description:
 					'The ARN of the managed policy that is used to set the permissions boundary for the user',
-				placeholder: 'e.g. iam:arn',
+				placeholder: 'e.g. iam:CreateUser',
 				type: 'string',
 				validateType: 'string',
 			},
 			{
-				//TODO-Check format of this field
 				displayName: 'Tags',
-				name: 'tags',
+				name: 'Tags',
 				type: 'fixedCollection',
 				description: 'A list of tags that you want to attach to the new user',
 				default: [],
@@ -216,7 +242,7 @@ const createFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'tag',
+						name: 'tags',
 						displayName: 'Tag',
 						values: [
 							{
@@ -251,7 +277,7 @@ const getFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'Select the group you want to retrieve',
+		description: 'Select the user you want to retrieve',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -352,11 +378,16 @@ const getAllFields: INodeProperties[] = [
 			{
 				displayName: 'Path Prefix',
 				name: 'PathPrefix',
-				default: '',
-				description: 'The path prefix for filtering the results',
-				placeholder: 'e.g. /division_abc/subdivision_xyz/',
 				type: 'string',
 				validateType: 'string',
+				default: '/',
+				description: 'The path prefix for filtering the results',
+				placeholder: 'e.g. /division_abc/subdivision_xyz/',
+				routing: {
+					send: {
+						preSend: [validatePath],
+					},
+				},
 			},
 		],
 	},
@@ -474,14 +505,22 @@ const updateFields: INodeProperties[] = [
 				placeholder: 'e.g. JohnSmith',
 				type: 'string',
 				validateType: 'string',
+				typeOptions: {
+					regex: '^[a-zA-Z0-9+=,.@_-]+$',
+				},
 			},
 			{
 				displayName: 'New Path',
 				name: 'NewPath',
-				default: '',
-				placeholder: 'e.g. /division_abc/subdivision_xyz/',
 				type: 'string',
 				validateType: 'string',
+				default: '/',
+				placeholder: 'e.g. /division_abc/subdivision_xyz/',
+				routing: {
+					send: {
+						preSend: [validatePath],
+					},
+				},
 			},
 		],
 	},

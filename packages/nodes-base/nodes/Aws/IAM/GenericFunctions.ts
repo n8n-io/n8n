@@ -12,7 +12,7 @@ import type {
 	DeclarativeRestApiSettings,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /* Function which helps while developing the node */
 // ToDo: Remove before completing the pull request
@@ -57,6 +57,17 @@ export async function presendFields(
 		}
 		if (additionalFields.Path) {
 			url += `&Path=${additionalFields.Path}`;
+		}
+		if (additionalFields.Tags) {
+			const tags = additionalFields.Tags as Array<{ key: string; value: string }>;
+
+			console.log('Got here', additionalFields.Tags);
+
+			const tagArray = tags.map((tag) => ({
+				[tag.key]: tag.value,
+			}));
+
+			url += `&Tags=${tagArray}`;
 		}
 	} else if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {
 		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
@@ -168,8 +179,7 @@ export async function processUsersResponse(
 	return executionData;
 }
 
-/* Helper function to handle pagination */
-const possibleRootProperties = ['Users', 'Attributes'];
+const possibleRootProperties = ['Users', 'Groups'];
 // ToDo: Test if pagination works
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
@@ -232,6 +242,28 @@ export async function handlePagination(
 
 	console.log('Final Aggregated Results:', aggregatedResult);
 	return aggregatedResult.map((item) => ({ json: item }));
+}
+
+export async function validatePath(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const path = this.getNodeParameter('path', '/') as string;
+
+	// Length validation
+	if (path.length < 1 || path.length > 512) {
+		throw new NodeOperationError(this.getNode(), 'Path must be between 1 and 512 characters.');
+	}
+
+	// Regex validation
+	if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Path must begin and end with a forward slash and contain valid ASCII characters.',
+		);
+	}
+
+	return requestOptions;
 }
 
 /* Helper functions to handle errors */
@@ -463,7 +495,6 @@ export async function awsRequest(
 }
 
 /* listSearch methods */
-
 export async function searchUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,

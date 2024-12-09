@@ -1,7 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { handleErrorPostReceive, presendTest } from '../GenericFunctions';
+import { handleErrorPostReceive, presendTest, validatePath } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -160,32 +160,7 @@ const createFields: INodeProperties[] = [
 					send: {
 						property: 'path',
 						type: 'query',
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const path = this.getNodeParameter('path', '/') as string;
-
-								// Length validation
-								if (path.length < 1 || path.length > 512) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must be between 1 and 512 characters.',
-									);
-								}
-
-								// Regex validation
-								if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must begin and end with a forward slash and contain valid ASCII characters.',
-									);
-								}
-
-								return requestOptions;
-							},
-						],
+						preSend: [validatePath],
 					},
 				},
 			},
@@ -501,31 +476,7 @@ const updateFields: INodeProperties[] = [
 					send: {
 						property: 'path',
 						type: 'query',
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const path = this.getNodeParameter('path', '/') as string;
-
-								// Length validation
-								if (path.length < 1 || path.length > 512) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must be between 1 and 512 characters.',
-									);
-								}
-
-								// Regex validation
-								if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Path must begin and end with a forward slash and contain valid ASCII characters.',
-									);
-								}
-								return requestOptions;
-							},
-						],
+						preSend: [validatePath],
 					},
 				},
 			},
