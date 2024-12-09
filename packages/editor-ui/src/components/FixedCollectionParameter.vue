@@ -235,7 +235,7 @@ const onDragChange = (optionName: string) => {
 									index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'
 								"
 							>
-								<div v-if="!isReadOnly" class="drag-option">
+								<div v-if="!isReadOnly" class="icon-button default-top-padding">
 									<N8nIconButton
 										v-if="sortable"
 										type="tertiary"
@@ -246,7 +246,7 @@ const onDragChange = (optionName: string) => {
 										class="drag-handle"
 									></N8nIconButton>
 								</div>
-								<div v-if="!isReadOnly" class="delete-option">
+								<div v-if="!isReadOnly" class="icon-button extra-top-padding">
 									<N8nIconButton
 										type="tertiary"
 										text
@@ -331,8 +331,7 @@ const onDragChange = (optionName: string) => {
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	.delete-option,
-	.drag-option {
+	.icon-button {
 		display: flex;
 		flex-direction: column;
 	}
@@ -370,8 +369,7 @@ const onDragChange = (optionName: string) => {
 	margin-bottom: 0;
 }
 
-.parameter-item:hover > .parameter-item-wrapper > .drag-option,
-.parameter-item:hover > .parameter-item-wrapper > .delete-option {
+.parameter-item:hover > .parameter-item-wrapper > .icon-button {
 	opacity: 1;
 }
 
@@ -381,10 +379,10 @@ const onDragChange = (optionName: string) => {
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			.drag-option {
+			.default-top-padding {
 				top: calc(1.2 * var(--spacing-s));
 			}
-			.delete-option {
+			.extra-top-padding {
 				top: calc(2.2 * var(--spacing-s));
 			}
 		}
@@ -393,10 +391,10 @@ const onDragChange = (optionName: string) => {
 
 .parameter-item:first-of-type {
 	.parameter-item-wrapper {
-		.drag-option {
+		.default-top-padding {
 			top: var(--spacing-3xs);
 		}
-		.delete-option {
+		.extra-top-padding {
 			top: var(--spacing-l);
 		}
 	}
@@ -409,19 +407,19 @@ const onDragChange = (optionName: string) => {
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
 }
-
-.ghost {
-	background-color: var(--color-background-base);
+.ghost,
+.dragging {
 	border-radius: var(--border-radius-base);
 	padding-right: var(--spacing-xs);
+}
+.ghost {
+	background-color: var(--color-background-base);
 }
 .dragging {
 	background-color: var(--color-background-xlight);
 	.parameter-item-wrapper {
 		border: none;
 	}
-	border-radius: var(--border-radius-base);
 	opacity: 0.7;
-	padding-right: var(--spacing-xs);
 }
 </style>

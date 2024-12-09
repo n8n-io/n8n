@@ -279,16 +279,17 @@ function getIssues(index: number): string[] {
 		outline: none;
 	}
 }
-.ghost {
-	background-color: var(--color-background-base);
+.ghost,
+.dragging {
 	border-radius: var(--border-radius-base);
 	padding-right: var(--spacing-xs);
 }
+.ghost {
+	background-color: var(--color-background-base);
+}
 .dragging {
 	background-color: var(--color-background-xlight);
-	border-radius: var(--border-radius-base);
 	opacity: 0.7;
-	padding-right: var(--spacing-xs);
 }
 .dragging > .combinator {
 	display: none;
