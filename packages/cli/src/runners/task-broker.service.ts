@@ -471,10 +471,11 @@ export class TaskBroker {
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerTimeoutError(
-				this.taskRunnersConfig.taskTimeout,
-				config.getEnv('deployment.type') !== 'cloud',
-			),
+			new TaskRunnerTimeoutError({
+				taskTimeout: this.taskRunnersConfig.taskTimeout,
+				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
+				mode: this.taskRunnersConfig.mode,
+			}),
 		);
 	}
 
