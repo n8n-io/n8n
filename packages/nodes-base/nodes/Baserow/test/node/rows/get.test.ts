@@ -9,13 +9,18 @@ import type {
 import nock from 'nock';
 
 import { Baserow } from '../../../Baserow.node';
-import { getTableFields } from '../../../GenericFunctions';
+import { baserowApiRequest, getTableFields } from '../../../GenericFunctions';
 import type { GetAllAdditionalOptions } from '../../../types';
 
 jest.mock('../../../GenericFunctions', () => {
 	const originalModule: { [key: string]: any } = jest.requireActual('../../../GenericFunctions');
 	return {
 		...originalModule,
+		baserowApiRequest: jest.fn().mockResolvedValue({
+			id: 1,
+			order: '^-?\\(?:\\.\\)?$',
+			field_1: 'baz',
+		}),
 		getJwtToken: jest.fn().mockResolvedValue('jwt'),
 		getTableFields: jest.fn().mockResolvedValue([
 			{
@@ -41,7 +46,7 @@ describe('Baserow Node', () => {
 	});
 
 	describe('resource: row', () => {
-		it('getAll should fetch all records', async () => {
+		it('get should fetch a record', async () => {
 			const mockThis = {
 				helpers: {
 					returnJsonArray,
@@ -50,26 +55,25 @@ describe('Baserow Node', () => {
 						count: 1,
 						next: null,
 						previous: null,
-						results: [
-							{
-								id: 1,
-								order: '^-?\\(?:\\.\\)?$',
-								field_1: 'baz',
-							},
-						],
+						results: {
+							id: 1,
+							order: '^-?\\(?:\\.\\)?$',
+							field_1: 'baz',
+						},
 					}),
 				},
 				getNode() {
 					return {
 						id: 'c4a5ca75-18c7-4cc8-bf7d-5d57bb7d84da',
-						name: 'Baserow getAll',
+						name: 'Baserow get',
 						type: 'n8n-nodes-base.Baserow',
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
-							operation: 'getAll',
+							operation: 'get',
 							resource: 'row',
 							tableId: 1,
+							rowId: 1,
 						},
 					} as INode;
 				},
@@ -88,8 +92,10 @@ describe('Baserow Node', () => {
 						case 'resource':
 							return 'row';
 						case 'operation':
-							return 'getAll';
+							return 'get';
 						case 'tableId':
+							return 1;
+						case 'rowId':
 							return 1;
 						case 'additionalOptions':
 							return {} as GetAllAdditionalOptions;
@@ -104,6 +110,14 @@ describe('Baserow Node', () => {
 			const response: INodeExecutionData[][] = await node.execute.call(mockThis);
 
 			expect(getTableFields).toHaveBeenCalledTimes(1);
+			expect(baserowApiRequest).toHaveBeenCalledTimes(1);
+			expect(baserowApiRequest).toHaveBeenNthCalledWith(
+				1,
+				'GET',
+				'/api/database/rows/table/1/1/',
+				'jwt',
+			);
+
 			expect(response).toEqual([
 				[
 					{

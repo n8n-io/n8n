@@ -9,20 +9,29 @@ import type {
 import nock from 'nock';
 
 import { Baserow } from '../../../Baserow.node';
-import { getTableFields } from '../../../GenericFunctions';
+import { baserowApiRequest, getTableFields } from '../../../GenericFunctions';
 import type { GetAllAdditionalOptions } from '../../../types';
 
 jest.mock('../../../GenericFunctions', () => {
 	const originalModule: { [key: string]: any } = jest.requireActual('../../../GenericFunctions');
 	return {
 		...originalModule,
-		getJwtToken: jest.fn().mockResolvedValue('jwt'),
-		getTableFields: jest.fn().mockResolvedValue([
-			{
-				id: '1',
-				name: 'my_field_name',
+		baserowApiRequest: jest.fn().mockResolvedValue({
+			size: 2147483647,
+			mime_type: 'string',
+			is_image: true,
+			image_width: 32767,
+			image_height: 32767,
+			uploaded_at: '2019-08-24T14:15:22Z',
+			url: 'http://example.com',
+			thumbnails: {
+				property1: null,
+				property2: null,
 			},
-		]),
+			name: 'string',
+			original_name: 'string',
+		}),
+		getJwtToken: jest.fn().mockResolvedValue('jwt'),
 	};
 });
 
@@ -40,8 +49,8 @@ describe('Baserow Node', () => {
 		jest.restoreAllMocks();
 	});
 
-	describe('resource: row', () => {
-		it('getAll should fetch all records', async () => {
+	describe('resource: file', () => {
+		it('upload-via-url should upload a file via url', async () => {
 			const mockThis = {
 				helpers: {
 					returnJsonArray,
@@ -50,26 +59,25 @@ describe('Baserow Node', () => {
 						count: 1,
 						next: null,
 						previous: null,
-						results: [
-							{
-								id: 1,
-								order: '^-?\\(?:\\.\\)?$',
-								field_1: 'baz',
-							},
-						],
+						results: {
+							id: 1,
+							order: '^-?\\(?:\\.\\)?$',
+							field_1: 'baz',
+						},
 					}),
 				},
 				getNode() {
 					return {
 						id: 'c4a5ca75-18c7-4cc8-bf7d-5d57bb7d84da',
-						name: 'Baserow getAll',
+						name: 'Baserow upload-via-url',
 						type: 'n8n-nodes-base.Baserow',
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
-							operation: 'getAll',
-							resource: 'row',
+							operation: 'upload-via-url',
+							resource: 'file',
 							tableId: 1,
+							rowId: 1,
 						},
 					} as INode;
 				},
@@ -86,11 +94,11 @@ describe('Baserow Node', () => {
 				getNodeParameter: (parameter: string) => {
 					switch (parameter) {
 						case 'resource':
-							return 'row';
+							return 'file';
 						case 'operation':
-							return 'getAll';
-						case 'tableId':
-							return 1;
+							return 'upload-via-url';
+						case 'url':
+							return 'https://example.com/image.jpg';
 						case 'additionalOptions':
 							return {} as GetAllAdditionalOptions;
 						default:
@@ -102,19 +110,31 @@ describe('Baserow Node', () => {
 
 			const node = new Baserow();
 			const response: INodeExecutionData[][] = await node.execute.call(mockThis);
+			expect(baserowApiRequest).toHaveBeenCalledTimes(1);
+			expect(baserowApiRequest).toHaveBeenNthCalledWith(
+				1,
+				'POST',
+				'/api/user-files/upload-via-url/',
+				'jwt',
+				{ url: 'https://example.com/image.jpg' },
+			);
 
-			expect(getTableFields).toHaveBeenCalledTimes(1);
 			expect(response).toEqual([
 				[
 					{
 						json: {
-							id: 1,
-							order: '^-?\\(?:\\.\\)?$',
-							my_field_name: 'baz',
+							image_height: 32767,
+							image_width: 32767,
+							is_image: true,
+							mime_type: 'string',
+							name: 'string',
+							original_name: 'string',
+							size: 2147483647,
+							thumbnails: { property1: null, property2: null },
+							uploaded_at: '2019-08-24T14:15:22Z',
+							url: 'http://example.com',
 						},
-						pairedItem: {
-							item: 0,
-						},
+						pairedItem: { item: 0 },
 					},
 				],
 			]);

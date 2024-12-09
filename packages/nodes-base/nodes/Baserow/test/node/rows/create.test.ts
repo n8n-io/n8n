@@ -9,13 +9,17 @@ import type {
 import nock from 'nock';
 
 import { Baserow } from '../../../Baserow.node';
-import { getTableFields } from '../../../GenericFunctions';
+import { baserowApiRequest, getTableFields } from '../../../GenericFunctions';
 import type { GetAllAdditionalOptions } from '../../../types';
 
 jest.mock('../../../GenericFunctions', () => {
 	const originalModule: { [key: string]: any } = jest.requireActual('../../../GenericFunctions');
 	return {
 		...originalModule,
+		baserowApiRequest: jest.fn().mockResolvedValue({
+			id: 1,
+			field_1: 'baz',
+		}),
 		getJwtToken: jest.fn().mockResolvedValue('jwt'),
 		getTableFields: jest.fn().mockResolvedValue([
 			{
@@ -41,7 +45,7 @@ describe('Baserow Node', () => {
 	});
 
 	describe('resource: row', () => {
-		it('getAll should fetch all records', async () => {
+		it('create should create a record', async () => {
 			const mockThis = {
 				helpers: {
 					returnJsonArray,
@@ -50,26 +54,25 @@ describe('Baserow Node', () => {
 						count: 1,
 						next: null,
 						previous: null,
-						results: [
-							{
-								id: 1,
-								order: '^-?\\(?:\\.\\)?$',
-								field_1: 'baz',
-							},
-						],
+						results: {
+							id: 1,
+							order: '^-?\\(?:\\.\\)?$',
+							field_1: 'baz',
+						},
 					}),
 				},
 				getNode() {
 					return {
 						id: 'c4a5ca75-18c7-4cc8-bf7d-5d57bb7d84da',
-						name: 'Baserow getAll',
+						name: 'Baserow get',
 						type: 'n8n-nodes-base.Baserow',
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
-							operation: 'getAll',
+							operation: 'create',
 							resource: 'row',
 							tableId: 1,
+							rowId: 1,
 						},
 					} as INode;
 				},
@@ -80,7 +83,9 @@ describe('Baserow Node', () => {
 				}),
 				getInputData: () => [
 					{
-						json: {},
+						json: {
+							my_field_name: 'new value',
+						},
 					},
 				],
 				getNodeParameter: (parameter: string) => {
@@ -88,9 +93,13 @@ describe('Baserow Node', () => {
 						case 'resource':
 							return 'row';
 						case 'operation':
-							return 'getAll';
+							return 'create';
 						case 'tableId':
 							return 1;
+						case 'dataToSend':
+							return 'autoMapInputData';
+						case 'inputsToIgnore':
+							return '';
 						case 'additionalOptions':
 							return {} as GetAllAdditionalOptions;
 						default:
@@ -104,12 +113,20 @@ describe('Baserow Node', () => {
 			const response: INodeExecutionData[][] = await node.execute.call(mockThis);
 
 			expect(getTableFields).toHaveBeenCalledTimes(1);
+			expect(baserowApiRequest).toHaveBeenCalledTimes(1);
+			expect(baserowApiRequest).toHaveBeenNthCalledWith(
+				1,
+				'POST',
+				'/api/database/rows/table/1/',
+				'jwt',
+				{ field_1: 'new value' },
+			);
+
 			expect(response).toEqual([
 				[
 					{
 						json: {
 							id: 1,
-							order: '^-?\\(?:\\.\\)?$',
 							my_field_name: 'baz',
 						},
 						pairedItem: {
