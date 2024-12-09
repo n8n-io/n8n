@@ -459,7 +459,11 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
-		this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+		if (this.taskRunnersConfig.mode === 'internal') {
+			this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+		} else if (this.taskRunnersConfig.mode === 'external') {
+			await this.cancelTask(taskId, 'Task execution timed out');
+		}
 
 		await this.taskErrorHandler(
 			taskId,
