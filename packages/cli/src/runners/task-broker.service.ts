@@ -469,12 +469,14 @@ export class TaskBroker {
 			});
 		}
 
+		const { taskTimeout, mode } = this.taskRunnersConfig;
+
 		await this.taskErrorHandler(
 			taskId,
 			new TaskRunnerTimeoutError({
-				taskTimeout: this.taskRunnersConfig.taskTimeout,
+				taskTimeout,
 				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
-				mode: this.taskRunnersConfig.mode,
+				mode,
 			}),
 		);
 	}
