@@ -743,14 +743,14 @@ provide(CanvasKey, {
 	}
 
 	:global(.vue-flow__pane) {
-		cursor: grab !important;
+		cursor: grab;
 
 		&:global(.selection) {
-			cursor: default !important;
+			cursor: default;
 		}
 
 		&:global(.dragging) {
-			cursor: grabbing !important;
+			cursor: grabbing;
 		}
 	}
 }
