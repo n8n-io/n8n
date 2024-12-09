@@ -33,9 +33,9 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
-				name: 'Send and Wait for Approval',
+				name: 'Send Message and Wait for Response',
 				value: SEND_AND_WAIT_OPERATION,
-				action: 'Send a message and wait for approval',
+				action: 'Send message and wait for response',
 			},
 			{
 				name: 'Update',
