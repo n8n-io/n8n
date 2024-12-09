@@ -49,10 +49,11 @@ export const rowFields: INodeProperties[] = [
 	// ----------------------------------
 
 	{
-		displayName: 'Table Name or ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
-		placeholder: 'Name of table',
+		placeholder: 'Name of the table',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTableNames',
@@ -63,14 +64,16 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'The name of SeaTable table to access. Choose from the list, or specify the name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table Name or ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Table ID',
 		name: 'tableId',
 		type: 'options',
-		placeholder: 'Name of table',
+		placeholder: 'ID of the table',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTableIds',
@@ -81,6 +84,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
 			'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
@@ -157,11 +161,13 @@ export const rowFields: INodeProperties[] = [
 				name: 'columnValues',
 				values: [
 					{
-						displayName: 'Column Name or ID',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column Name',
 						name: 'columnName',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify the name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['table'],
 							loadOptionsMethod: 'getTableUpdateAbleColumns',
@@ -243,7 +249,6 @@ export const rowFields: INodeProperties[] = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100,
 		},
 		default: 50,
 		description: 'Max number of results to return',
@@ -261,11 +266,13 @@ export const rowFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'View Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'View Name',
 				name: 'view_name',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an View Name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getViews',
 				},
@@ -291,7 +298,7 @@ export const rowFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether the link column in the returned row is the ID of the linked row or the name of the linked row',
+					'Whether the ID of the linked row is returned in the link column (true). Otherwise, it return the name of the linked row (false).',
 			},
 			{
 				displayName: 'Direction',
@@ -312,15 +319,16 @@ export const rowFields: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Order By',
+				displayName: 'Order By Column',
 				name: 'order_by',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Choose from the list, or specify a Column using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 		],
 	},
