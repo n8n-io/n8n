@@ -23,6 +23,7 @@ import {
 	resolveCondition,
 } from './utils';
 import { useDebounce } from '@/composables/useDebounce';
+import IconButton from '../../../../design-system/src/components/N8nIconButton/index';
 
 interface Props {
 	path: string;
@@ -33,6 +34,7 @@ interface Props {
 	canRemove?: boolean;
 	readOnly?: boolean;
 	index?: number;
+	canDrag?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 	fixedLeftValue: false,
 	readOnly: false,
 	index: 0,
+	canDrag: true,
 });
 
 const emit = defineEmits<{
@@ -152,6 +155,15 @@ const onBlur = (): void => {
 		}"
 		data-test-id="filter-condition"
 	>
+		<N8nIconButton
+			v-if="canDrag && !readOnly"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:title="i18n.baseText('filter.dragCondition')"
+			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
+		></N8nIconButton>
 		<n8n-icon-button
 			v-if="canRemove && !readOnly"
 			type="tertiary"
@@ -160,7 +172,7 @@ const onBlur = (): void => {
 			icon="trash"
 			data-test-id="filter-remove-condition"
 			:title="i18n.baseText('filter.removeCondition')"
-			:class="$style.remove"
+			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
 		></n8n-icon-button>
 		<InputTriple>
@@ -248,7 +260,7 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.iconButton {
 			opacity: 1;
 		}
 	}
@@ -261,13 +273,21 @@ const onBlur = (): void => {
 
 .statusIcon {
 	padding-left: var(--spacing-4xs);
+	padding-right: var(--spacing-4xs);
 }
 
-.remove {
+.iconButton {
 	position: absolute;
 	left: 0;
-	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
+}
+
+.defaultTopPadding {
+	top: var(--spacing-m);
+}
+.extraTopPadding {
+	top: calc(14px + var(--spacing-m));
 }
 </style>
