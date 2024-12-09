@@ -625,6 +625,7 @@
       "dist/nodes/MessageBird/MessageBird.node.js",
       "dist/nodes/Metabase/Metabase.node.js",
       "dist/nodes/Microsoft/Dynamics/MicrosoftDynamicsCrm.node.js",
+      "dist/nodes/Microsoft/Entra/MicrosoftEntra.node.js",
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
       "dist/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
