@@ -270,6 +270,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	messages.push(['placeholder', '{agent_scratchpad}']);
 	const prompt = ChatPromptTemplate.fromMessages(messages);
 
+	// here agent is created first step with tools
 	const agent = createToolCallingAgent({
 		llm: model,
 		tools,
