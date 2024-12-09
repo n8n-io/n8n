@@ -20,6 +20,7 @@ export const eventNamesAiNodes = [
 	'n8n.ai.llm.error',
 	'n8n.ai.vector.store.populated',
 	'n8n.ai.vector.store.updated',
+	'n8n.ai.vector.store.deleted',
 ] as const;
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
