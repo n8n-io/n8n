@@ -367,7 +367,7 @@ export class WorkflowExecute {
 		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
-		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
+		runData = cleanRunData(runData, graph, startNodes);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
@@ -381,7 +381,7 @@ export class WorkflowExecute {
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
-				runData: newRunData,
+				runData,
 				pinData,
 			},
 			executionData: {
