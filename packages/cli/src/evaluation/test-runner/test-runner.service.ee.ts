@@ -22,7 +22,7 @@ import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { createPinData, getPastExecutionStartNode } from './utils.ee';
+import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
 
 /**
  * This service orchestrates the running of test cases.
@@ -58,7 +58,7 @@ export class TestRunnerService {
 		const pinData = createPinData(workflow, pastExecutionData);
 
 		// Determine the start node of the past execution
-		const pastExecutionStartNode = getPastExecutionStartNode(pastExecutionData);
+		const pastExecutionStartNode = getPastExecutionTriggerNode(pastExecutionData);
 
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
