@@ -71,17 +71,17 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					{
 						name: 'Using Fields Below',
 						value: WORKFLOW_INPUTS,
-						description: 'Provide via UI',
+						description: 'Provide input fields via UI',
 					},
 					{
 						name: 'Using JSON Example',
 						value: JSON_EXAMPLE,
-						description: 'Infer JSON schema via JSON example output',
+						description: 'Generate a schema from an example JSON object',
 					},
 					{
-						name: 'Pass Through Input Data',
+						name: 'Using Parent Workflow Data',
 						value: PASSTHROUGH,
-						description: 'Pass all incoming data from the parent workflow through',
+						description: 'Use all incoming data from the parent workflow',
 					},
 				],
 				default: WORKFLOW_INPUTS,
