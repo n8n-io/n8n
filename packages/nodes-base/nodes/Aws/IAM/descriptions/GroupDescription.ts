@@ -42,6 +42,7 @@ export const groupOperations: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
+						url: '=?Action=DeleteGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -213,12 +214,6 @@ const deleteFields: INodeProperties[] = [
 			},
 		],
 		required: true,
-		routing: {
-			send: {
-				type: 'body',
-				property: 'GroupName',
-			},
-		},
 		type: 'resourceLocator',
 	},
 ];
