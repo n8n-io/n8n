@@ -195,11 +195,7 @@ export class TestRunnerService {
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
-			console.log('Running test case with past execution:', pastExecutionId);
-
 			if (abortSignal.aborted) {
-				console.log('Test run was cancelled');
-				await this.testRunRepository.markAsCancelled(testRun.id);
 				break;
 			}
 
@@ -239,16 +235,22 @@ export class TestRunnerService {
 			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
-		if (!abortSignal.aborted) {
+		// Mark the test run as completed or cancelled
+		if (abortSignal.aborted) {
+			await this.testRunRepository.markAsCancelled(testRun.id);
+		} else {
 			const aggregatedMetrics = metrics.getAggregatedMetrics();
 			await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 		}
 	}
 
+	/**
+	 * Cancels the test run with the given ID.
+	 * TODO: Implement the cancellation of the test run in a multi-main scenario
+	 */
 	public async cancelTestRun(testRunId: string) {
 		const abortController = this.abortControllers.get(testRunId);
 		if (abortController) {
-			console.log(`Test run ${testRunId} was cancelled`);
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
 		}

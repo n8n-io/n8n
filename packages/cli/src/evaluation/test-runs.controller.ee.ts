@@ -1,6 +1,8 @@
+import config from '@/config';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { Delete, Get, Post, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import { TestRunsRequest } from '@/evaluation/test-definitions.types.ee';
 import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
 import { listQueryMiddleware } from '@/middlewares';
@@ -85,6 +87,10 @@ export class TestRunsController {
 
 	@Post('/:testDefinitionId/runs/:id/cancel')
 	async cancel(req: TestRunsRequest.Cancel) {
+		if (config.getEnv('executions.mode') === 'queue') {
+			throw new NotImplementedError('Cancelling test runs is not yet supported in queue mode');
+		}
+
 		const { id: testRunId } = req.params;
 
 		// Check test definition and test run exist
