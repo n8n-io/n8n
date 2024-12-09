@@ -61,10 +61,6 @@ export class SolarWindsIpamApi implements ICredentialType {
 			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
 			url: '/SolarWinds/InformationService/v3/Json/Query',
 			method: 'GET',
-			auth: {
-				username: '={{$credentials.username}}',
-				password: '={{$credentials.password}}',
-			},
 			qs: {
 				query: 'SELECT TOP 1 AccountID FROM IPAM.AccountRoles',
 			},
