@@ -313,6 +313,47 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			);
 		}).not.toThrow();
 	});
+
+	it('should call queries with multiple json key/value pairs', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement:
+					'={{ JSON.stringify({id: "7",id2: "848da11d-e72e-44c5-yyyy-c6fb9f17d366"}) }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should call queries with single json key/value pair', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '={{ JSON.stringify({id: "7"}) }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {
