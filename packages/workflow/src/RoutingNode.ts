@@ -690,7 +690,7 @@ export class RoutingNode {
 						// Make the HTTP request
 						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
-							{ ...requestData, options: { ...requestData.options, ...paginateRequestData } },
+							{ ...requestData, options: merge({}, requestData.options, paginateRequestData) },
 							credentialType,
 							credentialsDecrypted,
 						);
