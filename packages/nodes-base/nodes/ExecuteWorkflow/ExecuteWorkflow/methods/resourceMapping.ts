@@ -21,7 +21,7 @@ export async function loadWorkflowInputMappings(
 				id: currentWorkflowInput.name,
 				displayName: currentWorkflowInput.name,
 				required: false,
-				defaultMatch: true,
+				defaultMatch: false,
 				display: true,
 				canBeUsedToMatch: true,
 			};

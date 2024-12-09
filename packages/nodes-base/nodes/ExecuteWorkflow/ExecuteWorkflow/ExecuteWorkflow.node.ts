@@ -224,7 +224,7 @@ export class ExecuteWorkflow implements INodeType {
 					resourceMapper: {
 						localResourceMapperMethod: 'loadWorkflowInputMappings',
 						valuesLabel: 'Workflow Inputs',
-						mode: 'add',
+						mode: 'map',
 						fieldWords: {
 							singular: 'workflow input',
 							plural: 'workflow inputs',
