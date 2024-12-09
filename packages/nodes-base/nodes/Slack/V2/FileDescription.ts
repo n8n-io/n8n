@@ -94,7 +94,7 @@ export const fileFields: INodeProperties[] = [
 			show: {
 				operation: ['upload'],
 				resource: ['file'],
-				'@version': [2.2],
+				'@version': [2.2, 2.3],
 			},
 		},
 		placeholder: '',
