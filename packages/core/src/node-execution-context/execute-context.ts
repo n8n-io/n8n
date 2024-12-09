@@ -179,13 +179,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		return inputData[inputIndex];
 	}
 
-	async putExecutionToWait(waitTill: Date): Promise<void> {
-		this.runExecutionData.waitTill = waitTill;
-		if (this.additionalData.setExecutionStatus) {
-			this.additionalData.setExecutionStatus('waiting');
-		}
-	}
-
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
 			this.sendMessageToUI(...args);

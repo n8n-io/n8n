@@ -36,6 +36,7 @@ import type {
 	CloseFunction,
 	StartNodeData,
 	NodeExecutionHint,
+	NodeInputConnections,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -208,6 +209,9 @@ export class WorkflowExecute {
 				// Get the data of the incoming connections
 				incomingSourceData = { main: [] };
 				for (const connections of incomingNodeConnections.main) {
+					if (!connections) {
+						continue;
+					}
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
 
@@ -249,6 +253,9 @@ export class WorkflowExecute {
 				incomingNodeConnections = workflow.connectionsByDestinationNode[destinationNode];
 				if (incomingNodeConnections !== undefined) {
 					for (const connections of incomingNodeConnections.main) {
+						if (!connections) {
+							continue;
+						}
 						for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 							connection = connections[inputIndex];
 
@@ -347,24 +354,24 @@ export class WorkflowExecute {
 		}
 
 		// 2. Find the Subgraph
-		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
-		const filteredNodes = subgraph.getNodes();
+		let graph = DirectedGraph.fromWorkflow(workflow);
+		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
 		runData = omit(runData, dirtyNodeNames);
-		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData, pinData });
+		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
 		// 5. Handle Cycles
 		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
-		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
+		runData = cleanRunData(runData, graph, startNodes);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, new Set(startNodes), runData, pinData ?? {});
+			recreateNodeExecutionStack(graph, new Set(startNodes), runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -374,7 +381,7 @@ export class WorkflowExecute {
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
-				runData: newRunData,
+				runData,
 				pinData,
 			},
 			executionData: {
@@ -386,7 +393,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
+		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 	}
 
 	/**
@@ -642,7 +649,7 @@ export class WorkflowExecute {
 					}
 					for (const connectionDataCheck of workflow.connectionsBySourceNode[parentNodeName].main[
 						outputIndexParent
-					]) {
+					] ?? []) {
 						checkOutputNodes.push(connectionDataCheck.node);
 					}
 				}
@@ -661,7 +668,7 @@ export class WorkflowExecute {
 				) {
 					for (const inputData of workflow.connectionsByDestinationNode[connectionData.node].main[
 						inputIndex
-					]) {
+					] ?? []) {
 						if (inputData.node === parentNodeName) {
 							// Is the node we come from so its data will be available for sure
 							continue;
@@ -681,7 +688,7 @@ export class WorkflowExecute {
 							if (
 								!this.incomingConnectionIsEmpty(
 									this.runExecutionData.resultData.runData,
-									workflow.connectionsByDestinationNode[inputData.node].main[0],
+									workflow.connectionsByDestinationNode[inputData.node].main[0] ?? [],
 									runIndex,
 								)
 							) {
@@ -770,7 +777,7 @@ export class WorkflowExecute {
 						} else if (
 							this.incomingConnectionIsEmpty(
 								this.runExecutionData.resultData.runData,
-								workflow.connectionsByDestinationNode[nodeToAdd].main[0],
+								workflow.connectionsByDestinationNode[nodeToAdd].main[0] ?? [],
 								runIndex,
 							)
 						) {
@@ -1066,7 +1073,7 @@ export class WorkflowExecute {
 					if (workflow.connectionsByDestinationNode.hasOwnProperty(executionNode.name)) {
 						// Check if the node has incoming connections
 						if (workflow.connectionsByDestinationNode[executionNode.name].hasOwnProperty('main')) {
-							let inputConnections: IConnection[][];
+							let inputConnections: NodeInputConnections;
 							let connectionIndex: number;
 
 							// eslint-disable-next-line prefer-const
@@ -1194,7 +1201,7 @@ export class WorkflowExecute {
 								}
 
 								if (nodeSuccessData instanceof NodeExecutionOutput) {
-									const hints: NodeExecutionHint[] = nodeSuccessData.getHints();
+									const hints = (nodeSuccessData as NodeExecutionOutput).getHints();
 
 									executionHints.push(...hints);
 								}
@@ -1586,7 +1593,7 @@ export class WorkflowExecute {
 								// Iterate over all the different connections of this output
 								for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
 									outputIndex
-								]) {
+								] ?? []) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
 										throw new ApplicationError('Destination node not found', {
 											extra: {

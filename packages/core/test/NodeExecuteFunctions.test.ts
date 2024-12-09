@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
 import type { Agent } from 'https';
@@ -26,6 +27,7 @@ import {
 	binaryToString,
 	copyInputItems,
 	getBinaryDataBuffer,
+	invokeAxios,
 	isFilePathBlocked,
 	parseContentDisposition,
 	parseContentType,
@@ -543,6 +545,46 @@ describe('NodeExecuteFunctions', () => {
 	});
 
 	describe('parseRequestObject', () => {
+		test('should handle basic request options', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: { key: 'value' },
+			});
+
+			expect(axiosOptions).toEqual(
+				expect.objectContaining({
+					url: 'https://example.com',
+					method: 'POST',
+					headers: { accept: '*/*', 'content-type': 'application/json' },
+					data: { key: 'value' },
+					maxRedirects: 0,
+				}),
+			);
+		});
+
+		test('should set correct headers for FormData', async () => {
+			const formData = new FormData();
+			formData.append('key', 'value');
+
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				formData,
+				headers: {
+					'content-type': 'multipart/form-data',
+				},
+			});
+
+			expect(axiosOptions.headers).toMatchObject({
+				accept: '*/*',
+				'content-length': 163,
+				'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+			});
+
+			expect(axiosOptions.data).toBeInstanceOf(FormData);
+		});
+
 		test('should not use Host header for SNI', async () => {
 			const axiosOptions = await parseRequestObject({
 				url: 'https://example.de/foo/bar',
@@ -625,6 +667,78 @@ describe('NodeExecuteFunctions', () => {
 					expect(axiosOptions.maxRedirects).toEqual(1234);
 				},
 			);
+		});
+	});
+
+	describe('invokeAxios', () => {
+		const baseUrl = 'http://example.de';
+
+		beforeEach(() => {
+			nock.cleanAll();
+			nock.disableNetConnect();
+			jest.clearAllMocks();
+		});
+
+		it('should throw error for non-401 status codes', async () => {
+			nock(baseUrl).get('/test').reply(500, {});
+
+			await expect(invokeAxios({ url: `${baseUrl}/test` })).rejects.toThrow(
+				'Request failed with status code 500',
+			);
+		});
+
+		it('should throw error on 401 without digest auth challenge', async () => {
+			nock(baseUrl).get('/test').reply(401, {});
+
+			await expect(
+				invokeAxios(
+					{
+						url: `${baseUrl}/test`,
+					},
+					{ sendImmediately: false },
+				),
+			).rejects.toThrow('Request failed with status code 401');
+		});
+
+		it('should make successful requests', async () => {
+			nock(baseUrl).get('/test').reply(200, { success: true });
+
+			const response = await invokeAxios({
+				url: `${baseUrl}/test`,
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.data).toEqual({ success: true });
+		});
+
+		it('should handle digest auth when receiving 401 with nonce', async () => {
+			nock(baseUrl)
+				.get('/test')
+				.matchHeader('authorization', 'Basic dXNlcjpwYXNz')
+				.once()
+				.reply(401, {}, { 'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"' });
+
+			nock(baseUrl)
+				.get('/test')
+				.matchHeader(
+					'authorization',
+					/^Digest username="user",realm="test",nonce="abc123",uri="\/test",qop="auth",algorithm="MD5",response="[0-9a-f]{32}"/,
+				)
+				.reply(200, { success: true });
+
+			const response = await invokeAxios(
+				{
+					url: `${baseUrl}/test`,
+					auth: {
+						username: 'user',
+						password: 'pass',
+					},
+				},
+				{ sendImmediately: false },
+			);
+
+			expect(response.status).toBe(200);
+			expect(response.data).toEqual({ success: true });
 		});
 	});
 

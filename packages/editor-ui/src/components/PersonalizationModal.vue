@@ -79,7 +79,6 @@ import {
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
-	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
@@ -552,12 +551,9 @@ const onSave = () => {
 };
 
 const closeCallback = () => {
-	const isPartOfOnboardingExperiment =
-		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-		MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
 	// In case the redirect to homepage for new users didn't happen
 	// we try again after closing the modal
-	if (route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
+	if (route.name !== VIEWS.HOMEPAGE) {
 		void router.replace({ name: VIEWS.HOMEPAGE });
 	}
 };
