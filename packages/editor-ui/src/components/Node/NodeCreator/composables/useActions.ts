@@ -43,6 +43,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -215,21 +216,19 @@ export const useActions = () => {
 
 		if (!isCompatibleNode) return false;
 
-		const { allNodes, getNodeTypes } = useWorkflowsStore();
+		const uiStore = useUIStore();
+		const { getNodeTypes, allNodes } = useWorkflowsStore();
 		const { getByNameAndVersion } = getNodeTypes();
+		if (allNodes.map((x) => x.type).includes(CHAT_TRIGGER_NODE_TYPE)) return false;
 
-		// We want to add a trigger if there are no triggers other than Manual Triggers
-		// Performance here should be fine as `getByNameAndVersion` fetches nodeTypes once in bulk
-		// and `every` aborts on first `false`
-		const shouldAddChatTrigger = allNodes.every((node) => {
-			const nodeType = getByNameAndVersion(node.type, node.typeVersion);
+		// Need to support Canvas V1 and V2
+		const node = uiStore.lastInteractedWithNode ?? uiStore.selectedNodes[0] ?? null;
 
-			return (
-				!nodeType.description.group.includes('trigger') || node.type === MANUAL_TRIGGER_NODE_TYPE
-			);
-		});
+		// Add trigger if we don't have a parent node
+		if (!node) return true;
 
-		return shouldAddChatTrigger;
+		const nodeType = getByNameAndVersion(node.type, node.typeVersion);
+		return nodeType.description.group.includes('trigger');
 	}
 
 	// AI-226: Prepend LLM Chain node when adding a language model

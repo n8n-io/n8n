@@ -18,6 +18,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
 
 describe('useActions', () => {
 	beforeAll(() => {
@@ -130,7 +131,11 @@ describe('useActions', () => {
 
 		test('should not insert a ChatTrigger node when an AI Agent is added with a trigger already present', () => {
 			const workflowsStore = useWorkflowsStore();
+			const uiStore = useUIStore();
 
+			vi.spyOn(uiStore, 'lastInteractedWithNode', 'get').mockReturnValue({
+				type: GITHUB_TRIGGER_NODE_TYPE,
+			} as never);
 			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
 				{ type: GITHUB_TRIGGER_NODE_TYPE } as never,
 			]);
@@ -146,9 +151,37 @@ describe('useActions', () => {
 			});
 		});
 
+		test('should not insert a ChatTrigger node when an AI Agent is added after a non-trigger node', () => {
+			const workflowsStore = useWorkflowsStore();
+			const uiStore = useUIStore();
+
+			vi.spyOn(uiStore, 'lastInteractedWithNode', 'get').mockReturnValue({
+				type: HTTP_REQUEST_NODE_TYPE,
+			} as never);
+
+			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
+				{ type: GITHUB_TRIGGER_NODE_TYPE } as never,
+				{ type: HTTP_REQUEST_NODE_TYPE } as never,
+			]);
+			vi.spyOn(workflowsStore, 'getNodeTypes').mockReturnValue({
+				getByNameAndVersion: () => ({ description: { group: ['trigger'] } }),
+			} as never);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
+				connections: [],
+				nodes: [{ type: AGENT_NODE_TYPE, openDetail: true }],
+			});
+		});
+
 		test('should not insert a ChatTrigger node when an AI Agent is added with a Chat Trigger already present', () => {
 			const workflowsStore = useWorkflowsStore();
+			const uiStore = useUIStore();
 
+			vi.spyOn(uiStore, 'lastInteractedWithNode', 'get').mockReturnValue({
+				type: CHAT_TRIGGER_NODE_TYPE,
+			} as never);
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
 				{ type: CHAT_TRIGGER_NODE_TYPE } as never,
 			]);
