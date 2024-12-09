@@ -17,6 +17,7 @@ import {
 	TYPE_OPTIONS,
 	INPUT_OPTIONS,
 	FALLBACK_DEFAULT_VALUE,
+	PASSTHROUGH,
 } from './constants';
 
 const SUPPORTED_TYPES = TYPE_OPTIONS.map((x) => x.value);
@@ -74,6 +75,8 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 		} else if (inputSource === JSON_EXAMPLE) {
 			const schema = parseJsonExample(context);
 			result = parseJsonSchema(schema);
+		} else if (inputSource === PASSTHROUGH) {
+			result = [];
 		}
 	} catch (e: unknown) {
 		result =
