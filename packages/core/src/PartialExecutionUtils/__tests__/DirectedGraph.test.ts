@@ -43,8 +43,8 @@ describe('DirectedGraph', () => {
 	});
 
 	//    ┌─────┐    ┌─────┐──► null
-	//    │node1├───►│node2|   ┌─────┐
-	//    └─────┘    └─────┘──►│node3|
+	//    │node1├───►│node2│   ┌─────┐
+	//    └─────┘    └─────┘──►│node3│
 	//                         └─────┘
 	//
 	test('linear workflow with null connections', () => {
