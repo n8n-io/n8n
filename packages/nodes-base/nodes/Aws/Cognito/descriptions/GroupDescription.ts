@@ -1,6 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { handleErrorPostReceive, handlePagination, presendPath } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	handlePagination,
+	presendOptions,
+	presendPath,
+} from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -51,7 +56,7 @@ export const groupOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "deleted": true } }}',
+									value: '={{ { "success": true } }}',
 								},
 							},
 						],
@@ -106,6 +111,9 @@ export const groupOperations: INodeProperties[] = [
 				value: 'update',
 				description: 'Update an existing group',
 				routing: {
+					send: {
+						preSend: [presendOptions],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -119,7 +127,7 @@ export const groupOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "updated": true } }}',
+									value: '={{ { "success": true } }}',
 								},
 							},
 						],

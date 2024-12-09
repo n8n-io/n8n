@@ -37,8 +37,6 @@ export async function presendFilter(
 	let filterType = additionalFields.filterType as string;
 	const filterValue = additionalFields.filterValue as string;
 
-	console.log('Attribute', filterAttribute, 'Type', filterType, 'Value', filterValue);
-
 	if (!filterAttribute || !filterType || !filterValue) {
 		throw new NodeOperationError(
 			this.getNode(),
@@ -240,6 +238,12 @@ export async function handleErrorPostReceive(
 			}
 		} else if (resource === 'user') {
 			if (operation === 'create') {
+				if (errorType === 'UserNotFoundException') {
+					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+						message: "'Message Action: Resend' needs an existing user",
+						description: 'Adjust the "User Name" parameter setting to create the user correctly.',
+					});
+				}
 				if (
 					errorType === 'UsernameExistsException' &&
 					errorMessage === 'User account already exists'

@@ -39,7 +39,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "added": true } }}',
+									value: '={{ { "success": true } }}',
 								},
 							},
 						],
@@ -83,7 +83,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "deleted": true } }}',
+									value: '={{ { "success": true } }}',
 								},
 							},
 						],
@@ -113,7 +113,10 @@ export const userOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
-					send: { paginate: true },
+					send: {
+						paginate: true,
+						preSend: [presendFilter],
+					},
 					operations: { pagination: handlePagination },
 					request: {
 						method: 'POST',
@@ -151,7 +154,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "removed": true } }}',
+									value: '={{ { "success": true } }}',
 								},
 							},
 						],
@@ -177,7 +180,7 @@ export const userOperations: INodeProperties[] = [
 							{
 								type: 'set',
 								properties: {
-									value: '={{ { "updated": true } }}',
+									value: '={{ { "success": true } }}',
 								},
 							},
 						],
@@ -428,11 +431,11 @@ const createFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
+						preSend: [processAttributes],
 						type: 'body',
 						property: 'UserAttributes',
 						value:
 							'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
-						preSend: [processAttributes],
 					},
 				},
 			},
@@ -703,11 +706,6 @@ const getAllFields: INodeProperties[] = [
 				default: 'username',
 				hint: 'Make sure to select an attribute, type, and provide a value before submitting.',
 				description: 'The attribute to search for',
-				routing: {
-					send: {
-						preSend: [presendFilter],
-					},
-				},
 				options: [
 					{ name: 'Cognito User Status', value: 'cognito:user_status' },
 					{ name: 'Email', value: 'email' },
