@@ -325,7 +325,7 @@ export class WorkflowPage extends BasePage {
 			this.actions.contextMenuAction('toggle_pin');
 		},
 		openNodeFromContextMenu: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName, 'overflow-button');
+			this.actions.openContextMenu(nodeTypeName, { method: 'overflow-button' });
 			this.actions.contextMenuAction('open');
 		},
 		selectAllFromContextMenu: () => {
