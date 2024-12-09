@@ -59,17 +59,23 @@ export function getSchemas() {
 
 //------ Reduce payload ------
 
-const calculateTokens = (item: object, averageTokenLength: number): number => {
-	return Math.ceil(JSON.stringify(item).length / averageTokenLength);
+const estimateNumberOfTokens = (item: unknown, averageTokenLength: number): number => {
+	if (typeof item === 'object') {
+		return Math.ceil(JSON.stringify(item).length / averageTokenLength);
+	}
+
+	return 0;
 };
 
 const calculateRemainingTokens = (error: Error) => {
+	// Expected message format:
+	//'This model's maximum context length is 8192 tokens. However, your messages resulted in 10514 tokens.'
 	const tokens = error.message.match(/\d+/g);
 
 	if (!tokens || tokens.length < 2) throw error;
 
-	const maxTokens = parseInt(tokens[0]);
-	const currentTokens = parseInt(tokens[1]);
+	const maxTokens = parseInt(tokens[0], 10);
+	const currentTokens = parseInt(tokens[1], 10);
 
 	return currentTokens - maxTokens;
 };
@@ -80,7 +86,7 @@ const trimParentNodesSchema = (
 	averageTokenLength: number,
 ) => {
 	//check if parent nodes schema takes more tokens than available
-	let parentNodesTokenCount = calculateTokens(payload.context.schema, averageTokenLength);
+	let parentNodesTokenCount = estimateNumberOfTokens(payload.context.schema, averageTokenLength);
 
 	if (remainingTokensToReduce > parentNodesTokenCount) {
 		remainingTokensToReduce -= parentNodesTokenCount;
@@ -94,7 +100,7 @@ const trimParentNodesSchema = (
 		for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
 			if (payload.question.includes(nodes[nodeIndex].nodeName)) continue;
 
-			const nodeTokens = calculateTokens(nodes[nodeIndex], averageTokenLength);
+			const nodeTokens = estimateNumberOfTokens(nodes[nodeIndex], averageTokenLength);
 			remainingTokensToReduce -= nodeTokens;
 			parentNodesTokenCount -= nodeTokens;
 			payload.context.schema.splice(nodeIndex, 1);
@@ -123,7 +129,7 @@ const trimInputSchemaProperties = (
 
 			if (key && payload.question.includes(key)) continue;
 
-			const propTokens = calculateTokens(props[index], averageTokenLength);
+			const propTokens = estimateNumberOfTokens(props[index], averageTokenLength);
 			remainingTokensToReduce -= propTokens;
 			payload.context.inputSchema.schema.value.splice(index, 1);
 
