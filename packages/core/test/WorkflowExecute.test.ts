@@ -327,16 +327,16 @@ describe('WorkflowExecute', () => {
 			expect(nodes).not.toContain(node1.name);
 		});
 
-		//                            ►►
-		//               ┌────┐0     ┌─────────┐
-		//┌───────┐1     │    ├──────►afterLoop│
-		//│trigger├───┬──►loop│1     └─────────┘
-		//└───────┘   │  │    ├─┐
-		//            │  └────┘ │
-		//            │         │ ┌──────┐1
-		//            │         └─►inLoop├─┐
-		//            │           └──────┘ │
-		//            └────────────────────┘
+		//                             ►►
+		//                ┌────┐0     ┌─────────┐
+		// ┌───────┐1     │    ├──────►afterLoop│
+		// │trigger├───┬──►loop│1     └─────────┘
+		// └───────┘   │  │    ├─┐
+		//             │  └────┘ │
+		//             │         │ ┌──────┐1
+		//             │         └─►inLoop├─┐
+		//             │           └──────┘ │
+		//             └────────────────────┘
 		test('passes filtered run data to `recreateNodeExecutionStack`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
@@ -391,6 +391,56 @@ describe('WorkflowExecute', () => {
 				// whole loop, because we don't know how many iterations would be left.
 				pick(runData, trigger.name),
 				expect.any(Object),
+			);
+		});
+
+		// ┌───────┐    ┌─────┐
+		// │trigger├┬──►│node1│
+		// └───────┘│   └─────┘
+		//          │   ┌─────┐
+		//          └──►│node2│
+		//              └─────┘
+		test('passes subgraph to `cleanRunData`', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: trigger, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[node1.name]: [toITaskData([{ data: { nodeName: node1.name } }])],
+				[node2.name]: [toITaskData([{ data: { nodeName: node2.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				node1.name,
+			);
+
+			// ASSERT
+			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
+				1,
+				runData,
+				new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
+				new Set([node1]),
 			);
 		});
 	});
