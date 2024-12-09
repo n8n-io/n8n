@@ -27,15 +27,6 @@ export class SolarWindsIpamApi implements ICredentialType {
 			placeholder: 'https://your-ipam-server',
 			description: 'The base URL of your SolarWinds IPAM server.',
 		},
-		// {
-		// 	displayName: 'Server Type',
-		// 	name: 'serverType',
-		// 	required: true,
-		// 	type: 'string',
-		// 	default: '',
-		// 	placeholder: 'Enter server type (e.g., Orion v3)',
-		// 	description: 'Enter the server type for SolarWinds IPAM connection.',
-		// },
 		{
 			displayName: 'Username',
 			name: 'username',
@@ -70,14 +61,21 @@ export class SolarWindsIpamApi implements ICredentialType {
 			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
 			url: '/SolarWinds/InformationService/v3/Json/Query',
 			method: 'GET',
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+			qs: {
+				query: 'SELECT TOP 1 AccountID FROM IPAM.AccountRoles',
+			},
+			skipSslCertificateValidation: true,
 		},
 		rules: [
 			{
-				type: 'responseSuccessBody',
+				type: 'responseCode',
 				properties: {
-					key: 'result',
-					value: undefined,
-					message: 'Invalid credentials',
+					value: 200,
+					message: 'Connection failed: Invalid credentials or unreachable server',
 				},
 			},
 		],
