@@ -1,0 +1,60 @@
+{
+	"meta": {
+		"instanceId": "4d0676b62208d810ef035130bbfc9fd3afdc78d963ea8ccb9514dc89066efc94"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "313c177e-724b-4063-8ae0-0968074fe815",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [60, 240]
+		},
+		{
+			"parameters": {
+				"category": "randomData"
+			},
+			"id": "7e5d5a99-4c88-4746-b097-6ee20b7b2102",
+			"name": "DebugHelper",
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [280, 240]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "ddc82976-edd9-4488-a5a5-7f558a7d905b",
+			"name": "Execute Workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.1,
+			"position": [500, 240]
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DebugHelper": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}
