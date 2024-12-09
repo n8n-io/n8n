@@ -21,10 +21,12 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import {
 	getLdapIds,
 	createFilter,
+	escapeFilter,
 	resolveBinaryAttributes,
 	processUsers,
 	mapLdapUserToDbUser,
 	saveLdapSynchronization,
+	resolveEntryBinaryAttributes,
 } from '../helpers.ee';
 
 // Mock ldapts client
@@ -45,6 +47,7 @@ jest.mock('../helpers.ee', () => ({
 	saveLdapSynchronization: jest.fn(),
 	resolveBinaryAttributes: jest.fn(),
 	processUsers: jest.fn(),
+	resolveEntryBinaryAttributes: jest.fn(),
 }));
 
 jest.mock('n8n-workflow', () => ({
@@ -772,7 +775,277 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe.skip('findAndAuthenticateLdapUser()', () => {});
+	describe('findAndAuthenticateLdapUser()', () => {
+		it('should search for expected admin login ID', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const searchWithAdminBindingSpy = jest.spyOn(ldapService, 'searchWithAdminBinding');
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const expectedFilter = createFilter(
+				`(${ldapConfig.loginIdAttribute}=${escapeFilter('jdoe')})`,
+				ldapConfig.userFilter,
+			);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledTimes(1);
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledWith(expectedFilter);
+		});
+
+		it('should emit expected error if admin search fails', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const eventServiceMock = mock<EventService>({
+				emit: jest.fn(),
+			});
+
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				eventServiceMock,
+			);
+			Client.prototype.search = jest.fn().mockRejectedValue(new Error('Failed to find admin user'));
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(eventServiceMock.emit).toBeCalledTimes(1);
+			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-login-sync-failed', {
+				error: 'Failed to find admin user',
+			});
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined if no user is found', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should validate found user', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const validUserSpy = jest.spyOn(ldapService, 'validUser');
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(validUserSpy).toBeCalledTimes(1);
+			expect(validUserSpy).toHaveBeenCalledWith(foundUsers[0].dn, 'fakePassword');
+		});
+
+		it('should validate last user if more than one is found', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: ['Jane Doe'],
+					mail: ['jane.doe@example.com'],
+					uid: ['janedoe'],
+				},
+			];
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const validUserSpy = jest.spyOn(ldapService, 'validUser');
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(validUserSpy).toBeCalledTimes(1);
+			expect(validUserSpy).toHaveBeenCalledWith(foundUsers[1].dn, 'fakePassword');
+		});
+
+		it('should return undefined if invalid user is found', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const validUserSpy = jest
+				.spyOn(ldapService, 'validUser')
+				.mockRejectedValue(new Error('Failed to validate user'));
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(validUserSpy).toHaveBeenCalledTimes(1);
+			expect(result).toBeUndefined();
+		});
+
+		it('should resolve binary attributes for found user', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(resolveEntryBinaryAttributes).toHaveBeenCalledTimes(1);
+			expect(resolveEntryBinaryAttributes).toHaveBeenCalledWith(foundUsers[0]);
+		});
+
+		it('should return found user', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+			const foundUsers = [
+				{
+					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+					cn: ['John Doe'],
+					mail: ['jdoe@example.com'],
+					uid: ['jdoe'],
+				},
+			];
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			const result = await ldapService.findAndAuthenticateLdapUser(
+				'jdoe',
+				'fakePassword',
+				ldapConfig.loginIdAttribute,
+				ldapConfig.userFilter,
+			);
+
+			expect(result).toEqual(foundUsers[0]);
+		});
+	});
 
 	describe('testConnection()', () => {
 		it('should throw expected error if init() is not called first', async () => {
@@ -1322,7 +1595,7 @@ describe('LdapService', () => {
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
 			await ldapService.init();
-			await ldapService.stopSync();
+			ldapService.stopSync();
 
 			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
 		});
