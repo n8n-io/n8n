@@ -5,11 +5,6 @@ import { useI18n } from '@/composables/useI18n';
 const props = defineProps<{
 	status: ExecutionStatus;
 	concurrencyCap: number;
-	isCloudDeployment?: boolean;
-}>();
-
-const emit = defineEmits<{
-	goToUpgrade: [];
 }>();
 
 const i18n = useI18n();
@@ -27,31 +22,19 @@ const i18n = useI18n();
 				keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity"
 			>
 				<template #instance>
-					<i18n-t
-						v-if="props.isCloudDeployment"
-						keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity.cloud"
-					>
-						<template #concurrencyCap>{{ props.concurrencyCap }}</template>
-						<template #link>
-							<N8nLink bold size="small" :class="$style.link" @click="emit('goToUpgrade')">
-								{{ i18n.baseText('generic.upgradeNow') }}
-							</N8nLink>
-						</template>
-					</i18n-t>
-					<i18n-t
-						v-else
-						keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity.self"
-					>
-						<template #concurrencyCap>{{ props.concurrencyCap }}</template>
-						<template #link>
-							<N8nLink
-								:class="$style.link"
-								:href="i18n.baseText('executions.concurrency.docsLink')"
-								target="_blank"
-								>{{ i18n.baseText('generic.viewDocs') }}</N8nLink
-							>
-						</template>
-					</i18n-t>
+					<slot name="content">
+						<i18n-t keypath="executionsList.statusTooltipText.waitingForConcurrencyCapacity.self">
+							<template #concurrencyCap>{{ props.concurrencyCap }}</template>
+							<template #link>
+								<N8nLink
+									:class="$style.link"
+									:href="i18n.baseText('executions.concurrency.docsLink')"
+									target="_blank"
+									>{{ i18n.baseText('generic.viewDocs') }}</N8nLink
+								>
+							</template>
+						</i18n-t>
+					</slot>
 				</template>
 			</i18n-t>
 		</template>

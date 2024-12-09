@@ -53,14 +53,14 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 	});
 
 	it('should show queued tooltip for cloud', async () => {
-		const { getByText, emitted } = renderComponent({
+		const { getByText } = renderComponent({
 			props: {
 				status: 'new',
 				concurrencyCap: 0,
-				isCloudDeployment: true,
 			},
 			slots: {
 				default: 'Queued',
+				content: 'The plan is limited <a href="#">Upgrade now</a>',
 			},
 		});
 
@@ -68,9 +68,5 @@ describe('GlobalExecutionsListItemQueuedTooltip', () => {
 
 		expect(getByText(/plan is limited/)).toBeVisible();
 		expect(getByText('Upgrade now')).toBeVisible();
-
-		await userEvent.click(getByText('Upgrade now'));
-
-		expect(emitted().goToUpgrade).toHaveLength(1);
 	});
 });

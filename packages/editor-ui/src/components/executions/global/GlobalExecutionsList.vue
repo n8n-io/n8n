@@ -333,12 +333,19 @@ const goToUpgrade = () => {
 				<div :class="$style.execListHeaderControls">
 					<ConcurrentExecutionsHeader
 						v-if="settingsStore.isConcurrencyEnabled"
-						class="mr-xl"
 						:running-executions-count="runningExecutionsCount"
 						:concurrency-cap="settingsStore.concurrency"
-						:is-cloud-deployment="settingsStore.isCloudDeployment"
-						@go-to-upgrade="goToUpgrade"
-					/>
+					>
+						<N8nLink
+							v-if="settingsStore.isCloudDeployment"
+							bold
+							size="small"
+							:class="$style.tooltipLink"
+							@click="goToUpgrade"
+						>
+							{{ i18n.baseText('generic.upgradeNow') }}
+						</N8nLink>
+					</ConcurrentExecutionsHeader>
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
 						v-else
@@ -605,6 +612,11 @@ const goToUpgrade = () => {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+
+.tooltipLink {
+	display: inline-block;
+	margin-top: var(--spacing-xs);
 }
 </style>
 
