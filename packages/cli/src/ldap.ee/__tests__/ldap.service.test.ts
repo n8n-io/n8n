@@ -2,6 +2,7 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
@@ -23,6 +24,7 @@ import {
 	resolveBinaryAttributes,
 	processUsers,
 	mapLdapUserToDbUser,
+	saveLdapSynchronization,
 } from '../helpers.ee';
 
 // Mock ldapts client
@@ -43,6 +45,11 @@ jest.mock('../helpers.ee', () => ({
 	saveLdapSynchronization: jest.fn(),
 	resolveBinaryAttributes: jest.fn(),
 	processUsers: jest.fn(),
+}));
+
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	randomString: jest.fn(),
 }));
 
 describe('LdapService', () => {
@@ -892,7 +899,12 @@ describe('LdapService', () => {
 		});
 	});
 
-	describe.only('runSync()', () => {
+	describe('runSync()', () => {
+		beforeEach(() => {
+			const mockedRandomString = randomString as jest.Mock;
+			mockedRandomString.mockReturnValue('nonRandomPassword');
+		});
+
 		it('should search for users with expected parameters', async () => {
 			const settingsRepository = mock<SettingsRepository>({
 				findOneByOrFail: jest.fn().mockResolvedValue({
@@ -907,7 +919,7 @@ describe('LdapService', () => {
 			const mockedGetLdapIds = getLdapIds as jest.Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
-			const expectedParameter = createFilter(
+			const expectedFilter = createFilter(
 				`(${ldapConfig.loginIdAttribute}=*)`,
 				ldapConfig.userFilter,
 			);
@@ -916,7 +928,7 @@ describe('LdapService', () => {
 			await ldapService.runSync('dry');
 
 			expect(searchWithAdminBindingSpy).toHaveBeenCalledTimes(1);
-			expect(searchWithAdminBindingSpy).toHaveBeenCalledWith(expectedParameter);
+			expect(searchWithAdminBindingSpy).toHaveBeenCalledWith(expectedFilter);
 		});
 
 		it('should resolve binary attributes for users', async () => {
@@ -965,45 +977,222 @@ describe('LdapService', () => {
 			await expect(ldapService.runSync('dry')).rejects.toThrowError('Error finding users');
 		});
 
-		it.skip('should process users if mode is "live"', async () => {
+		it('should process expected users if mode is "live"', async () => {
 			const settingsRepository = mock<SettingsRepository>({
 				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({ ldapConfig }),
+					value: JSON.stringify(ldapConfig),
 				}),
 			});
 
 			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
-			const foundUsers = [
-				// New user
+
+			// Users that don't exist in memory
+			const newUsers = [
 				{
-					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
-					cn: ['John Doe'],
+					dn: 'uid=johndoe,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
 					givenName: 'John',
 					sn: 'Doe',
-					mail: ['jdoe@example.com'],
-					uid: ['jdoe'],
+					mail: 'john.doe@example.com',
+					uid: 'johndoe',
 				},
-				// Existing user
-				// User to delete
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'jane.doe@example.com',
+					uid: 'janedoe',
+				},
 			];
+
+			// Users that exist in memory and in LDAP response
+			const updateUsers = [
+				{
+					dn: 'uid=emilyclark,ou=users,dc=example,dc=com',
+					cn: 'Emily Clark',
+					givenName: 'Emily',
+					sn: 'Clark',
+					mail: 'emily.clark@example.com',
+					uid: 'emilyclark',
+				},
+			];
+
+			// Users that only exist in memory
+			const deleteUsers = ['santaclaus', 'jackfrost'];
+
+			const foundUsers = [...newUsers, ...updateUsers];
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
 
 			const mockedGetLdapIds = getLdapIds as jest.Mock;
-			mockedGetLdapIds.mockResolvedValue([]);
 
-			const createDatabaseUser = mapLdapUserToDbUser(foundUsers[0], ldapConfig, true);
+			// Delete users that exist in memory but not in the LDAP response
+			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
+
+			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
+			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
 
 			await ldapService.init();
 			await ldapService.runSync('live');
 
 			expect(processUsers).toHaveBeenCalledTimes(1);
-			expect(processUsers).toHaveBeenCalledWith([createDatabaseUser], [], []);
+			expect(processUsers).toHaveBeenCalledWith(newDbUsers, updateDbUsers, deleteUsers);
 		});
 
-		it.todo('should write expected data to the database');
-		it.todo(
-			'should write expected data to the database with an error message if processing users fails',
-		);
+		it('should sync expected LDAP data when no errors', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			// Users that don't exist in memory
+			const newUsers = [
+				{
+					dn: 'uid=johndoe,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'john.doe@example.com',
+					uid: 'johndoe',
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'jane.doe@example.com',
+					uid: 'janedoe',
+				},
+			];
+
+			// Users that exist in memory and in LDAP response
+			const updateUsers = [
+				{
+					dn: 'uid=emilyclark,ou=users,dc=example,dc=com',
+					cn: 'Emily Clark',
+					givenName: 'Emily',
+					sn: 'Clark',
+					mail: 'emily.clark@example.com',
+					uid: 'emilyclark',
+				},
+			];
+
+			// Users that only exist in memory
+			const deleteUsers = ['santaclaus', 'jackfrost'];
+
+			const foundUsers = [...newUsers, ...updateUsers];
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+
+			// Delete users that exist in memory but not in the LDAP response
+			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
+
+			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
+			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
+
+			jest.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: newDbUsers.length,
+				updated: updateDbUsers.length,
+				disabled: deleteUsers.length,
+				scanned: foundUsers.length,
+				runMode: 'live',
+				status: 'success',
+				error: '',
+			});
+		});
+
+		it('should sync expected LDAP data when users fail to process', async () => {
+			const settingsRepository = mock<SettingsRepository>({
+				findOneByOrFail: jest.fn().mockResolvedValue({
+					value: JSON.stringify(ldapConfig),
+				}),
+			});
+
+			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			// Users that don't exist in memory
+			const newUsers = [
+				{
+					dn: 'uid=johndoe,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'john.doe@example.com',
+					uid: 'johndoe',
+				},
+				{
+					dn: 'uid=janedoe,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'jane.doe@example.com',
+					uid: 'janedoe',
+				},
+			];
+
+			// Users that exist in memory and in LDAP response
+			const updateUsers = [
+				{
+					dn: 'uid=emilyclark,ou=users,dc=example,dc=com',
+					cn: 'Emily Clark',
+					givenName: 'Emily',
+					sn: 'Clark',
+					mail: 'emily.clark@example.com',
+					uid: 'emilyclark',
+				},
+			];
+
+			// Users that only exist in memory
+			const deleteUsers = ['santaclaus', 'jackfrost'];
+
+			const foundUsers = [...newUsers, ...updateUsers];
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+
+			const mockedProcessUsers = processUsers as jest.Mock;
+			mockedProcessUsers.mockRejectedValue(
+				new QueryFailedError('Query', [], new Error('Error processing users')),
+			);
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+
+			// Delete users that exist in memory but not in the LDAP response
+			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
+
+			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
+			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
+
+			jest.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: newDbUsers.length,
+				updated: updateDbUsers.length,
+				disabled: deleteUsers.length,
+				scanned: foundUsers.length,
+				runMode: 'live',
+				status: 'error',
+				error: 'Error processing users',
+			});
+		});
 
 		it('should emit expected event if synchronization is enabled', async () => {
 			const settingsRepository = mock<SettingsRepository>({
@@ -1074,7 +1263,7 @@ describe('LdapService', () => {
 			});
 		});
 
-		it('should emit expected event if processUsers fails', async () => {
+		it('should emit expected event with error message if processUsers fails', async () => {
 			const settingsRepository = mock<SettingsRepository>({
 				findOneByOrFail: jest.fn().mockResolvedValue({
 					value: JSON.stringify(ldapConfig),
