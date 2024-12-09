@@ -70,7 +70,7 @@ export class SolarWindsIpamApi implements ICredentialType {
 			{
 				type: 'responseCode',
 				properties: {
-					value: 200,
+					value: 403,
 					message: 'Connection failed: Invalid credentials or unreachable server',
 				},
 			},
