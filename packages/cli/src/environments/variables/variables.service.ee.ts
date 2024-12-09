@@ -18,13 +18,22 @@ export class VariablesService {
 		private readonly eventService: EventService,
 	) {}
 
-	async getAllCached(): Promise<Variables[]> {
-		const variables = await this.cacheService.get('variables', {
+	async getAllCached(state?: 'empty'): Promise<Variables[]> {
+		let variables = await this.cacheService.get('variables', {
 			async refreshFn() {
 				return await Container.get(VariablesService).findAll();
 			},
 		});
-		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
+
+		if (variables === undefined) {
+			return [];
+		}
+
+		if (state === 'empty') {
+			variables = variables.filter((v) => v.value === '');
+		}
+
+		return variables.map((v) => this.variablesRepository.create(v));
 	}
 
 	async getCount(): Promise<number> {

@@ -65,19 +65,32 @@ beforeEach(async () => {
 // ----------------------------------------
 describe('GET /variables', () => {
 	beforeEach(async () => {
-		await Promise.all([createVariable('test1', 'value1'), createVariable('test2', 'value2')]);
+		await Promise.all([
+			createVariable('test1', 'value1'),
+			createVariable('test2', 'value2'),
+			createVariable('empty', ''),
+		]);
 	});
 
 	test('should return all variables for an owner', async () => {
 		const response = await authOwnerAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
+		expect(response.body.data.length).toBe(3);
 	});
 
 	test('should return all variables for a member', async () => {
 		const response = await authMemberAgent.get('/variables');
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
+		expect(response.body.data.length).toBe(3);
+	});
+
+	describe('state:empty', () => {
+		test('only return empty variables', async () => {
+			const response = await authOwnerAgent.get('/variables').query({ state: 'empty' });
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBe(1);
+			expect(response.body.data[0]).toMatchObject({ key: 'empty', value: '', type: 'string' });
+		});
 	});
 });
 
