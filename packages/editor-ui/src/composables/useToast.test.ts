@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
+import { h, defineComponent } from 'vue';
 import { useToast } from './useToast';
 
 describe('useToast', () => {
@@ -61,6 +62,29 @@ describe('useToast', () => {
 			expect(screen.getByRole('alert')).toContainHTML(
 				'<a data-action="reload">Refresh</a> to see the <strong>latest status</strong>.<br /> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a> or go to the <a href="/settings/usage">Usage and plan</a> settings page.',
 			);
+		});
+	});
+
+	it('should render component as message, sanitized as well', async () => {
+		const messageData = {
+			message: h(
+				defineComponent({
+					template: '<p>Test <strong>content</strong><script>alert("xss")</script></p>',
+				}),
+			),
+		};
+
+		toast.showMessage(messageData);
+
+		await waitFor(() => {
+			expect(screen.getByRole('alert')).toBeVisible();
+			expect(
+				within(screen.getByRole('alert')).queryByRole('heading', { level: 2 }),
+			).toHaveTextContent('');
+			expect(
+				within(screen.getByRole('alert')).getByRole('heading', { level: 2 }).querySelectorAll('*'),
+			).toHaveLength(0);
+			expect(screen.getByRole('alert')).toContainHTML('<p>Test <strong>content</strong></p>');
 		});
 	});
 });
