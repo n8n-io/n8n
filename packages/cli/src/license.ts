@@ -141,17 +141,19 @@ export class License {
 
 			this.instanceSettings.setMultiMainLicensed(isMultiMainLicensed);
 
-			if (this.instanceSettings.isMultiMain && this.instanceSettings.isFollower) {
-				this.logger.debug(
-					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
-				);
+			if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+				this.logger
+					.scoped(['scaling', 'multi-main-setup'])
+					.debug('Instance is not leader, skipping sending of "reload-license" command...');
 				return;
 			}
 
 			if (this.globalConfig.multiMainSetup.enabled && !isMultiMainLicensed) {
-				this.logger.debug(
-					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
-				);
+				this.logger
+					.scoped(['scaling', 'multi-main-setup', 'license'])
+					.debug(
+						'License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
+					);
 			}
 		}
 
