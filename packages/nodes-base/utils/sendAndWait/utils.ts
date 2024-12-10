@@ -24,6 +24,7 @@ type SendAndWaitConfig = {
 };
 
 export const MESSAGE_PREFIX = 'ACTION REQUIRED: ';
+const INPUT_FIELD_IDENTIFIER = 'field-0';
 
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
@@ -186,6 +187,32 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [
+				{
+					displayName: 'Input Form Title',
+					name: 'inputFormTitle',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Input Form Description',
+					name: 'inputFormDescription',
+					type: 'string',
+					default: '',
+				},
+			],
+			displayOptions: {
+				show: {
+					responseType: ['freeText'],
+				},
+			},
+		},
 		...additionalProperties,
 		{
 			displayName:
@@ -212,13 +239,26 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const responseType = this.getNodeParameter('responseType', 'approval') as string;
 
 	if (responseType === 'freeText') {
-		if (this.getRequestObject().method === 'GET') {
+		const method = this.getRequestObject().method;
+
+		if (method === 'GET') {
 			const res = this.getResponseObject();
 			const message = this.getNodeParameter('message', '') as string;
+			const options = this.getNodeParameter('options', {}) as {
+				inputFormTitle?: string;
+				inputFormDescription?: string;
+			};
+
+			let formTitle = '';
+			if (options.inputFormTitle) {
+				formTitle = options.inputFormTitle;
+			} else {
+				formTitle = 'You need to input ' + message;
+			}
 
 			const data = prepareFormData({
-				formTitle: 'You need to input ' + message,
-				formDescription: '',
+				formTitle,
+				formDescription: options.inputFormDescription ?? '',
 				formSubmittedHeader: 'Got it, thanks',
 				formSubmittedText: 'This page can be closed now',
 				buttonLabel: 'Submit',
@@ -240,12 +280,12 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				noWebhookResponse: true,
 			};
 		}
-		if (this.getRequestObject().method === 'POST') {
+		if (method === 'POST') {
 			const data = this.getBodyData().data as IDataObject;
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
-				workflowData: [[{ json: { data: { text: data['field-0'] } } }]],
+				workflowData: [[{ json: { data: { text: data[INPUT_FIELD_IDENTIFIER] } } }]],
 			};
 		}
 	}
