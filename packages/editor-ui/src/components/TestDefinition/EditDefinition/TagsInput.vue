@@ -89,6 +89,7 @@ function updateTags(tags: string[]) {
 				:event-bus="tagsEventBus"
 				:create-tag="createTag"
 				:manage-enabled="false"
+				:multiple-limit="1"
 				@update:model-value="updateTags"
 				@esc="cancelEditing('tags')"
 				@blur="saveChanges('tags')"

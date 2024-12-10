@@ -19,6 +19,7 @@ interface TagsDropdownProps {
 	createEnabled?: boolean;
 	manageEnabled?: boolean;
 	createTag?: (name: string) => Promise<ITag>;
+	multipleLimit?: number;
 }
 
 const i18n = useI18n();
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	createEnabled: true,
 	manageEnabled: true,
 	createTag: undefined,
+	multipleLimit: 0,
 });
 
 const emit = defineEmits<{
@@ -222,6 +224,7 @@ onClickOutside(
 			:filter-method="filterOptions"
 			filterable
 			multiple
+			:multiple-limit="props.multipleLimit"
 			:reserve-keyword="false"
 			loading-text="..."
 			:popper-class="dropdownClasses"

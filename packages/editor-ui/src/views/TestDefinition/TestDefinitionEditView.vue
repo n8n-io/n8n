@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
@@ -15,8 +15,6 @@ import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue'
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import type { TestMetricRecord } from '@/api/testDefinition.ee';
-import { useExecutionsStore } from '@/stores/executions.store';
-import type { IExecutionsListResponse } from '@/Interface';
 
 const props = defineProps<{
 	testId?: string;
@@ -27,23 +25,7 @@ const route = useRoute();
 const locale = useI18n();
 const { debounce } = useDebounce();
 const toast = useToast();
-const { fetchExecutions } = useExecutionsStore();
 const tagsStore = useAnnotationTagsStore();
-
-const isLoading = computed(() => tagsStore.isLoading);
-const allTags = computed(() => tagsStore.allTags);
-const tagsById = computed(() => tagsStore.tagsById);
-const testId = computed(() => props.testId ?? (route.params.testId as string));
-const currentWorkflowId = computed(() => route.params.name as string);
-
-const buttonLabel = computed(() =>
-	testId.value
-		? locale.baseText('testDefinition.edit.updateTest')
-		: locale.baseText('testDefinition.edit.saveTest'),
-);
-
-const matchedExecutions = ref<IExecutionsListResponse['results']>([]);
-
 const {
 	state,
 	fieldsIssues,
@@ -59,14 +41,26 @@ const {
 	updateMetrics,
 } = useTestDefinitionForm();
 
+const isLoading = computed(() => tagsStore.isLoading);
+const allTags = computed(() => tagsStore.allTags);
+const tagsById = computed(() => tagsStore.tagsById);
+const testId = computed(() => props.testId ?? (route.params.testId as string));
+const currentWorkflowId = computed(() => route.params.name as string);
+
+const buttonLabel = computed(() =>
+	testId.value
+		? locale.baseText('testDefinition.edit.updateTest')
+		: locale.baseText('testDefinition.edit.saveTest'),
+);
+
+const tagUsageCount = computed(
+	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
+);
+
 onMounted(async () => {
-	await tagsStore.fetchAll();
+	void tagsStore.fetchAll({ withUsageCount: true });
 	if (testId.value) {
 		await loadTestData(testId.value);
-		// Now tags are in state.tags.value instead of appliedTagIds
-		if (state.value.tags.value.length > 0) {
-			await fetchSelectedExecutions();
-		}
 	} else {
 		await onSaveTest();
 	}
@@ -105,25 +99,6 @@ async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
 	}
 }
 
-async function fetchSelectedExecutions() {
-	// Use state.tags.value for the annotationTags
-	const executionsForTags = await fetchExecutions({
-		annotationTags: state.value.tags.value,
-	});
-	matchedExecutions.value = executionsForTags.results;
-}
-
-// Debounced watchers for auto-saving
-watch([() => state.value.evaluationWorkflow], debounce(onSaveTest, { debounceTime: 400 }), {
-	deep: true,
-});
-
-watch(
-	() => state.value.metrics,
-	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
-	{ deep: true },
-);
-
 async function handleCreateTag(tagName: string) {
 	try {
 		const newTag = await tagsStore.create(tagName);
@@ -134,7 +109,23 @@ async function handleCreateTag(tagName: string) {
 	}
 }
 
-watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: true });
+// Debounced watchers for auto-saving
+watch(
+	() => state.value.metrics,
+	debounce(async () => await updateMetrics(testId.value), { debounceTime: 400 }),
+	{ deep: true },
+);
+
+watch(
+	() => [
+		state.value.description,
+		state.value.name,
+		state.value.tags,
+		state.value.evaluationWorkflow,
+	],
+	debounce(onSaveTest, { debounceTime: 400 }),
+	{ deep: true },
+);
 </script>
 
 <template>
@@ -152,6 +143,7 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 				:class="$style.step"
 				:title="locale.baseText('testDefinition.edit.description')"
 				:expanded="false"
+				:tooltip="locale.baseText('testDefinition.edit.description.tooltip')"
 			>
 				<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 				<template #cardContent>
@@ -166,9 +158,10 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 					:class="$style.step"
 					:title="
 						locale.baseText('testDefinition.edit.step.executions', {
-							adjustToNumber: matchedExecutions.length,
+							adjustToNumber: tagUsageCount,
 						})
 					"
+					:tooltip="locale.baseText('testDefinition.edit.step.executions.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 					<template #cardContent>
@@ -194,6 +187,7 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 					:title="locale.baseText('testDefinition.edit.step.nodes')"
 					:small="true"
 					:expanded="false"
+					:tooltip="locale.baseText('testDefinition.edit.step.nodes.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 					<template #cardContent>{{
@@ -205,6 +199,7 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
 					:small="true"
+					:tooltip="locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 				</EvaluationStep>
@@ -212,6 +207,7 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
+					:tooltip="locale.baseText('testDefinition.edit.step.compareExecutions.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 					<template #cardContent>
@@ -225,6 +221,7 @@ watch(() => state.value, debounce(onSaveTest, { debounceTime: 400 }), { deep: tr
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.metrics')"
+					:tooltip="locale.baseText('testDefinition.edit.step.metrics.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 					<template #cardContent>
