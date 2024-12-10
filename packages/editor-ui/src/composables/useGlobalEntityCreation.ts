@@ -75,6 +75,11 @@ export const useGlobalEntityCreation = () => {
 						},
 					},
 				},
+				{
+					id: CREATE_PROJECT_ID,
+					title: 'Project',
+					disabled: true,
+				},
 			];
 		}
 
@@ -180,7 +185,7 @@ export const useGlobalEntityCreation = () => {
 
 	const projectsLimitReachedMessage = computed(() => {
 		if (settingsStore.isCloudDeployment) {
-			return i18n.baseText('projects.create.limitReached', {
+			return i18n.baseText('projects.create.limitReached.cloud', {
 				adjustToNumber: projectsStore.teamProjectsLimit,
 				interpolate: {
 					planName: cloudPlanStore.currentPlanData?.displayName ?? '',
@@ -189,10 +194,37 @@ export const useGlobalEntityCreation = () => {
 			});
 		}
 
-		return i18n.baseText('projects.create.limitReached.self');
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
+			return i18n.baseText('projects.create.limitReached.self');
+		}
+
+		return i18n.baseText('projects.create.limitReached', {
+			adjustToNumber: projectsStore.teamProjectsLimit,
+			interpolate: {
+				limit: projectsStore.teamProjectsLimit,
+			},
+		});
 	});
 
 	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
 
-	return { menu, handleSelect, createProjectAppendSlotName, projectsLimitReachedMessage };
+	const upgradeLabel = computed(() => {
+		if (settingsStore.isCloudDeployment) {
+			return i18n.baseText('generic.upgrade');
+		}
+
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
+			return i18n.baseText('generic.enterprise');
+		}
+
+		return i18n.baseText('generic.upgrade');
+	});
+
+	return {
+		menu,
+		handleSelect,
+		createProjectAppendSlotName,
+		projectsLimitReachedMessage,
+		upgradeLabel,
+	};
 };
