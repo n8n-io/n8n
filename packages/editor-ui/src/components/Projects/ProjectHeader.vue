@@ -72,7 +72,7 @@ const menu = computed(() => [
 	},
 ]);
 
-const actions: Partial<Record<ActionTypes, (projectId: string) => void>> = {
+const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
@@ -94,7 +94,7 @@ const actions: Partial<Record<ActionTypes, (projectId: string) => void>> = {
 
 const onSelect = (action: string) => {
 	const executableAction = actions[action as ActionTypes];
-	if (!homeProject.value || !executableAction) {
+	if (!homeProject.value) {
 		return;
 	}
 	executableAction(homeProject.value.id);
@@ -120,13 +120,20 @@ const onActivatorClick = () => onSelect(ACTION_TYPES.WORKFLOW);
 				</N8nText>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
-				<div :class="[$style.buttonGroup]">
+				<div :class="[$style.buttonGroup]" data-test-id="resource-add">
 					<N8nButton
+						data-test-id="add-resource-workflow"
 						:class="[$style.buttonGroupTrigger]"
 						v-bind="createWorkflowButton"
 						@click="onActivatorClick"
 					/>
-					<N8nActionDropdown :items="menu" placement="bottom-end" @select="onSelect">
+					<N8nActionDropdown
+						data-test-id="add-resource"
+						:items="menu"
+						placement="bottom-end"
+						:teleported="false"
+						@select="onSelect"
+					>
 						<template #activator>
 							<N8nIconButton
 								:class="[$style.buttonGroupDropdown]"
