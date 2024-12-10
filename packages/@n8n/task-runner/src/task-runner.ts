@@ -355,9 +355,9 @@ export abstract class TaskRunner extends EventEmitter {
 			const data = await this.executeTask(task, controller.signal);
 			this.taskDone(taskId, data);
 		} catch (error) {
-			clearTimeout(taskTimeout);
 			if (!task.cancelled) this.taskErrored(taskId, error);
 		} finally {
+			clearTimeout(taskTimeout);
 			this.taskCancellations.delete(taskId);
 			this.resetIdleTimer();
 		}
