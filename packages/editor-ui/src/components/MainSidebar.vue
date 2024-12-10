@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@/stores/root.store';
@@ -21,6 +20,11 @@ import { useUserHelpers } from '@/composables/useUserHelpers';
 
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { N8nNavigationDropdown } from 'n8n-design-system';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -34,10 +38,11 @@ const workflowsStore = useWorkflowsStore();
 
 const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
-const locale = useI18n();
+const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
+const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 
 useUserHelpers(router, route);
@@ -51,11 +56,11 @@ const fullyExpanded = ref(false);
 const userMenuItems = ref([
 	{
 		id: 'settings',
-		label: locale.baseText('settings'),
+		label: i18n.baseText('settings'),
 	},
 	{
 		id: 'logout',
-		label: locale.baseText('auth.signout'),
+		label: i18n.baseText('auth.signout'),
 	},
 ]);
 
@@ -71,7 +76,7 @@ const mainMenuItems = computed(() => [
 		// Link to in-app templates, available if custom templates are enabled
 		id: 'templates',
 		icon: 'box-open',
-		label: locale.baseText('mainSidebar.templates'),
+		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
 		route: { to: { name: VIEWS.TEMPLATES } },
@@ -80,7 +85,7 @@ const mainMenuItems = computed(() => [
 		// Link to website templates, available if custom templates are not enabled
 		id: 'templates',
 		icon: 'box-open',
-		label: locale.baseText('mainSidebar.templates'),
+		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
 		link: {
@@ -91,28 +96,21 @@ const mainMenuItems = computed(() => [
 	{
 		id: 'variables',
 		icon: 'variable',
-		label: locale.baseText('mainSidebar.variables'),
+		label: i18n.baseText('mainSidebar.variables'),
 		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
-		id: 'executions',
-		icon: 'tasks',
-		label: locale.baseText('mainSidebar.executions'),
-		position: 'bottom',
-		route: { to: { name: VIEWS.EXECUTIONS } },
-	},
-	{
 		id: 'help',
 		icon: 'question',
-		label: locale.baseText('mainSidebar.help'),
+		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
 			{
 				id: 'quickstart',
 				icon: 'video',
-				label: locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
 					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
 					target: '_blank',
@@ -121,7 +119,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'docs',
 				icon: 'book',
-				label: locale.baseText('mainSidebar.helpMenuItems.documentation'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
 					href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 					target: '_blank',
@@ -130,7 +128,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'forum',
 				icon: 'users',
-				label: locale.baseText('mainSidebar.helpMenuItems.forum'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
 					href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 					target: '_blank',
@@ -139,7 +137,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'examples',
 				icon: 'graduation-cap',
-				label: locale.baseText('mainSidebar.helpMenuItems.course'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
 					href: 'https://docs.n8n.io/courses/',
 					target: '_blank',
@@ -148,7 +146,7 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'report-bug',
 				icon: 'bug',
-				label: locale.baseText('mainSidebar.helpMenuItems.reportBug'),
+				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
 				link: {
 					href: getReportingURL(),
 					target: '_blank',
@@ -157,12 +155,13 @@ const mainMenuItems = computed(() => [
 			{
 				id: 'about',
 				icon: 'info',
-				label: locale.baseText('mainSidebar.aboutN8n'),
+				label: i18n.baseText('mainSidebar.aboutN8n'),
 				position: 'bottom',
 			},
 		],
 	},
 ]);
+const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
@@ -220,7 +219,7 @@ const onUserActionToggle = (action: string) => {
 			onLogout();
 			break;
 		case 'settings':
-			void router.push({ name: VIEWS.PERSONAL_SETTINGS });
+			void router.push({ name: VIEWS.SETTINGS });
 			break;
 		default:
 			break;
@@ -260,7 +259,7 @@ const handleSelect = (key: string) => {
 			break;
 		}
 		case 'cloud-admin': {
-			void cloudPlanStore.redirectToDashboard();
+			void pageRedirectionHelper.goToDashboard();
 			break;
 		}
 		case 'quickstart':
@@ -291,6 +290,16 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 		fullyExpanded.value = !isCollapsed.value;
 	}
 };
+
+const {
+	menu,
+	handleSelect: handleMenuSelect,
+	createProjectAppendSlotName,
+	projectsLimitReachedMessage,
+} = useGlobalEntityCreation();
+onClickOutside(createBtn as Ref<VueInstance>, () => {
+	createBtn.value?.close();
+});
 </script>
 
 <template>
@@ -307,14 +316,34 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 			:class="['clickable', $style.sideMenuCollapseButton]"
 			@click="toggleCollapse"
 		>
-			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
-		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+		<div :class="$style.logo">
+			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon="plus" type="secondary" outline />
+				<template #[createProjectAppendSlotName]="{ item }">
+					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
+						<N8nButton
+							:size="'mini'"
+							style="margin-left: auto"
+							type="tertiary"
+							@click="handleMenuSelect(item.id)"
+						>
+							{{ i18n.baseText('generic.upgrade') }}
+						</N8nButton>
+					</N8nTooltip>
+				</template>
+			</N8nNavigationDropdown>
+		</div>
+		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
-				<div :class="$style.logo">
-					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-				</div>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
@@ -335,14 +364,14 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
-						<n8n-text
+						<N8nText
 							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
 							color="text-base"
 						>
 							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
 								nextVersions.length > 1 ? 's' : ''
 							}}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
@@ -351,35 +380,35 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 				<div ref="user" :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
+						<ElDropdown placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-								<n8n-avatar
+								<N8nAvatar
 									:first-name="usersStore.currentUser?.firstName"
 									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
 							<template v-if="isCollapsed" #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item command="settings">
-										{{ $locale.baseText('settings') }}
-									</el-dropdown-item>
-									<el-dropdown-item command="logout">
-										{{ $locale.baseText('auth.signout') }}
-									</el-dropdown-item>
-								</el-dropdown-menu>
+								<ElDropdownMenu>
+									<ElDropdownItem command="settings">
+										{{ i18n.baseText('settings') }}
+									</ElDropdownItem>
+									<ElDropdownItem command="logout">
+										{{ i18n.baseText('auth.signout') }}
+									</ElDropdownItem>
+								</ElDropdownMenu>
 							</template>
-						</el-dropdown>
+						</ElDropdown>
 					</div>
 					<div
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
-						<n8n-text size="small" :bold="true" color="text-dark">{{
+						<N8nText size="small" :bold="true" color="text-dark">{{
 							usersStore.currentUser?.fullName
-						}}</n8n-text>
+						}}</N8nText>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-action-dropdown
+						<N8nActionDropdown
 							:items="userMenuItems"
 							placement="top-start"
 							data-test-id="user-menu"
@@ -388,7 +417,7 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 					</div>
 				</div>
 			</template>
-		</n8n-menu>
+		</N8nMenu>
 	</div>
 </template>
 
@@ -399,11 +428,18 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
+	padding-top: 54px;
+	background-color: var(--menu-background, var(--color-background-xlight));
+
 	.logo {
-		height: $header-height;
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
+		justify-content: space-between;
 
 		img {
 			position: relative;
@@ -414,6 +450,12 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
+		padding-top: 90px;
+
+		.logo {
+			flex-direction: column;
+			gap: 16px;
+		}
 
 		.logo img {
 			left: 0;

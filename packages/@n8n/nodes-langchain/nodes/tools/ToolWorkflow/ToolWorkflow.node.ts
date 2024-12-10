@@ -6,16 +6,18 @@ import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import type {
-	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWorkflowBase,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
+	ExecuteWorkflowData,
 	IDataObject,
 	INodeParameterResourceLocator,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -34,7 +36,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Call n8n Workflow Tool',
@@ -198,6 +200,11 @@ export class ToolWorkflow implements INodeType {
 				hint: 'The field in the last-executed node of the workflow that contains the response',
 				description:
 					'Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Extra Workflow Inputs',
@@ -357,9 +364,14 @@ export class ToolWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
+
+		let subExecutionId: string | undefined;
+		let subWorkflowId: string | undefined;
 
 		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
@@ -369,19 +381,6 @@ export class ToolWorkflow implements INodeType {
 			runManager?: CallbackManagerForToolRun,
 		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
-			const responsePropertyName = this.getNodeParameter(
-				'responsePropertyName',
-				itemIndex,
-			) as string;
-
-			if (!responsePropertyName) {
-				throw new NodeOperationError(this.getNode(), "Field to return can't be empty", {
-					itemIndex,
-					description:
-						'Enter the name of a field in the last node of the workflow that contains the response to return',
-				});
-			}
-
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
@@ -396,11 +395,16 @@ export class ToolWorkflow implements INodeType {
 					) as INodeParameterResourceLocator;
 					workflowInfo.id = value as string;
 				}
+
+				subWorkflowId = workflowInfo.id;
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
 				try {
 					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+
+					// subworkflow is same as parent workflow
+					subWorkflowId = workflowProxy.$workflow.id;
 				} catch (error) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -440,29 +444,28 @@ export class ToolWorkflow implements INodeType {
 
 			const items = [newItem] as INodeExecutionData[];
 
-			let receivedData: INodeExecutionData;
+			let receivedData: ExecuteWorkflowData;
 			try {
-				receivedData = (await this.executeWorkflow(
-					workflowInfo,
-					items,
-					runManager?.getChild(),
-				)) as INodeExecutionData;
+				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
+					parentExecution: {
+						executionId: workflowProxy.$execution.id,
+						workflowId: workflowProxy.$workflow.id,
+					},
+				});
+				subExecutionId = receivedData.executionId;
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
-			const response: string | undefined = get(receivedData, [
-				0,
-				0,
-				'json',
-				responsePropertyName,
-			]) as string | undefined;
+			const response: string | undefined = get(receivedData, 'data[0][0].json') as
+				| string
+				| undefined;
 			if (response === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`,
+					'There was an error: "The workflow did not return a response"',
 				);
 			}
 
@@ -503,10 +506,23 @@ export class ToolWorkflow implements INodeType {
 				response = `There was an error: "${executionError.message}"`;
 			}
 
+			let metadata: ITaskMetadata | undefined;
+			if (subExecutionId && subWorkflowId) {
+				metadata = {
+					subExecution: {
+						executionId: subExecutionId,
+						workflowId: subWorkflowId,
+					},
+				};
+			}
+
 			if (executionError) {
-				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+				void this.addOutputData(NodeConnectionType.AiTool, index, executionError, metadata);
 			} else {
-				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+				// Output always needs to be an object
+				// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
+				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json }]], metadata);
 			}
 			return response;
 		};

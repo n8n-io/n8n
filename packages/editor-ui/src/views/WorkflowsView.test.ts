@@ -5,10 +5,9 @@ import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
-import { STORES, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
+import { STORES, VIEWS } from '@/constants';
 import { mockedStore } from '@/__tests__/utils';
-import { usePostHog } from '@/stores/posthog.store';
-import type { Cloud, IUser, IWorkflowDb } from '@/Interface';
+import type { IUser, IWorkflowDb } from '@/Interface';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { Project } from '@/types/projects.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -19,6 +18,11 @@ import * as usersApi from '@/api/users';
 vi.mock('@/api/projects.api');
 vi.mock('@/api/users');
 vi.mock('@/api/sourceControl');
+vi.mock('@/composables/useGlobalEntityCreation', () => ({
+	useGlobalEntityCreation: () => ({
+		menu: [],
+	}),
+}));
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -53,24 +57,22 @@ describe('WorkflowsView', () => {
 
 	describe('should show empty state', () => {
 		it('for non setup user', () => {
-			const { getByRole } = renderComponent({ pinia: createTestingPinia({ initialState }) });
-			expect(getByRole('heading').textContent).toBe('👋 Welcome!');
+			const { getByText } = renderComponent({ pinia: createTestingPinia({ initialState }) });
+			expect(getByText('👋 Welcome!')).toBeVisible();
 		});
 
 		it('for currentUser user', () => {
 			const pinia = createTestingPinia({ initialState });
 			const userStore = mockedStore(useUsersStore);
 			userStore.currentUser = { firstName: 'John' } as IUser;
-			const { getByRole } = renderComponent({ pinia });
+			const { getByText } = renderComponent({ pinia });
 
-			expect(getByRole('heading').textContent).toBe('👋 Welcome John!');
+			expect(getByText('👋 Welcome John!')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
 			const pinia = createTestingPinia({ initialState });
-			const posthog = mockedStore(usePostHog);
 			const sourceControl = mockedStore(useSourceControlStore);
-			posthog.getVariant.mockReturnValue(MORE_ONBOARDING_OPTIONS_EXPERIMENT.control);
 
 			const projectsStore = mockedStore(useProjectsStore);
 
@@ -105,93 +107,6 @@ describe('WorkflowsView', () => {
 			await userEvent.click(getByTestId('new-workflow-card'));
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
-		});
-
-		describe('should show courses and templates link for sales users', () => {
-			it('for cloudUser', () => {
-				const pinia = createTestingPinia({ initialState });
-				const userStore = mockedStore(useUsersStore);
-				userStore.currentUserCloudInfo = { role: 'Sales' } as Cloud.UserAccount;
-				const projectsStore = mockedStore(useProjectsStore);
-				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const { getAllByTestId } = renderComponent({ pinia });
-
-				expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-			});
-
-			it('for personalizationAnswers', () => {
-				const pinia = createTestingPinia({ initialState });
-				const userStore = mockedStore(useUsersStore);
-				userStore.currentUser = { personalizationAnswers: { role: 'Sales' } } as IUser;
-				const projectsStore = mockedStore(useProjectsStore);
-				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-				const { getAllByTestId } = renderComponent({ pinia });
-
-				expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-			});
-		});
-
-		it('should show courses and templates link for onboardingExperiment', () => {
-			const pinia = createTestingPinia({ initialState });
-
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const posthog = mockedStore(usePostHog);
-			posthog.getVariant.mockReturnValue(MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant);
-
-			const { getAllByTestId } = renderComponent({ pinia });
-
-			expect(getAllByTestId('browse-sales-templates-card').length).toBe(2);
-		});
-	});
-
-	describe('workflow creation button', () => {
-		it('should create global workflow', async () => {
-			const pushSpy = vi.spyOn(router, 'push');
-			const pinia = createTestingPinia({ initialState });
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.allWorkflows = [{ id: '1' } as IWorkflowDb];
-
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.fetchProject.mockResolvedValue({} as Project);
-			projectsStore.personalProject = { scopes: ['workflow:create'] } as Project;
-
-			const { getByTestId } = renderComponent({ pinia });
-			expect(getByTestId('resources-list-add')).toBeInTheDocument();
-
-			expect(getByTestId('resources-list-add').textContent).toBe('Add workflow');
-
-			await userEvent.click(getByTestId('resources-list-add'));
-
-			expect(pushSpy).toHaveBeenCalledWith({ name: VIEWS.NEW_WORKFLOW, query: { projectId: '' } });
-		});
-
-		it('should create a project specific workflow', async () => {
-			await router.replace({ path: '/project-id' });
-			const pushSpy = vi.spyOn(router, 'push');
-
-			const pinia = createTestingPinia({ initialState });
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.allWorkflows = [{ id: '1' } as IWorkflowDb];
-
-			const projectsStore = mockedStore(useProjectsStore);
-
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			const { getByTestId } = renderComponent({ pinia });
-			expect(router.currentRoute.value.params.projectId).toBe('project-id');
-
-			expect(getByTestId('resources-list-add')).toBeInTheDocument();
-
-			expect(getByTestId('resources-list-add').textContent).toBe('Add workflow to project');
-
-			await userEvent.click(getByTestId('resources-list-add'));
-
-			expect(pushSpy).toHaveBeenCalledWith({
-				name: VIEWS.NEW_WORKFLOW,
-				query: { projectId: 'project-id' },
-			});
 		});
 	});
 

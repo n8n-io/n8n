@@ -5,7 +5,13 @@ import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import type { BaseChatMemory } from 'langchain/memory';
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
-import type { AiEvent, IDataObject, IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	AiEvent,
+	IDataObject,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 
 import { N8nTool } from './N8nTool';
 
@@ -20,7 +26,7 @@ function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): ob
 }
 
 export function getMetadataFiltersValues(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
 	const options = ctx.getNodeParameter('options', itemIndex, {});
@@ -93,7 +99,7 @@ export function getPromptInputByType(options: {
 }
 
 export function getSessionId(
-	ctx: IExecuteFunctions | IWebhookFunctions,
+	ctx: ISupplyDataFunctions | IWebhookFunctions,
 	itemIndex: number,
 	selectorKey = 'sessionIdType',
 	autoSelect = 'fromInput',
@@ -133,13 +139,13 @@ export function getSessionId(
 	return sessionId;
 }
 
-export async function logAiEvent(
-	executeFunctions: IExecuteFunctions,
+export function logAiEvent(
+	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
 	event: AiEvent,
 	data?: IDataObject,
 ) {
 	try {
-		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
 	} catch (error) {
 		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
 	}
@@ -159,10 +165,29 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
+export function escapeSingleCurlyBrackets(text?: string): string | undefined {
+	if (text === undefined) return undefined;
+
+	let result = text;
+
+	result = result
+		// First handle triple brackets to avoid interference with double brackets
+		.replace(/(?<!{){{{(?!{)/g, '{{{{')
+		.replace(/(?<!})}}}(?!})/g, '}}}}')
+		// Then handle single brackets, but only if they're not part of double brackets
+		// Convert single { to {{ if it's not already part of {{ or {{{
+		.replace(/(?<!{){(?!{)/g, '{{')
+		// Convert single } to }} if it's not already part of }} or }}}
+		.replace(/(?<!})}(?!})/g, '}}');
+
+	return result;
+}
+
 export const getConnectedTools = async (
 	ctx: IExecuteFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
+	escapeCurlyBrackets: boolean = false,
 ) => {
 	const connectedTools =
 		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
@@ -182,6 +207,10 @@ export const getConnectedTools = async (
 			);
 		}
 		seenNames.add(name);
+
+		if (escapeCurlyBrackets) {
+			tool.description = escapeSingleCurlyBrackets(tool.description) ?? tool.description;
+		}
 
 		if (convertStructuredTool && tool instanceof N8nTool) {
 			finalTools.push(tool.asDynamicTool());

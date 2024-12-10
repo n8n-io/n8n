@@ -22,7 +22,6 @@ import { NodeHelpers } from 'n8n-workflow';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
-import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import Modal from '@/components/Modal.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -37,7 +36,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ProjectSharingData } from '@/types/projects.types';
+import type { Project, ProjectSharingData } from '@/types/projects.types';
 import { assert } from '@/utils/assert';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -89,6 +88,7 @@ const isDeleting = ref(false);
 const isSaving = ref(false);
 const isTesting = ref(false);
 const hasUnsavedChanges = ref(false);
+const isSaved = ref(false);
 const loading = ref(false);
 const showValidationWarning = ref(false);
 const testedSuccessfully = ref(false);
@@ -318,8 +318,8 @@ const defaultCredentialTypeName = computed(() => {
 
 const showSaveButton = computed(() => {
 	return (
-		(hasUnsavedChanges.value || !!credentialId.value) &&
-		(credentialPermissions.value.create || credentialPermissions.value.update)
+		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
+		(credentialPermissions.value.create ?? credentialPermissions.value.update)
 	);
 });
 
@@ -518,14 +518,13 @@ async function loadCurrentCredential() {
 
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
-	const tabName: string = tab.replaceAll('coming-soon/', '');
 	const credType: string = credentialType.value ? credentialType.value.name : '';
 	const activeNode: INode | null = ndvStore.activeNode;
 
 	telemetry.track('User viewed credential tab', {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
-		tab: tabName,
+		tab,
 		workflow_id: workflowsStore.workflowId,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
@@ -682,30 +681,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
-		credential = await createCredential(credentialDetails, projectsStore.currentProjectId);
-
-		let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
-		let toastText = '';
-
-		if (!credentialDetails.sharedWithProjects) {
-			toastText = i18n.baseText('credentials.create.personal.toast.text');
-		}
-
-		if (projectsStore.currentProject) {
-			toastTitle = i18n.baseText('credentials.create.project.toast.title', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
-
-			toastText = i18n.baseText('credentials.create.project.toast.text', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
-		}
-
-		toast.showMessage({
-			title: toastTitle,
-			message: toastText,
-			type: 'success',
-		});
+		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -772,15 +748,50 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	return credential;
 }
 
+const createToastMessagingForNewCredentials = (
+	credentialDetails: ICredentialsDecrypted,
+	project?: Project | null,
+) => {
+	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
+	let toastText = '';
+
+	if (!credentialDetails.sharedWithProjects) {
+		toastText = i18n.baseText('credentials.create.personal.toast.text');
+	}
+
+	if (projectsStore.currentProject) {
+		toastTitle = i18n.baseText('credentials.create.project.toast.title', {
+			interpolate: { projectName: project?.name ?? '' },
+		});
+
+		toastText = i18n.baseText('credentials.create.project.toast.text', {
+			interpolate: { projectName: project?.name ?? '' },
+		});
+	}
+
+	return {
+		title: toastTitle,
+		message: toastText,
+	};
+};
+
 async function createCredential(
 	credentialDetails: ICredentialsDecrypted,
-	projectId?: string,
+	project?: Project | null,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
 
 	try {
-		credential = await credentialsStore.createNewCredential(credentialDetails, projectId);
+		credential = await credentialsStore.createNewCredential(credentialDetails, project?.id);
 		hasUnsavedChanges.value = false;
+
+		const { title, message } = createToastMessagingForNewCredentials(credentialDetails, project);
+
+		toast.showMessage({
+			title,
+			message,
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(
 			error,
@@ -828,6 +839,7 @@ async function updateCredential(
 			isSharedWithChanged.value = false;
 		}
 		hasUnsavedChanges.value = false;
+		isSaved.value = true;
 
 		if (credential) {
 			await externalHooks.run('credential.saved', {
@@ -879,6 +891,7 @@ async function deleteCredential() {
 		isDeleting.value = true;
 		await credentialsStore.deleteCredential({ id: credentialId.value });
 		hasUnsavedChanges.value = false;
+		isSaved.value = true;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -1054,7 +1067,7 @@ function resetCredentialData(): void {
 				<div :class="$style.credActions">
 					<n8n-icon-button
 						v-if="currentCredential && credentialPermissions.delete"
-						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
+						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						type="tertiary"
 						:disabled="isSaving"
@@ -1064,12 +1077,12 @@ function resetCredentialData(): void {
 					/>
 					<SaveButton
 						v-if="showSaveButton"
-						:saved="!hasUnsavedChanges && !isTesting"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
 						:saving-label="
 							isTesting
-								? $locale.baseText('credentialEdit.credentialEdit.testing')
-								: $locale.baseText('credentialEdit.credentialEdit.saving')
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
 						"
 						data-test-id="credential-save-button"
 						@click="saveCredential"
@@ -1129,9 +1142,6 @@ function resetCredentialData(): void {
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo :current-credential="currentCredential" />
-				</div>
-				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
-					<FeatureComingSoon :feature-id="activeTab.split('/')[1]"></FeatureComingSoon>
 				</div>
 			</div>
 		</template>

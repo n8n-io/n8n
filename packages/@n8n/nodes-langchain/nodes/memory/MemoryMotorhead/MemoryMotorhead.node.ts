@@ -1,17 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
+import { getSessionId } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
+import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,7 +19,7 @@ export class MemoryMotorhead implements INodeType {
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Motorhead Memory',
 		defaults: {
 			name: 'Motorhead',
@@ -82,11 +82,12 @@ export class MemoryMotorhead implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.3),
 			sessionKeyProperty,
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('motorheadApi');
 		const nodeVersion = this.getNode().typeVersion;
 

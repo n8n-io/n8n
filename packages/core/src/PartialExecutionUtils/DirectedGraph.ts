@@ -42,6 +42,10 @@ export class DirectedGraph {
 
 	private connections: Map<DirectedGraphKey, GraphConnection> = new Map();
 
+	hasNode(nodeName: string) {
+		return this.nodes.has(nodeName);
+	}
+
 	getNodes() {
 		return new Map(this.nodes.entries());
 	}
@@ -448,7 +452,7 @@ export class DirectedGraph {
 
 			for (const [outputType, outputs] of Object.entries(iConnection)) {
 				for (const [outputIndex, conns] of outputs.entries()) {
-					for (const conn of conns) {
+					for (const conn of conns ?? []) {
 						// TODO: What's with the input type?
 						const { node: toNodeName, type: _inputType, index: inputIndex } = conn;
 						const to = workflow.getNode(toNodeName);
@@ -468,6 +472,12 @@ export class DirectedGraph {
 		}
 
 		return graph;
+	}
+
+	clone() {
+		return new DirectedGraph()
+			.addNodes(...this.getNodes().values())
+			.addConnections(...this.getConnections().values());
 	}
 
 	private toIConnections() {

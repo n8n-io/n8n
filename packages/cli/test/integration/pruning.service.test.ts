@@ -1,15 +1,14 @@
+import { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
-import config from '@/config';
-import { TIME } from '@/constants';
+import { Time } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logging/logger.service';
-import { PruningService } from '@/services/pruning.service';
+import { PruningService } from '@/services/pruning/pruning.service';
 
 import {
 	annotateExecution,
@@ -18,7 +17,7 @@ import {
 } from './shared/db/executions';
 import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/test-db';
-import { mockInstance } from '../shared/mocking';
+import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
@@ -26,19 +25,21 @@ describe('softDeleteOnPruningCycle()', () => {
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
-	const yesterday = new Date(Date.now() - TIME.DAY);
+	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
 	let workflow: WorkflowEntity;
+	let executionsConfig: ExecutionsConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 
+		executionsConfig = Container.get(ExecutionsConfig);
 		pruningService = new PruningService(
-			mockInstance(Logger),
+			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			mock(),
-			mock(),
+			executionsConfig,
 		);
 
 		workflow = await createWorkflow();
@@ -52,10 +53,6 @@ describe('softDeleteOnPruningCycle()', () => {
 		await testDb.terminate();
 	});
 
-	afterEach(() => {
-		config.load(config.default);
-	});
-
 	async function findAllExecutions() {
 		return await Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
@@ -64,9 +61,9 @@ describe('softDeleteOnPruningCycle()', () => {
 	}
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
-		beforeEach(() => {
-			config.set('executions.pruneDataMaxCount', 1);
-			config.set('executions.pruneDataMaxAge', 336);
+		beforeAll(() => {
+			executionsConfig.pruneDataMaxAge = 336;
+			executionsConfig.pruneDataMaxCount = 1;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
@@ -76,7 +73,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -95,7 +92,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -116,7 +113,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -135,7 +132,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -153,7 +150,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -165,9 +162,9 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
-		beforeEach(() => {
-			config.set('executions.pruneDataMaxAge', 1); // 1h
-			config.set('executions.pruneDataMaxCount', 0);
+		beforeAll(() => {
+			executionsConfig.pruneDataMaxAge = 1;
+			executionsConfig.pruneDataMaxCount = 0;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {
@@ -182,7 +179,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -206,7 +203,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -224,7 +221,7 @@ describe('softDeleteOnPruningCycle()', () => {
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await createExecution({ status, ...attributes }, workflow);
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -242,7 +239,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await createSuccessfulExecution(workflow),
 			];
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -269,7 +266,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
 
-			await pruningService.softDeleteOnPruningCycle();
+			await pruningService.softDelete();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([

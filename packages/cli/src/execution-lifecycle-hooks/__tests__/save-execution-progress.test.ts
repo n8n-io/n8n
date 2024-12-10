@@ -57,7 +57,7 @@ test('should ignore on leftover async call', async () => {
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 });
 
-test('should update execution', async () => {
+test('should update execution when saving progress is enabled', async () => {
 	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
 		...commonSettings,
 		progress: true,

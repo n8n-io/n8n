@@ -1,5 +1,5 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
@@ -10,7 +10,7 @@ import path from 'path';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
-import { LICENSE_FEATURES, N8N_VERSION } from '@/constants';
+import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getVariablesLimit } from '@/environments/variables/environment-helpers';
@@ -46,6 +46,8 @@ export class FrontendService {
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
+		private readonly securityConfig: SecurityConfig,
+		private readonly frontendConfig: FrontendConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -64,11 +66,11 @@ export class FrontendService {
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.getEnv('diagnostics.enabled'),
+			enabled: this.globalConfig.diagnostics.enabled,
 		};
 
 		if (telemetrySettings.enabled) {
-			const conf = config.getEnv('diagnostics.config.frontend');
+			const conf = this.globalConfig.diagnostics.frontendConfig;
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
@@ -80,6 +82,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			inE2ETests,
 			isDocker: this.isDocker(),
 			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
@@ -119,15 +122,15 @@ export class FrontendService {
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
-				enabled: config.getEnv('diagnostics.enabled'),
-				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				enabled: this.globalConfig.diagnostics.enabled,
+				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
+				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
 				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
-				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
+				config.getEnv('personalization.enabled') && this.globalConfig.diagnostics.enabled,
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				quota: this.license.getUsersLimit(),
@@ -201,7 +204,7 @@ export class FrontendService {
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				consumerId: 'unknown',
-				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+				environment: this.globalConfig.license.tenantId === 1 ? 'production' : 'staging',
 			},
 			variables: {
 				limit: 0,
@@ -220,13 +223,16 @@ export class FrontendService {
 				licensePruneTime: -1,
 			},
 			pruning: {
-				isEnabled: config.getEnv('executions.pruneData'),
-				maxAge: config.getEnv('executions.pruneDataMaxAge'),
-				maxCount: config.getEnv('executions.pruneDataMaxCount'),
+				isEnabled: this.globalConfig.executions.pruneData,
+				maxAge: this.globalConfig.executions.pruneDataMaxAge,
+				maxCount: this.globalConfig.executions.pruneDataMaxCount,
 			},
 			security: {
-				blockFileAccessToN8nFiles: config.getEnv('security.blockFileAccessToN8nFiles'),
+				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			betaFeatures: this.frontendConfig.betaFeatures,
+			virtualSchemaView: config.getEnv('virtualSchemaView'),
+			easyAIWorkflowOnboarded: false,
 		};
 	}
 
@@ -269,6 +275,11 @@ export class FrontendService {
 		}
 
 		this.settings.banners.dismissed = dismissedBanners;
+		try {
+			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
+		} catch {
+			this.settings.easyAIWorkflowOnboarded = false;
+		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');

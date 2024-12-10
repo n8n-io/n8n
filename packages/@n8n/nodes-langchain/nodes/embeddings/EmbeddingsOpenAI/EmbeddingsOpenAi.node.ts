@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
+	type ISupplyDataFunctions,
 	type INodeProperties,
 } from 'n8n-workflow';
 
@@ -136,6 +136,36 @@ export class EmbeddingsOpenAi implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Dimensions',
+						name: 'dimensions',
+						default: undefined,
+						description:
+							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
+						type: 'options',
+						options: [
+							{
+								name: '256',
+								value: 256,
+							},
+							{
+								name: '512',
+								value: 512,
+							},
+							{
+								name: '1024',
+								value: 1024,
+							},
+							{
+								name: '1536',
+								value: 1536,
+							},
+							{
+								name: '3072',
+								value: 3072,
+							},
+						],
+					},
+					{
 						displayName: 'Base URL',
 						name: 'baseURL',
 						default: 'https://api.openai.com/v1',
@@ -170,7 +200,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials('openAiApi');
 
@@ -179,6 +209,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			batchSize?: number;
 			stripNewLines?: boolean;
 			timeout?: number;
+			dimensions?: number | undefined;
 		};
 
 		if (options.timeout === -1) {

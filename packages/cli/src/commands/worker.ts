@@ -8,8 +8,6 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Logger } from '@/logging/logger.service';
-import { LocalTaskManager } from '@/runners/task-managers/local-task-manager';
-import { TaskManager } from '@/runners/task-managers/task-manager';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -115,20 +113,10 @@ export class Worker extends BaseCommand {
 		);
 
 		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (!taskRunnerConfig.disabled) {
-			Container.set(TaskManager, new LocalTaskManager());
-			const { TaskRunnerServer } = await import('@/runners/task-runner-server');
-			const taskRunnerServer = Container.get(TaskRunnerServer);
-			await taskRunnerServer.start();
-
-			if (
-				taskRunnerConfig.mode === 'internal_childprocess' ||
-				taskRunnerConfig.mode === 'internal_launcher'
-			) {
-				const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
-				const runnerProcess = Container.get(TaskRunnerProcess);
-				await runnerProcess.start();
-			}
+		if (taskRunnerConfig.enabled) {
+			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const taskRunnerModule = Container.get(TaskRunnerModule);
+			await taskRunnerModule.start();
 		}
 	}
 
@@ -160,6 +148,12 @@ export class Worker extends BaseCommand {
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
 
 		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
+		if (this.concurrency < 5) {
+			this.logger.warn(
+				'Concurrency is set to less than 5. THIS CAN LEAD TO AN UNSTABLE ENVIRONMENT. Please consider increasing it to at least 5 to make best use of the worker.',
+			);
+		}
 	}
 
 	async initScalingService() {

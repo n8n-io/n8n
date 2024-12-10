@@ -11,19 +11,23 @@ export async function getMfaQR(
 	return await makeRestApiRequest(context, 'GET', '/mfa/qr');
 }
 
-export async function enableMfa(context: IRestApiContext, data: { token: string }): Promise<void> {
+export async function enableMfa(
+	context: IRestApiContext,
+	data: { mfaCode: string },
+): Promise<void> {
 	return await makeRestApiRequest(context, 'POST', '/mfa/enable', data);
 }
 
-export async function verifyMfaToken(
+export async function verifyMfaCode(
 	context: IRestApiContext,
-	data: { token: string },
+	data: { mfaCode: string },
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'POST', '/mfa/verify', data);
 }
 
 export type DisableMfaParams = {
-	token: string;
+	mfaCode?: string;
+	mfaRecoveryCode?: string;
 };
 
 export async function disableMfa(context: IRestApiContext, data: DisableMfaParams): Promise<void> {

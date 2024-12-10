@@ -20,3 +20,5 @@ export { ObjectStoreService } from './ObjectStore/ObjectStore.service.ee';
 export { BinaryData } from './BinaryData/types';
 export { isStoredMode as isValidNonDefaultMode } from './BinaryData/utils';
 export * from './ExecutionMetadata';
+export * from './node-execution-context';
+export * from './PartialExecutionUtils';

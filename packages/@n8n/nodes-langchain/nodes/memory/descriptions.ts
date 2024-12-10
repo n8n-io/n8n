@@ -21,6 +21,20 @@ export const sessionIdOption: INodeProperties = {
 	default: 'fromInput',
 };
 
+export const expressionSessionKeyProperty = (fromVersion: number): INodeProperties => ({
+	displayName: 'Session Key From Previous Node',
+	name: 'sessionKey',
+	type: 'string',
+	default: '={{ $json.sessionId }}',
+	disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+	displayOptions: {
+		show: {
+			sessionIdType: ['fromInput'],
+			'@version': [{ _cnd: { gte: fromVersion } }],
+		},
+	},
+});
+
 export const sessionKeyProperty: INodeProperties = {
 	displayName: 'Key',
 	name: 'sessionKey',

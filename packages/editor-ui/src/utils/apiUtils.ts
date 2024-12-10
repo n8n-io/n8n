@@ -9,7 +9,7 @@ import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } f
 
 const getBrowserId = () => {
 	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId && 'randomUUID' in crypto) {
+	if (!browserId) {
 		browserId = crypto.randomUUID();
 		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
 	}
@@ -113,8 +113,8 @@ export async function request(config: {
 			});
 		}
 
-		const errorResponseData = error.response.data;
-		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+		const errorResponseData = error.response?.data;
+		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
 				throw errorResponseData;

@@ -206,10 +206,28 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will try to parse the output manually
 		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
 			const finalResponse = (steps as AgentFinish).returnValues;
-			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
-				string,
-				unknown
-			>;
+			let parserInput: string;
+
+			if (finalResponse instanceof Object) {
+				if ('output' in finalResponse) {
+					try {
+						// If the output is an object, we will try to parse it as JSON
+						// this is because parser expects stringified JSON object like { "output": { .... } }
+						// so we try to parse the output before wrapping it and then stringify it
+						parserInput = JSON.stringify({ output: jsonParse(finalResponse.output) });
+					} catch (error) {
+						// If parsing of the output fails, we will use the raw output
+						parserInput = finalResponse.output;
+					}
+				} else {
+					// If the output is not an object, we will stringify it as it is
+					parserInput = JSON.stringify(finalResponse);
+				}
+			} else {
+				parserInput = finalResponse;
+			}
+
+			const returnValues = (await outputParser.parse(parserInput)) as Record<string, unknown>;
 			return handleParsedStepOutput(returnValues);
 		}
 		return handleAgentFinishOutput(steps);
@@ -240,7 +258,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
-		['placeholder', '{agent_scratchpad}'],
 	];
 
 	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
@@ -248,6 +265,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		const binaryMessage = await extractBinaryMessages(this);
 		messages.push(binaryMessage);
 	}
+	// We add the agent scratchpad last, so that the agent will not run in loops
+	// by adding binary messages between each interaction
+	messages.push(['placeholder', '{agent_scratchpad}']);
 	const prompt = ChatPromptTemplate.fromMessages(messages);
 
 	const agent = createToolCallingAgent({

@@ -1,11 +1,8 @@
 import { InstanceSettings } from 'n8n-core';
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	type IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
+import { ApplicationError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -27,6 +24,7 @@ export class WaitTracker {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
@@ -88,7 +86,7 @@ export class WaitTracker {
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
-						this.startExecution(executionId);
+						void this.startExecution(executionId);
 					}, triggerTime),
 				};
 			}
@@ -103,46 +101,48 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 	}
 
-	startExecution(executionId: string) {
+	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
-		(async () => {
-			// Get the data to execute
-			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-				unflattenData: true,
-			});
-
-			if (!fullExecutionData) {
-				throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
-			}
-			if (fullExecutionData.finished) {
-				throw new ApplicationError('The execution did succeed and can so not be started again.');
-			}
-
-			if (!fullExecutionData.workflowData.id) {
-				throw new ApplicationError('Only saved workflows can be resumed.');
-			}
-			const workflowId = fullExecutionData.workflowData.id;
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-			const data: IWorkflowExecutionDataProcess = {
-				executionMode: fullExecutionData.mode,
-				executionData: fullExecutionData.data,
-				workflowData: fullExecutionData.workflowData,
-				projectId: project.id,
-			};
-
-			// Start the execution again
-			await this.workflowRunner.run(data, false, false, executionId);
-		})().catch((error: Error) => {
-			ErrorReporter.error(error);
-			this.logger.error(
-				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
-				{ executionId },
-			);
+		// Get the data to execute
+		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
 		});
+
+		if (!fullExecutionData) {
+			throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
+		}
+		if (fullExecutionData.finished) {
+			throw new ApplicationError('The execution did succeed and can so not be started again.');
+		}
+
+		if (!fullExecutionData.workflowData.id) {
+			throw new ApplicationError('Only saved workflows can be resumed.');
+		}
+
+		const workflowId = fullExecutionData.workflowData.id;
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: fullExecutionData.mode,
+			executionData: fullExecutionData.data,
+			workflowData: fullExecutionData.workflowData,
+			projectId: project.id,
+			pushRef: fullExecutionData.data.pushRef,
+		};
+
+		// Start the execution again
+		await this.workflowRunner.run(data, false, false, executionId);
+
+		const { parentExecution } = fullExecutionData.data;
+		if (parentExecution) {
+			// on child execution completion, resume parent execution
+			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
+				void this.startExecution(parentExecution.executionId);
+			});
+		}
 	}
 
 	stopTracking() {

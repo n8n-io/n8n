@@ -388,8 +388,13 @@ export class WorkflowDataProxy {
 	 * @private
 	 * @param {string} nodeName The name of the node query data from
 	 * @param {boolean} [shortSyntax=false] If short syntax got used
+	 * @param {boolean} [throwOnMissingExecutionData=true] If an error should get thrown if no execution data is available
 	 */
-	private nodeDataGetter(nodeName: string, shortSyntax = false) {
+	private nodeDataGetter(
+		nodeName: string,
+		shortSyntax = false,
+		throwOnMissingExecutionData = true,
+	) {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
@@ -415,6 +420,10 @@ export class WorkflowDataProxy {
 							nodeName,
 							shortSyntax,
 						});
+
+						if (executionData.length === 0 && !throwOnMissingExecutionData) {
+							return undefined;
+						}
 
 						if (executionData.length === 0) {
 							if (that.workflow.getParentNodes(nodeName).length === 0) {
@@ -613,7 +622,7 @@ export class WorkflowDataProxy {
 	 * Returns the data proxy object which allows to query data from current run
 	 *
 	 */
-	getDataProxy(): IWorkflowDataProxyData {
+	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
 		const that = this;
 
 		// replacing proxies with the actual data.
@@ -937,7 +946,7 @@ export class WorkflowDataProxy {
 			defaultValue?: unknown,
 		) => {
 			if (!name || name === '') {
-				throw new ExpressionError('Please provide a key', {
+				throw new ExpressionError("Add a key, e.g. $fromAI('placeholder_name')", {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
@@ -1367,6 +1376,7 @@ export class WorkflowDataProxy {
 			$nodeId: that.workflow.getNode(that.activeNodeName)?.id,
 			$webhookId: that.workflow.getNode(that.activeNodeName)?.webhookId,
 		};
+		const throwOnMissingExecutionData = opts?.throwOnMissingExecutionData ?? true;
 
 		return new Proxy(base, {
 			has: () => true,
@@ -1374,10 +1384,11 @@ export class WorkflowDataProxy {
 				if (name === 'isProxy') return true;
 
 				if (['$data', '$json'].includes(name as string)) {
-					return that.nodeDataGetter(that.contextNodeName, true)?.json;
+					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
-					return that.nodeDataGetter(that.contextNodeName, true)?.binary;
+					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)
+						?.binary;
 				}
 
 				return Reflect.get(target, name, receiver);

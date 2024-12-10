@@ -23,5 +23,13 @@ export function cleanRunData(
 		}
 	}
 
+	// Remove run data for all nodes that are not part of the subgraph
+	for (const nodeName of Object.keys(newRunData)) {
+		if (!graph.hasNode(nodeName)) {
+			// remove run data for node that is not part of the graph
+			delete newRunData[nodeName];
+		}
+	}
+
 	return newRunData;
 }

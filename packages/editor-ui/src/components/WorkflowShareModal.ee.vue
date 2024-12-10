@@ -1,6 +1,5 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { computed, watch, onMounted, ref } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 
 import Modal from './Modal.vue';
@@ -8,10 +7,8 @@ import {
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import type { IUser, IWorkflowDb } from '@/Interface';
 import { getResourcePermissions } from '@/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -23,237 +20,208 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
-import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import type { ProjectSharingData, Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
-import type { RoleMap } from '@/types/roles.types';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useI18n } from '@/composables/useI18n';
+import { telemetry } from '@/plugins/telemetry';
 
-export default defineComponent({
-	name: 'WorkflowShareModal',
-	components: {
-		Modal,
-		ProjectSharing,
-	},
-	props: {
-		data: {
-			type: Object,
-			default: () => ({}),
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
-	},
-	data() {
-		const workflowsStore = useWorkflowsStore();
-		const workflow =
-			this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? workflowsStore.workflow
-				: workflowsStore.workflowsById[this.data.id];
+const props = defineProps<{
+	data: {
+		id: string;
+	};
+}>();
 
-		return {
-			WORKFLOW_SHARE_MODAL_KEY,
-			loading: true,
-			isDirty: false,
-			modalBus: createEventBus(),
-			sharedWithProjects: [...(workflow.sharedWithProjects || [])] as ProjectSharingData[],
-			EnterpriseEditionFeature,
-			teamProject: null as Project | null,
-		};
-	},
-	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-			useWorkflowsStore,
-			useWorkflowsEEStore,
-			useProjectsStore,
-			useRolesStore,
-		),
-		isSharingEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
-		},
-		modalTitle(): string {
-			if (this.isHomeTeamProject) {
-				return this.$locale.baseText('workflows.shareModal.title.static', {
-					interpolate: { projectName: this.workflow.homeProject?.name ?? '' },
-				});
-			}
+const { data } = props;
 
-			return this.$locale.baseText(
-				this.isSharingEnabled
-					? (this.uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
-					: (this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
-							.title as BaseTextKey),
-				{
-					interpolate: { name: this.workflow.name },
-				},
-			);
-		},
-		workflow(): IWorkflowDb {
-			return this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? this.workflowsStore.workflow
-				: this.workflowsStore.workflowsById[this.data.id];
-		},
-		currentUser(): IUser | null {
-			return this.usersStore.currentUser;
-		},
-		workflowPermissions() {
-			return getResourcePermissions(this.workflow?.scopes).workflow;
-		},
-		workflowOwnerName(): string {
-			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
-		},
-		projects(): ProjectListItem[] {
-			return this.projectsStore.personalProjects.filter(
-				(project) => project.id !== this.workflow.homeProject?.id,
-			);
-		},
-		isHomeTeamProject(): boolean {
-			return this.workflow.homeProject?.type === ProjectTypes.Team;
-		},
-		numberOfMembersInHomeTeamProject(): number {
-			return this.teamProject?.relations.length ?? 0;
-		},
-		workflowRoleTranslations(): Record<string, string> {
-			return {
-				'workflow:editor': this.$locale.baseText('workflows.shareModal.role.editor'),
-			};
-		},
-		workflowRoles(): RoleMap['workflow'] {
-			return this.rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed }) => ({
-				role,
-				name: this.workflowRoleTranslations[role],
-				scopes,
-				licensed,
-			}));
-		},
-	},
-	watch: {
-		sharedWithProjects: {
-			handler() {
-				this.isDirty = true;
-			},
-			deep: true,
-		},
-	},
-	async mounted() {
-		await this.initialize();
-	},
-	methods: {
-		onProjectAdded(project: ProjectSharingData) {
-			this.trackTelemetry('User selected sharee to add', {
-				project_id_sharer: this.workflow.homeProject?.id,
-				project_id_sharee: project.id,
-			});
-		},
-		onProjectRemoved(project: ProjectSharingData) {
-			this.trackTelemetry('User selected sharee to remove', {
-				project_id_sharer: this.workflow.homeProject?.id,
-				project_id_sharee: project.id,
-			});
-		},
-		async onSave() {
-			if (this.loading) {
-				return;
-			}
+const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const workflowsEEStore = useWorkflowsEEStore();
+const projectsStore = useProjectsStore();
+const rolesStore = useRolesStore();
 
-			this.loading = true;
+const toast = useToast();
+const message = useMessage();
+const pageRedirectionHelper = usePageRedirectionHelper();
+const i18n = useI18n();
 
-			const saveWorkflowPromise = async () => {
-				return await new Promise<string>((resolve) => {
-					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-						nodeViewEventBus.emit('saveWorkflow', () => {
-							resolve(this.workflow.id);
-						});
-					} else {
-						resolve(this.workflow.id);
-					}
-				});
-			};
+const workflow = ref(
+	data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
+		? workflowsStore.workflow
+		: workflowsStore.workflowsById[data.id],
+);
+const loading = ref(true);
+const isDirty = ref(false);
+const modalBus = createEventBus();
+const sharedWithProjects = ref([
+	...(workflow.value.sharedWithProjects ?? []),
+] as ProjectSharingData[]);
+const teamProject = ref(null as Project | null);
 
-			try {
-				const workflowId = await saveWorkflowPromise();
-				await this.workflowsEEStore.saveWorkflowSharedWith({
-					workflowId,
-					sharedWithProjects: this.sharedWithProjects,
-				});
+const isSharingEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
 
-				this.showMessage({
-					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
-					type: 'success',
-				});
-				this.isDirty = false;
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
-			} finally {
-				this.modalBus.emit('close');
-				this.loading = false;
-			}
+const isHomeTeamProject = computed(() => workflow.value.homeProject?.type === ProjectTypes.Team);
+
+const modalTitle = computed(() => {
+	if (isHomeTeamProject.value) {
+		return i18n.baseText('workflows.shareModal.title.static', {
+			interpolate: { projectName: workflow.value.homeProject?.name ?? '' },
+		});
+	}
+
+	return i18n.baseText(
+		isSharingEnabled.value
+			? (uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
+			: (uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title as BaseTextKey),
+		{
+			interpolate: { name: workflow.value.name },
 		},
-		async onCloseModal() {
-			if (this.isDirty) {
-				const shouldSave = await this.confirm(
-					this.$locale.baseText('workflows.shareModal.saveBeforeClose.message'),
-					this.$locale.baseText('workflows.shareModal.saveBeforeClose.title'),
-					{
-						type: 'warning',
-						confirmButtonText: this.$locale.baseText(
-							'workflows.shareModal.saveBeforeClose.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'workflows.shareModal.saveBeforeClose.cancelButtonText',
-						),
-					},
-				);
-
-				if (shouldSave === MODAL_CONFIRM) {
-					return await this.onSave();
-				}
-			}
-
-			return true;
-		},
-		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS }).catch((failure) => {
-				if (!isNavigationFailure(failure)) {
-					console.error(failure);
-				}
-			});
-			this.modalBus.emit('close');
-		},
-		trackTelemetry(eventName: string, data: ITelemetryTrackProperties) {
-			this.$telemetry.track(eventName, {
-				workflow_id: this.workflow.id,
-				...data,
-			});
-		},
-		goToUpgrade() {
-			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
-		},
-		async initialize() {
-			if (this.isSharingEnabled) {
-				await Promise.all([this.usersStore.fetchUsers(), this.projectsStore.getAllProjects()]);
-
-				if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					await this.workflowsStore.fetchWorkflow(this.workflow.id);
-				}
-
-				if (this.isHomeTeamProject && this.workflow.homeProject) {
-					this.teamProject = await this.projectsStore.fetchProject(this.workflow.homeProject.id);
-				}
-			}
-
-			this.loading = false;
-		},
-	},
+	);
 });
+
+const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const workflowOwnerName = computed(() =>
+	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
+);
+
+const projects = computed(() =>
+	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
+);
+
+const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
+
+const workflowRoleTranslations = computed(() => ({
+	'workflow:editor': i18n.baseText('workflows.shareModal.role.editor'),
+	'workflow:owner': '',
+}));
+
+const workflowRoles = computed(() =>
+	rolesStore.processedWorkflowRoles.map(({ role, scopes, licensed }) => ({
+		role,
+		name: workflowRoleTranslations.value[role],
+		scopes,
+		licensed,
+	})),
+);
+
+const trackTelemetry = (eventName: string, data: ITelemetryTrackProperties) => {
+	telemetry.track(eventName, {
+		workflow_id: workflow.value.id,
+		...data,
+	});
+};
+
+const onProjectAdded = (project: ProjectSharingData) => {
+	trackTelemetry('User selected sharee to add', {
+		project_id_sharer: workflow.value.homeProject?.id,
+		project_id_sharee: project.id,
+	});
+};
+
+const onProjectRemoved = (project: ProjectSharingData) => {
+	trackTelemetry('User selected sharee to remove', {
+		project_id_sharer: workflow.value.homeProject?.id,
+		project_id_sharee: project.id,
+	});
+};
+
+const onSave = async () => {
+	if (loading.value) {
+		return;
+	}
+
+	loading.value = true;
+
+	const saveWorkflowPromise = async () => {
+		return await new Promise<string>((resolve) => {
+			if (workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				nodeViewEventBus.emit('saveWorkflow', () => {
+					resolve(workflow.value.id);
+				});
+			} else {
+				resolve(workflow.value.id);
+			}
+		});
+	};
+
+	try {
+		const workflowId = await saveWorkflowPromise();
+		await workflowsEEStore.saveWorkflowSharedWith({
+			workflowId,
+			sharedWithProjects: sharedWithProjects.value,
+		});
+
+		toast.showMessage({
+			title: i18n.baseText('workflows.shareModal.onSave.success.title'),
+		});
+		isDirty.value = false;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.shareModal.onSave.error.title'));
+	} finally {
+		modalBus.emit('close');
+		loading.value = false;
+	}
+};
+
+const onCloseModal = async () => {
+	if (isDirty.value) {
+		const shouldSave = await message.confirm(
+			i18n.baseText('workflows.shareModal.saveBeforeClose.message'),
+			i18n.baseText('workflows.shareModal.saveBeforeClose.title'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('workflows.shareModal.saveBeforeClose.confirmButtonText'),
+				cancelButtonText: i18n.baseText('workflows.shareModal.saveBeforeClose.cancelButtonText'),
+			},
+		);
+
+		if (shouldSave === MODAL_CONFIRM) {
+			return await onSave();
+		}
+	}
+
+	return true;
+};
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+};
+
+const initialize = async () => {
+	if (isSharingEnabled.value) {
+		await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
+
+		if (workflow.value.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			await workflowsStore.fetchWorkflow(workflow.value.id);
+		}
+
+		if (isHomeTeamProject.value && workflow.value.homeProject) {
+			teamProject.value = await projectsStore.fetchProject(workflow.value.homeProject.id);
+		}
+	}
+
+	loading.value = false;
+};
+
+onMounted(async () => {
+	await initialize();
+});
+
+watch(
+	sharedWithProjects,
+	() => {
+		isDirty.value = true;
+	},
+	{ deep: true },
+);
 </script>
 
 <template>
@@ -270,7 +238,7 @@ export default defineComponent({
 			<div v-if="!isSharingEnabled" :class="$style.container">
 				<n8n-text>
 					{{
-						$locale.baseText(
+						i18n.baseText(
 							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
 						)
 					}}
@@ -283,7 +251,7 @@ export default defineComponent({
 					class="mb-s"
 				>
 					{{
-						$locale.baseText('workflows.shareModal.info.sharee', {
+						i18n.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
 						})
 					}}
@@ -297,7 +265,7 @@ export default defineComponent({
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
-							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
 						/>
@@ -309,7 +277,7 @@ export default defineComponent({
 								<template #members>
 									<strong>
 										{{
-											$locale.baseText('workflows.shareModal.info.members.number', {
+											i18n.baseText('workflows.shareModal.info.members.number', {
 												interpolate: {
 													number: String(numberOfMembersInHomeTeamProject),
 												},
@@ -342,9 +310,7 @@ export default defineComponent({
 			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
 				<n8n-button @click="goToUpgrade">
 					{{
-						$locale.baseText(
-							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
-						)
+						i18n.baseText(uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button)
 					}}
 				</n8n-button>
 			</div>
@@ -354,10 +320,10 @@ export default defineComponent({
 				:class="$style.actionButtons"
 			>
 				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
-					{{ $locale.baseText('workflows.shareModal.changesHint') }}
+					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</n8n-text>
 				<n8n-button v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
-					{{ $locale.baseText('generic.close') }}
+					{{ i18n.baseText('generic.close') }}
 				</n8n-button>
 				<n8n-button
 					v-else
@@ -367,7 +333,7 @@ export default defineComponent({
 					data-test-id="workflow-sharing-modal-save-button"
 					@click="onSave"
 				>
-					{{ $locale.baseText('workflows.shareModal.save') }}
+					{{ i18n.baseText('workflows.shareModal.save') }}
 				</n8n-button>
 			</enterprise-edition>
 		</template>

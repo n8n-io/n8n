@@ -1,19 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-	type JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import {
+	NodeConnectionType,
+	type INodeType,
+	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
+} from 'n8n-workflow';
+
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
-import { RateLimitError } from 'openai';
-import { getCustomErrorMessage } from '../../vendors/OpenAi/helpers/error-handling';
 
 export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -242,7 +241,7 @@ export class LmChatOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -276,25 +275,7 @@ export class LmChatOpenAi implements INodeType {
 						response_format: { type: options.responseFormat },
 					}
 				: undefined,
-			onFailedAttempt: (error: any) => {
-				// If the error is a rate limit error, we want to handle it differently
-				// because OpenAI has multiple different rate limit errors
-				if (error instanceof RateLimitError) {
-					const errorCode = error?.code;
-					if (errorCode) {
-						const customErrorMessage = getCustomErrorMessage(errorCode);
-
-						const apiError = new NodeApiError(this.getNode(), error as unknown as JsonObject);
-						if (customErrorMessage) {
-							apiError.message = customErrorMessage;
-						}
-
-						throw apiError;
-					}
-				}
-
-				throw error;
-			},
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
 		return {

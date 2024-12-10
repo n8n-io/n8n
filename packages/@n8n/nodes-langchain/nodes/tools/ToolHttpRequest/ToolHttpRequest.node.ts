@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
@@ -250,7 +250,7 @@ export class ToolHttpRequest implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNode().name.replace(/ /g, '_');
 		try {
 			tryToParseAlphanumericString(name);
