@@ -88,19 +88,19 @@ export class InstanceSettings {
 
 	private isMultiMainEnabled = false;
 
-	private isMultiMainSetupLicensed = false;
+	private isMultiMainLicensed = false;
 
 	setMultiMainEnabled(newState: boolean) {
 		this.isMultiMainEnabled = newState;
 	}
 
 	setMultiMainLicensed(newState: boolean) {
-		this.isMultiMainSetupLicensed = newState;
+		this.isMultiMainLicensed = newState;
 	}
 
 	/** Whether this `main` instance is running in multi-main mode. */
 	get isMultiMain() {
-		return this.instanceType === 'main' && this.isMultiMainEnabled && this.isMultiMainSetupLicensed;
+		return this.instanceType === 'main' && this.isMultiMainEnabled && this.isMultiMainLicensed;
 	}
 
 	/** Whether this `main` instance is running in single-main mode. */
