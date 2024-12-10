@@ -46,7 +46,9 @@ export class NodeTypes implements INodeTypes {
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
-		const toolRequested = nodeType.startsWith('n8n-nodes-base') && nodeType.endsWith('Tool');
+		const toolRequested =
+			(nodeType.startsWith('n8n-nodes-base') || nodeType.startsWith('@n8n/n8n-nodes-langchain')) &&
+			nodeType.endsWith('Tool');
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
 		if (toolRequested) {
 			nodeType = nodeType.replace(/Tool$/, '');

@@ -25,6 +25,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { DynamicTool } from 'langchain/tools';
 
 type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
 
@@ -124,11 +125,12 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			name: args.meta.name,
 			description: args.meta.description,
 			icon: args.meta.icon,
-			group: ['transform'],
+			group: ['transform', 'vector-store'],
 			version: 1,
 			defaults: {
 				name: args.meta.displayName,
 			},
+			usableAsTool: true,
 			codex: {
 				categories: ['AI'],
 				subcategories: {
@@ -210,7 +212,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					description: 'Number of top results to fetch from vector store',
 					displayOptions: {
 						show: {
-							mode: ['load'],
+							mode: ['load', 'retrieve'],
 						},
 					},
 				},
@@ -377,7 +379,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load" and "insert" operation modes are supported with execute',
+				'Only the "load", "update" and "insert" operation modes are supported with execute',
 			);
 		}
 
@@ -389,16 +391,59 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				0,
 			)) as Embeddings;
 
-			if (mode === 'retrieve') {
-				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
+			if (mode !== 'retrieve') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Only the "retrieve" operation mode is supported to supply data',
+				);
+			}
+
+			// "Tool" is appended automatically to node type name
+			// because of usableAsTool flag set above
+			const isTool = this.getNode().type.endsWith('Tool');
+			if (isTool) {
+				const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
+				const toolName = this.getNodeParameter('toolName', itemIndex) as string;
+				const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+
+				const vectorStoreTool = new DynamicTool({
+					name: toolName,
+					description: toolDescription,
+					func: async (input) => {
+						const vectorStore = await args.getVectorStoreClient(
+							this,
+							filter,
+							embeddings,
+							itemIndex,
+						);
+
+						const embeddedPrompt = await embeddings.embedQuery(input);
+						const documents = await vectorStore.similaritySearchVectorWithScore(
+							embeddedPrompt,
+							topK,
+							filter,
+						);
+
+						return documents
+							.map((document) => {
+								// Tools can only return a string or array of objects with type text
+								// todo return concatenated strings instead?
+								return { type: 'text', text: document[0].pageContent };
+								// todo with metadata?
+								// return { type: 'text', text: JSON.stringify(document[0]) };
+							})
+							.filter((document) => !!document);
+					},
+				});
+
 				return {
-					response: logWrapper(vectorStore, this),
+					response: logWrapper(vectorStoreTool, this),
 				};
 			}
 
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only the "retrieve" operation mode is supported to supply data',
-			);
+			const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
+			return {
+				response: logWrapper(vectorStore, this),
+			};
 		}
 	};
