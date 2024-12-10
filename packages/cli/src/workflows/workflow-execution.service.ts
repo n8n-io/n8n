@@ -156,7 +156,10 @@ export class WorkflowExecutionService {
 		 * to manual executions. However, now that manual executions are executed in the
 		 * worker process, we must persist these parts of execution data.
 		 */
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (
+			config.getEnv('executions.mode') === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+		) {
 			data.executionData = {
 				startData: {
 					startNodes,
