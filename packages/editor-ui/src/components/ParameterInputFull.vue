@@ -167,7 +167,6 @@ function onDrop(newParamValue: string) {
 					title: i18n.baseText('dataMapping.success.title'),
 					message: i18n.baseText('dataMapping.success.moreInfo'),
 					type: 'success',
-					dangerouslyUseHTMLString: true,
 				});
 
 				ndvStore.setMappingOnboarded();

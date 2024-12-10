@@ -33,7 +33,6 @@ export function useToast() {
 	const canvasStore = useCanvasStore();
 
 	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-		dangerouslyUseHTMLString: true,
 		position: 'bottom-right',
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
 		offset: settingsStore.isAiAssistantEnabled || workflowsStore.isChatPanelOpen ? 64 : 0,
