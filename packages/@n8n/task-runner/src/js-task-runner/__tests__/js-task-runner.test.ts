@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
@@ -34,7 +35,7 @@ describe('JsTaskRunner', () => {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
-				n8nUri: 'localhost',
+				taskBrokerUri: 'http://localhost',
 				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
@@ -61,7 +62,7 @@ describe('JsTaskRunner', () => {
 		runner?: JsTaskRunner;
 	}) => {
 		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
-		return await runner.executeTask(task);
+		return await runner.executeTask(task, mock<AbortSignal>());
 	};
 
 	afterEach(() => {
@@ -311,10 +312,10 @@ describe('JsTaskRunner', () => {
 			});
 
 			it("should not expose task runner's env variables even if no env state is received", async () => {
-				process.env.N8N_RUNNERS_N8N_URI = 'http://127.0.0.1:5679';
+				process.env.N8N_RUNNERS_TASK_BROKER_URI = 'http://127.0.0.1:5679';
 				const outcome = await execTaskWithParams({
 					task: newTaskWithSettings({
-						code: 'return { val: $env.N8N_RUNNERS_N8N_URI }',
+						code: 'return { val: $env.N8N_RUNNERS_TASK_BROKER_URI }',
 						nodeMode: 'runOnceForAllItems',
 					}),
 					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {

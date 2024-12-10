@@ -50,7 +50,7 @@ const router = createRouter({
 			name: VIEWS.SETTINGS,
 			component: SettingsView,
 			props: true,
-			redirect: { name: VIEWS.USAGE },
+			redirect: { name: VIEWS.PERSONAL_SETTINGS },
 			children: settingsRouteChildren,
 		},
 	],

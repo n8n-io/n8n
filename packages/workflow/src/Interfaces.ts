@@ -1559,6 +1559,7 @@ export interface ITriggerResponse {
 export interface ExecuteWorkflowData {
 	executionId: string;
 	data: Array<INodeExecutionData[] | null>;
+	waitTill?: Date | null;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2014,7 +2015,6 @@ export interface IWebhookDescription {
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
 	isForm?: boolean;
-	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
@@ -2143,6 +2143,7 @@ export interface IRunExecutionData {
 		waitingExecution: IWaitingForExecution;
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
+	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
 }
@@ -2777,6 +2778,7 @@ export interface IUserSettings {
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
+	easyAIWorkflowOnboarded?: boolean;
 }
 
 export interface IProcessedDataConfig {
