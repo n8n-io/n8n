@@ -174,9 +174,9 @@ describe('ProjectHeader', () => {
 
 			await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
 
-			await waitFor(() => expect(getByTestId('add-resource-item-credential')).toBeVisible());
+			await waitFor(() => expect(getByTestId('action-credential')).toBeVisible());
 
-			await userEvent.click(getByTestId('add-resource-item-credential'));
+			await userEvent.click(getByTestId('action-credential'));
 
 			expect(mockPush).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_CREDENTIALS,

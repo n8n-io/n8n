@@ -7,8 +7,8 @@ export class CredentialsPage extends BasePage {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
 		createCredentialButton: () => {
 			cy.getByTestId('add-resource').should('be.visible').click();
-			cy.getByTestId('add-resource-item-credential').should('be.visible');
-			return cy.getByTestId('add-resource-item-credential');
+			cy.getByTestId('add-resource').getByTestId('action-credential').should('be.visible');
+			return cy.getByTestId('add-resource').getByTestId('action-credential');
 		},
 		searchInput: () => cy.getByTestId('resources-list-search'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),

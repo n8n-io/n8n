@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton, N8nIconButton, N8nActionDropdown } from 'n8n-design-system';
+import { N8nButton, N8nIconButton, N8nActionToggle } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -56,7 +56,7 @@ const ACTION_TYPES = {
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
-	id: ACTION_TYPES.WORKFLOW,
+	value: ACTION_TYPES.WORKFLOW,
 	label: 'Create Workflow',
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
@@ -64,7 +64,7 @@ const createWorkflowButton = computed(() => ({
 }));
 const menu = computed(() => [
 	{
-		id: ACTION_TYPES.CREDENTIAL,
+		value: ACTION_TYPES.CREDENTIAL,
 		label: 'Create credential',
 		disabled:
 			sourceControlStore.preferences.branchReadOnly ||
@@ -127,20 +127,15 @@ const onActivatorClick = () => onSelect(ACTION_TYPES.WORKFLOW);
 						v-bind="createWorkflowButton"
 						@click="onActivatorClick"
 					/>
-					<N8nActionDropdown
+					<N8nActionToggle
 						data-test-id="add-resource"
-						:items="menu"
+						:actions="menu"
 						placement="bottom-end"
 						:teleported="false"
-						@select="onSelect"
+						@action="onSelect"
 					>
-						<template #activator>
-							<N8nIconButton
-								:class="[$style.buttonGroupDropdown]"
-								icon="angle-down"
-							></N8nIconButton>
-						</template>
-					</N8nActionDropdown>
+						<N8nIconButton :class="[$style.buttonGroupDropdown]" icon="angle-down"></N8nIconButton>
+					</N8nActionToggle>
 				</div>
 			</div>
 		</div>
