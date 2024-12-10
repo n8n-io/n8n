@@ -6,6 +6,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
@@ -18,6 +19,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { NodeTypes } from '@/node-types';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -43,7 +45,44 @@ export class TestRunnerService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testMetricRepository: TestMetricRepository,
+		private readonly nodeTypes: NodeTypes,
 	) {}
+
+	private getStartNodesData(
+		workflow: WorkflowEntity,
+		pastExecutionData: IRunExecutionData,
+	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
+		// Create a new workflow instance to use the helper functions (getChildNodes)
+		const workflowInstance = new Workflow({
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+
+		// Determine the trigger node of the past execution
+		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
+		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
+
+		// Prepare the data structures
+		const triggerToStartFrom = {
+			name: pastExecutionTriggerNode,
+			data: pastExecutionData.resultData.runData[pastExecutionTriggerNode][0],
+		};
+
+		// Start nodes are the nodes that are connected to the trigger node
+		const startNodes = workflowInstance
+			.getChildNodes(pastExecutionTriggerNode, NodeConnectionType.Main, 1)
+			.map((name) => ({
+				name,
+				sourceData: { previousNode: pastExecutionTriggerNode },
+			}));
+
+		return {
+			startNodes,
+			triggerToStartFrom,
+		};
+	}
 
 	/**
 	 * Runs a test case with the given pin data.
@@ -57,20 +96,13 @@ export class TestRunnerService {
 		// Create pin data from the past execution data
 		const pinData = createPinData(workflow, pastExecutionData);
 
-		// Determine the start node of the past execution
-		const pastExecutionStartNode = getPastExecutionTriggerNode(pastExecutionData);
-
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
-			destinationNode: pastExecutionData.startData?.destinationNode,
-			startNodes: pastExecutionStartNode
-				? [{ name: pastExecutionStartNode, sourceData: null }]
-				: undefined,
+			...this.getStartNodesData(workflow, pastExecutionData),
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
 			workflowData: workflow,
-			partialExecutionVersion: '-1',
 			userId,
 		};
 
