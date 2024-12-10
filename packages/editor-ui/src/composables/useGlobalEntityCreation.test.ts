@@ -163,17 +163,20 @@ describe('useGlobalEntityCreation', () => {
 		projectsStore.teamProjectsLimit = 10;
 
 		settingsStore.isCloudDeployment = true;
-		const { projectsLimitReachedMessage } = useGlobalEntityCreation();
+		const { projectsLimitReachedMessage, upgradeLabel } = useGlobalEntityCreation();
 		expect(projectsLimitReachedMessage.value).toContain(
 			'You have reached the Pro plan limit of 10.',
 		);
+		expect(upgradeLabel.value).toBe('Upgrade');
 
 		settingsStore.isCloudDeployment = false;
 		expect(projectsLimitReachedMessage.value).toContain('You have reached the  plan limit of');
+		expect(upgradeLabel.value).toBe('Upgrade');
 
 		projectsStore.isTeamProjectFeatureEnabled = false;
 		expect(projectsLimitReachedMessage.value).toContain(
 			'Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows',
 		);
+		expect(upgradeLabel.value).toBe('Enterprise');
 	});
 });
