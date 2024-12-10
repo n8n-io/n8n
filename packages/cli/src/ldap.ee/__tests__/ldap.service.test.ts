@@ -1389,13 +1389,11 @@ describe('LdapService', () => {
 
 	describe('stopSync()', () => {
 		it('should clear the scheduled timer', async () => {
-			const givenConfig = {
+			const ldapService = createDefaultLdapService({
 				...ldapConfig,
 				synchronizationEnabled: true,
 				synchronizationInterval: 10,
-			};
-
-			const ldapService = createDefaultLdapService(givenConfig);
+			});
 
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
