@@ -218,16 +218,12 @@ export class JsTaskRunner extends TaskRunner {
 					{ once: true },
 				);
 
-				async function execute() {
-					const vmResult = (await runInNewContext(
-						`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-						context,
-					)) as TaskResultData['result'];
+				const taskResult = runInNewContext(
+					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+					context,
+				) as Promise<TaskResultData['result']>;
 
-					resolve(vmResult);
-				}
-
-				void execute().catch(reject);
+				void taskResult.then(resolve).catch(reject);
 			});
 
 			if (result === null) {
@@ -291,16 +287,12 @@ export class JsTaskRunner extends TaskRunner {
 						{ once: true },
 					);
 
-					async function execute() {
-						const vmResult = (await runInNewContext(
-							`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-							context,
-						)) as INodeExecutionData;
+					const taskResult = runInNewContext(
+						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+						context,
+					) as Promise<INodeExecutionData>;
 
-						resolve(vmResult);
-					}
-
-					void execute().catch(reject);
+					void taskResult.then(resolve).catch(reject);
 				});
 
 				// Filter out null values
