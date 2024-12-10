@@ -1,6 +1,7 @@
 import config from '@/config';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { Delete, Get, Post, RestController } from '@/decorators';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import { TestRunsRequest } from '@/evaluation/test-definitions.types.ee';
@@ -95,7 +96,13 @@ export class TestRunsController {
 
 		// Check test definition and test run exist
 		await this.getTestDefinition(req);
-		await this.getTestRun(req);
+		const testRun = await this.getTestRun(req);
+
+		// Check the state of the test run
+		if (testRun.status !== 'running' && testRun.status !== 'new') {
+			const message = `The test run "${testRunId}" is not running and cannot be cancelled`;
+			throw new ConflictError(message);
+		}
 
 		await this.testRunnerService.cancelTestRun(testRunId);
 	}

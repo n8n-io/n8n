@@ -58,6 +58,11 @@ export class TestRunnerService {
 		userId: string,
 		abortSignal: AbortSignal,
 	): Promise<IRun | undefined> {
+		// Do not run if the test run is cancelled
+		if (abortSignal.aborted) {
+			return;
+		}
+
 		// Create pin data from the past execution data
 		const pinData = createPinData(workflow, pastExecutionData);
 
@@ -102,6 +107,11 @@ export class TestRunnerService {
 		actualData: IRunData,
 		abortSignal: AbortSignal,
 	) {
+		// Do not run if the test run is cancelled
+		if (abortSignal.aborted) {
+			return;
+		}
+
 		// Prepare the evaluation wf input data.
 		// Provide both the expected data and the actual data
 		const evaluationInputData = {
