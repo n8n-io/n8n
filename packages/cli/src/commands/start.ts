@@ -243,10 +243,10 @@ export class Start extends BaseCommand {
 
 		const orchestrationService = Container.get(OrchestrationService);
 
-		await orchestrationService.init();
 		this.instanceSettings.setMultiMainEnabled(
 			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled,
 		);
+		await orchestrationService.init();
 
 		Container.get(PubSubHandler).init();
 
