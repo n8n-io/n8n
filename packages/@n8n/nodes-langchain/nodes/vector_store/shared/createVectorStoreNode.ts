@@ -5,7 +5,7 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { VectorDBQAChain } from 'langchain/chains';
-import { VectorStoreQATool } from 'langchain/tools';
+import { DynamicTool, VectorStoreQATool } from 'langchain/tools';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -383,7 +383,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load" and "insert" operation modes are supported with execute',
+				'Only the "load", "update" and "insert" operation modes are supported with execute',
 			);
 		}
 
@@ -400,26 +400,72 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			)) as Embeddings;
 
 			const filter = getMetadataFiltersValues(this, itemIndex);
-			const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 
-			const llm = (await this.getInputConnectionData(
-				NodeConnectionType.AiLanguageModel,
-				0,
-			)) as BaseLanguageModel;
+			const vectorStoreTool = new DynamicTool({
+				name,
+				description: toolDescription,
+				func: async (input) => {
+					const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 
-			const description = VectorStoreQATool.getDescription(name, toolDescription);
-			const vectorStoreTool = new VectorStoreQATool(name, description, {
-				llm,
-				vectorStore,
-			});
+					const embeddedPrompt = await embeddings.embedQuery(input);
+					// console.log('yo', embeddedPrompt);
+					const documents = await vectorStore.similaritySearchVectorWithScore(
+						embeddedPrompt,
+						topK,
+						filter,
+					);
 
-			vectorStoreTool.chain = VectorDBQAChain.fromLLM(llm, vectorStore, {
-				k: topK,
+					// return [{ documents }];
+
+					// todo what about other indexes
+					return documents[0]
+						?.map((document) => {
+							if (typeof document === 'object' && 'pageContent' in document) {
+								return { type: 'text', text: JSON.stringify(document) };
+							}
+
+							// todo why is there a number type
+							return undefined;
+						})
+						.filter((document) => !!document);
+				},
 			});
 
 			return {
 				response: logWrapper(vectorStoreTool, this),
 			};
+
+			// // todo allow name and description to be configurable
+			// const name = 'vector_store_tool'; //this.getNodeParameter('name', itemIndex) as string;
+			// const toolDescription = 'get data'; //this.getNodeParameter('description', itemIndex) as string;
+			// const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+
+			// const embeddings = (await this.getInputConnectionData(
+			// 	NodeConnectionType.AiEmbedding,
+			// 	0,
+			// )) as Embeddings;
+
+			// const filter = getMetadataFiltersValues(this, itemIndex);
+			// const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
+
+			// const llm = (await this.getInputConnectionData(
+			// 	NodeConnectionType.AiLanguageModel,
+			// 	0,
+			// )) as BaseLanguageModel;
+
+			// const description = VectorStoreQATool.getDescription(name, toolDescription);
+			// const vectorStoreTool = new VectorStoreQATool(name, description, {
+			// 	llm,
+			// 	vectorStore,
+			// });
+
+			// vectorStoreTool.chain = VectorDBQAChain.fromLLM(llm, vectorStore, {
+			// 	k: topK,
+			// });
+
+			// return {
+			// 	response: logWrapper(vectorStoreTool, this),
+			// };
 
 			// todo make this backward compatible, allowing to be used directly as a vector store
 			// const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
