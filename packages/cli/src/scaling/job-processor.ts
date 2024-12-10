@@ -167,7 +167,7 @@ export class JobProcessor {
 		let workflowRun: PCancelable<IRun>;
 
 		if (execution.mode === 'manual') {
-			const { startData, resultData } = execution.data;
+			const { startData, resultData, manualData } = execution.data;
 
 			const data: IWorkflowExecutionDataProcess = {
 				destinationNode: startData?.destinationNode,
@@ -176,9 +176,9 @@ export class JobProcessor {
 				pinData: resultData.pinData,
 				startNodes: startData?.startNodes,
 				workflowData: execution.workflowData,
-				partialExecutionVersion: '1', // @TODO
-				dirtyNodeNames: undefined, // @TODO
-				triggerToStartFrom: undefined, // @TODO
+				partialExecutionVersion: manualData?.partialExecutionVersion,
+				dirtyNodeNames: manualData?.dirtyNodeNames,
+				triggerToStartFrom: manualData?.triggerToStartFrom,
 			};
 
 			workflowRun = this.workflowRunner.runManually(

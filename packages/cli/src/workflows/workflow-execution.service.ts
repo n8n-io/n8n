@@ -151,16 +151,16 @@ export class WorkflowExecutionService {
 		};
 
 		/**
-		 * In the past, manual executions in queue mode were executed in the main process,
-		 * so there was no need to persist the parts of execution data that are relevant
-		 * to manual executions. However, now that manual executions are executed in the
-		 * worker process, we must persist these parts of execution data.
+		 * Historically, manual executions in scaling mode ran in the main process,
+		 * so some execution details were never persisted in the database.
+		 *
+		 * Currently, manual executions in scaling mode are offloaded to workers,
+		 * so we persist all details to give workers full access to them.
 		 */
 		if (
 			config.getEnv('executions.mode') === 'queue' &&
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 		) {
-			// @TODO: manualData?
 			data.executionData = {
 				startData: {
 					startNodes,
@@ -169,6 +169,11 @@ export class WorkflowExecutionService {
 				resultData: {
 					pinData,
 					runData,
+				},
+				manualData: {
+					partialExecutionVersion,
+					dirtyNodeNames,
+					triggerToStartFrom,
 				},
 			};
 		}
