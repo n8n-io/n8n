@@ -15,7 +15,6 @@ export * from './MessageEventBus';
 export * from './ExecutionStatus';
 export * from './Expression';
 export * from './NodeHelpers';
-export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
 export * from './WorkflowDataProxyEnvProvider';

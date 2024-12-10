@@ -1,5 +1,4 @@
 import { mock } from 'jest-mock-extended';
-
 import type {
 	INode,
 	INodeExecutionData,
@@ -17,13 +16,12 @@ import type {
 	INodeTypeDescription,
 	IWorkflowExecuteAdditionalData,
 	IExecuteFunctions,
-} from '@/Interfaces';
-import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
-import { RoutingNode } from '@/RoutingNode';
-import * as utilsModule from '@/utils';
-import { Workflow } from '@/Workflow';
+} from 'n8n-workflow';
+import { NodeHelpers, Workflow } from 'n8n-workflow';
 
-import * as Helpers from './Helpers';
+import { RoutingNode } from '@/RoutingNode';
+
+import { getExecuteSingleFunctions, NodeTypes } from './helpers';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
@@ -46,10 +44,10 @@ describe('RoutingNode', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 	test('applyDeclarativeNodeOptionParameters', () => {
-		const nodeTypes = Helpers.NodeTypes();
+		const nodeTypes = NodeTypes();
 		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
 
-		applyDeclarativeNodeOptionParameters(nodeType);
+		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
 
 		const options = nodeType.description.properties.find(
 			(property) => property.name === 'requestOptions',
@@ -667,7 +665,7 @@ describe('RoutingNode', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.NodeTypes();
+		const nodeTypes = NodeTypes();
 		const node: INode = {
 			parameters: {},
 			name: 'test',
@@ -711,7 +709,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const executeSingleFunctions = Helpers.getExecuteSingleFunctions(
+				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
 					runExecutionData,
 					runIndex,
@@ -1861,7 +1859,7 @@ describe('RoutingNode', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.NodeTypes();
+		const nodeTypes = NodeTypes();
 		const baseNode: INode = {
 			parameters: {},
 			name: 'test',
@@ -1877,7 +1875,7 @@ describe('RoutingNode', () => {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
-		applyDeclarativeNodeOptionParameters(nodeType);
+		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
 
 		const propertiesOriginal = nodeType.description.properties;
 
@@ -1922,7 +1920,7 @@ describe('RoutingNode', () => {
 				} as IExecuteData;
 
 				const executeFunctions = mock<IExecuteFunctions>();
-				const executeSingleFunctions = Helpers.getExecuteSingleFunctions(
+				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
 					runExecutionData,
 					runIndex,
@@ -1943,7 +1941,8 @@ describe('RoutingNode', () => {
 					}
 				}
 
-				const spy = jest.spyOn(utilsModule, 'sleep').mockReturnValue(
+				const workflowPackage = await import('n8n-workflow');
+				const spy = jest.spyOn(workflowPackage, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2042,7 +2041,7 @@ describe('RoutingNode', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.NodeTypes();
+		const nodeTypes = NodeTypes();
 		const baseNode: INode = {
 			parameters: {},
 			name: 'test',
@@ -2112,7 +2111,7 @@ describe('RoutingNode', () => {
 				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
 					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 						getExecuteSingleFunctions: () => {
-							return Helpers.getExecuteSingleFunctions(
+							return getExecuteSingleFunctions(
 								workflow,
 								runExecutionData,
 								runIndex,

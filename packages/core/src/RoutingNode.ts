@@ -1,18 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import url from 'node:url';
-
-import { NodeApiError } from './errors/node-api.error';
-import { NodeOperationError } from './errors/node-operation.error';
+import { NodeHelpers, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -43,10 +38,9 @@ import type {
 	CloseFunction,
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
-} from './Interfaces';
-import * as NodeHelpers from './NodeHelpers';
-import { sleep } from './utils';
-import type { Workflow } from './Workflow';
+	Workflow,
+} from 'n8n-workflow';
+import url from 'node:url';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -308,6 +302,7 @@ export class RoutingNode {
 		}
 
 		const promisesResponses = await Promise.allSettled(requestPromises);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			responseData = promisesResponses.shift();

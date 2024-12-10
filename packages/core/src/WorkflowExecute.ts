@@ -52,7 +52,6 @@ import {
 	ErrorReporterProxy,
 	ExecutionCancelledError,
 	Node,
-	RoutingNode,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import Container from 'typedi';
@@ -69,6 +68,7 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 } from './PartialExecutionUtils';
+import { RoutingNode } from './RoutingNode';
 import { TriggersAndPollers } from './TriggersAndPollers';
 
 export class WorkflowExecute {

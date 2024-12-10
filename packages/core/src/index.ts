@@ -11,6 +11,7 @@ export * from './DirectoryLoader';
 export * from './Interfaces';
 export { InstanceSettings, InstanceType } from './InstanceSettings';
 export * from './NodeExecuteFunctions';
+export * from './RoutingNode';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions };
 export * from './data-deduplication-service';

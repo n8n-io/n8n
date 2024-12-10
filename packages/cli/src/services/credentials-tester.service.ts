@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import get from 'lodash/get';
-import { NodeExecuteFunctions } from 'n8n-core';
+import { NodeExecuteFunctions, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -26,7 +26,6 @@ import type {
 import {
 	VersionedNodeType,
 	NodeHelpers,
-	RoutingNode,
 	Workflow,
 	ErrorReporterProxy as ErrorReporter,
 	ApplicationError,
