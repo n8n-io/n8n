@@ -1,5 +1,5 @@
 import { DataDeduplicationService } from 'n8n-core';
-import type { ICheckProcessedContextData, INodeTypeData } from 'n8n-workflow';
+import type { ICheckProcessedContextData } from 'n8n-workflow';
 import type { IDeduplicationOutput, INode, DeduplicationItemTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { mockInstance } from '@test/mocking';
 import { createWorkflow } from '@test-integration/db/workflows';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import * as testDb from '../shared/test-db';
 
@@ -22,35 +23,7 @@ mockInstance(LoadNodesAndCredentials, {
 		credentials: {},
 	},
 });
-function mockNodeTypesData(
-	nodeNames: string[],
-	options?: {
-		addTrigger?: boolean;
-	},
-) {
-	return nodeNames.reduce<INodeTypeData>((acc, nodeName) => {
-		return (
-			(acc[`n8n-nodes-base.${nodeName}`] = {
-				sourcePath: '',
-				type: {
-					description: {
-						displayName: nodeName,
-						name: nodeName,
-						group: [],
-						description: '',
-						version: 1,
-						defaults: {},
-						inputs: [],
-						outputs: [],
-						properties: [],
-					},
-					trigger: options?.addTrigger ? async () => undefined : undefined,
-				},
-			}),
-			acc
-		);
-	}, {});
-}
+
 const node: INode = {
 	id: 'uuid-1234',
 	parameters: {},
