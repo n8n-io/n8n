@@ -1,27 +1,31 @@
 import { mock } from 'jest-mock-extended';
+import { get } from 'lodash';
 import type {
-	INode,
-	INodeExecutionData,
-	INodeParameters,
 	DeclarativeRestApiSettings,
-	IRunExecutionData,
-	INodeProperties,
+	IExecuteData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	ITaskDataConnections,
-	INodeExecuteFunctions,
+	IN8nHttpFullResponse,
+	IN8nHttpResponse,
 	IN8nRequestOperations,
+	INode,
 	INodeCredentialDescription,
-	IExecuteData,
+	INodeExecutionData,
+	INodeParameters,
+	INodeProperties,
+	INodeType,
 	INodeTypeDescription,
+	IRunExecutionData,
+	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
-	IExecuteFunctions,
 } from 'n8n-workflow';
 import { NodeHelpers, Workflow } from 'n8n-workflow';
+import nock from 'nock';
 
+import * as executionContexts from '@/node-execution-context';
 import { RoutingNode } from '@/RoutingNode';
 
-import { getExecuteSingleFunctions, NodeTypes } from './helpers';
+import { NodeTypes } from './helpers';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
@@ -40,8 +44,52 @@ const preSendFunction1 = async function (
 	return requestOptions;
 };
 
+const getExecuteSingleFunctions = (
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData,
+	runIndex: number,
+	node: INode,
+	itemIndex: number,
+) =>
+	mock<executionContexts.ExecuteSingleContext>({
+		getItemIndex: () => itemIndex,
+		getNodeParameter: (parameterName: string) =>
+			workflow.expression.getParameterValue(
+				get(node.parameters, parameterName),
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				node.name,
+				[],
+				'internal',
+				{},
+			),
+		getWorkflow: () => ({
+			id: workflow.id,
+			name: workflow.name,
+			active: workflow.active,
+		}),
+		helpers: mock<IExecuteSingleFunctions['helpers']>({
+			async httpRequest(
+				requestOptions: IHttpRequestOptions,
+			): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+				return {
+					body: {
+						headers: {},
+						statusCode: 200,
+						requestOptions,
+					},
+				};
+			},
+		}),
+	});
+
 describe('RoutingNode', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+	beforeAll(() => {
+		nock.disableNetConnect();
+	});
 
 	test('applyDeclarativeNodeOptionParameters', () => {
 		const nodeTypes = NodeTypes();
@@ -697,7 +745,7 @@ describe('RoutingNode', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					active: false,
-					nodeTypes,
+					nodeTypes: mock(),
 				});
 
 				const routingNode = new RoutingNode(
@@ -1901,7 +1949,7 @@ describe('RoutingNode', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					active: false,
-					nodeTypes,
+					nodeTypes: mock(),
 				});
 
 				const routingNode = new RoutingNode(
@@ -1919,7 +1967,7 @@ describe('RoutingNode', () => {
 					source: null,
 				} as IExecuteData;
 
-				const executeFunctions = mock<IExecuteFunctions>();
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
 					runExecutionData,
@@ -1928,10 +1976,10 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
-					getExecuteFunctions: () => executeFunctions,
-					getExecuteSingleFunctions: () => executeSingleFunctions,
-				};
+				jest.spyOn(executionContexts, 'ExecuteContext').mockReturnValue(executeFunctions);
+				jest
+					.spyOn(executionContexts, 'ExecuteSingleContext')
+					.mockReturnValue(executeSingleFunctions);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -1955,18 +2003,13 @@ describe('RoutingNode', () => {
 				);
 
 				const getNodeParameter = executeSingleFunctions.getNodeParameter;
+				// @ts-expect-error overwriting a method
 				executeSingleFunctions.getNodeParameter = (parameterName: string) =>
 					parameterName in testData.input.node.parameters
 						? testData.input.node.parameters[parameterName]
 						: (getNodeParameter(parameterName) ?? {});
 
-				const result = await routingNode.runNode(
-					inputData,
-					runIndex,
-					nodeType,
-					executeData,
-					nodeExecuteFunctions as INodeExecuteFunctions,
-				);
+				const result = await routingNode.runNode(inputData, runIndex, nodeType, executeData);
 
 				if (testData.input.specialTestOptions?.sleepCalls) {
 					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);
@@ -2041,7 +2084,6 @@ describe('RoutingNode', () => {
 			},
 		];
 
-		const nodeTypes = NodeTypes();
 		const baseNode: INode = {
 			parameters: {},
 			name: 'test',
@@ -2051,12 +2093,10 @@ describe('RoutingNode', () => {
 			position: [0, 0],
 		};
 
-		const mode = 'internal';
 		const runIndex = 0;
 		const itemIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
-		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+		const nodeType = mock<INodeType>();
 
 		const inputData: ITaskDataConnections = {
 			main: [
@@ -2089,56 +2129,20 @@ describe('RoutingNode', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					active: false,
-					nodeTypes,
+					nodeTypes: mock(),
 				});
-
-				const routingNode = new RoutingNode(
-					workflow,
-					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
-					mode,
-				);
-
-				const executeData = {
-					data: {},
-					node,
-					source: null,
-				} as IExecuteData;
 
 				let currentItemIndex = 0;
 				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
-					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
-						getExecuteSingleFunctions: () => {
-							return getExecuteSingleFunctions(
-								workflow,
-								runExecutionData,
-								runIndex,
-								node,
-								itemIndex + iteration,
-							);
-						},
-					};
-
-					if (!nodeExecuteFunctions.getExecuteSingleFunctions) {
-						fail('Expected nodeExecuteFunctions to contain getExecuteSingleFunctions');
-					}
-
-					const routingNodeExecutionContext = nodeExecuteFunctions.getExecuteSingleFunctions(
-						routingNode.workflow,
-						routingNode.runExecutionData,
+					const context = getExecuteSingleFunctions(
+						workflow,
+						runExecutionData,
 						runIndex,
-						routingNode.connectionInputData,
-						inputData,
-						routingNode.node,
-						iteration,
-						routingNode.additionalData,
-						executeData,
-						routingNode.mode,
+						node,
+						itemIndex + iteration,
 					);
-
-					currentItemIndex = routingNodeExecutionContext.getItemIndex();
+					jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					currentItemIndex = context.getItemIndex();
 				}
 
 				const expectedItemIndex = inputData.main[0]!.length - 1;

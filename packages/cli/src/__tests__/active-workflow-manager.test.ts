@@ -1,10 +1,16 @@
-import { mock } from "jest-mock-extended";
-import type { InstanceSettings } from "n8n-core";
-import type { WorkflowParameters, INode, INodeType, INodeTypeDescription, WorkflowActivateMode } from "n8n-workflow";
+import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
+import type {
+	WorkflowParameters,
+	INode,
+	INodeType,
+	INodeTypeDescription,
+	WorkflowActivateMode,
+} from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import { ActiveWorkflowManager } from "@/active-workflow-manager";
-import type { NodeTypes } from "@/node-types";
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { NodeTypes } from '@/node-types';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
@@ -67,7 +73,10 @@ describe('ActiveWorkflowManager', () => {
 			['should activate if webhook method exists', webhookNode, [], true],
 		])('%s', async (_, node, ignoredNodes, expected) => {
 			const workflow = new Workflow(mock<WorkflowParameters>({ nodeTypes, nodes: [node] }));
-			const canBeActivated = activeWorkflowManager.checkIfWorkflowCanBeActivated(workflow, ignoredNodes);
+			const canBeActivated = activeWorkflowManager.checkIfWorkflowCanBeActivated(
+				workflow,
+				ignoredNodes,
+			);
 			expect(canBeActivated).toBe(expected);
 		});
 	});
@@ -112,4 +121,4 @@ describe('ActiveWorkflowManager', () => {
 			});
 		});
 	});
-})
+});

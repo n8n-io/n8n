@@ -1,6 +1,5 @@
 import { readdirSync, readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
 import type {
 	IDataObject,
 	IDeferredPromise,
@@ -14,13 +13,6 @@ import type {
 	NodeLoadingDetails,
 	WorkflowTestData,
 	INodeTypeData,
-	Workflow,
-	IRunExecutionData,
-	INode,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	IN8nHttpResponse,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import path from 'path';
@@ -165,45 +157,3 @@ export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
 	}
 	return testCases;
 };
-
-export function getExecuteSingleFunctions(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData,
-	runIndex: number,
-	node: INode,
-	itemIndex: number,
-): IExecuteSingleFunctions {
-	return mock<IExecuteSingleFunctions>({
-		getItemIndex: () => itemIndex,
-		getNodeParameter: (parameterName: string) => {
-			return workflow.expression.getParameterValue(
-				get(node.parameters, parameterName),
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				node.name,
-				[],
-				'internal',
-				{},
-			);
-		},
-		getWorkflow: () => ({
-			id: workflow.id,
-			name: workflow.name,
-			active: workflow.active,
-		}),
-		helpers: mock<IExecuteSingleFunctions['helpers']>({
-			async httpRequest(
-				requestOptions: IHttpRequestOptions,
-			): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-				return {
-					body: {
-						headers: {},
-						statusCode: 200,
-						requestOptions,
-					},
-				};
-			},
-		}),
-	});
-}

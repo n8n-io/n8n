@@ -311,7 +311,6 @@ export class CredentialsTester {
 				runIndex,
 				nodeTypeCopy,
 				{ node, data: {}, source: null },
-				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
 		} catch (error) {

@@ -25,7 +25,7 @@ import * as utils from './shared/utils/';
 import { mockInstance } from '../shared/mocking';
 
 mockInstance(ActiveExecutions);
-mockInstance(Logger)
+mockInstance(Logger);
 mockInstance(Push);
 mockInstance(SecretsHelper);
 mockInstance(ExecutionService);

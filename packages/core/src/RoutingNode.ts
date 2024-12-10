@@ -14,7 +14,6 @@ import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INode,
-	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodePropertyOptions,
@@ -39,8 +38,11 @@ import type {
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
 	Workflow,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import url from 'node:url';
+
+import { ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -77,7 +79,6 @@ export class RoutingNode {
 		runIndex: number,
 		nodeType: INodeType,
 		executeData: IExecuteData,
-		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
 		abortSignal?: AbortSignal,
 	): Promise<INodeExecutionData[][] | null | undefined> {
@@ -85,19 +86,19 @@ export class RoutingNode {
 		const returnData: INodeExecutionData[] = [];
 
 		const closeFunctions: CloseFunction[] = [];
-		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
+		const executeFunctions = new ExecuteContext(
 			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
 			this.runExecutionData,
 			runIndex,
 			this.connectionInputData,
 			inputData,
-			this.node,
-			this.additionalData,
 			executeData,
-			this.mode,
 			closeFunctions,
 			abortSignal,
-		);
+		) as IExecuteFunctions;
 
 		let credentialDescription: INodeCredentialDescription | undefined;
 
@@ -162,20 +163,22 @@ export class RoutingNode {
 				}
 			}
 
+			const thisArgs = new ExecuteSingleContext(
+				this.workflow,
+				this.node,
+				this.additionalData,
+				this.mode,
+				this.runExecutionData,
+				runIndex,
+				this.connectionInputData,
+				inputData,
+				itemIndex,
+				executeData,
+				abortSignal,
+			);
+
 			itemContext.push({
-				thisArgs: nodeExecuteFunctions.getExecuteSingleFunctions(
-					this.workflow,
-					this.runExecutionData,
-					runIndex,
-					this.connectionInputData,
-					inputData,
-					this.node,
-					itemIndex,
-					this.additionalData,
-					executeData,
-					this.mode,
-					abortSignal,
-				),
+				thisArgs,
 				requestData: {
 					options: {
 						qs: {},
