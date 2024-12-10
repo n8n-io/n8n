@@ -336,7 +336,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							type="tertiary"
 							@click="handleMenuSelect(item.id)"
 						>
-							{{ i18n.baseText('generic.upgrade') }}
+							{{ i18n.baseText('generic.pro') }}
 						</N8nButton>
 					</N8nTooltip>
 				</template>
