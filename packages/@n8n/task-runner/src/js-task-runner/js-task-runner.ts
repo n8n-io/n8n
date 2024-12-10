@@ -202,13 +202,11 @@ export class JsTaskRunner extends TaskRunner {
 
 		try {
 			const result = await new Promise<TaskResultData['result']>((resolve, reject) => {
-				signal.addEventListener(
-					'abort',
-					() => {
-						reject(new TimeoutError(this.taskTimeout));
-					},
-					{ once: true },
-				);
+				const abortHandler = () => {
+					reject(new TimeoutError(this.taskTimeout));
+				};
+
+				signal.addEventListener('abort', abortHandler, { once: true });
 
 				const taskResult = runInNewContext(
 					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
@@ -216,7 +214,12 @@ export class JsTaskRunner extends TaskRunner {
 					{ timeout: this.taskTimeout * 1000 },
 				) as Promise<TaskResultData['result']>;
 
-				void taskResult.then(resolve).catch(reject);
+				void taskResult
+					.then(resolve)
+					.catch(reject)
+					.finally(() => {
+						signal.removeEventListener('abort', abortHandler);
+					});
 			});
 
 			if (result === null) {
@@ -272,13 +275,11 @@ export class JsTaskRunner extends TaskRunner {
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
-					signal.addEventListener(
-						'abort',
-						() => {
-							reject(new TimeoutError(this.taskTimeout));
-						},
-						{ once: true },
-					);
+					const abortHandler = () => {
+						reject(new TimeoutError(this.taskTimeout));
+					};
+
+					signal.addEventListener('abort', abortHandler);
 
 					const taskResult = runInNewContext(
 						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
@@ -286,7 +287,12 @@ export class JsTaskRunner extends TaskRunner {
 						{ timeout: this.taskTimeout * 1000 },
 					) as Promise<INodeExecutionData>;
 
-					void taskResult.then(resolve).catch(reject);
+					void taskResult
+						.then(resolve)
+						.catch(reject)
+						.finally(() => {
+							signal.removeEventListener('abort', abortHandler);
+						});
 				});
 
 				// Filter out null values
