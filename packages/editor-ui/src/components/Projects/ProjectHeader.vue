@@ -120,7 +120,7 @@ const onActivatorClick = () => onSelect(ACTION_TYPES.WORKFLOW);
 				</N8nText>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
-				<div :class="[$style.buttonGroup]" data-test-id="resource-add">
+				<div :class="[$style.buttonGroup]" data-test-id="add-resource-buttons">
 					<N8nButton
 						data-test-id="add-resource-workflow"
 						:class="[$style.buttonGroupTrigger]"

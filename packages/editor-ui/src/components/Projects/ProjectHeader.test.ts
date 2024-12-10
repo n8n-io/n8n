@@ -194,6 +194,6 @@ describe('ProjectHeader', () => {
 			name: VIEWS.PROJECT_SETTINGS,
 		} as RouteLocationNormalizedLoadedGeneric);
 		const { queryByTestId } = renderComponent();
-		expect(queryByTestId('resource-add')).not.toBeInTheDocument();
+		expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
 	});
 });
