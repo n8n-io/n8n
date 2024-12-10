@@ -414,6 +414,7 @@ const onDragChange = (optionName: string) => {
 }
 .ghost {
 	background-color: var(--color-background-base);
+	opacity: 0.5;
 }
 .dragging {
 	background-color: var(--color-background-xlight);
