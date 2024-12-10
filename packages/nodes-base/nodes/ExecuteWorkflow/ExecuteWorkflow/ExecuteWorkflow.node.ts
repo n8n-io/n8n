@@ -2,6 +2,7 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
 	FieldValueOption,
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -15,23 +16,26 @@ import { generatePairedItemData } from '../../../utils/utilities';
 import { getWorkflowInputData } from '../GenericFunctions';
 
 function getWorkflowInputValues(this: IExecuteFunctions) {
-	const newItems: INodeExecutionData[] = [];
 	const inputData = this.getInputData();
 
-	for (const [itemIndex, item] of inputData.entries()) {
-		const itemFieldValues = this.getNodeParameter('workflowInputs.value', itemIndex, {}) as {};
+	return inputData.map((item, itemIndex) => {
+		const itemFieldValues = this.getNodeParameter(
+			'workflowInputs.value',
+			itemIndex,
+			{},
+		) as IDataObject;
 
-		const newItem: INodeExecutionData = {
-			json: { ...item.json, ...itemFieldValues },
+		return {
+			json: {
+				...item.json,
+				...itemFieldValues,
+			},
 			index: itemIndex,
-
-			pairedItem: { item: itemIndex },
+			pairedItem: {
+				item: itemIndex,
+			},
 		};
-
-		newItems.push(newItem);
-	}
-
-	return newItems;
+	});
 }
 
 function getCurrentWorkflowInputData(this: IExecuteFunctions) {
