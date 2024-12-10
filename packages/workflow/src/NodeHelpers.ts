@@ -1838,7 +1838,7 @@ export function getParameterIssues(
 				data: option as INodeProperties,
 			});
 		}
-	} else if (nodeProperties.type === 'fixedCollection') {
+	} else if (nodeProperties.type === 'fixedCollection' && isDisplayed) {
 		basePath = basePath ? `${basePath}.` : `${nodeProperties.name}.`;
 
 		let propertyOptions: INodePropertyCollection;
