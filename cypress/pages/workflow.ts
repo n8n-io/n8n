@@ -1,9 +1,9 @@
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
 import { META_KEY } from '../constants';
+import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
 import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
-import type { OpenContextMenuOptions } from '../types';
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
