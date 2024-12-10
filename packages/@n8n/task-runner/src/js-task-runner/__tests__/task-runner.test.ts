@@ -37,6 +37,8 @@ describe('TestRunner', () => {
 					maxPayload: 1024,
 				}),
 			);
+
+			runner.clearIdleTimer();
 		});
 
 		it('should handle different taskBrokerUri formats correctly', () => {
@@ -64,6 +66,8 @@ describe('TestRunner', () => {
 					maxPayload: 1024,
 				}),
 			);
+
+			runner.clearIdleTimer();
 		});
 
 		it('should throw an error if taskBrokerUri is invalid', () => {
