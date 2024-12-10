@@ -427,10 +427,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						return documents
 							.map((document) => {
 								// Tools can only return a string or array of objects with type text
-								// todo return concatenated strings instead?
-								return { type: 'text', text: document[0].pageContent };
+								// todo return concatenated strings instead? Or just without metadata?
+								// return { type: 'text', text: document[0].pageContent };
 								// todo with metadata?
-								// return { type: 'text', text: JSON.stringify(document[0]) };
+								return { type: 'text', text: JSON.stringify(document[0]) };
 							})
 							.filter((document) => !!document);
 					},
