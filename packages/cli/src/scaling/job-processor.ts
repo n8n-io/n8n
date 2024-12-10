@@ -185,8 +185,8 @@ export class JobProcessor {
 				workflowRun = workflowExecute.runPartialWorkflow2(
 					workflow,
 					resultData.runData,
-					startData?.destinationNode,
 					resultData.pinData,
+					startData?.destinationNode ? [startData.destinationNode] : undefined,
 				);
 			}
 		} else if (execution.data !== undefined) {
