@@ -43,18 +43,7 @@ function onDeleteMetric(metric: Partial<TestMetricRecord>) {
 						:placeholder="locale.baseText('testDefinition.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
 					/>
-					<n8n-icon-button
-						:class="{ [$style.sendButton]: true }"
-						icon="trash"
-						type="text"
-						@click="onDeleteMetric(metric)"
-					/>
-					<!-- <n8n-button
-						type="tertiary"
-						:label="locale.baseText('testDefinition.edit.deleteMetric')"
-						:class="$style.newMetricButton"
-						@click="onDeleteMetric(metric)"
-					/> -->
+					<n8n-icon-button icon="trash" type="text" @click="onDeleteMetric(metric)" />
 				</div>
 				<n8n-button
 					type="tertiary"
