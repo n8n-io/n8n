@@ -1,3 +1,17 @@
+## [1.70.4](https://github.com/n8n-io/n8n/compare/n8n@1.70.3...n8n@1.70.4) (2024-12-10)
+
+
+### Bug Fixes
+
+* **core:** Make sure task runner exits ([#12123](https://github.com/n8n-io/n8n/issues/12123)) ([996c9e9](https://github.com/n8n-io/n8n/commit/996c9e9e9c9f20a1c6bfc38cc48a9c6209fcfcf0))
+
+
+### Features
+
+* **core:** Cancel runner task on timeout in external mode ([#12101](https://github.com/n8n-io/n8n/issues/12101)) ([881a77d](https://github.com/n8n-io/n8n/commit/881a77d5617167f83fa541478b624aa68b9523bf))
+
+
+
 ## [1.70.3](https://github.com/n8n-io/n8n/compare/n8n@1.70.2...n8n@1.70.3) (2024-12-05)
 
 
