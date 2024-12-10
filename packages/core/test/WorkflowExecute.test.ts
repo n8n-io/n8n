@@ -9,12 +9,26 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
+import { mock } from 'jest-mock-extended';
 import { pick } from 'lodash';
-import type { IPinData, IRun, IRunData, WorkflowTestData } from 'n8n-workflow';
+import type {
+	IExecuteData,
+	INode,
+	INodeType,
+	INodeTypes,
+	IPinData,
+	IRun,
+	IRunData,
+	IRunExecutionData,
+	ITriggerResponse,
+	IWorkflowExecuteAdditionalData,
+	WorkflowTestData,
+} from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
 	NodeExecutionOutput,
+	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -442,6 +456,152 @@ describe('WorkflowExecute', () => {
 				new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
 				new Set([node1]),
 			);
+		});
+	});
+
+	describe('checkReadyForExecution', () => {
+		const disabledNode = mock<INode>({ name: 'Disabled Node', disabled: true });
+		const startNode = mock<INode>({ name: 'Start Node' });
+		const unknownNode = mock<INode>({ name: 'Unknown Node', type: 'unknownNode' });
+
+		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
+
+		const nodeTypes = mock<INodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
+			if (type === 'unknownNode') return undefined as unknown as INodeType;
+			return mock<INodeType>({
+				description: {
+					properties: [],
+				},
+			});
+		});
+		const workflowExecute = new WorkflowExecute(mock(), 'manual');
+
+		beforeEach(() => jest.clearAllMocks());
+
+		it('should return null if there are no nodes', () => {
+			const workflow = new Workflow({
+				nodes: [],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const issues = workflowExecute.checkReadyForExecution(workflow);
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return null if there are no enabled nodes', () => {
+			const workflow = new Workflow({
+				nodes: [disabledNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				startNode: disabledNode.name,
+			});
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(1);
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return typeUnknown for unknown nodes', () => {
+			const workflow = new Workflow({
+				nodes: [unknownNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				startNode: unknownNode.name,
+			});
+			expect(issues).toEqual({ [unknownNode.name]: { typeUnknown: true } });
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return issues for regular nodes', () => {
+			const workflow = new Workflow({
+				nodes: [startNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			nodeParamIssuesSpy.mockReturnValue({ execution: false });
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				startNode: startNode.name,
+			});
+			expect(issues).toEqual({ [startNode.name]: { execution: false } });
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
+			expect(nodeParamIssuesSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('runNode', () => {
+		const nodeTypes = mock<INodeTypes>();
+		const triggerNode = mock<INode>();
+		const triggerResponse = mock<ITriggerResponse>({
+			closeFunction: jest.fn(),
+			// This node should never trigger, or return
+			manualTriggerFunction: async () => await new Promise(() => {}),
+		});
+		const triggerNodeType = mock<INodeType>({
+			description: {
+				properties: [],
+			},
+			execute: undefined,
+			poll: undefined,
+			webhook: undefined,
+			async trigger() {
+				return triggerResponse;
+			},
+		});
+
+		nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+
+		const workflow = new Workflow({
+			nodeTypes,
+			nodes: [triggerNode],
+			connections: {},
+			active: false,
+		});
+
+		const executionData = mock<IExecuteData>();
+		const runExecutionData = mock<IRunExecutionData>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const abortController = new AbortController();
+		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+		test('should call closeFunction when manual trigger is aborted', async () => {
+			const runPromise = workflowExecute.runNode(
+				workflow,
+				executionData,
+				runExecutionData,
+				0,
+				additionalData,
+				'manual',
+				abortController.signal,
+			);
+			// Yield back to the event-loop to let async parts of `runNode` execute
+			await new Promise((resolve) => setImmediate(resolve));
+
+			let isSettled = false;
+			void runPromise.then(() => {
+				isSettled = true;
+			});
+			expect(isSettled).toBe(false);
+			expect(abortController.signal.aborted).toBe(false);
+			expect(triggerResponse.closeFunction).not.toHaveBeenCalled();
+
+			abortController.abort();
+			expect(triggerResponse.closeFunction).toHaveBeenCalled();
 		});
 	});
 });

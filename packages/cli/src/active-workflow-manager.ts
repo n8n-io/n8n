@@ -546,7 +546,7 @@ export class ActiveWorkflowManager {
 				settings: dbWorkflow.settings,
 			});
 
-			const canBeActivated = workflow.checkIfWorkflowCanBeActivated(STARTING_NODES);
+			const canBeActivated = this.checkIfWorkflowCanBeActivated(workflow, STARTING_NODES);
 
 			if (!canBeActivated) {
 				throw new WorkflowActivationError(
@@ -588,6 +588,48 @@ export class ActiveWorkflowManager {
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		return shouldDisplayActivationMessage;
+	}
+
+	/**
+	 * A workflow can only be activated if it has a node which has either triggers
+	 * or webhooks defined.
+	 *
+	 * @param {string[]} [ignoreNodeTypes] Node-types to ignore in the check
+	 */
+	checkIfWorkflowCanBeActivated(workflow: Workflow, ignoreNodeTypes?: string[]): boolean {
+		let node: INode;
+		let nodeType: INodeType | undefined;
+
+		for (const nodeName of Object.keys(workflow.nodes)) {
+			node = workflow.nodes[nodeName];
+
+			if (node.disabled === true) {
+				// Deactivated nodes can not trigger a run so ignore
+				continue;
+			}
+
+			if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
+				continue;
+			}
+
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+			if (nodeType === undefined) {
+				// Type is not known so check is not possible
+				continue;
+			}
+
+			if (
+				nodeType.poll !== undefined ||
+				nodeType.trigger !== undefined ||
+				nodeType.webhook !== undefined
+			) {
+				// Is a trigger node. So workflow can be activated.
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
