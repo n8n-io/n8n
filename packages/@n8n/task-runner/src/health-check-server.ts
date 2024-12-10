@@ -1,7 +1,7 @@
 import { ApplicationError } from 'n8n-workflow';
 import { createServer } from 'node:http';
 
-export class HealthcheckServer {
+export class HealthCheckServer {
 	private server = createServer((_, res) => {
 		res.writeHead(200);
 		res.end('OK');
@@ -21,7 +21,7 @@ export class HealthcheckServer {
 
 			this.server.listen(port, host, () => {
 				this.server.removeListener('error', portInUseErrorHandler);
-				console.log(`Healthcheck server listening on ${host}, port ${port}`);
+				console.log(`Health check server listening on ${host}, port ${port}`);
 				resolve();
 			});
 		});
