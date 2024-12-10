@@ -25,29 +25,49 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-
       - name: Set release version in env
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
 
+      - name: Check if package version exists already on NPM
+        id: check-npm
+        run: |
+          EXISTS=$(npm view n8n@1.70.4 version || echo "not_found")
+          if [ "$EXISTS" == "1.70.4" ]; then
+            echo "Package version already exists. Skipping job."
+            echo "exists=true" >> $GITHUB_ENV
+          else
+            echo "exists=false" >> $GITHUB_ENV
+          fi
+
+      - run: corepack enable
+        if: env.exists != 'true'
+
+      - uses: actions/setup-node@v4.0.2
+        if: env.exists != 'true'
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+        if: env.exists != 'true'
+
       - name: Build
+        if: env.exists != 'true'
         run: pnpm build
 
       - name: Cache build artifacts
+        if: env.exists != 'true'
         uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
 
       - name: Dry-run publishing
+        if: env.exists != 'true'
         run: pnpm publish -r --no-git-checks --dry-run
 
       - name: Publish to NPM
+        if: env.exists != 'true'
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           node .github/scripts/trim-fe-packageJson.js
