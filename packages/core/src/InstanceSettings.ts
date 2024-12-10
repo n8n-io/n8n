@@ -86,6 +86,28 @@ export class InstanceSettings {
 	 */
 	readonly hostId: string;
 
+	private isMultiMainEnabled = false;
+
+	private isMultiMainSetupLicensed = false;
+
+	setMultiMainEnabled(newState: boolean) {
+		this.isMultiMainEnabled = newState;
+	}
+
+	setMultiMainLicensed(newState: boolean) {
+		this.isMultiMainSetupLicensed = newState;
+	}
+
+	/** Whether this `main` instance is running in multi-main mode. */
+	get isMultiMain() {
+		return this.instanceType === 'main' && this.isMultiMainEnabled && this.isMultiMainSetupLicensed;
+	}
+
+	/** Whether this `main` instance is running in single-main mode. */
+	get isSingleMain() {
+		return !this.isMultiMain;
+	}
+
 	get isLeader() {
 		return this.instanceRole === 'leader';
 	}
