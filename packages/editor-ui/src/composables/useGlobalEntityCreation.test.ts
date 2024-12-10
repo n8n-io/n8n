@@ -169,6 +169,9 @@ describe('useGlobalEntityCreation', () => {
 		);
 
 		settingsStore.isCloudDeployment = false;
+		expect(projectsLimitReachedMessage.value).toContain('You have reached the  plan limit of');
+
+		projectsStore.isTeamProjectFeatureEnabled = false;
 		expect(projectsLimitReachedMessage.value).toContain(
 			'Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows',
 		);
