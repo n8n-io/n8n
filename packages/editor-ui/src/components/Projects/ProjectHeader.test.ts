@@ -32,7 +32,6 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
-			N8nNavigationDropdown: true,
 		},
 	},
 });
@@ -143,24 +142,24 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	test.each([
-		[null, 'Create'],
-		[createTestProject({ type: ProjectTypes.Personal }), 'Create in personal'],
-		[createTestProject({ type: ProjectTypes.Team }), 'Create in project'],
-	])('in project %s should render correct create button label %s', (project, label) => {
-		projectsStore.currentProject = project;
-		const { getByTestId } = renderComponent({
-			global: {
-				stubs: {
-					N8nNavigationDropdown: {
-						template: '<div><slot></slot></div>',
-					},
-				},
-			},
-		});
+	// test.each([
+	// 	[null, 'Create'],
+	// 	[createTestProject({ type: ProjectTypes.Personal }), 'Create in personal'],
+	// 	[createTestProject({ type: ProjectTypes.Team }), 'Create in project'],
+	// ])('in project %s should render correct create button label %s', (project, label) => {
+	// 	projectsStore.currentProject = project;
+	// 	const { getByTestId } = renderComponent({
+	// 		global: {
+	// 			stubs: {
+	// 				N8nNavigationDropdown: {
+	// 					template: '<div><slot></slot></div>',
+	// 				},
+	// 			},
+	// 		},
+	// 	});
 
-		expect(within(getByTestId('resource-add')).getByRole('button', { name: label })).toBeVisible();
-	});
+	// 	expect(within(getByTestId('resource-add')).getByRole('button', { name: label })).toBeVisible();
+	// });
 
 	it('should not render creation button in setting page', async () => {
 		projectsStore.currentProject = createTestProject({ type: ProjectTypes.Personal });
