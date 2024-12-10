@@ -1,6 +1,11 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import { InstanceSettings, WorkflowExecute } from 'n8n-core';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IExecuteResponsePromiseData,
+	IRun,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
 	ApplicationError,
@@ -16,7 +21,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import type {
 	Job,
@@ -40,6 +45,7 @@ export class JobProcessor {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowRunner: WorkflowRunner,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -161,34 +167,27 @@ export class JobProcessor {
 		let workflowRun: PCancelable<IRun>;
 
 		if (execution.mode === 'manual') {
-			const { resultData, startData } = execution.data;
+			const { startData, resultData } = execution.data;
 
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			const data: IWorkflowExecutionDataProcess = {
+				destinationNode: startData?.destinationNode,
+				executionMode: execution.mode,
+				runData: resultData.runData,
+				pinData: resultData.pinData,
+				startNodes: startData?.startNodes,
+				workflowData: execution.workflowData,
+				partialExecutionVersion: '1', // @TODO
+				dirtyNodeNames: undefined, // @TODO
+				triggerToStartFrom: undefined, // @TODO
+			};
 
-			const isFull =
-				resultData.runData === undefined ||
-				startData?.startNodes === undefined ||
-				startData?.startNodes.length === 0;
-
-			if (isFull) {
-				const startNode = WorkflowHelpers.getExecutionStartNode(
-					{ startNodes: startData?.startNodes, pinData: resultData.pinData },
-					workflow,
-				);
-				workflowRun = workflowExecute.run(
-					workflow,
-					startNode,
-					startData?.destinationNode,
-					resultData.pinData,
-				);
-			} else {
-				workflowRun = workflowExecute.runPartialWorkflow2(
-					workflow,
-					resultData.runData,
-					resultData.pinData,
-					startData?.destinationNode ? [startData.destinationNode] : undefined,
-				);
-			}
+			workflowRun = this.workflowRunner.runManually(
+				data,
+				workflow,
+				additionalData,
+				executionId,
+				resultData.pinData,
+			);
 		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);

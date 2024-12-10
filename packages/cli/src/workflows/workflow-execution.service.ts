@@ -160,6 +160,7 @@ export class WorkflowExecutionService {
 			config.getEnv('executions.mode') === 'queue' &&
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 		) {
+			// @TODO: manualData?
 			data.executionData = {
 				startData: {
 					startNodes,
