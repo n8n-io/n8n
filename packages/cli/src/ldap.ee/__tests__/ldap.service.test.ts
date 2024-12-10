@@ -5,6 +5,7 @@ import type { Cipher } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
+import type { Settings } from '@/databases/entities/settings';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { EventService } from '@/events/event.service';
@@ -78,6 +79,8 @@ describe('LdapService', () => {
 		searchTimeout: 6,
 	};
 
+	let settingsRepository = mockInstance(SettingsRepository);
+
 	beforeAll(() => {
 		// Need fake timers to avoid setInterval
 		// problems with the scheduled sync
@@ -88,13 +91,17 @@ describe('LdapService', () => {
 		jest.restoreAllMocks();
 	});
 
+	const createDefaultLdapService = (config: LdapConfig) => {
+		settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+			value: JSON.stringify(config),
+		} as Settings);
+
+		return new LdapService(mockLogger(), settingsRepository, mock(), mock());
+	};
+
 	describe('init()', () => {
 		it('should load the LDAP configuration', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const loadConfigSpy = jest.spyOn(ldapService, 'loadConfig');
 
@@ -104,11 +111,7 @@ describe('LdapService', () => {
 		});
 
 		it('should set expected configuration variables from LDAP config if LDAP is enabled', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const configSetSpy = jest.spyOn(config, 'set');
 
@@ -126,11 +129,7 @@ describe('LdapService', () => {
 		it('should set expected configuration variables from LDAP config if LDAP is disabled', async () => {
 			const givenConfig = { ...ldapConfig, loginEnabled: false };
 
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(givenConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(givenConfig);
 
 			const configSetSpy = jest.spyOn(config, 'set');
 
@@ -146,9 +145,9 @@ describe('LdapService', () => {
 		});
 
 		it('should show logger warning if authentication method is not ldap or email', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const logger = mockLogger();
 
@@ -172,11 +171,7 @@ describe('LdapService', () => {
 				synchronizationInterval: 10,
 			};
 
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(givenConfig) }),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(givenConfig);
 
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
@@ -190,17 +185,11 @@ describe('LdapService', () => {
 		});
 
 		it('should throw an error if config has enabled synchronization but no synchronizationInterval is set', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({
-						...ldapConfig,
-						synchronizationEnabled: true,
-						synchronizationInterval: 0,
-					}),
-				}),
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				synchronizationEnabled: true,
+				synchronizationInterval: 0,
 			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
@@ -211,13 +200,7 @@ describe('LdapService', () => {
 
 	describe('loadConfig()', () => {
 		it('should retrieve the LDAP configuration from the settings repository', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await ldapService.loadConfig();
 
@@ -225,9 +208,9 @@ describe('LdapService', () => {
 		});
 
 		it('should throw an expected error if the LDAP configuration is not found', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockRejectedValue(new Error('LDAP configuration not found')),
-			});
+			settingsRepository.findOneByOrFail.mockRejectedValue(
+				new Error('LDAP configuration not found'),
+			);
 
 			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
@@ -235,11 +218,9 @@ describe('LdapService', () => {
 		});
 
 		it('should decipher the LDAP configuration admin password', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn(),
@@ -254,11 +235,9 @@ describe('LdapService', () => {
 		});
 
 		it('should return the expected LDAP configuration', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -274,13 +253,9 @@ describe('LdapService', () => {
 
 	describe('updateConfig()', () => {
 		it('should throw expected error if the LDAP configuration is invalid', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const invalidLdapConfig = { ...ldapConfig, loginEnabled: 'notABoolean' };
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			await expect(
 				ldapService.updateConfig(invalidLdapConfig as unknown as LdapConfig),
@@ -288,12 +263,9 @@ describe('LdapService', () => {
 		});
 
 		it('should throw expected error if login is enabled and the current authentication method is "saml"', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
-
 			config.set('userManagement.authenticationMethod', 'saml');
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
 				'LDAP cannot be enabled if SSO in enabled',
@@ -301,9 +273,9 @@ describe('LdapService', () => {
 		});
 
 		it('should encrypt the binding admin password', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
@@ -321,9 +293,9 @@ describe('LdapService', () => {
 		});
 
 		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
@@ -346,9 +318,9 @@ describe('LdapService', () => {
 		});
 
 		it('should not delete ldap identities if login is disabled and there are no ldap identities', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([]),
@@ -371,10 +343,9 @@ describe('LdapService', () => {
 		});
 
 		it('should update the LDAP configuration in the settings repository', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-				update: jest.fn(),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
@@ -399,10 +370,9 @@ describe('LdapService', () => {
 		});
 
 		it('should update the LDAP login label in the config', async () => {
-			const settingsRepository = mockInstance(SettingsRepository, {
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(ldapConfig) }),
-				update: jest.fn(),
-			}); // set in container so `setCurrentAuthenticationMethod` does not fail - legacy LDAP code not using DI
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
@@ -431,15 +401,10 @@ describe('LdapService', () => {
 
 	describe('setConfig()', () => {
 		it('should stop synchronization if the timer is running and the config is disabled', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const updatedLdapConfig = { ...ldapConfig, synchronizationEnabled: false };
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
 			await ldapService.init();
@@ -449,11 +414,7 @@ describe('LdapService', () => {
 		});
 
 		it('should schedule synchronization if the timer is not running and the config is enabled', () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const updatedLdapConfig = {
 				...ldapConfig,
@@ -461,7 +422,6 @@ describe('LdapService', () => {
 				synchronizationInterval: 999,
 			};
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
@@ -476,11 +436,7 @@ describe('LdapService', () => {
 		});
 
 		it('should throw an error if the timer is not running and the config is enabled but the synchronizationInterval is not set', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const updatedLdapConfig = {
 				...ldapConfig,
@@ -488,7 +444,6 @@ describe('LdapService', () => {
 				synchronizationInterval: 0,
 			};
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
@@ -500,11 +455,7 @@ describe('LdapService', () => {
 		});
 
 		it('should restart synchronization if the timer is running and the config is enabled', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const updatedLdapConfig = {
 				...ldapConfig,
@@ -512,7 +463,6 @@ describe('LdapService', () => {
 				synchronizationInterval: 1234,
 			};
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
@@ -536,11 +486,9 @@ describe('LdapService', () => {
 
 	describe('searchWithAdminBinding()', () => {
 		it('should bind admin client', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -563,11 +511,9 @@ describe('LdapService', () => {
 		});
 
 		it('should call client search with expected parameters', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -599,11 +545,9 @@ describe('LdapService', () => {
 		});
 
 		it('should call client search with expected parameters when searchPageSize is 0', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({ ...ldapConfig, searchPageSize: 0 }),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify({ ...ldapConfig, searchPageSize: 0 }),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -635,11 +579,9 @@ describe('LdapService', () => {
 		});
 
 		it('should unbind client after search', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -658,11 +600,9 @@ describe('LdapService', () => {
 		});
 
 		it('should return expected search entries', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -701,13 +641,7 @@ describe('LdapService', () => {
 
 	describe('validUser()', () => {
 		it('should throw expected error if no configuration has been set', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.validUser('dn', 'password')).rejects.toThrowError(
 				'Service cannot be used without setting the property config',
@@ -715,16 +649,10 @@ describe('LdapService', () => {
 		});
 
 		it('should bind the ldap client with the expected distinguished name and password', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
 			const password = 'password';
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			await ldapService.init();
 			await ldapService.validUser(distinguishedName, password);
@@ -734,16 +662,10 @@ describe('LdapService', () => {
 		});
 
 		it('should throw expected error if binding fails', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
 			const password = 'password';
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			Client.prototype.bind = jest
 				.fn()
@@ -757,16 +679,10 @@ describe('LdapService', () => {
 		});
 
 		it('should unbind the client binding', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
 			const password = 'password';
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			await ldapService.init();
 			await ldapService.validUser(distinguishedName, password);
@@ -777,13 +693,8 @@ describe('LdapService', () => {
 
 	describe('findAndAuthenticateLdapUser()', () => {
 		it('should search for expected admin login ID', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const searchWithAdminBindingSpy = jest.spyOn(ldapService, 'searchWithAdminBinding');
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
@@ -808,11 +719,9 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected error if admin search fails', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -845,13 +754,8 @@ describe('LdapService', () => {
 		});
 
 		it('should return undefined if no user is found', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
 			const mockedGetLdapIds = getLdapIds as jest.Mock;
@@ -869,11 +773,8 @@ describe('LdapService', () => {
 		});
 
 		it('should validate found user', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
+
 			const foundUsers = [
 				{
 					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
@@ -883,7 +784,6 @@ describe('LdapService', () => {
 				},
 			];
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
 			const validUserSpy = jest.spyOn(ldapService, 'validUser');
@@ -904,11 +804,8 @@ describe('LdapService', () => {
 		});
 
 		it('should validate last user if more than one is found', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
+
 			const foundUsers = [
 				{
 					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
@@ -924,7 +821,6 @@ describe('LdapService', () => {
 				},
 			];
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
 			const validUserSpy = jest.spyOn(ldapService, 'validUser');
@@ -945,11 +841,8 @@ describe('LdapService', () => {
 		});
 
 		it('should return undefined if invalid user is found', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
+
 			const foundUsers = [
 				{
 					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
@@ -959,7 +852,6 @@ describe('LdapService', () => {
 				},
 			];
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
 			const validUserSpy = jest
@@ -982,11 +874,8 @@ describe('LdapService', () => {
 		});
 
 		it('should resolve binary attributes for found user', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
+
 			const foundUsers = [
 				{
 					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
@@ -996,7 +885,6 @@ describe('LdapService', () => {
 				},
 			];
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
 			const mockedGetLdapIds = getLdapIds as jest.Mock;
@@ -1015,11 +903,8 @@ describe('LdapService', () => {
 		});
 
 		it('should return found user', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
+
 			const foundUsers = [
 				{
 					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
@@ -1029,7 +914,6 @@ describe('LdapService', () => {
 				},
 			];
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
 			const mockedGetLdapIds = getLdapIds as jest.Mock;
@@ -1049,13 +933,7 @@ describe('LdapService', () => {
 
 	describe('testConnection()', () => {
 		it('should throw expected error if init() is not called first', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.testConnection()).rejects.toThrowError(
 				'Service cannot be used without setting the property config',
@@ -1063,13 +941,7 @@ describe('LdapService', () => {
 		});
 
 		it('should create a new client without TLS if connectionSecurity is set to "none"', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({ ...ldapConfig, connectionSecurity: 'none' }),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService({ ...ldapConfig, connectionSecurity: 'none' });
 
 			await ldapService.init();
 			await ldapService.testConnection();
@@ -1081,17 +953,11 @@ describe('LdapService', () => {
 		});
 
 		it('should create a new client with TLS enabled if connectionSecurity is set to "tls" and allowing unauthorized certificates', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({
-						...ldapConfig,
-						connectionSecurity: 'tls',
-						allowUnauthorizedCerts: true,
-					}),
-				}),
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'tls',
+				allowUnauthorizedCerts: true,
 			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			await ldapService.init();
 			await ldapService.testConnection();
@@ -1106,17 +972,11 @@ describe('LdapService', () => {
 		});
 
 		it('should create a new client with TLS enabled if connectionSecurity is set to "tls" and not allowing unauthorized certificates', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({
-						...ldapConfig,
-						connectionSecurity: 'tls',
-						allowUnauthorizedCerts: false,
-					}),
-				}),
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'tls',
+				allowUnauthorizedCerts: false,
 			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			await ldapService.init();
 			await ldapService.testConnection();
@@ -1131,17 +991,11 @@ describe('LdapService', () => {
 		});
 
 		it('should create a new client and start TLS if connectionSecurity is set to "startTls"', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify({
-						...ldapConfig,
-						connectionSecurity: 'startTls',
-						allowUnauthorizedCerts: true,
-					}),
-				}),
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'startTls',
+				allowUnauthorizedCerts: true,
 			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 
 			await ldapService.init();
 			await ldapService.testConnection();
@@ -1154,13 +1008,7 @@ describe('LdapService', () => {
 		});
 
 		it('should not create a new client if one has already been created', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await ldapService.init();
 			await ldapService.testConnection();
@@ -1179,13 +1027,8 @@ describe('LdapService', () => {
 		});
 
 		it('should search for users with expected parameters', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const searchWithAdminBindingSpy = jest.spyOn(ldapService, 'searchWithAdminBinding');
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
@@ -1205,13 +1048,8 @@ describe('LdapService', () => {
 		});
 
 		it('should resolve binary attributes for users', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			const foundUsers = [
 				{
 					dn: 'uid=jdoe,ou=users,dc=example,dc=com',
@@ -1234,13 +1072,8 @@ describe('LdapService', () => {
 		});
 
 		it('should throw expected error if search fails', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
 			Client.prototype.search = jest.fn().mockRejectedValue(new Error('Error finding users'));
 
 			const mockedGetLdapIds = getLdapIds as jest.Mock;
@@ -1251,13 +1084,7 @@ describe('LdapService', () => {
 		});
 
 		it('should process expected users if mode is "live"', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			// Users that don't exist in memory
 			const newUsers = [
@@ -1313,13 +1140,7 @@ describe('LdapService', () => {
 		});
 
 		it('should sync expected LDAP data when no errors', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			// Users that don't exist in memory
 			const newUsers = [
@@ -1388,13 +1209,7 @@ describe('LdapService', () => {
 		});
 
 		it('should sync expected LDAP data when users fail to process', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(ldapConfig);
 
 			// Users that don't exist in memory
 			const newUsers = [
@@ -1468,11 +1283,9 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected event if synchronization is enabled', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -1502,11 +1315,9 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected event if synchronization is disabled', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -1537,11 +1348,9 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected event with error message if processUsers fails', async () => {
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({
-					value: JSON.stringify(ldapConfig),
-				}),
-			});
+			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
+				value: JSON.stringify(ldapConfig),
+			} as Settings);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -1586,11 +1395,7 @@ describe('LdapService', () => {
 				synchronizationInterval: 10,
 			};
 
-			const settingsRepository = mock<SettingsRepository>({
-				findOneByOrFail: jest.fn().mockResolvedValue({ value: JSON.stringify(givenConfig) }),
-			});
-
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = createDefaultLdapService(givenConfig);
 
 			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
