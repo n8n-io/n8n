@@ -96,7 +96,6 @@ describe('useTestDefinitionForm', () => {
 
 	it('should handle errors while loading test data', async () => {
 		const { loadTestData } = useTestDefinitionForm();
-		// const fetchSpy = vi.fn().mockRejectedValue(new Error('Fetch Failed'));
 		const fetchSpy = vi
 			.spyOn(useTestDefinitionStore(), 'fetchAll')
 			.mockRejectedValue(new Error('Fetch Failed'));

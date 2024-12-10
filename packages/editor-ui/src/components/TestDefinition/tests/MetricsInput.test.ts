@@ -70,10 +70,6 @@ describe('MetricsInput', () => {
 
 		// Each metric row has a delete button, identified by "button"
 		const deleteButtons = getAllByRole('button', { name: '' });
-		// Since these are icon buttons, if you have trouble querying by role/name,
-		// consider adding a test-id or using `getAllByTestId('evaluation-metric-item')`
-		// and navigate to its sibling button.
-
 		expect(deleteButtons).toHaveLength(props.modelValue.length);
 
 		// Click on the delete button for the second metric
@@ -132,11 +128,9 @@ describe('MetricsInput', () => {
 		const deleteButtons = getAllByRole('button', { name: '' });
 		await userEvent.click(deleteButtons[0]);
 
-		// Verify the "deleteMetric" event
 		expect(emitted('deleteMetric')).toBeTruthy();
 		expect(emitted('deleteMetric')[0]).toEqual([{ name: 'Metric 1' }]);
 
-		// Re-render with the updated props (simulating parent update)
 		await rerender({ modelValue: [{ name: 'Metric 2' }] });
 		const updatedInputs = getAllByPlaceholderText('Enter metric name');
 		expect(updatedInputs).toHaveLength(1);
