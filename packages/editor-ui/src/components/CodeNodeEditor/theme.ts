@@ -198,11 +198,19 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		'.cm-matchingBracket': {
 			background: 'var(--color-code-selection)',
 		},
+		'.cm-completionMatchedText': {
+			textDecoration: 'none',
+			fontWeight: '600',
+			color: 'var(--color-autocomplete-item-selected)',
+		},
+		'.cm-faded > span': {
+			opacity: 0.6,
+		},
 		'.cm-panel.cm-search': {
 			padding: 'var(--spacing-4xs) var(--spacing-2xs)',
 		},
 		'.cm-panels': {
-			background: 'var(--color-background-base)',
+			background: 'var(--color-background-light)',
 			color: 'var(--color-text-base)',
 		},
 		'.cm-panels-bottom': {
@@ -213,6 +221,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			background: 'var(--color-foreground-xlight)',
 			borderRadius: 'var(--border-radius-base)',
 			border: 'var(--border-base)',
+			fontSize: '90%',
 		},
 		'.cm-textfield:focus': {
 			outline: 'none',
@@ -221,6 +230,17 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		'.cm-panel button': {
 			color: 'var(--color-text-base)',
 		},
+		'.cm-panel input[type="checkbox"]': {
+			border: 'var(--border-base)',
+			outline: 'none',
+		},
+		'.cm-panel input[type="checkbox"]:hover': {
+			border: 'var(--border-base)',
+			outline: 'none',
+		},
+		'.cm-panel.cm-search label': {
+			fontSize: '90%',
+		},
 		'.cm-button': {
 			outline: 'none',
 			border: 'var(--border-base)',
@@ -228,6 +248,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			backgroundColor: 'var(--color-foreground-xlight)',
 			backgroundImage: 'none',
 			borderRadius: 'var(--border-radius-base)',
+			fontSize: '90%',
 		},
 	}),
 	codeEditorSyntaxHighlighting,

@@ -1,4 +1,4 @@
-import type { Completion } from '@codemirror/autocomplete';
+import { type Completion } from '@codemirror/autocomplete';
 import * as tsvfs from '@typescript/vfs';
 import * as Comlink from 'comlink';
 import ts, { type DiagnosticWithLocation } from 'typescript';
@@ -9,6 +9,7 @@ import {
 	convertTSDiagnosticToCM,
 	fnPrefix,
 	isDiagnosticWithLocation,
+	isIgnoredDiagnostic,
 	returnTypeForMode,
 	schemaToTypescriptTypes,
 	tsPosToCm,
@@ -257,7 +258,7 @@ declare global {
 			updateFile(fileName, wrapInFunction(content, mode));
 			await loadTypesIfNeeded();
 		},
-		async getCompletionsAtPos(pos, word) {
+		async getCompletionsAtPos(pos) {
 			const tsPos = cmPosToTs(pos, fnPrefix(returnTypeForMode(mode)));
 
 			const completionInfo = env.languageService.getCompletionsAtPosition(fileName, tsPos, {}, {});
@@ -273,15 +274,24 @@ declare global {
 				)
 				.map((entry): Completion => {
 					const boost = -Number(entry.sortText) || 0;
+					let type = entry.kind ? String(entry.kind) : undefined;
+
+					if (type === 'member') type = 'property';
+
 					return {
 						label: entry.name,
+						type,
+						commitCharacters: entry.commitCharacters ?? completionInfo.defaultCommitCharacters,
 						boost,
 					};
 				});
 
 			return {
-				from: pos,
-				options,
+				result: {
+					from: pos,
+					options,
+				},
+				isGlobal: completionInfo.isGlobalCompletion,
 			};
 		},
 		getDiagnostics() {
@@ -293,8 +303,9 @@ declare global {
 				...env.languageService.getSyntacticDiagnostics(fileName),
 			];
 
-			const diagnostics = tsDiagnostics.filter((diagnostic): diagnostic is DiagnosticWithLocation =>
-				isDiagnosticWithLocation(diagnostic),
+			const diagnostics = tsDiagnostics.filter(
+				(diagnostic): diagnostic is DiagnosticWithLocation =>
+					isDiagnosticWithLocation(diagnostic) && !isIgnoredDiagnostic(diagnostic),
 			);
 
 			return diagnostics.map((d) => convertTSDiagnosticToCM(d, fnPrefix(returnTypeForMode(mode))));

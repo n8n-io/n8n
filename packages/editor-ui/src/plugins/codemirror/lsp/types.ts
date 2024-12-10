@@ -29,7 +29,10 @@ export type LanguageServiceWorker = {
 	updateFile(content: string): void;
 	updateMode(mode: CodeExecutionMode): void;
 	updateNodeTypes(): void;
-	getCompletionsAtPos(pos: number, wordBefore: string): Promise<CompletionResult | null>;
+	getCompletionsAtPos(
+		pos: number,
+		wordBefore: string,
+	): Promise<{ result: CompletionResult; isGlobal: boolean } | null>;
 	getDiagnostics(): Diagnostic[];
 	getHoverTooltip(pos: number): HoverInfo | null;
 };

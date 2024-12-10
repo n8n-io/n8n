@@ -6,8 +6,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
-	completeFromList,
+	autocompletion,
 	snippetCompletion,
+	type Completion,
 	type CompletionSource,
 } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
@@ -18,9 +19,10 @@ import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
 import { watch } from 'vue';
+import { forceParse } from '../../../utils/forceParse';
 import { autocompletableNodeNames } from '../completions/utils';
-import { n8nAutocompletion } from '../n8nLang';
 import type { LanguageServiceWorker } from './types';
+import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -31,29 +33,93 @@ export const tsFacet = Facet.define<
 	},
 });
 
+const snippets = [
+	snippetCompletion('console.log(#{})', { label: 'log', detail: 'Log to console' }),
+	snippetCompletion('for (const #{1:element} of #{2:array}) {\n\t#{}\n}', {
+		label: 'forof',
+		detail: 'For-of Loop',
+	}),
+	snippetCompletion(
+		'for (const #{1:key} in #{2:object}) {\n\tif (Object.prototype.hasOwnProperty.call(#{2:object}, #{1:key})) {\n\t\tconst #{3:element} = #{2:object}[#{1:key}];\n\t\t#{}\n\t}\n}',
+		{
+			label: 'forin',
+			detail: 'For-in Loop',
+		},
+	),
+	snippetCompletion(
+		'for (let #{1:index} = 0; #{1:index} < #{2:array}.length; #{1:index}++) {\n\tconst #{3:element} = #{2:array}[#{1:index}];\n\t#{}\n}',
+		{
+			label: 'for',
+			detail: 'For Loop',
+		},
+	),
+	snippetCompletion('if (#{1:condition}) {\n\t#{}\n}', {
+		label: 'if',
+		detail: 'If Statement',
+	}),
+	snippetCompletion('if (#{1:condition}) {\n\t#{}\n} else {\n\t\n}', {
+		label: 'ifelse',
+		detail: 'If-Else Statement',
+	}),
+	snippetCompletion('function #{1:name}(#{2:params}) {\n\t#{}\n}', {
+		label: 'function',
+		detail: 'Function Statement',
+	}),
+	snippetCompletion('function #{1:name}(#{2:params}) {\n\t#{}\n}', {
+		label: 'fn',
+		detail: 'Function Statement',
+	}),
+	snippetCompletion(
+		'switch (#{1:key}) {\n\tcase #{2:value}:\n\t\t#{}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
+		{
+			label: 'switch',
+			detail: 'Switch Statement',
+		},
+	),
+	snippetCompletion('try {\n\t#{}\n} catch (#{1:error}) {\n\t\n}', {
+		label: 'trycatch',
+		detail: 'Try-Catch Statement',
+	}),
+	snippetCompletion('while (#{1:condition}) {\n\t#{}\n}', {
+		label: 'while',
+		detail: 'While Statement',
+	}),
+];
+
 const tsCompletions: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(tsFacet);
 	const { pos } = context;
 
-	let word = context.matchBefore(/[\$\w]*/);
+	let word = context.matchBefore(/[\$\w]+/);
 	if (!word?.text) {
 		word = context.matchBefore(/\./);
 	}
 
-	const result = await worker.getCompletionsAtPos(context.pos, word?.text ?? '');
+	if (!word) return null;
+
+	const completionResult = await worker.getCompletionsAtPos(context.pos, word?.text ?? '');
 
 	if (context.aborted) return null;
-	if (!result) return result;
+	if (!completionResult) return null;
+
+	const { result, isGlobal } = completionResult;
+
+	const options = [...result.options];
+
+	if (isGlobal) {
+		options.push(...snippets);
+	}
 
 	return {
 		from: word ? (word.text === '.' ? word.to : word.from) : pos,
-		options: result.options,
+		options,
 	};
 };
 
 const tsLint: LintSource = async (view) => {
 	const { worker } = view.state.facet(tsFacet);
 	const docLength = view.state.doc.length;
+	console.log();
 	return (await worker.getDiagnostics()).filter((diag) => {
 		return diag.from < docLength && diag.to <= docLength && diag.from >= 0;
 	});
@@ -102,7 +168,7 @@ const tsHover: HoverSource = async (view, pos) => {
 	};
 };
 
-export async function useTypescript(initialValue: string, mode: CodeExecutionMode, id: string) {
+export async function useTypescript(view: EditorView, mode: CodeExecutionMode, id: string) {
 	const worker = Comlink.wrap<LanguageServiceWorker>(
 		new Worker(new URL('./worker/typescript.worker.ts', import.meta.url), { type: 'module' }),
 	);
@@ -112,17 +178,21 @@ export async function useTypescript(initialValue: string, mode: CodeExecutionMod
 	const { debounce } = useDebounce();
 	const activeNodeName = ndvStore.activeNodeName;
 
-	console.log('init');
-
 	watch(
 		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
-		debounce(async () => await worker.updateNodeTypes(), { debounceTime: 200, trailing: true }),
+		debounce(
+			async () => {
+				await worker.updateNodeTypes();
+				forceParse(view);
+			},
+			{ debounceTime: 200, trailing: true },
+		),
 	);
 
 	await worker.init(
 		{
 			id,
-			content: initialValue,
+			content: view.state.doc.toString(),
 			allNodeNames: autocompletableNodeNames(),
 			variables: useEnvironmentsStore().variables.map((v) => v.key),
 			inputNodeNames: activeNodeName
@@ -160,62 +230,9 @@ export async function useTypescript(initialValue: string, mode: CodeExecutionMod
 			tsFacet.of({ worker }),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: tsCompletions }),
-				javascriptLanguage.data.of({
-					autocomplete: completeFromList([
-						snippetCompletion('console.log(#{})', { label: 'log', detail: 'Log to console' }),
-						snippetCompletion('for (const #{1:element} of #{2:array}) {\n\t#{}\n}', {
-							label: 'forof',
-							detail: 'For-of Loop',
-						}),
-						snippetCompletion(
-							'for (const #{1:key} in #{2:object}) {\n\tif (Object.prototype.hasOwnProperty.call(#{2:object}, #{1:key})) {\n\t\tconst #{3:element} = #{2:object}[#{1:key}];\n\t\t#{}\n\t}\n}',
-							{
-								label: 'forin',
-								detail: 'For-in Loop',
-							},
-						),
-						snippetCompletion(
-							'for (let #{1:index} = 0; #{1:index} < #{2:array}.length; #{1:index}++) {\n\tconst #{3:element} = #{2:array}[#{1:index}];\n\t#{}\n}',
-							{
-								label: 'for',
-								detail: 'For Loop',
-							},
-						),
-						snippetCompletion('if (#{1:condition}) {\n\t#{}\n}', {
-							label: 'if',
-							detail: 'If Statement',
-						}),
-						snippetCompletion('if (#{1:condition}) {\n\t#{}\n} else {\n\t\n}', {
-							label: 'ifelse',
-							detail: 'If-Else Statement',
-						}),
-						snippetCompletion('function #{1:name}(#{2:params}) {\n\t#{}\n}', {
-							label: 'function',
-							detail: 'Function Statement',
-						}),
-						snippetCompletion('function #{1:name}(#{2:params}) {\n\t#{}\n}', {
-							label: 'fn',
-							detail: 'Function Statement',
-						}),
-						snippetCompletion(
-							'switch (#{1:key}) {\n\tcase #{2:value}:\n\t\t#{}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}',
-							{
-								label: 'switch',
-								detail: 'Switch Statement',
-							},
-						),
-						snippetCompletion('try {\n\t#{}\n} catch (#{1:error}) {\n\t\n}', {
-							label: 'trycatch',
-							detail: 'Try-Catch Statement',
-						}),
-						snippetCompletion('while (#{1:condition}) {\n\t#{}\n}', {
-							label: 'while',
-							detail: 'While Statement',
-						}),
-					]),
-				}),
 			]),
-			n8nAutocompletion(),
+
+			autocompletion({ icons: false, aboveCursor: true }),
 			linter(tsLint),
 			hoverTooltip(tsHover, {
 				hideOnChange: true,

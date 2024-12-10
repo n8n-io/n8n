@@ -16,8 +16,7 @@
 
 	> ul[role='listbox'] {
 		font-family: var(--font-family-monospace);
-		height: min(250px, 50vh);
-		max-height: none;
+		max-height: min(250px, 50vh);
 		max-width: 200px;
 
 		border: var(--border-base);
@@ -98,7 +97,7 @@
 		padding: 0;
 		overflow: hidden;
 
-		.cm-diagnostic-error {
+		.cm-diagnostic {
 			border-left: none;
 		}
 	}

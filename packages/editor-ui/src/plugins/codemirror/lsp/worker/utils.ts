@@ -29,19 +29,25 @@ export function tsPosToCm(pos: number, prefix: string) {
 export function tsCategoryToSeverity(
 	diagnostic: Pick<ts.DiagnosticWithLocation, 'category' | 'code'>,
 ): Diagnostic['severity'] {
-	if (diagnostic.code === 7027) {
-		// Unreachable code detected
-		return 'warning';
-	}
-	switch (diagnostic.category) {
-		case ts.DiagnosticCategory.Error:
-			return 'error';
-		case ts.DiagnosticCategory.Message:
-			return 'info';
-		case ts.DiagnosticCategory.Warning:
+	switch (diagnostic.code) {
+		case 6133:
+			// No unused variables
 			return 'warning';
-		case ts.DiagnosticCategory.Suggestion:
-			return 'info';
+		case 7027:
+			// Unreachable code detected
+			return 'warning';
+		default: {
+			switch (diagnostic.category) {
+				case ts.DiagnosticCategory.Error:
+					return 'error';
+				case ts.DiagnosticCategory.Message:
+					return 'info';
+				case ts.DiagnosticCategory.Warning:
+					return 'warning';
+				case ts.DiagnosticCategory.Suggestion:
+					return 'info';
+			}
+		}
 	}
 }
 
@@ -60,6 +66,11 @@ export function isDiagnosticWithLocation(
 	);
 }
 
+export function isIgnoredDiagnostic(diagnostic: ts.Diagnostic) {
+	// No implicit any
+	return diagnostic.code === 7006;
+}
+
 /**
  * Get the message for a diagnostic. TypeScript
  * is kind of weird: messageText might have the message,
@@ -74,6 +85,16 @@ export function tsDiagnosticMessage(diagnostic: Pick<ts.Diagnostic, 'messageText
 	return diagnostic.messageText.messageText;
 }
 
+export function tsDiagnosticClassName(diagnostic: ts.Diagnostic) {
+	switch (diagnostic.code) {
+		case 6133:
+			// No unused variables
+			return 'cm-faded';
+		default:
+			return undefined;
+	}
+}
+
 export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation, prefix: string): Diagnostic {
 	const start = tsPosToCm(d.start, prefix);
 	const message = tsDiagnosticMessage(d);
@@ -82,6 +103,7 @@ export function convertTSDiagnosticToCM(d: ts.DiagnosticWithLocation, prefix: st
 		from: start,
 		to: start + d.length,
 		message,
+		markClass: tsDiagnosticClassName(d),
 		severity: tsCategoryToSeverity(d),
 	};
 }

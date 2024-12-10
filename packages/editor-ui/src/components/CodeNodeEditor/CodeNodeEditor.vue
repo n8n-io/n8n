@@ -64,7 +64,7 @@ const linter = useLinter(
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
 const dragAndDropEnabled = computed(() => {
-	return !props.isReadOnly && props.mode === 'runOnceForEachItem';
+	return !props.isReadOnly;
 });
 
 const { highlightLine, readEditorValue, editor } = useCodeEditor({
@@ -190,7 +190,12 @@ function onAiLoadEnd() {
 async function onDrop(value: string, event: MouseEvent) {
 	if (!editor.value) return;
 
-	await dropInCodeEditor(toRaw(editor.value), event, value);
+	const valueToInsert =
+		props.mode === 'runOnceForAllItems'
+			? value.replace('$json', '$input.first().json').replace(/\$\((.*)\)\.item/, '$($1).first()')
+			: value;
+
+	await dropInCodeEditor(toRaw(editor.value), event, valueToInsert);
 }
 </script>
 

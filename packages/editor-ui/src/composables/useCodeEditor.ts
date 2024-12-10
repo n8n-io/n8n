@@ -108,6 +108,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	}
 
 	async function getFullLanguageExtensions(): Promise<Extension[]> {
+		if (!editor.value) return [];
 		const lang = toValue(language);
 		const langExtensions: Extension[] = [languageFacet.of(lang)];
 
@@ -115,7 +116,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 			case 'javaScript': {
 				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
 				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
-				const { extension, updateMode } = await useTypescript(readEditorValue(), mode, toValue(id));
+				const { extension, updateMode } = await useTypescript(editor.value, mode, toValue(id));
 				onUpdateMode.value = updateMode;
 				langExtensions.push(extension);
 				break;

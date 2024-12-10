@@ -1,6 +1,8 @@
 import { EditorSelection, Facet } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import { formatWithCursor, type BuiltInParserName } from 'prettier';
+import babelPlugin from 'prettier/plugins/babel';
+import estreePlugin from 'prettier/plugins/estree';
 
 export type CodeEditorLanguage = 'json' | 'html' | 'javaScript' | 'python';
 
@@ -13,6 +15,7 @@ export function formatDocument(view: EditorView) {
 		void formatWithCursor(view.state.doc.toString(), {
 			cursorOffset: view.state.selection.main.anchor,
 			parser,
+			plugins: [babelPlugin, estreePlugin],
 		}).then(({ formatted, cursorOffset }) => {
 			view.dispatch({
 				changes: {
