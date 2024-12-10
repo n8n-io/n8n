@@ -7,6 +7,7 @@ import {
 	jsonStringify,
 	ErrorReporterProxy,
 	ensureError,
+	createDeferredPromise,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { strict } from 'node:assert';
@@ -41,6 +42,8 @@ import type {
 export class ScalingService {
 	private queue: JobQueue;
 
+	private queueReadyPromise = createDeferredPromise();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
@@ -52,6 +55,10 @@ export class ScalingService {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('scaling');
+	}
+
+	get queueReady() {
+		return this.queueReadyPromise.promise;
 	}
 
 	// #region Lifecycle
@@ -81,6 +88,7 @@ export class ScalingService {
 		}
 
 		this.scheduleQueueMetrics();
+		this.queueReadyPromise.resolve();
 
 		this.logger.debug('Queue setup completed');
 	}
