@@ -16,6 +16,7 @@ import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n
 // eslint-disable-next-line import/no-cycle
 import {
 	assertBinaryData,
+	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 	getRequestHelperFunctions,
@@ -69,6 +70,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 				assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 			getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
 	}
 
