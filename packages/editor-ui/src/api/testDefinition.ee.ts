@@ -10,7 +10,7 @@ export interface TestDefinitionRecord {
 	description?: string | null;
 	updatedAt?: string;
 	createdAt?: string;
-	annotationTag: string | null;
+	annotationTag?: string | null;
 }
 
 interface CreateTestDefinitionParams {

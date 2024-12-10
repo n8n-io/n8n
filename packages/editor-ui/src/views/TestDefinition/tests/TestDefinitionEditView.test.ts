@@ -100,7 +100,7 @@ describe('TestDefinitionEditView', () => {
 		setActivePinia(pinia);
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
 
-		const { getByTestId } = renderComponent({ pinia });
+		renderComponent({ pinia });
 		await nextTick();
 
 		expect(loadTestDataMock).toHaveBeenCalledWith('1');
