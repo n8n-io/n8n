@@ -7,11 +7,13 @@ import {
 	saveWorkflowOnButtonClick,
 } from '../composables/workflow';
 import SUB_WORKFLOW_INPUTS from '../fixtures/Test_Subworkflow-Inputs.json';
-import { NDV, WorkflowsPage } from '../pages';
+import { NDV, WorkflowsPage, WorkflowPage } from '../pages';
+import { errorToast, successToast } from '../pages/notifications';
 import { getVisiblePopper } from '../utils';
 
 const ndv = new NDV();
 const workflowsPage = new WorkflowsPage();
+const workflow = new WorkflowPage();
 
 const DEFAULT_WORKFLOW_NAME = 'My workflow';
 const DEFAULT_SUBWORKFLOW_NAME_1 = 'My Sub-Workflow 1';
@@ -119,6 +121,11 @@ function validateAndReturnToParent(targetChild: string, offset: number, fields: 
 	// todo: validate the actual output data
 }
 
+function setWorkflowInputFieldValue(index: number, value: string) {
+	ndv.actions.addItemToFixedCollection('workflowInputs');
+	ndv.actions.typeIntoFixedCollectionItem('workflowInputs', index, value);
+}
+
 describe('Sub-workflow creation', () => {
 	beforeEach(() => {
 		navigateToNewWorkflowPage();
@@ -139,16 +146,11 @@ describe('Sub-workflow creation', () => {
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
 
-		openNode('When called by another workflow');
+		openNode('Execute Workflow Trigger');
 	});
 
 	it('works with Fields input source into JSON input source', () => {
 		ndv.getters.nodeOutputHint().should('exist');
-
-		ndv.actions.execute();
-
-		// + 1 to account for formatting-only column
-		getOutputTableHeaders().should('have.length', 2);
 
 		const fields = [
 			['aString', 'String'],
@@ -173,7 +175,7 @@ describe('Sub-workflow creation', () => {
 		});
 		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
 
-		openNode('When called by another workflow');
+		openNode('Execute Workflow Trigger');
 
 		cy.getByTestId('parameter-input').eq(0).click();
 
@@ -216,5 +218,20 @@ describe('Sub-workflow creation', () => {
 		// + run parent
 		// - verify output is as expected (Unit test should cover concrete behavior of how all input combinations are handled though)
 		//
+	});
+
+	it('should show node issue when no fields are defined in manual mode', () => {
+		ndv.getters.nodeExecuteButton().should('be.disabled');
+		ndv.actions.close();
+		// Executing the workflow should show an error toast
+		workflow.actions.executeWorkflow();
+		errorToast().should('contain', 'The workflow has issues');
+		openNode('Execute Workflow Trigger');
+		// Add a field to the workflowInputs fixedCollection
+		setWorkflowInputFieldValue(0, 'test');
+		// Executing the workflow should not show error now
+		ndv.actions.close();
+		workflow.actions.executeWorkflow();
+		successToast().should('contain', 'Workflow executed successfully');
 	});
 });
