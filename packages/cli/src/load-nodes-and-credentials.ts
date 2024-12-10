@@ -8,6 +8,8 @@ import {
 	CustomDirectoryLoader,
 	PackageDirectoryLoader,
 	LazyPackageDirectoryLoader,
+	UnrecognizedCredentialTypeError,
+	UnrecognizedNodeTypeError,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -15,6 +17,10 @@ import type {
 	INodeTypeDescription,
 	INodeTypeData,
 	ICredentialTypeData,
+	LoadedClass,
+	ICredentialType,
+	INodeType,
+	IVersionedNodeType,
 } from 'n8n-workflow';
 import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import path from 'path';
@@ -307,13 +313,18 @@ export class LoadNodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory } = loader;
-			this.types.nodes = this.types.nodes.concat(types.nodes);
+			const { known, types, directory, packageName } = loader;
+			this.types.nodes = this.types.nodes.concat(
+				types.nodes.map(({ name, ...rest }) => ({
+					...rest,
+					name: `${packageName}.${name}`,
+				})),
+			);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
 			// Nodes and credentials that have been loaded immediately
 			for (const nodeTypeName in loader.nodeTypes) {
-				this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+				this.loaded.nodes[`${packageName}.${nodeTypeName}`] = loader.nodeTypes[nodeTypeName];
 			}
 
 			for (const credentialTypeName in loader.credentialTypes) {
@@ -322,7 +333,7 @@ export class LoadNodesAndCredentials {
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[type] = {
+				this.known.nodes[`${packageName}.${type}`] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
 				};
@@ -354,6 +365,33 @@ export class LoadNodesAndCredentials {
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
+	}
+
+	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		if (!loader) {
+			throw new UnrecognizedNodeTypeError(packageName, nodeType);
+		}
+		return loader.getNode(nodeType);
+	}
+
+	getCredential(credentialType: string): LoadedClass<ICredentialType> {
+		const { loadedCredentials } = this;
+
+		for (const loader of Object.values(this.loaders)) {
+			if (credentialType in loader.known.credentials) {
+				const loaded = loader.getCredential(credentialType);
+				loadedCredentials[credentialType] = loaded;
+			}
+		}
+
+		if (credentialType in loadedCredentials) {
+			return loadedCredentials[credentialType];
+		}
+
+		throw new UnrecognizedCredentialTypeError(credentialType);
 	}
 
 	async setupHotReload() {

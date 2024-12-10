@@ -22,7 +22,7 @@ export const mockNode = (packageName: string) => {
 
 	return Container.get(InstalledNodesRepository).create({
 		name: nodeName,
-		type: nodeName,
+		type: `${packageName}.${nodeName}`,
 		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
 		package: { packageName },
 	});

@@ -17,6 +17,8 @@ import type {
 import { ApplicationError, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import path from 'path';
 
+import { UnrecognizedNodeTypeError } from '@/errors';
+
 import { predefinedNodesTypes } from './constants';
 
 const BASE_DIR = path.resolve(__dirname, '../../..');
@@ -102,12 +104,9 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	);
 
 	for (const nodeName of nodeNames) {
-		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
-		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);
