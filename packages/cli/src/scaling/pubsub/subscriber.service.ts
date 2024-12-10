@@ -90,15 +90,18 @@ export class Subscriber {
 			return null;
 		}
 
-		const msgName = 'command' in msg ? msg.command : msg.response;
+		let msgName = 'command' in msg ? msg.command : msg.response;
 
-		const logMetadata: LogMetadata = { msg: msgName, channel };
+		const metadata: LogMetadata = { msg: msgName, channel };
 
 		if ('command' in msg && msg.command === 'relay-execution-lifecycle-event') {
-			logMetadata.type = msg.payload.type;
+			const { args, type } = msg.payload;
+			msgName += ` (${type})`;
+			metadata.type = type;
+			metadata.executionId = args.executionId;
 		}
 
-		this.logger.debug(`Received pubsub message: ${msgName}`, logMetadata);
+		this.logger.debug(`Received pubsub msg: ${msgName}`, metadata);
 
 		return msg;
 	}

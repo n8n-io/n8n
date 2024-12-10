@@ -23,7 +23,7 @@ export namespace PubSub {
 	// ----------------------------------
 
 	type _ToCommand<CommandKey extends keyof PubSubCommandMap> = {
-		senderId: string;
+		senderId?: string;
 		targets?: string[];
 		command: CommandKey;
 
