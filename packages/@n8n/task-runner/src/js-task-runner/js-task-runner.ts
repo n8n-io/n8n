@@ -1,5 +1,5 @@
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ApplicationError } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -111,17 +111,9 @@ export class JsTaskRunner extends TaskRunner {
 			neededBuiltIns.toDataRequestParams(settings.chunk),
 		);
 
-		if (signal.aborted) {
-			throw new ApplicationError('Task cancelled');
-		}
-
 		const data = this.reconstructTaskData(dataResponse, settings.chunk);
 
 		await this.requestNodeTypeIfNeeded(neededBuiltIns, data.workflow, task.taskId);
-
-		if (signal.aborted) {
-			throw new ApplicationError('Task cancelled');
-		}
 
 		const workflowParams = data.workflow;
 		const workflow = new Workflow({

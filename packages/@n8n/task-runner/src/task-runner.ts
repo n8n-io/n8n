@@ -21,12 +21,14 @@ export interface TaskOffer {
 }
 
 interface DataRequest {
+	taskId: string;
 	requestId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
 }
 
 interface NodeTypesRequest {
+	taskId: string;
 	requestId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
@@ -298,6 +300,20 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 		task.cancelled = true;
 
+		for (const [requestId, request] of this.dataRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new ApplicationError('Task cancelled'));
+				this.dataRequests.delete(requestId);
+			}
+		}
+
+		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new ApplicationError('Task cancelled'));
+				this.nodeTypesRequests.delete(requestId);
+			}
+		}
+
 		const controller = this.taskCancellations.get(taskId);
 		if (controller) {
 			controller.abort();
@@ -377,6 +393,7 @@ export abstract class TaskRunner extends EventEmitter {
 		const nodeTypesPromise = new Promise<T>((resolve, reject) => {
 			this.nodeTypesRequests.set(requestId, {
 				requestId,
+				taskId,
 				resolve: resolve as (data: unknown) => void,
 				reject,
 			});
@@ -405,6 +422,7 @@ export abstract class TaskRunner extends EventEmitter {
 		const p = new Promise<T>((resolve, reject) => {
 			this.dataRequests.set(requestId, {
 				requestId,
+				taskId,
 				resolve: resolve as (data: unknown) => void,
 				reject,
 			});
