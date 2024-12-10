@@ -19,11 +19,11 @@ import {
 	isChatInstance,
 	getPromptInputByType,
 	getConnectedTools,
-} from '../../../../../utils/helpers';
+} from '../../../../../../utils/helpers';
 import {
 	getOptionalOutputParsers,
 	type N8nOutputParser,
-} from '../../../../../utils/output_parsers/N8nOutputParser';
+} from '../../../../../../utils/output_parsers/N8nOutputParser';
 
 function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
 	const schema =

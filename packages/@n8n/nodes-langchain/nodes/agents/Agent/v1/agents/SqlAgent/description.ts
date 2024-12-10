@@ -5,7 +5,7 @@ import {
 	promptTypeOptions,
 	textFromPreviousNode,
 	textInput,
-} from '../../../../../utils/descriptions';
+} from '../../../../../../utils/descriptions';
 
 const dataSourceOptions: INodeProperties = {
 	displayName: 'Data Source',

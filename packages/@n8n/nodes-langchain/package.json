@@ -145,6 +145,7 @@
     "@langchain/google-genai": "0.1.4",
     "@langchain/google-vertexai": "0.1.3",
     "@langchain/groq": "0.1.2",
+    "@langchain/langgraph": "^0.2.27",
     "@langchain/mistralai": "0.2.0",
     "@langchain/ollama": "0.1.2",
     "@langchain/openai": "0.3.14",

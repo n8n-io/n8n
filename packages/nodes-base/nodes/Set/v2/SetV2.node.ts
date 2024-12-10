@@ -29,6 +29,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
 	properties: [
 		{
 			displayName: 'Mode',

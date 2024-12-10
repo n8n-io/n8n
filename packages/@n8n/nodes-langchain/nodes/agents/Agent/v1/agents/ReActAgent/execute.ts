@@ -1,7 +1,8 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
+import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
@@ -10,35 +11,58 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getConnectedTools, getPromptInputByType } from '../../../../../utils/helpers';
-import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
-import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import {
+	getConnectedTools,
+	getPromptInputByType,
+	isChatInstance,
+} from '../../../../../../utils/helpers';
+import { getOptionalOutputParsers } from '../../../../../../utils/output_parsers/N8nOutputParser';
+import { throwIfToolSchema } from '../../../../../../utils/schemaParsing';
+import { getTracingConfig } from '../../../../../../utils/tracing';
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
-export async function planAndExecuteAgentExecute(
+export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.debug('Executing PlanAndExecute Agent');
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseChatModel;
+	this.logger.debug('Executing ReAct Agent');
+
+	const model = (await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0)) as
+		| BaseLanguageModel
+		| BaseChatModel;
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
-	await checkForStructuredTools(tools, this.getNode(), 'Plan & Execute Agent');
+	await checkForStructuredTools(tools, this.getNode(), 'ReAct Agent');
+
 	const outputParsers = await getOptionalOutputParsers(this);
 
 	const options = this.getNodeParameter('options', 0, {}) as {
+		prefix?: string;
+		suffix?: string;
+		suffixChat?: string;
 		humanMessageTemplate?: string;
+		returnIntermediateSteps?: boolean;
 	};
+	let agent: ChatAgent | ZeroShotAgent;
 
-	const agentExecutor = await PlanAndExecuteAgentExecutor.fromLLMAndTools({
-		llm: model,
+	if (isChatInstance(model)) {
+		agent = ChatAgent.fromLLMAndTools(model, tools, {
+			prefix: options.prefix,
+			suffix: options.suffixChat,
+			humanMessageTemplate: options.humanMessageTemplate,
+		});
+	} else {
+		agent = ZeroShotAgent.fromLLMAndTools(model, tools, {
+			prefix: options.prefix,
+			suffix: options.suffix,
+		});
+	}
+
+	const agentExecutor = AgentExecutor.fromAgentAndTools({
+		agent,
 		tools,
-		humanMessageTemplate: options.humanMessageTemplate,
+		returnIntermediateSteps: options?.returnIntermediateSteps === true,
 	});
 
 	const returnData: INodeExecutionData[] = [];
@@ -62,6 +86,7 @@ export async function planAndExecuteAgentExecute(
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			let input;
+
 			if (this.getNode().typeVersion <= 1.2) {
 				input = this.getNodeParameter('text', itemIndex) as string;
 			} else {
