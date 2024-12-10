@@ -91,10 +91,14 @@ describe('LdapService', () => {
 		jest.restoreAllMocks();
 	});
 
-	const createDefaultLdapService = (config: LdapConfig) => {
+	const mockSettingsRespositoryFindOneByOrFail = (config: LdapConfig) => {
 		settingsRepository.findOneByOrFail.mockResolvedValueOnce({
 			value: JSON.stringify(config),
 		} as Settings);
+	};
+
+	const createDefaultLdapService = (config: LdapConfig) => {
+		mockSettingsRespositoryFindOneByOrFail(config);
 
 		return new LdapService(mockLogger(), settingsRepository, mock(), mock());
 	};
@@ -145,9 +149,7 @@ describe('LdapService', () => {
 		});
 
 		it('should show logger warning if authentication method is not ldap or email', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const logger = mockLogger();
 
@@ -218,9 +220,7 @@ describe('LdapService', () => {
 		});
 
 		it('should decipher the LDAP configuration admin password', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn(),
@@ -235,9 +235,7 @@ describe('LdapService', () => {
 		});
 
 		it('should return the expected LDAP configuration', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -273,9 +271,7 @@ describe('LdapService', () => {
 		});
 
 		it('should encrypt the binding admin password', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
@@ -293,9 +289,7 @@ describe('LdapService', () => {
 		});
 
 		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
@@ -318,9 +312,7 @@ describe('LdapService', () => {
 		});
 
 		it('should not delete ldap identities if login is disabled and there are no ldap identities', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([]),
@@ -343,9 +335,7 @@ describe('LdapService', () => {
 		});
 
 		it('should update the LDAP configuration in the settings repository', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
@@ -370,9 +360,7 @@ describe('LdapService', () => {
 		});
 
 		it('should update the LDAP login label in the config', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			mockInstance(AuthIdentityRepository, {
 				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
@@ -486,9 +474,7 @@ describe('LdapService', () => {
 
 	describe('searchWithAdminBinding()', () => {
 		it('should bind admin client', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -511,9 +497,7 @@ describe('LdapService', () => {
 		});
 
 		it('should call client search with expected parameters', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -545,9 +529,7 @@ describe('LdapService', () => {
 		});
 
 		it('should call client search with expected parameters when searchPageSize is 0', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify({ ...ldapConfig, searchPageSize: 0 }),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail({ ...ldapConfig, searchPageSize: 0 });
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -579,9 +561,7 @@ describe('LdapService', () => {
 		});
 
 		it('should unbind client after search', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -600,9 +580,7 @@ describe('LdapService', () => {
 		});
 
 		it('should return expected search entries', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
@@ -719,9 +697,7 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected error if admin search fails', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -1283,9 +1259,7 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected event if synchronization is enabled', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -1315,9 +1289,7 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected event if synchronization is disabled', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
@@ -1348,9 +1320,7 @@ describe('LdapService', () => {
 		});
 
 		it('should emit expected event with error message if processUsers fails', async () => {
-			settingsRepository.findOneByOrFail.mockResolvedValueOnce({
-				value: JSON.stringify(ldapConfig),
-			} as Settings);
+			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
 				emit: jest.fn(),
