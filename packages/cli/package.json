@@ -98,7 +98,6 @@
     "@n8n_io/license-sdk": "2.13.1",
     "@oclif/core": "4.0.7",
     "@rudderstack/rudder-sdk-node": "2.0.9",
-    "@sentry/integrations": "catalog:",
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",
