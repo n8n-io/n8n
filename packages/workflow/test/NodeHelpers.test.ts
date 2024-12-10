@@ -1,6 +1,6 @@
 import {
-	INodeIssues,
 	NodeConnectionType,
+	type INodeIssues,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
