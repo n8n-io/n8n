@@ -179,6 +179,7 @@ export class JobProcessor {
 				partialExecutionVersion: manualData?.partialExecutionVersion,
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
+				userId: manualData?.userId,
 			};
 
 			workflowRun = this.workflowRunner.runManually(

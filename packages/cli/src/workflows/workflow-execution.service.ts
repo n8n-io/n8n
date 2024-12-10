@@ -171,7 +171,8 @@ export class WorkflowExecutionService {
 					runData,
 				},
 				manualData: {
-					partialExecutionVersion,
+					userId: data.userId,
+					partialExecutionVersion: data.partialExecutionVersion,
 					dirtyNodeNames,
 					triggerToStartFrom,
 				},

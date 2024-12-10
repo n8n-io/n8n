@@ -2152,7 +2152,7 @@ export interface IRunExecutionData {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom'
+		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
 }
 
