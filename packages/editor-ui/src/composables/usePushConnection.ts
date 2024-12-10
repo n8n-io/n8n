@@ -14,11 +14,11 @@ import type {
 	INodeTypeDescription,
 	NodeError,
 } from 'n8n-workflow';
-import type { PushMessage } from '@n8n/api-types';
+import type { PushMessage, PushPayload } from '@n8n/api-types';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -35,8 +35,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
-import type { IExecutionResponse } from '@/Interface';
+import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
 import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -487,6 +488,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			const pushData = receivedData.data;
 			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
+			void trackNodeExecutionFinishedEvent(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
 			const pushData = receivedData.data;
@@ -527,6 +529,44 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		}
 
 		return true;
+	}
+
+	async function trackNodeExecutionFinishedEvent(pushData: PushPayload<'nodeExecuteAfter'>) {
+		const itemCount =
+			pushData.data?.data?.main.reduce((acc, item) => acc + (item?.length ?? 0), 0) ?? 0;
+		const node = workflowsStore.getNodeByName(pushData.nodeName);
+		const status = pushData.data?.executionStatus;
+		const error = pushData.data?.error;
+		let subWorkflowId = node?.parameters.workflowId;
+		let subWorkflowVersion: 'new' | 'legacy' | undefined;
+		if (subWorkflowId) {
+			if (isResourceLocatorValue(subWorkflowId)) {
+				subWorkflowId = subWorkflowId.value;
+			}
+			let subWorkflow: IWorkflowDb | undefined;
+			try {
+				subWorkflow = subWorkflowId
+					? await workflowsStore.getOrFetchWorkflow(String(subWorkflowId))
+					: undefined;
+			} catch {
+				subWorkflow = undefined;
+			}
+			const triggerNode = subWorkflow?.nodes.find(
+				(n) => n.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			);
+			subWorkflowVersion = triggerNode?.typeVersion === 1.1 ? 'new' : 'legacy';
+		}
+		telemetry.track('Manual node execution finished', {
+			items_count: itemCount,
+			node_type: node?.type,
+			node_name: pushData.nodeName,
+			status,
+			error_message: error?.message,
+			error_stack: error?.stack,
+			error_timestamp: error?.timestamp,
+			error_node: error?.errorResponse?.node,
+			subworkflow_type: subWorkflowVersion,
+		});
 	}
 
 	function getExecutionError(data: IRunExecutionData | IExecuteContextData) {
