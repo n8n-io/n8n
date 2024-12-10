@@ -1849,9 +1849,6 @@ export function getParameterIssues(
 				propertyOptions.name,
 				basePath.slice(0, -1),
 			);
-			if (value === undefined) {
-				continue;
-			}
 
 			if (
 				// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
@@ -1877,6 +1874,29 @@ export function getParameterIssues(
 						data: option,
 					});
 				}
+			}
+
+			// Validate allowed field counts
+			const valueArray = Array.isArray(value) ? value : [];
+			const { minFieldCount, maxFieldCount } = nodeProperties.typeOptions ?? {};
+			const errors: string[] = [];
+
+			if (minFieldCount && valueArray.length < minFieldCount) {
+				errors.push(
+					`At least ${minFieldCount} ${minFieldCount === 1 ? 'field is' : 'fields are'} required.`,
+				);
+			}
+
+			if (maxFieldCount && valueArray.length > maxFieldCount) {
+				errors.push(
+					`At most ${maxFieldCount} ${maxFieldCount === 1 ? 'field is' : 'fields are'} allowed.`,
+				);
+			}
+
+			if (errors.length) {
+				foundIssues.parameters ??= {};
+				foundIssues.parameters[nodeProperties.name] ??= [];
+				foundIssues.parameters[nodeProperties.name].push(...errors);
 			}
 		}
 	} else {

@@ -1362,6 +1362,8 @@ export interface INodePropertyTypeOptions {
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
 	assignment?: AssignmentTypeOptions;
+	minFieldCount?: number; // Supported by: fixedCollection
+	maxFieldCount?: number; // Supported by: fixedCollection
 	[key: string]: any;
 }
 
