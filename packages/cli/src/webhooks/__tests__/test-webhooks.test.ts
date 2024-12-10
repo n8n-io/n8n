@@ -1,6 +1,11 @@
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
-import type { IWebhookData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow';
+import {
+	type IWebhookData,
+	type IWorkflowExecuteAdditionalData,
+	type Workflow,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { generateNanoId } from '@/databases/utils/generators';
@@ -39,16 +44,20 @@ let testWebhooks: TestWebhooks;
 
 describe('TestWebhooks', () => {
 	beforeAll(() => {
-		testWebhooks = new TestWebhooks(mock(), mock(), registrations, mock());
+		testWebhooks = new TestWebhooks(mock(), mock(), registrations, mock(), mock());
 		jest.useFakeTimers();
 	});
 
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
 	describe('needsWebhook()', () => {
-		const args: Parameters<typeof testWebhooks.needsWebhook> = [
+		const args: Parameters<typeof testWebhooks.needsWebhook>[0] = {
 			userId,
 			workflowEntity,
-			mock<IWorkflowExecuteAdditionalData>(),
-		];
+			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+		};
 
 		test('if webhook is needed, should register then create webhook and return true', async () => {
 			const workflow = mock<Workflow>();
@@ -56,7 +65,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
-			const needsWebhook = await testWebhooks.needsWebhook(...args);
+			const needsWebhook = await testWebhooks.needsWebhook(args);
 
 			const [registerOrder] = registrations.register.mock.invocationCallOrder;
 			const [createOrder] = workflow.createWebhookIfNotExists.mock.invocationCallOrder;
@@ -72,7 +81,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(registrations, 'register').mockRejectedValueOnce(new Error(msg));
 			registrations.getAllRegistrations.mockResolvedValue([]);
 
-			const needsWebhook = testWebhooks.needsWebhook(...args);
+			const needsWebhook = testWebhooks.needsWebhook(args);
 
 			await expect(needsWebhook).rejects.toThrowError(msg);
 		});
@@ -81,9 +90,54 @@ describe('TestWebhooks', () => {
 			webhook.webhookDescription.restartWebhook = true;
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
-			const result = await testWebhooks.needsWebhook(...args);
+			const result = await testWebhooks.needsWebhook(args);
 
 			expect(result).toBe(false);
+		});
+
+		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
+			const workflow = mock<Workflow>();
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+
+			const needsWebhook = await testWebhooks.needsWebhook({
+				...args,
+				triggerToStartFrom: {
+					name: 'trigger',
+					data: mock<ITaskData>(),
+				},
+			});
+
+			expect(needsWebhook).toBe(false);
+		});
+
+		test('returns true, registers and then creates webhook if triggerToStartFrom is given with no triggerData', async () => {
+			// ARRANGE
+			const workflow = mock<Workflow>();
+			const webhook2 = mock<IWebhookData>({
+				node: 'trigger',
+				httpMethod,
+				path,
+				workflowId: workflowEntity.id,
+				userId,
+			});
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook, webhook2]);
+
+			// ACT
+			const needsWebhook = await testWebhooks.needsWebhook({
+				...args,
+				triggerToStartFrom: { name: 'trigger' },
+			});
+
+			// ASSERT
+			const [registerOrder] = registrations.register.mock.invocationCallOrder;
+			const [createOrder] = workflow.createWebhookIfNotExists.mock.invocationCallOrder;
+
+			expect(registerOrder).toBeLessThan(createOrder);
+			expect(registrations.register.mock.calls[0][0].webhook.node).toBe(webhook2.node);
+			expect(workflow.createWebhookIfNotExists.mock.calls[0][0].node).toBe(webhook2.node);
+			expect(needsWebhook).toBe(true);
 		});
 	});
 

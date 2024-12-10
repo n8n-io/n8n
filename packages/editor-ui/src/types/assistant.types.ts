@@ -19,7 +19,7 @@ export namespace ChatRequest {
 
 	export interface WorkflowContext {
 		executionSchema?: NodeExecutionSchema[];
-		currentWorkflow?: IWorkflowDb;
+		currentWorkflow?: Partial<IWorkflowDb>;
 		executionData?: IRunExecutionData['resultData'];
 	}
 

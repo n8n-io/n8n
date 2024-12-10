@@ -5,7 +5,14 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { DefaultEdge, Node, NodeProps, Position, OnConnectStartParams } from '@vue-flow/core';
+import type {
+	DefaultEdge,
+	Node,
+	NodeProps,
+	Position,
+	OnConnectStartParams,
+	ViewportTransform,
+} from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
@@ -59,6 +66,7 @@ export type CanvasNodeDefaultRender = {
 		outputs: {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
+		tooltip?: string;
 	}>;
 };
 
@@ -118,13 +126,16 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
 	status?: 'success' | 'error' | 'pinned' | 'running';
+	maxConnections?: number;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
 export type CanvasConnectionCreateData = {
 	source: string;
+	sourceHandle: string;
 	target: string;
+	targetHandle: string;
 	data: {
 		source: PartialBy<IConnection, 'node'>;
 		target: PartialBy<IConnection, 'node'>;
@@ -132,8 +143,10 @@ export type CanvasConnectionCreateData = {
 };
 
 export interface CanvasInjectionData {
+	initialized: Ref<boolean>;
 	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
+	viewport: Ref<ViewportTransform>;
 }
 
 export type CanvasNodeEventBusEvents = {
@@ -171,6 +184,7 @@ export interface CanvasNodeHandleInjectionData {
 	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
+	maxConnections: Ref<number | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 

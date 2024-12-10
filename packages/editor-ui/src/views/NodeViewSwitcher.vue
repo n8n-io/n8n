@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { useLocalStorage } from '@vueuse/core';
-import { computed, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import NodeViewV1 from '@/views/NodeView.vue';
 import NodeViewV2 from '@/views/NodeView.v2.vue';
@@ -9,25 +8,25 @@ import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/consta
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
 
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
-const settingsStore = useSettingsStore();
 
 const router = useRouter();
 const route = useRoute();
 const workflowHelpers = useWorkflowHelpers({ router });
 
-const nodeViewVersion = useLocalStorage(
-	'NodeView.version',
-	settingsStore.deploymentType === 'n8n-internal' ? '2' : '1',
-);
+const { nodeViewVersion, migrateToNewNodeViewVersion } = useNodeViewVersionSwitcher();
 
 const workflowId = computed<string>(() => route.params.name as string);
 
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
+});
+
+onMounted(() => {
+	migrateToNewNodeViewVersion();
 });
 
 watch(nodeViewVersion, () => {

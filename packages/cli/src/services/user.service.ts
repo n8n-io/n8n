@@ -1,5 +1,5 @@
 import type { IUserSettings } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { User, AssignableRole } from '@/databases/entities/user';
@@ -130,6 +130,7 @@ export class UserService {
 						email,
 						inviteAcceptUrl,
 						emailSent: false,
+						role,
 					},
 					error: '',
 				};
@@ -212,9 +213,8 @@ export class UserService {
 					),
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
 			this.logger.error('Failed to create user shells', { userShells: createdUsers });
-			throw new InternalServerError('An error occurred during user creation');
+			throw new InternalServerError('An error occurred during user creation', error);
 		}
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));

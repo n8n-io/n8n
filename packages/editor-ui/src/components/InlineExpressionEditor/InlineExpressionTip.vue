@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { useNDVStore } from '@/stores/ndv.store';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
-import { type Completion, CompletionContext } from '@codemirror/autocomplete';
-import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
-import { watchDebounced } from '@vueuse/core';
 import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
+import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
+import { useNDVStore } from '@/stores/ndv.store';
+import { type Completion, CompletionContext } from '@codemirror/autocomplete';
+import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
+import { watchDebounced } from '@vueuse/core';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
 
@@ -30,13 +30,17 @@ const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
-	() => !ndvStore.isNDVDataEmpty('input') && ndvStore.focusedMappableInput,
+	() => !ndvStore.isInputPanelEmpty && ndvStore.focusedMappableInput,
 );
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
 const tip = computed<TipId>(() => {
-	if (!ndvStore.hasInputData && ndvStore.isInputParentOfActiveNode) {
+	if (
+		!ndvStore.hasInputData &&
+		ndvStore.isInputParentOfActiveNode &&
+		ndvStore.focusedMappableInput
+	) {
 		return 'executePrevious';
 	}
 

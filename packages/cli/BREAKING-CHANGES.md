@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.65.0
+
+### What changed?
+
+Queue polling via the env var `QUEUE_RECOVERY_INTERVAL` has been removed.
+
+### When is action necessary?
+
+If you have set the env var `QUEUE_RECOVERY_INTERVAL`, so you can remove it as it no longer has any effect.
+
 # 1.63.0
 
 ### What changed?

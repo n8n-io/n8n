@@ -4,7 +4,7 @@
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
 		<link
-			href='http://fonts.googleapis.com/css?family=Open+Sans'
+			href='https://fonts.googleapis.com/css?family=Open+Sans'
 			rel='stylesheet'
 			type='text/css'
 		/>
@@ -226,6 +226,7 @@
 
 			.multiselect-checkbox {
 				vertical-align: middle;
+				min-width: 18px;
 			}
 
 			input[type='checkbox'] {
@@ -315,7 +316,7 @@
 			<section>
 				{{#if testRun}}
 					<div class='test-notice'>
-						<p>This is test version of your form. Use it only for testing your Form Trigger.</p>
+						<p>This is test version of your form</p>
 					</div>
 					<hr>
 				{{/if}}
@@ -428,7 +429,7 @@
 										d='M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z'
 									/>
 								</svg></span>
-							Submit form
+							{{ buttonLabel }}
 						</button>
 					</form>
 				{{else}}
@@ -719,6 +720,10 @@
 							}
 
 							if (response.status === 200) {
+								if(response.redirected) {
+									window.location.replace(response.url);
+									return;
+								}
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
 									window.location.replace(redirectUrl.href);
@@ -731,22 +736,26 @@
 								document.querySelector('#submitted-form').style.display = 'block';
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 								document.querySelector('#submitted-content').textContent =
-									'An error occurred in the workflow handling this form';
+									'Please try again or contact support if the problem persists';
 							}
 
 							return;
-						}).then(() => {
-							window.addEventListener('storage', function(event) {
-								if (event.key === 'n8n_redirect_to_next_form_test_page' && event.newValue) {
-									const newUrl = event.newValue;
-									localStorage.removeItem('n8n_redirect_to_next_form_test_page');
-									window.location.replace(newUrl);
-								}
-							});
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
 						});
+
+					const isWaitingForm = window.location.href.includes('form-waiting');
+					if(isWaitingForm) {
+						const interval = setInterval(function() {
+							const isSubmited = document.querySelector('#submitted-form').style.display;
+							if(isSubmited === 'block') {
+								clearInterval(interval);
+								return;
+							}
+							window.location.reload();
+						}, 2000);
+					}
 				}
 			});
 		</script>

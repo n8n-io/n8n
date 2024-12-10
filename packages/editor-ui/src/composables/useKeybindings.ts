@@ -22,7 +22,7 @@ export const useKeybindings = (
 		const active = activeElement.value;
 		const isInput = ['INPUT', 'TEXTAREA'].includes(active.tagName);
 		const isContentEditable = active.closest('[contenteditable]') !== null;
-		const isIgnoreClass = active.closest('.ignore-key-press') !== null;
+		const isIgnoreClass = active.closest('.ignore-key-press-canvas') !== null;
 
 		return isInput || isContentEditable || isIgnoreClass;
 	});
@@ -38,12 +38,28 @@ export const useKeybindings = (
 		),
 	);
 
-	function normalizeShortcutString(shortcut: string) {
-		return shortcut
-			.split(/[+_-]/)
+	function shortcutPartsToString(parts: string[]) {
+		return parts
 			.map((key) => key.toLowerCase())
 			.sort((a, b) => a.localeCompare(b))
 			.join('+');
+	}
+
+	function normalizeShortcutString(shortcut: string) {
+		if (shortcut.length === 1) {
+			return shortcut.toLowerCase();
+		}
+
+		const splitChars = ['+', '_', '-'];
+		const splitCharsRegEx = splitChars.reduce((acc, char) => {
+			if (shortcut.startsWith(char) || shortcut.endsWith(char)) {
+				return acc;
+			}
+
+			return char + acc;
+		}, '');
+
+		return shortcutPartsToString(shortcut.split(new RegExp(`[${splitCharsRegEx}]`)));
 	}
 
 	function toShortcutString(event: KeyboardEvent) {
@@ -64,7 +80,7 @@ export const useKeybindings = (
 			modifiers.push('alt');
 		}
 
-		return normalizeShortcutString([...modifiers, ...keys].join('+'));
+		return shortcutPartsToString([...modifiers, ...keys]);
 	}
 
 	function onKeyDown(event: KeyboardEvent) {

@@ -1,103 +1,67 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { mapStores } from 'pinia';
-import type { WorkerStatus } from '@n8n/api-types';
-import type { ExecutionStatus } from 'n8n-workflow';
 
-import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import WorkerCard from './Workers/WorkerCard.ee.vue';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import WorkerCard from './Workers/WorkerCard.ee.vue';
 
-// eslint-disable-next-line import/no-default-export
-export default defineComponent({
-	name: 'WorkerList',
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
-	components: { PushConnectionTracker, WorkerCard },
-	props: {
-		autoRefreshEnabled: {
-			type: Boolean,
-			default: true,
-		},
+withDefaults(
+	defineProps<{
+		autoRefreshEnabled?: boolean;
+	}>(),
+	{
+		autoRefreshEnabled: true,
 	},
-	setup() {
-		const router = useRouter();
-		const i18n = useI18n();
-		const pushConnection = usePushConnection({ router });
+);
 
-		return {
-			i18n,
-			pushConnection,
-			...useToast(),
-			documentTitle: useDocumentTitle(),
-		};
-	},
-	computed: {
-		...mapStores(useRootStore, useUIStore, usePushConnectionStore, useOrchestrationStore),
-		combinedWorkers(): WorkerStatus[] {
-			const returnData: WorkerStatus[] = [];
-			for (const workerId in this.orchestrationManagerStore.workers) {
-				returnData.push(this.orchestrationManagerStore.workers[workerId]);
-			}
-			return returnData;
-		},
-		initialStatusReceived(): boolean {
-			return this.orchestrationManagerStore.initialStatusReceived;
-		},
-		workerIds(): string[] {
-			return Object.keys(this.orchestrationManagerStore.workers);
-		},
-		pageTitle() {
-			return this.i18n.baseText('workerList.pageTitle');
-		},
-	},
-	mounted() {
-		this.documentTitle.set(this.pageTitle);
+const router = useRouter();
+const i18n = useI18n();
+const pushConnection = usePushConnection({ router });
+const documentTitle = useDocumentTitle();
+const telemetry = useTelemetry();
 
-		this.$telemetry.track('User viewed worker view', {
-			instance_id: this.rootStore.instanceId,
-		});
-	},
-	beforeMount() {
-		if (window.Cypress !== undefined) {
-			return;
-		}
+const orchestrationManagerStore = useOrchestrationStore();
+const rootStore = useRootStore();
+const pushStore = usePushConnectionStore();
 
-		this.pushConnection.initialize();
-		this.pushStore.pushConnect();
-		this.orchestrationManagerStore.startWorkerStatusPolling();
-	},
-	beforeUnmount() {
-		if (window.Cypress !== undefined) {
-			return;
-		}
+const initialStatusReceived = computed(() => orchestrationManagerStore.initialStatusReceived);
 
-		this.orchestrationManagerStore.stopWorkerStatusPolling();
-		this.pushStore.pushDisconnect();
-		this.pushConnection.terminate();
-	},
-	methods: {
-		averageLoadAvg(loads: number[]) {
-			return (loads.reduce((prev, curr) => prev + curr, 0) / loads.length).toFixed(2);
-		},
-		getStatus(payload: WorkerStatus): ExecutionStatus {
-			if (payload.runningJobsSummary.length > 0) {
-				return 'running';
-			} else {
-				return 'success';
-			}
-		},
-		getRowClass(payload: WorkerStatus): string {
-			return [this.$style.execRow, this.$style[this.getStatus(payload)]].join(' ');
-		},
-	},
+const workerIds = computed(() => Object.keys(orchestrationManagerStore.workers));
+
+const pageTitle = computed(() => i18n.baseText('workerList.pageTitle'));
+
+onMounted(() => {
+	documentTitle.set(pageTitle.value);
+
+	telemetry.track('User viewed worker view', {
+		instance_id: rootStore.instanceId,
+	});
+});
+
+onBeforeMount(() => {
+	if (window.Cypress !== undefined) {
+		return;
+	}
+
+	pushConnection.initialize();
+	pushStore.pushConnect();
+	orchestrationManagerStore.startWorkerStatusPolling();
+});
+
+onBeforeUnmount(() => {
+	if (window.Cypress !== undefined) {
+		return;
+	}
+
+	orchestrationManagerStore.stopWorkerStatusPolling();
+	pushStore.pushDisconnect();
+	pushConnection.terminate();
 });
 </script>
 
@@ -111,7 +75,7 @@ export default defineComponent({
 			<n8n-spinner />
 		</div>
 		<div v-else>
-			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+			<div v-if="workerIds.length === 0">{{ i18n.baseText('workerList.empty') }}</div>
 			<div v-else>
 				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
 					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />

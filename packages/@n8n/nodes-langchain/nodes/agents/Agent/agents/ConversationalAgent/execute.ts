@@ -1,19 +1,20 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
-import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
+import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
 import {
 	isChatInstance,
 	getPromptInputByType,
-	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
+import { getTracingConfig } from '../../../../../utils/tracing';
+import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -30,8 +31,10 @@ export async function conversationalAgentExecute(
 		| BaseChatMemory
 		| undefined;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 	const outputParsers = await getOptionalOutputParsers(this);
+
+	await checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');
 
 	// TODO: Make it possible in the future to use values for other items than just 0
 	const options = this.getNodeParameter('options', 0, {}) as {
@@ -102,12 +105,12 @@ export async function conversationalAgentExecute(
 				input = (await prompt.invoke({ input })).value;
 			}
 
-			let response = await agentExecutor
+			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response = { output: await outputParser.parse(response.output as string) };
+				response.output = await extractParsedOutput(this, outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

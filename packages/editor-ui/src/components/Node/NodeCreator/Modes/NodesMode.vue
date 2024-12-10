@@ -23,7 +23,6 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -36,11 +35,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 
-const { mergedNodes, actions } = useNodeCreatorStore();
+const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -83,7 +81,7 @@ function onSelected(item: INodeCreateElement) {
 			sections: item.properties.sections,
 		});
 
-		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+		onSubcategorySelected({
 			subcategory: item.key,
 		});
 	}
@@ -153,9 +151,6 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'link') {
 		window.open(item.properties.url, '_blank');
-		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
-			link: item.properties.url,
-		});
 	}
 }
 
@@ -250,7 +245,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<CategorizedItemsRenderer
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
-			:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>

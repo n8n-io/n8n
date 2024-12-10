@@ -10,7 +10,7 @@ import type { DirectedGraph } from './DirectedGraph';
 export function cleanRunData(
 	runData: IRunData,
 	graph: DirectedGraph,
-	startNodes: INode[],
+	startNodes: Set<INode>,
 ): IRunData {
 	const newRunData: IRunData = { ...runData };
 
@@ -20,6 +20,14 @@ export function cleanRunData(
 
 		for (const child of children) {
 			delete newRunData[child.name];
+		}
+	}
+
+	// Remove run data for all nodes that are not part of the subgraph
+	for (const nodeName of Object.keys(newRunData)) {
+		if (!graph.hasNode(nodeName)) {
+			// remove run data for node that is not part of the graph
+			delete newRunData[nodeName];
 		}
 	}
 

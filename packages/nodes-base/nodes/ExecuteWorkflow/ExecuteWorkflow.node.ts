@@ -1,5 +1,6 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
+	ExecuteWorkflowData,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -209,8 +210,11 @@ export class ExecuteWorkflow implements INodeType {
 		const mode = this.getNodeParameter('mode', 0, false) as string;
 		const items = this.getInputData();
 
+		const workflowProxy = this.getWorkflowDataProxy(0);
+		const currentWorkflowId = workflowProxy.$workflow.id as string;
+
 		if (mode === 'each') {
-			let returnData: INodeExecutionData[][] = [];
+			const returnData: INodeExecutionData[][] = [];
 
 			for (let i = 0; i < items.length; i++) {
 				try {
@@ -222,14 +226,28 @@ export class ExecuteWorkflow implements INodeType {
 					const workflowInfo = await getWorkflowInfo.call(this, source, i);
 
 					if (waitForSubWorkflow) {
-						const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
+						const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
 							workflowInfo,
 							[items[i]],
+							undefined,
+							{
+								parentExecution: {
+									executionId: workflowProxy.$execution.id,
+									workflowId: workflowProxy.$workflow.id,
+								},
+							},
 						);
+						const workflowResult = executionResult.data as INodeExecutionData[][];
 
 						for (const [outputIndex, outputData] of workflowResult.entries()) {
 							for (const item of outputData) {
 								item.pairedItem = { item: i };
+								item.metadata = {
+									subExecution: {
+										executionId: executionResult.executionId,
+										workflowId: workflowInfo.id ?? currentWorkflowId,
+									},
+								};
 							}
 
 							if (returnData[outputIndex] === undefined) {
@@ -239,8 +257,32 @@ export class ExecuteWorkflow implements INodeType {
 							returnData[outputIndex].push(...outputData);
 						}
 					} else {
-						void this.executeWorkflow(workflowInfo, [items[i]]);
-						returnData = [items];
+						const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
+							workflowInfo,
+							[items[i]],
+							undefined,
+							{
+								doNotWaitToFinish: true,
+								parentExecution: {
+									executionId: workflowProxy.$execution.id,
+									workflowId: workflowProxy.$workflow.id,
+								},
+							},
+						);
+
+						if (returnData.length === 0) {
+							returnData.push([]);
+						}
+
+						returnData[0].push({
+							...items[i],
+							metadata: {
+								subExecution: {
+									workflowId: workflowInfo.id ?? currentWorkflowId,
+									executionId: executionResult.executionId,
+								},
+							},
+						});
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -258,6 +300,10 @@ export class ExecuteWorkflow implements INodeType {
 				}
 			}
 
+			this.setMetadata({
+				subExecutionsCount: items.length,
+			});
+
 			return returnData;
 		} else {
 			try {
@@ -268,15 +314,32 @@ export class ExecuteWorkflow implements INodeType {
 				) as boolean;
 				const workflowInfo = await getWorkflowInfo.call(this, source);
 
+				const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
+					workflowInfo,
+					items,
+					undefined,
+					{
+						doNotWaitToFinish: !waitForSubWorkflow,
+						parentExecution: {
+							executionId: workflowProxy.$execution.id,
+							workflowId: workflowProxy.$workflow.id,
+						},
+					},
+				);
+
+				this.setMetadata({
+					subExecution: {
+						executionId: executionResult.executionId,
+						workflowId: workflowInfo.id ?? (workflowProxy.$workflow.id as string),
+					},
+					subExecutionsCount: 1,
+				});
+
 				if (!waitForSubWorkflow) {
-					void this.executeWorkflow(workflowInfo, items);
 					return [items];
 				}
 
-				const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
-					workflowInfo,
-					items,
-				);
+				const workflowResult = executionResult.data as INodeExecutionData[][];
 
 				const fallbackPairedItemData = generatePairedItemData(items.length);
 

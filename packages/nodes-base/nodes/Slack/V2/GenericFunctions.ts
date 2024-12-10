@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,10 +8,9 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash/get';
+import type { SendAndWaitMessageBody } from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 
 export async function slackApiRequest(
@@ -265,7 +265,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const config = getSendAndWaitConfig(context);
 
-	const body: IDataObject = {
+	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
 			{
@@ -274,7 +274,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			{
 				type: 'section',
 				text: {
-					type: 'plain_text',
+					type: context.getNode().typeVersion > 2.2 ? 'mrkdwn' : 'plain_text',
 					text: config.message,
 					emoji: true,
 				},
@@ -306,6 +306,10 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 		],
 	};
+
+	if (context.getNode().typeVersion > 2.2 && body.blocks?.[1]?.type === 'section') {
+		delete body.blocks[1].text.emoji;
+	}
 
 	return body;
 }

@@ -2,8 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
+import * as a from 'assert/strict';
+import {
+	DirectedGraph,
+	InstanceSettings,
+	WorkflowExecute,
+	filterDisabledNodes,
+	recreateNodeExecutionStack,
+} from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -13,6 +19,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -29,13 +36,14 @@ import { ExternalHooks } from '@/external-hooks';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
+import type { Job, JobData } from '@/scaling/scaling.types';
 import { PermissionChecker } from '@/user-management/permission-checker';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { ExecutionNotFoundError } from './errors/execution-not-found-error';
 import { EventService } from './events/event.service';
 
 @Service()
@@ -58,13 +66,22 @@ export class WorkflowRunner {
 
 	/** The process did error */
 	async processError(
-		error: ExecutionError,
+		error: ExecutionError | ExecutionNotFoundError,
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
-		ErrorReporter.error(error);
+		// This means the execution was probably cancelled and has already
+		// been cleaned up.
+		//
+		// FIXME: This is a quick fix. The proper fix would be to not remove
+		// the execution from the active executions while it's still running.
+		if (error instanceof ExecutionNotFoundError) {
+			return;
+		}
+
+		ErrorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -128,7 +145,10 @@ export class WorkflowRunner {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
 			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
+			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
@@ -191,6 +211,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
+	// eslint-disable-next-line complexity
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
@@ -274,12 +295,50 @@ export class WorkflowRunner {
 					data.executionData,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+			} else if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
+				this.logger.debug(
+					`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
+					{ executionId },
+				);
+				const startNodes = data.startNodes.map((data) => {
+					const node = workflow.getNode(data.name);
+					a.ok(node, `Could not find a node named "${data.name}" in the workflow.`);
+					return node;
+				});
+				const runData = { [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] };
+
+				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+					recreateNodeExecutionStack(
+						filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
+						new Set(startNodes),
+						runData,
+						data.pinData ?? {},
+					);
+				const executionData: IRunExecutionData = {
+					resultData: { runData, pinData },
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack,
+						waitingExecution,
+						waitingExecutionSource,
+					},
+				};
+
+				const workflowExecute = new WorkflowExecute(additionalData, 'manual', executionData);
+				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else if (
 				data.runData === undefined ||
 				data.startNodes === undefined ||
 				data.startNodes.length === 0
 			) {
 				// Full Execution
+				// TODO: When the old partial execution logic is removed this block can
+				// be removed and the previous one can be merged into
+				// `workflowExecute.runPartialWorkflow2`.
+				// Partial executions then require either a destination node from which
+				// everything else can be derived, or a triggerToStartFrom with
+				// triggerData.
 				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
 					executionId,
 				});
@@ -305,8 +364,9 @@ export class WorkflowRunner {
 					workflowExecution = workflowExecute.runPartialWorkflow2(
 						workflow,
 						data.runData,
-						data.destinationNode,
 						data.pinData,
+						data.dirtyNodeNames,
+						data.destinationNode,
 					);
 				} else {
 					workflowExecution = workflowExecute.runPartialWorkflow(
@@ -392,7 +452,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', []);
+			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -427,56 +487,9 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<JobResult> = job.finished();
-
-				const { queueRecoveryInterval } = Container.get(GlobalConfig).queue.bull;
-
-				const racingPromises: Array<Promise<JobResult>> = [jobData];
-
-				let clearWatchdogInterval;
-				if (queueRecoveryInterval > 0) {
-					/** ***********************************************
-					 * Long explanation about what this solves:      *
-					 * This only happens in a very specific scenario *
-					 * when Redis crashes and recovers shortly       *
-					 * but during this time, some execution(s)       *
-					 * finished. The end result is that the main     *
-					 * process will wait indefinitely and never      *
-					 * get a response. This adds an active polling to*
-					 * the queue that allows us to identify that the *
-					 * execution finished and get information from   *
-					 * the database.                                 *
-					 ************************************************ */
-					let watchDogInterval: NodeJS.Timeout | undefined;
-
-					const watchDog: Promise<JobResult> = new Promise((res) => {
-						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.scalingService.getJob(job.id);
-							// When null means job is finished (not found in queue)
-							if (currentJob === null) {
-								// Mimic worker's success message
-								res({ success: true });
-							}
-						}, queueRecoveryInterval * 1000);
-					});
-
-					racingPromises.push(watchDog);
-
-					clearWatchdogInterval = () => {
-						if (watchDogInterval) {
-							clearInterval(watchDogInterval);
-							watchDogInterval = undefined;
-						}
-					};
-				}
-
 				try {
-					await Promise.race(racingPromises);
-					if (clearWatchdogInterval !== undefined) {
-						clearWatchdogInterval();
-					}
+					await job.finished();
 				} catch (error) {
-					ErrorReporter.error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
@@ -486,9 +499,6 @@ export class WorkflowRunner {
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
 					this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-					if (clearWatchdogInterval !== undefined) {
-						clearWatchdogInterval();
-					}
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);

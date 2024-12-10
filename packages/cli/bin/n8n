@@ -18,21 +18,20 @@ if (process.argv.length === 2) {
 	process.argv.push('start');
 }
 
-const nodeVersion = process.versions.node;
-const { major, gte } = require('semver');
-
-const MINIMUM_SUPPORTED_NODE_VERSION = '18.17.0';
-const ENFORCE_MIN_NODE_VERSION = process.env.E2E_TESTS !== 'true';
-
-if (
-	(ENFORCE_MIN_NODE_VERSION && !gte(nodeVersion, MINIMUM_SUPPORTED_NODE_VERSION)) ||
-	![18, 20, 22].includes(major(nodeVersion))
-) {
-	console.log(`
-	Your Node.js version ${nodeVersion} is currently not supported by n8n.
-	Please use Node.js v${MINIMUM_SUPPORTED_NODE_VERSION} (recommended), v20, or v22 instead!
-	`);
-	process.exit(1);
+const ENFORCE_NODE_VERSION_RANGE = process.env.E2E_TESTS !== 'true';
+if (ENFORCE_NODE_VERSION_RANGE) {
+	const satisfies = require('semver/functions/satisfies');
+	const nodeVersion = process.versions.node;
+	const {
+		engines: { node: supportedNodeVersions },
+	} = require('../package.json');
+	if (!satisfies(nodeVersion, supportedNodeVersions)) {
+		console.error(`
+Your Node.js version ${nodeVersion} is currently not supported by n8n.
+Please use a Node.js version that satisfies the following version range: ${supportedNodeVersions}
+`);
+		process.exit(1);
+	}
 }
 
 // Disable nodejs custom inspection across the app

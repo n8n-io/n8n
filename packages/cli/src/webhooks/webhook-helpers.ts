@@ -34,7 +34,11 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
+	ErrorReporterProxy,
+	ExecutionCancelledError,
+	FORM_NODE_TYPE,
 	NodeHelpers,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
 import { Container } from 'typedi';
@@ -44,11 +48,12 @@ import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { parseBody } from '@/middlewares';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WaitTracker } from '@/wait-tracker';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -120,7 +125,7 @@ export async function executeWebhook(
 	);
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
-		responseCallback(new Error(errorMessage), {});
+		responseCallback(new ApplicationError(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -143,14 +148,37 @@ export async function executeWebhook(
 	}
 
 	// Get the responseMode
-	const responseMode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseMode,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'onReceived',
-	) as WebhookResponseMode;
+	let responseMode;
+
+	// if this is n8n FormTrigger node, check if there is a Form node in child nodes,
+	// if so, set 'responseMode' to 'formPage' to redirect to URL of that Form later
+	if (nodeType.description.name === 'formTrigger') {
+		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
+		let hasNextPage = false;
+		for (const nodeName of connectedNodes) {
+			const node = workflow.nodes[nodeName];
+			if (node.type === FORM_NODE_TYPE && !node.disabled) {
+				hasNextPage = true;
+				break;
+			}
+		}
+
+		if (hasNextPage) {
+			responseMode = 'formPage';
+		}
+	}
+
+	if (!responseMode) {
+		responseMode = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			webhookData.webhookDescription.responseMode,
+			executionMode,
+			additionalKeys,
+			undefined,
+			'onReceived',
+		) as WebhookResponseMode;
+	}
+
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode as string,
@@ -169,12 +197,12 @@ export async function executeWebhook(
 		'firstEntryJson',
 	);
 
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
+	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new Error(errorMessage), {});
+		responseCallback(new ApplicationError(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -242,8 +270,26 @@ export async function executeWebhook(
 			});
 		} catch (err) {
 			// Send error response to webhook caller
-			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
-			responseCallback(new Error(errorMessage), {});
+			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
+				? 'Form'
+				: 'Webhook';
+			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
+
+			// if workflow started manually, show an actual error message
+			if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
+				errorMessage = err.message;
+			}
+
+			ErrorReporterProxy.error(err, {
+				extra: {
+					nodeName: workflowStartNode.name,
+					nodeType: workflowStartNode.type,
+					nodeVersion: workflowStartNode.typeVersion,
+					workflowId: workflow.id,
+				},
+			});
+
+			responseCallback(new ApplicationError(errorMessage), {});
 			didSendResponse = true;
 
 			// Add error to execution data that it can be logged and send to Editor-UI
@@ -419,6 +465,11 @@ export async function executeWebhook(
 			projectId: project?.id,
 		};
 
+		// When resuming from a wait node, copy over the pushRef from the execution-data
+		if (!runData.pushRef) {
+			runData.pushRef = runExecutionData.pushRef;
+		}
+
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
 			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
@@ -487,16 +538,32 @@ export async function executeWebhook(
 			responsePromise,
 		);
 
+		if (responseMode === 'formPage' && !didSendResponse) {
+			res.redirect(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			process.nextTick(() => res.end());
+			didSendResponse = true;
+		}
+
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
 
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		// Get a promise which resolves when the workflow did execute and send then response
+		const executePromise = activeExecutions.getPostExecutePromise(executionId);
+
+		const { parentExecution } = runExecutionData;
+		if (parentExecution) {
+			// on child execution completion, resume parent execution
+			void executePromise.then(() => {
+				const waitTracker = Container.get(WaitTracker);
+				void waitTracker.startExecution(parentExecution.executionId);
+			});
+		}
+
 		if (!didSendResponse) {
-			// Get a promise which resolves when the workflow did execute and send then response
-			const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-				executionId,
-			) as Promise<IExecutionDb | undefined>;
 			executePromise
 				// eslint-disable-next-line complexity
 				.then(async (data) => {
@@ -562,7 +629,7 @@ export async function executeWebhook(
 							// Return the JSON data of the first entry
 
 							if (returnData.data!.main[0]![0] === undefined) {
-								responseCallback(new Error('No item to return got found'), {});
+								responseCallback(new ApplicationError('No item to return got found'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -616,13 +683,13 @@ export async function executeWebhook(
 							data = returnData.data!.main[0]![0];
 
 							if (data === undefined) {
-								responseCallback(new Error('No item was found to return'), {});
+								responseCallback(new ApplicationError('No item was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
 
 							if (data.binary === undefined) {
-								responseCallback(new Error('No binary data was found to return'), {});
+								responseCallback(new ApplicationError('No binary data was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -637,7 +704,10 @@ export async function executeWebhook(
 							);
 
 							if (responseBinaryPropertyName === undefined && !didSendResponse) {
-								responseCallback(new Error("No 'responseBinaryPropertyName' is set"), {});
+								responseCallback(
+									new ApplicationError("No 'responseBinaryPropertyName' is set"),
+									{},
+								);
 								didSendResponse = true;
 							}
 
@@ -646,7 +716,7 @@ export async function executeWebhook(
 							];
 							if (binaryData === undefined && !didSendResponse) {
 								responseCallback(
-									new Error(
+									new ApplicationError(
 										`The binary property '${responseBinaryPropertyName}' which should be returned does not exist`,
 									),
 									{},
@@ -703,7 +773,9 @@ export async function executeWebhook(
 						);
 					}
 
-					throw new InternalServerError(e.message);
+					const internalServerError = new InternalServerError(e.message, e);
+					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
+					throw internalServerError;
 				});
 		}
 		return executionId;

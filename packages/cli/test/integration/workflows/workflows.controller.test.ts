@@ -17,10 +17,14 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
 import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
+import {
+	createWorkflow,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+} from '../shared/db/workflows';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
@@ -675,6 +679,21 @@ describe('GET /workflows', () => {
 				.expect(200);
 
 			expect(response2.body.data).toHaveLength(0);
+		});
+
+		test('should return homeProject when filtering workflows by projectId', async () => {
+			const workflow = await createWorkflow({ name: 'First' }, owner);
+			await shareWorkflowWithUsers(workflow, [member]);
+			const pp = await getPersonalProject(member);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query(`filter={ "projectId": "${pp.id}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(workflow.id);
+			expect(response.body.data[0].homeProject).not.toBeNull();
 		});
 	});
 

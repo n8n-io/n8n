@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nLoading } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
@@ -21,6 +22,9 @@ type Props = {
 	filterRequired?: boolean;
 	width?: number;
 	eventBus?: EventBus;
+	allowNewResources?: {
+		label?: string;
+	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -34,6 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	errorView: false,
 	filterRequired: false,
 	width: undefined,
+	allowNewResources: () => ({}),
 	eventBus: () => createEventBus(),
 });
 
@@ -41,7 +46,10 @@ const emit = defineEmits<{
 	'update:modelValue': [value: NodeParameterValue];
 	loadMore: [];
 	filter: [filter: string];
+	addResourceClick: [];
 }>();
+
+const i18n = useI18n();
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -145,7 +153,12 @@ function onKeyDown(e: KeyboardEvent) {
 			}
 		}
 	} else if (e.key === 'Enter') {
-		emit('update:modelValue', sortedResources.value[hoverIndex.value].value);
+		const selected = sortedResources.value[hoverIndex.value]?.value;
+
+		// Selected resource can be empty when loading or empty results
+		if (selected) {
+			emit('update:modelValue', selected);
+		}
 	}
 }
 
@@ -204,7 +217,7 @@ function onResultsEnd() {
 				ref="searchRef"
 				:model-value="filter"
 				:clearable="true"
-				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				:placeholder="i18n.baseText('resourceLocator.search.placeholder')"
 				data-test-id="rlc-search"
 				@update:model-value="onFilterInput"
 			>
@@ -214,13 +227,13 @@ function onResultsEnd() {
 			</N8nInput>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
-			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
+			{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			v-else-if="!errorView && !allowNewResources.label && sortedResources.length === 0 && !loading"
 			:class="$style.messageContainer"
 		>
-			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
+			{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
 		<div
 			v-else-if="!errorView"
@@ -229,17 +242,35 @@ function onResultsEnd() {
 			@scroll="onResultsEnd"
 		>
 			<div
+				v-if="allowNewResources.label"
+				key="addResourceKey"
+				ref="itemsRef"
+				data-test-id="rlc-item"
+				:class="{
+					[$style.resourceItem]: true,
+					[$style.hovering]: hoverIndex === 0,
+				}"
+				@mouseenter="() => onItemHover(0)"
+				@mouseleave="() => onItemHoverLeave()"
+				@click="() => emit('addResourceClick')"
+			>
+				<div :class="$style.resourceNameContainer">
+					<span :class="$style.addResourceText">{{ allowNewResources.label }}</span>
+					<font-awesome-icon :class="$style.addResourceIcon" :icon="['fa', 'plus']" />
+				</div>
+			</div>
+			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value.toString()"
 				ref="itemsRef"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.selected]: result.value === modelValue,
-					[$style.hovering]: hoverIndex === i,
+					[$style.hovering]: hoverIndex === i + 1,
 				}"
 				data-test-id="rlc-item"
 				@click="() => onItemClick(result.value)"
-				@mouseenter="() => onItemHover(i)"
+				@mouseenter="() => onItemHover(i + 1)"
 				@mouseleave="() => onItemHoverLeave()"
 			>
 				<div :class="$style.resourceNameContainer">
@@ -247,9 +278,9 @@ function onResultsEnd() {
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
-						v-if="showHoverUrl && result.url && hoverIndex === i"
+						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link-alt"
-						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
+						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
 				</div>
@@ -375,5 +406,15 @@ function onResultsEnd() {
 
 .searchIcon {
 	color: var(--color-text-light);
+}
+
+.addResourceText {
+	font-weight: bold;
+}
+
+.addResourceIcon {
+	color: var(--color-text-light);
+
+	margin-left: var(--spacing-2xs);
 }
 </style>
