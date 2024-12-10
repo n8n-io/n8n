@@ -258,7 +258,7 @@ describe('TestRunnerService', () => {
 		// Check Test Run status was updated correctly
 		expect(testRunRepository.createTestRun).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id');
+		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id', expect.any(Number));
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
