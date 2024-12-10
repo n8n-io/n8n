@@ -1,3 +1,18 @@
+## [1.71.2](https://github.com/n8n-io/n8n/compare/n8n@1.71.1...n8n@1.71.2) (2024-12-10)
+
+
+### Bug Fixes
+
+* **core:** Make sure task runner exits ([#12123](https://github.com/n8n-io/n8n/issues/12123)) ([78315ac](https://github.com/n8n-io/n8n/commit/78315aca3d1e5f11503426874debc7c2b0045e9e))
+* **editor:** Fix svg background pattern rendering on safari ([#12079](https://github.com/n8n-io/n8n/issues/12079)) ([36eb25c](https://github.com/n8n-io/n8n/commit/36eb25c9f5501ce67a46fde49ab09be5154b35f6))
+
+
+### Features
+
+* **core:** Cancel runner task on timeout in external mode ([#12101](https://github.com/n8n-io/n8n/issues/12101)) ([f18263b](https://github.com/n8n-io/n8n/commit/f18263bc8f58b6f3193562198cd54c1125d70b9e))
+
+
+
 ## [1.71.1](https://github.com/n8n-io/n8n/compare/n8n@1.71.0...n8n@1.71.1) (2024-12-06)
 
 
