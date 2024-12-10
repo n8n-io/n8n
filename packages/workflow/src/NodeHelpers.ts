@@ -1878,14 +1878,14 @@ export function getParameterIssues(
 
 			// Validate allowed field counts
 			const valueArray = Array.isArray(value) ? value : [];
-			const { minFieldCount, maxFieldCount } = nodeProperties.typeOptions ?? {};
+			const { minRequiredFields, maxAllowedFields } = nodeProperties.typeOptions ?? {};
 			let error = '';
 
-			if (minFieldCount && valueArray.length < minFieldCount) {
-				error = `At least ${minFieldCount} ${minFieldCount === 1 ? 'field is' : 'fields are'} required.`;
+			if (minRequiredFields && valueArray.length < minRequiredFields) {
+				error = `At least ${minRequiredFields} ${minRequiredFields === 1 ? 'field is' : 'fields are'} required.`;
 			}
-			if (maxFieldCount && valueArray.length > maxFieldCount) {
-				error = `At most ${maxFieldCount} ${maxFieldCount === 1 ? 'field is' : 'fields are'} allowed.`;
+			if (maxAllowedFields && valueArray.length > maxAllowedFields) {
+				error = `At most ${maxAllowedFields} ${maxAllowedFields === 1 ? 'field is' : 'fields are'} allowed.`;
 			}
 			if (error) {
 				foundIssues.parameters ??= {};

@@ -129,7 +129,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
-					minFieldCount: 1,
+					minRequiredFields: 1,
 				},
 				displayOptions: {
 					show: { '@version': [{ _cnd: { gte: 1.1 } }], inputSource: [WORKFLOW_INPUTS] },

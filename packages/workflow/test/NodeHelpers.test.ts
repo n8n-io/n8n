@@ -3940,8 +3940,8 @@ describe('NodeHelpers', () => {
 						typeOptions: {
 							multipleValues: true,
 							sortable: true,
-							minFieldCount: 1,
-							maxFieldCount: 3,
+							minRequiredFields: 1,
+							maxAllowedFields: 3,
 						},
 						displayOptions: {
 							show: {
@@ -4056,7 +4056,7 @@ describe('NodeHelpers', () => {
 						typeOptions: {
 							multipleValues: true,
 							sortable: true,
-							minFieldCount: 1,
+							minRequiredFields: 1,
 						},
 						displayOptions: {
 							show: {
@@ -4164,7 +4164,7 @@ describe('NodeHelpers', () => {
 						typeOptions: {
 							multipleValues: true,
 							sortable: true,
-							maxFieldCount: 1,
+							maxAllowedFields: 1,
 						},
 						displayOptions: {
 							show: {
@@ -4282,7 +4282,7 @@ describe('NodeHelpers', () => {
 						typeOptions: {
 							multipleValues: true,
 							sortable: true,
-							maxFieldCount: 1,
+							maxAllowedFields: 1,
 						},
 						displayOptions: {
 							show: {
