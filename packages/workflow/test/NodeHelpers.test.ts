@@ -1,5 +1,6 @@
 import {
 	NodeConnectionType,
+	type INodeIssues,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -13,6 +14,7 @@ import {
 	isSubNodeType,
 	applyDeclarativeNodeOptionParameters,
 	convertNodeToAiTool,
+	getParameterIssues,
 } from '@/NodeHelpers';
 import type { Workflow } from '@/Workflow';
 
@@ -3809,5 +3811,590 @@ describe('NodeHelpers', () => {
 			expect(result.description.name).toBe('special@#$%NodeTool');
 			expect(result.description.displayName).toBe('Special @#$% Node Tool');
 		});
+	});
+	describe('getParameterIssues', () => {
+		const tests: Array<{
+			description: string;
+			input: {
+				nodeProperties: INodeProperties;
+				nodeValues: INodeParameters;
+				path: string;
+				node: INode;
+			};
+			output: INodeIssues;
+		}> = [
+			{
+				description:
+					'Fixed collection::Should not return issues if minimum or maximum field count is not set',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {},
+			},
+			{
+				description:
+					'Fixed collection::Should not return issues if field count is within the specified range',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							minRequiredFields: 1,
+							maxAllowedFields: 3,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {
+							values: [
+								{
+									name: 'field1',
+									type: 'string',
+								},
+								{
+									name: 'field2',
+									type: 'string',
+								},
+							],
+						},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {},
+			},
+			{
+				description:
+					'Fixed collection::Should return an issue if field count is lower than minimum specified',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							minRequiredFields: 1,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {
+					parameters: {
+						workflowInputs: ['At least 1 field is required.'],
+					},
+				},
+			},
+			{
+				description:
+					'Fixed collection::Should return an issue if field count is higher than maximum specified',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							maxAllowedFields: 1,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'workflowInputs',
+						workflowInputs: {
+							values: [
+								{
+									name: 'field1',
+									type: 'string',
+								},
+								{
+									name: 'field2',
+									type: 'string',
+								},
+							],
+						},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {
+					parameters: {
+						workflowInputs: ['At most 1 field is allowed.'],
+					},
+				},
+			},
+			{
+				description: 'Fixed collection::Should not return issues if the collection is hidden',
+				input: {
+					nodeProperties: {
+						displayName: 'Workflow Inputs',
+						name: 'workflowInputs',
+						placeholder: 'Add Field',
+						type: 'fixedCollection',
+						description:
+							'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+							maxAllowedFields: 1,
+						},
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 1.1,
+										},
+									},
+								],
+								inputSource: ['workflowInputs'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. fieldName',
+										description: 'Name of the field',
+										noDataExpression: true,
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										description: 'The field value type',
+										options: [
+											{
+												name: 'Allow Any Type',
+												value: 'any',
+											},
+											{
+												name: 'String',
+												value: 'string',
+											},
+											{
+												name: 'Number',
+												value: 'number',
+											},
+											{
+												name: 'Boolean',
+												value: 'boolean',
+											},
+											{
+												name: 'Array',
+												value: 'array',
+											},
+											{
+												name: 'Object',
+												value: 'object',
+											},
+										],
+										default: 'string',
+										noDataExpression: true,
+									},
+								],
+							},
+						],
+					},
+					nodeValues: {
+						events: 'worklfow_call',
+						inputSource: 'somethingElse',
+						workflowInputs: {
+							values: [
+								{
+									name: 'field1',
+									type: 'string',
+								},
+								{
+									name: 'field2',
+									type: 'string',
+								},
+							],
+						},
+						inputOptions: {},
+					},
+					path: '',
+					node: {
+						parameters: {
+							events: 'worklfow_call',
+							inputSource: 'workflowInputs',
+							workflowInputs: {},
+							inputOptions: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						position: [-140, -20],
+						id: '9abdbdac-5f32-4876-b4d5-895d8ca4cb00',
+						name: 'Test Node',
+					} as INode,
+				},
+				output: {},
+			},
+		];
+
+		for (const testData of tests) {
+			test(testData.description, () => {
+				const result = getParameterIssues(
+					testData.input.nodeProperties,
+					testData.input.nodeValues,
+					testData.input.path,
+					testData.input.node,
+				);
+				expect(result).toEqual(testData.output);
+			});
+		}
 	});
 });

@@ -1838,7 +1838,7 @@ export function getParameterIssues(
 				data: option as INodeProperties,
 			});
 		}
-	} else if (nodeProperties.type === 'fixedCollection') {
+	} else if (nodeProperties.type === 'fixedCollection' && isDisplayed) {
 		basePath = basePath ? `${basePath}.` : `${nodeProperties.name}.`;
 
 		let propertyOptions: INodePropertyCollection;
@@ -1849,6 +1849,24 @@ export function getParameterIssues(
 				propertyOptions.name,
 				basePath.slice(0, -1),
 			);
+
+			// Validate allowed field counts
+			const valueArray = Array.isArray(value) ? value : [];
+			const { minRequiredFields, maxAllowedFields } = nodeProperties.typeOptions ?? {};
+			let error = '';
+
+			if (minRequiredFields && valueArray.length < minRequiredFields) {
+				error = `At least ${minRequiredFields} ${minRequiredFields === 1 ? 'field is' : 'fields are'} required.`;
+			}
+			if (maxAllowedFields && valueArray.length > maxAllowedFields) {
+				error = `At most ${maxAllowedFields} ${maxAllowedFields === 1 ? 'field is' : 'fields are'} allowed.`;
+			}
+			if (error) {
+				foundIssues.parameters ??= {};
+				foundIssues.parameters[nodeProperties.name] ??= [];
+				foundIssues.parameters[nodeProperties.name].push(error);
+			}
+
 			if (value === undefined) {
 				continue;
 			}
