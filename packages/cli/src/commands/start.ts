@@ -192,6 +192,9 @@ export class Start extends BaseCommand {
 		await super.init();
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
+		this.instanceSettings.setMultiMainEnabled(
+			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled,
+		);
 		await this.initLicense();
 
 		await this.initOrchestration();
@@ -243,9 +246,6 @@ export class Start extends BaseCommand {
 
 		const orchestrationService = Container.get(OrchestrationService);
 
-		this.instanceSettings.setMultiMainEnabled(
-			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled,
-		);
 		await orchestrationService.init();
 
 		Container.get(PubSubHandler).init();

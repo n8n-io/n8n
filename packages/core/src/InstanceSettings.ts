@@ -90,6 +90,7 @@ export class InstanceSettings {
 
 	private isMultiMainLicensed = false;
 
+	/** Set whether multi-main mode is enabled. Does not imply licensed status. */
 	setMultiMainEnabled(newState: boolean) {
 		this.isMultiMainEnabled = newState;
 	}
