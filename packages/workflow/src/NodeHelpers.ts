@@ -1879,24 +1879,18 @@ export function getParameterIssues(
 			// Validate allowed field counts
 			const valueArray = Array.isArray(value) ? value : [];
 			const { minFieldCount, maxFieldCount } = nodeProperties.typeOptions ?? {};
-			const errors: string[] = [];
+			let error = '';
 
 			if (minFieldCount && valueArray.length < minFieldCount) {
-				errors.push(
-					`At least ${minFieldCount} ${minFieldCount === 1 ? 'field is' : 'fields are'} required.`,
-				);
+				error = `At least ${minFieldCount} ${minFieldCount === 1 ? 'field is' : 'fields are'} required.`;
 			}
-
 			if (maxFieldCount && valueArray.length > maxFieldCount) {
-				errors.push(
-					`At most ${maxFieldCount} ${maxFieldCount === 1 ? 'field is' : 'fields are'} allowed.`,
-				);
+				error = `At most ${maxFieldCount} ${maxFieldCount === 1 ? 'field is' : 'fields are'} allowed.`;
 			}
-
-			if (errors.length) {
+			if (error) {
 				foundIssues.parameters ??= {};
 				foundIssues.parameters[nodeProperties.name] ??= [];
-				foundIssues.parameters[nodeProperties.name].push(...errors);
+				foundIssues.parameters[nodeProperties.name].push(error);
 			}
 		}
 	} else {
