@@ -8,6 +8,8 @@ import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
 import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
 
+import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
+
 export interface Task<T = unknown> {
 	taskId: string;
 	settings?: T;
@@ -218,7 +220,7 @@ export abstract class TaskRunner extends EventEmitter {
 				this.offerAccepted(message.offerId, message.taskId);
 				break;
 			case 'broker:taskcancel':
-				this.taskCancelled(message.taskId);
+				this.taskCancelled(message.taskId, message.reason);
 				break;
 			case 'broker:tasksettings':
 				void this.receivedSettings(message.taskId, message.settings);
@@ -293,7 +295,7 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	taskCancelled(taskId: string) {
+	taskCancelled(taskId: string, reason: string) {
 		const task = this.runningTasks.get(taskId);
 		if (!task) {
 			return;
@@ -302,14 +304,14 @@ export abstract class TaskRunner extends EventEmitter {
 
 		for (const [requestId, request] of this.dataRequests.entries()) {
 			if (request.taskId === taskId) {
-				request.reject(new ApplicationError('Task cancelled'));
+				request.reject(new TaskCancelledError(reason));
 				this.dataRequests.delete(requestId);
 			}
 		}
 
 		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
 			if (request.taskId === taskId) {
-				request.reject(new ApplicationError('Task cancelled'));
+				request.reject(new TaskCancelledError(reason));
 				this.nodeTypesRequests.delete(requestId);
 			}
 		}

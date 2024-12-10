@@ -132,17 +132,17 @@ describe('TestRunner', () => {
 				reject: nodeTypesRequestReject,
 			});
 
-			runner.taskCancelled(taskId);
+			runner.taskCancelled(taskId, 'test-reason');
 
 			expect(dataRequestReject).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: 'Task cancelled',
+					message: 'Task cancelled: test-reason',
 				}),
 			);
 
 			expect(nodeTypesRequestReject).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: 'Task cancelled',
+					message: 'Task cancelled: test-reason',
 				}),
 			);
 
