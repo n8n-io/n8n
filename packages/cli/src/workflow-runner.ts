@@ -475,17 +475,15 @@ export class WorkflowRunner {
 		pinData?: IPinData,
 	) {
 		if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
-			this.logger.debug(`Execution ${executionId} will run starting from specific trigger`, {
-				executionId,
-				triggerToStartFrom: data.triggerToStartFrom.name,
-			});
-
+			this.logger.debug(
+				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
+				{ executionId },
+			);
 			const startNodes = data.startNodes.map((data) => {
 				const node = workflow.getNode(data.name);
 				a.ok(node, `Could not find a node named "${data.name}" in the workflow.`);
 				return node;
 			});
-
 			const runData = { [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] };
 
 			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
@@ -495,7 +493,6 @@ export class WorkflowRunner {
 					runData,
 					data.pinData ?? {},
 				);
-
 			const executionData: IRunExecutionData = {
 				resultData: { runData, pinData },
 				executionData: {
@@ -508,48 +505,52 @@ export class WorkflowRunner {
 			};
 
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual', executionData);
-
 			return workflowExecute.processRunExecutionData(workflow);
-		}
-
-		if (
+		} else if (
 			data.runData === undefined ||
 			data.startNodes === undefined ||
 			data.startNodes.length === 0
 		) {
-			this.logger.debug(`Execution ${executionId} will run executing all nodes (full execution)`, {
+			// Full Execution
+			// TODO: When the old partial execution logic is removed this block can
+			// be removed and the previous one can be merged into
+			// `workflowExecute.runPartialWorkflow2`.
+			// Partial executions then require either a destination node from which
+			// everything else can be derived, or a triggerToStartFrom with
+			// triggerData.
+			this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
 				executionId,
 			});
+			// Execute all nodes
 
 			const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
+
+			// Can execute without webhook so go on
+			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
+		} else {
+			// Partial Execution
+			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
+			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
+			if (data.partialExecutionVersion === '1') {
+				return workflowExecute.runPartialWorkflow2(
+					workflow,
+					data.runData,
+					data.pinData,
+					data.dirtyNodeNames,
+					data.destinationNode,
+				);
+			} else {
+				return workflowExecute.runPartialWorkflow(
+					workflow,
+					data.runData,
+					data.startNodes,
+					data.destinationNode,
+					data.pinData,
+				);
+			}
 		}
-
-		this.logger.debug(
-			`Execution ID ${executionId} will run executing some nodes (partial execution)`,
-			{ executionId },
-		);
-
-		const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-
-		if (data.partialExecutionVersion === '1') {
-			return workflowExecute.runPartialWorkflow2(
-				workflow,
-				data.runData,
-				data.pinData,
-				data.dirtyNodeNames,
-				data.destinationNode,
-			);
-		}
-
-		return workflowExecute.runPartialWorkflow(
-			workflow,
-			data.runData,
-			data.startNodes,
-			data.destinationNode,
-			data.pinData,
-		);
 	}
 }
