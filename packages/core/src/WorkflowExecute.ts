@@ -354,24 +354,24 @@ export class WorkflowExecute {
 		}
 
 		// 2. Find the Subgraph
-		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
-		const filteredNodes = subgraph.getNodes();
+		let graph = DirectedGraph.fromWorkflow(workflow);
+		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
 		runData = omit(runData, dirtyNodeNames);
-		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData, pinData });
+		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
 		// 5. Handle Cycles
 		startNodes = handleCycles(graph, startNodes, trigger);
 
 		// 6. Clean Run Data
-		const newRunData: IRunData = cleanRunData(runData, graph, startNodes);
+		runData = cleanRunData(runData, graph, startNodes);
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, new Set(startNodes), runData, pinData ?? {});
+			recreateNodeExecutionStack(graph, new Set(startNodes), runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -381,7 +381,7 @@ export class WorkflowExecute {
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
 			resultData: {
-				runData: newRunData,
+				runData,
 				pinData,
 			},
 			executionData: {
@@ -393,7 +393,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
+		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 	}
 
 	/**
