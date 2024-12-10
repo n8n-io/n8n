@@ -5,8 +5,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import { stringify } from 'flatted';
+import { InstanceSettings, WorkflowExecute } from 'n8n-core';
 import {
 	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
