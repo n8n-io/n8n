@@ -291,7 +291,7 @@ async function initializeData() {
 	}
 }
 
-async function initializeRoute() {
+async function initializeRoute(force = false) {
 	// In case the workflow got saved we do not have to run init
 	// as only the route changed but all the needed data is already loaded
 	if (route.params.action === 'workflowSave') {
@@ -300,6 +300,7 @@ async function initializeRoute() {
 	}
 
 	const isAlreadyInitialized =
+		!force &&
 		initializedWorkflowId.value &&
 		[NEW_WORKFLOW_ID, workflowId.value].includes(initializedWorkflowId.value);
 
@@ -910,7 +911,10 @@ async function onAddNodesAndConnections(
 	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
-	selectNodes([addedNodes[addedNodes.length - 1].id]);
+
+	if (addedNodes.length > 0) {
+		selectNodes([addedNodes[addedNodes.length - 1].id]);
+	}
 }
 
 async function onRevertAddNode({ node }: { node: INodeUi }) {
@@ -1489,8 +1493,10 @@ function unregisterCustomActions() {
 
 watch(
 	() => route.name,
-	async () => {
-		await initializeRoute();
+	async (newRouteName, oldRouteName) => {
+		// it's navigating from and existing workflow to a new workflow
+		const force = newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW;
+		await initializeRoute(force);
 	},
 );
 

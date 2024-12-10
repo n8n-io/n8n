@@ -690,8 +690,13 @@ provide(CanvasKey, {
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
-			<template v-if="readOnly" #pattern-container>
-				<CanvasBackgroundStripedPattern :x="viewport.x" :y="viewport.y" :zoom="viewport.zoom" />
+			<template v-if="readOnly" #pattern-container="patternProps">
+				<CanvasBackgroundStripedPattern
+					:id="patternProps.id"
+					:x="viewport.x"
+					:y="viewport.y"
+					:zoom="viewport.zoom"
+				/>
 			</template>
 		</Background>
 
