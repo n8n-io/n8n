@@ -11,13 +11,18 @@ let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
 let errorReporter: ErrorReporter | undefined;
 
-function createSignalHandler(signal: string) {
+function createSignalHandler(signal: string, timeoutInS = 10) {
 	return async function onSignal() {
 		if (isShuttingDown) {
 			return;
 		}
 
 		console.log(`Received ${signal} signal, shutting down...`);
+
+		setTimeout(() => {
+			console.error('Shutdown timeout reached, forcing shutdown...');
+			process.exit(1);
+		}, timeoutInS * 1000).unref();
 
 		isShuttingDown = true;
 		try {
@@ -56,7 +61,8 @@ void (async function start() {
 
 	runner = new JsTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {
-		void createSignalHandler('IDLE_TIMEOUT')();
+		// Use shorter timeout since we know we don't have any tasks running
+		void createSignalHandler('IDLE_TIMEOUT', 1)();
 	});
 
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
