@@ -32,6 +32,7 @@ import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
 import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
 import { makeSerializable } from './errors/serializable-error';
+import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
@@ -94,7 +95,7 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
-	async executeTask(task: Task<JSExecSettings>): Promise<TaskResultData> {
+	async executeTask(task: Task<JSExecSettings>, signal: AbortSignal): Promise<TaskResultData> {
 		const settings = task.settings;
 		a.ok(settings, 'JS Code not sent to runner');
 
@@ -133,8 +134,8 @@ export class JsTaskRunner extends TaskRunner {
 
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
-				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole)
-				: await this.runForEachItem(task.taskId, settings, data, workflow, customConsole);
+				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
+				: await this.runForEachItem(task.taskId, settings, data, workflow, customConsole, signal);
 
 		return {
 			result,
@@ -183,6 +184,7 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
+		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
@@ -199,10 +201,26 @@ export class JsTaskRunner extends TaskRunner {
 		};
 
 		try {
-			const result = (await runInNewContext(
-				`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-				context,
-			)) as TaskResultData['result'];
+			const result = await new Promise<TaskResultData['result']>((resolve, reject) => {
+				const abortHandler = () => {
+					reject(new TimeoutError(this.taskTimeout));
+				};
+
+				signal.addEventListener('abort', abortHandler, { once: true });
+
+				const taskResult = runInNewContext(
+					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+					context,
+					{ timeout: this.taskTimeout * 1000 },
+				) as Promise<TaskResultData['result']>;
+
+				void taskResult
+					.then(resolve)
+					.catch(reject)
+					.finally(() => {
+						signal.removeEventListener('abort', abortHandler);
+					});
+			});
 
 			if (result === null) {
 				return [];
@@ -230,6 +248,7 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		customConsole: CustomConsole,
+		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const inputItems = data.connectionInputData;
 		const returnData: INodeExecutionData[] = [];
@@ -255,10 +274,26 @@ export class JsTaskRunner extends TaskRunner {
 			};
 
 			try {
-				let result = (await runInNewContext(
-					`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
-					context,
-				)) as INodeExecutionData | undefined;
+				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
+					const abortHandler = () => {
+						reject(new TimeoutError(this.taskTimeout));
+					};
+
+					signal.addEventListener('abort', abortHandler);
+
+					const taskResult = runInNewContext(
+						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+						context,
+						{ timeout: this.taskTimeout * 1000 },
+					) as Promise<INodeExecutionData>;
+
+					void taskResult
+						.then(resolve)
+						.catch(reject)
+						.finally(() => {
+							signal.removeEventListener('abort', abortHandler);
+						});
+				});
 
 				// Filter out null values
 				if (result === null) {
