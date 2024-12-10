@@ -401,7 +401,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			// "Tool" is appended automatically to node type name
 			// because of usableAsTool flag set above
 			const isTool = this.getNode().type.endsWith('Tool');
-			// todo refactor function out
 			if (isTool) {
 				const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 				const toolName = this.getNodeParameter('toolName', itemIndex) as string;
