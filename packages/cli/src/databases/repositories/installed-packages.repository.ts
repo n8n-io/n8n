@@ -35,7 +35,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 			for (const loadedNode of loadedNodes) {
 				const installedNode = this.installedNodesRepository.create({
 					name: nodeTypes[loadedNode.name].type.description.displayName,
-					type: loadedNode.name,
+					type: `${packageName}.${loadedNode.name}`,
 					latestVersion: loadedNode.version,
 					package: { packageName },
 				});
