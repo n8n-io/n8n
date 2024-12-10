@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
@@ -18,7 +19,7 @@ const createWebhook = (method: string, path: string, webhookId?: string, pathSeg
 describe('WebhookService', () => {
 	const webhookRepository = mockInstance(WebhookRepository);
 	const cacheService = mockInstance(CacheService);
-	const webhookService = new WebhookService(webhookRepository, cacheService);
+	const webhookService = new WebhookService(webhookRepository, cacheService, mock());
 
 	beforeEach(() => {
 		config.load(config.default);

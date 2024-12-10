@@ -9,7 +9,7 @@
 import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import get from 'lodash/get';
-import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import type {
 	IBinaryData,
 	IBinaryKeyData,
@@ -37,7 +37,6 @@ import {
 	ErrorReporterProxy,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
-	NodeHelpers,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
@@ -59,6 +58,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 /**
@@ -90,7 +90,12 @@ export function getWorkflowWebhooks(
 		}
 		returnData.push.apply(
 			returnData,
-			NodeHelpers.getNodeWebhooks(workflow, node, additionalData, ignoreRestartWebhooks),
+			Container.get(WebhookService).getNodeWebhooks(
+				workflow,
+				node,
+				additionalData,
+				ignoreRestartWebhooks,
+			),
 		);
 	}
 
@@ -256,11 +261,11 @@ export async function executeWebhook(
 		}
 
 		try {
-			webhookResultData = await workflow.runWebhook(
+			webhookResultData = await Container.get(WebhookService).runWebhook(
+				workflow,
 				webhookData,
 				workflowStartNode,
 				additionalData,
-				NodeExecuteFunctions,
 				executionMode,
 				runExecutionData ?? null,
 			);

@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import {
-	ActiveWorkflows,
-	InstanceSettings,
-	NodeExecuteFunctions,
-	PollContext,
-	TriggerContext,
-} from 'n8n-core';
+import { ActiveWorkflows, InstanceSettings, PollContext, TriggerContext } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -186,12 +180,7 @@ export class ActiveWorkflowManager {
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
 				await this.webhookService.storeWebhook(webhook);
-				await workflow.createWebhookIfNotExists(
-					webhookData,
-					NodeExecuteFunctions,
-					mode,
-					activation,
-				);
+				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
 					// n8n does not remove the registered webhooks on exit.
@@ -261,7 +250,7 @@ export class ActiveWorkflowManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
-			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
+			await this.webhookService.deleteWebhook(workflow, webhookData, mode, 'update');
 		}
 
 		await this.workflowStaticDataService.saveStaticData(workflow);

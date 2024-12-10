@@ -166,7 +166,6 @@ describe('remove()', () => {
 
 		it('should remove all webhooks of a workflow from external service', async () => {
 			const dbWorkflow = await createActiveWorkflow();
-			const deleteWebhookSpy = jest.spyOn(Workflow.prototype, 'deleteWebhook');
 			jest
 				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
 				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
@@ -174,7 +173,7 @@ describe('remove()', () => {
 			await activeWorkflowManager.init();
 			await activeWorkflowManager.remove(dbWorkflow.id);
 
-			expect(deleteWebhookSpy).toHaveBeenCalledTimes(1);
+			expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(1);
 		});
 
 		it('should stop running triggers and pollers', async () => {
@@ -259,7 +258,7 @@ describe('addWebhooks()', () => {
 
 		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValue(node);
 		jest.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
-		jest.spyOn(Workflow.prototype, 'createWebhookIfNotExists').mockResolvedValue(undefined);
+		webhookService.createWebhookIfNotExists.mockResolvedValue(undefined);
 
 		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');
 
