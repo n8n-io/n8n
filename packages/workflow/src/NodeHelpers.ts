@@ -6,7 +6,6 @@
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
-import { SINGLE_EXECUTION_NODES } from './Constants';
 import { ApplicationError } from './errors/application.error';
 import { NodeConnectionType } from './Interfaces';
 import type {
@@ -31,7 +30,6 @@ import type {
 	NodeParameterValue,
 	ResourceMapperValue,
 	INodeTypeDescription,
-	INodeTypeBaseDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
@@ -236,33 +234,6 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-const commonPollingParameters: INodeProperties[] = [
-	{
-		displayName: 'Poll Times',
-		name: 'pollTimes',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Poll Time',
-		},
-		default: { item: [{ mode: 'everyMinute' }] },
-		description: 'Time at which polling should occur',
-		placeholder: 'Add Poll Time',
-		options: cronNodeOptions,
-	},
-];
-
-export const commonCORSParameters: INodeProperties[] = [
-	{
-		displayName: 'Allowed Origins (CORS)',
-		name: 'allowedOrigins',
-		type: 'string',
-		default: '*',
-		description:
-			'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
-	},
-];
-
 const declarativeNodeOptionParameters: INodeProperties = {
 	displayName: 'Request Options',
 	name: 'requestOptions',
@@ -345,101 +316,6 @@ const declarativeNodeOptionParameters: INodeProperties = {
 };
 
 /**
- * Modifies the description of the passed in object, such that it can be used
- * as an AI Agent Tool.
- * Returns the modified item (not copied)
- */
-export function convertNodeToAiTool<
-	T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
->(item: T): T {
-	// quick helper function for type-guard down below
-	function isFullDescription(obj: unknown): obj is INodeTypeDescription {
-		return typeof obj === 'object' && obj !== null && 'properties' in obj;
-	}
-
-	if (isFullDescription(item.description)) {
-		item.description.name += 'Tool';
-		item.description.inputs = [];
-		item.description.outputs = [NodeConnectionType.AiTool];
-		item.description.displayName += ' Tool';
-		delete item.description.usableAsTool;
-
-		const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
-		const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
-
-		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-			const descriptionType: INodeProperties = {
-				displayName: 'Tool Description',
-				name: 'descriptionType',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Set Automatically',
-						value: 'auto',
-						description: 'Automatically set based on resource and operation',
-					},
-					{
-						name: 'Set Manually',
-						value: 'manual',
-						description: 'Manually set the description',
-					},
-				],
-				default: 'auto',
-			};
-
-			const descProp: INodeProperties = {
-				displayName: 'Description',
-				name: 'toolDescription',
-				type: 'string',
-				default: item.description.description,
-				required: true,
-				typeOptions: { rows: 2 },
-				description:
-					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-				placeholder: `e.g. ${item.description.description}`,
-			};
-
-			const noticeProp: INodeProperties = {
-				displayName:
-					"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			};
-
-			item.description.properties.unshift(descProp);
-
-			// If node has resource or operation we can determine pre-populate tool description based on it
-			// so we add the descriptionType property as the first property
-			if (hasResource || hasOperation) {
-				item.description.properties.unshift(descriptionType);
-
-				descProp.displayOptions = {
-					show: {
-						descriptionType: ['manual'],
-					},
-				};
-			}
-
-			item.description.properties.unshift(noticeProp);
-		}
-	}
-
-	const resources = item.description.codex?.resources ?? {};
-
-	item.description.codex = {
-		categories: ['AI'],
-		subcategories: {
-			AI: ['Tools'],
-			Tools: ['Other Tools'],
-		},
-		resources,
-	};
-	return item;
-}
-
-/**
  * Determines if the provided node type has any output types other than the main connection type.
  * @param typeDescription The node's type description to check.
  */
@@ -509,27 +385,6 @@ export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void 
 	}
 
 	return;
-}
-
-/**
- * Apply special parameters which should be added to nodeTypes depending on their type or configuration
- */
-export function applySpecialNodeParameters(nodeType: INodeType): void {
-	const { properties, polling, supportsCORS } = nodeType.description;
-	if (polling) {
-		properties.unshift(...commonPollingParameters);
-	}
-	if (nodeType.webhook && supportsCORS) {
-		const optionsProperty = properties.find(({ name }) => name === 'options');
-		if (optionsProperty)
-			optionsProperty.options = [
-				...commonCORSParameters,
-				...(optionsProperty.options as INodePropertyOptions[]),
-			];
-		else properties.push(...commonCORSParameters);
-	}
-
-	applyDeclarativeNodeOptionParameters(nodeType);
 }
 
 const getPropertyValues = (
@@ -744,7 +599,6 @@ export function getContext(
 
 /**
  * Returns which parameters are dependent on which
- *
  */
 function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
@@ -780,7 +634,6 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
 /**
  * Returns in which order the parameters should be resolved
  * to have the parameters available they depend on
- *
  */
 export function getParameterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
@@ -1444,9 +1297,8 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
- *
  */
-export const validateResourceLocatorParameter = (
+const validateResourceLocatorParameter = (
 	value: INodeParameterResourceLocator,
 	parameterMode: INodePropertyMode,
 ): string[] => {
@@ -1475,9 +1327,8 @@ export const validateResourceLocatorParameter = (
 
 /*
  * Validates resource mapper values based on service schema
- *
  */
-export const validateResourceMapperParameter = (
+const validateResourceMapperParameter = (
 	nodeProperties: INodeProperties,
 	value: ResourceMapperValue,
 	skipRequiredCheck = false,
@@ -1516,7 +1367,7 @@ export const validateResourceMapperParameter = (
 	return issues;
 };
 
-export const validateParameter = (
+const validateParameter = (
 	nodeProperties: INodeProperties,
 	value: GenericValue,
 	type: FieldType,
@@ -1544,7 +1395,7 @@ export const validateParameter = (
  * @param {INodeProperties} nodeProperties The properties of the node
  * @param {NodeParameterValue} value The value of the parameter
  */
-export function addToIssuesIfMissing(
+function addToIssuesIfMissing(
 	foundIssues: INodeIssues,
 	nodeProperties: INodeProperties,
 	value: NodeParameterValue | INodeParameterResourceLocator,
@@ -1819,7 +1670,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 
 /**
  * Merges the given node properties
- *
  */
 export function mergeNodeProperties(
 	mainProperties: INodeProperties[],
@@ -1849,20 +1699,4 @@ export function getVersionedNodeType(
 		return object.getNodeType(version);
 	}
 	return object;
-}
-
-export function isSingleExecution(type: string, parameters: INodeParameters): boolean {
-	const singleExecutionCase = SINGLE_EXECUTION_NODES[type];
-
-	if (singleExecutionCase) {
-		for (const parameter of Object.keys(singleExecutionCase)) {
-			if (!singleExecutionCase[parameter].includes(parameters[parameter] as NodeParameterValue)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	return false;
 }
