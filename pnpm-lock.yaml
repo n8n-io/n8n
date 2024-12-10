@@ -283,7 +283,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -351,7 +351,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -425,7 +425,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i))
+        version: 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -452,7 +452,7 @@ importers:
         version: 0.3.1(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.15
-        version: 0.3.15(v4qhcw25bevfr6xzz4fnsvjiqe)
+        version: 0.3.15(vc5hvyy27o4cmm4jplsptc2fqm)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
@@ -539,7 +539,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.6
-        version: 0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i)
+        version: 0.3.6(e4rnrwhosnp2xiru36mqgdy2bu)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -798,7 +798,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1129,7 +1129,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1400,20 +1400,20 @@ importers:
         specifier: catalog:frontend
         version: 8.33.1(vue@3.5.11(typescript@5.7.2))
       '@vue-flow/background':
-        specifier: ^1.3.1
-        version: 1.3.1(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
+        specifier: ^1.3.2
+        version: 1.3.2(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
       '@vue-flow/controls':
         specifier: ^1.1.2
-        version: 1.1.2(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
+        version: 1.1.2(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
       '@vue-flow/core':
-        specifier: ^1.41.4
-        version: 1.41.4(vue@3.5.11(typescript@5.7.2))
+        specifier: ^1.41.6
+        version: 1.41.6(vue@3.5.11(typescript@5.7.2))
       '@vue-flow/minimap':
         specifier: ^1.5.0
-        version: 1.5.0(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
+        version: 1.5.0(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
       '@vue-flow/node-resizer':
         specifier: ^1.4.0
-        version: 1.4.0(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
+        version: 1.4.0(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))
       '@vueuse/components':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.5.11(typescript@5.7.2))
@@ -1422,7 +1422,7 @@ importers:
         version: 10.11.0(vue@3.5.11(typescript@5.7.2))
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -1905,7 +1905,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.7.4(debug@4.3.7)
+        version: 1.7.4
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -5302,8 +5302,8 @@ packages:
   '@volar/typescript@2.4.6':
     resolution: {integrity: sha512-NMIrA7y5OOqddL9VtngPWYmdQU03htNKFtAYidbYfWA0TOhyGVd9tfcP4TsLWQ+RBWDZCbBqsr8xzU0ZOxYTCQ==}
 
-  '@vue-flow/background@1.3.1':
-    resolution: {integrity: sha512-8q0lTbvA3A9s0bDnpUIHMZj/HUTdMa3ChGSAw7EBaTKy7qJB21EnKbTIgC2lYweprzxk94vop4YmGfUO1jiqqQ==}
+  '@vue-flow/background@1.3.2':
+    resolution: {integrity: sha512-eJPhDcLj1wEo45bBoqTXw1uhl0yK2RaQGnEINqvvBsAFKh/camHJd5NPmOdS1w+M9lggc9igUewxaEd3iCQX2w==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
@@ -5314,8 +5314,8 @@ packages:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/core@1.41.4':
-    resolution: {integrity: sha512-OEGI+56DSJ/00fm9SjWgGXtgKJO3Un2/tOEKlCTvL13567VBtdtvNci7f9+6upaR9Eu3oFgbEsF1NiyoQjvB9A==}
+  '@vue-flow/core@1.41.6':
+    resolution: {integrity: sha512-8zxcGRqiudra0obDMLTg9L89WxdlV0QrDOdyPYOKWDcD/UK5aT0MIL3Br9TF9AJmHW2z8QZq4cmmgroREL0jgQ==}
     peerDependencies:
       vue: ^3.3.0
 
@@ -14122,7 +14122,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -14131,7 +14131,7 @@ snapshots:
       zod: 3.23.8
     optionalDependencies:
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
-      langchain: 0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i)
+      langchain: 0.3.6(e4rnrwhosnp2xiru36mqgdy2bu)
     transitivePeerDependencies:
       - encoding
 
@@ -14596,7 +14596,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.15(v4qhcw25bevfr6xzz4fnsvjiqe)':
+  '@langchain/community@0.3.15(vc5hvyy27o4cmm4jplsptc2fqm)':
     dependencies:
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
@@ -14606,7 +14606,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i)
+      langchain: 0.3.6(e4rnrwhosnp2xiru36mqgdy2bu)
       langsmith: 0.2.3(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
       uuid: 10.0.0
       zod: 3.23.8
@@ -14619,7 +14619,7 @@ snapshots:
       '@aws-sdk/client-s3': 3.666.0
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)(langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -15328,7 +15328,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
     dependencies:
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -17039,17 +17039,17 @@ snapshots:
       path-browserify: 1.0.1
       vscode-uri: 3.0.8
 
-  '@vue-flow/background@1.3.1(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
+  '@vue-flow/background@1.3.2(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
     dependencies:
-      '@vue-flow/core': 1.41.4(vue@3.5.11(typescript@5.7.2))
+      '@vue-flow/core': 1.41.6(vue@3.5.11(typescript@5.7.2))
       vue: 3.5.11(typescript@5.7.2)
 
-  '@vue-flow/controls@1.1.2(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
+  '@vue-flow/controls@1.1.2(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
     dependencies:
-      '@vue-flow/core': 1.41.4(vue@3.5.11(typescript@5.7.2))
+      '@vue-flow/core': 1.41.6(vue@3.5.11(typescript@5.7.2))
       vue: 3.5.11(typescript@5.7.2)
 
-  '@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2))':
+  '@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2))':
     dependencies:
       '@vueuse/core': 10.11.0(vue@3.5.11(typescript@5.7.2))
       d3-drag: 3.0.0
@@ -17059,16 +17059,16 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
 
-  '@vue-flow/minimap@1.5.0(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
+  '@vue-flow/minimap@1.5.0(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
     dependencies:
-      '@vue-flow/core': 1.41.4(vue@3.5.11(typescript@5.7.2))
+      '@vue-flow/core': 1.41.6(vue@3.5.11(typescript@5.7.2))
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.5.11(typescript@5.7.2)
 
-  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.41.4(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
+  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.41.6(vue@3.5.11(typescript@5.7.2)))(vue@3.5.11(typescript@5.7.2))':
     dependencies:
-      '@vue-flow/core': 1.41.4(vue@3.5.11(typescript@5.7.2))
+      '@vue-flow/core': 1.41.6(vue@3.5.11(typescript@5.7.2))
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       vue: 3.5.11(typescript@5.7.2)
@@ -17584,9 +17584,17 @@ snapshots:
       '@babel/runtime': 7.24.7
       is-retry-allowed: 2.2.0
 
-  axios@1.7.4(debug@4.3.7):
+  axios@1.7.4:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.7.4(debug@4.3.7):
+    dependencies:
+      follow-redirects: 1.15.6(debug@4.3.7)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -21409,7 +21417,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.6(4axcxpjbcq5bce7ff6ajxrpp4i):
+  langchain@0.3.6(e4rnrwhosnp2xiru36mqgdy2bu):
     dependencies:
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
       '@langchain/openai': 0.3.14(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
@@ -21433,7 +21441,7 @@ snapshots:
       '@langchain/groq': 0.1.2(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.0(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))
       '@langchain/ollama': 0.1.2(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
