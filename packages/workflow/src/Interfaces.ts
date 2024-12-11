@@ -943,7 +943,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
-	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
 	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
@@ -962,11 +962,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			},
 		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
-			inputName: NodeConnectionType,
+			connectionType: NodeConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
-		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
@@ -1013,7 +1013,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
-	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData;
 	getItemIndex(): number;
 	getNodeParameter(
 		parameterName: string,
@@ -1127,7 +1127,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		inputName: NodeConnectionType,
+		connectionType: NodeConnectionType,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -2372,9 +2372,6 @@ export interface IWorkflowExecuteAdditionalData {
 		mode: WorkflowExecuteMode,
 		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
-		defaultReturnRunIndex?: number,
-		selfData?: IDataObject,
-		contextNodeName?: string,
 	): Promise<Result<T, E>>;
 }
 
