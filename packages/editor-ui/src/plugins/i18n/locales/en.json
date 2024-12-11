@@ -1928,7 +1928,7 @@
 	"settings.sourceControl.modals.push.filesToCommit": "Files to commit",
 	"settings.sourceControl.modals.push.workflowsToCommit": "Select workflows",
 	"settings.sourceControl.modals.push.everythingIsUpToDate": "Everything is up to date",
-	"settings.sourceControl.modals.push.noWorkflowChanges": "No workflow changes to push. Only modified credentials, variables, and tags will be pushed. {link}",
+	"settings.sourceControl.modals.push.noWorkflowChanges": "There are no workflow changes but the following will be committed: {link}",
 	"settings.sourceControl.modals.push.noWorkflowChanges.moreInfo": "More info",
 	"settings.sourceControl.modals.push.commitMessage": "Commit message",
 	"settings.sourceControl.modals.push.commitMessage.placeholder": "e.g. My commit",

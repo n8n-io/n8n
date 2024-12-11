@@ -36,7 +36,7 @@ import {
 	type SourceControlledFileStatus,
 	type SourceControlAggregatedFile,
 } from '@/types/sourceControl.types';
-import { orderBy } from 'lodash-es';
+import { orderBy, groupBy } from 'lodash-es';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
@@ -101,6 +101,27 @@ const classifyFilesByType = (
 		{ tags: [], variables: [], credentials: [], workflows: [], currentWorkflow: undefined },
 	);
 
+const userNotices = computed(() => {
+	const messages: string[] = [];
+
+	if (changes.value.credentials) {
+		const { created, deleted, modified } = groupBy(changes.value.credentials, 'status');
+
+		messages.push(
+			`${created?.length ?? 0} new credentials added, ${deleted?.length ?? 0} deleted and ${modified?.length ?? 0} changed`,
+		);
+	}
+
+	if (changes.value.variables) {
+		messages.push('At least one new variable has been added or modified');
+	}
+
+	if (changes.value.tags) {
+		messages.push('At least one new tag has been added or modified');
+	}
+
+	return messages;
+});
 const workflowId = computed(
 	() =>
 		([VIEWS.WORKFLOW].includes(route.name as VIEWS) && route.params.name?.toString()) || undefined,
@@ -299,26 +320,27 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 			<N8nHeading tag="h1" size="xlarge">
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
-			<div class="mb-l mt-l">
-				<N8nText tag="div">
+			<div class="mt-l">
+				<N8nText v-if="changes.workflows.length" tag="div">
 					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 					</N8nLink>
 				</N8nText>
+				<template v-else>
+					<N8nText tag="div">
+						{{ i18n.baseText('settings.sourceControl.modals.push.noWorkflowChanges') }}
+					</N8nText>
 
-				<N8nNotice v-if="!changes.workflows.length" class="mt-xs">
-					<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
-						<template #link>
-							<N8nLink size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
-								{{ i18n.baseText('settings.sourceControl.modals.push.noWorkflowChanges.moreInfo') }}
-							</N8nLink>
-						</template>
-					</i18n-t>
-				</N8nNotice>
+					<N8nNotice v-if="userNotices.length" class="mt-xs" :compact="false">
+						<ul class="ml-m">
+							<li v-for="notice in userNotices" :key="notice">{{ notice }}</li>
+						</ul>
+					</N8nNotice>
+				</template>
 			</div>
 
-			<div :class="[$style.filers]">
+			<div v-if="changes.workflows.length" :class="[$style.filers]" class="mt-l">
 				<N8nCheckbox
 					:class="$style.selectAll"
 					:indeterminate="selectAllIndeterminate"
@@ -379,6 +401,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 		</template>
 		<template #content>
 			<RecycleScroller
+				v-if="changes.workflows.length"
 				:class="[$style.scroller]"
 				:items="sortedWorkflows"
 				:item-size="69"
