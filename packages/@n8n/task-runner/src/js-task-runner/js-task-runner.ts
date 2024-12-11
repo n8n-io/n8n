@@ -1,5 +1,5 @@
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -132,6 +132,8 @@ export class JsTaskRunner extends TaskRunner {
 			},
 		};
 
+		workflow.staticData = ObservableObject.create(workflow.staticData);
+
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
 				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
@@ -140,6 +142,7 @@ export class JsTaskRunner extends TaskRunner {
 		return {
 			result,
 			customData: data.runExecutionData.resultData.metadata,
+			staticData: workflow.staticData.__dataChanged ? workflow.staticData : undefined,
 		};
 	}
 
@@ -194,7 +197,7 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 			items: inputItems,
-
+			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
 			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -267,7 +270,8 @@ export class JsTaskRunner extends TaskRunner {
 				module: {},
 				console: customConsole,
 				item,
-
+				$getWorkflowStaticData: (type: 'global' | 'node') =>
+					workflow.getStaticData(type, data.node),
 				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),
