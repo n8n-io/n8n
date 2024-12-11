@@ -554,7 +554,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			const triggerNode = subWorkflow?.nodes.find(
 				(n) => n.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 			);
-			subWorkflowVersion = triggerNode?.typeVersion === 1.1 ? 'new' : 'legacy';
+			subWorkflowVersion = triggerNode?.typeVersion === 1.0 ? 'legacy' : 'new';
 		}
 		telemetry.track('Manual node execution finished', {
 			items_count: itemCount,
