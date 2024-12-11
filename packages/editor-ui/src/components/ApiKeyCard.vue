@@ -1,7 +1,5 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import type { ApiKey } from '@/Interface';
 import { DateTime } from 'luxon';
@@ -11,7 +9,6 @@ const API_KEY_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-const { confirm } = useMessage();
 const i18n = useI18n();
 const cardActions = ref<HTMLDivElement | null>(null);
 
@@ -54,7 +51,7 @@ const getApiCreationTime = (apiKey: ApiKey): string => {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" data-test-id="api-key-card">
+	<n8n-card :class="$style.cardLink" data-test-id="api-key-card" @click="onAction('edit')">
 		<template #header>
 			<div>
 				<n8n-heading tag="h2" bold :class="$style.cardHeading">

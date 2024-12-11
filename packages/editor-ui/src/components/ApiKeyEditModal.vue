@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { API_KEY_EDIT_MODAL_KEY } from '@/constants';
+import { API_KEY_EDIT_MODAL_KEY, DOCS_DOMAIN } from '@/constants';
 import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -15,7 +15,7 @@ import { useToast } from '@/composables/useToast';
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
@@ -63,8 +63,20 @@ function onInput(value: string): void {
 	label.value = value;
 }
 
-async function onEdit(id: string) {
-	await updateApiKey(props.activeId, { label: label.value });
+async function onEdit() {
+	try {
+		loading.value = true;
+		await updateApiKey(props.activeId, { label: label.value });
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.api.update.toast'),
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.edit.error'));
+	} finally {
+		loading.value = false;
+		closeModal();
+	}
 }
 
 function closeModal() {
@@ -79,6 +91,10 @@ const onSave = async () => {
 	try {
 		loading.value = true;
 		newApiKey.value = await createApiKey(label.value);
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.api.create.toast'),
+		});
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.create.error'));
 	} finally {

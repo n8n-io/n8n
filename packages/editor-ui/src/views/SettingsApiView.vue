@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -31,7 +31,7 @@ const telemetry = useTelemetry();
 const loading = ref(false);
 const apiDocsURL = ref('');
 const apiKeysStore = useApiKeysStore();
-const { createApiKey, getAllApiKeys, deleteApiKey } = apiKeysStore;
+const { getAllApiKeys, deleteApiKey } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 
 const eventBus = createEventBus();
@@ -103,7 +103,6 @@ async function onDelete(id: string) {
 }
 
 function onEdit(id: string) {
-	console.log('getting rhis id', id);
 	uiStore.openModalWithData({
 		name: API_KEY_EDIT_MODAL_KEY,
 		data: { mode: 'edit', activeId: id },
@@ -158,7 +157,7 @@ function onCopy() {
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"
 			:description="i18n.baseText('settings.api.create.description')"
-			@click:button="createApiKey"
+			@click:button="onCreateApiKey"
 		/>
 
 		<!-- <div v-if="apiKeys.length">

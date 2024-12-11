@@ -44,6 +44,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const updateApiKey = async (id: string, data: { label: string }) => {
 		await publicApiApi.updateApiKey(rootStore.restApiContext, id, data);
+		apiKeysById.value[id].label = data.label;
 	};
 
 	return {
