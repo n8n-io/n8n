@@ -2,6 +2,8 @@ import { TaskRunnersConfig } from '@n8n/config';
 import Container from 'typedi';
 
 import { TaskRunnerModule } from '@/runners/task-runner-module';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { mockInstance } from '@test/mocking';
 
 import { InternalTaskRunnerDisconnectAnalyzer } from '../../../src/runners/internal-task-runner-disconnect-analyzer';
 import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
@@ -12,6 +14,7 @@ describe('TaskRunnerModule in internal mode', () => {
 	runnerConfig.mode = 'internal';
 	runnerConfig.enabled = true;
 	const module = Container.get(TaskRunnerModule);
+	mockInstance(WorkflowStaticDataService);
 
 	afterEach(async () => {
 		await module.stop();
