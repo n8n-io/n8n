@@ -13,6 +13,10 @@ const {
 	createTestMetric,
 	updateTestMetric,
 	deleteTestMetric,
+	getTestRuns,
+	getTestRun,
+	startTestRun,
+	deleteTestRun,
 } = vi.hoisted(() => ({
 	getTestDefinitions: vi.fn(),
 	createTestDefinition: vi.fn(),
@@ -22,6 +26,10 @@ const {
 	createTestMetric: vi.fn(),
 	updateTestMetric: vi.fn(),
 	deleteTestMetric: vi.fn(),
+	getTestRuns: vi.fn(),
+	getTestRun: vi.fn(),
+	startTestRun: vi.fn(),
+	deleteTestRun: vi.fn(),
 }));
 
 vi.mock('@/api/testDefinition.ee', () => ({
@@ -33,6 +41,10 @@ vi.mock('@/api/testDefinition.ee', () => ({
 	createTestMetric,
 	updateTestMetric,
 	deleteTestMetric,
+	getTestRuns,
+	getTestRun,
+	startTestRun,
+	deleteTestRun,
 }));
 
 vi.mock('@/stores/root.store', () => ({
@@ -66,6 +78,15 @@ const TEST_METRIC = {
 	testDefinitionId: '1',
 };
 
+const TEST_RUN = {
+	id: 'run1',
+	testDefinitionId: '1',
+	status: 'completed',
+	metrics: { metric1: 0.75 },
+	createdAt: '2024-01-01',
+	updatedAt: '2024-01-01',
+};
+
 describe('testDefinition.store.ee', () => {
 	let store: ReturnType<typeof useTestDefinitionStore>;
 	let rootStoreMock: ReturnType<typeof useRootStore>;
@@ -86,6 +107,11 @@ describe('testDefinition.store.ee', () => {
 		createTestDefinition.mockResolvedValue(TEST_DEF_NEW);
 
 		deleteTestDefinition.mockResolvedValue({ success: true });
+
+		getTestRuns.mockResolvedValue([TEST_RUN]);
+		getTestRun.mockResolvedValue(TEST_RUN);
+		startTestRun.mockResolvedValue({ success: true });
+		deleteTestRun.mockResolvedValue({ success: true });
 	});
 
 	test('Initialization', () => {
@@ -356,5 +382,57 @@ describe('testDefinition.store.ee', () => {
 
 		const metricsForTest2 = store.getMetricsByTestId('2');
 		expect(metricsForTest2).toEqual([metric3]);
+	});
+
+	describe('Test Runs', () => {
+		test('Fetching Test Runs', async () => {
+			const result = await store.fetchTestRuns('1');
+
+			expect(getTestRuns).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
+			expect(store.testRunsById).toEqual({
+				run1: TEST_RUN,
+			});
+			expect(result).toEqual([TEST_RUN]);
+		});
+
+		test('Getting specific Test Run', async () => {
+			const params = { testDefinitionId: '1', runId: 'run1' };
+			const result = await store.getTestRun(params);
+
+			expect(getTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
+			expect(store.testRunsById).toEqual({
+				run1: TEST_RUN,
+			});
+			expect(result).toEqual(TEST_RUN);
+		});
+
+		test('Starting Test Run', async () => {
+			const result = await store.startTestRun('1');
+
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
+			expect(result).toEqual({ success: true });
+		});
+
+		test('Deleting Test Run', async () => {
+			store.testRunsById = { run1: TEST_RUN };
+			const params = { testDefinitionId: '1', runId: 'run1' };
+
+			const result = await store.deleteTestRun(params);
+
+			expect(deleteTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
+			expect(store.testRunsById).toEqual({});
+			expect(result).toEqual({ success: true });
+		});
+
+		test('Getting Test Runs by Test ID', () => {
+			store.testRunsById = {
+				run1: TEST_RUN,
+				run2: { ...TEST_RUN, id: 'run2', testDefinitionId: '2' },
+			};
+
+			const runs = store.getTestRunsByTestId('1');
+
+			expect(runs).toEqual([TEST_RUN]);
+		});
 	});
 });

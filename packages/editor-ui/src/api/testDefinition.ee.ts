@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest, request } from '@/utils/apiUtils';
 
 export interface TestDefinitionRecord {
 	id: string;
@@ -41,11 +41,18 @@ export interface UpdateTestResponse {
 const endpoint = '/evaluation/test-definitions';
 const getMetricsEndpoint = (testDefinitionId: string) => `${endpoint}/${testDefinitionId}/metrics`;
 
-export async function getTestDefinitions(context: IRestApiContext) {
+export async function getTestDefinitions(
+	context: IRestApiContext,
+	params?: { workflowId?: string },
+) {
+	let url = endpoint;
+	if (params?.workflowId) {
+		url += `?filter=${JSON.stringify({ workflowId: params.workflowId })}`;
+	}
 	return await makeRestApiRequest<{ count: number; testDefinitions: TestDefinitionRecord[] }>(
 		context,
 		'GET',
-		endpoint,
+		url,
 	);
 }
 
@@ -155,5 +162,67 @@ export const deleteTestMetric = async (
 		context,
 		'DELETE',
 		`${getMetricsEndpoint(params.testDefinitionId)}/${params.id}`,
+	);
+};
+
+// Add these interfaces
+export interface TestRunRecord {
+	id: string;
+	testDefinitionId: string;
+	status: 'new' | 'running' | 'completed' | 'error';
+	metrics?: Record<string, number>;
+	createdAt: string;
+	updatedAt: string;
+}
+
+interface GetTestRunParams {
+	testDefinitionId: string;
+	runId: string;
+}
+
+interface DeleteTestRunParams {
+	testDefinitionId: string;
+	runId: string;
+}
+
+// Add these endpoints
+const getRunsEndpoint = (testDefinitionId: string) => `${endpoint}/${testDefinitionId}/runs`;
+
+// Get all test runs for a test definition
+export const getTestRuns = async (context: IRestApiContext, testDefinitionId: string) => {
+	return await makeRestApiRequest<TestRunRecord[]>(
+		context,
+		'GET',
+		getRunsEndpoint(testDefinitionId),
+	);
+};
+
+// Get specific test run
+export const getTestRun = async (context: IRestApiContext, params: GetTestRunParams) => {
+	return await makeRestApiRequest<TestRunRecord>(
+		context,
+		'GET',
+		`${getRunsEndpoint(params.testDefinitionId)}/${params.runId}`,
+	);
+};
+
+// Start a new test run
+export const startTestRun = async (context: IRestApiContext, testDefinitionId: string) => {
+	const response = await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${endpoint}/${testDefinitionId}/run`,
+		headers: { 'push-ref': context.pushRef },
+	});
+	// CLI is returning the response without wrapping it in `data` key
+	return response as { success: boolean };
+};
+
+// Delete a test run
+export const deleteTestRun = async (context: IRestApiContext, params: DeleteTestRunParams) => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'DELETE',
+		`${getRunsEndpoint(params.testDefinitionId)}/${params.runId}`,
 	);
 };

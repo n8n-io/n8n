@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
-import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
+import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
@@ -14,6 +14,7 @@ export const useTestDefinitionStore = defineStore(
 		const loading = ref(false);
 		const fetchedAll = ref(false);
 		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
+		const testRunsById = ref<Record<string, TestRunRecord>>({});
 
 		// Store instances
 		const posthogStore = usePostHog();
@@ -23,6 +24,12 @@ export const useTestDefinitionStore = defineStore(
 		const allTestDefinitions = computed(() => {
 			return Object.values(testDefinitionsById.value).sort((a, b) =>
 				(a.name ?? '').localeCompare(b.name ?? ''),
+			);
+		});
+
+		const allTestDefinitionsByWorkflowId = computed(() => (workflowId: string) => {
+			return Object.values(testDefinitionsById.value).filter(
+				(test) => test.workflowId === workflowId,
 			);
 		});
 
@@ -39,6 +46,19 @@ export const useTestDefinitionStore = defineStore(
 			return Object.values(metricsById.value).filter(
 				(metric) => metric.testDefinitionId === testId,
 			);
+		});
+
+		const getTestRunsByTestId = computed(() => (testId: string) => {
+			console.log('Compute getTestRunsByTestId', testId);
+			return Object.values(testRunsById.value).filter((run) => run.testDefinitionId === testId);
+		});
+
+		const getLastRunByTestId = computed(() => (testId: string) => {
+			const testRuns = Object.values(testRunsById.value)
+				.filter((run) => run.testDefinitionId === testId)
+				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+			return testRuns[0] || null;
 		});
 
 		// Methods
@@ -76,13 +96,22 @@ export const useTestDefinitionStore = defineStore(
 			testDefinitionsById.value = rest;
 		};
 
+		const fetchRunsForAllTests = async () => {
+			const testDefinitions = Object.values(testDefinitionsById.value);
+			try {
+				await Promise.all(testDefinitions.map(async (testDef) => await fetchTestRuns(testDef.id)));
+			} catch (error) {
+				console.error('Error fetching test runs:', error);
+			}
+		};
+
 		/**
 		 * Fetches all test definitions from the API.
 		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
 		 */
-		const fetchAll = async (params?: { force?: boolean }) => {
-			const { force = false } = params ?? {};
-			if (!force && fetchedAll.value) {
+		const fetchAll = async (params?: { force?: boolean; workflowId?: string }) => {
+			const { force = false, workflowId } = params ?? {};
+			if (!force && fetchedAll.value && !workflowId) {
 				const testDefinitions = Object.values(testDefinitionsById.value);
 				return {
 					count: testDefinitions.length,
@@ -94,10 +123,13 @@ export const useTestDefinitionStore = defineStore(
 			try {
 				const retrievedDefinitions = await testDefinitionsApi.getTestDefinitions(
 					rootStore.restApiContext,
+					{ workflowId },
 				);
 
 				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
 				fetchedAll.value = true;
+
+				await fetchRunsForAllTests();
 				return retrievedDefinitions;
 			} finally {
 				loading.value = false;
@@ -192,18 +224,58 @@ export const useTestDefinitionStore = defineStore(
 			metricsById.value = rest;
 		};
 
+		// Test Runs Methods
+		const fetchTestRuns = async (testId: string) => {
+			loading.value = true;
+			try {
+				const runs = await testDefinitionsApi.getTestRuns(rootStore.restApiContext, testId);
+				runs.forEach((run) => {
+					testRunsById.value[run.id] = run;
+				});
+				return runs;
+			} finally {
+				loading.value = false;
+			}
+		};
+
+		const getTestRun = async (params: { testDefinitionId: string; runId: string }) => {
+			const run = await testDefinitionsApi.getTestRun(rootStore.restApiContext, params);
+			testRunsById.value[run.id] = run;
+			return run;
+		};
+
+		const startTestRun = async (testId: string) => {
+			console.log('🚀 ~ startTestRun ~ testId:', testId);
+			const result = await testDefinitionsApi.startTestRun(rootStore.restApiContext, testId);
+			console.log('🚀 ~ startTestRun ~ result:', result);
+			return result;
+		};
+
+		const deleteTestRun = async (params: { testDefinitionId: string; runId: string }) => {
+			const result = await testDefinitionsApi.deleteTestRun(rootStore.restApiContext, params);
+			if (result.success) {
+				const { [params.runId]: deleted, ...rest } = testRunsById.value;
+				testRunsById.value = rest;
+			}
+			return result;
+		};
+
 		return {
 			// State
 			fetchedAll,
 			testDefinitionsById,
+			testRunsById,
 
 			// Computed
 			allTestDefinitions,
+			allTestDefinitionsByWorkflowId,
 			isLoading,
 			hasTestDefinitions,
 			isFeatureEnabled,
 			metricsById,
 			getMetricsByTestId,
+			getTestRunsByTestId,
+			getLastRunByTestId,
 
 			// Methods
 			fetchAll,
@@ -216,6 +288,10 @@ export const useTestDefinitionStore = defineStore(
 			createMetric,
 			updateMetric,
 			deleteMetric,
+			fetchTestRuns,
+			getTestRun,
+			startTestRun,
+			deleteTestRun,
 		};
 	},
 	{},
