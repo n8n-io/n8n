@@ -130,6 +130,21 @@ export class JsTaskRunner extends TaskRunner {
 					.join(' ');
 				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
 			},
+			// dummy methods to disregard without throwing, following existing Code node behavior
+			warn: () => {},
+			error: () => {},
+			info: () => {},
+			debug: () => {},
+			trace: () => {},
+			dir: () => {},
+			time: () => {},
+			timeEnd: () => {},
+			timeLog: () => {},
+			assert: () => {},
+			clear: () => {},
+			group: () => {},
+			groupEnd: () => {},
+			table: () => {},
 		};
 
 		const result =
