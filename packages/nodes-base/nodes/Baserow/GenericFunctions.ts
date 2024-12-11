@@ -105,6 +105,8 @@ export async function baserowApiRequestAllItems(
 	jwtToken: string,
 	body: IDataObject,
 	qs: IDataObject = {},
+	returnAll: boolean = false,
+	limit: number = 0,
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -114,14 +116,11 @@ export async function baserowApiRequestAllItems(
 		qs.size = 100;
 	}
 
-	const returnAll = this.getNodeParameter('returnAll', 0, false);
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
-
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
 		returnData.push(...(responseData.results as IDataObject[]));
 
-		if (!returnAll && returnData.length > limit) {
+		if (!returnAll && limit > 0 && returnData.length > limit) {
 			return returnData.slice(0, limit);
 		}
 
