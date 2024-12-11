@@ -30,6 +30,7 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
+import { ExternalRouterLinksPlugin } from '@/plugins/external-router-links';
 
 const pinia = createPinia();
 
@@ -46,6 +47,7 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+app.use(ExternalRouterLinksPlugin);
 
 app.mount('#app');
 
