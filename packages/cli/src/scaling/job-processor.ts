@@ -19,9 +19,9 @@ import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Logger } from '@/logging/logger.service';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
 
 import type {
 	Job,
@@ -45,7 +45,7 @@ export class JobProcessor {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly workflowRunner: WorkflowRunner,
+		private readonly manualExecutionService: ManualExecutionService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -182,7 +182,7 @@ export class JobProcessor {
 				userId: manualData?.userId,
 			};
 
-			workflowRun = this.workflowRunner.runManually(
+			workflowRun = this.manualExecutionService.runManually(
 				data,
 				workflow,
 				additionalData,
