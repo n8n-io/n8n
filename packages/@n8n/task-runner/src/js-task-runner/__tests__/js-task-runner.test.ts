@@ -136,6 +136,36 @@ describe('JsTaskRunner', () => {
 				]);
 			},
 		);
+
+		it('should not throw when using unsupported console methods', async () => {
+			const task = newTaskWithSettings({
+				code: `
+					console.warn('test');
+					console.error('test');
+					console.info('test');
+					console.debug('test');
+					console.trace('test');
+					console.dir({});
+					console.time('test');
+					console.timeEnd('test');
+					console.timeLog('test');
+					console.assert(true);
+					console.clear();
+					console.group('test');
+					console.groupEnd();
+					console.table([]);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await expect(
+				execTaskWithParams({
+					task,
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
+				}),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('built-in methods and variables available in the context', () => {
