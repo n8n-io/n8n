@@ -283,6 +283,7 @@ describe('shouldAddWebhooks', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 			mock<InstanceSettings>({ isLeader: true, isFollower: false }),
 			mock(),
 		);
@@ -309,6 +310,7 @@ describe('shouldAddWebhooks', () => {
 
 	describe('if follower', () => {
 		const activeWorkflowManager = new ActiveWorkflowManager(
+			mock(),
 			mock(),
 			mock(),
 			mock(),
