@@ -4,16 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { createRouter, createWebHistory } from 'vue-router';
 import { ExternalRouterLinksPlugin } from '@/plugins/external-router-links';
 
-const routes = [
-	{
-		path: '/about',
-		component: { template: '<div />' },
-	},
-	{
-		path: '/home',
-		component: { template: '<div />' },
-	},
-];
+const routes = ['home', 'about', 'contact'].map((name) => ({
+	path: '/' + name,
+	component: { template: '<div />' },
+}));
 
 describe('Vue Router Link Plugin', () => {
 	let router: Router;
@@ -30,6 +24,7 @@ describe('Vue Router Link Plugin', () => {
 				<a id="home" href="/home">Home</a>
 				<a href="/about"><strong>About</strong></a>
 				<a id="nonExisting" href="/non-existing">Non existing</a>
+				<router-link id="routerLink" to="/contact">Contact</router-link>
 			</div>`,
 		});
 
@@ -63,5 +58,14 @@ describe('Vue Router Link Plugin', () => {
 		await userEvent.click(link);
 
 		expect(pushSpy).not.toHaveBeenCalled();
+	});
+
+	it('should not call router push twice', async () => {
+		const pushSpy = vi.spyOn(router, 'push');
+
+		const link = document.querySelector('#routerLink') as HTMLElement;
+		await userEvent.click(link);
+
+		expect(pushSpy).toHaveBeenCalledTimes(1);
 	});
 });
