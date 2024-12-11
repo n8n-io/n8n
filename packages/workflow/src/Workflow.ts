@@ -147,7 +147,9 @@ export class Workflow {
 
 		this.active = parameters.active || false;
 
-		this.setStaticData(parameters.staticData);
+		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, {
+			ignoreEmptyOnFirstChild: true,
+		});
 
 		this.settings = parameters.settings || {};
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
@@ -155,10 +157,11 @@ export class Workflow {
 		this.expression = new Expression(this);
 	}
 
-	setStaticData(staticData?: IDataObject) {
+	overrideStaticData(staticData?: IDataObject) {
 		this.staticData = ObservableObject.create(staticData || {}, undefined, {
 			ignoreEmptyOnFirstChild: true,
 		});
+		this.staticData.__dataChanged = true;
 	}
 
 	/**
