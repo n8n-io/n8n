@@ -5,7 +5,6 @@ import {
 	presendFields,
 	presendTest,
 	processUsersResponse,
-	validatePath,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -28,10 +27,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Add user to group',
 				routing: {
 					send: {
-						preSend: [
-							presendTest, // ToDo: Remove this line before completing the pull request
-							presendFields,
-						],
+						preSend: [presendFields],
 					},
 					request: {
 						method: 'POST',
@@ -72,10 +68,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Delete user',
 				routing: {
 					send: {
-						preSend: [
-							presendTest, // ToDo: Remove this line before completing the pull request
-							presendFields,
-						],
+						preSend: [presendFields],
 					},
 					request: {
 						method: 'POST',
@@ -94,10 +87,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get user',
 				routing: {
 					send: {
-						preSend: [
-							presendTest, // ToDo: Remove this line before completing the pull request
-							presendFields,
-						],
+						preSend: [presendFields],
 					},
 					request: {
 						method: 'POST',
@@ -114,12 +104,9 @@ export const userOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
-					// send: {
-					// 	paginate: true,
-					//  preSend: [presendFields]
-					// },
 					send: {
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
+						paginate: true,
+						preSend: [presendTest, presendFields],
 					},
 					request: {
 						method: 'POST',
@@ -139,10 +126,7 @@ export const userOperations: INodeProperties[] = [
 				action: 'Remove user from group',
 				routing: {
 					send: {
-						preSend: [
-							presendTest, // ToDo: Remove this line before completing the pull request
-							presendFields,
-						],
+						preSend: [presendFields],
 					},
 					request: {
 						method: 'POST',
@@ -198,10 +182,10 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: { show: { resource: ['user'], operation: ['create'] } },
 		options: [
@@ -213,14 +197,8 @@ const createFields: INodeProperties[] = [
 				default: '',
 				description: 'The path for the user name',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
-				routing: {
-					send: {
-						preSend: [validatePath],
-					},
-				},
 			},
 			{
-				//TODO-Check format of this field
 				displayName: 'Permissions Boundary',
 				name: 'PermissionsBoundary',
 				default: '',
@@ -326,14 +304,6 @@ const getAllFields: INodeProperties[] = [
 				operation: ['getAll'],
 			},
 		},
-		// routing: {
-		// 	send: {
-		// 		paginate: '={{ $value }}',
-		// 	},
-		// 	operations: {
-		// 		pagination: handlePagination,
-		// 	},
-		// },
 		type: 'boolean',
 	},
 	{
@@ -346,14 +316,6 @@ const getAllFields: INodeProperties[] = [
 				resource: ['user'],
 				operation: ['getAll'],
 				returnAll: [false],
-			},
-		},
-		routing: {
-			send: {
-				property: 'Limit',
-				type: 'query',
-				value: '={{ $value }}',
-				preSend: [presendTest],
 			},
 		},
 		type: 'number',
@@ -383,11 +345,6 @@ const getAllFields: INodeProperties[] = [
 				default: '/',
 				description: 'The path prefix for filtering the results',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
-				routing: {
-					send: {
-						preSend: [validatePath],
-					},
-				},
 			},
 		],
 	},
@@ -486,10 +443,10 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -516,11 +473,6 @@ const updateFields: INodeProperties[] = [
 				validateType: 'string',
 				default: '/',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
-				routing: {
-					send: {
-						preSend: [validatePath],
-					},
-				},
 			},
 		],
 	},

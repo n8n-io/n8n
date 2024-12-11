@@ -44,47 +44,57 @@ export async function presendFields(
 ): Promise<IHttpRequestOptions> {
 	let userName: string;
 	let groupName: string | undefined;
-	let pathPrefix: string | undefined;
 
 	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
+	const options = this.getNodeParameter('options', {}) as IDataObject;
 
 	let url = requestOptions.url;
 
 	if (url.includes('CreateUser')) {
 		userName = this.getNodeParameter('UserName') as string;
-		if (additionalFields.PermissionsBoundary) {
-			url += `&PermissionsBoundary=${additionalFields.PermissionsBoundary}`;
+		if (options.PermissionsBoundary) {
+			url += `&PermissionsBoundary=${options.PermissionsBoundary}`;
 		}
-		if (additionalFields.Path) {
-			url += `&Path=${additionalFields.Path}`;
+		if (options.Path) {
+			url += `&Path=${options.Path}`;
 		}
-		if (additionalFields.Tags) {
-			const tags = additionalFields.Tags as Array<{ key: string; value: string }>;
+		if (options.Tags) {
+			const additionalTags = options.Tags as { tags: Array<{ key: string; value: string }> };
+			const tags = additionalTags.tags;
 
-			console.log('Got here', additionalFields.Tags);
+			let tagString = '';
 
-			const tagArray = tags.map((tag) => ({
-				[tag.key]: tag.value,
-			}));
+			tags.forEach((tag, index) => {
+				const tagIndex = index + 1;
+				tagString += `Tags.member.${tagIndex}.Key=${encodeURIComponent(tag.key)}&Tags.member.${tagIndex}.Value=${encodeURIComponent(tag.value)}&`;
+			});
 
-			url += `&Tags=${tagArray}`;
+			tagString = tagString.slice(0, -1);
+
+			url += `&${tagString}`;
 		}
-	} else if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {
-		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
-		userName = userNameParam.value;
-
-		const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
-		groupName = groupNameParam.value;
 	} else {
 		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
 		userName = userNameParam.value;
-
+		if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {
+			const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
+			groupName = groupNameParam.value;
+		}
 		if (url.includes('UpdateUser')) {
-			if (additionalFields.NewUserName) {
-				url += `&NewUserName=${additionalFields.NewUserName}`;
+			const hasOptions = options.NewUserName || options.NewPath;
+
+			if (!hasOptions) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'At least one of the options (NewUserName or NewPath) must be provided to update the user.',
+				);
 			}
-			if (additionalFields.NewPath) {
-				url += `&NewPath=${additionalFields.NewPath}`;
+
+			if (options.NewUserName) {
+				url += `&NewUserName=${options.NewUserName}`;
+			}
+			if (options.NewPath) {
+				url += `&NewPath=${options.NewPath}`;
 			}
 		}
 	}
@@ -96,6 +106,7 @@ export async function presendFields(
 	}
 
 	if (additionalFields.PathPrefix) {
+		console.log('Got heree!!!!');
 		url += `&PathPrefix=${additionalFields.PathPrefix}`;
 	}
 
@@ -248,20 +259,22 @@ export async function validatePath(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const path = this.getNodeParameter('path', '/') as string;
+	const path = this.getNodeParameter('Path') as string;
+	let url = requestOptions.url;
 
-	// Length validation
 	if (path.length < 1 || path.length > 512) {
 		throw new NodeOperationError(this.getNode(), 'Path must be between 1 and 512 characters.');
 	}
 
-	// Regex validation
 	if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Path must begin and end with a forward slash and contain valid ASCII characters.',
 		);
 	}
+	console.log('Path', path);
+	url += `&NewPath=${path}`;
+	requestOptions.url = url;
 
 	return requestOptions;
 }
