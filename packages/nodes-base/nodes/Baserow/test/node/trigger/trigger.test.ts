@@ -16,21 +16,6 @@ jest.mock('../../../GenericFunctions', () => {
 	const originalModule: { [key: string]: any } = jest.requireActual('../../../GenericFunctions');
 	return {
 		...originalModule,
-		baserowFileUploadRequest: jest.fn().mockResolvedValue({
-			size: 2147483647,
-			mime_type: 'string',
-			is_image: true,
-			image_width: 32767,
-			image_height: 32767,
-			uploaded_at: '2019-08-24T14:15:22Z',
-			url: 'http://example.com',
-			thumbnails: {
-				property1: null,
-				property2: null,
-			},
-			name: 'string',
-			original_name: 'string',
-		}),
 		baserowApiRequestAllItems: jest.fn(),
 		getJwtToken: jest.fn().mockResolvedValue('jwt'),
 		getTableFields: jest.fn(),
