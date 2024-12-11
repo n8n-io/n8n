@@ -29,6 +29,7 @@ import {
 } from '../../../utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { loadWorkflowInputMappings } from './methods/resourceMapping';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +37,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Call n8n Workflow Tool',
@@ -168,7 +169,44 @@ export class ToolWorkflow implements INodeType {
 				default: '',
 				required: true,
 			},
-
+			// -----------------------------------------------
+			//         Resource mapper for workflow inputs
+			// -----------------------------------------------
+			{
+				displayName: 'Workflow Inputs',
+				name: 'workflowInputs',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: {
+					mappingMode: 'defineBelow',
+					value: null,
+				},
+				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['workflowId.value'],
+					resourceMapper: {
+						localResourceMapperMethod: 'loadWorkflowInputMappings',
+						valuesLabel: 'Workflow Inputs',
+						mode: 'map',
+						fieldWords: {
+							singular: 'workflow input',
+							plural: 'workflow inputs',
+						},
+						addAllFields: true,
+						multiKeyMatch: false,
+						supportAutoMap: false,
+					},
+				},
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+					hide: {
+						workflowId: [''],
+					},
+				},
+			},
 			// ----------------------------------
 			//         source:parameter
 			// ----------------------------------
@@ -213,6 +251,11 @@ export class ToolWorkflow implements INodeType {
 				type: 'fixedCollection',
 				description:
 					"These will be output by the 'execute workflow' trigger of the workflow being called",
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.4 } }],
+					},
+				},
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
@@ -355,6 +398,11 @@ export class ToolWorkflow implements INodeType {
 				type: 'boolean',
 				description:
 					'Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.4 } }],
+					},
+				},
 				noDataExpression: true,
 				default: false,
 			},
@@ -362,6 +410,12 @@ export class ToolWorkflow implements INodeType {
 			jsonSchemaExampleField,
 			inputSchemaField,
 		],
+	};
+
+	methods = {
+		localResourceMapping: {
+			loadWorkflowInputMappings,
+		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
