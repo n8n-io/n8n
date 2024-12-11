@@ -20,7 +20,7 @@ import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { deepMerge } from '@/utils';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
@@ -60,10 +60,7 @@ export abstract class TaskManager {
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
-	constructor(
-		private readonly nodeTypes: NodeTypes,
-		private readonly workflowStaticDataService: WorkflowStaticDataService,
-	) {}
+	constructor(private readonly nodeTypes: NodeTypes) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -162,14 +159,11 @@ export abstract class TaskManager {
 				});
 			}
 
-			const { staticData } = resultData;
+			const { staticData: incomingStaticData } = resultData;
 
-			/**
-			 * If the runner sends back static data, this is a signal that it may have changed, so update it.
-			 */
-			if (staticData) {
-				await this.workflowStaticDataService.saveStaticDataById(workflow.id, staticData);
-				workflow.staticData = staticData;
+			// if the runner sent back static data, this signals it may have changed, so update it
+			if (incomingStaticData) {
+				deepMerge(workflow.staticData, { ...incomingStaticData, __dataChanged: true });
 			}
 
 			return createResultOk(resultData.result as TData);
