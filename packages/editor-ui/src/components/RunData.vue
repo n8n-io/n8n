@@ -337,7 +337,6 @@ const maxOutputIndex = computed(() => {
 	if (node.value === null || props.runIndex === undefined) {
 		return 0;
 	}
-
 	const runData: IRunData | null = workflowRunData.value;
 
 	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
@@ -547,6 +546,10 @@ watch(node, (newNode, prevNode) => {
 
 watch(hasNodeRun, () => {
 	if (props.paneType === 'output') setDisplayMode();
+	else {
+		// InputPanel relies on the outputIndex to check if we have data
+		outputIndex.value = determineInitialOutputIndex();
+	}
 });
 
 watch(
@@ -1080,9 +1083,19 @@ function getDataCount(
 	return getFilteredData(pinOrLiveData).length;
 }
 
+function determineInitialOutputIndex() {
+	for (let i = 0; i <= maxOutputIndex.value; i++) {
+		if (getRawInputData(props.runIndex, i).length) {
+			return i;
+		}
+	}
+
+	return 0;
+}
+
 function init() {
 	// Reset the selected output index every time another node gets selected
-	outputIndex.value = 0;
+	outputIndex.value = determineInitialOutputIndex();
 	refreshDataSize();
 	closeBinaryDataDisplay();
 	let outputTypes: NodeConnectionType[] = [];
