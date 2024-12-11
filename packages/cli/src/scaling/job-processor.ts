@@ -1,5 +1,5 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -8,7 +8,6 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

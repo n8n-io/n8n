@@ -1,9 +1,9 @@
 import type { PushPayload, PushType } from '@n8n/api-types';
+import { ErrorReporter } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
-import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';

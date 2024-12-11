@@ -1,4 +1,5 @@
 import type { PushPayload } from '@n8n/api-types';
+import { ErrorReporter } from 'n8n-core';
 import type { Workflow } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -6,7 +7,6 @@ import { Service } from 'typedi';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { ErrorReporter } from '@/error-reporter';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
@@ -21,11 +21,11 @@ import { parseWorkflowMessage } from './collaboration.message';
 @Service()
 export class CollaborationService {
 	constructor(
+		private readonly errorReporter: ErrorReporter,
 		private readonly push: Push,
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
 		private readonly accessService: AccessService,
-		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	init() {

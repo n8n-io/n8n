@@ -5,7 +5,7 @@
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
-import { WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, WorkflowExecute } from 'n8n-core';
 import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -39,7 +39,6 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ErrorReporter } from '@/error-reporter';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowErrorData, UpdateExecutionPayload } from '@/interfaces';

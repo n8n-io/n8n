@@ -3,11 +3,10 @@ import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/types';
 import { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/error-reporter';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { InstanceSettings } from '@/InstanceSettings';
 
 const init = jest.fn();
 
@@ -28,7 +27,7 @@ describe('ErrorReporter', () => {
 
 	describe('beforeSend', () => {
 		it('should ignore errors with level warning', async () => {
-			const originalException = new InternalServerError('test');
+			const originalException = new ApplicationError('test');
 			originalException.level = 'warning';
 
 			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(null);
@@ -36,7 +35,7 @@ describe('ErrorReporter', () => {
 
 		it('should keep events with a cause with error level', async () => {
 			const cause = new Error('cause-error');
-			const originalException = new InternalServerError('test', cause);
+			const originalException = new ApplicationError('test', cause);
 
 			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(event);
 		});
@@ -44,7 +43,7 @@ describe('ErrorReporter', () => {
 		it('should ignore events with error cause with warning level', async () => {
 			const cause: Error & { level?: 'warning' } = new Error('cause-error');
 			cause.level = 'warning';
-			const originalException = new InternalServerError('test', cause);
+			const originalException = new ApplicationError('test', cause);
 
 			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(null);
 		});

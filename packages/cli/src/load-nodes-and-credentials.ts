@@ -4,6 +4,7 @@ import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
+	ErrorReporter,
 	InstanceSettings,
 	CustomDirectoryLoader,
 	PackageDirectoryLoader,
@@ -34,7 +35,6 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 

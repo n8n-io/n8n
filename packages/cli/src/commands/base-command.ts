@@ -6,6 +6,7 @@ import {
 	InstanceSettings,
 	ObjectStoreService,
 	DataDeduplicationService,
+	ErrorReporter,
 } from 'n8n-core';
 import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -17,7 +18,6 @@ import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { ErrorReporter } from '@/error-reporter';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -34,6 +34,8 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-hi
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
+	protected readonly errorReporter = Container.get(ErrorReporter);
+
 	protected externalHooks?: ExternalHooks;
 
 	protected nodeTypes: NodeTypes;
@@ -47,8 +49,6 @@ export abstract class BaseCommand extends Command {
 	protected license: License;
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
-
-	protected readonly errorReporter = Container.get(ErrorReporter);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.

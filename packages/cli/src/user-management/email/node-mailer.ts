@@ -1,12 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import { pick } from 'lodash';
+import { ErrorReporter } from 'n8n-core';
 import path from 'node:path';
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
 import type SMTPConnection from 'nodemailer/lib/smtp-connection';
 import { Service } from 'typedi';
 
-import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 
 import type { MailData, SendEmailResult } from './interfaces';

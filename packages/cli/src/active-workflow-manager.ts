@@ -2,6 +2,7 @@
 
 import {
 	ActiveWorkflows,
+	ErrorReporter,
 	InstanceSettings,
 	NodeExecuteFunctions,
 	PollContext,
@@ -40,7 +41,6 @@ import {
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { ErrorReporter } from '@/error-reporter';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowDb } from '@/interfaces';

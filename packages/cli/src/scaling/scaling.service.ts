@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify, ensureError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { strict } from 'node:assert';
@@ -10,7 +10,6 @@ import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { ErrorReporter } from '@/error-reporter';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
 import { Logger } from '@/logging/logger.service';

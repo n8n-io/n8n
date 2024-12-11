@@ -21,7 +21,7 @@ import {
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
@@ -34,7 +34,6 @@ import { Service } from 'typedi';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
-import { ErrorReporter } from '@/error-reporter';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
@@ -122,9 +121,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
-		private readonly errorReporter: ErrorReporter,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}

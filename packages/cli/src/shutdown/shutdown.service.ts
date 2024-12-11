@@ -1,9 +1,8 @@
-import type { Class } from 'n8n-core';
+import { type Class, ErrorReporter } from 'n8n-core';
 import { ApplicationError, assert } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
 
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
-import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 
 type HandlerFn = () => Promise<void> | void;

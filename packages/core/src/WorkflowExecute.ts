@@ -46,11 +46,12 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
-	ErrorReporterProxy,
 	ExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
+import Container from 'typedi';
 
+import { ErrorReporter } from './error-reporter';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
@@ -1428,7 +1429,7 @@ export class WorkflowExecute {
 								toReport = error;
 							}
 							if (toReport) {
-								ErrorReporterProxy.error(toReport, {
+								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,

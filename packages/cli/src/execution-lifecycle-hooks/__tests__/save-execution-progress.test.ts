@@ -1,7 +1,7 @@
+import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ErrorReporter } from '@/error-reporter';
 import { saveExecutionProgress } from '@/execution-lifecycle-hooks/save-execution-progress';
 import * as fnModule from '@/execution-lifecycle-hooks/to-save-settings';
 import type { IExecutionResponse } from '@/interfaces';

@@ -5,6 +5,7 @@
 import * as a from 'assert/strict';
 import {
 	DirectedGraph,
+	ErrorReporter,
 	InstanceSettings,
 	WorkflowExecute,
 	filterDisabledNodes,
@@ -29,7 +30,6 @@ import { Container, Service } from 'typedi';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ErrorReporter } from '@/error-reporter';
 import { ExternalHooks } from '@/external-hooks';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';

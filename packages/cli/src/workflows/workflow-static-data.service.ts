@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { ErrorReporter } from 'n8n-core';
 import type { IDataObject, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import { isWorkflowIdValid } from '@/utils';
 

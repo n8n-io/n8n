@@ -1,8 +1,8 @@
 import { DataSource, Repository } from '@n8n/typeorm';
+import { ErrorReporter } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { ErrorReporter } from '@/error-reporter';
 import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets/constants';
 
 import { Settings } from '../entities/settings';

@@ -1,12 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { QueryFailedError } from '@n8n/typeorm';
+import type { NodeOptions } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { createHash } from 'crypto';
-import { InstanceSettings } from 'n8n-core';
-import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
+import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
+
+import { InstanceSettings } from './InstanceSettings';
 
 @Service()
 export class ErrorReporter {
@@ -15,26 +15,37 @@ export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
-	readonly info: (typeof ErrorReporterProxy)['info'];
-
-	readonly warn: (typeof ErrorReporterProxy)['warn'];
-
-	readonly error: (typeof ErrorReporterProxy)['error'];
+	private report: (error: Error | string, options?: ReportingOptions) => void;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		this.info = ErrorReporterProxy.info;
-		this.warn = ErrorReporterProxy.warn;
-		this.error = ErrorReporterProxy.error;
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		this.report = this.defaultReport;
+	}
+
+	private defaultReport(error: Error | string, options?: ReportingOptions) {
+		if (error instanceof Error) {
+			let e = error;
+
+			const { executionId } = options ?? {};
+			const context = executionId ? ` (execution ${executionId})` : '';
+
+			do {
+				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
+				const meta = e instanceof ApplicationError ? e.extra : undefined;
+				LoggerProxy.error(msg, meta);
+				e = e.cause as Error;
+			} while (e);
+		}
 	}
 
 	async init() {
 		if (this.initialized) return;
 
 		process.on('uncaughtException', (error) => {
-			ErrorReporterProxy.error(error);
+			this.error(error);
 		});
 
 		const dsn = this.globalConfig.sentry.backendDsn;
@@ -70,7 +81,7 @@ export class ErrorReporter {
 			enableTracing: false,
 			serverName,
 			beforeBreadcrumb: () => null,
-			beforeSend: async (event, hint: EventHint) => await this.beforeSend(event, hint),
+			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
 				rewriteFramesIntegration({ root: process.cwd() }),
@@ -89,9 +100,7 @@ export class ErrorReporter {
 
 		setTag('server_type', this.instanceSettings.instanceType);
 
-		ErrorReporterProxy.init({
-			report: (error, options) => captureException(error, options),
-		});
+		this.report = (error, options) => captureException(error, options);
 
 		this.initialized = true;
 	}
@@ -106,7 +115,8 @@ export class ErrorReporter {
 		if (originalException instanceof AxiosError) return null;
 
 		if (
-			originalException instanceof QueryFailedError &&
+			originalException instanceof Error &&
+			originalException.name === 'QueryFailedError' &&
 			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => originalException.message.includes(errMsg))
 		) {
 			return null;
@@ -138,5 +148,24 @@ export class ErrorReporter {
 		}
 
 		return event;
+	}
+
+	error(e: unknown, options?: ReportingOptions) {
+		const toReport = this.wrap(e);
+		if (toReport) this.report(toReport, options);
+	}
+
+	warn(warning: Error | string, options?: ReportingOptions) {
+		this.error(warning, { ...options, level: 'warning' });
+	}
+
+	info(msg: string, options?: ReportingOptions) {
+		this.report(msg, { ...options, level: 'info' });
+	}
+
+	private wrap(e: unknown) {
+		if (e instanceof Error) return e;
+		if (typeof e === 'string') return new ApplicationError(e);
+		return;
 	}
 }
