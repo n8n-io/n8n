@@ -399,23 +399,23 @@ const binaryData = computed(() => {
 const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
 const currentOutputIndex = computed(() => {
 	if (isPaneTypeInput.value) {
-		// In the input panel we find the matching input by value
+		// In the input panel we have exactly one active output branch
 		for (let i = 0; i <= maxOutputIndex.value; i++) {
 			if (getRawInputData(props.runIndex, i).length) {
 				return i;
 			}
 		}
 		return 0;
-	}
+	} else {
+		if (props.overrideOutputs?.length && !props.overrideOutputs.includes(outputIndex.value)) {
+			return props.overrideOutputs[0];
+		}
 
-	if (props.overrideOutputs?.length && !props.overrideOutputs.includes(outputIndex.value)) {
-		return props.overrideOutputs[0];
+		// In some cases nodes may switch their outputCount while the user still
+		// has a higher outputIndex selected. We could adjust outputIndex directly,
+		// but that loses data as we can keep the user selection if the branch reappears.
+		return Math.min(outputIndex.value, maxOutputIndex.value);
 	}
-
-	// In some cases nodes may switch their outputCount while the user still
-	// has a higher outputIndex selected. We could adjust outputIndex directly,
-	// but that loses data as we can keep the user selection if the branch reappears.
-	return Math.min(outputIndex.value, maxOutputIndex.value);
 });
 const branches = computed(() => {
 	const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
@@ -453,7 +453,7 @@ const branches = computed(() => {
 			label:
 				(search.value && itemsCount) || totalItemsCount ? `${outputName} (${items})` : outputName,
 			value: i,
-			// In inputPane we have exactly one active input branch
+			// In inputPanel we have exactly one active input branch
 			disabled: isPaneTypeInput.value && currentOutputIndex.value !== i,
 		});
 	}
