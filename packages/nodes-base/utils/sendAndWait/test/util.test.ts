@@ -6,7 +6,6 @@ import {
 	getSendAndWaitConfig,
 	createEmail,
 	sendAndWaitWebhook,
-	MESSAGE_PREFIX,
 } from '../utils';
 
 describe('Send and Wait utils tests', () => {
@@ -159,7 +158,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(email).toEqual({
 				to: 'test@example.com',
-				subject: `${MESSAGE_PREFIX}Test subject`,
+				subject: 'Test subject',
 				body: '',
 				htmlBody: expect.stringContaining('Test message'),
 			});

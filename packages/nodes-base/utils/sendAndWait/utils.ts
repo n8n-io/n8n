@@ -29,7 +29,12 @@ type SendAndWaitConfig = {
 	options: Array<{ label: string; value: string; style: string }>;
 };
 
-export const MESSAGE_PREFIX = 'ACTION REQUIRED: ';
+type FormResponseTypeOptions = {
+	messageButtonLabel?: string;
+	responseFormDescription?: string;
+	responseFormButtonLabel?: string;
+};
+
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
 // Operation Properties ----------------------------------------------------------
@@ -83,17 +88,17 @@ export function getSendAndWaitProperties(
 				{
 					name: 'Approval',
 					value: 'approval',
-					description: 'User will be able to approve or disapprove',
+					description: 'User can approve/disapprove from within the message',
 				},
 				{
 					name: 'Free Text',
 					value: 'freeText',
-					description: 'Input would be shown to the user to provide text response',
+					description: 'User can submit a response via a form',
 				},
 				{
 					name: 'Custom Form',
 					value: 'customForm',
-					description: 'Define custom form to be shown to the user',
+					description: 'User can submit a response via a custom form',
 				},
 			],
 		},
@@ -177,6 +182,18 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		{
+			displayName: 'Response Form Title',
+			name: 'responseFormTitle',
+			description: 'Title of the form that the user can access to provide their response',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					responseType: ['freeText', 'customForm'],
+				},
+			},
+		},
 		...updateDisplayOptions(
 			{
 				show: {
@@ -193,16 +210,23 @@ export function getSendAndWaitProperties(
 			default: {},
 			options: [
 				{
-					displayName: 'Input Form Title',
-					name: 'inputFormTitle',
+					displayName: 'Message Button Label',
+					name: 'messageButtonLabel',
+					type: 'string',
+					default: 'Respond',
+				},
+				{
+					displayName: 'Response Form Description',
+					name: 'responseFormDescription',
+					description: 'Description of the form that the user can access to provide their response',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'Input Form Description',
-					name: 'inputFormDescription',
+					displayName: 'Response Form Button Label',
+					name: 'responseFormButtonLabel',
 					type: 'string',
-					default: '',
+					default: 'Submit',
 				},
 			],
 			displayOptions: {
@@ -226,6 +250,29 @@ export function getSendAndWaitProperties(
 }
 
 // Webhook Function --------------------------------------------------------------
+const getFormResponseCustomizations = (context: IWebhookFunctions) => {
+	const message = context.getNodeParameter('message', '') as string;
+	const options = context.getNodeParameter('options', {}) as FormResponseTypeOptions;
+
+	const formTitle = context.getNodeParameter('responseFormTitle', '') as string;
+
+	let formDescription = message;
+	if (options.responseFormDescription) {
+		formDescription = options.responseFormDescription;
+	}
+
+	let buttonLabel = 'Submit';
+	if (options.responseFormButtonLabel) {
+		buttonLabel = options.responseFormButtonLabel;
+	}
+
+	return {
+		formTitle,
+		formDescription: formDescription.replace(/\\n/g, '\n').replace(/<br>/g, '\n'),
+		buttonLabel,
+	};
+};
+
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
@@ -236,29 +283,18 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	if (responseType === 'freeText') {
 		if (method === 'GET') {
-			const message = this.getNodeParameter('message', '') as string;
-			const options = this.getNodeParameter('options', {}) as {
-				inputFormTitle?: string;
-				inputFormDescription?: string;
-			};
-
-			let formTitle = '';
-			if (options.inputFormTitle) {
-				formTitle = options.inputFormTitle;
-			} else {
-				formTitle = 'You need to input ' + message;
-			}
+			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
-				formDescription: options.inputFormDescription ?? '',
+				formDescription,
 				formSubmittedHeader: 'Got it, thanks',
 				formSubmittedText: 'This page can be closed now',
-				buttonLabel: 'Submit',
+				buttonLabel,
 				redirectUrl: undefined,
 				formFields: [
 					{
-						fieldLabel: 'Input',
+						fieldLabel: 'Response',
 						fieldType: 'textarea',
 						requiredField: true,
 					},
@@ -304,25 +340,14 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 
 		if (method === 'GET') {
-			const message = this.getNodeParameter('message', '') as string;
-			const options = this.getNodeParameter('options', {}) as {
-				inputFormTitle?: string;
-				inputFormDescription?: string;
-			};
-
-			let formTitle = '';
-			if (options.inputFormTitle) {
-				formTitle = options.inputFormTitle;
-			} else {
-				formTitle = 'You need to input ' + message;
-			}
+			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
-				formDescription: options.inputFormDescription ?? '',
+				formDescription,
 				formSubmittedHeader: 'Got it, thanks',
 				formSubmittedText: 'This page can be closed now',
-				buttonLabel: 'Submit',
+				buttonLabel,
 				redirectUrl: undefined,
 				formFields: fields,
 				testRun: false,
@@ -361,7 +386,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 // Send and Wait Config -----------------------------------------------------------
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
-	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim());
+	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim())
+		.replace(/\\n/g, '\n')
+		.replace(/<br>/g, '\n');
 	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
 	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
 	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
@@ -383,11 +410,11 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
 	if (responseType === 'freeText' || responseType === 'customForm') {
-		config.message = 'You need to input ' + message;
+		const label = context.getNodeParameter('options.messageButtonLabel', 0, 'Respond') as string;
 		config.options.push({
-			label: 'Click here',
+			label,
 			value: 'true',
-			style: 'info',
+			style: 'primary',
 		});
 	} else if (approvalOptions.approvalType === 'double') {
 		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
@@ -447,7 +474,7 @@ export function createEmail(context: IExecuteFunctions) {
 
 	const email: IEmail = {
 		to,
-		subject: `${MESSAGE_PREFIX}${config.title}`,
+		subject: config.title,
 		body: '',
 		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
 	};
