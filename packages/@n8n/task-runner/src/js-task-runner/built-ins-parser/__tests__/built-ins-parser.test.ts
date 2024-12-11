@@ -281,4 +281,23 @@ describe('BuiltInsParser', () => {
 			]);
 		});
 	});
+
+	describe('$getWorkflowStaticData', () => {
+		it('should mark workflow static as used if $getWorkflowStaticData is present', () => {
+			const state = parseAndExpectOk(`
+				const staticData = $getWorkflowStaticData('global');
+				return [];
+			`);
+
+			expect(state).toEqual(new BuiltInsParserState({ uses$workflowStaticData: true }));
+		});
+
+		it('should not mark workflow static as used if $getWorkflowStaticData is absent', () => {
+			const state = parseAndExpectOk(`
+				return [];
+			`);
+
+			expect(state).toEqual(new BuiltInsParserState({ uses$workflowStaticData: false }));
+		});
+	});
 });
