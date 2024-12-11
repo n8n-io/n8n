@@ -9,8 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { returnAllOrLimit } from '@utils/descriptions';
-
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
@@ -104,7 +102,6 @@ export class BaserowTrigger implements INodeType {
 					},
 				],
 			},
-			...returnAllOrLimit,
 		],
 	};
 
