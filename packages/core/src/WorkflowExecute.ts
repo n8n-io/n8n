@@ -49,13 +49,13 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
-	ErrorReporterProxy,
 	ExecutionCancelledError,
 	Node,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import Container from 'typedi';
 
+import { ErrorReporter } from './error-reporter';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
@@ -1711,7 +1711,7 @@ export class WorkflowExecute {
 								toReport = error;
 							}
 							if (toReport) {
-								ErrorReporterProxy.error(toReport, {
+								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,

@@ -10,7 +10,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
 			instance.loaders.package1 = mock<DirectoryLoader>({
 				directory: '/icons/package1',
 			});
@@ -38,7 +38,7 @@ describe('LoadNodesAndCredentials', () => {
 	});
 
 	describe('convertNodeToAiTool', () => {
-		const instance = new LoadNodesAndCredentials(mock(), mock(), mock());
+		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
 
 		let fullNodeWrapper: { description: INodeTypeDescription };
 

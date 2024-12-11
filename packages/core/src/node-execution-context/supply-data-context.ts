@@ -49,6 +49,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
+		private readonly connectionType: NodeConnectionType,
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
@@ -126,7 +127,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = this.connectionType) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
