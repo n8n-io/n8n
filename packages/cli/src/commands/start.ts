@@ -100,7 +100,7 @@ export class Start extends BaseCommand {
 
 			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
-			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
+			if (this.instanceSettings.isMultiMain) {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
@@ -192,6 +192,9 @@ export class Start extends BaseCommand {
 		await super.init();
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
+		this.instanceSettings.setMultiMainEnabled(
+			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled,
+		);
 		await this.initLicense();
 
 		await this.initOrchestration();
@@ -253,7 +256,7 @@ export class Start extends BaseCommand {
 
 		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 
-		if (!orchestrationService.isMultiMainSetupEnabled) return;
+		if (this.instanceSettings.isSingleMain) return;
 
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
