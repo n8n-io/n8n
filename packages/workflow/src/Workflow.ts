@@ -157,6 +157,13 @@ export class Workflow {
 		this.expression = new Expression(this);
 	}
 
+	overrideStaticData(staticData?: IDataObject) {
+		this.staticData = ObservableObject.create(staticData || {}, undefined, {
+			ignoreEmptyOnFirstChild: true,
+		});
+		this.staticData.__dataChanged = true;
+	}
+
 	/**
 	 * The default connections are by source node. This function rewrites them by destination nodes
 	 * to easily find parent nodes.
