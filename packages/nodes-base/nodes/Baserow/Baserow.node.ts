@@ -154,20 +154,6 @@ export class Baserow implements INodeType {
 				description:
 					'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 			},
-			{
-				displayName: 'File URL',
-				displayOptions: {
-					show: {
-						resource: ['file'],
-						operation: ['upload-via-url'],
-					},
-				},
-				name: 'url',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'The URL of the file to upload',
-			},
 			...operationFields,
 		],
 	};
