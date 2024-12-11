@@ -97,7 +97,7 @@ export class Workflow {
 
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
-	staticData!: IDataObject;
+	staticData: IDataObject;
 
 	testStaticData: IDataObject | undefined;
 
