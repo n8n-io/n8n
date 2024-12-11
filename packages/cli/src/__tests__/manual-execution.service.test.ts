@@ -1,8 +1,11 @@
+import { mock } from 'jest-mock-extended';
 import type { Workflow, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
-import { getExecutionStartNode } from '@/workflow-helpers';
+import { ManualExecutionService } from '@/manual-execution.service';
 
-describe('WorkflowHelpers', () => {
+describe('ManualExecutionService', () => {
+	const manualExecutionService = new ManualExecutionService(mock());
+
 	describe('getExecutionStartNode', () => {
 		it('Should return undefined', () => {
 			const data = {
@@ -16,9 +19,10 @@ describe('WorkflowHelpers', () => {
 					};
 				},
 			} as unknown as Workflow;
-			const executionStartNode = getExecutionStartNode(data, workflow);
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode).toBeUndefined();
 		});
+
 		it('Should return startNode', () => {
 			const data = {
 				pinData: {
@@ -37,7 +41,7 @@ describe('WorkflowHelpers', () => {
 					return undefined;
 				},
 			} as unknown as Workflow;
-			const executionStartNode = getExecutionStartNode(data, workflow);
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode).toEqual({
 				name: 'node2',
 			});
