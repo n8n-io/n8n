@@ -479,7 +479,6 @@ export class ExecutionService {
 
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		const scalingService = Container.get(ScalingService);
-		await scalingService.queueReady;
 		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
 
 		const job = jobs.find(({ data }) => data.executionId === execution.id);
