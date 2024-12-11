@@ -1609,25 +1609,18 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="
-					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
-				"
+				v-else-if="hasNodeRun && search && !dataCount && branches.length > 1"
 				:class="$style.center"
 			>
-				<div v-if="search">
-					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
-					<N8nText>
-						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
-							<template #link>
-								<a href="#" @click="onSearchClear">
-									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
-								</a>
-							</template>
-						</i18n-t>
-					</N8nText>
-				</div>
-				<N8nText v-else>
-					{{ noDataInBranchMessage }}
+				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
+				<N8nText>
+					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+						<template #link>
+							<a href="#" @click="onSearchClear">
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</i18n-t>
 				</N8nText>
 			</div>
 
