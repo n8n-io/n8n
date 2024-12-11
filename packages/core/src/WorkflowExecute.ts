@@ -1018,8 +1018,8 @@ export class WorkflowExecute {
 
 					// Update the pairedItem information on items
 					const newTaskDataConnections: ITaskDataConnections = {};
-					for (const inputName of Object.keys(executionData.data)) {
-						newTaskDataConnections[inputName] = executionData.data[inputName].map(
+					for (const connectionType of Object.keys(executionData.data)) {
+						newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
 							(input, inputIndex) => {
 								if (input === null) {
 									return input;

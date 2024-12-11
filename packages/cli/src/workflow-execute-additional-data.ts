@@ -1036,9 +1036,6 @@ export async function getBase(
 			mode: WorkflowExecuteMode,
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
-			defaultReturnRunIndex?: number,
-			selfData?: IDataObject,
-			contextNodeName?: string,
 		) {
 			return await Container.get(TaskManager).startTask(
 				additionalData,
@@ -1057,9 +1054,6 @@ export async function getBase(
 				mode,
 				envProviderState,
 				executeData,
-				defaultReturnRunIndex,
-				selfData,
-				contextNodeName,
 			);
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
