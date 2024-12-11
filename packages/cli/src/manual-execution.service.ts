@@ -121,16 +121,4 @@ export class ManualExecutionService {
 			}
 		}
 	}
-
-	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
-		let startNode;
-		if (
-			data.startNodes?.length === 1 &&
-			Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
-		) {
-			startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
-		}
-
-		return startNode;
-	}
 }
