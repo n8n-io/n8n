@@ -18,9 +18,13 @@ import type {
 	IDataObject,
 	INodeParameterResourceLocator,
 	ITaskMetadata,
+	ResourceMapperField,
+	FieldValueOption,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { getWorkflowInputData } from './GenericFunctions';
+import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import type { DynamicZodObject } from '../../../types/zod.types';
 import {
 	jsonSchemaExampleField,
@@ -29,7 +33,45 @@ import {
 } from '../../../utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { loadWorkflowInputMappings } from './methods/resourceMapping';
+
+function getWorkflowInputValues(this: ISupplyDataFunctions) {
+	const inputData = this.getInputData();
+
+	return inputData.map((item, itemIndex) => {
+		const itemFieldValues = this.getNodeParameter(
+			'workflowInputs.value',
+			itemIndex,
+			{},
+		) as IDataObject;
+
+		return {
+			json: {
+				...item.json,
+				...itemFieldValues,
+			},
+			index: itemIndex,
+			pairedItem: {
+				item: itemIndex,
+			},
+		};
+	});
+}
+
+function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+	const inputData = getWorkflowInputValues.call(this);
+
+	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
+
+	if (schema.length === 0) {
+		return inputData;
+	} else {
+		const newParams = schema
+			.filter((x) => !x.removed)
+			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
+
+		return getWorkflowInputData.call(this, inputData, newParams);
+	}
+}
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -419,6 +461,8 @@ export class ToolWorkflow implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const nodeVersion = this.getNode().typeVersion;
+
 		const workflowProxy = this.getWorkflowDataProxy(0);
 
 		const name = this.getNodeParameter('name', itemIndex) as string;
@@ -427,8 +471,13 @@ export class ToolWorkflow implements INodeType {
 		let subExecutionId: string | undefined;
 		let subWorkflowId: string | undefined;
 
-		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
+		const useSchema =
+			nodeVersion < 1.2
+				? (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean)
+				: false;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
+		const items = getCurrentWorkflowInputData.call(this);
 
 		const runFunction = async (
 			query: string | IDataObject,
@@ -438,7 +487,6 @@ export class ToolWorkflow implements INodeType {
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
-				const nodeVersion = this.getNode().typeVersion;
 				if (nodeVersion <= 1.1) {
 					workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
 				} else {
