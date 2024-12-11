@@ -20,7 +20,6 @@ import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
-import { deepMerge } from '@/utils';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
@@ -161,9 +160,10 @@ export abstract class TaskManager {
 
 			const { staticData: incomingStaticData } = resultData;
 
-			// if the runner sent back static data, this signals it may have changed, so update it
+			// if the runner sent back static data, it may have changed, so update it
 			if (incomingStaticData) {
-				deepMerge(workflow.staticData, { ...incomingStaticData, __dataChanged: true });
+				workflow.setStaticData(incomingStaticData);
+				workflow.staticData.__dataChanged = true;
 			}
 
 			return createResultOk(resultData.result as TData);

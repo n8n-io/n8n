@@ -97,7 +97,7 @@ export class Workflow {
 
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
-	staticData: IDataObject;
+	staticData!: IDataObject;
 
 	testStaticData: IDataObject | undefined;
 
@@ -147,14 +147,18 @@ export class Workflow {
 
 		this.active = parameters.active || false;
 
-		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, {
-			ignoreEmptyOnFirstChild: true,
-		});
+		this.setStaticData(parameters.staticData);
 
 		this.settings = parameters.settings || {};
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
+	}
+
+	setStaticData(staticData?: IDataObject) {
+		this.staticData = ObservableObject.create(staticData || {}, undefined, {
+			ignoreEmptyOnFirstChild: true,
+		});
 	}
 
 	/**
