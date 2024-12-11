@@ -8,6 +8,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVersionsStore } from '@/stores/versions.store';
+import { AxiosError } from 'axios';
+
+const showMessage = vi.fn();
+
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
+}));
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({ initialize: vi.fn() }),
@@ -107,6 +114,22 @@ describe('Init', () => {
 			await initializeAuthenticatedFeatures();
 
 			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle source control initialization error', async () => {
+			vi.mocked(useUsersStore).mockReturnValue({ currentUser: { id: '123' } } as ReturnType<
+				typeof useUsersStore
+			>);
+			vi.spyOn(sourceControlStore, 'getPreferences').mockRejectedValueOnce(
+				new AxiosError('Something went wrong', '404'),
+			);
+			const consoleSpy = vi.spyOn(window.console, 'error');
+			await initializeAuthenticatedFeatures(false);
+			expect(showMessage).toHaveBeenCalled();
+			expect(consoleSpy).toHaveBeenCalledWith(
+				'Failed to initialize source control store',
+				expect.anything(),
+			);
 		});
 	});
 });

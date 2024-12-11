@@ -1,19 +1,18 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.70.0",
+  "version": "1.71.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm n8n-generate-translations && pnpm build:metadata",
-    "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-icons && pnpm n8n-generate-translations && pnpm n8n-generate-metadata",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet && node ./scripts/validate-load-options-methods.js",
     "lintfix": "eslint . --fix",
-    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\"",
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "jest"
   },
   "files": [
@@ -868,7 +867,7 @@
     "get-system-fonts": "2.0.2",
     "gm": "1.25.0",
     "html-to-text": "9.0.5",
-    "iconv-lite": "0.6.3",
+    "iconv-lite": "catalog:",
     "ics": "2.40.0",
     "isbot": "3.6.13",
     "iso-639-1": "2.1.15",

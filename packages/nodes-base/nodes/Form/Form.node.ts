@@ -7,7 +7,6 @@ import type {
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import {
-	WAIT_TIME_UNLIMITED,
 	Node,
 	updateDisplayOptions,
 	NodeOperationError,
@@ -16,6 +15,7 @@ import {
 	tryToParseJsonToFormFields,
 	NodeConnectionType,
 	WAIT_NODE_TYPE,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -415,8 +415,7 @@ export class Form extends Node {
 		}
 
 		if (operation !== 'completion') {
-			const waitTill = new Date(WAIT_TIME_UNLIMITED);
-			await context.putExecutionToWait(waitTill);
+			await context.putExecutionToWait(WAIT_INDEFINITELY);
 		} else {
 			const staticData = context.getWorkflowStaticData('node');
 			const completionTitle = context.getNodeParameter('completionTitle', 0, '') as string;

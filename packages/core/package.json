@@ -1,14 +1,13 @@
 {
   "name": "n8n-core",
-  "version": "1.70.0",
+  "version": "1.71.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
     "n8n-copy-icons": "./bin/copy-icons",
-    "n8n-generate-known": "./bin/generate-known",
     "n8n-generate-translations": "./bin/generate-translations",
-    "n8n-generate-ui-types": "./bin/generate-ui-types"
+    "n8n-generate-metadata": "./bin/generate-metadata"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -47,6 +46,7 @@
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "catalog:",
+    "iconv-lite": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",

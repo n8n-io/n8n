@@ -5,12 +5,13 @@ import type {
 	IWebhookDescription,
 	Workflow,
 	INodeConnections,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse, IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -777,6 +778,82 @@ describe('useCanvasOperations', () => {
 				},
 				[nodes[1].name]: {
 					main: [
+						[
+							{
+								node: nodes[2].name,
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			};
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+			workflowsStore.incomingConnectionsByNodeName.mockReturnValue({});
+
+			workflowsStore.getNodeById.mockReturnValue(nodes[1]);
+
+			const { deleteNode } = useCanvasOperations({ router });
+			deleteNode(nodes[1].id);
+
+			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
+			expect(workflowsStore.removeNodeExecutionDataById).toHaveBeenCalledWith(nodes[1].id);
+			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
+		});
+
+		it('should handle nodes with null connections for unconnected indexes', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+
+			const nodes = [
+				createTestNode({
+					id: 'input',
+					type: SET_NODE_TYPE,
+					position: [10, 20],
+					name: 'Input Node',
+				}),
+				createTestNode({
+					id: 'middle',
+					type: SET_NODE_TYPE,
+					position: [10, 20],
+					name: 'Middle Node',
+				}),
+				createTestNode({
+					id: 'output',
+					type: SET_NODE_TYPE,
+					position: [10, 20],
+					name: 'Output Node',
+				}),
+			];
+
+			workflowsStore.getNodeByName = vi
+				.fn()
+				.mockImplementation((name: string) => nodes.find((node) => node.name === name));
+
+			workflowsStore.workflow.nodes = nodes;
+			workflowsStore.workflow.connections = {
+				[nodes[0].name]: {
+					main: [
+						null,
+						[
+							{
+								node: nodes[1].name,
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+				[nodes[1].name]: {
+					main: [
+						// null here to simulate no connection at index
+						null,
 						[
 							{
 								node: nodes[2].name,
@@ -2172,6 +2249,67 @@ describe('useCanvasOperations', () => {
 			expect(result).toEqual({
 				[NodeConnectionType.Main]: [[], []],
 			});
+		});
+	});
+
+	describe('openExecution', () => {
+		it('should initialize workspace and set execution data when execution is found', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const { openExecution } = useCanvasOperations({ router });
+
+			const executionId = '123';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+
+			const result = await openExecution(executionId);
+
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(executionData);
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(result).toEqual(executionData);
+		});
+
+		it('should throw error when execution data is undefined', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const executionId = '123';
+			const { openExecution } = useCanvasOperations({ router });
+
+			workflowsStore.getExecution.mockResolvedValue(undefined);
+
+			await expect(openExecution(executionId)).rejects.toThrow(
+				`Execution with id "${executionId}" could not be found!`,
+			);
+		});
+
+		it('should clear workflow pin data if execution mode is not manual', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { openExecution } = useCanvasOperations({ router });
+
+			const executionId = '123';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'trigger' as WorkflowExecuteMode,
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+
+			await openExecution(executionId);
+
+			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
 		});
 	});
 });

@@ -7,6 +7,9 @@ import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/constants';
 import type { Project, ProjectListItem } from '@/types/projects.types';
@@ -57,7 +60,7 @@ describe('useGlobalEntityCreation', () => {
 		const projectsStore = mockedStore(useProjectsStore);
 
 		const personalProjectId = 'personal-project';
-		projectsStore.canCreateProjects = false;
+		projectsStore.isTeamProjectFeatureEnabled = false;
 		projectsStore.personalProject = { id: personalProjectId } as Project;
 		const { menu } = useGlobalEntityCreation();
 
@@ -83,7 +86,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should use currentProject', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.currentProject = { id: currentProjectId } as Project;
 
 			const { menu } = useGlobalEntityCreation(false);
@@ -107,7 +110,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should be disabled in readOnly', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.currentProject = { id: currentProjectId } as Project;
 
 			const sourceControl = mockedStore(useSourceControlStore);
@@ -131,7 +134,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should be disabled based in scopes', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.currentProject = { id: currentProjectId, scopes: [] } as unknown as Project;
 
 			const { menu } = useGlobalEntityCreation(false);
@@ -153,9 +156,10 @@ describe('useGlobalEntityCreation', () => {
 	describe('global', () => {
 		it('should show personal + all team projects', () => {
 			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.teamProjectsLimit = -1;
 
 			const personalProjectId = 'personal-project';
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.personalProject = { id: personalProjectId } as Project;
 			projectsStore.myProjects = [
 				{ id: '1', name: '1', type: 'team' },
@@ -173,7 +177,7 @@ describe('useGlobalEntityCreation', () => {
 	describe('handleSelect()', () => {
 		it('should only handle create-project', () => {
 			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			const { handleSelect } = useGlobalEntityCreation(true);
 			handleSelect('dummy');
 			expect(projectsStore.createProject).not.toHaveBeenCalled();
@@ -182,6 +186,7 @@ describe('useGlobalEntityCreation', () => {
 		it('creates a new project', async () => {
 			const toast = useToast();
 			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
 			projectsStore.createProject.mockResolvedValueOnce({ name: 'test', id: '1' } as Project);
 
@@ -198,6 +203,7 @@ describe('useGlobalEntityCreation', () => {
 		it('handles create project error', async () => {
 			const toast = useToast();
 			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
 			projectsStore.createProject.mockRejectedValueOnce(new Error('error'));
 
@@ -211,6 +217,7 @@ describe('useGlobalEntityCreation', () => {
 		it('redirects when project limit has been reached', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.canCreateProjects = false;
+			projectsStore.isTeamProjectFeatureEnabled = true;
 			const redirect = usePageRedirectionHelper();
 
 			const { handleSelect } = useGlobalEntityCreation(true);
@@ -218,5 +225,26 @@ describe('useGlobalEntityCreation', () => {
 			handleSelect('create-project');
 			expect(redirect.goToUpgrade).toHaveBeenCalled();
 		});
+	});
+
+	it('should show plan and limit according to deployment type', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+
+		const cloudPlanStore = mockedStore(useCloudPlanStore);
+		cloudPlanStore.currentPlanData = { displayName: 'Pro' } as CloudPlanState['data'];
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.isTeamProjectFeatureEnabled = true;
+		projectsStore.teamProjectsLimit = 10;
+
+		settingsStore.isCloudDeployment = true;
+		const { projectsLimitReachedMessage } = useGlobalEntityCreation(true);
+		expect(projectsLimitReachedMessage.value).toContain(
+			'You have reached the Pro plan limit of 10.',
+		);
+
+		settingsStore.isCloudDeployment = false;
+		expect(projectsLimitReachedMessage.value).toContain(
+			'Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows',
+		);
 	});
 });

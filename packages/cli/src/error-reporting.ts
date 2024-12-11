@@ -33,8 +33,7 @@ export const initErrorHandling = async () => {
 
 	const { init, captureException, setTag } = await import('@sentry/node');
 
-	const { RewriteFrames } = await import('@sentry/integrations');
-	const { Integrations } = await import('@sentry/node');
+	const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
 
 	const enabledIntegrations = [
 		'InboundFilters',
@@ -54,8 +53,8 @@ export const initErrorHandling = async () => {
 		beforeBreadcrumb: () => null,
 		integrations: (integrations) => [
 			...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
-			new RewriteFrames({ root: process.cwd() }),
-			new Integrations.RequestData({
+			rewriteFramesIntegration({ root: process.cwd() }),
+			requestDataIntegration({
 				include: {
 					cookies: false,
 					data: false,
@@ -88,6 +87,17 @@ export const initErrorHandling = async () => {
 				event.level = level;
 				if (extra) event.extra = { ...event.extra, ...extra };
 				if (tags) event.tags = { ...event.tags, ...tags };
+			}
+
+			if (
+				originalException instanceof Error &&
+				'cause' in originalException &&
+				originalException.cause instanceof Error &&
+				'level' in originalException.cause &&
+				originalException.cause.level === 'warning'
+			) {
+				// handle underlying errors propagating from dependencies like ai-assistant-sdk
+				return null;
 			}
 
 			if (originalException instanceof Error && originalException.stack) {

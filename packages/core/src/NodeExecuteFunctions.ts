@@ -13,13 +13,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import type {
-	AxiosError,
-	AxiosHeaders,
-	AxiosPromise,
-	AxiosRequestConfig,
-	AxiosResponse,
-} from 'axios';
+import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FileType from 'file-type';
@@ -28,6 +22,7 @@ import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
+import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
@@ -674,14 +669,18 @@ function parseHeaderParameters(parameters: string[]): Record<string, string> {
 	return parameters.reduce(
 		(acc, param) => {
 			const [key, value] = param.split('=');
-			acc[key.toLowerCase().trim()] = decodeURIComponent(value);
+			let decodedValue = decodeURIComponent(value).trim();
+			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
+				decodedValue = decodedValue.slice(1, -1);
+			}
+			acc[key.toLowerCase().trim()] = decodedValue;
 			return acc;
 		},
 		{} as Record<string, string>,
 	);
 }
 
-function parseContentType(contentType?: string): IContentType | null {
+export function parseContentType(contentType?: string): IContentType | null {
 	if (!contentType) {
 		return null;
 	}
@@ -694,22 +693,7 @@ function parseContentType(contentType?: string): IContentType | null {
 	};
 }
 
-function parseFileName(filename?: string): string | undefined {
-	if (filename?.startsWith('"') && filename?.endsWith('"')) {
-		return filename.slice(1, -1);
-	}
-
-	return filename;
-}
-
-// https://datatracker.ietf.org/doc/html/rfc5987
-function parseFileNameStar(filename?: string): string | undefined {
-	const [_encoding, _locale, content] = parseFileName(filename)?.split("'") ?? [];
-
-	return content;
-}
-
-function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
+export function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
 	if (!contentDisposition) {
 		return null;
 	}
@@ -724,11 +708,15 @@ function parseContentDisposition(contentDisposition?: string): IContentDispositi
 
 	const parsedParameters = parseHeaderParameters(parameters);
 
-	return {
-		type,
-		filename:
-			parseFileNameStar(parsedParameters['filename*']) ?? parseFileName(parsedParameters.filename),
-	};
+	let { filename } = parsedParameters;
+	const wildcard = parsedParameters['filename*'];
+	if (wildcard) {
+		// https://datatracker.ietf.org/doc/html/rfc5987
+		const [_encoding, _locale, content] = wildcard?.split("'") ?? [];
+		filename = content;
+	}
+
+	return { type, filename };
 }
 
 export function parseIncomingMessage(message: IncomingMessage) {
@@ -745,13 +733,33 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-export async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
-	const buffer = await binaryToBuffer(body);
+export async function binaryToString(body: Buffer | Readable, encoding?: string) {
 	if (!encoding && body instanceof IncomingMessage) {
 		parseIncomingMessage(body);
 		encoding = body.encoding;
 	}
-	return buffer.toString(encoding);
+	const buffer = await binaryToBuffer(body);
+	return iconv.decode(buffer, encoding ?? 'utf-8');
+}
+
+export async function invokeAxios(
+	axiosConfig: AxiosRequestConfig,
+	authOptions: IRequestOptions['auth'] = {},
+) {
+	try {
+		return await axios(axiosConfig);
+	} catch (error) {
+		if (authOptions.sendImmediately !== false || !(error instanceof axios.AxiosError)) throw error;
+		// for digest-auth
+		const { response } = error;
+		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+			throw error;
+		}
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
+		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
+		return await axios(axiosConfig);
+	}
 }
 
 export async function proxyRequestToAxios(
@@ -774,29 +782,8 @@ export async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	let requestFn: () => AxiosPromise;
-	if (configObject.auth?.sendImmediately === false) {
-		// for digest-auth
-		requestFn = async () => {
-			try {
-				return await axios(axiosConfig);
-			} catch (error) {
-				const { response } = error;
-				if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-					throw error;
-				}
-				const { auth } = axiosConfig;
-				delete axiosConfig.auth;
-				axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
-				return await axios(axiosConfig);
-			}
-		};
-	} else {
-		requestFn = async () => await axios(axiosConfig);
-	}
-
 	try {
-		const response = await requestFn();
+		const response = await invokeAxios(axiosConfig, configObject.auth);
 		let body = response.data;
 		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
 			parseIncomingMessage(body);
@@ -988,7 +975,7 @@ export async function httpRequest(
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	let axiosRequest = convertN8nRequestToAxios(requestOptions);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
@@ -996,23 +983,7 @@ export async function httpRequest(
 		delete axiosRequest.data;
 	}
 
-	let result: AxiosResponse<any>;
-	try {
-		result = await axios(axiosRequest);
-	} catch (error) {
-		if (requestOptions.auth?.sendImmediately === false) {
-			const { response } = error;
-			if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-				throw error;
-			}
-
-			const { auth } = axiosRequest;
-			delete axiosRequest.auth;
-			axiosRequest = digestAuthAxiosConfig(axiosRequest, response, auth);
-			result = await axios(axiosRequest);
-		}
-		throw error;
-	}
+	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
 	if (requestOptions.returnFullResponse) {
 		return {

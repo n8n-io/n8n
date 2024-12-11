@@ -15,6 +15,8 @@ import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = withDefaults(
 	defineProps<{
@@ -39,6 +41,7 @@ const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -69,6 +72,10 @@ const workflows = computed<IWorkflowDb[]>(() => {
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
+
+const runningExecutionsCount = computed(() => {
+	return props.executions.filter((execution) => execution.status === 'running').length;
+});
 
 watch(
 	() => props.executions,
@@ -312,6 +319,10 @@ async function onAutoRefreshToggle(value: boolean) {
 		executionsStore.stopAutoRefreshInterval();
 	}
 }
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
+};
 </script>
 
 <template>
@@ -320,6 +331,14 @@ async function onAutoRefreshToggle(value: boolean) {
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<div :class="$style.execListHeaderControls">
+					<ConcurrentExecutionsHeader
+						v-if="settingsStore.isConcurrencyEnabled"
+						class="mr-xl"
+						:running-executions-count="runningExecutionsCount"
+						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
+						@go-to-upgrade="goToUpgrade"
+					/>
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
 						v-else
@@ -388,12 +407,15 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-name="getExecutionWorkflowName(execution)"
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
 						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"
 						@retry-saved="retrySavedExecution"
 						@retry-original="retryOriginalExecution"
+						@go-to-upgrade="goToUpgrade"
 					/>
 				</TransitionGroup>
 			</table>

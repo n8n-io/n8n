@@ -14,7 +14,7 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
-import type { ExecutionCancelledError } from './errors';
+import { ApplicationError, type ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
@@ -364,7 +364,8 @@ export interface ICredentialDataDecryptedObject {
 
 // First array index: The output/input-index (if node has multiple inputs/outputs of the same type)
 // Second array index: The different connections (if one node is connected to multiple nodes)
-export type NodeInputConnections = IConnection[][];
+// Any index can be null, for example in a switch node with multiple indexes some of which are not connected
+export type NodeInputConnections = Array<IConnection[] | null>;
 
 export interface INodeConnection {
 	sourceIndex: number;
@@ -1559,6 +1560,7 @@ export interface ITriggerResponse {
 export interface ExecuteWorkflowData {
 	executionId: string;
 	data: Array<INodeExecutionData[] | null>;
+	waitTill?: Date | null;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -1588,17 +1590,25 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-export class NodeExecutionOutput extends Array {
-	private hints: NodeExecutionHint[];
-
+export class NodeExecutionOutput extends Array<INodeExecutionData[]> {
 	constructor(data: INodeExecutionData[][], hints: NodeExecutionHint[] = []) {
 		super();
-		this.push(...data);
-		this.hints = hints;
+		// TODO: This is a temporary solution for NODE-1740, until we move away from extending native Array class
+		Object.defineProperty(data, 'getHints', {
+			value: () => hints,
+			enumerable: false,
+			writable: false,
+			configurable: false,
+		});
+		return data as NodeExecutionOutput;
 	}
 
-	public getHints(): NodeExecutionHint[] {
-		return this.hints;
+	static [Symbol.hasInstance](instance: unknown) {
+		return Array.isArray(instance) && 'getHints' in instance;
+	}
+
+	getHints(): NodeExecutionHint[] {
+		throw new ApplicationError('This should not have been called');
 	}
 }
 
@@ -2006,7 +2016,6 @@ export interface IWebhookDescription {
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
 	isForm?: boolean;
-	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
@@ -2135,6 +2144,7 @@ export interface IRunExecutionData {
 		waitingExecution: IWaitingForExecution;
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
+	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
 }
@@ -2275,6 +2285,11 @@ export interface IWorkflowExecutionDataProcess {
 	 *      PARTIAL_EXECUTION_VERSION_DEFAULT
 	 */
 	partialExecutionVersion?: string;
+	dirtyNodeNames?: string[];
+	triggerToStartFrom?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2764,6 +2779,7 @@ export interface IUserSettings {
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
+	easyAIWorkflowOnboarded?: boolean;
 }
 
 export interface IProcessedDataConfig {

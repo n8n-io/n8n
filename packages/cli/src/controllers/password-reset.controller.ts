@@ -120,7 +120,7 @@ export class PasswordResetController {
 				publicApi: false,
 			});
 			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+				throw new InternalServerError(`Please contact your administrator: ${error.message}`, error);
 			}
 		}
 
@@ -171,7 +171,7 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password', { skipAuth: true })
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token, password, mfaToken } = req.body;
+		const { token, password, mfaCode } = req.body;
 
 		if (!token || !password) {
 			this.logger.debug(
@@ -189,11 +189,11 @@ export class PasswordResetController {
 		if (!user) throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
-			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
+			if (!mfaCode) throw new BadRequestError('If MFA enabled, mfaCode is required.');
 
 			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
 
-			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+			const validToken = this.mfaService.totp.verifySecret({ secret, mfaCode });
 
 			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}

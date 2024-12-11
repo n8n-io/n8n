@@ -66,7 +66,7 @@ export const inputSchemaField: INodeProperties = {
 };
 
 export const promptTypeOptions: INodeProperties = {
-	displayName: 'Prompt Source',
+	displayName: 'Prompt Source (User Message)',
 	name: 'promptType',
 	type: 'options',
 	options: [

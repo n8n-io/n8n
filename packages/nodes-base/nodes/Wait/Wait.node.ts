@@ -7,7 +7,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -516,7 +516,7 @@ export class Wait extends Webhook {
 	}
 
 	private async configureAndPutToWait(context: IExecuteFunctions) {
-		let waitTill = new Date(WAIT_TIME_UNLIMITED);
+		let waitTill = WAIT_INDEFINITELY;
 		const limitWaitTime = context.getNodeParameter('limitWaitTime', 0);
 
 		if (limitWaitTime === true) {
