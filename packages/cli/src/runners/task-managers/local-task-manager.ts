@@ -2,6 +2,7 @@ import type { RequesterMessage } from '@n8n/task-runner';
 import Container, { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { TaskManager } from './task-manager';
 import type { RequesterMessageCallback } from '../task-broker.service';
@@ -13,8 +14,8 @@ export class LocalTaskManager extends TaskManager {
 
 	id: string = 'single-main';
 
-	constructor(nodeTypes: NodeTypes) {
-		super(nodeTypes);
+	constructor(nodeTypes: NodeTypes, workflowStaticDataService: WorkflowStaticDataService) {
+		super(nodeTypes, workflowStaticDataService);
 		this.registerRequester();
 	}
 

@@ -1,5 +1,6 @@
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { RPC_ALLOW_LIST } from '@n8n/task-runner';
+import { createResultOk, createResultError } from 'n8n-workflow';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -15,11 +16,11 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Result,
 } from 'n8n-workflow';
-import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
@@ -59,7 +60,10 @@ export abstract class TaskManager {
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	constructor(
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
+	) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -156,6 +160,16 @@ export abstract class TaskManager {
 					}
 					runExecutionData.resultData.metadata[k] = v;
 				});
+			}
+
+			const { staticData } = resultData;
+
+			/**
+			 * If the runner sends back static data, this is a signal that it may have changed, so update it.
+			 */
+			if (staticData) {
+				await this.workflowStaticDataService.saveStaticDataById(workflow.id, staticData);
+				workflow.staticData = staticData;
 			}
 
 			return createResultOk(resultData.result as TData);
