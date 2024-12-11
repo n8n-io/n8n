@@ -14,7 +14,6 @@ import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { SSEPush } from './sse.push';
@@ -42,7 +41,6 @@ export class Push extends TypedEmitter<PushEvents> {
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(
-		private readonly orchestrationService: OrchestrationService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 	) {
@@ -90,9 +88,7 @@ export class Push extends TypedEmitter<PushEvents> {
 	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
 		const isWorker = this.instanceSettings.instanceType === 'worker';
 
-		const isMainOnMultiMain =
-			this.instanceSettings.instanceType === 'main' &&
-			this.orchestrationService.isMultiMainSetupEnabled;
+		const isMainOnMultiMain = this.instanceSettings.isMultiMain;
 
 		if (isWorker || (isMainOnMultiMain && !this.backend.hasPushRef(pushRef))) {
 			/**
