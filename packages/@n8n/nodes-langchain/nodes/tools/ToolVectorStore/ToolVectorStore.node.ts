@@ -66,16 +66,16 @@ export class ToolVectorStore implements INodeType {
 				placeholder: 'e.g. users_info',
 				validateType: 'string-alphanumeric',
 				description:
-					'Name of the data type in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
+					'Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
 			},
 			{
-				displayName: "Data's Description",
+				displayName: 'Description of Data',
 				name: 'description',
 				type: 'string',
 				default: '',
 				placeholder: "[Describe your data here, e.g. a user's name, email, etc.]",
 				description:
-					'Describe data in vector store here. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
+					'Describe the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
 				typeOptions: {
 					rows: 3,
 				},
