@@ -945,10 +945,11 @@ export class WorkflowDataProxy {
 			_type: string = 'string',
 			defaultValue?: unknown,
 		) => {
+			const { itemIndex, runIndex } = that;
 			if (!name || name === '') {
 				throw new ExpressionError("Add a key, e.g. $fromAI('placeholder_name')", {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
+					runIndex,
+					itemIndex,
 				});
 			}
 			const nameValidationRegex = /^[a-zA-Z0-9_-]{0,64}$/;
@@ -956,20 +957,20 @@ export class WorkflowDataProxy {
 				throw new ExpressionError(
 					'Invalid parameter key, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
 					{
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
+						runIndex,
+						itemIndex,
 					},
 				);
 			}
+			const inputData =
+				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
 			const placeholdersDataInputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[0].inputOverride?.[
-					NodeConnectionType.AiTool
-				]?.[0]?.[0].json;
+				inputData?.[NodeConnectionType.AiTool]?.[0]?.[itemIndex].json;
 
 			if (Boolean(!placeholdersDataInputData)) {
 				throw new ExpressionError('No execution data available', {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
+					runIndex,
+					itemIndex,
 					type: 'no_execution_data',
 				});
 			}
