@@ -1,5 +1,4 @@
 import * as LoggerProxy from './LoggerProxy';
-export * as ErrorReporterProxy from './ErrorReporterProxy';
 export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';

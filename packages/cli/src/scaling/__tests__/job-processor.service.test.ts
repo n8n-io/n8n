@@ -14,6 +14,7 @@ describe('JobProcessor', () => {
 		);
 		const jobProcessor = new JobProcessor(
 			mock(),
+			mock(),
 			executionRepository,
 			mock(),
 			mock(),

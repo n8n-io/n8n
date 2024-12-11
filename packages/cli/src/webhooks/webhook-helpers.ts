@@ -9,7 +9,7 @@
 import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import get from 'lodash/get';
-import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, NodeExecuteFunctions } from 'n8n-core';
 import type {
 	IBinaryData,
 	IBinaryKeyData,
@@ -33,8 +33,6 @@ import {
 	ApplicationError,
 	BINARY_ENCODING,
 	createDeferredPromise,
-	ErrorReporterProxy as ErrorReporter,
-	ErrorReporterProxy,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	NodeHelpers,
@@ -280,7 +278,7 @@ export async function executeWebhook(
 				errorMessage = err.message;
 			}
 
-			ErrorReporterProxy.error(err, {
+			Container.get(ErrorReporter).error(err, {
 				extra: {
 					nodeName: workflowStartNode.name,
 					nodeType: workflowStartNode.type,
@@ -521,7 +519,7 @@ export async function executeWebhook(
 					didSendResponse = true;
 				})
 				.catch(async (error) => {
-					ErrorReporter.error(error);
+					Container.get(ErrorReporter).error(error);
 					Container.get(Logger).error(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },

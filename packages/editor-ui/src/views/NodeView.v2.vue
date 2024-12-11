@@ -587,7 +587,6 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 				cancelButtonText: i18n.baseText(
 					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 				),
-				dangerouslyUseHTMLString: true,
 			},
 		);
 
@@ -1368,7 +1367,6 @@ function checkIfEditingIsAllowed(): boolean {
 					: 'readOnly.showMessage.executions.message',
 			),
 			type: 'info',
-			dangerouslyUseHTMLString: true,
 		}) as unknown as { visible: boolean };
 
 		return false;
@@ -1487,6 +1485,13 @@ function unregisterCustomActions() {
 	unregisterCustomAction('showNodeCreator');
 }
 
+function showAddFirstStepIfEnabled() {
+	if (uiStore.addFirstStepOnLoad) {
+		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		uiStore.addFirstStepOnLoad = false;
+	}
+}
+
 /**
  * Routing
  */
@@ -1549,6 +1554,7 @@ onMounted(() => {
 
 onActivated(async () => {
 	addUndoRedoEventBindings();
+	showAddFirstStepIfEnabled();
 });
 
 onDeactivated(() => {
