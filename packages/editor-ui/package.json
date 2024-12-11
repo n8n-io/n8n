@@ -82,6 +82,7 @@
     "vue-router": "catalog:frontend",
     "vue-virtual-scroller": "2.0.0-beta.8",
     "vue3-touch-events": "^4.1.3",
+    "vuedraggable": "4.1.0",
     "xss": "catalog:"
   },
   "devDependencies": {
