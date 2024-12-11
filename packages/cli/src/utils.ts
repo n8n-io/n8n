@@ -94,16 +94,3 @@ export function rightDiff<T1, T2>(
 export const assertNever = (_value: never) => {};
 
 export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);
-
-export function deepMerge(target: IDataObject, source: IDataObject): void {
-	for (const key in source) {
-		if (Object.prototype.hasOwnProperty.call(source, key)) {
-			if (source[key] && typeof source[key] === 'object') {
-				if (!target[key]) target[key] = Array.isArray(source[key]) ? [] : {};
-				deepMerge(target[key] as IDataObject, source[key] as IDataObject);
-			} else {
-				target[key] = source[key];
-			}
-		}
-	}
-}
