@@ -1,13 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings } from 'n8n-core';
-import {
-	ApplicationError,
-	BINARY_ENCODING,
-	sleep,
-	jsonStringify,
-	ErrorReporterProxy,
-	ensureError,
-} from 'n8n-workflow';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify, ensureError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
@@ -43,6 +36,7 @@ export class ScalingService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly jobProcessor: JobProcessor,
 		private readonly globalConfig: GlobalConfig,
@@ -119,7 +113,7 @@ export class ScalingService {
 
 		await job.progress(msg);
 
-		ErrorReporterProxy.error(error, { executionId });
+		this.errorReporter.error(error, { executionId });
 
 		throw error;
 	}
