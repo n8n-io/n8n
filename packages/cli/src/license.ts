@@ -143,7 +143,7 @@ export class License {
 
 			if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
 				this.logger
-					.scoped(['scaling', 'multi-main-setup'])
+					.scoped(['scaling', 'multi-main-setup', 'license'])
 					.debug('Instance is not leader, skipping sending of "reload-license" command...');
 				return;
 			}

@@ -27,7 +27,7 @@ export class TestWebhookRegistrationsService {
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
 
-		if (!this.instanceSettings.isMultiMain) return;
+		if (this.instanceSettings.isSingleMain) return;
 
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that

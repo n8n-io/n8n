@@ -46,7 +46,6 @@ describe('ScalingService', () => {
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
-	instanceSettings.setMultiMainEnabled(false);
 	const jobProcessor = mock<JobProcessor>();
 
 	let scalingService: ScalingService;
