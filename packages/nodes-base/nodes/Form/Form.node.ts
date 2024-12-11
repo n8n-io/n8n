@@ -433,7 +433,7 @@ export class Form extends Node {
 
 			staticData[id] = config;
 
-			const waitTill = new Date(WAIT_TIME_UNLIMITED);
+			const waitTill = new Date(WAIT_INDEFINITELY);
 			await context.putExecutionToWait(waitTill);
 		}
 
