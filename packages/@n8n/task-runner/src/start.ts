@@ -1,8 +1,8 @@
+import type { ErrorReporter } from 'n8n-core';
 import { ensureError, setGlobalState } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
-import type { ErrorReporter } from './error-reporter';
 import type { HealthCheckServer } from './health-check-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
@@ -32,10 +32,11 @@ function createSignalHandler(signal: string, timeoutInS = 10) {
 				void healthCheckServer?.stop();
 			}
 
-			if (errorReporter) {
-				await errorReporter.stop();
-				errorReporter = undefined;
-			}
+			// @TODO
+			// if (errorReporter) {
+			// 	await errorReporter.stop();
+			// 	errorReporter = undefined;
+			// }
 		} catch (e) {
 			const error = ensureError(e);
 			console.error('Error stopping task runner', { error });
@@ -54,9 +55,9 @@ void (async function start() {
 	});
 
 	if (config.sentryConfig.sentryDsn) {
-		const { ErrorReporter } = await import('@/error-reporter');
-		errorReporter = new ErrorReporter(config.sentryConfig);
-		await errorReporter.start();
+		const { ErrorReporter } = await import('n8n-core');
+		errorReporter = new ErrorReporter('task_runner', config.sentryConfig.sentryDsn);
+		await errorReporter.init();
 	}
 
 	runner = new JsTaskRunner(config);

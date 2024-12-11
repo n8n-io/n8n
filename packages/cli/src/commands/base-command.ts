@@ -34,7 +34,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-hi
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected readonly errorReporter = Container.get(ErrorReporter);
+	protected errorReporter: ErrorReporter;
 
 	protected externalHooks?: ExternalHooks;
 
@@ -60,6 +60,10 @@ export abstract class BaseCommand extends Command {
 	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
+		this.errorReporter = new ErrorReporter(
+			this.instanceSettings.instanceType,
+			this.globalConfig.sentry.backendDsn,
+		);
 		await this.errorReporter.init();
 		initExpressionEvaluator();
 

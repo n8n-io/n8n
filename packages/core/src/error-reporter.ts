@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import type { NodeOptions } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
@@ -6,20 +5,18 @@ import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workfl
 import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
 
-import { InstanceSettings } from './InstanceSettings';
+import type { InstanceType } from './InstanceSettings';
 
 @Service()
 export class ErrorReporter {
-	private initialized = false;
-
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
 	private report: (error: Error | string, options?: ReportingOptions) => void;
 
 	constructor(
-		private readonly globalConfig: GlobalConfig,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly instanceType: InstanceType | 'task_runner',
+		private readonly dsn: string,
 	) {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.report = this.defaultReport;
@@ -42,17 +39,11 @@ export class ErrorReporter {
 	}
 
 	async init() {
-		if (this.initialized) return;
-
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
 
-		const dsn = this.globalConfig.sentry.backendDsn;
-		if (!dsn) {
-			this.initialized = true;
-			return;
-		}
+		if (!this.dsn) return;
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
@@ -75,7 +66,7 @@ export class ErrorReporter {
 		];
 
 		init({
-			dsn,
+			dsn: this.dsn,
 			release,
 			environment,
 			enableTracing: false,
@@ -98,11 +89,9 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', this.instanceSettings.instanceType);
+		setTag('server_type', this.instanceType);
 
 		this.report = (error, options) => captureException(error, options);
-
-		this.initialized = true;
 	}
 
 	async beforeSend(event: ErrorEvent, { originalException }: EventHint) {
