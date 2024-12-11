@@ -405,6 +405,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 				const toolName = this.getNodeParameter('toolName', itemIndex) as string;
 				const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+				const includeDocumentMetadata = this.getNodeParameter(
+					'includeDocumentMetadata',
+					itemIndex,
+					false,
+				) as boolean;
 
 				const vectorStoreTool = new DynamicTool({
 					name: toolName,
@@ -426,11 +431,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 						return documents
 							.map((document) => {
-								// Tools can only return a string or array of objects with type text
-								// todo return concatenated strings instead? Or just without metadata?
-								// return { type: 'text', text: document[0].pageContent };
-								// todo with metadata?
-								return { type: 'text', text: JSON.stringify(document[0]) };
+								if (includeDocumentMetadata) {
+									return { type: 'text', text: JSON.stringify(document[0]) };
+								}
+
+								return { type: 'text', text: document[0].pageContent };
 							})
 							.filter((document) => !!document);
 					},

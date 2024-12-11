@@ -400,6 +400,18 @@ export function convertNodeToAiTool<
 				default: 'auto',
 			};
 
+			if (isVectorStore) {
+				const metadataProp: INodeProperties = {
+					displayName: 'Include metadata',
+					name: 'includeDocumentMetadata',
+					type: 'boolean',
+					default: false,
+					description: 'Whether or not to include document metadata',
+				};
+
+				item.description.properties.unshift(metadataProp);
+			}
+
 			const descProp: INodeProperties = {
 				displayName: 'Description',
 				name: 'toolDescription',
