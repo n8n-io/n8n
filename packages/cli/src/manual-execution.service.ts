@@ -22,7 +22,7 @@ import { Logger } from '@/logging/logger.service';
 export class ManualExecutionService {
 	constructor(private readonly logger: Logger) {}
 
-	private getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
+	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 		let startNode;
 		if (
 			data.startNodes?.length === 1 &&
