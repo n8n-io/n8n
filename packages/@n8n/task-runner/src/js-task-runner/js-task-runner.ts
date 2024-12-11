@@ -197,7 +197,7 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 			items: inputItems,
-			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type),
+			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
 			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -270,7 +270,8 @@ export class JsTaskRunner extends TaskRunner {
 				module: {},
 				console: customConsole,
 				item,
-				$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type),
+				$getWorkflowStaticData: (type: 'global' | 'node') =>
+					workflow.getStaticData(type, data.node),
 				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),
