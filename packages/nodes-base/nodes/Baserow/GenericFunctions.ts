@@ -5,6 +5,7 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -50,7 +51,7 @@ export async function baserowFileUploadRequest(
  * Make a request to Baserow API.
  */
 export async function baserowApiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	jwtToken: string,
@@ -98,7 +99,7 @@ export async function baserowApiRequest(
  * Get all results from a paginated query to Baserow API.
  */
 export async function baserowApiRequestAllItems(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	jwtToken: string,
@@ -109,10 +110,12 @@ export async function baserowApiRequestAllItems(
 	let responseData;
 
 	qs.page = 1;
-	qs.size = 100;
+	if (!qs.size) {
+		qs.size = 100;
+	}
 
 	const returnAll = this.getNodeParameter('returnAll', 0, false);
-	const limit = this.getNodeParameter('limit', 0, 0);
+	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
@@ -132,7 +135,7 @@ export async function baserowApiRequestAllItems(
  * Get a JWT token based on Baserow account username and password.
  */
 export async function getJwtToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	{ username, password, host }: BaserowCredentials,
 ) {
 	const options: IHttpRequestOptions = {
@@ -173,7 +176,7 @@ export async function getFieldNamesAndIds(
 }
 
 export async function getTableFields(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IPollFunctions,
 	table: string,
 	jwtToken: string,
 ): Promise<LoadedResource[]> {
@@ -226,6 +229,10 @@ export class TableFieldMapper {
 		});
 	}
 
+	idToName(id: string) {
+		return this.idToNameMapping[id] ?? id;
+	}
+
 	namesToIds(obj: Record<string, unknown>) {
 		Object.entries(obj).forEach(([key, value]) => {
 			if (this.nameToIdMapping[key] !== undefined) {
@@ -233,5 +240,9 @@ export class TableFieldMapper {
 				obj[this.nameToIdMapping[key]] = value;
 			}
 		});
+	}
+
+	nameToId(name: string) {
+		return this.nameToIdMapping[name] ?? name;
 	}
 }

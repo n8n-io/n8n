@@ -8,6 +8,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { returnAllOrLimit } from '@utils/descriptions';
 import {
 	baserowApiRequest,
 	baserowFileUploadRequest,
@@ -17,7 +18,7 @@ import {
 	toOptions,
 	getTableFields,
 } from './GenericFunctions';
-
+import { operationFields } from './OperationDescription';
 import type {
 	BaserowCredentials,
 	FieldsUiValues,
@@ -168,6 +169,8 @@ export class Baserow implements INodeType {
 				required: true,
 				description: 'The URL of the file to upload',
 			},
+			...operationFields,
+			...returnAllOrLimit,
 		],
 	};
 

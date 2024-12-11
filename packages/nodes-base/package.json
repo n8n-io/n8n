@@ -427,6 +427,7 @@
       "dist/nodes/BambooHr/BambooHr.node.js",
       "dist/nodes/Bannerbear/Bannerbear.node.js",
       "dist/nodes/Baserow/Baserow.node.js",
+      "dist/nodes/Baserow/BaserowTrigger.node.js",
       "dist/nodes/Beeminder/Beeminder.node.js",
       "dist/nodes/Bitbucket/BitbucketTrigger.node.js",
       "dist/nodes/Bitly/Bitly.node.js",
