@@ -6,7 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
-import { ErrorReporting } from '@/error-reporting';
+import { ErrorReporter } from '@/error-reporter';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 const init = jest.fn();
@@ -20,28 +20,28 @@ jest.mock('@sentry/node', () => ({
 
 jest.spyOn(process, 'on');
 
-describe('initErrorHandling', () => {
+describe('ErrorReporter', () => {
 	const globalConfig = mock<GlobalConfig>();
 	const instanceSettings = mock<InstanceSettings>();
-	const errorReporting = new ErrorReporting(globalConfig, instanceSettings);
+	const errorReporting = new ErrorReporter(globalConfig, instanceSettings);
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {
-		it('ignores errors with level warning', async () => {
+		it('should ignore errors with level warning', async () => {
 			const originalException = new InternalServerError('test');
 			originalException.level = 'warning';
 
 			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(null);
 		});
 
-		it('keeps events with a cause with error level', async () => {
+		it('should keep events with a cause with error level', async () => {
 			const cause = new Error('cause-error');
 			const originalException = new InternalServerError('test', cause);
 
 			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(event);
 		});
 
-		it('ignores events with error cause with warning level', async () => {
+		it('should ignore events with error cause with warning level', async () => {
 			const cause: Error & { level?: 'warning' } = new Error('cause-error');
 			cause.level = 'warning';
 			const originalException = new InternalServerError('test', cause);
@@ -103,7 +103,7 @@ describe('initErrorHandling', () => {
 				'an Error with ApplicationError as cause with "warning" level',
 				new Error('', { cause: new ApplicationError('', { level: 'warning' }) }),
 			],
-		])('ignore if originalException is %s', async (_, originalException) => {
+		])('should ignore if originalException is %s', async (_, originalException) => {
 			const result = await errorReporting.beforeSend(event, { originalException });
 			expect(result).toBeNull();
 		});

@@ -7,12 +7,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 } from 'n8n-core';
-import {
-	ApplicationError,
-	ensureError,
-	ErrorReporterProxy as ErrorReporter,
-	sleep,
-} from 'n8n-workflow';
+import { ApplicationError, ensureError, ErrorReporterProxy, sleep } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -22,7 +17,7 @@ import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { ErrorReporting } from '@/error-reporting';
+import { ErrorReporter } from '@/error-reporter';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -53,6 +48,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
 
+	protected readonly errorReporter = Container.get(ErrorReporter);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -63,7 +60,7 @@ export abstract class BaseCommand extends Command {
 	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
-		await Container.get(ErrorReporting).init();
+		await this.errorReporter.init();
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
@@ -130,7 +127,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async exitWithCrash(message: string, error: unknown) {
-		ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+		ErrorReporterProxy.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
 	}

@@ -9,9 +9,10 @@ import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 @Service()
-export class ErrorReporting {
+export class ErrorReporter {
 	private initialized = false;
 
+	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
 	constructor(
