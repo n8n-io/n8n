@@ -398,6 +398,16 @@ const binaryData = computed(() => {
 });
 const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
 const currentOutputIndex = computed(() => {
+	if (isPaneTypeInput.value) {
+		// In the input panel we find the matching input by value
+		for (let i = 0; i <= maxOutputIndex.value; i++) {
+			if (getRawInputData(props.runIndex, i).length) {
+				return i;
+			}
+		}
+		return 0;
+	}
+
 	if (props.overrideOutputs?.length && !props.overrideOutputs.includes(outputIndex.value)) {
 		return props.overrideOutputs[0];
 	}
@@ -443,6 +453,8 @@ const branches = computed(() => {
 			label:
 				(search.value && itemsCount) || totalItemsCount ? `${outputName} (${items})` : outputName,
 			value: i,
+			// In inputPane we have exactly one active input branch
+			disabled: isPaneTypeInput.value && currentOutputIndex.value !== i,
 		});
 	}
 	return result;

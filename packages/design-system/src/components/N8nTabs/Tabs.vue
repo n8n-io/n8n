@@ -12,6 +12,7 @@ interface TabOptions {
 	tooltip?: string;
 	align?: 'left' | 'right';
 	to?: RouteLocationRaw;
+	disabled?: boolean;
 }
 
 interface TabsProps {
@@ -61,7 +62,11 @@ const emit = defineEmits<{
 }>();
 
 const handleTooltipClick = (tab: Value, event: MouseEvent) => emit('tooltipClick', tab, event);
-const handleTabClick = (tab: Value) => emit('update:modelValue', tab);
+const handleTabClick = (props: TabOptions) => {
+	if (!props.disabled) {
+		emit('update:modelValue', props.value);
+	}
+};
 
 const scroll = (left: number) => {
 	const container = tabs.value;
@@ -93,11 +98,11 @@ const scrollRight = () => scroll(50);
 						<div @click="handleTooltipClick(option.value, $event)" v-n8n-html="option.tooltip" />
 					</template>
 					<a
-						v-if="option.href"
+						v-if="option.href && !option.disabled"
 						target="_blank"
 						:href="option.href"
 						:class="[$style.link, $style.tab]"
-						@click="() => handleTabClick(option.value)"
+						@click="() => handleTabClick(option)"
 					>
 						<div>
 							{{ option.label }}
@@ -107,7 +112,7 @@ const scrollRight = () => scroll(50);
 						</div>
 					</a>
 					<router-link
-						v-else-if="option.to"
+						v-else-if="option.to && !option.disabled"
 						:to="option.to"
 						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
 					>
@@ -116,9 +121,13 @@ const scrollRight = () => scroll(50);
 					</router-link>
 					<div
 						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:class="{
+							[$style.tab]: true,
+							[$style.activeTab]: modelValue === option.value,
+							[$style.tabDisabled]: option.disabled,
+						}"
 						:data-test-id="`tab-${option.value}`"
-						@click="() => handleTabClick(option.value)"
+						@click="() => handleTabClick(option)"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
@@ -171,6 +180,15 @@ const scrollRight = () => scroll(50);
 
 	span + span {
 		margin-left: var(--spacing-4xs);
+	}
+}
+
+.tabDisabled {
+	color: var(--color-background-base);
+	cursor: auto;
+
+	&:hover {
+		color: var(--color-background-base);
 	}
 }
 

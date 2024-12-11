@@ -1150,6 +1150,7 @@ export interface ITab<Value extends string | number = string | number> {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+	disabled?: boolean;
 }
 
 export interface ITabBarItem {
