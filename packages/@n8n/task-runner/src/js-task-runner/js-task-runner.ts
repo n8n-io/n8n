@@ -121,7 +121,13 @@ export class JsTaskRunner extends TaskRunner {
 			nodeTypes: this.nodeTypes,
 		});
 
+		const noOp = () => {};
 		const customConsole = {
+			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
+			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
+				acc[name] = noOp;
+				return acc;
+			}, {}),
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
@@ -130,21 +136,6 @@ export class JsTaskRunner extends TaskRunner {
 					.join(' ');
 				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
 			},
-			// dummy methods to disregard without throwing, following existing Code node behavior
-			warn: () => {},
-			error: () => {},
-			info: () => {},
-			debug: () => {},
-			trace: () => {},
-			dir: () => {},
-			time: () => {},
-			timeEnd: () => {},
-			timeLog: () => {},
-			assert: () => {},
-			clear: () => {},
-			group: () => {},
-			groupEnd: () => {},
-			table: () => {},
 		};
 
 		const result =
