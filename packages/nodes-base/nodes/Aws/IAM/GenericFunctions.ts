@@ -15,14 +15,6 @@ import type {
 import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /* Function which helps while developing the node */
-// ToDo: Remove before completing the pull request
-export async function presendTest(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	console.log('requestOptions', requestOptions);
-	return requestOptions;
-}
 
 /*
  * Helper function which stringifies the body before sending the request.
@@ -156,13 +148,16 @@ export async function processGroupsResponse(
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const responseBody = response.body as { Groups: IDataObject[] };
+	const responseBody = response.body as {
+		ListGroupsResponse: { ListGroupsResult: { Groups: IDataObject[] } };
+	};
+	const data = responseBody.ListGroupsResponse.ListGroupsResult.Groups;
 
-	if (!responseBody || !Array.isArray(responseBody.Groups)) {
+	if (!responseBody || !Array.isArray(data)) {
 		throw new ApplicationError('Unexpected response format: No groups found.');
 	}
 
-	const executionData: INodeExecutionData[] = responseBody.Groups.map((group) => ({
+	const executionData: INodeExecutionData[] = data.map((group) => ({
 		json: group,
 	}));
 
@@ -190,8 +185,6 @@ export async function processUsersResponse(
 	return executionData;
 }
 
-const possibleRootProperties = ['Users', 'Groups'];
-// ToDo: Test if pagination works
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
 	resultOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -200,7 +193,6 @@ export async function handlePagination(
 	let nextPageToken: string | undefined;
 	const returnAll = this.getNodeParameter('returnAll') as boolean;
 	let limit = 60;
-	console.log('Entered pagination!!!!');
 	// Update limit if 'returnAll' is not selected
 	if (!returnAll) {
 		limit = this.getNodeParameter('limit') as number;
@@ -219,39 +211,35 @@ export async function handlePagination(
 				...body,
 				PaginationToken: nextPageToken,
 			} as IDataObject;
-			console.log('Updated request body with PaginationToken:', resultOptions.options.body);
 		}
 
-		// Make the request
-		console.log('Sending request with options:', resultOptions);
 		const responseData = await this.makeRoutingRequest(resultOptions);
 
 		// Process response data
-		for (const page of responseData) {
-			console.log('Processing page:', page.json);
+		if (responseData && Array.isArray(responseData)) {
+			for (const page of responseData) {
+				aggregatedResult.push(page.json);
 
-			// Iterate over possible root properties (e.g., "Users")
-			for (const prop of possibleRootProperties) {
-				if (page.json[prop]) {
-					const currentData = page.json[prop] as IDataObject[];
-					console.log(`Extracted data from property "${prop}":`, currentData);
-					aggregatedResult.push(...currentData);
+				// Check if the limit has been reached
+				if (!returnAll && aggregatedResult.length >= limit) {
+					return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 				}
+
+				// Update the nextPageToken for the next request
+				nextPageToken = page.json.PaginationToken as string | undefined;
 			}
+		} else if (responseData && typeof responseData === 'object') {
+			aggregatedResult.push(responseData as IDataObject);
+
+			nextPageToken = (responseData as IDataObject).PaginationToken as string | undefined;
 
 			// Check if the limit has been reached
 			if (!returnAll && aggregatedResult.length >= limit) {
-				console.log('Limit reached. Returning results.');
 				return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 			}
-
-			// Update the nextPageToken for the next request
-			nextPageToken = page.json.PaginationToken as string | undefined;
-			console.log('Next Page Token:', nextPageToken);
 		}
 	} while (nextPageToken);
 
-	console.log('Final Aggregated Results:', aggregatedResult);
 	return aggregatedResult.map((item) => ({ json: item }));
 }
 

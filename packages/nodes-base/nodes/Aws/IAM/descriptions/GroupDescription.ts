@@ -1,7 +1,11 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import { handleErrorPostReceive, presendTest, validatePath } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	handlePagination,
+	processGroupsResponse,
+	validatePath,
+} from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -37,9 +41,6 @@ export const groupOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete an existing group',
 				routing: {
-					send: {
-						preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-					},
 					request: {
 						method: 'POST',
 						url: '=?Action=DeleteGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
@@ -64,9 +65,6 @@ export const groupOperations: INodeProperties[] = [
 				value: 'get',
 				description: 'Retrieve details of an existing group',
 				routing: {
-					// send: {
-					// 	preSend: [presendTest], // ToDo: Remove this line before completing the pull request
-					// },
 					request: {
 						method: 'POST',
 						url: '=?Action=GetGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
@@ -83,13 +81,23 @@ export const groupOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of groups',
 				routing: {
+					send: {
+						paginate: true,
+					},
+					operations: {
+						pagination: handlePagination,
+					},
 					request: {
 						method: 'POST',
 						url: '=/?Action=ListGroups&Version=2010-05-08',
+						qs: {
+							pageSize:
+								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [handleErrorPostReceive, processGroupsResponse],
 					},
 				},
 				action: 'Get many groups',
@@ -105,15 +113,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							handleErrorPostReceive,
-							// {
-							// 	type: 'set',
-							// 	properties: {
-							// 		value: '={{ { "updated": true } }}',
-							// 	},
-							// },
-						],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Update group',
