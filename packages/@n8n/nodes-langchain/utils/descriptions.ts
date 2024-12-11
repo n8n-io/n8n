@@ -72,9 +72,10 @@ export const promptTypeOptions: INodeProperties = {
 	options: [
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			name: 'Take from previous node automatically',
+			name: 'Connected Chat Trigger Node',
 			value: 'auto',
-			description: 'Looks for an input field called chatInput',
+			description:
+				'Looks for an input field called chatInput that is coming from a directly connected Chat Trigger',
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased

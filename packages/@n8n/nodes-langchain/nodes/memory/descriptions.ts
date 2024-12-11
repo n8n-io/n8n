@@ -7,9 +7,10 @@ export const sessionIdOption: INodeProperties = {
 	options: [
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			name: 'Take from previous node automatically',
+			name: 'Connected Chat Trigger Node',
 			value: 'fromInput',
-			description: 'Looks for an input field called sessionId',
+			description:
+				'Looks for an input field called sessionId that is coming from a directly connected Chat Trigger',
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
