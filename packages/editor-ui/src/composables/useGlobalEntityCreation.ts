@@ -1,4 +1,4 @@
-import { computed, toValue, type ComputedRef, type Ref } from 'vue';
+import { computed } from 'vue';
 import { VIEWS } from '@/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
@@ -25,9 +25,7 @@ type Item = BaseItem & {
 	submenu?: BaseItem[];
 };
 
-export const useGlobalEntityCreation = (
-	multipleProjects: Ref<boolean> | ComputedRef<boolean> | boolean = true,
-) => {
+export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 
 	const settingsStore = useSettingsStore();
@@ -77,34 +75,10 @@ export const useGlobalEntityCreation = (
 						},
 					},
 				},
-			];
-		}
-
-		// single project
-		if (!toValue(multipleProjects)) {
-			return [
 				{
-					id: 'workflow',
-					title: 'Workflow',
-					disabled: disabledWorkflow(projectsStore.currentProject?.scopes),
-					route: {
-						name: VIEWS.NEW_WORKFLOW,
-						query: {
-							projectId: projectsStore.currentProject?.id,
-						},
-					},
-				},
-				{
-					id: 'credential',
-					title: 'Credential',
-					disabled: disabledCredential(projectsStore.currentProject?.scopes),
-					route: {
-						name: VIEWS.PROJECTS_CREDENTIALS,
-						params: {
-							projectId: projectsStore.currentProject?.id,
-							credentialId: 'create',
-						},
-					},
+					id: CREATE_PROJECT_ID,
+					title: 'Project',
+					disabled: true,
 				},
 			];
 		}
@@ -211,7 +185,7 @@ export const useGlobalEntityCreation = (
 
 	const projectsLimitReachedMessage = computed(() => {
 		if (settingsStore.isCloudDeployment) {
-			return i18n.baseText('projects.create.limitReached', {
+			return i18n.baseText('projects.create.limitReached.cloud', {
 				adjustToNumber: projectsStore.teamProjectsLimit,
 				interpolate: {
 					planName: cloudPlanStore.currentPlanData?.displayName ?? '',
@@ -220,10 +194,37 @@ export const useGlobalEntityCreation = (
 			});
 		}
 
-		return i18n.baseText('projects.create.limitReached.self');
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
+			return i18n.baseText('projects.create.limitReached.self');
+		}
+
+		return i18n.baseText('projects.create.limitReached', {
+			adjustToNumber: projectsStore.teamProjectsLimit,
+			interpolate: {
+				limit: projectsStore.teamProjectsLimit,
+			},
+		});
 	});
 
 	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
 
-	return { menu, handleSelect, createProjectAppendSlotName, projectsLimitReachedMessage };
+	const upgradeLabel = computed(() => {
+		if (settingsStore.isCloudDeployment) {
+			return i18n.baseText('generic.upgrade');
+		}
+
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
+			return i18n.baseText('generic.enterprise');
+		}
+
+		return i18n.baseText('generic.upgrade');
+	});
+
+	return {
+		menu,
+		handleSelect,
+		createProjectAppendSlotName,
+		projectsLimitReachedMessage,
+		upgradeLabel,
+	};
 };

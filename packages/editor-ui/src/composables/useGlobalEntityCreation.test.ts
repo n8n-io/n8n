@@ -1,7 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
@@ -80,79 +79,6 @@ describe('useGlobalEntityCreation', () => {
 		);
 	});
 
-	describe('single project', () => {
-		const currentProjectId = 'current-project';
-
-		it('should use currentProject', () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			projectsStore.isTeamProjectFeatureEnabled = true;
-			projectsStore.currentProject = { id: currentProjectId } as Project;
-
-			const { menu } = useGlobalEntityCreation(false);
-
-			expect(menu.value[0]).toStrictEqual(
-				expect.objectContaining({
-					route: { name: VIEWS.NEW_WORKFLOW, query: { projectId: currentProjectId } },
-				}),
-			);
-
-			expect(menu.value[1]).toStrictEqual(
-				expect.objectContaining({
-					route: {
-						name: VIEWS.PROJECTS_CREDENTIALS,
-						params: { projectId: currentProjectId, credentialId: 'create' },
-					},
-				}),
-			);
-		});
-
-		it('should be disabled in readOnly', () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			projectsStore.isTeamProjectFeatureEnabled = true;
-			projectsStore.currentProject = { id: currentProjectId } as Project;
-
-			const sourceControl = mockedStore(useSourceControlStore);
-			sourceControl.preferences.branchReadOnly = true;
-
-			const { menu } = useGlobalEntityCreation(false);
-
-			expect(menu.value[0]).toStrictEqual(
-				expect.objectContaining({
-					disabled: true,
-				}),
-			);
-
-			expect(menu.value[1]).toStrictEqual(
-				expect.objectContaining({
-					disabled: true,
-				}),
-			);
-		});
-
-		it('should be disabled based in scopes', () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			projectsStore.isTeamProjectFeatureEnabled = true;
-			projectsStore.currentProject = { id: currentProjectId, scopes: [] } as unknown as Project;
-
-			const { menu } = useGlobalEntityCreation(false);
-
-			expect(menu.value[0]).toStrictEqual(
-				expect.objectContaining({
-					disabled: true,
-				}),
-			);
-
-			expect(menu.value[1]).toStrictEqual(
-				expect.objectContaining({
-					disabled: true,
-				}),
-			);
-		});
-	});
-
 	describe('global', () => {
 		it('should show personal + all team projects', () => {
 			const projectsStore = mockedStore(useProjectsStore);
@@ -167,7 +93,7 @@ describe('useGlobalEntityCreation', () => {
 				{ id: '3', name: '3', type: 'team' },
 			] as ProjectListItem[];
 
-			const { menu } = useGlobalEntityCreation(true);
+			const { menu } = useGlobalEntityCreation();
 
 			expect(menu.value[0].submenu?.length).toBe(4);
 			expect(menu.value[1].submenu?.length).toBe(4);
@@ -178,7 +104,7 @@ describe('useGlobalEntityCreation', () => {
 		it('should only handle create-project', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isTeamProjectFeatureEnabled = true;
-			const { handleSelect } = useGlobalEntityCreation(true);
+			const { handleSelect } = useGlobalEntityCreation();
 			handleSelect('dummy');
 			expect(projectsStore.createProject).not.toHaveBeenCalled();
 		});
@@ -190,7 +116,7 @@ describe('useGlobalEntityCreation', () => {
 			projectsStore.canCreateProjects = true;
 			projectsStore.createProject.mockResolvedValueOnce({ name: 'test', id: '1' } as Project);
 
-			const { handleSelect } = useGlobalEntityCreation(true);
+			const { handleSelect } = useGlobalEntityCreation();
 
 			handleSelect('create-project');
 			await flushPromises();
@@ -207,7 +133,7 @@ describe('useGlobalEntityCreation', () => {
 			projectsStore.canCreateProjects = true;
 			projectsStore.createProject.mockRejectedValueOnce(new Error('error'));
 
-			const { handleSelect } = useGlobalEntityCreation(true);
+			const { handleSelect } = useGlobalEntityCreation();
 
 			handleSelect('create-project');
 			await flushPromises();
@@ -220,7 +146,7 @@ describe('useGlobalEntityCreation', () => {
 			projectsStore.isTeamProjectFeatureEnabled = true;
 			const redirect = usePageRedirectionHelper();
 
-			const { handleSelect } = useGlobalEntityCreation(true);
+			const { handleSelect } = useGlobalEntityCreation();
 
 			handleSelect('create-project');
 			expect(redirect.goToUpgrade).toHaveBeenCalled();
@@ -237,14 +163,20 @@ describe('useGlobalEntityCreation', () => {
 		projectsStore.teamProjectsLimit = 10;
 
 		settingsStore.isCloudDeployment = true;
-		const { projectsLimitReachedMessage } = useGlobalEntityCreation(true);
+		const { projectsLimitReachedMessage, upgradeLabel } = useGlobalEntityCreation();
 		expect(projectsLimitReachedMessage.value).toContain(
 			'You have reached the Pro plan limit of 10.',
 		);
+		expect(upgradeLabel.value).toBe('Upgrade');
 
 		settingsStore.isCloudDeployment = false;
+		expect(projectsLimitReachedMessage.value).toContain('You have reached the  plan limit of');
+		expect(upgradeLabel.value).toBe('Upgrade');
+
+		projectsStore.isTeamProjectFeatureEnabled = false;
 		expect(projectsLimitReachedMessage.value).toContain(
 			'Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows',
 		);
+		expect(upgradeLabel.value).toBe('Enterprise');
 	});
 });
