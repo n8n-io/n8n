@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
-
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,

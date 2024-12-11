@@ -14,7 +14,7 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteSingleContext } from '../execute-single-context';
@@ -91,29 +91,31 @@ describe('ExecuteSingleContext', () => {
 
 	describe('getInputData', () => {
 		const inputIndex = 0;
-		const inputName = 'main';
+		const connectionType = NodeConnectionType.Main;
 
 		afterEach(() => {
-			inputData[inputName] = [[{ json: { test: 'data' } }]];
+			inputData[connectionType] = [[{ json: { test: 'data' } }]];
 		});
 
 		it('should return the input data correctly', () => {
 			const expectedData = { json: { test: 'data' } };
 
-			expect(executeSingleContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(executeSingleContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
 		});
 
 		it('should return an empty object if the input name does not exist', () => {
-			const inputName = 'nonExistent';
+			const connectionType = 'nonExistent';
 			const expectedData = { json: {} };
 
-			expect(executeSingleContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(
+				executeSingleContext.getInputData(inputIndex, connectionType as NodeConnectionType),
+			).toEqual(expectedData);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
 			const inputIndex = 1;
 
-			expect(() => executeSingleContext.getInputData(inputIndex, inputName)).toThrow(
+			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
 				ApplicationError,
 			);
 		});
@@ -121,7 +123,7 @@ describe('ExecuteSingleContext', () => {
 		it('should throw an error if the input index was not set', () => {
 			inputData.main[inputIndex] = null;
 
-			expect(() => executeSingleContext.getInputData(inputIndex, inputName)).toThrow(
+			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
 				ApplicationError,
 			);
 		});
@@ -129,7 +131,7 @@ describe('ExecuteSingleContext', () => {
 		it('should throw an error if the value of input with given index was not set', () => {
 			delete inputData.main[inputIndex]![itemIndex];
 
-			expect(() => executeSingleContext.getInputData(inputIndex, inputName)).toThrow(
+			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
 				ApplicationError,
 			);
 		});

@@ -1036,8 +1036,8 @@ export class WorkflowExecute {
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
 			const newInputData: ITaskDataConnections = {};
-			for (const inputName of Object.keys(inputData)) {
-				newInputData[inputName] = inputData[inputName].map((input) => {
+			for (const connectionType of Object.keys(inputData)) {
+				newInputData[connectionType] = inputData[connectionType].map((input) => {
 					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 					return input && input.slice(0, 1);
 				});
@@ -1300,8 +1300,8 @@ export class WorkflowExecute {
 
 					// Update the pairedItem information on items
 					const newTaskDataConnections: ITaskDataConnections = {};
-					for (const inputName of Object.keys(executionData.data)) {
-						newTaskDataConnections[inputName] = executionData.data[inputName].map(
+					for (const connectionType of Object.keys(executionData.data)) {
+						newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
 							(input, inputIndex) => {
 								if (input === null) {
 									return input;
