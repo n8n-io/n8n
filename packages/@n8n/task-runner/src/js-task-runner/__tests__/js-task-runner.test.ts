@@ -36,6 +36,7 @@ describe('JsTaskRunner', () => {
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
 				taskBrokerUri: 'http://localhost',
+				taskTimeout: 60,
 				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
@@ -214,6 +215,7 @@ describe('JsTaskRunner', () => {
 				['$runIndex', 0],
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],
+				['$getWorkflowStaticData("global")', {}],
 			],
 			'Node.js internal functions': [
 				['typeof Function', 'function'],
