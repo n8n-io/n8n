@@ -43,7 +43,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useUIStore } from '@/stores/ui.store';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -213,22 +212,10 @@ export const useActions = () => {
 		];
 
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
-
 		if (!isCompatibleNode) return false;
 
-		const uiStore = useUIStore();
-		const { getNodeTypes, allNodes } = useWorkflowsStore();
-		const { getByNameAndVersion } = getNodeTypes();
-		if (allNodes.map((x) => x.type).includes(CHAT_TRIGGER_NODE_TYPE)) return false;
-
-		// Need to support Canvas V1 and V2
-		const node = uiStore.lastInteractedWithNode ?? uiStore.selectedNodes[0] ?? null;
-
-		// Add trigger if we don't have a parent node
-		if (!node) return true;
-
-		const nodeType = getByNameAndVersion(node.type, node.typeVersion);
-		return nodeType.description.group.includes('trigger');
+		const { allNodes } = useWorkflowsStore();
+		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
 	// AI-226: Prepend LLM Chain node when adding a language model
