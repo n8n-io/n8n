@@ -1,5 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
-import { ErrorReporterProxy, sleep } from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
+import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
@@ -33,6 +34,7 @@ export class TaskRunnerModule {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly runnerConfig: TaskRunnersConfig,
 	) {
 		this.logger = this.logger.scoped('task-runner');
@@ -114,7 +116,7 @@ export class TaskRunnerModule {
 
 	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {
 		this.logger.error(error.message);
-		ErrorReporterProxy.error(error);
+		this.errorReporter.error(error);
 
 		// Allow some time for the error to be flushed
 		await sleep(1000);

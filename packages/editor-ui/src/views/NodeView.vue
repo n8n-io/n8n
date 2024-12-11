@@ -825,7 +825,7 @@ export default defineComponent({
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
-					dangerouslyUseHTMLString: true,
+
 					onClose: () => {
 						this.readOnlyNotification = null;
 					},
@@ -934,7 +934,6 @@ export default defineComponent({
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
-				dangerouslyUseHTMLString: true,
 			});
 		},
 		async clearExecutionData() {
@@ -1827,7 +1826,6 @@ export default defineComponent({
 							cancelButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
-							dangerouslyUseHTMLString: true,
 						},
 					);
 

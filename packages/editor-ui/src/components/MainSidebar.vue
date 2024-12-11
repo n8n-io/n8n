@@ -293,6 +293,7 @@ const {
 	handleSelect: handleMenuSelect,
 	createProjectAppendSlotName,
 	projectsLimitReachedMessage,
+	upgradeLabel,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
@@ -337,7 +338,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							type="tertiary"
 							@click="handleMenuSelect(item.id)"
 						>
-							{{ i18n.baseText('generic.upgrade') }}
+							{{ upgradeLabel }}
 						</N8nButton>
 					</N8nTooltip>
 				</template>

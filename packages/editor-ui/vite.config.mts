@@ -7,10 +7,15 @@ import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
 import iconsResolver from 'unplugin-icons/resolver';
 import components from 'unplugin-vue-components/vite';
+import browserslistToEsbuild from 'browserslist-to-esbuild';
+import legacy from '@vitejs/plugin-legacy';
+import browserslist from 'browserslist';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
+
+const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
@@ -56,6 +61,11 @@ const plugins = [
 	}),
 	vue(),
 	svgLoader(),
+	legacy({
+		modernTargets: browsers,
+		modernPolyfills: true,
+		renderLegacyChunks: false,
+	}),
 ];
 
 const { RELEASE: release } = process.env;
@@ -82,6 +92,7 @@ export default mergeConfig(
 		build: {
 			minify: !!release,
 			sourcemap: !!release,
+			target: browserslistToEsbuild(browsers),
 		},
 	}),
 	vitestConfig,

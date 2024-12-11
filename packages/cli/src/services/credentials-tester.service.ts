@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import get from 'lodash/get';
-import { NodeExecuteFunctions } from 'n8n-core';
+import { ErrorReporter, NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -28,7 +28,6 @@ import {
 	NodeHelpers,
 	RoutingNode,
 	Workflow,
-	ErrorReporterProxy as ErrorReporter,
 	ApplicationError,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -75,6 +74,7 @@ const mockNodeTypes: INodeTypes = {
 export class CredentialsTester {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsHelper: CredentialsHelper,
@@ -316,7 +316,7 @@ export class CredentialsTester {
 				credentialsDecrypted,
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

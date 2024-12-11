@@ -46,11 +46,12 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
-	ErrorReporterProxy,
 	ExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
+import Container from 'typedi';
 
+import { ErrorReporter } from './error-reporter';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import {
 	DirectedGraph,
@@ -354,13 +355,13 @@ export class WorkflowExecute {
 		}
 
 		// 2. Find the Subgraph
-		const graph = DirectedGraph.fromWorkflow(workflow);
-		const subgraph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
-		const filteredNodes = subgraph.getNodes();
+		let graph = DirectedGraph.fromWorkflow(workflow);
+		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
 		runData = omit(runData, dirtyNodeNames);
-		let startNodes = findStartNodes({ graph: subgraph, trigger, destination, runData, pinData });
+		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
 		// 5. Handle Cycles
@@ -371,7 +372,7 @@ export class WorkflowExecute {
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(subgraph, new Set(startNodes), runData, pinData ?? {});
+			recreateNodeExecutionStack(graph, new Set(startNodes), runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -393,7 +394,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
+		return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 	}
 
 	/**
@@ -1018,8 +1019,8 @@ export class WorkflowExecute {
 
 					// Update the pairedItem information on items
 					const newTaskDataConnections: ITaskDataConnections = {};
-					for (const inputName of Object.keys(executionData.data)) {
-						newTaskDataConnections[inputName] = executionData.data[inputName].map(
+					for (const connectionType of Object.keys(executionData.data)) {
+						newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
 							(input, inputIndex) => {
 								if (input === null) {
 									return input;
@@ -1428,7 +1429,7 @@ export class WorkflowExecute {
 								toReport = error;
 							}
 							if (toReport) {
-								ErrorReporterProxy.error(toReport, {
+								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,

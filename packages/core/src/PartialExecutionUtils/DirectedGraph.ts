@@ -42,6 +42,10 @@ export class DirectedGraph {
 
 	private connections: Map<DirectedGraphKey, GraphConnection> = new Map();
 
+	hasNode(nodeName: string) {
+		return this.nodes.has(nodeName);
+	}
+
 	getNodes() {
 		return new Map(this.nodes.entries());
 	}
