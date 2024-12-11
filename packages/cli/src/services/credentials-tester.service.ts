@@ -28,13 +28,13 @@ import {
 	NodeHelpers,
 	RoutingNode,
 	Workflow,
-	ErrorReporterProxy as ErrorReporter,
 	ApplicationError,
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
 import type { User } from '@/databases/entities/user';
+import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -75,6 +75,7 @@ const mockNodeTypes: INodeTypes = {
 export class CredentialsTester {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsHelper: CredentialsHelper,
@@ -316,7 +317,7 @@ export class CredentialsTester {
 				credentialsDecrypted,
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

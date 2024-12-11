@@ -22,17 +22,14 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import {
-	ErrorReporterProxy as ErrorReporter,
-	ExecutionCancelledError,
-	Workflow,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { Container, Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ErrorReporter } from '@/error-reporter';
 import { ExternalHooks } from '@/external-hooks';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
@@ -55,6 +52,7 @@ export class WorkflowRunner {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly externalHooks: ExternalHooks,
@@ -82,7 +80,7 @@ export class WorkflowRunner {
 			return;
 		}
 
-		ErrorReporter.error(error, { executionId });
+		this.errorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -193,14 +191,14 @@ export class WorkflowRunner {
 								executionId,
 							]);
 						} catch (error) {
-							ErrorReporter.error(error);
+							this.errorReporter.error(error);
 							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 						}
 					}
 				})
 				.catch((error) => {
 					if (error instanceof ExecutionCancelledError) return;
-					ErrorReporter.error(error);
+					this.errorReporter.error(error);
 					this.logger.error(
 						'There was a problem running internal hook "onWorkflowPostExecute"',
 						error,

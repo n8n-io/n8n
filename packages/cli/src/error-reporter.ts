@@ -15,10 +15,20 @@ export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
+	readonly info: (typeof ErrorReporterProxy)['info'];
+
+	readonly warn: (typeof ErrorReporterProxy)['warn'];
+
+	readonly error: (typeof ErrorReporterProxy)['error'];
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
-	) {}
+	) {
+		this.info = ErrorReporterProxy.info;
+		this.warn = ErrorReporterProxy.warn;
+		this.error = ErrorReporterProxy.error;
+	}
 
 	async init() {
 		if (this.initialized) return;

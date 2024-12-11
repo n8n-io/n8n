@@ -3,6 +3,7 @@ import { assert, jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
+import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
@@ -27,7 +28,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	protected abstract sendToOneConnection(connection: Connection, data: string): void;
 	protected abstract ping(connection: Connection): void;
 
-	constructor(protected readonly logger: Logger) {
+	constructor(
+		protected readonly logger: Logger,
+		protected readonly errorReporter: ErrorReporter,
+	) {
 		super();
 		// Ping all connected clients every 60 seconds
 		setInterval(() => this.pingAll(), 60 * 1000);

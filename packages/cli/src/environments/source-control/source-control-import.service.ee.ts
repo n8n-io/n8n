@@ -2,12 +2,7 @@
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import {
-	ApplicationError,
-	jsonParse,
-	ErrorReporterProxy as ErrorReporter,
-	ensureError,
-} from 'n8n-workflow';
+import { ApplicationError, jsonParse, ensureError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 import { Container, Service } from 'typedi';
@@ -27,6 +22,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ErrorReporter } from '@/error-reporter';
 import type { IWorkflowToImport } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -56,6 +52,7 @@ export class SourceControlImportService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly variablesService: VariablesService,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly tagRepository: TagRepository,
@@ -104,7 +101,7 @@ export class SourceControlImportService {
 			if (local.updatedAt instanceof Date) {
 				updatedAt = local.updatedAt;
 			} else {
-				ErrorReporter.warn('updatedAt is not a Date', {
+				this.errorReporter.warn('updatedAt is not a Date', {
 					extra: {
 						type: typeof local.updatedAt,
 						value: local.updatedAt,

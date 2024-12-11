@@ -22,7 +22,7 @@ import type {
 	INodeType,
 	IVersionedNodeType,
 } from 'n8n-workflow';
-import { NodeHelpers, ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { NodeHelpers, ApplicationError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 import { Container, Service } from 'typedi';
@@ -34,6 +34,7 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
+import { ErrorReporter } from '@/error-reporter';
 import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 
@@ -63,6 +64,7 @@ export class LoadNodesAndCredentials {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 	) {}
@@ -155,7 +157,7 @@ export class LoadNodesAndCredentials {
 				);
 			} catch (error) {
 				this.logger.error((error as Error).message);
-				ErrorReporter.error(error);
+				this.errorReporter.error(error);
 			}
 		}
 	}

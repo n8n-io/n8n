@@ -7,7 +7,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 } from 'n8n-core';
-import { ApplicationError, ensureError, ErrorReporterProxy, sleep } from 'n8n-workflow';
+import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -127,7 +127,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async exitWithCrash(message: string, error: unknown) {
-		ErrorReporterProxy.error(new Error(message, { cause: error }), { level: 'fatal' });
+		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
 	}

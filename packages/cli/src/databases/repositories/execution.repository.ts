@@ -22,11 +22,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService } from 'n8n-core';
-import {
-	ExecutionCancelledError,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -38,6 +34,7 @@ import { Service } from 'typedi';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
+import { ErrorReporter } from '@/error-reporter';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
@@ -127,6 +124,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -209,7 +207,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
 		if (executions.length === 0) return;
 
-		ErrorReporter.error(
+		this.errorReporter.error(
 			new ApplicationError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
