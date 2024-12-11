@@ -80,6 +80,9 @@ function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
 						},
 					],
 				},
+				// error is an optional prop, but jest-mock-extended will mock it by default,
+				// which affects the code logic. So, we need to explicitly set it to undefined.
+				error: undefined,
 			},
 		},
 	});
@@ -121,6 +124,8 @@ describe('TestRunnerService', () => {
 		testRunRepository.createTestRun.mockClear();
 		testRunRepository.markAsRunning.mockClear();
 		testRunRepository.markAsCompleted.mockClear();
+		testRunRepository.incrementFailed.mockClear();
+		testRunRepository.incrementPassed.mockClear();
 	});
 
 	test('should create an instance of TestRunnerService', async () => {
@@ -264,5 +269,63 @@ describe('TestRunnerService', () => {
 			metric1: 0.75,
 			metric2: 0,
 		});
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
+		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
+	});
+
+	test('should correctly count passed and failed executions', async () => {
+		const testRunnerService = new TestRunnerService(
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testMetricRepository,
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-4')
+			.mockRejectedValue(new Error('Some error'));
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+			}),
+		);
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
 	});
 });
