@@ -21,6 +21,7 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY, WorkflowDataProxy } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -137,6 +138,24 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return { ...result, data };
 	}
 
+	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
+		const inputData = this.inputData[connectionType];
+		if (inputData.length < inputIndex) {
+			throw new ApplicationError('Could not get input with given index', {
+				extra: { inputIndex, connectionType },
+			});
+		}
+
+		const allItems = inputData[inputIndex] as INodeExecutionData[] | null | undefined;
+		if (allItems === null) {
+			throw new ApplicationError('Input index was not set', {
+				extra: { inputIndex, connectionType },
+			});
+		}
+
+		return allItems;
+	}
+
 	getNodeInputs(): INodeInputConfiguration[] {
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
 			this.node.type,
@@ -157,12 +176,12 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	getInputSourceData(inputIndex = 0, inputName = 'main'): ISourceData {
+	getInputSourceData(inputIndex = 0, connectionType = 'main'): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
 			throw new ApplicationError('Source data is missing');
 		}
-		return this.executeData.source[inputName][inputIndex]!;
+		return this.executeData.source[connectionType][inputIndex]!;
 	}
 
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {
