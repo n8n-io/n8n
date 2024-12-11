@@ -4,6 +4,8 @@ import Container from 'typedi';
 
 import { MissingAuthTokenError } from '@/runners/errors/missing-auth-token.error';
 import { TaskRunnerModule } from '@/runners/task-runner-module';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { mockInstance } from '@test/mocking';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from '../../../src/runners/default-task-runner-disconnect-analyzer';
 import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
@@ -14,6 +16,7 @@ describe('TaskRunnerModule in external mode', () => {
 	runnerConfig.port = 0;
 	runnerConfig.authToken = 'test';
 	const module = Container.get(TaskRunnerModule);
+	mockInstance(WorkflowStaticDataService);
 
 	afterEach(async () => {
 		await module.stop();
