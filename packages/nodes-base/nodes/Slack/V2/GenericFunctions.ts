@@ -294,7 +294,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 				elements: config.options.map((option) => {
 					return {
 						type: 'button',
-						style: option.style === 'primary' || option.style === 'info' ? 'primary' : undefined,
+						style: option.style === 'primary' ? 'primary' : undefined,
 						text: {
 							type: 'plain_text',
 							text: option.label,

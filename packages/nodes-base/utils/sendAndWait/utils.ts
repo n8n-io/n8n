@@ -1,20 +1,26 @@
-import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	tryToParseJsonToFormFields,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import type {
 	INodeProperties,
 	IExecuteFunctions,
 	IWebhookFunctions,
 	IDataObject,
+	FormFieldsParameter,
 } from 'n8n-workflow';
 import type { IEmail } from './interfaces';
 import { escapeHtml } from '../utilities';
 import {
 	ACTION_RECORDED_PAGE,
-	BUTTON_STYLE_INFO,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
 	createEmailBody,
 } from './email-templates';
-import { prepareFormData } from '../../nodes/Form/utils';
+import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
 
 type SendAndWaitConfig = {
 	title: string;
@@ -65,28 +71,7 @@ export function getSendAndWaitProperties(
 			default: '',
 			required: true,
 			typeOptions: {
-				rows: 5,
-			},
-			displayOptions: {
-				show: {
-					responseType: ['approval'],
-				},
-			},
-		},
-		{
-			displayName: 'Expected Input Description',
-			name: 'message',
-			type: 'string',
-			default: '',
-			required: true,
-			placeholder: 'e.g. your full name',
-			typeOptions: {
-				rows: 5,
-			},
-			displayOptions: {
-				show: {
-					responseType: ['freeText'],
-				},
+				rows: 4,
 			},
 		},
 		{
@@ -104,6 +89,11 @@ export function getSendAndWaitProperties(
 					name: 'Free Text',
 					value: 'freeText',
 					description: 'Input would be shown to the user to provide text response',
+				},
+				{
+					name: 'Custom Form',
+					value: 'customForm',
+					description: 'Define custom form to be shown to the user',
 				},
 			],
 		},
@@ -187,6 +177,14 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		...updateDisplayOptions(
+			{
+				show: {
+					responseType: ['customForm'],
+				},
+			},
+			formFieldsProperties,
+		),
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -209,18 +207,11 @@ export function getSendAndWaitProperties(
 			],
 			displayOptions: {
 				show: {
-					responseType: ['freeText'],
+					responseType: ['freeText', 'customForm'],
 				},
 			},
 		},
 		...additionalProperties,
-		{
-			displayName:
-				'Use the wait node for more complex approval flows. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',
-			name: 'useWaitNotice',
-			type: 'notice',
-			default: '',
-		},
 	];
 
 	return updateDisplayOptions(
@@ -236,13 +227,15 @@ export function getSendAndWaitProperties(
 
 // Webhook Function --------------------------------------------------------------
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
-	const responseType = this.getNodeParameter('responseType', 'approval') as string;
+	const method = this.getRequestObject().method;
+	const res = this.getResponseObject();
+	const responseType = this.getNodeParameter('responseType', 'approval') as
+		| 'approval'
+		| 'freeText'
+		| 'customForm';
 
 	if (responseType === 'freeText') {
-		const method = this.getRequestObject().method;
-
 		if (method === 'GET') {
-			const res = this.getResponseObject();
 			const message = this.getNodeParameter('message', '') as string;
 			const options = this.getNodeParameter('options', {}) as {
 				inputFormTitle?: string;
@@ -290,6 +283,74 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 	}
 
+	if (responseType === 'customForm') {
+		const defineForm = this.getNodeParameter('defineForm', 'fields') as 'fields' | 'json';
+		let fields: FormFieldsParameter = [];
+
+		if (defineForm === 'json') {
+			try {
+				const jsonOutput = this.getNodeParameter('jsonOutput', '', {
+					rawExpressions: true,
+				}) as string;
+
+				fields = tryToParseJsonToFormFields(resolveRawData(this, jsonOutput));
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error.message, {
+					description: error.message,
+				});
+			}
+		} else {
+			fields = this.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+		}
+
+		if (method === 'GET') {
+			const message = this.getNodeParameter('message', '') as string;
+			const options = this.getNodeParameter('options', {}) as {
+				inputFormTitle?: string;
+				inputFormDescription?: string;
+			};
+
+			let formTitle = '';
+			if (options.inputFormTitle) {
+				formTitle = options.inputFormTitle;
+			} else {
+				formTitle = 'You need to input ' + message;
+			}
+
+			const data = prepareFormData({
+				formTitle,
+				formDescription: options.inputFormDescription ?? '',
+				formSubmittedHeader: 'Got it, thanks',
+				formSubmittedText: 'This page can be closed now',
+				buttonLabel: 'Submit',
+				redirectUrl: undefined,
+				formFields: fields,
+				testRun: false,
+				query: {},
+			});
+
+			res.render('form-trigger', data);
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+		if (method === 'POST') {
+			const returnItem = await prepareFormReturnItem(this, fields, 'production', true);
+			const json = returnItem.json as IDataObject;
+
+			delete json.submittedAt;
+			delete json.formMode;
+
+			returnItem.json = { data: json };
+
+			return {
+				webhookResponse: ACTION_RECORDED_PAGE,
+				workflowData: [[returnItem]],
+			};
+		}
+	}
+
 	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
@@ -321,7 +382,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
-	if (responseType === 'freeText') {
+	if (responseType === 'freeText' || responseType === 'customForm') {
 		config.message = 'You need to input ' + message;
 		config.options.push({
 			label: 'Click here',
@@ -361,9 +422,6 @@ function createButton(url: string, label: string, approved: string, style: strin
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
-	}
-	if (style === 'info') {
-		buttonStyle = BUTTON_STYLE_INFO;
 	}
 	return `<a href="${url}?approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
 }
