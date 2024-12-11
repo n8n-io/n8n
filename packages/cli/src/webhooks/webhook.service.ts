@@ -16,6 +16,7 @@ import { Service } from 'typedi';
 
 import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import { WebhookRepository } from '@/databases/repositories/webhook.repository';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -24,8 +25,9 @@ type Method = NonNullable<IHttpRequestMethods>;
 @Service()
 export class WebhookService {
 	constructor(
-		private webhookRepository: WebhookRepository,
-		private cacheService: CacheService,
+		private readonly logger: Logger,
+		private readonly webhookRepository: WebhookRepository,
+		private readonly cacheService: CacheService,
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
@@ -134,6 +136,122 @@ export class WebhookService {
 			.then((rows) => rows.map((r) => r.method));
 	}
 
+	/**
+	 * Returns all the webhooks which should be created for the give node
+	 */
+	getNodeWebhooks(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		ignoreRestartWebhooks = false,
+	): IWebhookData[] {
+		if (node.disabled === true) {
+			// Node is disabled so webhooks will also not be enabled
+			return [];
+		}
+
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+		if (nodeType.description.webhooks === undefined) {
+			// Node does not have any webhooks so return
+			return [];
+		}
+
+		const workflowId = workflow.id || '__UNSAVED__';
+		const mode = 'internal';
+
+		const returnData: IWebhookData[] = [];
+		for (const webhookDescription of nodeType.description.webhooks) {
+			if (ignoreRestartWebhooks && webhookDescription.restartWebhook === true) {
+				continue;
+			}
+
+			let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
+				node,
+				webhookDescription.path,
+				mode,
+				{},
+			);
+			if (nodeWebhookPath === undefined) {
+				this.logger.error(
+					`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
+				);
+				continue;
+			}
+
+			nodeWebhookPath = nodeWebhookPath.toString();
+
+			if (nodeWebhookPath.startsWith('/')) {
+				nodeWebhookPath = nodeWebhookPath.slice(1);
+			}
+			if (nodeWebhookPath.endsWith('/')) {
+				nodeWebhookPath = nodeWebhookPath.slice(0, -1);
+			}
+
+			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+				node,
+				webhookDescription.isFullPath,
+				'internal',
+				{},
+				undefined,
+				false,
+			) as boolean;
+			const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
+				node,
+				webhookDescription.restartWebhook,
+				'internal',
+				{},
+				undefined,
+				false,
+			) as boolean;
+			const path = NodeHelpers.getNodeWebhookPath(
+				workflowId,
+				node,
+				nodeWebhookPath,
+				isFullPath,
+				restartWebhook,
+			);
+
+			const webhookMethods = workflow.expression.getSimpleParameterValue(
+				node,
+				webhookDescription.httpMethod,
+				mode,
+				{},
+				undefined,
+				'GET',
+			);
+
+			if (webhookMethods === undefined) {
+				this.logger.error(
+					`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
+				);
+				continue;
+			}
+
+			let webhookId: string | undefined;
+			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+				webhookId = node.webhookId;
+			}
+
+			String(webhookMethods)
+				.split(',')
+				.forEach((httpMethod) => {
+					if (!httpMethod) return;
+					returnData.push({
+						httpMethod: httpMethod.trim() as IHttpRequestMethods,
+						node: node.name,
+						path,
+						webhookDescription,
+						workflowId,
+						workflowExecuteAdditionalData: additionalData,
+						webhookId,
+					});
+				});
+		}
+
+		return returnData;
+	}
+
 	async createWebhookIfNotExists(
 		workflow: Workflow,
 		webhookData: IWebhookData,
@@ -222,123 +340,5 @@ export class WebhookService {
 		return nodeType instanceof Node
 			? await nodeType.webhook(context)
 			: ((await nodeType.webhook.call(context)) as IWebhookResponseData);
-	}
-
-	/**
-	 * Returns all the webhooks which should be created for the give node
-	 */
-	getNodeWebhooks(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		ignoreRestartWebhooks = false,
-	): IWebhookData[] {
-		if (node.disabled === true) {
-			// Node is disabled so webhooks will also not be enabled
-			return [];
-		}
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-		if (nodeType.description.webhooks === undefined) {
-			// Node does not have any webhooks so return
-			return [];
-		}
-
-		const workflowId = workflow.id || '__UNSAVED__';
-		const mode = 'internal';
-
-		const returnData: IWebhookData[] = [];
-		for (const webhookDescription of nodeType.description.webhooks) {
-			if (ignoreRestartWebhooks && webhookDescription.restartWebhook === true) {
-				continue;
-			}
-
-			let nodeWebhookPath = workflow.expression.getSimpleParameterValue(
-				node,
-				webhookDescription.path,
-				mode,
-				{},
-			);
-			if (nodeWebhookPath === undefined) {
-				// TODO: Use a proper logger
-				console.error(
-					`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`,
-				);
-				continue;
-			}
-
-			nodeWebhookPath = nodeWebhookPath.toString();
-
-			if (nodeWebhookPath.startsWith('/')) {
-				nodeWebhookPath = nodeWebhookPath.slice(1);
-			}
-			if (nodeWebhookPath.endsWith('/')) {
-				nodeWebhookPath = nodeWebhookPath.slice(0, -1);
-			}
-
-			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
-				node,
-				webhookDescription.isFullPath,
-				'internal',
-				{},
-				undefined,
-				false,
-			) as boolean;
-			const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
-				node,
-				webhookDescription.restartWebhook,
-				'internal',
-				{},
-				undefined,
-				false,
-			) as boolean;
-			const path = NodeHelpers.getNodeWebhookPath(
-				workflowId,
-				node,
-				nodeWebhookPath,
-				isFullPath,
-				restartWebhook,
-			);
-
-			const webhookMethods = workflow.expression.getSimpleParameterValue(
-				node,
-				webhookDescription.httpMethod,
-				mode,
-				{},
-				undefined,
-				'GET',
-			);
-
-			if (webhookMethods === undefined) {
-				// TODO: Use a proper logger
-				console.error(
-					`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
-				);
-				continue;
-			}
-
-			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhookId = node.webhookId;
-			}
-
-			String(webhookMethods)
-				.split(',')
-				.forEach((httpMethod) => {
-					if (!httpMethod) return;
-					returnData.push({
-						httpMethod: httpMethod.trim() as IHttpRequestMethods,
-						node: node.name,
-						path,
-						webhookDescription,
-						workflowId,
-						workflowExecuteAdditionalData: additionalData,
-						webhookId,
-					});
-				});
-		}
-
-		return returnData;
 	}
 }
