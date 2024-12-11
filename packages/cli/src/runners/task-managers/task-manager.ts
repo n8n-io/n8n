@@ -161,10 +161,7 @@ export abstract class TaskManager {
 			const { staticData: incomingStaticData } = resultData;
 
 			// if the runner sent back static data, then it changed, so update it
-			if (incomingStaticData) {
-				workflow.overrideStaticData(incomingStaticData);
-				workflow.staticData.__dataChanged = true;
-			}
+			if (incomingStaticData) workflow.overrideStaticData(incomingStaticData);
 
 			return createResultOk(resultData.result as TData);
 		} catch (e: unknown) {
