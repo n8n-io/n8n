@@ -194,7 +194,9 @@ export class BaserowTrigger implements INodeType {
 		const timezone = moment.tz.guess();
 		qs[`filter__${tableMapper.nameToId(triggerField)}__date_after`] = `${timezone}?${startDate}`;
 
+		// unset filters to allow fetching a test event
 		if (this.getMode() === 'manual') {
+			delete qs[`filter__${tableMapper.nameToId(triggerField)}__date_after`];
 			qs.size = 1;
 		}
 
@@ -205,6 +207,8 @@ export class BaserowTrigger implements INodeType {
 			jwtToken,
 			{},
 			qs,
+			this.getMode() === 'manual' ? false : undefined,
+			this.getMode() === 'manual' ? 1 : undefined,
 		)) as Row[];
 
 		webhookData.lastTimeChecked = endDate;
