@@ -159,12 +159,15 @@ export abstract class TaskManager {
 			}
 
 			const { staticData: incomingStaticData } = resultData;
+			console.log('[before]', incomingStaticData);
 
-			// if the runner sent back static data, it may have changed, so update it
+			// if the runner sent back static data, then it changed, so update it
 			if (incomingStaticData) {
 				workflow.setStaticData(incomingStaticData);
 				workflow.staticData.__dataChanged = true;
 			}
+
+			console.log('[after]', workflow.staticData);
 
 			return createResultOk(resultData.result as TData);
 		} catch (e: unknown) {

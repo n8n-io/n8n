@@ -17,14 +17,8 @@ export class BuiltInsParserState {
 
 	needs$prevNode = false;
 
-	uses$workflowStaticData = false;
-
 	constructor(opts: Partial<BuiltInsParserState> = {}) {
 		Object.assign(this, opts);
-	}
-
-	markWorkflowStaticDataAsUsed() {
-		this.uses$workflowStaticData = true;
 	}
 
 	/**

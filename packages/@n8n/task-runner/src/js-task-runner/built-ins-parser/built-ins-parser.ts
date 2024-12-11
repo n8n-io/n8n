@@ -147,8 +147,6 @@ export class BuiltInsParser {
 			state.markExecutionAsNeeded();
 		} else if (node.name === '$prevNode') {
 			state.markPrevNodeAsNeeded();
-		} else if (node.name === '$getWorkflowStaticData') {
-			state.markWorkflowStaticDataAsUsed();
 		}
 	};
 

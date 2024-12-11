@@ -25,6 +25,7 @@ export class WorkflowStaticDataService {
 
 	/** Saves the static data if it changed */
 	async saveStaticData(workflow: Workflow): Promise<void> {
+		console.log('saving', workflow.staticData);
 		if (workflow.staticData.__dataChanged === true) {
 			// Static data of workflow changed and so has to be saved
 			if (isWorkflowIdValid(workflow.id)) {

@@ -1,5 +1,5 @@
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -132,6 +132,8 @@ export class JsTaskRunner extends TaskRunner {
 			},
 		};
 
+		workflow.staticData = ObservableObject.create(workflow.staticData);
+
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
 				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
@@ -140,14 +142,7 @@ export class JsTaskRunner extends TaskRunner {
 		return {
 			result,
 			customData: data.runExecutionData.resultData.metadata,
-
-			/**
-			 * If the script relies on static data, it _may_ have mutated it. In this
-			 * case, tracking whether the script did in fact mutate static data is
-			 * non-trivial, so we assume static data was mutated and send it back, so
-			 * the requester can update the workflows' static data.
-			 */
-			staticData: neededBuiltIns.uses$workflowStaticData ? workflow.staticData : undefined,
+			staticData: workflow.staticData.__dataChanged ? workflow.staticData : undefined,
 		};
 	}
 
