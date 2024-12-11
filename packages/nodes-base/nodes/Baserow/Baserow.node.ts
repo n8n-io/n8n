@@ -8,7 +8,6 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { returnAllOrLimit } from '@utils/descriptions';
 import {
 	baserowApiRequest,
 	baserowFileUploadRequest,
@@ -170,7 +169,6 @@ export class Baserow implements INodeType {
 				description: 'The URL of the file to upload',
 			},
 			...operationFields,
-			...returnAllOrLimit,
 		],
 	};
 
@@ -245,6 +243,9 @@ export class Baserow implements INodeType {
 
 						// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
 
+						const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+						const limit = this.getNodeParameter('limit', 0, 0);
+
 						const { order, filters, filterType, search } = this.getNodeParameter(
 							'additionalOptions',
 							i,
@@ -280,6 +281,8 @@ export class Baserow implements INodeType {
 							jwtToken,
 							{},
 							qs,
+							returnAll,
+							limit,
 						)) as Row[];
 
 						rows.forEach((row) => mapper.idsToNames(row));
