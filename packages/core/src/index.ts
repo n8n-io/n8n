@@ -5,7 +5,6 @@ export * from './ActiveWorkflows';
 export * from './BinaryData/BinaryData.service';
 export * from './BinaryData/types';
 export { Cipher } from './Cipher';
-export * from './ClassLoader';
 export * from './Constants';
 export * from './Credentials';
 export * from './DirectoryLoader';

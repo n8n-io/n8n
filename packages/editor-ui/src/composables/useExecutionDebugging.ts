@@ -76,7 +76,7 @@ export const useExecutionDebugging = () => {
 					type: 'warning',
 					confirmButtonText: i18n.baseText('nodeView.confirmMessage.debug.confirmButtonText'),
 					cancelButtonText: i18n.baseText('nodeView.confirmMessage.debug.cancelButtonText'),
-					dangerouslyUseHTMLString: true,
+
 					customClass: 'matching-pinned-nodes-confirmation',
 				},
 			);
