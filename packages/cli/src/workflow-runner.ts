@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -13,11 +13,7 @@ import type {
 	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	ErrorReporterProxy as ErrorReporter,
-	ExecutionCancelledError,
-	Workflow,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { Container, Service } from 'typedi';
 
@@ -46,6 +42,7 @@ export class WorkflowRunner {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly externalHooks: ExternalHooks,
@@ -74,7 +71,7 @@ export class WorkflowRunner {
 			return;
 		}
 
-		ErrorReporter.error(error, { executionId });
+		this.errorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -185,14 +182,14 @@ export class WorkflowRunner {
 								executionId,
 							]);
 						} catch (error) {
-							ErrorReporter.error(error);
+							this.errorReporter.error(error);
 							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 						}
 					}
 				})
 				.catch((error) => {
 					if (error instanceof ExecutionCancelledError) return;
-					ErrorReporter.error(error);
+					this.errorReporter.error(error);
 					this.logger.error(
 						'There was a problem running internal hook "onWorkflowPostExecute"',
 						error,

@@ -77,6 +77,7 @@ describe('ScalingService', () => {
 		scalingService = new ScalingService(
 			mockLogger(),
 			mock(),
+			mock(),
 			jobProcessor,
 			globalConfig,
 			mock(),

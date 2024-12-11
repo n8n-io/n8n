@@ -1121,6 +1121,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@sentry/node':
+        specifier: 'catalog:'
+        version: 8.42.0
       aws4:
         specifier: 1.11.0
         version: 1.11.0
