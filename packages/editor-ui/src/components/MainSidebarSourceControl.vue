@@ -43,6 +43,15 @@ async function pushWorkfolder() {
 	try {
 		const status = await sourceControlStore.getAggregatedStatus();
 
+		if (!status.length) {
+			toast.showMessage({
+				title: 'No changes to commit',
+				message: 'Everything is up to date',
+				type: 'info',
+			});
+			return;
+		}
+
 		uiStore.openModalWithData({
 			name: SOURCE_CONTROL_PUSH_MODAL_KEY,
 			data: { eventBus, status },
@@ -68,6 +77,7 @@ async function pullWorkfolder() {
 		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
 			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
 		});
+
 		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
 			toast.showMessage({
 				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
