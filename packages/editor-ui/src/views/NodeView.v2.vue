@@ -1485,6 +1485,13 @@ function unregisterCustomActions() {
 	unregisterCustomAction('showNodeCreator');
 }
 
+function showAddFirstStepIfEnabled() {
+	if (uiStore.addFirstStepOnLoad) {
+		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		uiStore.addFirstStepOnLoad = false;
+	}
+}
+
 /**
  * Routing
  */
@@ -1547,6 +1554,7 @@ onMounted(() => {
 
 onActivated(async () => {
 	addUndoRedoEventBindings();
+	showAddFirstStepIfEnabled();
 });
 
 onDeactivated(() => {
