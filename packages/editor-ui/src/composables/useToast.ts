@@ -33,7 +33,7 @@ export function useToast() {
 	const canvasStore = useCanvasStore();
 
 	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-		dangerouslyUseHTMLString: false,
+		dangerouslyUseHTMLString: true,
 		position: 'bottom-right',
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
 		offset: settingsStore.isAiAssistantEnabled || workflowsStore.isChatPanelOpen ? 64 : 0,
@@ -82,7 +82,6 @@ export function useToast() {
 		customClass?: string;
 		closeOnClick?: boolean;
 		type?: MessageBoxState['type'];
-		dangerouslyUseHTMLString?: boolean;
 	}) {
 		// eslint-disable-next-line prefer-const
 		let notification: NotificationHandle;
@@ -107,7 +106,6 @@ export function useToast() {
 			duration: config.duration,
 			customClass: config.customClass,
 			type: config.type,
-			dangerouslyUseHTMLString: config.dangerouslyUseHTMLString ?? true,
 		});
 
 		return notification;
@@ -145,7 +143,6 @@ export function useToast() {
 					${collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
-				dangerouslyUseHTMLString: true,
 			},
 			false,
 		);
@@ -162,12 +159,6 @@ export function useToast() {
 			error_message: error.message,
 			caused_by_credential: causedByCredential(error.message),
 			workflow_id: workflowsStore.workflowId,
-		});
-	}
-
-	function showAlert(config: NotificationOptions): NotificationHandle {
-		return Notification({
-			...config,
 		});
 	}
 
@@ -209,7 +200,6 @@ export function useToast() {
 		showMessage,
 		showToast,
 		showError,
-		showAlert,
 		clearAllStickyNotifications,
 		showNotificationForViews,
 	};

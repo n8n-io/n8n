@@ -397,7 +397,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
-							dangerouslyUseHTMLString: true,
 						});
 					}
 				}
