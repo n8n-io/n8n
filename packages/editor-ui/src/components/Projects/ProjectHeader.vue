@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton, N8nIconButton, N8nActionToggle } from 'n8n-design-system';
+import { N8nButton } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -9,6 +9,7 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -99,8 +100,6 @@ const onSelect = (action: string) => {
 	}
 	executableAction(homeProject.value.id);
 };
-
-const onActivatorClick = () => onSelect(ACTION_TYPES.WORKFLOW);
 </script>
 
 <template>
@@ -120,23 +119,17 @@ const onActivatorClick = () => onSelect(ACTION_TYPES.WORKFLOW);
 				</N8nText>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
-				<div :class="[$style.buttonGroup]" data-test-id="add-resource-buttons">
+				<ProjectCreateResource
+					data-test-id="add-resource-buttons"
+					:actions="menu"
+					@action="onSelect"
+				>
 					<N8nButton
 						data-test-id="add-resource-workflow"
-						:class="[$style.buttonGroupTrigger]"
 						v-bind="createWorkflowButton"
-						@click="onActivatorClick"
+						@click="onSelect(ACTION_TYPES.WORKFLOW)"
 					/>
-					<N8nActionToggle
-						data-test-id="add-resource"
-						:actions="menu"
-						placement="bottom-end"
-						:teleported="false"
-						@action="onSelect"
-					>
-						<N8nIconButton :class="[$style.buttonGroupDropdown]" icon="angle-down"></N8nIconButton>
-					</N8nActionToggle>
-				</div>
+				</ProjectCreateResource>
 			</div>
 		</div>
 		<div :class="$style.actions">
@@ -156,21 +149,6 @@ const onActivatorClick = () => onSelect(ACTION_TYPES.WORKFLOW);
 
 .headerActions {
 	margin-left: auto;
-}
-
-.buttonGroup {
-	display: inline-flex;
-}
-
-.buttonGroupTrigger {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-	border-right: 1px solid var(--button-font-color, var(--color-button-primary-font));
-}
-
-.buttonGroupDropdown {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
 }
 
 .icon {
