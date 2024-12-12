@@ -137,6 +137,7 @@ export class LmChatGoogleGemini implements INodeType {
 		) as SafetySetting[];
 
 		const model = new ChatGoogleGenerativeAI({
+			baseUrl: credentials.host as string,
 			apiKey: credentials.apiKey as string,
 			modelName,
 			topK: options.topK,
