@@ -1,6 +1,5 @@
 import { mock } from 'jest-mock-extended';
 import type { INodeType, ISupplyDataFunctions, INode } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createNodeAsTool } from '@/CreateNodeAsTool';
@@ -21,7 +20,7 @@ describe('createNodeAsTool', () => {
 		addOutputData: jest.fn(),
 		getNode: jest.fn(),
 	});
-	const contextFactory = () => context;
+	const handleToolInvocation = jest.fn();
 	const nodeType = mock<INodeType>({
 		description: {
 			name: 'TestNode',
@@ -29,7 +28,7 @@ describe('createNodeAsTool', () => {
 		},
 	});
 	const node = mock<INode>({ name: 'Test_Node' });
-	const options = { node, nodeType, contextFactory };
+	const options = { node, nodeType, handleToolInvocation };
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -142,15 +141,11 @@ describe('createNodeAsTool', () => {
 		it('should handle error during node execution', async () => {
 			nodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
 			const tool = createNodeAsTool(options).response;
+			handleToolInvocation.mockReturnValue('Error during node execution: some random issue.');
 
 			const result = await tool.func({ param1: 'test value' });
 
 			expect(result).toContain('Error during node execution:');
-			expect(context.addOutputData).toHaveBeenCalledWith(
-				NodeConnectionType.AiTool,
-				0,
-				expect.any(NodeOperationError),
-			);
 		});
 
 		it('should throw an error for invalid parameter names', () => {

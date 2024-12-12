@@ -168,7 +168,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	addOutputData(
 		connectionType: NodeConnectionType,
 		currentNodeRunIndex: number,
-		data: INodeExecutionData[][],
+		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
 	): void {
 		const nodeName = this.node.name;

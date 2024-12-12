@@ -1691,7 +1691,7 @@ export class WorkflowExecute {
 								}
 							}
 
-							if (nodeSuccessData === null && !this.runExecutionData.waitTill!) {
+							if (nodeSuccessData === null && !this.runExecutionData.waitTill) {
 								// If null gets returned it means that the node did succeed
 								// but did not have any data. So the branch should end
 								// (meaning the nodes afterwards should not be processed)
@@ -1818,7 +1818,7 @@ export class WorkflowExecute {
 
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
-					if (this.runExecutionData.waitTill!) {
+					if (this.runExecutionData.waitTill) {
 						await this.executeHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -2199,7 +2199,7 @@ export class WorkflowExecute {
 			if (executionError.message?.includes('canceled')) {
 				fullRunData.status = 'canceled';
 			}
-		} else if (this.runExecutionData.waitTill!) {
+		} else if (this.runExecutionData.waitTill) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
