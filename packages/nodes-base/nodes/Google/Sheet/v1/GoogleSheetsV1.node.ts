@@ -14,7 +14,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../GenericFunctions';
-import { generatePairedItemData } from '../../../../utils/utilities';
+
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -296,12 +296,9 @@ export class GoogleSheetsV1 implements INodeType {
 						returnData = [];
 					}
 
-					const pairedItem = generatePairedItemData(items.length);
-
 					const lookupOutput = returnData.map((item) => {
 						return {
 							json: item,
-							pairedItem,
 						};
 					});
 

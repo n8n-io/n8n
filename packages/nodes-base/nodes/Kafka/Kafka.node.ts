@@ -15,7 +15,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -260,7 +259,6 @@ export class Kafka implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const itemData = generatePairedItemData(items.length);
 
 		const length = items.length;
 
@@ -400,15 +398,12 @@ export class Kafka implements INodeType {
 
 			await producer.disconnect();
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
-				{ itemData },
-			);
+			const executionData = this.helpers.returnJsonArray(responseData);
 
 			return [executionData];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return [[{ json: { error: error.message }, pairedItem: itemData }]];
+				return [[{ json: { error: error.message } }]];
 			} else {
 				throw error;
 			}

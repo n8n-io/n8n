@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleBigQueryApiRequest } from '../../transport';
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -225,7 +225,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	const itemData = generatePairedItemData(items.length);
 	for (let i = 0; i < rows.length; i += batchSize) {
 		const batch = rows.slice(i, i + batchSize);
 		body.rows = batch;
@@ -279,10 +278,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			});
 		}
 
-		const executionData = this.helpers.constructExecutionMetaData(
-			wrapData(responseData as IDataObject[]),
-			{ itemData },
-		);
+		const executionData = wrapData(responseData as IDataObject[]);
 
 		returnData.push(...executionData);
 	}
