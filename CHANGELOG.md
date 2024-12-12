@@ -1,3 +1,14 @@
+## [1.72.1](https://github.com/n8n-io/n8n/compare/n8n@1.72.0...n8n@1.72.1) (2024-12-12)
+
+
+### Bug Fixes
+
+* **core:** Fix `$getWorkflowStaticData` on task runners ([#12153](https://github.com/n8n-io/n8n/issues/12153)) ([215cb22](https://github.com/n8n-io/n8n/commit/215cb221319c9545899ff6fdc88d3d640db24754))
+* **core:** Fix race condition in AI tool invocation with multiple items from the parent ([#12169](https://github.com/n8n-io/n8n/issues/12169)) ([67a99dd](https://github.com/n8n-io/n8n/commit/67a99ddce085e4b80018b93d0161a5468f82079a))
+* **editor:** Fix canvas panning using `Control` + `Left Mouse Button` on Windows ([#12104](https://github.com/n8n-io/n8n/issues/12104)) ([ef3358d](https://github.com/n8n-io/n8n/commit/ef3358da4b5eb0fd9c44acea5cafb7b23bbaa22e))
+
+
+
 # [1.72.0](https://github.com/n8n-io/n8n/compare/n8n@1.71.0...n8n@1.72.0) (2024-12-11)
 
 
