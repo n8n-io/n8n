@@ -1,3 +1,4 @@
+import { getFieldEntries } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	type ResourceMapperField,
@@ -5,9 +6,6 @@ import {
 	type ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { getFieldEntries } from '../GenericFunctions';
-
-// TODO: Export this so we can reuse in nodes-base
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {

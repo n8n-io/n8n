@@ -6,6 +6,7 @@ import type {
 	IWorkflowNodeContext,
 	INodeExecutionData,
 	IExecuteFunctions,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, validateFieldType } from 'n8n-workflow';
 
@@ -92,7 +93,7 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 }
 
 export function getWorkflowInputData(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ISupplyDataFunctions,
 	inputData: INodeExecutionData[],
 	newParams: FieldValueOption[],
 ): INodeExecutionData[] {

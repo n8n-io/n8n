@@ -5,6 +5,7 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -23,7 +24,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { getWorkflowInputData } from './GenericFunctions';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import type { DynamicZodObject } from '../../../types/zod.types';
 import {
