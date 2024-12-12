@@ -32,11 +32,11 @@ function createSignalHandler(signal: string, timeoutInS = 10) {
 				void healthCheckServer?.stop();
 			}
 
-			// @TODO
-			// if (errorReporter) {
-			// 	await errorReporter.stop();
-			// 	errorReporter = undefined;
-			// }
+			if (errorReporter) {
+				const { close } = await import('@sentry/node');
+				await close(1000);
+				errorReporter = undefined;
+			}
 		} catch (e) {
 			const error = ensureError(e);
 			console.error('Error stopping task runner', { error });
