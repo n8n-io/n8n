@@ -85,7 +85,7 @@ export async function validateCredentials(
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: credentials.apiKey,
@@ -97,7 +97,7 @@ export async function validateCredentials(
 				first: 1,
 			},
 		},
-		uri: 'https://api.linear.app/graphql',
+		url: 'https://api.linear.app/graphql',
 		json: true,
 	};
 
