@@ -119,7 +119,6 @@ const tsCompletions: CompletionSource = async (context) => {
 const tsLint: LintSource = async (view) => {
 	const { worker } = view.state.facet(tsFacet);
 	const docLength = view.state.doc.length;
-	console.log();
 	return (await worker.getDiagnostics()).filter((diag) => {
 		return diag.from < docLength && diag.to <= docLength && diag.from >= 0;
 	});
@@ -163,6 +162,14 @@ const tsHover: HoverSource = async (view, pos) => {
 					span.innerText = part.text;
 				}
 			}
+
+			const documentation = info.quickInfo?.documentation?.find((doc) => doc.kind === 'text')?.text;
+			if (documentation) {
+				const docElement = document.createElement('div');
+				docElement.textContent = documentation;
+				wrapper.appendChild(docElement);
+			}
+
 			return { dom: div };
 		},
 	};
