@@ -7,7 +7,7 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
-	IRequestOptions,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -24,18 +24,18 @@ export async function linearApiRequest(
 	const endpoint = 'https://api.linear.app/graphql';
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken') as string;
 
-	let options: IRequestOptions = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method: 'POST',
 		body,
-		uri: endpoint,
+		url: endpoint,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.requestWithAuthentication.call(
+		return await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api',
 			options,
