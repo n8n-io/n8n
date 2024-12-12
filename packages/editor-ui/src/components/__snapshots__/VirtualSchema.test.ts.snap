@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`RunDataSchema.vue > renders previous nodes schema for AI tools 1`] = `
+exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
 <div
   class="schema-header"
   data-test-id="run-data-schema-header"
@@ -75,7 +75,7 @@ exports[`RunDataSchema.vue > renders previous nodes schema for AI tools 1`] = `
 </div>
 `;
 
-exports[`RunDataSchema.vue > renders schema for correct output branch 1`] = `
+exports[`VirtualSchema.vue > renders schema for correct output branch 1`] = `
 <div
   class="schema-header"
   data-test-id="run-data-schema-header"
@@ -150,7 +150,7 @@ exports[`RunDataSchema.vue > renders schema for correct output branch 1`] = `
 </div>
 `;
 
-exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
+exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
 <div>
   <div
     class="run-data-schema full-height"
@@ -584,7 +584,7 @@ exports[`RunDataSchema.vue > renders schema in output pane 1`] = `
 </div>
 `;
 
-exports[`RunDataSchema.vue > renders schema with spaces and dots 1`] = `
+exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
 <div>
   <div
     class="run-data-schema full-height"
