@@ -74,7 +74,7 @@ export const promptTypeOptions: INodeProperties = {
 			name: 'Connected Chat Trigger Node',
 			value: 'auto',
 			description:
-				'Looks for an input field called chatInput that is coming from a directly connected Chat Trigger',
+				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
 		},
 		{
 			name: 'Define below',
