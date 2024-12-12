@@ -6,7 +6,6 @@ import type {
 	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
-	JsonObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -49,18 +48,16 @@ export async function linearApiRequest(
 
 		return response;
 	} catch (error) {
-		if (
-			error.message === 'Access denied' &&
-			this.getNode().type === 'n8n-nodes-base.linearTrigger'
-		) {
-			error.message = 'You need to have the "Admin" scope to create webhooks.';
-		}
 		throw new NodeApiError(
 			this.getNode(),
 			{},
 			{
-				message: error.context.data.errors[0].message,
-				description: error.context.data.errors[0].extensions.userPresentableMessage,
+				message: error.errorResponse
+					? error.errorResponse[0].message
+					: error.context.data.errors[0].message,
+				description: error.errorResponse
+					? error.errorResponse[0].extensions.userPresentableMessage
+					: error.context.data.errors[0].extensions.userPresentableMessage,
 			},
 		);
 	}
