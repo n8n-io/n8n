@@ -20,7 +20,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { NodeHelpers, Workflow } from 'n8n-workflow';
-import nock from 'nock';
 
 import * as executionContexts from '@/node-execution-context';
 import { RoutingNode } from '@/RoutingNode';
@@ -85,11 +84,8 @@ const getExecuteSingleFunctions = (
 	});
 
 describe('RoutingNode', () => {
+	const nodeTypes = NodeTypes();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
 
 	test('applyDeclarativeNodeOptionParameters', () => {
 		const nodeTypes = NodeTypes();
@@ -745,7 +741,7 @@ describe('RoutingNode', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					active: false,
-					nodeTypes: mock(),
+					nodeTypes,
 				});
 
 				const routingNode = new RoutingNode(
@@ -1907,7 +1903,6 @@ describe('RoutingNode', () => {
 			},
 		];
 
-		const nodeTypes = NodeTypes();
 		const baseNode: INode = {
 			parameters: {},
 			name: 'test',
@@ -1949,7 +1944,7 @@ describe('RoutingNode', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					active: false,
-					nodeTypes: mock(),
+					nodeTypes,
 				});
 
 				const routingNode = new RoutingNode(
@@ -2129,7 +2124,7 @@ describe('RoutingNode', () => {
 					nodes: workflowData.nodes,
 					connections: workflowData.connections,
 					active: false,
-					nodeTypes: mock(),
+					nodeTypes,
 				});
 
 				let currentItemIndex = 0;

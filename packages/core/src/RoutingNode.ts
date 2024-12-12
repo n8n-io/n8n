@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
@@ -38,7 +37,6 @@ import type {
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
 	Workflow,
-	IExecuteFunctions,
 } from 'n8n-workflow';
 import url from 'node:url';
 
@@ -98,7 +96,7 @@ export class RoutingNode {
 			executeData,
 			closeFunctions,
 			abortSignal,
-		) as IExecuteFunctions;
+		);
 
 		let credentialDescription: INodeCredentialDescription | undefined;
 
@@ -131,6 +129,7 @@ export class RoutingNode {
 				credentials =
 					(await executeFunctions.getCredentials<ICredentialDataDecryptedObject>(
 						credentialDescription.name,
+						0,
 					)) || {};
 			} catch (error) {
 				if (credentialDescription.required) {
