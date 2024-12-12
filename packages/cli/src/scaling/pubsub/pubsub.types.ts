@@ -23,9 +23,13 @@ export namespace PubSub {
 	// ----------------------------------
 
 	type _ToCommand<CommandKey extends keyof PubSubCommandMap> = {
-		senderId: string;
-		targets?: string[];
 		command: CommandKey;
+
+		/** Host ID of the sender, added during publishing. */
+		senderId?: string;
+
+		/** Host IDs of the receivers. */
+		targets?: string[];
 
 		/** Whether the command should be sent to the sender as well. */
 		selfSend?: boolean;
