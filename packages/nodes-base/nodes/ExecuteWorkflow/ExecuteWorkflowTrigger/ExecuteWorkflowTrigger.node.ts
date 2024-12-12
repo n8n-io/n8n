@@ -13,8 +13,11 @@ import {
 	INPUT_OPTIONS,
 	TYPE_OPTIONS,
 	PASSTHROUGH,
-} from '../constants';
-import { getFieldEntries, getWorkflowInputData } from '../GenericFunctions';
+} from '../../../utils/workflowInputsResourceMapping/constants';
+import {
+	getFieldEntries,
+	getWorkflowInputData,
+} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
