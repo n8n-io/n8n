@@ -43,6 +43,25 @@ const executionToReturnTo = ref('');
 const dirtyState = ref(false);
 const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
 
+// Track the routes that are used for the tabs
+// This is used to determine which tab to show when the route changes
+// TODO: It might be easier to manage this in the router config, by passing meta information to the routes
+// This would allow us to specify it just once on the root route, and then have the tabs be determined for children
+const testDefinitionRoutes: VIEWS[] = [
+	VIEWS.TEST_DEFINITION,
+	VIEWS.TEST_DEFINITION_EDIT,
+	VIEWS.TEST_DEFINITION_RUNS,
+	VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+	VIEWS.TEST_DEFINITION_RUNS_COMPARE,
+];
+
+const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+
+const executionRoutes: VIEWS[] = [
+	VIEWS.EXECUTION_HOME,
+	VIEWS.WORKFLOW_EXECUTIONS,
+	VIEWS.EXECUTION_PREVIEW,
+];
 const tabBarItems = computed(() => {
 	const items = [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
@@ -92,25 +111,24 @@ onMounted(async () => {
 	syncTabsWithRoute(route);
 });
 
+function isViewRoute(name: unknown): name is VIEWS {
+	return (
+		typeof name === 'string' &&
+		[testDefinitionRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+	);
+}
+
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	if (to.meta.mainHeaderTab) {
-		console.log('🚀 ~ syncTabsWithRoute ~ to.meta.mainHeaderTab:', to.meta.mainHeaderTab);
-		activeHeaderTab.value = to.meta.mainHeaderTab as MAIN_HEADER_TABS;
-	} else if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
-	}
-	if (
-		to.name === VIEWS.EXECUTION_HOME ||
-		to.name === VIEWS.WORKFLOW_EXECUTIONS ||
-		to.name === VIEWS.EXECUTION_PREVIEW
-	) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
-	} else if (
-		to.name === VIEWS.WORKFLOW ||
-		to.name === VIEWS.NEW_WORKFLOW ||
-		to.name === VIEWS.EXECUTION_DEBUG
-	) {
-		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+	if (isViewRoute(to.name)) {
+		if (testDefinitionRoutes.includes(to.name)) {
+			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
+		}
+		if (executionRoutes.includes(to.name)) {
+			activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		}
+		if (workflowRoutes.includes(to.name)) {
+			activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+		}
 	}
 
 	if (to.params.name !== 'new' && typeof to.params.name === 'string') {

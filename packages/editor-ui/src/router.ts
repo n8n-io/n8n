@@ -266,7 +266,6 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
-			mainHeaderTab: MAIN_HEADER_TABS.TEST_DEFINITION,
 		},
 		children: [
 			{
