@@ -224,10 +224,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		const configuration: ClientOptions = {};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
-		}
-
-		// in version 1.2 we moved the Base URL parameter to the credentials
-		if (credentials.url) {
+		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
 

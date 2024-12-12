@@ -266,9 +266,7 @@ export class LmChatOpenAi implements INodeType {
 		const configuration: ClientOptions = {};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
-		}
-
-		if (credentials.url) {
+		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
 
