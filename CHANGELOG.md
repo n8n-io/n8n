@@ -1,3 +1,13 @@
+## [1.71.3](https://github.com/n8n-io/n8n/compare/n8n@1.71.2...n8n@1.71.3) (2024-12-12)
+
+
+### Bug Fixes
+
+* **core:** Fix `$getWorkflowStaticData` on task runners ([#12153](https://github.com/n8n-io/n8n/issues/12153)) ([26435f7](https://github.com/n8n-io/n8n/commit/26435f74bf5029f45424564989f141c682105002))
+* **editor:** Fix canvas panning using `Control` + `Left Mouse Button` on Windows ([#12104](https://github.com/n8n-io/n8n/issues/12104)) ([77caa64](https://github.com/n8n-io/n8n/commit/77caa64179b3ad12904fc4dc3532ed6b705d8326))
+
+
+
 ## [1.71.2](https://github.com/n8n-io/n8n/compare/n8n@1.71.1...n8n@1.71.2) (2024-12-10)
 
 
