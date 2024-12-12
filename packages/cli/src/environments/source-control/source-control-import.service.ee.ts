@@ -8,9 +8,11 @@ import path from 'path';
 import { Container, Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -25,7 +27,9 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import type { IWorkflowToImport } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { isUniqueConstraintError } from '@/response-helper';
+import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -498,6 +502,41 @@ export class SourceControlImportService {
 		await this.variablesService.updateCache();
 
 		return result;
+	}
+
+	public async deleteWorkflowsNotInWorkfolder(
+		user: User,
+		candidates: SourceControlledFile[],
+	): Promise<void> {
+		const workflowService = Container.get(WorkflowService);
+
+		for (const candidate of candidates) {
+			await workflowService.delete(user, candidate.id);
+		}
+	}
+
+	public async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
+		const credentialService = Container.get(CredentialsService);
+
+		for (const candidate of candidates) {
+			await credentialService.delete(user, candidate.id);
+		}
+	}
+
+	public async deleteVariablesNotInWorkfolder(candidates: SourceControlledFile[]) {
+		const variablesService = Container.get(VariablesService);
+
+		for (const candidate of candidates) {
+			await variablesService.delete(candidate.id);
+		}
+	}
+
+	public async deleteTagsNotInWorkfolder(candidates: SourceControlledFile[]) {
+		const tagsService = Container.get(TagService);
+
+		for (const candidate of candidates) {
+			await tagsService.delete(candidate.id);
+		}
 	}
 
 	private async findOrCreateOwnerProject(owner: ResourceOwner): Promise<Project | null> {

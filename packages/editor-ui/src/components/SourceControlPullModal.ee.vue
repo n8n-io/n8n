@@ -26,11 +26,11 @@ const sourceControlStore = useSourceControlStore();
 const files = ref<SourceControlAggregatedFile[]>(props.data.status || []);
 
 const workflowFiles = computed(() => {
-	return files.value.filter((file) => file.type === 'workflow');
+	return files.value.filter((file) => file.type === 'workflow' || file.conflict);
 });
 
 const modifiedWorkflowFiles = computed(() => {
-	return workflowFiles.value.filter((file) => file.status === 'modified');
+	return workflowFiles.value.filter((file) => file.status === 'modified' || file.conflict);
 });
 
 function close() {
@@ -45,7 +45,7 @@ async function pullWorkfolder() {
 		await sourceControlStore.pullWorkfolder(true);
 
 		const hasVariablesOrCredentials = files.value.some((file) => {
-			return incompleteFileTypes.includes(file.type);
+			return incompleteFileTypes.includes(file.type) && file.status === 'created';
 		});
 
 		toast.showMessage({
@@ -93,8 +93,43 @@ async function pullWorkfolder() {
 				<div v-if="modifiedWorkflowFiles.length > 0" class="mt-l">
 					<ul :class="$style.filesList">
 						<li v-for="file in modifiedWorkflowFiles" :key="file.id">
-							<n8n-link :class="$style.fileLink" new-window :to="`/workflow/${file.id}`">
-								{{ file.name }}
+							<n8n-link
+								v-if="file.type === 'workflow'"
+								:class="$style.fileLink"
+								new-window
+								:to="`/home/workflow/${file.id}`"
+							>
+								Workflow: {{ file.name }} (will be {{ file.status }})
+								<n8n-icon icon="external-link-alt" />
+							</n8n-link>
+
+							<n8n-link
+								v-else-if="file.type === 'credential'"
+								:class="$style.fileLink"
+								new-window
+								:to="`/home/credentials/${file.id}`"
+							>
+								Credential: {{ file.name }} (will be {{ file.status }})
+								<n8n-icon icon="external-link-alt" />
+							</n8n-link>
+
+							<n8n-link
+								v-else-if="file.type === 'variables'"
+								:class="$style.fileLink"
+								new-window
+								:to="'/variables'"
+							>
+								Variable: {{ file.name }} (will be {{ file.status }})
+								<n8n-icon icon="external-link-alt" />
+							</n8n-link>
+
+							<n8n-link
+								v-else-if="file.type === 'tags'"
+								:class="$style.fileLink"
+								new-window
+								:to="`/home/workflows?tags=${file.id}`"
+							>
+								Tag: {{ file.name }} (will be {{ file.status }})
 								<n8n-icon icon="external-link-alt" />
 							</n8n-link>
 						</li>
