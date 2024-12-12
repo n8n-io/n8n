@@ -1,4 +1,5 @@
 import type { NodeOptions } from '@sentry/node';
+import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
 import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workflow';
@@ -36,6 +37,10 @@ export class ErrorReporter {
 				e = e.cause as Error;
 			} while (e);
 		}
+	}
+
+	async shutdown(code = 1000) {
+		await close(code);
 	}
 
 	async init() {

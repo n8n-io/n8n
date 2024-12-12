@@ -33,8 +33,7 @@ function createSignalHandler(signal: string, timeoutInS = 10) {
 			}
 
 			if (errorReporter) {
-				const { close } = await import('@sentry/node');
-				await close(1000);
+				await errorReporter.shutdown();
 				errorReporter = undefined;
 			}
 		} catch (e) {
