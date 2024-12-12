@@ -154,11 +154,7 @@ export class TestWebhooks implements IWebhookManager {
 			 * the webhook. If so, after the test webhook has been successfully executed,
 			 * the handler process commands the creator process to clear its test webhooks.
 			 */
-			if (
-				this.instanceSettings.isMultiMain &&
-				pushRef &&
-				!this.push.getBackend().hasPushRef(pushRef)
-			) {
+			if (this.instanceSettings.isMultiMain && pushRef && !this.push.hasPushRef(pushRef)) {
 				void this.publisher.publishCommand({
 					command: 'clear-test-webhooks',
 					payload: { webhookKey: key, workflowEntity, pushRef },

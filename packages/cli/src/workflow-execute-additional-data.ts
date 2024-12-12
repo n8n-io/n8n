@@ -1073,8 +1073,7 @@ function getWorkflowHooksIntegrated(
 }
 
 /**
- * Returns WorkflowHooks instance for running integrated workflows
- * (Workflows which get started inside of another workflow)
+ * Returns WorkflowHooks instance for worker in scaling mode.
  */
 export function getWorkflowHooksWorkerExecuter(
 	mode: WorkflowExecuteMode,
@@ -1090,7 +1089,7 @@ export function getWorkflowHooksWorkerExecuter(
 		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
 
-	if (mode === 'manual' && Container.get(InstanceSettings).instanceType === 'worker') {
+	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
 		const pushHooks = hookFunctionsPush();
 		for (const key of Object.keys(pushHooks)) {
 			if (hookFunctions[key] === undefined) {

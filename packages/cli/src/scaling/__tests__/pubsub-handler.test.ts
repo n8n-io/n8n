@@ -11,7 +11,6 @@ import type { ExternalSecretsManager } from '@/external-secrets/external-secrets
 import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { Push } from '@/push';
-import type { WebSocketPush } from '@/push/websocket.push';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
@@ -808,9 +807,7 @@ describe('PubSubHandler', () => {
 				const type = 'executionStarted';
 				const args = { testArg: 'value' };
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 
 				eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
 
@@ -837,9 +834,7 @@ describe('PubSubHandler', () => {
 				const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
 				const pushRef = 'test-push-ref';
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 				testWebhooks.toWorkflow.mockReturnValue(mock<Workflow>({ id: 'test-workflow-id' }));
 
 				eventService.emit('clear-test-webhooks', { webhookKey, workflowEntity, pushRef });

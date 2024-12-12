@@ -166,12 +166,12 @@ export class JobProcessor {
 			const { startData, resultData, manualData } = execution.data;
 
 			const data: IWorkflowExecutionDataProcess = {
-				destinationNode: startData?.destinationNode,
 				executionMode: execution.mode,
+				workflowData: execution.workflowData,
+				destinationNode: startData?.destinationNode,
+				startNodes: startData?.startNodes,
 				runData: resultData.runData,
 				pinData: resultData.pinData,
-				startNodes: startData?.startNodes,
-				workflowData: execution.workflowData,
 				partialExecutionVersion: manualData?.partialExecutionVersion,
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,

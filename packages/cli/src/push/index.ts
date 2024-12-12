@@ -85,21 +85,26 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToAll(type, data);
 	}
 
+	/** Returns whether a given push ref is registered. */
+	hasPushRef(pushRef: string) {
+		return this.backend.hasPushRef(pushRef);
+	}
+
 	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
-		const isWorker = this.instanceSettings.instanceType === 'worker';
+		const { isWorker, isMultiMain } = this.instanceSettings;
 
-		const isMainOnMultiMain = this.instanceSettings.isMultiMain;
-
-		if (isWorker || (isMainOnMultiMain && !this.backend.hasPushRef(pushRef))) {
+		if (isWorker || (isMultiMain && !this.hasPushRef(pushRef))) {
 			/**
-			 * Worker: Since a worker has no connection to the UI, send a command via
-			 * pubsub so that the main process who holds that session can relay
-			 * execution lifecycle events to it.
+			 * In scaling mode, in single- or multi-main setup, in a manual execution,
+			 * a worker relays execution lifecycle events to all mains. Only the main
+			 * who holds the session for the execution will push to the frontend who
+			 * commissioned the execution.
 			 *
-			 * Multi-main setup: In a manual webhook execution, the main process that
-			 * handles a webhook might not be the same as the main process that created
-			 * the webhook. If so, the handler process commands the creator process to
-			 * relay the former's execution lifecycle events to the creator's frontend.
+			 * In scaling mode, in multi-main setup, in a manual webhook execution, if
+			 * the main who handles a webhook is not the main who created the webhook,
+			 * the handler main relays execution lifecycle events to all mains. Only
+			 * the main who holds the session for the execution will push events to
+			 * the frontend who commissioned the execution.
 			 */
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
