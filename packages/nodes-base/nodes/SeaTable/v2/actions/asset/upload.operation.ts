@@ -134,10 +134,11 @@ export async function execute(
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/' + rowId,
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/' + rowId,
 			{},
 			{
 				table_name: tableName,
+				convert_keys: true,
 			},
 		);
 		existingAssetArray = rowToUpdate[uploadColumnName] ?? [];
@@ -175,13 +176,7 @@ export async function execute(
 
 	// attach the asset to a column in a base
 	for (let c = 0; c < uploadAsset.length; c++) {
-		const body = {
-			table_name: tableName,
-			row_id: rowId,
-			row: {},
-		} as IDataObject;
 		const rowInput = {} as IRowObject;
-
 		const filePath = `${serverURL}/workspace/${workspaceId}${uploadLink.parent_path}/${relativePath}/${uploadAsset[c].name}`;
 
 		if (uploadColumnType === 'image') {
@@ -195,22 +190,27 @@ export async function execute(
 		// merge with existing assets in this column or with [] and remove duplicates
 		const mergedArray = existingAssetArray.concat(rowInput[uploadColumnName]);
 
-		// Remove duplicates based on "url", keeping the last one
-		const uniqueAssets = Array.from(
-			// @ts-ignore
-			mergedArray.reduce((map, asset) => map.set(asset.url, asset), new Map()).values(),
-		);
+		// Remove duplicates from input, keeping the last one
+		const uniqueAssets = Array.from(new Set(mergedArray));
 
 		// Update the rowInput with the unique assets and store into body.row.
 		rowInput[uploadColumnName] = uniqueAssets;
-		body.row = rowInput;
+		const body = {
+			table_name: tableName,
+			updates: [
+				{
+					row_id: rowId,
+					row: rowInput,
+				},
+			],
+		} as IDataObject;
 
 		// attach assets to table row
 		const responseData = await seaTableApiRequest.call(
 			this,
 			{},
 			'PUT',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
 			body,
 		);
 
