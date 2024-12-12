@@ -231,7 +231,6 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
 			betaFeatures: this.frontendConfig.betaFeatures,
-			virtualSchemaView: config.getEnv('virtualSchemaView'),
 			easyAIWorkflowOnboarded: false,
 		};
 	}
