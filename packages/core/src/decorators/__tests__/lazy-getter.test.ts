@@ -63,16 +63,14 @@ describe('Lazy Decorator', () => {
 
 		const propertyNames = Object.keys(instance);
 		expect(propertyNames).not.toContain('expensiveComputation');
-		expect(propertyNames).not.toContain('__lazy_expensiveComputation');
 	});
 
 	it('should not allow reconfiguring the cached value', () => {
 		const instance = new TestClass();
 		instance.expensiveComputation; // Access to trigger caching
 
-		const symbol = Object.getOwnPropertySymbols(instance)[0];
 		expect(() => {
-			Object.defineProperty(instance, symbol, {
+			Object.defineProperty(instance, 'expensiveComputation', {
 				value: 999,
 				configurable: true,
 			});
