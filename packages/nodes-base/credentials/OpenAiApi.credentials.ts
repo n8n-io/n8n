@@ -51,8 +51,8 @@ export class OpenAiApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.openai.com',
-			url: '/v1/models',
+			baseURL: '={{$credentials?.url}}',
+			url: '/models',
 		},
 	};
 }
