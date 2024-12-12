@@ -4,7 +4,6 @@ import {
 	handleErrorPostReceive,
 	handlePagination,
 	processGroupsResponse,
-	validatePath,
 } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
@@ -27,7 +26,7 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=?Action=CreateGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}&Path={{$parameter["options.path"]}}',
+						url: '=/?Action=CreateGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}&Path={{$parameter["options.path"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -43,19 +42,11 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=?Action=DeleteGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
+						url: '=/?Action=DeleteGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [
-							handleErrorPostReceive,
-							// {
-							// 	type: 'set',
-							// 	properties: {
-							// 		value: '={{ { "deleted": true } }}',
-							// 	},
-							// },
-						],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Delete group',
@@ -67,7 +58,7 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=?Action=GetGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
+						url: '=/?Action=GetGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -109,7 +100,7 @@ export const groupOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=?Action=UpdateGroup&GroupName={{$parameter["GroupName"]}}&NewGroupName={{$parameter["NewGroupName"]}}&Version=2010-05-08&Path={{$parameter["options.path"]}}',
+						url: '=/?Action=UpdateGroup&GroupName={{$parameter["GroupName"]}}&NewGroupName={{$parameter["NewGroupName"]}}&Version=2010-05-08&Path={{$parameter["options.path"]}}',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -157,13 +148,6 @@ const createFields: INodeProperties[] = [
 				default: '/',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
-				routing: {
-					send: {
-						property: 'path',
-						type: 'query',
-						preSend: [validatePath],
-					},
-				},
 			},
 		],
 		placeholder: 'Add Option',
@@ -263,67 +247,6 @@ const getFields: INodeProperties[] = [
 			},
 		],
 	},
-	// {
-	// 	displayName: 'Include Members',
-	// 	name: 'includeMembers',
-	// 	type: 'boolean',
-	// 	default: false,
-	// 	description: 'Whether include members of the group in the result',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['group'],
-	// 			operation: ['get'],
-	// 		},
-	// 	},
-	// 	routing: {
-	// 		send: {
-	// 			property: '$expand',
-	// 			type: 'query',
-	// 			value:
-	// 				'={{ $value ? "members($select=CreatedDate,Description,GroupName,LastModifiedDate,Precedence)" : undefined }}',
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Include Group Policy',
-	// 	name: 'includeGroupPolicy',
-	// 	type: 'boolean',
-	// 	default: false,
-	// 	description: 'Whether include group policy details in the result',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['group'],
-	// 			operation: ['get'],
-	// 		},
-	// 	},
-	// 	routing: {
-	// 		send: {
-	// 			property: '$expand',
-	// 			type: 'query',
-	// 			value: '={{ $value ? "groupPolicy($select=policyName,policyType)" : undefined }}',
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Simplified',
-	// 	name: 'simplified',
-	// 	type: 'boolean',
-	// 	default: false,
-	// 	description: 'Whether simplify the response if there are more than 10 fields',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['group'],
-	// 			operation: ['get'],
-	// 		},
-	// 	},
-	// 	routing: {
-	// 		send: {
-	// 			property: '$select',
-	// 			type: 'query',
-	// 			value: 'CreatedDate,Description,GroupName,LastModifiedDate,Precedence,',
-	// 		},
-	// 	},
-	// },
 ];
 
 const getAllFields: INodeProperties[] = [
@@ -464,16 +387,9 @@ const updateFields: INodeProperties[] = [
 				displayName: 'Path',
 				name: 'path',
 				type: 'string',
-				default: '',
+				default: '/',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
-				routing: {
-					send: {
-						property: 'path',
-						type: 'query',
-						preSend: [validatePath],
-					},
-				},
 			},
 		],
 		placeholder: 'Add Option',

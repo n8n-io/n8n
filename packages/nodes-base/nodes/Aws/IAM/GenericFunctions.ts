@@ -14,7 +14,13 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-/* Function which helps while developing the node */
+export async function presendTest(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	console.log('requestOptions', requestOptions);
+	return requestOptions;
+}
 
 /*
  * Helper function which stringifies the body before sending the request.
@@ -42,8 +48,12 @@ export async function presendFields(
 
 	let url = requestOptions.url;
 
-	if (url.includes('CreateUser')) {
+	if (url.includes('ListUsers')) {
+		const prefix = additionalFields.PathPrefix;
+		if (prefix) url += `&PathPrefix=${prefix}`;
+	} else if (url.includes('CreateUser')) {
 		userName = this.getNodeParameter('UserName') as string;
+		url += `&UserName=${userName}`;
 		if (options.PermissionsBoundary) {
 			url += `&PermissionsBoundary=${options.PermissionsBoundary}`;
 		}
@@ -68,9 +78,12 @@ export async function presendFields(
 	} else {
 		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
 		userName = userNameParam.value;
+		url += `&UserName=${userName}`;
+
 		if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {
 			const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
 			groupName = groupNameParam.value;
+			url += `&GroupName=${groupName}`;
 		}
 		if (url.includes('UpdateUser')) {
 			const hasOptions = options.NewUserName || options.NewPath;
@@ -91,53 +104,7 @@ export async function presendFields(
 		}
 	}
 
-	url += `&UserName=${userName}`;
-
-	if (groupName) {
-		url += `&GroupName=${groupName}`;
-	}
-
-	if (additionalFields.PathPrefix) {
-		console.log('Got heree!!!!');
-		url += `&PathPrefix=${additionalFields.PathPrefix}`;
-	}
-
 	requestOptions.url = url;
-
-	return requestOptions;
-}
-
-/* Helper function to process attributes in UserAttributes */
-export async function processAttributes(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	let body: Record<string, any>;
-	if (typeof requestOptions.body === 'string') {
-		try {
-			body = JSON.parse(requestOptions.body);
-		} catch (error) {
-			throw new ApplicationError('Invalid JSON body: Unable to parse.');
-		}
-	} else if (typeof requestOptions.body === 'object' && requestOptions.body !== null) {
-		body = requestOptions.body;
-	} else {
-		throw new ApplicationError('Invalid request body: Expected a JSON string or object.');
-	}
-
-	const attributes = this.getNodeParameter('UserAttributes.attributes', []) as Array<{
-		Name: string;
-		Value: string;
-	}>;
-
-	const processedAttributes = attributes.map((attribute) => ({
-		Name: attribute.Name.startsWith('custom:') ? attribute.Name : attribute.Name,
-		Value: attribute.Value,
-	}));
-
-	body.UserAttributes = processedAttributes;
-
-	requestOptions.body = JSON.stringify(body);
 
 	return requestOptions;
 }
@@ -202,7 +169,6 @@ export async function handlePagination(
 
 	do {
 		if (nextPageToken) {
-			// Append PaginationToken to the request body
 			const body =
 				typeof resultOptions.options.body === 'object' && resultOptions.options.body !== null
 					? resultOptions.options.body
@@ -215,17 +181,14 @@ export async function handlePagination(
 
 		const responseData = await this.makeRoutingRequest(resultOptions);
 
-		// Process response data
 		if (responseData && Array.isArray(responseData)) {
 			for (const page of responseData) {
 				aggregatedResult.push(page.json);
 
-				// Check if the limit has been reached
 				if (!returnAll && aggregatedResult.length >= limit) {
 					return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 				}
 
-				// Update the nextPageToken for the next request
 				nextPageToken = page.json.PaginationToken as string | undefined;
 			}
 		} else if (responseData && typeof responseData === 'object') {
@@ -233,7 +196,6 @@ export async function handlePagination(
 
 			nextPageToken = (responseData as IDataObject).PaginationToken as string | undefined;
 
-			// Check if the limit has been reached
 			if (!returnAll && aggregatedResult.length >= limit) {
 				return aggregatedResult.slice(0, limit).map((item) => ({ json: item }));
 			}
@@ -241,30 +203,6 @@ export async function handlePagination(
 	} while (nextPageToken);
 
 	return aggregatedResult.map((item) => ({ json: item }));
-}
-
-export async function validatePath(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const path = this.getNodeParameter('Path') as string;
-	let url = requestOptions.url;
-
-	if (path.length < 1 || path.length > 512) {
-		throw new NodeOperationError(this.getNode(), 'Path must be between 1 and 512 characters.');
-	}
-
-	if (!/^\/$|^\/[\u0021-\u007E]+\/$/.test(path)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Path must begin and end with a forward slash and contain valid ASCII characters.',
-		);
-	}
-	console.log('Path', path);
-	url += `&NewPath=${path}`;
-	requestOptions.url = url;
-
-	return requestOptions;
 }
 
 /* Helper functions to handle errors */

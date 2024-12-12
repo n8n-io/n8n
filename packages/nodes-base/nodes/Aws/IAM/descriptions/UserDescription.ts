@@ -102,6 +102,7 @@ export const userOperations: INodeProperties[] = [
 				description: 'Retrieve a list of users',
 				routing: {
 					send: {
+						preSend: [presendFields],
 						paginate: true,
 						preSend: [presendTest, presendFields],
 					},
