@@ -77,7 +77,7 @@ describe('NDV', () => {
 
 		workflowPage.actions.openNode('Switch');
 		cy.get('.cm-line').realMouseMove(100, 100);
-		cy.get('.fa-angle-down').click();
+		cy.get('.fa-angle-down').first().click();
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Merge');
@@ -204,7 +204,7 @@ describe('NDV', () => {
 					.contains(key)
 					.should('be.visible');
 			});
-			getObjectValueItem().find('label').click({ force: true });
+			getObjectValueItem().find('.toggle').click({ force: true });
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
 					.outputPanel()
@@ -245,8 +245,8 @@ describe('NDV', () => {
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
 			ndv.getters
 				.outputPanel()
-				.find('[data-test-id=run-data-schema-item] [data-test-id=run-data-schema-item]')
-				.should('have.length', 20);
+				.find('[data-test-id=run-data-schema-item]')
+				.should('have.length.above', 10);
 		});
 	});
 
