@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { stringify } from 'flatted';
 import { ErrorReporter, WorkflowExecute } from 'n8n-core';
 import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
@@ -304,9 +303,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						retryOf: this.retryOf,
 						workflowId,
 						workflowName,
-						flattedRunData: data?.resultData.runData
-							? stringify(data.resultData.runData)
-							: stringify({}),
+						runData: data?.resultData.runData ?? {},
 					},
 					pushRef,
 				);
@@ -328,10 +325,10 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (status === 'waiting') {
 					pushInstance.send('executionWaiting', { executionId }, pushRef);
 				} else {
-					const rawData = stringify(fullRunData.data);
+					const runExecutionData = fullRunData.data;
 					pushInstance.send(
 						'executionFinished',
-						{ executionId, workflowId, status, rawData },
+						{ executionId, workflowId, status, runExecutionData },
 						pushRef,
 					);
 				}

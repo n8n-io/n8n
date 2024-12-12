@@ -1,4 +1,10 @@
-import type { ExecutionStatus, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 type ExecutionStarted = {
 	type: 'executionStarted';
@@ -9,7 +15,7 @@ type ExecutionStarted = {
 		workflowId: string;
 		workflowName?: string;
 		retryOf?: string;
-		flattedRunData: string;
+		runData?: IRunData;
 	};
 };
 
@@ -27,7 +33,7 @@ type ExecutionFinished = {
 		workflowId: string;
 		status: ExecutionStatus;
 		/** @deprecated: Please construct execution data in the frontend from the data pushed in previous messages, instead of depending on this additional payload serialization */
-		rawData?: string;
+		runExecutionData?: IRunExecutionData;
 	};
 };
 

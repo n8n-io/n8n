@@ -21,6 +21,7 @@ export * from './WorkflowHooks';
 export * from './VersionedNodeType';
 export * from './TypeValidation';
 export * from './result';
+export * as SerDe from './serde/serde';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,

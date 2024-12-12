@@ -19,10 +19,9 @@ import {
 	Repository,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
-import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
-import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
+import { ExecutionCancelledError, ApplicationError, SerDe } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -178,7 +177,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
+					data: SerDe.deserialize(executionData.data) as IRunExecutionData,
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -292,7 +291,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			...(options?.includeData && {
 				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
+					? (SerDe.deserialize(executionData.data) as IRunExecutionData)
 					: executionData.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
@@ -309,7 +308,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
 		const { connections, nodes, name, settings } = currentWorkflow ?? {};
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
-		const data = stringify(dataObj);
+		const data = SerDe.serialize(dataObj);
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
@@ -389,7 +388,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				executionData.workflowData = workflowData;
 			}
 			if (data) {
-				executionData.data = stringify(data);
+				executionData.data = SerDe.serialize(data);
 			}
 			// @ts-ignore
 			await this.executionDataRepository.update({ executionId }, executionData);

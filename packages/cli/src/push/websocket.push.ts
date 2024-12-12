@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, SerDe } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
@@ -22,7 +22,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 			try {
 				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 
-				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
+				this.onMessageReceived(pushRef, SerDe.deserialize(buffer.toString('utf8')));
 			} catch (error) {
 				this.errorReporter.error(
 					new ApplicationError('Error parsing push message', {

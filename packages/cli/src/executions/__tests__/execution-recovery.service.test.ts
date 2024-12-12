@@ -1,7 +1,6 @@
-import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { randomInt } from 'n8n-workflow';
+import { randomInt, SerDe } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -106,7 +105,7 @@ describe('ExecutionRecoveryService', () => {
 				const execution = await createExecution(
 					{
 						status: 'running',
-						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+						data: SerDe.serialize(IN_PROGRESS_EXECUTION_DATA),
 					},
 					workflow,
 				);
@@ -180,7 +179,7 @@ describe('ExecutionRecoveryService', () => {
 				const execution = await createExecution(
 					{
 						status: 'running',
-						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+						data: SerDe.serialize(IN_PROGRESS_EXECUTION_DATA),
 					},
 					workflow,
 				);
@@ -250,7 +249,7 @@ describe('ExecutionRecoveryService', () => {
 				const execution = await createExecution(
 					{
 						status: 'running',
-						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+						data: SerDe.serialize(IN_PROGRESS_EXECUTION_DATA),
 					},
 					workflow,
 				);

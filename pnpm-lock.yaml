@@ -36,9 +36,6 @@ catalogs:
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
-    flatted:
-      specifier: 3.2.7
-      version: 3.2.7
     form-data:
       specifier: 4.0.0
       version: 4.0.0
@@ -231,9 +228,6 @@ importers:
       cypress-real-events:
         specifier: ^1.13.0
         version: 1.13.0(cypress@13.14.2)
-      flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -859,9 +853,6 @@ importers:
       flat:
         specifier: 5.0.2
         version: 5.0.2
-      flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
       formidable:
         specifier: 3.5.1
         version: 3.5.1
@@ -1450,9 +1441,6 @@ importers:
       file-saver:
         specifier: ^2.0.2
         version: 2.0.5
-      flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
       highlight.js:
         specifier: catalog:frontend
         version: 11.9.0

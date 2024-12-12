@@ -1,5 +1,4 @@
-import { stringify } from 'flatted';
-import type { IDataObject, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import type { IDataObject, IRunData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { clickExecuteWorkflowButton } from '../composables/workflow';
@@ -69,7 +68,7 @@ export function runMockWorkflowExecution({
 
 	cy.wait('@runWorkflow');
 
-	const resolvedRunData: Record<string, ITaskData> = {};
+	const resolvedRunData: IRunData = {};
 	runData.forEach((nodeExecution) => {
 		const nodeName = Object.keys(nodeExecution)[0];
 		const nodeRunData = nodeExecution[nodeName];
@@ -84,17 +83,17 @@ export function runMockWorkflowExecution({
 			data: nodeRunData,
 		});
 
-		resolvedRunData[nodeName] = nodeExecution[nodeName];
+		resolvedRunData[nodeName] = [nodeExecution[nodeName]];
 	});
 
 	cy.push('executionFinished', {
 		executionId,
 		workflowId,
 		status: 'success',
-		rawData: stringify({
+		runExecutionData: {
 			startData: {},
 			resultData: {
-				runData,
+				runData: resolvedRunData,
 				pinData: {},
 				lastNodeExecuted,
 			},
@@ -105,6 +104,6 @@ export function runMockWorkflowExecution({
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-		}),
+		},
 	});
 }

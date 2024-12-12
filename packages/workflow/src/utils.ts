@@ -13,12 +13,6 @@ import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } fro
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
-// NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
-// as well as the flatted stringify method. This is a workaround for that.
-BigInt.prototype.toJSON = function () {
-	return this.toString();
-};
-
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {

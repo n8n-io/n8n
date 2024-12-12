@@ -1,7 +1,6 @@
-import { parse } from 'flatted';
 import { h, ref } from 'vue';
 import type { useRouter } from 'vue-router';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { TelemetryHelpers, SerDe } from 'n8n-workflow';
 import type {
 	ExpressionError,
 	IDataObject,
@@ -231,15 +230,15 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 
 			let executionData: Pick<IExecutionResponse, 'workflowId' | 'data' | 'status'>;
-			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
-				const { workflowId, status, rawData } = receivedData.data;
-				executionData = { workflowId, data: parse(rawData), status };
+			if (receivedData.type === 'executionFinished' && receivedData.data.runExecutionData) {
+				const { workflowId, status, runExecutionData } = receivedData.data;
+				executionData = { workflowId, data: runExecutionData, status };
 			} else {
 				const execution = await workflowsStore.fetchExecutionDataById(executionId);
 				if (!execution?.data) return false;
 				executionData = {
 					workflowId: execution.workflowId,
-					data: parse(execution.data as unknown as string),
+					data: SerDe.deserialize(execution.data as unknown as string),
 					status: execution.status,
 				};
 			}
@@ -478,10 +477,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		} else if (receivedData.type === 'executionWaiting') {
 			// Nothing to do
 		} else if (receivedData.type === 'executionStarted') {
-			if (workflowsStore.workflowExecutionData?.data && receivedData.data.flattedRunData) {
-				workflowsStore.workflowExecutionData.data.resultData.runData = parse(
-					receivedData.data.flattedRunData,
-				);
+			if (workflowsStore.workflowExecutionData?.data && receivedData.data.runData) {
+				workflowsStore.workflowExecutionData.data.resultData.runData = receivedData.data.runData;
 			}
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data

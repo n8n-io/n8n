@@ -1,6 +1,6 @@
 import type { PushPayload, PushType } from '@n8n/api-types';
 import { ErrorReporter } from 'n8n-core';
-import { assert, jsonStringify } from 'n8n-workflow';
+import { assert, SerDe } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
@@ -75,7 +75,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 			pushRefs: pushRefs.join(', '),
 		});
 
-		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
+		const stringifiedPayload = SerDe.serialize({ type, data });
 
 		for (const pushRef of pushRefs) {
 			const connection = this.connections[pushRef];

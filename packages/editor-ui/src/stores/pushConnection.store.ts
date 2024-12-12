@@ -5,6 +5,7 @@ import type { PushMessage } from '@n8n/api-types';
 import { STORES, TIME } from '@/constants';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './root.store';
+import { SerDe } from 'n8n-workflow';
 
 export interface PushState {
 	pushRef: string;
@@ -109,7 +110,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	function serializeAndSend(message: unknown) {
 		if (pushSource.value && 'send' in pushSource.value) {
-			pushSource.value.send(JSON.stringify(message));
+			pushSource.value.send(SerDe.serialize(message));
 		}
 	}
 
@@ -142,8 +143,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	async function pushMessageReceived(event: Event) {
 		let receivedData: PushMessage;
 		try {
-			// @ts-ignore
-			receivedData = JSON.parse(event.data);
+			receivedData = SerDe.deserialize((event as MessageEvent).data);
 		} catch (error) {
 			return;
 		}

@@ -1,4 +1,3 @@
-import { stringify } from 'flatted';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
@@ -153,11 +152,11 @@ describe('usePushConnection()', () => {
 						executionId,
 						workflowId,
 						status: 'success',
-						rawData: stringify({
+						runExecutionData: {
 							resultData: {
 								runData: {},
 							},
-						}),
+						},
 					},
 				});
 
@@ -178,7 +177,7 @@ describe('usePushConnection()', () => {
 						executionId,
 						workflowId,
 						status: 'error',
-						rawData: stringify({
+						runExecutionData: {
 							startData: {},
 							resultData: {
 								runData: {
@@ -192,7 +191,7 @@ describe('usePushConnection()', () => {
 									node: 'Last Node',
 								} as unknown as WorkflowOperationError,
 							},
-						}),
+						},
 					},
 				});
 
@@ -247,7 +246,7 @@ describe('usePushConnection()', () => {
 						mode: 'manual',
 						startedAt: new Date(),
 						workflowId: '1',
-						flattedRunData: stringify({}),
+						runData: {},
 					},
 				};
 
@@ -277,7 +276,7 @@ describe('usePushConnection()', () => {
 					type: 'executionStarted',
 					data: {
 						executionId: '1',
-						flattedRunData: stringify(newRunData),
+						runData: newRunData,
 						mode: 'manual',
 						startedAt: new Date(),
 						workflowId: '1',

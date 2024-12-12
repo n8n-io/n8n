@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
-import { parse } from 'flatted';
+import { ApplicationError, jsonParse, SerDe } from 'n8n-workflow';
+import type { GenericValue, IDataObject } from 'n8n-workflow';
 import { assert } from '@/utils/assert';
 
 import { BROWSER_ID_STORAGE_KEY } from '@/constants';
@@ -186,7 +186,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
 		workflowData: fullExecutionData.workflowData,
-		data: parse(fullExecutionData.data),
+		data: SerDe.deserialize(fullExecutionData.data),
 	};
 
 	returnData.finished = returnData.finished ? returnData.finished : false;

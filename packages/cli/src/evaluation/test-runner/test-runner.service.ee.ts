@@ -1,4 +1,3 @@
-import { parse } from 'flatted';
 import type {
 	IDataObject,
 	IRun,
@@ -6,6 +5,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { SerDe } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
@@ -193,7 +193,9 @@ export class TestRunnerService {
 			});
 			assert(pastExecution, 'Execution not found');
 
-			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
+			const executionData = SerDe.deserialize(
+				pastExecution.executionData.data,
+			) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
 			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);

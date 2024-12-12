@@ -1,8 +1,7 @@
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
-import type { GenericValue, IRun } from 'n8n-workflow';
+import { SerDe, type GenericValue, type IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -37,7 +36,7 @@ const executionMocks = [
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
-			data: stringify(executionDataJson),
+			data: SerDe.serialize(executionDataJson),
 		},
 	}),
 	mock<ExecutionEntity>({
@@ -45,7 +44,7 @@ const executionMocks = [
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
-			data: stringify(executionDataJson),
+			data: SerDe.serialize(executionDataJson),
 		},
 	}),
 ];
