@@ -93,7 +93,10 @@ onMounted(async () => {
 });
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
+	if (to.meta.mainHeaderTab) {
+		console.log('🚀 ~ syncTabsWithRoute ~ to.meta.mainHeaderTab:', to.meta.mainHeaderTab);
+		activeHeaderTab.value = to.meta.mainHeaderTab as MAIN_HEADER_TABS;
+	} else if (to.matched.some((record) => record.name === VIEWS.TEST_DEFINITION)) {
 		activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
 	}
 	if (

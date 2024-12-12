@@ -89,10 +89,7 @@ async function onRunTest(testId: string) {
 }
 
 async function onViewDetails(testId: string) {
-	toast.showMessage({
-		title: locale.baseText('testDefinition.notImplemented'),
-		type: 'warning',
-	});
+	void router.push({ name: VIEWS.TEST_DEFINITION_RUNS, params: { testId } });
 }
 
 function onEditTest(testId: number) {

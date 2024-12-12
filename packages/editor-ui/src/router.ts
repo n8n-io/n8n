@@ -11,13 +11,21 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	VIEWS,
+	EDITABLE_CANVAS_VIEWS,
+	MAIN_HEADER_TABS,
+} from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
+import TestDefinitionRunsListView from './views/TestDefinition/TestDefinitionRunsListView.vue';
+import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import TestDefinitionRunsCompareView from './views/TestDefinition/TestDefinitionRunsCompareView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -258,6 +266,7 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
+			mainHeaderTab: MAIN_HEADER_TABS.TEST_DEFINITION,
 		},
 		children: [
 			{
@@ -291,6 +300,45 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_EDIT,
 				components: {
 					default: TestDefinitionEditView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId/runs',
+				name: VIEWS.TEST_DEFINITION_RUNS,
+				components: {
+					default: TestDefinitionRunsListView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId/runs/:runId',
+				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+				components: {
+					default: TestDefinitionRunDetailView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId/runs/:runId/compare',
+				name: VIEWS.TEST_DEFINITION_RUNS_COMPARE,
+				components: {
+					default: TestDefinitionRunsCompareView,
 					header: MainHeader,
 					sidebar: MainSidebar,
 				},

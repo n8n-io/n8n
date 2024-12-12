@@ -77,7 +77,7 @@ const actions = [
 				}}
 			</div>
 			<div v-for="(value, key) in test.execution.metrics" :key="key" :class="$style.metric">
-				{{ key }}: {{ value ?? '-' }}
+				{{ key }}: {{ value.toFixed(2) ?? '-' }}
 			</div>
 		</div>
 

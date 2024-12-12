@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
 import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
@@ -15,6 +15,7 @@ export const useTestDefinitionStore = defineStore(
 		const fetchedAll = ref(false);
 		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
+		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
 
 		// Store instances
 		const posthogStore = usePostHog();
@@ -225,12 +226,19 @@ export const useTestDefinitionStore = defineStore(
 		};
 
 		// Test Runs Methods
-		const fetchTestRuns = async (testId: string) => {
+		const fetchTestRuns = async (testDefinitionId: string) => {
 			loading.value = true;
 			try {
-				const runs = await testDefinitionsApi.getTestRuns(rootStore.restApiContext, testId);
+				const runs = await testDefinitionsApi.getTestRuns(
+					rootStore.restApiContext,
+					testDefinitionId,
+				);
 				runs.forEach((run) => {
+					console.log('🚀 ~ runs.forEach ~ run.status:', run.status);
 					testRunsById.value[run.id] = run;
+					if (run.status === 'running') {
+						startPollingTestRun(testDefinitionId, run.id);
+					}
 				});
 				return runs;
 			} finally {
@@ -244,10 +252,11 @@ export const useTestDefinitionStore = defineStore(
 			return run;
 		};
 
-		const startTestRun = async (testId: string) => {
-			console.log('🚀 ~ startTestRun ~ testId:', testId);
-			const result = await testDefinitionsApi.startTestRun(rootStore.restApiContext, testId);
-			console.log('🚀 ~ startTestRun ~ result:', result);
+		const startTestRun = async (testDefinitionId: string) => {
+			const result = await testDefinitionsApi.startTestRun(
+				rootStore.restApiContext,
+				testDefinitionId,
+			);
 			return result;
 		};
 
@@ -258,6 +267,27 @@ export const useTestDefinitionStore = defineStore(
 				testRunsById.value = rest;
 			}
 			return result;
+		};
+
+		// TODO: This is a temporary solution to poll for test run status.
+		// We should use a more efficient polling mechanism in the future.
+		const startPollingTestRun = (testDefinitionId: string, runId: string) => {
+			const poll = async () => {
+				const run = await getTestRun({ testDefinitionId, runId });
+				if (run.status === 'running') {
+					pollingTimeouts.value[runId] = setTimeout(poll, 1000);
+				} else {
+					delete pollingTimeouts.value[runId];
+				}
+			};
+			void poll();
+		};
+
+		const cleanupPolling = () => {
+			Object.values(pollingTimeouts.value).forEach((timeout) => {
+				clearTimeout(timeout);
+			});
+			pollingTimeouts.value = {};
 		};
 
 		return {
@@ -292,6 +322,7 @@ export const useTestDefinitionStore = defineStore(
 			getTestRun,
 			startTestRun,
 			deleteTestRun,
+			cleanupPolling,
 		};
 	},
 	{},

@@ -38,6 +38,27 @@ export interface UpdateTestResponse {
 	annotationTagId?: string | null;
 }
 
+export interface TestRunRecord {
+	id: string;
+	testDefinitionId: string;
+	status: 'new' | 'running' | 'completed' | 'error';
+	metrics?: Record<string, number>;
+	createdAt: string;
+	updatedAt: string;
+	runAt: string;
+	completedAt: string;
+}
+
+interface GetTestRunParams {
+	testDefinitionId: string;
+	runId: string;
+}
+
+interface DeleteTestRunParams {
+	testDefinitionId: string;
+	runId: string;
+}
+
 const endpoint = '/evaluation/test-definitions';
 const getMetricsEndpoint = (testDefinitionId: string) => `${endpoint}/${testDefinitionId}/metrics`;
 
@@ -85,7 +106,6 @@ export async function deleteTestDefinition(context: IRestApiContext, id: string)
 }
 
 // Metrics
-
 export interface TestMetricRecord {
 	id: string;
 	name: string;
@@ -165,27 +185,6 @@ export const deleteTestMetric = async (
 	);
 };
 
-// Add these interfaces
-export interface TestRunRecord {
-	id: string;
-	testDefinitionId: string;
-	status: 'new' | 'running' | 'completed' | 'error';
-	metrics?: Record<string, number>;
-	createdAt: string;
-	updatedAt: string;
-}
-
-interface GetTestRunParams {
-	testDefinitionId: string;
-	runId: string;
-}
-
-interface DeleteTestRunParams {
-	testDefinitionId: string;
-	runId: string;
-}
-
-// Add these endpoints
 const getRunsEndpoint = (testDefinitionId: string) => `${endpoint}/${testDefinitionId}/runs`;
 
 // Get all test runs for a test definition
