@@ -21,6 +21,7 @@ import type {
 	ITaskMetadata,
 	ResourceMapperField,
 	FieldValueOption,
+	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -31,7 +32,11 @@ import {
 	schemaTypeField,
 	inputSchemaField,
 } from '../../../utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
+import {
+	convertJsonSchemaToZod,
+	convertResourceMapperFieldsToZod,
+	generateSchema,
+} from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 function getWorkflowInputValues(this: ISupplyDataFunctions) {
@@ -242,7 +247,7 @@ export class ToolWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
-						'@version': [{ _cnd: { gte: 1.3 } }],
+						'@version': [{ _cnd: { gt: 1.3 } }],
 					},
 					hide: {
 						workflowId: [''],
@@ -472,9 +477,7 @@ export class ToolWorkflow implements INodeType {
 		let subWorkflowId: string | undefined;
 
 		const useSchema =
-			nodeVersion < 1.2
-				? (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean)
-				: false;
+			nodeVersion >= 1.4 || (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean);
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		const runFunction = async (
@@ -640,23 +643,39 @@ export class ToolWorkflow implements INodeType {
 
 		if (useSchema) {
 			try {
-				// We initialize these even though one of them will always be empty
-				// it makes it easier to navigate the ternary operator
-				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
-				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
+				if (nodeVersion < 1.4) {
+					// We initialize these even though one of them will always be empty
+					// it makes it easier to navigate the ternary operator
+					const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+					const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 
-				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
-				const jsonSchema =
-					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
-						: jsonParse<JSONSchema7>(inputSchema);
+					const schemaType = this.getNodeParameter('schemaType', itemIndex) as
+						| 'fromJson'
+						| 'manual';
+					const jsonSchema =
+						schemaType === 'fromJson'
+							? generateSchema(jsonExample)
+							: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+					const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool({
-					schema: zodSchema,
-					...functionBase,
-				});
+					tool = new DynamicStructuredTool({
+						schema: zodSchema,
+						...functionBase,
+					});
+				} else {
+					const workflowInputs = this.getNodeParameter(
+						'workflowInputs',
+						itemIndex,
+						{},
+					) as IDataObject;
+					const schema = convertResourceMapperFieldsToZod(workflowInputs as ResourceMapperValue);
+					console.log('schema', schema);
+					tool = new DynamicStructuredTool({
+						schema,
+						...functionBase,
+					});
+				}
 			} catch (error) {
 				throw new NodeOperationError(
 					this.getNode(),
