@@ -337,6 +337,7 @@ const maxOutputIndex = computed(() => {
 	if (node.value === null || props.runIndex === undefined) {
 		return 0;
 	}
+
 	const runData: IRunData | null = workflowRunData.value;
 
 	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
