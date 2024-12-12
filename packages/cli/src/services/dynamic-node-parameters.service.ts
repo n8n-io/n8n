@@ -1,4 +1,4 @@
-import { LoadOptionsContext, NodeExecuteFunctions } from 'n8n-core';
+import { LoadOptionsContext, RoutingNode } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -18,7 +18,7 @@ import type {
 	NodeParameterValueType,
 	IDataObject,
 } from 'n8n-workflow';
-import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
+import { Workflow, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
@@ -105,13 +105,11 @@ export class DynamicNodeParametersService {
 			main: [[{ json: {} }]],
 		};
 
-		const optionsData = await routingNode.runNode(
-			inputData,
-			runIndex,
-			tempNode,
-			{ node, source: null, data: {} },
-			NodeExecuteFunctions,
-		);
+		const optionsData = await routingNode.runNode(inputData, runIndex, tempNode, {
+			node,
+			source: null,
+			data: {},
+		});
 
 		if (optionsData?.length === 0) {
 			return [];
