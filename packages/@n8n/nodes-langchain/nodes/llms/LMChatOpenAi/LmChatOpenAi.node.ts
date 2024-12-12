@@ -158,7 +158,7 @@ export class LmChatOpenAi implements INodeType {
 						type: 'string',
 						displayOptions: {
 							hide: {
-								'/@version': [1.1],
+								'/@version': [{ _cnd: { gte: 1.1 } }],
 							},
 						},
 					},

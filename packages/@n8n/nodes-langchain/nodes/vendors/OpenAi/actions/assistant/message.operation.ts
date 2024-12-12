@@ -107,7 +107,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				displayOptions: {
 					hide: {
-						'/@version': [1.8],
+						'/@version': [{ _cnd: { gte: 1.8 } }],
 					},
 				},
 			},
