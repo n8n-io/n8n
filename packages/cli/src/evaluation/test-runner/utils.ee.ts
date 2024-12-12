@@ -16,8 +16,10 @@ export function createPinData(
 ) {
 	const pinData = {} as IPinData;
 
+	const workflowNodeNames = new Set(workflow.nodes.map((node) => node.name));
+
 	for (const mockedNode of mockedNodes) {
-		if (workflow.nodes.find((node) => node.name === mockedNode.name)) {
+		if (workflowNodeNames.has(mockedNode.name)) {
 			const nodeData = executionData.resultData.runData[mockedNode.name];
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[mockedNode.name] = nodeData[0]?.data?.main?.[0];
