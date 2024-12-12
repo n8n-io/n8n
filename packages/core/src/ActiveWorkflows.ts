@@ -22,11 +22,13 @@ import { Service } from 'typedi';
 import { ErrorReporter } from './error-reporter';
 import type { IWorkflowData } from './Interfaces';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
+import { TriggersAndPollers } from './TriggersAndPollers';
 
 @Service()
 export class ActiveWorkflows {
 	constructor(
 		private readonly scheduledTaskManager: ScheduledTaskManager,
+		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
@@ -78,7 +80,8 @@ export class ActiveWorkflows {
 
 		for (const triggerNode of triggerNodes) {
 			try {
-				triggerResponse = await workflow.runTrigger(
+				triggerResponse = await this.triggersAndPollers.runTrigger(
+					workflow,
 					triggerNode,
 					getTriggerFunctions,
 					additionalData,
@@ -153,7 +156,7 @@ export class ActiveWorkflows {
 			});
 
 			try {
-				const pollResponse = await workflow.runPoll(node, pollFunctions);
+				const pollResponse = await this.triggersAndPollers.runPoll(workflow, node, pollFunctions);
 
 				if (pollResponse !== null) {
 					pollFunctions.__emit(pollResponse);
