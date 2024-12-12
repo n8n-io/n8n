@@ -1199,5 +1199,23 @@ describe('LogStreamingEventRelay', () => {
 				payload,
 			});
 		});
+
+		it('should log on `ai-vector-store-deleted` event', () => {
+			const payload: RelayEventMap['ai-vector-store-deleted'] = {
+				msg: 'Test',
+				executionId: 'exec789',
+				nodeName: 'Vector Store',
+				workflowId: 'wf123',
+				workflowName: 'My Workflow',
+				nodeType: 'n8n-nodes-base.vectorStore',
+			};
+
+			eventService.emit('ai-vector-store-deleted', payload);
+
+			expect(eventBus.sendAiNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.ai.vector.store.deleted',
+				payload,
+			});
+		});
 	});
 });

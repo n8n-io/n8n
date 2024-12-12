@@ -26,7 +26,7 @@ import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
-type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
+type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'delete';
 
 const DEFAULT_OPERATION_MODES: NodeOperationMode[] = ['load', 'insert', 'retrieve'];
 
@@ -57,6 +57,7 @@ interface VectorStoreNodeConstructorArgs {
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
+	deleteFields?: INodeProperties[];
 	populateVectorStore: (
 		context: ISupplyDataFunctions,
 		embeddings: Embeddings,
@@ -74,12 +75,21 @@ interface VectorStoreNodeConstructorArgs {
 function transformDescriptionForOperationMode(fields: INodeProperties[], mode: NodeOperationMode) {
 	return fields.map((field) => ({
 		...field,
-		displayOptions: { show: { mode: [mode] } },
+		displayOptions: {
+			show: {
+				...(field.displayOptions?.show || {}),
+				mode: [mode],
+			},
+		},
 	}));
 }
 
 function isUpdateSupported(args: VectorStoreNodeConstructorArgs): boolean {
 	return args.meta.operationModes?.includes('update') ?? false;
+}
+
+function isDeleteSupported(args: VectorStoreNodeConstructorArgs): boolean {
+	return args.meta.operationModes?.includes('delete') ?? false;
 }
 
 function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePropertyOptions[] {
@@ -109,6 +119,12 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 			value: 'update',
 			description: 'Update documents in vector store by ID',
 			action: 'Update vector store documents',
+		},
+		{
+			name: 'Delete Documents',
+			value: 'delete',
+			description: 'Delete documents in vector store by ID or filter',
+			action: 'Delete vector store documents',
 		},
 	];
 
@@ -149,7 +165,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const mode = parameters?.mode;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
 
-				if (['insert', 'load', 'update'].includes(mode)) {
+				if (['insert', 'load', 'update', 'delete'].includes(mode)) {
 					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
 				}
 
@@ -231,6 +247,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
+				...transformDescriptionForOperationMode(args.deleteFields ?? [], 'delete'),
 			],
 		};
 
@@ -369,6 +386,61 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						logAiEvent(this, 'ai-vector-store-updated');
 					} catch (error) {
 						throw error;
+					}
+				}
+
+				return [resultData];
+			}
+
+			if (mode === 'delete') {
+				if (!isDeleteSupported(args)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Delete operation is not implemented for this Vector Store',
+					);
+				}
+
+				const items = this.getInputData();
+
+				const resultData = [];
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					const deleteMethod = this.getNodeParameter('deleteMethod', itemIndex) as string;
+					const vectorStore = await args.getVectorStoreClient(
+						this,
+						undefined,
+						embeddings,
+						itemIndex,
+					);
+
+					if (deleteMethod === 'id') {
+						const documentId = this.getNodeParameter('id', itemIndex, '', {
+							extractValue: true,
+						}) as string | number;
+
+						await vectorStore.delete({ ids: [documentId] });
+
+						logAiEvent(this, 'ai-vector-store-deleted');
+						resultData.push({
+							json: { deleted: true },
+							pairedItem: { item: itemIndex },
+						});
+					} else if (deleteMethod === 'filter') {
+						const searchFilterJson = this.getNodeParameter(
+							'searchFilterJson', itemIndex, '', { ensureType: 'object'}
+						) as Record<string, never>;
+
+						await vectorStore.delete({ filter: searchFilterJson });
+
+						logAiEvent(this, 'ai-vector-store-deleted');
+						resultData.push({
+							json: { deleted: true },
+							pairedItem: { item: itemIndex },
+						});
+					} else {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Unsupported delete method: ${deleteMethod}`,
+						);
 					}
 				}
 
