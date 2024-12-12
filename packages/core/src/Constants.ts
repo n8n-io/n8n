@@ -1,3 +1,6 @@
+import type { INodeProperties } from 'n8n-workflow';
+import { cronNodeOptions } from 'n8n-workflow';
+
 export const CUSTOM_EXTENSION_ENV = 'N8N_CUSTOM_EXTENSIONS';
 export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
@@ -12,3 +15,30 @@ export const CONFIG_FILES = 'N8N_CONFIG_FILES';
 export const BINARY_DATA_STORAGE_PATH = 'N8N_BINARY_DATA_STORAGE_PATH';
 export const UM_EMAIL_TEMPLATES_INVITE = 'N8N_UM_EMAIL_TEMPLATES_INVITE';
 export const UM_EMAIL_TEMPLATES_PWRESET = 'N8N_UM_EMAIL_TEMPLATES_PWRESET';
+
+export const commonPollingParameters: INodeProperties[] = [
+	{
+		displayName: 'Poll Times',
+		name: 'pollTimes',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Poll Time',
+		},
+		default: { item: [{ mode: 'everyMinute' }] },
+		description: 'Time at which polling should occur',
+		placeholder: 'Add Poll Time',
+		options: cronNodeOptions,
+	},
+];
+
+export const commonCORSParameters: INodeProperties[] = [
+	{
+		displayName: 'Allowed Origins (CORS)',
+		name: 'allowedOrigins',
+		type: 'string',
+		default: '*',
+		description:
+			'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
+	},
+];
