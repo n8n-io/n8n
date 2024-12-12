@@ -48,6 +48,9 @@ export class TestRunnerService {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
+	/**
+	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
+	 */
 	private getStartNodesData(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
@@ -64,17 +67,19 @@ export class TestRunnerService {
 		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
 		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
 
-		// Prepare the data structures
+		const triggerNodeData = pastExecutionData.resultData.runData[pastExecutionTriggerNode][0];
+		assert(triggerNodeData, 'Trigger node data not found');
+
 		const triggerToStartFrom = {
 			name: pastExecutionTriggerNode,
-			data: pastExecutionData.resultData.runData[pastExecutionTriggerNode][0],
+			data: triggerNodeData,
 		};
 
 		// Start nodes are the nodes that are connected to the trigger node
 		const startNodes = workflowInstance
 			.getChildNodes(pastExecutionTriggerNode, NodeConnectionType.Main, 1)
-			.map((name) => ({
-				name,
+			.map((nodeName) => ({
+				name: nodeName,
 				sourceData: { previousNode: pastExecutionTriggerNode },
 			}));
 
