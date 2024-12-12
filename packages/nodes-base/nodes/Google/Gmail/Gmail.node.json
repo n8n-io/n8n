@@ -52,5 +52,5 @@
 			}
 		]
 	},
-	"alias": ["email", "human in the loop", "form", "wait"]
+	"alias": ["email", "human", "form", "wait"]
 }

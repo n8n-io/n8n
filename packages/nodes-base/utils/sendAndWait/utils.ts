@@ -31,6 +31,7 @@ type SendAndWaitConfig = {
 
 type FormResponseTypeOptions = {
 	messageButtonLabel?: string;
+	responseFormTitle?: string;
 	responseFormDescription?: string;
 	responseFormButtonLabel?: string;
 };
@@ -182,18 +183,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		{
-			displayName: 'Response Form Title',
-			name: 'responseFormTitle',
-			description: 'Title of the form that the user can access to provide their response',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					responseType: ['freeText', 'customForm'],
-				},
-			},
-		},
 		...updateDisplayOptions(
 			{
 				show: {
@@ -214,6 +203,13 @@ export function getSendAndWaitProperties(
 					name: 'messageButtonLabel',
 					type: 'string',
 					default: 'Respond',
+				},
+				{
+					displayName: 'Response Form Title',
+					name: 'responseFormTitle',
+					description: 'Title of the form that the user can access to provide their response',
+					type: 'string',
+					default: '',
 				},
 				{
 					displayName: 'Response Form Description',
@@ -254,12 +250,16 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 	const message = context.getNodeParameter('message', '') as string;
 	const options = context.getNodeParameter('options', {}) as FormResponseTypeOptions;
 
-	const formTitle = context.getNodeParameter('responseFormTitle', '') as string;
+	let formTitle = '';
+	if (options.responseFormTitle) {
+		formTitle = options.responseFormTitle;
+	}
 
 	let formDescription = message;
 	if (options.responseFormDescription) {
 		formDescription = options.responseFormDescription;
 	}
+	formDescription = formDescription.replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 
 	let buttonLabel = 'Submit';
 	if (options.responseFormButtonLabel) {
@@ -268,7 +268,7 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 
 	return {
 		formTitle,
-		formDescription: formDescription.replace(/\\n/g, '\n').replace(/<br>/g, '\n'),
+		formDescription,
 		buttonLabel,
 	};
 };

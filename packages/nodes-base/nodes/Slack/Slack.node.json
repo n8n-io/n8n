@@ -3,7 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
-	"alias": ["human in the loop", "form", "wait"],
+	"alias": ["human", "form", "wait"],
 	"resources": {
 		"credentialDocumentation": [
 			{
