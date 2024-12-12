@@ -35,12 +35,26 @@ export async function linearApiRequest(
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call(
+		const response = await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api',
 			options,
 		);
+
+		if (response.errors) {
+			throw new NodeApiError(this.getNode(), response.errors, {
+				message: response.errors[0].message,
+			});
+		}
+
+		return response;
 	} catch (error) {
+		if (
+			error.message === 'Access denied' &&
+			this.getNode().type === 'n8n-nodes-base.linearTrigger'
+		) {
+			error.message = 'You need to have the "Admin" scope to create webhooks.';
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
