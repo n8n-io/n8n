@@ -48,6 +48,7 @@ export async function presendFields(
 
 	let url = requestOptions.url;
 
+	// Logic for user operations
 	if (url.includes('ListUsers')) {
 		const prefix = additionalFields.PathPrefix;
 		if (prefix) url += `&PathPrefix=${prefix}`;
@@ -75,7 +76,8 @@ export async function presendFields(
 
 			url += `&${tagString}`;
 		}
-	} else {
+	} else if (url.includes('User')) {
+		// Logic for other user-related operations like AddUserToGroup, RemoveUserFromGroup, etc.
 		const userNameParam = this.getNodeParameter('UserName') as { mode: string; value: string };
 		userName = userNameParam.value;
 		url += `&UserName=${userName}`;
@@ -104,8 +106,40 @@ export async function presendFields(
 		}
 	}
 
-	requestOptions.url = url;
+	// Logic for group operations (Create, Update, etc.)
+	if (url.includes('CreateGroup')) {
+		groupName = this.getNodeParameter('GroupName') as string;
+		console.log(groupName);
+		url += `&GroupName=${groupName}`;
 
+		if (options.Path) {
+			url += `&Path=${options.Path}`;
+		}
+	} else if (url.includes('GetGroup') || url.includes('DeleteGroup')) {
+		const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
+		groupName = groupNameParam.value;
+		url += `&GroupName=${groupName}`;
+	} else if (url.includes('UpdateGroup')) {
+		const groupNameParam = this.getNodeParameter('GroupName') as { mode: string; value: string };
+		groupName = groupNameParam.value;
+		url += `&GroupName=${groupName}`;
+		const hasOptions = options.NewGroupName || options.NewPath;
+
+		if (!hasOptions) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'At least one of the options (NewGroupName or Path) must be provided to update the group.',
+			);
+		}
+
+		if (options.NewGroupName) {
+			url += `&NewGroupName=${options.NewGroupName}`;
+		}
+		if (options.NewPath) {
+			url += `&NewPath=${options.NewPath}`;
+		}
+	}
+	requestOptions.url = url;
 	return requestOptions;
 }
 

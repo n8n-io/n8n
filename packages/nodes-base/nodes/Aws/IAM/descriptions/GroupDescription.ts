@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	handleErrorPostReceive,
 	handlePagination,
+	presendFields,
 	processGroupsResponse,
 } from '../GenericFunctions';
 
@@ -24,9 +25,12 @@ export const groupOperations: INodeProperties[] = [
 				value: 'create',
 				description: 'Create a new group',
 				routing: {
+					send: {
+						preSend: [presendFields],
+					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=CreateGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}&Path={{$parameter["options.path"]}}',
+						url: '/?Action=CreateGroup&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -40,9 +44,12 @@ export const groupOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete an existing group',
 				routing: {
+					send: {
+						preSend: [presendFields],
+					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=DeleteGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
+						url: '/?Action=DeleteGroup&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -56,9 +63,12 @@ export const groupOperations: INodeProperties[] = [
 				value: 'get',
 				description: 'Retrieve details of an existing group',
 				routing: {
+					send: {
+						preSend: [presendFields],
+					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=GetGroup&Version=2010-05-08&GroupName={{$parameter["GroupName"]}}',
+						url: '/?Action=GetGroup&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -73,6 +83,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Retrieve a list of groups',
 				routing: {
 					send: {
+						preSend: [presendFields],
 						paginate: true,
 					},
 					operations: {
@@ -80,7 +91,7 @@ export const groupOperations: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=ListGroups&Version=2010-05-08',
+						url: '/?Action=ListGroups&Version=2010-05-08',
 						qs: {
 							pageSize:
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
@@ -98,9 +109,12 @@ export const groupOperations: INodeProperties[] = [
 				value: 'update',
 				description: 'Update an existing group',
 				routing: {
+					send: {
+						preSend: [presendFields],
+					},
 					request: {
 						method: 'POST',
-						url: '=/?Action=UpdateGroup&GroupName={{$parameter["GroupName"]}}&NewGroupName={{$parameter["NewGroupName"]}}&Version=2010-05-08&Path={{$parameter["options.path"]}}',
+						url: '/?Action=UpdateGroup&Version=2010-05-08',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -143,11 +157,12 @@ const createFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Path',
-				name: 'path',
+				name: 'Path',
 				type: 'string',
-				default: '/',
+				default: '',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
+				validateType: 'string',
 			},
 		],
 		placeholder: 'Add Option',
@@ -182,7 +197,7 @@ const deleteFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'GroupName', //TODO Check if we can delete group by id
+				name: 'GroupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [
@@ -230,7 +245,7 @@ const getFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name', //TODO Try find a way to get group by id
+				displayName: 'By Name',
 				name: 'GroupName',
 				type: 'string',
 				hint: 'Enter the group name',
@@ -288,27 +303,6 @@ const getAllFields: INodeProperties[] = [
 		},
 		validateType: 'number',
 	},
-	//TODO Check whether we can add some filters and options about the fields to return
-	{
-		displayName: 'Simplified',
-		name: 'simplified',
-		type: 'boolean',
-		default: false,
-		description: 'Whether simplify the response if there are more than 10 fields',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['getAll'],
-			},
-		},
-		routing: {
-			send: {
-				property: '$select',
-				type: 'query',
-				value: 'CreatedDate,Description,GroupName,LastModifiedDate,Precedence,',
-			},
-		},
-	},
 ];
 
 const updateFields: INodeProperties[] = [
@@ -337,8 +331,8 @@ const updateFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'By Name', //TODO Try to get group by id
-				name: 'GroupName',
+				displayName: 'By Name',
+				name: 'Group Name',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [
@@ -357,22 +351,6 @@ const updateFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'New Name',
-		name: 'NewGroupName',
-		default: '',
-		placeholder: 'e.g. My New Group',
-		description: 'The new name of the group',
-		displayOptions: {
-			show: {
-				resource: ['group'],
-				operation: ['update'],
-			},
-		},
-		required: true,
-		type: 'string',
-		validateType: 'string',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		default: {},
@@ -384,12 +362,25 @@ const updateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Path',
-				name: 'path',
+				displayName: 'New Name',
+				name: 'NewGroupName',
+				default: '',
+				placeholder: 'e.g. My New Group',
+				description: 'The new name of the group',
 				type: 'string',
-				default: '/',
+				typeOptions: {
+					regex: '^[a-zA-Z0-9+=,.@_-]+$',
+				},
+				validateType: 'string',
+			},
+			{
+				displayName: 'New Path',
+				name: 'NewPath',
+				type: 'string',
+				default: '',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
+				validateType: 'string',
 			},
 		],
 		placeholder: 'Add Option',
