@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Workflow, NodeHelpers, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -114,11 +114,9 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflow.getNode(webhook.node) as INode,
-			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		const webhookData = this.webhookService
+			.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
+			.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
