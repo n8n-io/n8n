@@ -477,8 +477,6 @@ export class ToolWorkflow implements INodeType {
 				: false;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
-		const items = getCurrentWorkflowInputData.call(this);
-
 		const runFunction = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
@@ -535,16 +533,21 @@ export class ToolWorkflow implements INodeType {
 				include: 'all',
 			};
 
-			const newItem = await manual.execute.call(
-				this,
-				{ json: { query } },
-				itemIndex,
-				options,
-				rawData,
-				this.getNode(),
-			);
-
-			const items = [newItem] as INodeExecutionData[];
+			// TODO: Move this to getCurrentWorkflowInputData and simplify
+			let items = [] as INodeExecutionData[];
+			if (nodeVersion < 1.3) {
+				const newItem = await manual.execute.call(
+					this,
+					{ json: { query } },
+					itemIndex,
+					options,
+					rawData,
+					this.getNode(),
+				);
+				items = [newItem] as INodeExecutionData[];
+			} else {
+				items = getCurrentWorkflowInputData.call(this);
+			}
 
 			let receivedData: ExecuteWorkflowData;
 			try {
