@@ -19,7 +19,7 @@ export class GraphQL implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:graphql.png',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Makes a GraphQL request and returns the received data',
 		defaults: {
 			name: 'GraphQL',
@@ -186,25 +186,57 @@ export class GraphQL implements INodeType {
 				displayOptions: {
 					show: {
 						requestMethod: ['POST'],
+						'@version': [1],
 					},
 				},
 				default: 'graphql',
 				description: 'The format for the query payload',
 			},
 			{
+				displayName: 'Request Format',
+				name: 'requestFormat',
+				type: 'options',
+				required: true,
+				options: [
+					{
+						name: 'JSON (Recommended)',
+						value: 'json',
+						description:
+							'JSON object with query, variables, and operationName properties. The standard and most widely supported format for GraphQL requests.',
+					},
+					{
+						name: 'GraphQL (Raw)',
+						value: 'graphql',
+						description:
+							'Raw GraphQL query string. Not all servers support this format. Use JSON for better compatibility.',
+					},
+				],
+				displayOptions: {
+					show: {
+						requestMethod: ['POST'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				default: 'json',
+				description: 'The request format for the query payload',
+			},
+			{
 				displayName: 'Query',
 				name: 'query',
-				type: 'json',
+				type: 'string',
 				default: '',
 				description: 'GraphQL query',
 				required: true,
+				typeOptions: {
+					rows: 6,
+				},
 			},
 			{
 				displayName: 'Variables',
 				name: 'variables',
 				type: 'json',
 				default: '',
-				description: 'Query variables',
+				description: 'Query variables as JSON object',
 				displayOptions: {
 					show: {
 						requestFormat: ['json'],
@@ -350,11 +382,7 @@ export class GraphQL implements INodeType {
 					'POST',
 				) as IHttpRequestMethods;
 				const endpoint = this.getNodeParameter('endpoint', itemIndex, '') as string;
-				const requestFormat = this.getNodeParameter(
-					'requestFormat',
-					itemIndex,
-					'graphql',
-				) as string;
+				const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'json') as string;
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 				const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
 					this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
@@ -484,7 +512,20 @@ export class GraphQL implements INodeType {
 				} else {
 					if (typeof response === 'string') {
 						try {
-							response = JSON.parse(response);
+							if (typeof response === 'string') {
+								response = JSON.parse(response) as IDataObject;
+							}
+
+							// Check for errors in the response
+							if (response.errors && Array.isArray(response.errors)) {
+								// If the request format is 'graphql', throw an error suggesting to try JSON
+								if (requestFormat === 'graphql') {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Error in GraphQL request. Please try using the Request format "JSON" instead.',
+									);
+								}
+							}
 						} catch (error) {
 							throw new NodeOperationError(
 								this.getNode(),
