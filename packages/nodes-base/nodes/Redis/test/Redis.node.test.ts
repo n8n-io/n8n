@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { RedisClientType } from '@redis/client';
+import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 const mockClient = mock<RedisClientType>();
@@ -12,7 +12,11 @@ import { setupRedisClient } from '../utils';
 describe('Redis Node', () => {
 	const node = new Redis();
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		createClient.mockReturnValue(mockClient);
+	});
+
+	afterEach(() => jest.resetAllMocks());
 
 	describe('setupRedisClient', () => {
 		it('should not configure TLS by default', () => {
@@ -54,14 +58,23 @@ describe('Redis Node', () => {
 	describe('operations', () => {
 		const thisArg = mock<IExecuteFunctions>({});
 
-		const mockCredential = {
-			host: 'redis',
-			port: 1234,
-			database: 0,
-			password: 'random',
-		};
+		beforeEach(() => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				ssl: true,
+			});
 
-		thisArg.getCredentials.calledWith('redis').mockResolvedValue(mockCredential);
+			const mockCredential = {
+				host: 'redis',
+				port: 1234,
+				database: 0,
+				password: 'random',
+			};
+
+			thisArg.getCredentials.calledWith('redis').mockResolvedValue(mockCredential);
+		});
 
 		afterEach(() => {
 			expect(createClient).toHaveBeenCalled();
@@ -119,6 +132,17 @@ master_failover_state:no-failover
 					master_failover_state: 'no-failover',
 				});
 			});
+
+			it('should return an error on continue on fail', async () => {
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('info');
+				thisArg.continueOnFail.mockReturnValue(true);
+				mockClient.info.mockRejectedValue(new Error('Redis error'));
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.info).toHaveBeenCalled();
+				expect(output[0][0].json).toEqual({ error: 'Redis error' });
+			});
 		});
 
 		describe('delete operation', () => {
@@ -131,6 +155,20 @@ master_failover_state:no-failover
 				const output = await node.execute.call(thisArg);
 				expect(mockClient.del).toHaveBeenCalledWith('key1');
 				expect(output[0][0].json).toEqual({ x: 1 });
+			});
+
+			it('should return an error on continue on fail', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('delete');
+				thisArg.getNodeParameter.calledWith('key', 0).mockReturnValue('key1');
+				thisArg.continueOnFail.mockReturnValue(true);
+
+				mockClient.del.mockRejectedValue(new Error('Redis error'));
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.del).toHaveBeenCalled();
+				expect(output[0][0].json).toEqual({ error: 'Redis error' });
 			});
 		});
 
@@ -172,6 +210,19 @@ master_failover_state:no-failover
 					},
 				});
 			});
+
+			it('should return an error on continue on fail', async () => {
+				thisArg.getNodeParameter.calledWith('keyType', 0).mockReturnValue('automatic');
+				thisArg.continueOnFail.mockReturnValue(true);
+
+				mockClient.type.calledWith('key1').mockResolvedValue('string');
+				mockClient.get.mockRejectedValue(new Error('Redis error'));
+
+				const output = await node.execute.call(thisArg);
+				expect(mockClient.get).toHaveBeenCalled();
+
+				expect(output[0][0].json).toEqual({ error: 'Redis error' });
+			});
 		});
 
 		describe('keys operation', () => {
@@ -199,6 +250,19 @@ master_failover_state:no-failover
 				const output = await node.execute.call(thisArg);
 				expect(mockClient.keys).toHaveBeenCalledWith('key*');
 				expect(output[0][0].json).toEqual({ key1: 'value1', key2: 'value2' });
+			});
+
+			it('should return an error on continue on fail', async () => {
+				thisArg.continueOnFail.mockReturnValue(true);
+				thisArg.getNodeParameter.calledWith('getValues', 0).mockReturnValue(true);
+
+				mockClient.type.mockResolvedValue('string');
+				mockClient.get.mockRejectedValue(new Error('Redis error'));
+
+				const output = await node.execute.call(thisArg);
+				expect(mockClient.get).toHaveBeenCalled();
+
+				expect(output[0][0].json).toEqual({ error: 'Redis error' });
 			});
 		});
 	});
