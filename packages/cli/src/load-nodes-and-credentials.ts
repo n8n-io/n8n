@@ -22,8 +22,9 @@ import type {
 	ICredentialType,
 	INodeType,
 	IVersionedNodeType,
+	INodeProperties,
 } from 'n8n-workflow';
-import { NodeHelpers, ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 import { Container, Service } from 'typedi';
@@ -293,7 +294,7 @@ export class LoadNodesAndCredentials {
 		for (const usableNode of usableNodes) {
 			const description: INodeTypeBaseDescription | INodeTypeDescription =
 				structuredClone(usableNode);
-			const wrapped = NodeHelpers.convertNodeToAiTool({ description }).description;
+			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
 			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
@@ -394,6 +395,101 @@ export class LoadNodesAndCredentials {
 		}
 
 		throw new UnrecognizedCredentialTypeError(credentialType);
+	}
+
+	/**
+	 * Modifies the description of the passed in object, such that it can be used
+	 * as an AI Agent Tool.
+	 * Returns the modified item (not copied)
+	 */
+	convertNodeToAiTool<
+		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
+	>(item: T): T {
+		// quick helper function for type-guard down below
+		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
+			return typeof obj === 'object' && obj !== null && 'properties' in obj;
+		}
+
+		if (isFullDescription(item.description)) {
+			item.description.name += 'Tool';
+			item.description.inputs = [];
+			item.description.outputs = [NodeConnectionType.AiTool];
+			item.description.displayName += ' Tool';
+			delete item.description.usableAsTool;
+
+			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
+			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
+
+			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+				const descriptionType: INodeProperties = {
+					displayName: 'Tool Description',
+					name: 'descriptionType',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Set Automatically',
+							value: 'auto',
+							description: 'Automatically set based on resource and operation',
+						},
+						{
+							name: 'Set Manually',
+							value: 'manual',
+							description: 'Manually set the description',
+						},
+					],
+					default: 'auto',
+				};
+
+				const descProp: INodeProperties = {
+					displayName: 'Description',
+					name: 'toolDescription',
+					type: 'string',
+					default: item.description.description,
+					required: true,
+					typeOptions: { rows: 2 },
+					description:
+						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+					placeholder: `e.g. ${item.description.description}`,
+				};
+
+				const noticeProp: INodeProperties = {
+					displayName:
+						"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
+					name: 'notice',
+					type: 'notice',
+					default: '',
+				};
+
+				item.description.properties.unshift(descProp);
+
+				// If node has resource or operation we can determine pre-populate tool description based on it
+				// so we add the descriptionType property as the first property
+				if (hasResource || hasOperation) {
+					item.description.properties.unshift(descriptionType);
+
+					descProp.displayOptions = {
+						show: {
+							descriptionType: ['manual'],
+						},
+					};
+				}
+
+				item.description.properties.unshift(noticeProp);
+			}
+		}
+
+		const resources = item.description.codex?.resources ?? {};
+
+		item.description.codex = {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Tools'],
+				Tools: ['Other Tools'],
+			},
+			resources,
+		};
+		return item;
 	}
 
 	async setupHotReload() {

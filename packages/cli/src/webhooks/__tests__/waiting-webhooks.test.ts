@@ -10,7 +10,7 @@ import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
 
 describe('WaitingWebhooks', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingWebhooks = new WaitingWebhooks(mock(), mock(), executionRepository);
+	const waitingWebhooks = new WaitingWebhooks(mock(), mock(), executionRepository, mock());
 
 	beforeEach(() => {
 		jest.restoreAllMocks();

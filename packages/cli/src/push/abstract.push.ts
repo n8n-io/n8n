@@ -70,7 +70,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	}
 
 	private sendTo<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRefs: string[]) {
-		this.logger.debug(`Pushed to editor-UI: ${type}`, {
+		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
 		});

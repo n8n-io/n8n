@@ -1,5 +1,3 @@
-import type { NodeParameterValue } from './Interfaces';
-
 export const DIGITS = '0123456789';
 export const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const LOWERCASE_LETTERS = UPPERCASE_LETTERS.toLowerCase();
@@ -86,35 +84,6 @@ export const LANGCHAIN_CUSTOM_TOOLS = [
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 ];
-
-//nodes that would execute only once with such parameters
-//add 'undefined' to parameters values if it is parameter's default value
-export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
-	'n8n-nodes-base.code': {
-		mode: [undefined, 'runOnceForAllItems'],
-	},
-	'n8n-nodes-base.executeWorkflow': {
-		mode: [undefined, 'once'],
-	},
-	'n8n-nodes-base.crateDb': {
-		operation: [undefined, 'update'], // default insert
-	},
-	'n8n-nodes-base.timescaleDb': {
-		operation: [undefined, 'update'], // default insert
-	},
-	'n8n-nodes-base.microsoftSql': {
-		operation: [undefined, 'update', 'delete'], // default insert
-	},
-	'n8n-nodes-base.questDb': {
-		operation: [undefined], // default insert
-	},
-	'n8n-nodes-base.mongoDb': {
-		operation: ['insert', 'update'],
-	},
-	'n8n-nodes-base.redis': {
-		operation: [undefined], // default info
-	},
-};
 
 export const SEND_AND_WAIT_OPERATION = 'sendAndWait';
 export const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';

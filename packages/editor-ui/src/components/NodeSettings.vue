@@ -162,7 +162,7 @@ const executeButtonTooltip = computed(() => {
 		node.value &&
 		isLatestNodeVersion.value &&
 		props.inputSize > 1 &&
-		!NodeHelpers.isSingleExecution(node.value.type, node.value.parameters)
+		!nodeHelpers.isSingleExecution(node.value.type, node.value.parameters)
 	) {
 		return i18n.baseText('nodeSettings.executeButtonTooltip.times', {
 			interpolate: { inputSize: props.inputSize },

@@ -421,60 +421,6 @@ export interface IRunNodeResponse {
 	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
 }
-export interface IGetExecuteFunctions {
-	(
-		workflow: Workflow,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		inputData: ITaskDataConnections,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
-		closeFunctions: CloseFunction[],
-		abortSignal?: AbortSignal,
-	): IExecuteFunctions;
-}
-
-export interface IGetExecuteSingleFunctions {
-	(
-		workflow: Workflow,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		inputData: ITaskDataConnections,
-		node: INode,
-		itemIndex: number,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
-		abortSignal?: AbortSignal,
-	): IExecuteSingleFunctions;
-}
-
-export interface IGetExecuteHookFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-		webhookData?: IWebhookData,
-	): IHookFunctions;
-}
-
-export interface IGetExecuteWebhookFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		webhookData: IWebhookData,
-		closeFunctions: CloseFunction[],
-		runExecutionData: IRunExecutionData | null,
-	): IWebhookFunctions;
-}
 
 export interface ISourceDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
@@ -1226,10 +1172,6 @@ export interface INodeExecutionData {
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
 	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
-	getExecuteFunctions: IGetExecuteFunctions;
-	getExecuteSingleFunctions: IGetExecuteSingleFunctions;
-	getExecuteHookFunctions: IGetExecuteHookFunctions;
-	getExecuteWebhookFunctions: IGetExecuteWebhookFunctions;
 }
 
 export type NodeParameterValue = string | number | boolean | undefined | null;

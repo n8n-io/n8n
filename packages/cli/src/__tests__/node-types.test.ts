@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
@@ -104,6 +104,9 @@ describe('NodeTypes', () => {
 		});
 
 		it('should return the tool node-type when requested as tool', () => {
+			// @ts-expect-error don't mock convertNodeToAiTool for now
+			loadNodesAndCredentials.convertNodeToAiTool =
+				LoadNodesAndCredentials.prototype.convertNodeToAiTool;
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.testNodeTool');
 			expect(result).not.toEqual(toolSupportingNode);
 			expect(result.description.name).toEqual('n8n-nodes-base.testNodeTool');
