@@ -103,7 +103,7 @@ export function createEmailBody(message: string, buttons: string, instanceId?: s
 					<tr>
 						<td
 							style="text-align: center; padding-top: 8px; font-family: Arial, sans-serif; font-size: 14px; color: #7e8186;">
-							<p>${message}</p>
+							<p style="white-space: pre-line;">${message}</p>
 						</td>
 					</tr>
 					<tr>

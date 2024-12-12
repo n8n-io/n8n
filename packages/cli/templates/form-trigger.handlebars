@@ -450,7 +450,11 @@
 
 				<div class='card' id='submitted-form' style='display: none;'>
 					<div class='form-header'>
-						<h1 id='submitted-header'>Form Submitted</h1>
+						{{#if formSubmittedHeader}}
+							<h1 id='submitted-header'>{{formSubmittedHeader}}</h1>
+						{{else}}
+							<h1 id='submitted-header'>Form Submitted</h1>
+						{{/if}}
 						{{#if formSubmittedText}}
 							<p id='submitted-content'>
 								{{formSubmittedText}}
