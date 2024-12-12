@@ -2066,6 +2066,7 @@ export interface IRun {
 // The RunData, ExecuteData and WaitForExecution contain often the same data.
 export interface IRunExecutionData {
 	startData?: {
+		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		runNodeFilter?: string[];
 	};
@@ -2089,6 +2090,12 @@ export interface IRunExecutionData {
 	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
+
+	/** Data needed for a worker to run a manual execution. */
+	manualData?: Pick<
+		IWorkflowExecutionDataProcess,
+		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
+	>;
 }
 
 export interface IRunData {
