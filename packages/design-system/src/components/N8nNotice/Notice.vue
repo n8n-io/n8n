@@ -10,6 +10,7 @@ interface NoticeProps {
 	theme?: 'success' | 'warning' | 'danger' | 'info';
 	content?: string;
 	fullContent?: string;
+	compact?: boolean;
 }
 
 const props = withDefaults(defineProps<NoticeProps>(), {
@@ -17,6 +18,7 @@ const props = withDefaults(defineProps<NoticeProps>(), {
 	theme: 'warning',
 	content: '',
 	fullContent: '',
+	compact: true,
 });
 
 const emit = defineEmits<{
@@ -68,7 +70,7 @@ const onClick = (event: MouseEvent) => {
 <template>
 	<div :id="id" :class="classes" role="alert" @click="onClick">
 		<div class="notice-content">
-			<N8nText size="small" :compact="true">
+			<N8nText size="small" :compact="compact">
 				<slot>
 					<span
 						:id="`${id}-content`"
