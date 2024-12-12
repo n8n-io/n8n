@@ -77,9 +77,9 @@ import type {
 	DeduplicationScope,
 	DeduplicationItemTypes,
 	ICheckProcessedContextData,
-	ISupplyDataFunctions,
 	WebhookType,
 	SchedulingFunctions,
+	SupplyData,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -2023,9 +2023,9 @@ export async function getInputConnectionData(
 	this: IAllExecuteFunctions,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
-	runIndex: number,
+	parentRunIndex: number,
 	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
+	parentInputData: ITaskDataConnections,
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
@@ -2034,10 +2034,13 @@ export async function getInputConnectionData(
 	itemIndex: number,
 	abortSignal?: AbortSignal,
 ): Promise<unknown> {
-	const node = this.getNode();
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	const parentNode = this.getNode();
+	const parentNodeType = workflow.nodeTypes.getByNameAndVersion(
+		parentNode.type,
+		parentNode.typeVersion,
+	);
 
-	const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+	const inputs = NodeHelpers.getNodeInputs(workflow, parentNode, parentNodeType.description);
 
 	let inputConfiguration = inputs.find((input) => {
 		if (typeof input === 'string') {
@@ -2048,7 +2051,7 @@ export async function getInputConnectionData(
 
 	if (inputConfiguration === undefined) {
 		throw new ApplicationError('Node does not have input of type', {
-			extra: { nodeName: node.name, connectionType },
+			extra: { nodeName: parentNode.name, connectionType },
 		});
 	}
 
@@ -2059,14 +2062,14 @@ export async function getInputConnectionData(
 	}
 
 	const connectedNodes = workflow
-		.getParentNodes(node.name, connectionType, 1)
+		.getParentNodes(parentNode.name, connectionType, 1)
 		.map((nodeName) => workflow.getNode(nodeName) as INode)
 		.filter((connectedNode) => connectedNode.disabled !== true);
 
 	if (connectedNodes.length === 0) {
 		if (inputConfiguration.required) {
 			throw new NodeOperationError(
-				node,
+				parentNode,
 				`A ${inputConfiguration?.displayName ?? connectionType} sub-node must be connected and enabled`,
 			);
 		}
@@ -2078,82 +2081,86 @@ export async function getInputConnectionData(
 		connectedNodes.length > inputConfiguration.maxConnections
 	) {
 		throw new NodeOperationError(
-			node,
+			parentNode,
 			`Only ${inputConfiguration.maxConnections} ${connectionType} sub-nodes are/is allowed to be connected`,
 		);
 	}
 
-	const constParentNodes = connectedNodes.map(async (connectedNode) => {
-		const nodeType = workflow.nodeTypes.getByNameAndVersion(
+	const nodes: SupplyData[] = [];
+	for (const connectedNode of connectedNodes) {
+		const connectedNodeType = workflow.nodeTypes.getByNameAndVersion(
 			connectedNode.type,
 			connectedNode.typeVersion,
 		);
-		const context = new SupplyDataContext(
-			workflow,
-			connectedNode,
-			additionalData,
-			mode,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			inputData,
-			executeData,
-			closeFunctions,
-			abortSignal,
-		);
+		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
+			new SupplyDataContext(
+				workflow,
+				connectedNode,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				closeFunctions,
+				abortSignal,
+			);
 
-		if (!nodeType.supplyData) {
-			if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
-				nodeType.supplyData = async function (this: ISupplyDataFunctions) {
-					return createNodeAsTool(this, nodeType, this.getNode().parameters);
-				};
+		if (!connectedNodeType.supplyData) {
+			if (connectedNodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+				const supplyData = createNodeAsTool({
+					node: connectedNode,
+					nodeType: connectedNodeType,
+					contextFactory,
+				});
+				nodes.push(supplyData);
 			} else {
 				throw new ApplicationError('Node does not have a `supplyData` method defined', {
 					extra: { nodeName: connectedNode.name },
 				});
 			}
-		}
+		} else {
+			const context = contextFactory(parentRunIndex, parentInputData);
+			try {
+				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
+				if (supplyData.closeFunction) {
+					closeFunctions.push(supplyData.closeFunction);
+				}
+				nodes.push(supplyData);
+			} catch (error) {
+				// Propagate errors from sub-nodes
+				if (error.functionality === 'configuration-node') throw error;
+				if (!(error instanceof ExecutionBaseError)) {
+					error = new NodeOperationError(connectedNode, error, {
+						itemIndex,
+					});
+				}
 
-		try {
-			const response = await nodeType.supplyData.call(context, itemIndex);
-			if (response.closeFunction) {
-				closeFunctions.push(response.closeFunction);
-			}
-			return response;
-		} catch (error) {
-			// Propagate errors from sub-nodes
-			if (error.functionality === 'configuration-node') throw error;
-			if (!(error instanceof ExecutionBaseError)) {
-				error = new NodeOperationError(connectedNode, error, {
+				let currentNodeRunIndex = 0;
+				if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
+					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
+				}
+
+				// Display the error on the node which is causing it
+				await context.addExecutionDataFunctions(
+					'input',
+					error,
+					connectionType,
+					parentNode.name,
+					currentNodeRunIndex,
+				);
+
+				// Display on the calling node which node has the error
+				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {
 					itemIndex,
+					functionality: 'configuration-node',
+					description: error.message,
 				});
 			}
-
-			let currentNodeRunIndex = 0;
-			if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
-				currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
-			}
-
-			// Display the error on the node which is causing it
-			await context.addExecutionDataFunctions(
-				'input',
-				error,
-				connectionType,
-				node.name,
-				currentNodeRunIndex,
-			);
-
-			// Display on the calling node which node has the error
-			throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {
-				itemIndex,
-				functionality: 'configuration-node',
-				description: error.message,
-			});
 		}
-	});
-
-	// Validate the inputs
-	const nodes = await Promise.all(constParentNodes);
+	}
 
 	return inputConfiguration.maxConnections === 1
 		? (nodes || [])[0]?.response

@@ -86,6 +86,29 @@ export class InstanceSettings {
 	 */
 	readonly hostId: string;
 
+	private isMultiMainEnabled = false;
+
+	private isMultiMainLicensed = false;
+
+	/** Set whether multi-main mode is enabled. Does not imply licensed status. */
+	setMultiMainEnabled(newState: boolean) {
+		this.isMultiMainEnabled = newState;
+	}
+
+	setMultiMainLicensed(newState: boolean) {
+		this.isMultiMainLicensed = newState;
+	}
+
+	/** Whether this `main` instance is running in multi-main mode. */
+	get isMultiMain() {
+		return this.instanceType === 'main' && this.isMultiMainEnabled && this.isMultiMainLicensed;
+	}
+
+	/** Whether this `main` instance is running in single-main mode. */
+	get isSingleMain() {
+		return !this.isMultiMain;
+	}
+
 	get isLeader() {
 		return this.instanceRole === 'leader';
 	}

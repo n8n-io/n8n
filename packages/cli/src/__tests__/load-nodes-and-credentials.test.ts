@@ -8,7 +8,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
 			instance.loaders.package1 = mock<DirectoryLoader>({
 				directory: '/icons/package1',
 			});

@@ -36,6 +36,7 @@ describe('JsTaskRunner', () => {
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
 				taskBrokerUri: 'http://localhost',
+				taskTimeout: 60,
 				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
@@ -136,6 +137,36 @@ describe('JsTaskRunner', () => {
 				]);
 			},
 		);
+
+		it('should not throw when using unsupported console methods', async () => {
+			const task = newTaskWithSettings({
+				code: `
+					console.warn('test');
+					console.error('test');
+					console.info('test');
+					console.debug('test');
+					console.trace('test');
+					console.dir({});
+					console.time('test');
+					console.timeEnd('test');
+					console.timeLog('test');
+					console.assert(true);
+					console.clear();
+					console.group('test');
+					console.groupEnd();
+					console.table([]);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await expect(
+				execTaskWithParams({
+					task,
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
+				}),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('built-in methods and variables available in the context', () => {
@@ -214,6 +245,7 @@ describe('JsTaskRunner', () => {
 				['$runIndex', 0],
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],
+				['$getWorkflowStaticData("global")', {}],
 			],
 			'Node.js internal functions': [
 				['typeof Function', 'function'],
