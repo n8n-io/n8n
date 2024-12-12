@@ -1,5 +1,6 @@
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { RPC_ALLOW_LIST } from '@n8n/task-runner';
+import { createResultOk, createResultError } from 'n8n-workflow';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -15,7 +16,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Result,
 } from 'n8n-workflow';
-import { createResultOk, createResultError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
@@ -157,6 +157,11 @@ export abstract class TaskManager {
 					runExecutionData.resultData.metadata[k] = v;
 				});
 			}
+
+			const { staticData: incomingStaticData } = resultData;
+
+			// if the runner sent back static data, then it changed, so update it
+			if (incomingStaticData) workflow.overrideStaticData(incomingStaticData);
 
 			return createResultOk(resultData.result as TData);
 		} catch (e: unknown) {

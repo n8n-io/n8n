@@ -2,6 +2,7 @@
 
 import {
 	ActiveWorkflows,
+	ErrorReporter,
 	InstanceSettings,
 	NodeExecuteFunctions,
 	PollContext,
@@ -25,7 +26,6 @@ import type {
 import {
 	Workflow,
 	WorkflowActivationError,
-	ErrorReporterProxy as ErrorReporter,
 	WebhookPathTakenError,
 	ApplicationError,
 } from 'n8n-workflow';
@@ -41,10 +41,12 @@ import {
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowDb } from '@/interfaces';
 import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -52,9 +54,6 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-import { ExecutionService } from './executions/execution.service';
-import { Publisher } from './scaling/pubsub/publisher.service';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -69,6 +68,7 @@ export class ActiveWorkflowManager {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly activeWorkflows: ActiveWorkflows,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly externalHooks: ExternalHooks,
@@ -205,7 +205,7 @@ export class ActiveWorkflowManager {
 				try {
 					await this.clearWebhooks(workflow.id);
 				} catch (error1) {
-					ErrorReporter.error(error1);
+					this.errorReporter.error(error1);
 					this.logger.error(
 						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
 					);
@@ -439,7 +439,7 @@ export class ActiveWorkflowManager {
 					this.logger.info('     => Started');
 				}
 			} catch (error) {
-				ErrorReporter.error(error);
+				this.errorReporter.error(error);
 				this.logger.info(
 					'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
 				);
@@ -511,7 +511,7 @@ export class ActiveWorkflowManager {
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
 	) {
-		if (this.orchestrationService.isMultiMainSetupEnabled && shouldPublish) {
+		if (this.instanceSettings.isMultiMain && shouldPublish) {
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
 				payload: { workflowId },
@@ -635,7 +635,7 @@ export class ActiveWorkflowManager {
 			try {
 				await this.add(workflowId, activationMode, workflowData);
 			} catch (error) {
-				ErrorReporter.error(error);
+				this.errorReporter.error(error);
 				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
 				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
@@ -703,11 +703,11 @@ export class ActiveWorkflowManager {
 	// TODO: this should happen in a transaction
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
 	async remove(workflowId: string) {
-		if (this.orchestrationService.isMultiMainSetupEnabled) {
+		if (this.instanceSettings.isMultiMain) {
 			try {
 				await this.clearWebhooks(workflowId);
 			} catch (error) {
-				ErrorReporter.error(error);
+				this.errorReporter.error(error);
 				this.logger.error(
 					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 				);
@@ -724,7 +724,7 @@ export class ActiveWorkflowManager {
 		try {
 			await this.clearWebhooks(workflowId);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			this.logger.error(
 				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 			);

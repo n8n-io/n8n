@@ -1,5 +1,5 @@
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -121,7 +121,13 @@ export class JsTaskRunner extends TaskRunner {
 			nodeTypes: this.nodeTypes,
 		});
 
+		const noOp = () => {};
 		const customConsole = {
+			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
+			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
+				acc[name] = noOp;
+				return acc;
+			}, {}),
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
@@ -132,6 +138,8 @@ export class JsTaskRunner extends TaskRunner {
 			},
 		};
 
+		workflow.staticData = ObservableObject.create(workflow.staticData);
+
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
 				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
@@ -140,6 +148,7 @@ export class JsTaskRunner extends TaskRunner {
 		return {
 			result,
 			customData: data.runExecutionData.resultData.metadata,
+			staticData: workflow.staticData.__dataChanged ? workflow.staticData : undefined,
 		};
 	}
 
@@ -194,7 +203,7 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 			items: inputItems,
-
+			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
 			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -267,7 +276,8 @@ export class JsTaskRunner extends TaskRunner {
 				module: {},
 				console: customConsole,
 				item,
-
+				$getWorkflowStaticData: (type: 'global' | 'node') =>
+					workflow.getStaticData(type, data.node),
 				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),

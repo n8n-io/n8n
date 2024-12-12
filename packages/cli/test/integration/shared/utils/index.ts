@@ -1,5 +1,10 @@
 import { mock } from 'jest-mock-extended';
-import { BinaryDataService, UnrecognizedNodeTypeError, type DirectoryLoader } from 'n8n-core';
+import {
+	BinaryDataService,
+	InstanceSettings,
+	UnrecognizedNodeTypeError,
+	type DirectoryLoader,
+} from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
@@ -18,7 +23,6 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import { mockInstance } from '../../../shared/mocking';
 
@@ -32,8 +36,8 @@ export { setupTestServer } from './test-server';
  * Initialize node types.
  */
 export async function initActiveWorkflowManager() {
-	mockInstance(OrchestrationService, {
-		isMultiMainSetupEnabled: false,
+	mockInstance(InstanceSettings, {
+		isMultiMain: false,
 	});
 
 	mockInstance(Push);

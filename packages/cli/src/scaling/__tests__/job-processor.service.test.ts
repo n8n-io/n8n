@@ -12,7 +12,14 @@ describe('JobProcessor', () => {
 		executionRepository.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({ status: 'crashed' }),
 		);
-		const jobProcessor = new JobProcessor(mock(), executionRepository, mock(), mock(), mock());
+		const jobProcessor = new JobProcessor(
+			mock(),
+			mock(),
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+		);
 
 		const result = await jobProcessor.processJob(mock<Job>());
 

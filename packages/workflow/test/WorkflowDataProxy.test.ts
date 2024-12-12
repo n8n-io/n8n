@@ -1,11 +1,12 @@
 import { ExpressionError } from '@/errors/expression.error';
-import type {
-	IExecuteData,
-	INode,
-	IPinData,
-	IRun,
-	IWorkflowBase,
-	WorkflowExecuteMode,
+import {
+	NodeConnectionType,
+	type IExecuteData,
+	type INode,
+	type IPinData,
+	type IRun,
+	type IWorkflowBase,
+	type WorkflowExecuteMode,
 } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
@@ -26,10 +27,15 @@ const getProxyFromFixture = (
 	run: IRun | null,
 	activeNode: string,
 	mode?: WorkflowExecuteMode,
-	opts?: { throwOnMissingExecutionData: boolean },
+	opts?: {
+		throwOnMissingExecutionData: boolean;
+		connectionType?: NodeConnectionType;
+		runIndex?: number;
+	},
 ) => {
-	const taskData = run?.data.resultData.runData[activeNode]?.[0];
-	const lastNodeConnectionInputData = taskData?.data?.main[0];
+	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
+	const lastNodeConnectionInputData =
+		taskData?.data?.[opts?.connectionType ?? NodeConnectionType.Main]?.[0];
 
 	let executeData: IExecuteData | undefined;
 
@@ -38,7 +44,7 @@ const getProxyFromFixture = (
 			data: taskData.data!,
 			node: workflow.nodes.find((node) => node.name === activeNode) as INode,
 			source: {
-				main: taskData.source,
+				[opts?.connectionType ?? NodeConnectionType.Main]: taskData.source,
 			},
 		};
 	}
@@ -64,7 +70,7 @@ const getProxyFromFixture = (
 			pinData,
 		}),
 		run?.data ?? null,
-		0,
+		opts?.runIndex ?? 0,
 		0,
 		activeNode,
 		lastNodeConnectionInputData ?? [],
@@ -441,6 +447,43 @@ describe('WorkflowDataProxy', () => {
 			test('$data', () => {
 				expect(proxy.$data).toBeUndefined();
 			});
+		});
+	});
+
+	describe('$fromAI', () => {
+		const fixture = loadFixture('from_ai_multiple_items');
+		const getFromAIProxy = (runIndex = 0) =>
+			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
+				connectionType: NodeConnectionType.AiTool,
+				throwOnMissingExecutionData: false,
+				runIndex,
+			});
+
+		test('Retrieves values for first item', () => {
+			expect(getFromAIProxy().$fromAI('full_name')).toEqual('Mr. Input 1');
+			expect(getFromAIProxy().$fromAI('email')).toEqual('input1@n8n.io');
+		});
+
+		test('Retrieves values for second item', () => {
+			expect(getFromAIProxy(1).$fromAI('full_name')).toEqual('Mr. Input 2');
+			expect(getFromAIProxy(1).$fromAI('email')).toEqual('input2@n8n.io');
+		});
+
+		test('Case variants: $fromAi and $fromai', () => {
+			expect(getFromAIProxy().$fromAi('full_name')).toEqual('Mr. Input 1');
+			expect(getFromAIProxy().$fromai('email')).toEqual('input1@n8n.io');
+		});
+
+		test('Returns default value when key not found', () => {
+			expect(
+				getFromAIProxy().$fromAI('non_existent_key', 'description', 'string', 'default_value'),
+			).toEqual('default_value');
+		});
+
+		test('Throws an error when a key is invalid (e.g. empty string)', () => {
+			expect(() => getFromAIProxy().$fromAI('')).toThrow(ExpressionError);
+			expect(() => getFromAIProxy().$fromAI('invalid key')).toThrow(ExpressionError);
+			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
 		});
 	});
 });

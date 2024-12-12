@@ -157,6 +157,13 @@ export class Workflow {
 		this.expression = new Expression(this);
 	}
 
+	overrideStaticData(staticData?: IDataObject) {
+		this.staticData = ObservableObject.create(staticData || {}, undefined, {
+			ignoreEmptyOnFirstChild: true,
+		});
+		this.staticData.__dataChanged = true;
+	}
+
 	/**
 	 * The default connections are by source node. This function rewrites them by destination nodes
 	 * to easily find parent nodes.
@@ -1357,8 +1364,8 @@ export class Workflow {
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
 			const newInputData: ITaskDataConnections = {};
-			for (const inputName of Object.keys(inputData)) {
-				newInputData[inputName] = inputData[inputName].map((input) => {
+			for (const connectionType of Object.keys(inputData)) {
+				newInputData[connectionType] = inputData[connectionType].map((input) => {
 					// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 					return input && input.slice(0, 1);
 				});
