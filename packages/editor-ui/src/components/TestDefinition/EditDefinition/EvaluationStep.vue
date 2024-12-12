@@ -24,6 +24,7 @@ const locale = useI18n();
 const isExpanded = ref(props.expanded);
 const contentRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const isTooltipVisible = ref(false);
 
 const toggleExpand = async () => {
 	isExpanded.value = !isExpanded.value;
@@ -34,45 +35,54 @@ const toggleExpand = async () => {
 		}
 	}
 };
+
+const showTooltip = () => {
+	isTooltipVisible.value = true;
+};
+
+const hideTooltip = () => {
+	isTooltipVisible.value = false;
+};
 </script>
 
 <template>
 	<div ref="containerRef" :class="[$style.evaluationStep, small && $style.small]">
-		<N8nTooltip :disabled="!tooltip" placement="right" :offset="25">
+		<N8nTooltip :disabled="!tooltip" placement="right" :offset="25" :visible="isTooltipVisible">
 			<template #content>
 				{{ tooltip }}
 			</template>
-			<div :class="$style.content">
-				<div :class="$style.header">
-					<div :class="[$style.icon, warning && $style.warning]">
-						<slot name="icon" />
-					</div>
-					<h3 :class="$style.title">{{ title }}</h3>
-					<span v-if="warning" :class="$style.warningIcon">⚠</span>
-					<button
-						v-if="$slots.cardContent"
-						:class="$style.collapseButton"
-						:aria-expanded="isExpanded"
-						:aria-controls="'content-' + title.replace(/\s+/g, '-')"
-						@click="toggleExpand"
-					>
-						{{
-							isExpanded
-								? locale.baseText('testDefinition.edit.step.collapse')
-								: locale.baseText('testDefinition.edit.step.expand')
-						}}
-						<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
-					</button>
-				</div>
-				<ElCollapseTransition v-if="$slots.cardContent">
-					<div v-show="isExpanded" :class="$style.cardContentWrapper">
-						<div ref="contentRef" :class="$style.cardContent">
-							<slot name="cardContent" />
-						</div>
-					</div>
-				</ElCollapseTransition>
-			</div>
+			<div :class="$style.fakeContent"></div>
 		</N8nTooltip>
+		<div :class="$style.content" @mouseenter="showTooltip" @mouseleave="hideTooltip">
+			<div :class="$style.header">
+				<div :class="[$style.icon, warning && $style.warning]">
+					<slot name="icon" />
+				</div>
+				<h3 :class="$style.title">{{ title }}</h3>
+				<span v-if="warning" :class="$style.warningIcon">⚠</span>
+				<button
+					v-if="$slots.cardContent"
+					:class="$style.collapseButton"
+					:aria-expanded="isExpanded"
+					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
+					@click="toggleExpand"
+				>
+					{{
+						isExpanded
+							? locale.baseText('testDefinition.edit.step.collapse')
+							: locale.baseText('testDefinition.edit.step.expand')
+					}}
+					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
+				</button>
+			</div>
+			<ElCollapseTransition v-if="$slots.cardContent">
+				<div v-show="isExpanded" :class="$style.cardContentWrapper">
+					<div ref="contentRef" :class="$style.cardContent">
+						<slot name="cardContent" />
+					</div>
+				</div>
+			</ElCollapseTransition>
+		</div>
 	</div>
 </template>
 
@@ -92,6 +102,14 @@ const toggleExpand = async () => {
 	&.small {
 		width: 80%;
 	}
+}
+.fakeContent {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: -1;
 }
 .icon {
 	display: flex;

@@ -78,7 +78,7 @@ export async function getTestDefinitions(
 }
 
 export async function getTestDefinition(context: IRestApiContext, id: string) {
-	return await makeRestApiRequest<{ id: string }>(context, 'GET', `${endpoint}/${id}`);
+	return await makeRestApiRequest<TestDefinitionRecord>(context, 'GET', `${endpoint}/${id}`);
 }
 
 export async function createTestDefinition(

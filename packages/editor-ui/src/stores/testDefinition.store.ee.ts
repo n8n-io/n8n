@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
 import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
@@ -104,6 +104,16 @@ export const useTestDefinitionStore = defineStore(
 			} catch (error) {
 				console.error('Error fetching test runs:', error);
 			}
+		};
+
+		const fetchTestDefinition = async (id: string) => {
+			const testDefinition = await testDefinitionsApi.getTestDefinition(
+				rootStore.restApiContext,
+				id,
+			);
+			testDefinitionsById.value[testDefinition.id] = testDefinition;
+
+			return testDefinition;
 		};
 
 		/**
@@ -234,7 +244,7 @@ export const useTestDefinitionStore = defineStore(
 					testDefinitionId,
 				);
 				runs.forEach((run) => {
-					console.log('🚀 ~ runs.forEach ~ run.status:', run.status);
+					console.log('🚀 ~ runs.forEach ~ run.status:', run);
 					testRunsById.value[run.id] = run;
 					if (run.status === 'running') {
 						startPollingTestRun(testDefinitionId, run.id);
@@ -308,6 +318,7 @@ export const useTestDefinitionStore = defineStore(
 			getLastRunByTestId,
 
 			// Methods
+			fetchTestDefinition,
 			fetchAll,
 			create,
 			update,

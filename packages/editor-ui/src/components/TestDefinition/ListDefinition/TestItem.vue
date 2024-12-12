@@ -51,7 +51,6 @@ const actions = [
 		<div :class="$style.testInfo">
 			<div :class="$style.testName">
 				{{ test.name }}
-				<!-- <n8n-tag v-if="test.tagName" :text="test.tagName" /> -->
 			</div>
 			<div :class="$style.testCases">
 				<n8n-text size="small">

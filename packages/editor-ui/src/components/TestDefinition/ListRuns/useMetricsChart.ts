@@ -3,7 +3,37 @@ import { convertToDisplayDate } from '@/utils/typesUtils';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 
 const formatDate = (date: string) => convertToDisplayDate(new Date(date).getTime());
-export function useMetricsChart() {
+
+type ChartTheme = 'light' | 'dark';
+
+const THEME_COLORS = {
+	light: {
+		primary: 'rgb(255, 110, 92)',
+		text: {
+			primary: 'rgb(68, 68, 68)',
+			secondary: 'rgb(102, 102, 102)',
+		},
+		background: 'rgb(255, 255, 255)',
+		grid: 'rgba(68, 68, 68, 0.1)',
+	},
+	dark: {
+		primary: 'rgb(255, 110, 92)',
+		text: {
+			primary: 'rgb(255, 255, 255)',
+			secondary: 'rgba(255, 255, 255, 0.7)',
+		},
+		background: 'rgb(32, 32, 32)',
+		grid: 'rgba(255, 255, 255, 0.1)',
+	},
+};
+
+export function useMetricsChart(mode: ChartTheme = 'light') {
+	const colors = THEME_COLORS[mode];
+
+	const toRGBA = (color: string, alpha: number) => {
+		if (color.includes('rgba')) return color;
+		return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+	};
 	function generateChartData(runs: TestRunRecord[], metric: string): ChartData<'line'> {
 		const sortedRuns = [...runs]
 			.sort((a, b) => new Date(a.runAt).getTime() - new Date(b.runAt).getTime())
@@ -15,15 +45,15 @@ export function useMetricsChart() {
 				{
 					label: metric,
 					data: sortedRuns.map((run) => run.metrics?.[metric] ?? 0),
-					borderColor: 'rgb(255, 110, 92)',
-					backgroundColor: 'rgba(255, 110, 92, 0.1)',
+					borderColor: colors.primary,
+					backgroundColor: toRGBA(colors.primary, 0.1),
 					borderWidth: 2,
 					pointRadius: 4,
 					pointHoverRadius: 6,
-					pointBackgroundColor: 'rgb(255, 110, 92)',
-					pointBorderColor: '#fff',
-					pointHoverBackgroundColor: '#fff',
-					pointHoverBorderColor: 'rgb(255, 110, 92)',
+					pointBackgroundColor: colors.primary,
+					pointBorderColor: colors.primary,
+					pointHoverBackgroundColor: colors.background,
+					pointHoverBorderColor: colors.primary,
 					tension: 0.4,
 					fill: true,
 				},
@@ -35,7 +65,7 @@ export function useMetricsChart() {
 		return {
 			responsive: true,
 			maintainAspectRatio: false,
-			devicePixelRatio: 2, // Improve rendering quality
+			devicePixelRatio: 2,
 			interaction: {
 				mode: 'index' as const,
 				intersect: false,
@@ -44,15 +74,17 @@ export function useMetricsChart() {
 				y: {
 					beginAtZero: true,
 					grid: {
-						color: 'rgba(255, 110, 92, 0.05)',
+						color: colors.grid,
 					},
 					ticks: {
 						padding: 8,
+						color: colors.text.primary,
 					},
 					title: {
 						display: true,
 						text: metric,
 						padding: 16,
+						color: colors.text.primary,
 					},
 				},
 				x: {
@@ -62,31 +94,31 @@ export function useMetricsChart() {
 					ticks: {
 						maxRotation: 45,
 						minRotation: 45,
+						color: colors.text.primary,
 					},
 					title: {
 						display: true,
 						text: 'Run Date',
 						padding: 16,
+						color: colors.text.primary,
 					},
 				},
 			},
 			plugins: {
 				tooltip: {
-					backgroundColor: 'rgba(255, 255, 255, 0.95)',
-					titleColor: '#444',
+					backgroundColor: colors.background,
+					titleColor: colors.text.primary,
 					titleFont: {
 						weight: '600',
 					},
-					bodyColor: '#666',
+					bodyColor: colors.text.secondary,
 					bodySpacing: 4,
 					padding: 12,
-					borderColor: 'rgba(255, 110, 92, 0.2)',
+					borderColor: toRGBA(colors.primary, 0.2),
 					borderWidth: 1,
 					displayColors: true,
 					callbacks: {
-						title: (tooltipItems) => {
-							return tooltipItems[0].label;
-						},
+						title: (tooltipItems) => tooltipItems[0].label,
 						label: (context) => `${metric}: ${context.parsed.y.toFixed(2)}`,
 					},
 				},

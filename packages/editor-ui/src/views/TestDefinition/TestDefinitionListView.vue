@@ -80,10 +80,9 @@ async function onRunTest(testId: string) {
 			// Optionally fetch the updated test runs
 			await testDefinitionStore.fetchTestRuns(testId);
 		} else {
-			throw new Error('Failed to start test run');
+			throw new Error('Test run failed to start');
 		}
 	} catch (error) {
-		console.log('🚀 ~ onRunTest ~ error:', error);
 		toast.showError(error, locale.baseText('testDefinition.list.testStartError'));
 	}
 }
@@ -119,7 +118,7 @@ async function loadInitialData() {
 			]);
 			isLoading.value = false;
 		} catch (error) {
-			console.error('Failed to load initial data:', error);
+			toast.showError(error, locale.baseText('testDefinition.list.loadError'));
 		} finally {
 			isLoading.value = false;
 		}

@@ -4,6 +4,7 @@ import { Line } from 'vue-chartjs';
 import { useMetricsChart } from './useMetricsChart';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { useI18n } from '@/composables/useI18n';
+import { getPreferredTheme } from '@/stores/ui.utils';
 
 const emit = defineEmits<{
 	'update:selectedMetric': [value: string];
@@ -15,6 +16,10 @@ const props = defineProps<{
 }>();
 
 const locale = useI18n();
+const currentTheme = computed(
+	() => (document.body.getAttribute('data-theme') as 'light' | 'dark') || getPreferredTheme(),
+);
+const { generateChartData, generateChartOptions } = useMetricsChart(currentTheme.value);
 
 const availableMetrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
@@ -22,7 +27,6 @@ const availableMetrics = computed(() => {
 		return [...new Set([...acc, ...metricKeys])];
 	}, [] as string[]);
 });
-const { generateChartData, generateChartOptions } = useMetricsChart();
 
 const chartData = computed(() => generateChartData(props.runs, props.selectedMetric));
 const chartOptions = computed(() => generateChartOptions(props.selectedMetric));

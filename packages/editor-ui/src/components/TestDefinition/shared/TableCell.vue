@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T">
 import { useI18n } from '@/composables/useI18n';
 import type { TestDefinitionTableColumn } from './TestDefinitionTable.vue';
+import { useRouter } from 'vue-router';
 
 defineProps<{
 	column: TestDefinitionTableColumn<T>;
@@ -12,7 +13,7 @@ defineEmits<{
 }>();
 
 const locale = useI18n();
-
+const router = useRouter();
 interface WithStatus {
 	status: string;
 }
@@ -26,6 +27,7 @@ const statusThemeMap: Record<string, string> = {
 	running: 'warning',
 	completed: 'success',
 	error: 'danger',
+	success: 'success',
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -33,6 +35,7 @@ const statusLabelMap: Record<string, string> = {
 	running: locale.baseText('testDefinition.listRuns.status.running'),
 	completed: locale.baseText('testDefinition.listRuns.status.completed'),
 	error: locale.baseText('testDefinition.listRuns.status.error'),
+	success: locale.baseText('testDefinition.listRuns.status.success'),
 };
 
 function hasProperty(row: unknown, prop: string): row is Record<string, unknown> {
@@ -49,7 +52,10 @@ const getCellContent = (column: TestDefinitionTableColumn<T>, row: T) => {
 
 <template>
 	<div v-if="column.route">
-		<router-link :to="column.route(row)">
+		<a v-if="column.openInNewTab" :href="router.resolve(column.route(row)).href" target="_blank">
+			{{ getCellContent(column, row) }}
+		</a>
+		<router-link v-else :to="column.route(row)">
 			{{ getCellContent(column, row) }}
 		</router-link>
 	</div>

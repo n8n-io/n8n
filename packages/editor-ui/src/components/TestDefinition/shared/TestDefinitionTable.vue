@@ -20,14 +20,21 @@ export type TestDefinitionTableColumn<TRow> = {
 	filters?: Array<{ text: string; value: string }>;
 	filterMethod?: (value: string, row: TRow) => boolean;
 	route?: (row: TRow) => RouteLocationRaw;
+	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
 };
 
-defineProps<{
-	data: T[];
-	columns: Array<TestDefinitionTableColumn<T>>;
-	showControls?: boolean;
-}>();
+withDefaults(
+	defineProps<{
+		data: T[];
+		columns: Array<TestDefinitionTableColumn<T>>;
+		showControls?: boolean;
+		defaultSort?: { prop: string; order: 'ascending' | 'descending' };
+	}>(),
+	{
+		defaultSort: () => ({ prop: 'date', order: 'ascending' }),
+	},
+);
 
 defineEmits<{
 	rowClick: [row: T];
@@ -36,12 +43,7 @@ defineEmits<{
 
 <template>
 	<div>
-		<ElTable
-			ref="filterTable"
-			:default-sort="{ prop: 'date', order: 'ascending' }"
-			:data="data"
-			style="width: 100%"
-		>
+		<ElTable ref="filterTable" :default-sort="defaultSort" :data="data" style="width: 100%">
 			<ElTableColumn v-for="column in columns" :key="column.prop" v-bind="column">
 				<template #default="{ row }">
 					<TableCell :column="column" :row="row" @click="$emit('rowClick', row)" />

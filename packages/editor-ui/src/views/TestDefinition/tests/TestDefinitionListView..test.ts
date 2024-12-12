@@ -22,7 +22,6 @@ describe('TestDefinitionListView', () => {
 	let showErrorMock: Mock;
 	let startTestRunMock: Mock;
 	let fetchTestRunsMock: Mock;
-	let fetchAllMock: Mock;
 	let deleteByIdMock: Mock;
 
 	beforeEach(() => {
@@ -42,7 +41,6 @@ describe('TestDefinitionListView', () => {
 		showErrorMock = vi.fn();
 		startTestRunMock = vi.fn().mockResolvedValue({ success: true });
 		fetchTestRunsMock = vi.fn();
-		fetchAllMock = vi.fn();
 		deleteByIdMock = vi.fn();
 
 		vi.mocked(useToast).mockReturnValue({
@@ -73,15 +71,31 @@ describe('TestDefinitionListView', () => {
 		setActivePinia(pinia);
 
 		mockedStore(useTestDefinitionStore).allTestDefinitions = [
-			{ id: '1', name: 'Test 1' },
-			{ id: '2', name: 'Test 2' },
+			{
+				id: '1',
+				name: 'Test 1',
+				workflowId: '1',
+			},
+			{
+				id: '2',
+				name: 'Test 2',
+				workflowId: '1',
+			},
 		];
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
 		mockedStore(useTestDefinitionStore).fetchAll.mockResolvedValue({
 			count: 2,
 			testDefinitions: [
-				{ id: '1', name: 'Test 1' },
-				{ id: '2', name: 'Test 2' },
+				{
+					id: '1',
+					name: 'Test 1',
+					workflowId: '1',
+				},
+				{
+					id: '2',
+					name: 'Test 2',
+					workflowId: '1',
+				},
 			],
 		});
 
@@ -97,7 +111,13 @@ describe('TestDefinitionListView', () => {
 
 		mockedStore(useTestDefinitionStore).startTestRun = startTestRunMock;
 		mockedStore(useTestDefinitionStore).fetchTestRuns = fetchTestRunsMock;
-		mockedStore(useTestDefinitionStore).allTestDefinitions = [{ id: '1', name: 'Test 1' }];
+		mockedStore(useTestDefinitionStore).allTestDefinitions = [
+			{
+				id: '1',
+				name: 'Test 1',
+				workflowId: '1',
+			},
+		];
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
 
 		const { getByTestId } = renderComponent({ pinia });
@@ -121,7 +141,13 @@ describe('TestDefinitionListView', () => {
 
 		startTestRunMock.mockRejectedValue(new Error('Run failed'));
 		mockedStore(useTestDefinitionStore).startTestRun = startTestRunMock;
-		mockedStore(useTestDefinitionStore).allTestDefinitions = [{ id: '1', name: 'Test 1' }];
+		mockedStore(useTestDefinitionStore).allTestDefinitions = [
+			{
+				id: '1',
+				name: 'Test 1',
+				workflowId: '1',
+			},
+		];
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
 
 		const { getByTestId } = renderComponent({ pinia });
@@ -139,7 +165,13 @@ describe('TestDefinitionListView', () => {
 		setActivePinia(pinia);
 
 		mockedStore(useTestDefinitionStore).deleteById = deleteByIdMock;
-		mockedStore(useTestDefinitionStore).allTestDefinitions = [{ id: '1', name: 'Test 1' }];
+		mockedStore(useTestDefinitionStore).allTestDefinitions = [
+			{
+				id: '1',
+				name: 'Test 1',
+				workflowId: '1',
+			},
+		];
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
 
 		const { getByTestId } = renderComponent({ pinia });

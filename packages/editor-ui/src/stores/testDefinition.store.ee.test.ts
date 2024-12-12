@@ -85,6 +85,8 @@ const TEST_RUN = {
 	metrics: { metric1: 0.75 },
 	createdAt: '2024-01-01',
 	updatedAt: '2024-01-01',
+	runAt: '2024-01-01',
+	completedAt: '2024-01-01',
 };
 
 describe('testDefinition.store.ee', () => {
@@ -414,6 +416,7 @@ describe('testDefinition.store.ee', () => {
 		});
 
 		test('Deleting Test Run', async () => {
+			// @ts-expect-error - TODO: Fix this
 			store.testRunsById = { run1: TEST_RUN };
 			const params = { testDefinitionId: '1', runId: 'run1' };
 
@@ -426,7 +429,9 @@ describe('testDefinition.store.ee', () => {
 
 		test('Getting Test Runs by Test ID', () => {
 			store.testRunsById = {
+				// @ts-expect-error - TODO: Fix this
 				run1: TEST_RUN,
+				// @ts-expect-error - TODO: Fix this
 				run2: { ...TEST_RUN, id: 'run2', testDefinitionId: '2' },
 			};
 
