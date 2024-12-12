@@ -5,10 +5,8 @@ import { ApplicationError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/error-reporter';
 
-const init = jest.fn();
-
 jest.mock('@sentry/node', () => ({
-	init,
+	init: jest.fn(),
 	setTag: jest.fn(),
 	captureException: jest.fn(),
 	Integrations: {},
