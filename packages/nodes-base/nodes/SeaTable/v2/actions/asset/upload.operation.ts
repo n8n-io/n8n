@@ -38,7 +38,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Select the column for the upload. Choose from the list, or specify the name  using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Select the column for the upload. Choose from the list, or specify the name  using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
@@ -46,7 +46,7 @@ const properties: INodeProperties[] = [
 		name: 'rowId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['tableName'],
@@ -198,9 +198,7 @@ export async function execute(
 		// Remove duplicates based on "url", keeping the last one
 		const uniqueAssets = Array.from(
 			// @ts-ignore
-			mergedArray
-				.reduce((map, asset) => map.set(asset.url, asset), new Map())
-				.values(),
+			mergedArray.reduce((map, asset) => map.set(asset.url, asset), new Map()).values(),
 		);
 
 		// Update the rowInput with the unique assets and store into body.row.

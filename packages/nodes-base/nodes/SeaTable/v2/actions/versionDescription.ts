@@ -17,7 +17,7 @@ export const versionDescription: INodeTypeDescription = {
 		name: 'SeaTable',
 	},
 	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	outputs: ['main'],
 	credentials: [
 		{
 			name: 'seaTableApi',
