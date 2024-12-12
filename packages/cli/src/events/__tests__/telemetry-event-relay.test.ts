@@ -1,5 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
@@ -14,6 +15,7 @@ import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import { mockInstance } from '@test/mocking';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -41,6 +43,7 @@ describe('TelemetryEventRelay', () => {
 			outputs: ['console'],
 		},
 	});
+	const instanceSettings = mockInstance(InstanceSettings, { isDocker: false, n8nFolder: '/test' });
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -55,6 +58,7 @@ describe('TelemetryEventRelay', () => {
 			telemetry,
 			license,
 			globalConfig,
+			instanceSettings,
 			workflowRepository,
 			nodeTypes,
 			sharedWorkflowRepository,
@@ -65,11 +69,8 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	beforeEach(() => {
-		globalConfig.diagnostics.enabled = true;
-	});
-
-	afterEach(() => {
 		jest.clearAllMocks();
+		globalConfig.diagnostics.enabled = true;
 	});
 
 	describe('init', () => {
@@ -80,6 +81,7 @@ describe('TelemetryEventRelay', () => {
 				telemetry,
 				license,
 				globalConfig,
+				instanceSettings,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
@@ -101,6 +103,7 @@ describe('TelemetryEventRelay', () => {
 				telemetry,
 				license,
 				globalConfig,
+				instanceSettings,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
@@ -942,7 +945,36 @@ describe('TelemetryEventRelay', () => {
 
 			await flushPromises();
 
-			// expect(telemetry.identify).toHaveBeenCalled();
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					version_cli: N8N_VERSION,
+					metrics: {
+						metrics_category_cache: false,
+						metrics_category_default: true,
+						metrics_category_logs: false,
+						metrics_category_queue: false,
+						metrics_category_routes: false,
+						metrics_enabled: true,
+					},
+					n8n_binary_data_mode: 'default',
+					n8n_deployment_type: 'default',
+					saml_enabled: false,
+					smtp_set_up: true,
+					system_info: {
+						is_docker: false,
+						cpus: expect.objectContaining({
+							count: expect.any(Number),
+							model: expect.any(String),
+							speed: expect.any(Number),
+						}),
+						memory: expect.any(Number),
+						os: expect.objectContaining({
+							type: expect.any(String),
+							version: expect.any(String),
+						}),
+					},
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
