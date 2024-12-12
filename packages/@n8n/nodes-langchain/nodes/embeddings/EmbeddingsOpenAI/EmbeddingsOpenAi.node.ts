@@ -79,7 +79,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			},
 		],
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Use Embeddings OpenAI',
 		defaults: {
 			name: 'Embeddings OpenAI',
@@ -106,7 +106,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL:
-				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
@@ -171,6 +171,11 @@ export class EmbeddingsOpenAi implements INodeType {
 						default: 'https://api.openai.com/v1',
 						description: 'Override the default base URL for the API',
 						type: 'string',
+						displayOptions: {
+							hide: {
+								'/@version': [1.2],
+							},
+						},
 					},
 					{
 						displayName: 'Batch Size',
@@ -219,6 +224,11 @@ export class EmbeddingsOpenAi implements INodeType {
 		const configuration: ClientOptions = {};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
+		}
+
+		// in version 1.2 we moved the Base URL parameter to the credentials
+		if (credentials.url) {
+			configuration.baseURL = credentials.url as string;
 		}
 
 		const embeddings = new OpenAIEmbeddings(

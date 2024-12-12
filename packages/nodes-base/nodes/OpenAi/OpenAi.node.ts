@@ -28,7 +28,8 @@ export class OpenAi implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.openai.com',
+			baseURL:
+				'={{ $credentials.url?.split("/").slice(0,-1).join("/") || https://api.openai.com }}',
 		},
 		properties: [
 			oldVersionNotice,
