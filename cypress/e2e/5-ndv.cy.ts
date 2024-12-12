@@ -837,4 +837,18 @@ describe('NDV', () => {
 			.contains('To search field contents rather than just names, use Table or JSON view')
 			.should('exist');
 	});
+
+	it('ADO-2931 - should handle multiple branches of the same input with the first branch empty correctly', () => {
+		cy.createFixtureWorkflow('Test_ndv_two_branches_of_same_parent_false_populated.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('DebugHelper');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		// This ensures we rendered the inputPanel
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'a1');
+	});
 });
