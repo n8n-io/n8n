@@ -12,6 +12,7 @@ import { Service } from 'typedi';
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -36,6 +37,8 @@ import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
  */
 @Service()
 export class TestRunnerService {
+	private abortControllers: Map<TestRun['id'], AbortController> = new Map();
+
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
@@ -53,7 +56,13 @@ export class TestRunnerService {
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
 		userId: string,
+		abortSignal: AbortSignal,
 	): Promise<IRun | undefined> {
+		// Do not run if the test run is cancelled
+		if (abortSignal.aborted) {
+			return;
+		}
+
 		// Create pin data from the past execution data
 		const pinData = createPinData(workflow, pastExecutionData);
 
@@ -78,6 +87,11 @@ export class TestRunnerService {
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
+		// Listen to the abort signal to stop the execution in case test run is cancelled
+		abortSignal.addEventListener('abort', () => {
+			this.activeExecutions.stopExecution(executionId);
+		});
+
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
@@ -91,7 +105,13 @@ export class TestRunnerService {
 		evaluationWorkflow: WorkflowEntity,
 		expectedData: IRunData,
 		actualData: IRunData,
+		abortSignal: AbortSignal,
 	) {
+		// Do not run if the test run is cancelled
+		if (abortSignal.aborted) {
+			return;
+		}
+
 		// Prepare the evaluation wf input data.
 		// Provide both the expected data and the actual data
 		const evaluationInputData = {
@@ -109,6 +129,11 @@ export class TestRunnerService {
 		// Trigger the evaluation workflow
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
+
+		// Listen to the abort signal to stop the execution in case test run is cancelled
+		abortSignal.addEventListener('abort', () => {
+			this.activeExecutions.stopExecution(executionId);
+		});
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -161,6 +186,12 @@ export class TestRunnerService {
 		const testRun = await this.testRunRepository.createTestRun(test.id);
 		assert(testRun, 'Unable to create a test run');
 
+		// 0.1 Initialize AbortController
+		const abortController = new AbortController();
+		this.abortControllers.set(testRun.id, abortController);
+
+		const abortSignal = abortController.signal;
+
 		// 1. Make test cases from previous executions
 
 		// Select executions with the annotation tag and workflow ID of the test.
@@ -186,6 +217,10 @@ export class TestRunnerService {
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
+			if (abortSignal.aborted) {
+				break;
+			}
+
 			// Fetch past execution with data
 			const pastExecution = await this.executionRepository.findOne({
 				where: { id: pastExecutionId },
@@ -196,7 +231,12 @@ export class TestRunnerService {
 			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);
+			const testCaseExecution = await this.runTestCase(
+				workflow,
+				executionData,
+				user.id,
+				abortSignal,
+			);
 
 			// In case of a permission check issue, the test case execution will be undefined.
 			// Skip them and continue with the next test case
@@ -215,6 +255,7 @@ export class TestRunnerService {
 				evaluationWorkflow,
 				originalRunData,
 				testCaseRunData,
+				abortSignal,
 			);
 			assert(evalExecution);
 
@@ -222,8 +263,27 @@ export class TestRunnerService {
 			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
-		const aggregatedMetrics = metrics.getAggregatedMetrics();
+		// Mark the test run as completed or cancelled
+		if (abortSignal.aborted) {
+			await this.testRunRepository.markAsCancelled(testRun.id);
+		} else {
+			const aggregatedMetrics = metrics.getAggregatedMetrics();
+			await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+		}
 
-		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+		// Clean up abort controller
+		this.abortControllers.delete(testRun.id);
+	}
+
+	/**
+	 * Cancels the test run with the given ID.
+	 * TODO: Implement the cancellation of the test run in a multi-main scenario
+	 */
+	public async cancelTestRun(testRunId: string) {
+		const abortController = this.abortControllers.get(testRunId);
+		if (abortController) {
+			abortController.abort();
+			this.abortControllers.delete(testRunId);
+		}
 	}
 }
