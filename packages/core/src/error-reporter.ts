@@ -4,11 +4,9 @@ import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
 import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Service } from 'typedi';
 
 import type { InstanceType } from './InstanceSettings';
 
-@Service()
 export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
