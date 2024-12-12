@@ -173,7 +173,7 @@ export class EmbeddingsOpenAi implements INodeType {
 						type: 'string',
 						displayOptions: {
 							hide: {
-								'/@version': [{ _cnd: { gte: 1.2 } }],
+								'@version': [{ _cnd: { gte: 1.2 } }],
 							},
 						},
 					},
