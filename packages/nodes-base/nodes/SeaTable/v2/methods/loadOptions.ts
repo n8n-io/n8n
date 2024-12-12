@@ -12,7 +12,7 @@ export async function getTableNames(this: ILoadOptionsFunctions): Promise<INodeP
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata',
 	);
 	for (const table of tables) {
 		returnData.push({
@@ -33,7 +33,7 @@ export async function getTableNameAndId(
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata',
 	);
 	for (const table of tables) {
 		returnData.push({
@@ -54,7 +54,7 @@ export async function getSearchableColumns(
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/columns',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
 			{},
 			{ table_name: tableName },
 		);
@@ -91,7 +91,7 @@ export async function getLinkColumns(this: ILoadOptionsFunctions): Promise<INode
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/columns',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
 			{},
 			{ table_name: tableName },
 		);
@@ -125,7 +125,7 @@ export async function getLinkColumnsWithColumnKey(
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/columns',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
 			{},
 			{ table_name: tableName },
 		);
@@ -155,7 +155,7 @@ export async function getAssetColumns(
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/columns',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
 			{},
 			{ table_name: tableName },
 		);
@@ -182,7 +182,7 @@ export async function getSignatureColumns(
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/columns',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/columns',
 			{},
 			{ table_name: tableName },
 		);
@@ -227,7 +227,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 			this,
 			{},
 			'POST',
-			'/dtable-db/api/v1/query/{{dtable_uuid}}/',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
 			{
 				sql: `SELECT * FROM \`${tableName}\` LIMIT 1000`,
 				convert_keys: false,
@@ -254,7 +254,7 @@ export async function getTableViews(this: ILoadOptionsFunctions): Promise<INodeP
 			this,
 			{},
 			'GET',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/views',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/views',
 			{},
 			{ table_name: tableName },
 		);

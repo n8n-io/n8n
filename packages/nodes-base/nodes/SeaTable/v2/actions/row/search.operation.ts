@@ -76,6 +76,13 @@ export const properties: INodeProperties[] = [
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
+	{
+		displayName: 'Return Column Names',
+		name: 'convert',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to return the column keys (false) or the column names (true)',
+	},
 ];
 
 const displayOptions = {
@@ -98,6 +105,7 @@ export async function execute(
 	const insensitive = this.getNodeParameter('insensitive', index) as boolean;
 	const wildcard = this.getNodeParameter('wildcard', index) as boolean;
 	const simple = this.getNodeParameter('simple', index) as boolean;
+	const convert = this.getNodeParameter('convert', index) as boolean;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -117,10 +125,10 @@ export async function execute(
 		this,
 		{},
 		'POST',
-		'/dtable-db/api/v1/query/{{dtable_uuid}}/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
 		{
 			sql: sqlQuery,
-			convert_keys: true,
+			convert_keys: convert,
 		},
 	)) as IRowResponse;
 	const metadata = sqlResult.metadata as IDtableMetadataColumn[];

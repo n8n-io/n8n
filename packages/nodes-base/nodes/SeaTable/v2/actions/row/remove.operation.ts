@@ -66,7 +66,7 @@ export async function execute(
 		this,
 		{},
 		'DELETE',
-		'/dtable-db/api/v1/delete-rows/{{dtable_uuid}}/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
 		requestBody,
 	);
 

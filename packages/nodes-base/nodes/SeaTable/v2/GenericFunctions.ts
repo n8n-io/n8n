@@ -139,7 +139,7 @@ export async function getBaseCollaborators(
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/related-users/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/related-users/',
 	);
 	const collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
 	return collaborators;
@@ -156,7 +156,7 @@ export async function getTableColumns(
 		this,
 		ctx,
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata',
 	);
 	for (const table of tables) {
 		if (table.name === tableName) {

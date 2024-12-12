@@ -197,7 +197,7 @@ export async function execute(
 		this,
 		{},
 		'PUT',
-		'/dtable-db/api/v1/update-rows/{{dtable_uuid}}/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
 		body,
 	);
 

@@ -60,7 +60,7 @@ export async function execute(
 		this,
 		{},
 		'PUT',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/unlock-rows/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/unlock-rows/',
 		{
 			table_name: tableName,
 			row_ids: [rowId],
