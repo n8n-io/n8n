@@ -41,8 +41,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -56,9 +54,7 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerFunctions,
-	IWebhookData,
 	IWebhookDescription,
-	IWebhookFunctions,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionWithMetadata,
@@ -121,15 +117,7 @@ import { DataDeduplicationService } from './data-deduplication-service';
 import { InstanceSettings } from './InstanceSettings';
 import type { IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import {
-	ExecuteContext,
-	ExecuteSingleContext,
-	HookContext,
-	PollContext,
-	SupplyDataContext,
-	TriggerContext,
-	WebhookContext,
-} from './node-execution-context';
+import { PollContext, SupplyDataContext, TriggerContext } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -2720,68 +2708,6 @@ export function getExecuteTriggerFunctions(
 	return new TriggerContext(workflow, node, additionalData, mode, activation);
 }
 
-/**
- * Returns the execute functions regular nodes have access to.
- */
-export function getExecuteFunctions(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData,
-	runIndex: number,
-	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	executeData: IExecuteData,
-	mode: WorkflowExecuteMode,
-	closeFunctions: CloseFunction[],
-	abortSignal?: AbortSignal,
-): IExecuteFunctions {
-	return new ExecuteContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		runExecutionData,
-		runIndex,
-		connectionInputData,
-		inputData,
-		executeData,
-		closeFunctions,
-		abortSignal,
-	);
-}
-
-/**
- * Returns the execute functions regular nodes have access to when single-function is defined.
- */
-export function getExecuteSingleFunctions(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData,
-	runIndex: number,
-	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
-	node: INode,
-	itemIndex: number,
-	additionalData: IWorkflowExecuteAdditionalData,
-	executeData: IExecuteData,
-	mode: WorkflowExecuteMode,
-	abortSignal?: AbortSignal,
-): IExecuteSingleFunctions {
-	return new ExecuteSingleContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		runExecutionData,
-		runIndex,
-		connectionInputData,
-		inputData,
-		itemIndex,
-		executeData,
-		abortSignal,
-	);
-}
-
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
 		helpers: {
@@ -2791,42 +2717,4 @@ export function getCredentialTestFunctions(): ICredentialTestFunctions {
 			},
 		},
 	};
-}
-
-/**
- * Returns the execute functions regular nodes have access to in hook-function.
- */
-export function getExecuteHookFunctions(
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	activation: WorkflowActivateMode,
-	webhookData?: IWebhookData,
-): IHookFunctions {
-	return new HookContext(workflow, node, additionalData, mode, activation, webhookData);
-}
-
-/**
- * Returns the execute functions regular nodes have access to when webhook-function is defined.
- */
-// TODO: check where it is used and make sure close functions are called
-export function getExecuteWebhookFunctions(
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	webhookData: IWebhookData,
-	closeFunctions: CloseFunction[],
-	runExecutionData: IRunExecutionData | null,
-): IWebhookFunctions {
-	return new WebhookContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		webhookData,
-		closeFunctions,
-		runExecutionData,
-	);
 }
