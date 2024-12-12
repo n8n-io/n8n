@@ -6,7 +6,6 @@ export const sessionIdOption: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 			name: 'Connected Chat Trigger Node',
 			value: 'fromInput',
 			description:
