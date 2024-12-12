@@ -172,7 +172,7 @@ export class Elasticsearch implements INodeType {
 						} else {
 							responseData = await elasticsearchApiRequest.call(
 								this,
-								'GET',
+								'POST',
 								`/${indexId}/_search`,
 								body,
 								qs,
@@ -184,7 +184,7 @@ export class Elasticsearch implements INodeType {
 
 						responseData = await elasticsearchApiRequest.call(
 							this,
-							'GET',
+							'POST',
 							`/${indexId}/_search`,
 							body,
 							qs,
