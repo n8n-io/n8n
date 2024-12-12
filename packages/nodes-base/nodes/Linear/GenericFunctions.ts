@@ -55,7 +55,14 @@ export async function linearApiRequest(
 		) {
 			error.message = 'You need to have the "Admin" scope to create webhooks.';
 		}
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: error.context.data.errors[0].message,
+				description: error.context.data.errors[0].extensions.userPresentableMessage,
+			},
+		);
 	}
 }
 
