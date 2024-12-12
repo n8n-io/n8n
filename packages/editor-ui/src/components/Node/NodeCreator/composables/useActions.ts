@@ -212,24 +212,10 @@ export const useActions = () => {
 		];
 
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
-
 		if (!isCompatibleNode) return false;
 
-		const { allNodes, getNodeTypes } = useWorkflowsStore();
-		const { getByNameAndVersion } = getNodeTypes();
-
-		// We want to add a trigger if there are no triggers other than Manual Triggers
-		// Performance here should be fine as `getByNameAndVersion` fetches nodeTypes once in bulk
-		// and `every` aborts on first `false`
-		const shouldAddChatTrigger = allNodes.every((node) => {
-			const nodeType = getByNameAndVersion(node.type, node.typeVersion);
-
-			return (
-				!nodeType.description.group.includes('trigger') || node.type === MANUAL_TRIGGER_NODE_TYPE
-			);
-		});
-
-		return shouldAddChatTrigger;
+		const { allNodes } = useWorkflowsStore();
+		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
 	// AI-226: Prepend LLM Chain node when adding a language model
