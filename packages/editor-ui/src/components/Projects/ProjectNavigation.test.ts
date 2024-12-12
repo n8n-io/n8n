@@ -81,7 +81,7 @@ describe('ProjectsNavigation', () => {
 	});
 
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
-		projectsStore.isTeamProjectFeatureEnabled = true;
+		projectsStore.teamProjectsLimit = -1;
 		projectsStore.myProjects = [...personalProjects, ...teamProjects];
 
 		const { getByRole, getAllByTestId, getByTestId } = renderComponent({
@@ -97,7 +97,7 @@ describe('ProjectsNavigation', () => {
 	});
 
 	it('should not show "Projects" title when the menu is collapsed', async () => {
-		projectsStore.isTeamProjectFeatureEnabled = true;
+		projectsStore.teamProjectsLimit = -1;
 
 		const { queryByRole } = renderComponent({
 			props: {
@@ -109,7 +109,7 @@ describe('ProjectsNavigation', () => {
 	});
 
 	it('should not show "Projects" title when the feature is not enabled', async () => {
-		projectsStore.isTeamProjectFeatureEnabled = false;
+		projectsStore.teamProjectsLimit = 0;
 
 		const { queryByRole } = renderComponent({
 			props: {
@@ -121,7 +121,7 @@ describe('ProjectsNavigation', () => {
 	});
 
 	it('should not show project icons when the menu is collapsed', async () => {
-		projectsStore.isTeamProjectFeatureEnabled = true;
+		projectsStore.teamProjectsLimit = -1;
 
 		const { getByTestId } = renderComponent({
 			props: {

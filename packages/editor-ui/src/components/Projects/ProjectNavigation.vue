@@ -1,11 +1,13 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { sortByProperty } from '@/utils/sortUtils';
+import { useToast } from '@/composables/useToast';
 
 type Props = {
 	collapsed: boolean;
@@ -14,8 +16,12 @@ type Props = {
 
 const props = defineProps<Props>();
 
+const router = useRouter();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
+const toast = useToast();
+
+const isCreatingProject = ref(false);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -56,6 +62,31 @@ const displayProjects = computed(() =>
 		projectsStore.myProjects.filter((p) => p.type === 'team'),
 	),
 );
+
+const addProjectClicked = async () => {
+	isCreatingProject.value = true;
+
+	try {
+		const newProject = await projectsStore.createProject({
+			name: locale.baseText('projects.settings.newProjectName'),
+		});
+		await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
+		toast.showMessage({
+			title: locale.baseText('projects.settings.save.successful.title', {
+				interpolate: { projectName: newProject.name ?? '' },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, locale.baseText('projects.error.title'));
+	} finally {
+		isCreatingProject.value = false;
+	}
+};
+
+const showAddFirstProject = computed(
+	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
+);
 </script>
 
 <template>
@@ -77,6 +108,15 @@ const displayProjects = computed(() =>
 			bold
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
+			<N8nButton
+				v-if="projectsStore.canCreateProjects"
+				icon="plus"
+				text
+				data-test-id="project-plus-button"
+				:disabled="isCreatingProject"
+				:class="$style.plusBtn"
+				@click="addProjectClicked"
+			/>
 		</N8nText>
 		<ElMenu
 			v-if="projectsStore.isTeamProjectFeatureEnabled"
@@ -103,6 +143,22 @@ const displayProjects = computed(() =>
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
+		<N8nButton
+			v-if="showAddFirstProject"
+			:class="[
+				$style.addFirstProjectBtn,
+				{
+					[$style.collapsed]: props.collapsed,
+				},
+			]"
+			:disabled="isCreatingProject"
+			type="tertiary"
+			icon="plus"
+			data-test-id="add-first-project-button"
+			@click="addProjectClicked"
+		>
+			{{ locale.baseText('projects.menu.addFirstProject') }}
+		</N8nButton>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
@@ -132,12 +188,33 @@ const displayProjects = computed(() =>
 }
 
 .projectsLabel {
-	margin: 0 var(--spacing-xs) var(--spacing-s);
+	display: flex;
+	justify-content: space-between;
+	margin: 0 0 var(--spacing-s) var(--spacing-xs);
 	padding: 0 var(--spacing-s);
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
 	color: var(--color-text-base);
+}
+
+.plusBtn {
+	margin: 0;
+	padding: 0;
+	color: var(--color-text-lighter);
+}
+
+.addFirstProjectBtn {
+	border: 1px solid var(--color-background-dark);
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-3xs);
+	margin: 0 var(--spacing-m) var(--spacing-m);
+
+	&.collapsed {
+		> span:last-child {
+			display: none;
+		}
+	}
 }
 </style>
 
