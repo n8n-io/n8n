@@ -2,12 +2,14 @@
 import { useI18n } from '@/composables/useI18n';
 import { ElCollapseTransition } from 'element-plus';
 import { ref, nextTick } from 'vue';
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip';
 
 interface EvaluationStep {
 	title: string;
 	warning?: boolean;
 	small?: boolean;
 	expanded?: boolean;
+	tooltip?: string;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
@@ -15,6 +17,7 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	warning: false,
 	small: false,
 	expanded: true,
+	tooltip: '',
 });
 
 const locale = useI18n();
@@ -35,36 +38,41 @@ const toggleExpand = async () => {
 
 <template>
 	<div ref="containerRef" :class="[$style.evaluationStep, small && $style.small]">
-		<div :class="$style.content">
-			<div :class="$style.header">
-				<div :class="[$style.icon, warning && $style.warning]">
-					<slot name="icon" />
-				</div>
-				<h3 :class="$style.title">{{ title }}</h3>
-				<span v-if="warning" :class="$style.warningIcon">⚠</span>
-				<button
-					v-if="$slots.cardContent"
-					:class="$style.collapseButton"
-					:aria-expanded="isExpanded"
-					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
-					@click="toggleExpand"
-				>
-					{{
-						isExpanded
-							? locale.baseText('testDefinition.edit.step.collapse')
-							: locale.baseText('testDefinition.edit.step.expand')
-					}}
-					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
-				</button>
-			</div>
-			<ElCollapseTransition v-if="$slots.cardContent">
-				<div v-show="isExpanded" :class="$style.cardContentWrapper">
-					<div ref="contentRef" :class="$style.cardContent">
-						<slot name="cardContent" />
+		<N8nTooltip :disabled="!tooltip" placement="right" :offset="25">
+			<template #content>
+				{{ tooltip }}
+			</template>
+			<div :class="$style.content">
+				<div :class="$style.header">
+					<div :class="[$style.icon, warning && $style.warning]">
+						<slot name="icon" />
 					</div>
+					<h3 :class="$style.title">{{ title }}</h3>
+					<span v-if="warning" :class="$style.warningIcon">⚠</span>
+					<button
+						v-if="$slots.cardContent"
+						:class="$style.collapseButton"
+						:aria-expanded="isExpanded"
+						:aria-controls="'content-' + title.replace(/\s+/g, '-')"
+						@click="toggleExpand"
+					>
+						{{
+							isExpanded
+								? locale.baseText('testDefinition.edit.step.collapse')
+								: locale.baseText('testDefinition.edit.step.expand')
+						}}
+						<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
+					</button>
 				</div>
-			</ElCollapseTransition>
-		</div>
+				<ElCollapseTransition v-if="$slots.cardContent">
+					<div v-show="isExpanded" :class="$style.cardContentWrapper">
+						<div ref="contentRef" :class="$style.cardContent">
+							<slot name="cardContent" />
+						</div>
+					</div>
+				</ElCollapseTransition>
+			</div>
+		</N8nTooltip>
 	</div>
 </template>
 

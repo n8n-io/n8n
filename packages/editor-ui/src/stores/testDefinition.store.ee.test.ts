@@ -4,19 +4,35 @@ import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
-const { createTestDefinition, deleteTestDefinition, getTestDefinitions, updateTestDefinition } =
-	vi.hoisted(() => ({
-		getTestDefinitions: vi.fn(),
-		createTestDefinition: vi.fn(),
-		updateTestDefinition: vi.fn(),
-		deleteTestDefinition: vi.fn(),
-	}));
+const {
+	createTestDefinition,
+	deleteTestDefinition,
+	getTestDefinitions,
+	updateTestDefinition,
+	getTestMetrics,
+	createTestMetric,
+	updateTestMetric,
+	deleteTestMetric,
+} = vi.hoisted(() => ({
+	getTestDefinitions: vi.fn(),
+	createTestDefinition: vi.fn(),
+	updateTestDefinition: vi.fn(),
+	deleteTestDefinition: vi.fn(),
+	getTestMetrics: vi.fn(),
+	createTestMetric: vi.fn(),
+	updateTestMetric: vi.fn(),
+	deleteTestMetric: vi.fn(),
+}));
 
 vi.mock('@/api/testDefinition.ee', () => ({
 	createTestDefinition,
 	deleteTestDefinition,
 	getTestDefinitions,
 	updateTestDefinition,
+	getTestMetrics,
+	createTestMetric,
+	updateTestMetric,
+	deleteTestMetric,
 }));
 
 vi.mock('@/stores/root.store', () => ({
@@ -42,6 +58,12 @@ const TEST_DEF_NEW: TestDefinitionRecord = {
 	name: 'New Test Definition',
 	workflowId: '123',
 	description: 'New Description',
+};
+
+const TEST_METRIC = {
+	id: 'metric1',
+	name: 'Test Metric',
+	testDefinitionId: '1',
 };
 
 describe('testDefinition.store.ee', () => {
@@ -260,5 +282,79 @@ describe('testDefinition.store.ee', () => {
 		const result = await store.deleteById('1');
 
 		expect(result).toBe(false);
+	});
+
+	test('Fetching Metrics for a Test Definition', async () => {
+		getTestMetrics.mockResolvedValue([TEST_METRIC]);
+
+		const metrics = await store.fetchMetrics('1');
+
+		expect(getTestMetrics).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
+		expect(store.metricsById).toEqual({
+			metric1: TEST_METRIC,
+		});
+		expect(metrics).toEqual([TEST_METRIC]);
+	});
+
+	test('Creating a Metric', async () => {
+		createTestMetric.mockResolvedValue(TEST_METRIC);
+
+		const params = {
+			name: 'Test Metric',
+			testDefinitionId: '1',
+		};
+
+		const result = await store.createMetric(params);
+
+		expect(createTestMetric).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
+		expect(store.metricsById).toEqual({
+			metric1: TEST_METRIC,
+		});
+		expect(result).toEqual(TEST_METRIC);
+	});
+
+	test('Updating a Metric', async () => {
+		const updatedMetric = { ...TEST_METRIC, name: 'Updated Metric' };
+		updateTestMetric.mockResolvedValue(updatedMetric);
+
+		const result = await store.updateMetric(updatedMetric);
+
+		expect(updateTestMetric).toHaveBeenCalledWith(rootStoreMock.restApiContext, updatedMetric);
+		expect(store.metricsById).toEqual({
+			metric1: updatedMetric,
+		});
+		expect(result).toEqual(updatedMetric);
+	});
+
+	test('Deleting a Metric', async () => {
+		store.metricsById = {
+			metric1: TEST_METRIC,
+		};
+
+		const params = { id: 'metric1', testDefinitionId: '1' };
+		deleteTestMetric.mockResolvedValue(undefined);
+
+		await store.deleteMetric(params);
+
+		expect(deleteTestMetric).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
+		expect(store.metricsById).toEqual({});
+	});
+
+	test('Getting Metrics by Test ID', () => {
+		const metric1 = { ...TEST_METRIC, id: 'metric1', testDefinitionId: '1' };
+		const metric2 = { ...TEST_METRIC, id: 'metric2', testDefinitionId: '1' };
+		const metric3 = { ...TEST_METRIC, id: 'metric3', testDefinitionId: '2' };
+
+		store.metricsById = {
+			metric1,
+			metric2,
+			metric3,
+		};
+
+		const metricsForTest1 = store.getMetricsByTestId('1');
+		expect(metricsForTest1).toEqual([metric1, metric2]);
+
+		const metricsForTest2 = store.getMetricsByTestId('2');
+		expect(metricsForTest2).toEqual([metric3]);
 	});
 });

@@ -13,6 +13,7 @@ export const useTestDefinitionStore = defineStore(
 		const testDefinitionsById = ref<Record<string, TestDefinitionRecord>>({});
 		const loading = ref(false);
 		const fetchedAll = ref(false);
+		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
 
 		// Store instances
 		const posthogStore = usePostHog();
@@ -33,6 +34,12 @@ export const useTestDefinitionStore = defineStore(
 		const isLoading = computed(() => loading.value);
 
 		const hasTestDefinitions = computed(() => Object.keys(testDefinitionsById.value).length > 0);
+
+		const getMetricsByTestId = computed(() => (testId: string) => {
+			return Object.values(metricsById.value).filter(
+				(metric) => metric.testDefinitionId === testId,
+			);
+		});
 
 		// Methods
 		const setAllTestDefinitions = (definitions: TestDefinitionRecord[]) => {
@@ -147,6 +154,44 @@ export const useTestDefinitionStore = defineStore(
 			return result.success;
 		};
 
+		const fetchMetrics = async (testId: string) => {
+			loading.value = true;
+			try {
+				const metrics = await testDefinitionsApi.getTestMetrics(rootStore.restApiContext, testId);
+				metrics.forEach((metric) => {
+					metricsById.value[metric.id] = metric;
+				});
+				return metrics;
+			} finally {
+				loading.value = false;
+			}
+		};
+
+		const createMetric = async (params: {
+			name: string;
+			testDefinitionId: string;
+		}): Promise<testDefinitionsApi.TestMetricRecord> => {
+			const metric = await testDefinitionsApi.createTestMetric(rootStore.restApiContext, params);
+			metricsById.value[metric.id] = metric;
+			return metric;
+		};
+
+		const updateMetric = async (
+			params: testDefinitionsApi.TestMetricRecord,
+		): Promise<testDefinitionsApi.TestMetricRecord> => {
+			const metric = await testDefinitionsApi.updateTestMetric(rootStore.restApiContext, params);
+			metricsById.value[metric.id] = metric;
+			return metric;
+		};
+
+		const deleteMetric = async (
+			params: testDefinitionsApi.DeleteTestMetricParams,
+		): Promise<void> => {
+			await testDefinitionsApi.deleteTestMetric(rootStore.restApiContext, params);
+			const { [params.id]: deleted, ...rest } = metricsById.value;
+			metricsById.value = rest;
+		};
+
 		return {
 			// State
 			fetchedAll,
@@ -157,6 +202,8 @@ export const useTestDefinitionStore = defineStore(
 			isLoading,
 			hasTestDefinitions,
 			isFeatureEnabled,
+			metricsById,
+			getMetricsByTestId,
 
 			// Methods
 			fetchAll,
@@ -165,6 +212,10 @@ export const useTestDefinitionStore = defineStore(
 			deleteById,
 			upsertTestDefinitions,
 			deleteTestDefinition,
+			fetchMetrics,
+			createMetric,
+			updateMetric,
+			deleteMetric,
 		};
 	},
 	{},
