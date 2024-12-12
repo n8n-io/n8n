@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { snakeCase } from 'change-case';
+import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
@@ -28,6 +29,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly telemetry: Telemetry,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -760,6 +762,7 @@ export class TelemetryEventRelay extends EventRelay {
 					model: cpus[0].model,
 					speed: cpus[0].speed,
 				},
+				is_docker: this.instanceSettings.isDocker,
 			},
 			execution_variables: {
 				executions_mode: config.getEnv('executions.mode'),
