@@ -10,9 +10,9 @@ import type {
 import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
 
 import { DynamicTool } from '@langchain/core/tools';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { N8nTool } from '../../../utils/N8nTool';
+import { N8nTool } from '@utils/N8nTool';
 import {
 	configureHttpRequestFunction,
 	configureResponseOptimizer,

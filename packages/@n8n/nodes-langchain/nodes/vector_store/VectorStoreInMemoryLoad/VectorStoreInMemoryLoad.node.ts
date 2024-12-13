@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryLoad implements INodeType {

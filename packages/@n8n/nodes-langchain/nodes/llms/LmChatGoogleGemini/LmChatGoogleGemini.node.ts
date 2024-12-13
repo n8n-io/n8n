@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import type { SafetySetting } from '@google/generative-ai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { additionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';

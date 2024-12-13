@@ -18,9 +18,9 @@ import {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { promptTypeOptions } from '../../../../../utils/descriptions';
-import { getConnectedTools } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { promptTypeOptions } from '@utils/descriptions';
+import { getConnectedTools } from '@utils/helpers';
+import { getTracingConfig } from '@utils/tracing';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 

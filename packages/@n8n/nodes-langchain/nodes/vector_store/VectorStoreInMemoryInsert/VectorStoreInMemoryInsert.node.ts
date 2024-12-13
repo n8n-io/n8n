@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 import type { Document } from 'langchain/document';
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 

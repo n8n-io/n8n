@@ -10,14 +10,10 @@ import {
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import {
-	inputSchemaField,
-	jsonSchemaExampleField,
-	schemaTypeField,
-} from '../../../utils/descriptions';
-import { N8nStructuredOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import { N8nStructuredOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {

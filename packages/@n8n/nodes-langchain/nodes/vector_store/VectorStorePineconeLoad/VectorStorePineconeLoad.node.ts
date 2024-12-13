@@ -10,9 +10,9 @@ import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 
 import type { Embeddings } from '@langchain/core/embeddings';
-import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { metadataFilterField } from '@utils/sharedFields';
+import { getMetadataFiltersValues } from '@utils/helpers';
 import { pineconeIndexRLC } from '../shared/descriptions';
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 

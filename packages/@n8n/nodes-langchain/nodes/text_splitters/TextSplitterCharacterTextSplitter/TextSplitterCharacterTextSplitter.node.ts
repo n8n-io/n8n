@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
 import { CharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {

@@ -13,7 +13,7 @@ import { ChatVertexAI } from '@langchain/google-vertexai';
 import type { SafetySetting } from '@google/generative-ai';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { additionalOptions } from '../gemini-common/additional-options';
 import { makeErrorFromStatus } from './error-handling';

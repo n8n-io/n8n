@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { Cohere } from '@langchain/cohere';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 

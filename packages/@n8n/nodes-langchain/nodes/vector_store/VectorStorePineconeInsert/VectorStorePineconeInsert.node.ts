@@ -10,7 +10,7 @@ import type { Document } from '@langchain/core/documents';
 
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 import { pineconeIndexRLC } from '../shared/descriptions';
 import { pineconeIndexSearch } from '../shared/methods/listSearch';

@@ -21,7 +21,7 @@ import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
 import { toolsAgentExecute } from './agents/ToolsAgent/execute';
-import { promptTypeOptions, textFromPreviousNode, textInput } from '../../../utils/descriptions';
+import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type

@@ -9,9 +9,9 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
-import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { metadataFilterField } from '@utils/sharedFields';
+import { getMetadataFiltersValues } from '@utils/helpers';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 

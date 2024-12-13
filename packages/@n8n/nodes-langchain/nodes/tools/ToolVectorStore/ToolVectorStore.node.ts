@@ -10,8 +10,8 @@ import { VectorStoreQATool } from 'langchain/tools';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { VectorDBQAChain } from 'langchain/chains';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
 
 export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {

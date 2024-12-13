@@ -12,9 +12,9 @@ import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { Document } from '@langchain/core/documents';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
-import { getTemplateNoticeField } from '../../../../utils/sharedFields';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { getTemplateNoticeField } from '@utils/sharedFields';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
 export class ChainSummarizationV1 implements INodeType {

@@ -13,7 +13,7 @@ import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow
 import { pick } from 'lodash';
 import { NodeConnectionType, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '../../utils/helpers';
+import { logAiEvent } from '@utils/helpers';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;

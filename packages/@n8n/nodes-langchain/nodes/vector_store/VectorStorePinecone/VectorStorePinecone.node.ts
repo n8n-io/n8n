@@ -3,7 +3,7 @@ import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { metadataFilterField } from '@utils/sharedFields';
 import { pineconeIndexRLC } from '../shared/descriptions';
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 

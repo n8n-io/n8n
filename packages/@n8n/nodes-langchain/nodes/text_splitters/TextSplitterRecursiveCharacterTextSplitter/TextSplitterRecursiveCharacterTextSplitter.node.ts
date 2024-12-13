@@ -11,8 +11,8 @@ import type {
 	SupportedTextSplitterLanguage,
 } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const supportedLanguages: SupportedTextSplitterLanguage[] = [
 	'cpp',

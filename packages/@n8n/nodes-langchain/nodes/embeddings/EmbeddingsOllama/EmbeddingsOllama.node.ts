@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { OllamaEmbeddings } from '@langchain/ollama';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
 
 export class EmbeddingsOllama implements INodeType {

@@ -20,11 +20,11 @@ import type {
 } from 'n8n-workflow';
 
 import { processDocument } from './processDocuments';
-import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
 

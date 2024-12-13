@@ -9,7 +9,7 @@ import {
 
 import type { ChatMistralAIInput } from '@langchain/mistralai';
 import { ChatMistralAI } from '@langchain/mistralai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 

@@ -10,8 +10,8 @@ import {
 
 import type { ClientOptions } from 'openai';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',

@@ -10,10 +10,10 @@ import {
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
+import { getSessionId } from '@utils/helpers';
 import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';

@@ -27,16 +27,16 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
-import type { N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import { getOptionalOutputParsers } from '../../../utils/output_parsers/N8nOutputParser';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { getTracingConfig } from '../../../utils/tracing';
+import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
 	isOpenAiError,
 } from '../../vendors/OpenAi/helpers/error-handling';
-import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
+import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
 
 interface MessagesTemplate {
 	type: string;

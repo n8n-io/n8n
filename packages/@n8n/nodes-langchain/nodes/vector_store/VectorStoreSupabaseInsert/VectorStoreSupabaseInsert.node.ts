@@ -10,7 +10,7 @@ import type { Document } from '@langchain/core/documents';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';

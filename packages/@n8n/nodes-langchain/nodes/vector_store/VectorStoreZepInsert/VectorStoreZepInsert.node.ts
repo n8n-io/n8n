@@ -8,7 +8,7 @@ import {
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { Document } from '@langchain/core/documents';
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreZep instead.

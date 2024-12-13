@@ -9,9 +9,9 @@ import {
 
 import type { TextSplitter } from '@langchain/textsplitters';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { getConnectionHintNoticeField, metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued

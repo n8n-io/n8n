@@ -12,7 +12,7 @@ import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/cha
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
 
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 export class RetrieverContextualCompression implements INodeType {
 	description: INodeTypeDescription = {

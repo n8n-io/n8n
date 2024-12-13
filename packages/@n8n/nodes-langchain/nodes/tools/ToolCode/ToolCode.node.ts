@@ -16,13 +16,9 @@ import type {
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
-import {
-	inputSchemaField,
-	jsonSchemaExampleField,
-	schemaTypeField,
-} from '../../../utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {

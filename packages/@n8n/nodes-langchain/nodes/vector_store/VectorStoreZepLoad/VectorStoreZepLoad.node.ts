@@ -8,9 +8,9 @@ import {
 import type { IZepConfig } from '@langchain/community/vectorstores/zep';
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import type { Embeddings } from '@langchain/core/embeddings';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
+import { metadataFilterField } from '@utils/sharedFields';
+import { getMetadataFiltersValues } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
 
 // This node is deprecated. Use VectorStoreZep instead.
 export class VectorStoreZepLoad implements INodeType {

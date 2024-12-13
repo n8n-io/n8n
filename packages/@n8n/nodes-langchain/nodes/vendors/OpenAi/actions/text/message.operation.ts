@@ -11,7 +11,7 @@ import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
-import { getConnectedTools } from '../../../../../utils/helpers';
+import { getConnectedTools } from '@utils/helpers';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 const properties: INodeProperties[] = [
 	modelRLC('modelSearch'),
