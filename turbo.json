@@ -31,6 +31,7 @@
 				"@n8n/client-oauth2#lint",
 				"@n8n/imap#lint",
 				"@n8n/permissions#lint",
+				"@n8n/task-runner#lint",
 				"n8n-workflow#lint",
 				"n8n-core#lint",
 				"n8n-node-dev#lint",
@@ -59,6 +60,7 @@
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",
 				"@n8n/permissions#test",
+				"@n8n/task-runner#test",
 				"n8n-workflow#test",
 				"n8n-core#test",
 				"n8n#test"
