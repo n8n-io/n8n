@@ -16,11 +16,11 @@ import { ApplicationError } from 'n8n-workflow';
  *
  * @throws {ApplicationError} If decorator is used on something other than a getter
  */
-export function Memoized(
+export function Memoized<T = unknown>(
 	target: object,
-	propertyKey: string,
-	descriptor?: PropertyDescriptor,
-): PropertyDescriptor {
+	propertyKey: string | symbol,
+	descriptor?: TypedPropertyDescriptor<T>,
+): TypedPropertyDescriptor<T> {
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const originalGetter = descriptor?.get;
 	if (!originalGetter) {
@@ -28,8 +28,8 @@ export function Memoized(
 	}
 
 	// Replace the original getter for the first call
-	descriptor.get = function <T>(this: typeof target.constructor): T {
-		const value = originalGetter.call(this) as T;
+	descriptor.get = function (this: typeof target.constructor): T {
+		const value = originalGetter.call(this);
 		// Add a property on the class instance to stop reading from the getter on class prototype
 		Object.defineProperty(this, propertyKey, {
 			value,
