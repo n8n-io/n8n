@@ -33,7 +33,7 @@ export class RundeckApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'user-agent': 'n8n',
+				'User-Agent': 'n8n-mbr',
 				'X-Rundeck-Auth-Token': '={{$credentials?.token}}',
 			},
 		},

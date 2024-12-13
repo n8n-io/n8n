@@ -23,7 +23,7 @@ export async function codaApiRequest(
 	let options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
-			'User-Agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 		},
 		method,
 		qs,

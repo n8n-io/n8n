@@ -26,7 +26,7 @@ export class DropcontactApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'user-agent': 'n8n',
+				'User-Agent': 'n8n-mbr',
 				'X-Access-Token': '={{$credentials.apiKey}}',
 			},
 		},

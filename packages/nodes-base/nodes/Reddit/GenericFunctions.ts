@@ -25,7 +25,7 @@ export async function redditApiRequest(
 
 	const options: IRequestOptions = {
 		headers: {
-			'user-agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 		},
 		method,
 		uri: authRequired

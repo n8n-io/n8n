@@ -22,7 +22,7 @@ export async function raindropApiRequest(
 ) {
 	const options: IRequestOptions = {
 		headers: {
-			'user-agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 			'Content-Type': 'application/json',
 		},
 		method,

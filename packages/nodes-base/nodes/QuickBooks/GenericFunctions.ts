@@ -49,7 +49,7 @@ export async function quickBooksApiRequest(
 
 	const options: IRequestOptions = {
 		headers: {
-			'user-agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 		},
 		method,
 		uri: `${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,

@@ -935,7 +935,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	if (!userAgentHeader) {
 		axiosRequest.headers = {
 			...axiosRequest.headers,
-			'User-Agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 		};
 	}
 

@@ -16,7 +16,7 @@ export async function apiTemplateIoApiRequest(
 ) {
 	const options: IRequestOptions = {
 		headers: {
-			'user-agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 			Accept: 'application/json',
 		},
 		uri: `https://api.apitemplate.io/v1${endpoint}`,

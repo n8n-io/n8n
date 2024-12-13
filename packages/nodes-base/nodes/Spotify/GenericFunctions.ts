@@ -25,7 +25,7 @@ export async function spotifyApiRequest(
 	const options: IRequestOptions = {
 		method,
 		headers: {
-			'User-Agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 			'Content-Type': 'text/plain',
 			Accept: ' application/json',
 		},

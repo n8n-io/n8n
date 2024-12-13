@@ -24,7 +24,7 @@ export async function wordpressApiRequest(
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
-			'User-Agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 		},
 		method,
 		qs,

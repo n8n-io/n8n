@@ -24,7 +24,7 @@ export async function githubApiRequest(
 	const options: IRequestOptions = {
 		method,
 		headers: {
-			'User-Agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 		},
 		body,
 		qs: query,

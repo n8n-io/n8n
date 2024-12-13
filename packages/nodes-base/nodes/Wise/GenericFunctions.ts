@@ -34,7 +34,7 @@ export async function wiseApiRequest(
 
 	const options: IHttpRequestOptions = {
 		headers: {
-			'user-agent': 'n8n',
+			'User-Agent': 'n8n-mbr',
 			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
