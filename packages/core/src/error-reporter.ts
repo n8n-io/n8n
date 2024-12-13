@@ -15,10 +15,7 @@ export class ErrorReporter {
 
 	private report: (error: Error | string, options?: ReportingOptions) => void;
 
-	constructor(
-		private readonly instanceType: InstanceType | 'task_runner',
-		private readonly dsn: string,
-	) {
+	constructor() {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.report = this.defaultReport;
 	}
@@ -43,12 +40,12 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init() {
+	async init(instanceType: InstanceType | 'task_runner', dsn: string) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
 
-		if (!this.dsn) return;
+		if (!dsn) return;
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
@@ -71,7 +68,7 @@ export class ErrorReporter {
 		];
 
 		init({
-			dsn: this.dsn,
+			dsn,
 			release,
 			environment,
 			enableTracing: false,
@@ -94,7 +91,7 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', this.instanceType);
+		setTag('server_type', instanceType);
 
 		this.report = (error, options) => captureException(error, options);
 	}

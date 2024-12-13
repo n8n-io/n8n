@@ -60,12 +60,12 @@ export abstract class BaseCommand extends Command {
 	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
-		this.errorReporter = new ErrorReporter(
+		this.errorReporter = new ErrorReporter();
+		Container.set(ErrorReporter, this.errorReporter);
+		await this.errorReporter.init(
 			this.instanceSettings.instanceType,
 			this.globalConfig.sentry.backendDsn,
 		);
-		Container.set(ErrorReporter, this.errorReporter);
-		await this.errorReporter.init();
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
