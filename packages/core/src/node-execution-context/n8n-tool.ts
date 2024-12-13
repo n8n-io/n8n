@@ -1,8 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type { DynamicStructuredToolInput } from '@langchain/core/tools';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
 import { StructuredOutputParser } from 'langchain/output_parsers';
+import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse, NodeOperationError, ensureError } from 'n8n-workflow';
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
 
@@ -28,7 +32,7 @@ const getParametersDescription = (parameters: Array<[string, ZodTypeAny]>) =>
 		)
 		.join(',\n ');
 
-export const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObject<any>) => {
+const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObject<any>) => {
 	let description = `${toolDescription}`;
 
 	const toolParameters = Object.entries<ZodTypeAny>(schema.shape);
@@ -80,7 +84,7 @@ export class N8nTool extends DynamicStructuredTool {
 						// Finally throw an error if we were unable to parse the query
 						throw new NodeOperationError(
 							context.getNode(),
-							`Input is not a valid JSON: ${error.message}`,
+							`Input is not a valid JSON: ${ensureError(error).message}`,
 						);
 					}
 				}
@@ -92,14 +96,12 @@ export class N8nTool extends DynamicStructuredTool {
 
 			try {
 				// Call tool function with parsed query
-				const result = await func(parsedQuery);
-
-				return result;
+				return await func(parsedQuery);
 			} catch (e) {
 				const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 				void context.addOutputData(NodeConnectionType.AiTool, index, e);
 
-				return e.toString();
+				return ensureError(e).toString();
 			}
 		};
 

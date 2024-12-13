@@ -5,18 +5,16 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { loadSummarizationChain } from 'langchain/chains';
 import type {
 	INodeTypeBaseDescription,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
-	INodeType,
 	INodeTypeDescription,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { AiRootNode, NodeConnectionType } from 'n8n-workflow';
 
 import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
 import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { getTemplateNoticeField } from '@utils/sharedFields';
-import { getTracingConfig } from '@utils/tracing';
 
 import { getChainPromptsArgs } from '../helpers';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
@@ -56,10 +54,11 @@ function getInputs(parameters: IDataObject) {
 	return inputs;
 }
 
-export class ChainSummarizationV2 implements INodeType {
+export class ChainSummarizationV2 extends AiRootNode {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
+		super();
 		this.description = {
 			...baseDescription,
 			version: [2],
@@ -311,27 +310,27 @@ export class ChainSummarizationV2 implements INodeType {
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.debug('Executing Summarization Chain V2');
-		const operationMode = this.getNodeParameter('operationMode', 0, 'nodeInputJson') as
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		context.logger.debug('Executing Summarization Chain V2');
+		const operationMode = context.getNodeParameter('operationMode', 0, 'nodeInputJson') as
 			| 'nodeInputJson'
 			| 'nodeInputBinary'
 			| 'documentLoader';
-		const chunkingMode = this.getNodeParameter('chunkingMode', 0, 'simple') as
+		const chunkingMode = context.getNodeParameter('chunkingMode', 0, 'simple') as
 			| 'simple'
 			| 'advanced';
 
-		const model = (await this.getInputConnectionData(
+		const model = (await context.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
-		const items = this.getInputData();
+		const items = context.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const summarizationMethodAndPrompts = this.getNodeParameter(
+				const summarizationMethodAndPrompts = context.getNodeParameter(
 					'options.summarizationMethodAndPrompts.values',
 					itemIndex,
 					{},
@@ -355,7 +354,7 @@ export class ChainSummarizationV2 implements INodeType {
 
 				// Use dedicated document loader input to load documents
 				if (operationMode === 'documentLoader') {
-					const documentInput = (await this.getInputConnectionData(
+					const documentInput = (await context.getInputConnectionData(
 						NodeConnectionType.AiDocument,
 						0,
 					)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
@@ -367,7 +366,7 @@ export class ChainSummarizationV2 implements INodeType {
 						? await documentInput.processItem(item, itemIndex)
 						: documentInput;
 
-					const response = await chain.withConfig(getTracingConfig(this)).invoke({
+					const response = await chain.withConfig(context.getTracingConfig()).invoke({
 						input_documents: processedDocuments,
 					});
 
@@ -381,15 +380,19 @@ export class ChainSummarizationV2 implements INodeType {
 					switch (chunkingMode) {
 						// In simple mode we use recursive character splitter with default settings
 						case 'simple':
-							const chunkSize = this.getNodeParameter('chunkSize', itemIndex, 1000) as number;
-							const chunkOverlap = this.getNodeParameter('chunkOverlap', itemIndex, 200) as number;
+							const chunkSize = context.getNodeParameter('chunkSize', itemIndex, 1000) as number;
+							const chunkOverlap = context.getNodeParameter(
+								'chunkOverlap',
+								itemIndex,
+								200,
+							) as number;
 
 							textSplitter = new RecursiveCharacterTextSplitter({ chunkOverlap, chunkSize });
 							break;
 
 						// In advanced mode user can connect text splitter node so we just retrieve it
 						case 'advanced':
-							textSplitter = (await this.getInputConnectionData(
+							textSplitter = (await context.getInputConnectionData(
 								NodeConnectionType.AiTextSplitter,
 								0,
 							)) as TextSplitter | undefined;
@@ -400,14 +403,14 @@ export class ChainSummarizationV2 implements INodeType {
 
 					let processor: N8nJsonLoader | N8nBinaryLoader;
 					if (operationMode === 'nodeInputBinary') {
-						const binaryDataKey = this.getNodeParameter(
+						const binaryDataKey = context.getNodeParameter(
 							'options.binaryDataKey',
 							itemIndex,
 							'data',
 						) as string;
-						processor = new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter);
+						processor = new N8nBinaryLoader(context, 'options.', binaryDataKey, textSplitter);
 					} else {
-						processor = new N8nJsonLoader(this, 'options.', textSplitter);
+						processor = new N8nJsonLoader(context, 'options.', textSplitter);
 					}
 
 					const processedItem = await processor.processItem(item, itemIndex);
@@ -417,7 +420,7 @@ export class ChainSummarizationV2 implements INodeType {
 					returnData.push({ json: { response } });
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (context.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

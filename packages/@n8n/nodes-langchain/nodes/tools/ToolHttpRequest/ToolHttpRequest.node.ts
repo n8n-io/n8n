@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { DynamicTool } from '@langchain/core/tools';
+import { N8nTool } from '@utils/N8nTool';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -10,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
 
-import { N8nTool } from '@utils/N8nTool';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {
@@ -407,6 +407,7 @@ export class ToolHttpRequest implements INodeType {
 		if (this.getNode().typeVersion >= 1.1) {
 			const schema = makeToolInputSchema(toolParameters);
 
+			// TODO: add a new this.createN8NTool method
 			tool = new N8nTool(this, {
 				name,
 				description: toolDescription,

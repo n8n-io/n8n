@@ -48,6 +48,7 @@
     "file-type": "16.5.4",
     "form-data": "catalog:",
     "iconv-lite": "catalog:",
+    "langchain": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",

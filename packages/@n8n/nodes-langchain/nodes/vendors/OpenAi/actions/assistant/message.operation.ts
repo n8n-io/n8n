@@ -6,7 +6,7 @@ import type { BufferWindowMemory } from 'langchain/memory';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -19,8 +19,6 @@ import {
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
-import { getConnectedTools } from '@utils/helpers';
-import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
@@ -153,7 +151,10 @@ const mapChatMessageToThreadMessage = (
 	content: message.content.toString(),
 });
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: AiRootNodeExecuteFunctions,
+	i: number,
+): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
 	const nodeVersion = this.getNode().typeVersion;
 
@@ -191,7 +192,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	const tools = await getConnectedTools(this, nodeVersion > 1, false);
+	const tools = await this.getConnectedTools(nodeVersion > 1, false);
 	let assistantTools;
 
 	if (tools.length) {
@@ -270,7 +271,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let filteredResponse: IDataObject = {};
 	try {
-		const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke(chainValues);
+		const response = await agentExecutor.withConfig(this.getTracingConfig()).invoke(chainValues);
 		if (memory) {
 			await memory.saveContext({ input }, { output: response.output });
 

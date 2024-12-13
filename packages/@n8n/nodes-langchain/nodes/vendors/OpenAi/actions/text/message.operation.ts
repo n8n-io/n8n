@@ -2,13 +2,11 @@ import type { Tool } from '@langchain/core/tools';
 import _omit from 'lodash/omit';
 import type {
 	INodeProperties,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
-
-import { getConnectedTools } from '@utils/helpers';
 
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 import type { ChatCompletion } from '../../helpers/interfaces';
@@ -199,7 +197,10 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: AiRootNodeExecuteFunctions,
+	i: number,
+): Promise<INodeExecutionData[]> {
 	const nodeVersion = this.getNode().typeVersion;
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
@@ -239,7 +240,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (hideTools !== 'hide') {
 		const enforceUniqueNames = nodeVersion > 1;
-		externalTools = await getConnectedTools(this, enforceUniqueNames, false);
+		externalTools = await this.getConnectedTools(enforceUniqueNames, false);
 	}
 
 	if (externalTools.length) {

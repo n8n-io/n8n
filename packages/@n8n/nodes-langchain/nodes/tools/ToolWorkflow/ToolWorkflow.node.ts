@@ -18,14 +18,13 @@ import type {
 	IDataObject,
 	INodeParameterResourceLocator,
 	ITaskMetadata,
+	ZodObjectAny,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { jsonSchemaExampleField, schemaTypeField, inputSchemaField } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import type { DynamicZodObject } from '../../../types/zod.types';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -543,7 +542,7 @@ export class ToolWorkflow implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+				const zodSchema = convertJsonSchemaToZod<ZodObjectAny>(jsonSchema);
 
 				tool = new DynamicStructuredTool({
 					schema: zodSchema,

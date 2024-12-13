@@ -5,15 +5,14 @@ import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
 import { SqlDatabase } from 'langchain/sql_db';
 import {
-	type IExecuteFunctions,
+	type AiRootNodeExecuteFunctions,
 	type INodeExecutionData,
 	NodeConnectionType,
 	NodeOperationError,
 	type IDataObject,
 } from 'n8n-workflow';
 
-import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
-import { getTracingConfig } from '@utils/tracing';
+import { serializeChatHistory } from '@utils/helpers';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -27,7 +26,7 @@ const parseTablesString = (tablesString: string) =>
 		.filter((table) => table.length > 0);
 
 export async function sqlAgentAgentExecute(
-	this: IExecuteFunctions,
+	this: AiRootNodeExecuteFunctions,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing SQL Agent');
 
@@ -39,27 +38,22 @@ export async function sqlAgentAgentExecute(
 
 	const returnData: INodeExecutionData[] = [];
 
-	for (let i = 0; i < items.length; i++) {
+	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			const item = items[i];
+			const item = items[itemIndex];
 			let input;
 			if (this.getNode().typeVersion <= 1.2) {
-				input = this.getNodeParameter('input', i) as string;
+				input = this.getNodeParameter('input', itemIndex) as string;
 			} else {
-				input = getPromptInputByType({
-					ctx: this,
-					i,
-					inputKey: 'text',
-					promptTypeKey: 'promptType',
-				});
+				input = this.getPromptInputByType(itemIndex, 'text', 'promptType');
 			}
 
 			if (input === undefined) {
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const options = this.getNodeParameter('options', i, {});
-			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
+			const options = this.getNodeParameter('options', itemIndex, {});
+			const selectedDataSource = this.getNodeParameter('dataSource', itemIndex, 'sqlite') as
 				| 'mysql'
 				| 'postgres'
 				| 'sqlite';
@@ -77,7 +71,7 @@ export async function sqlAgentAgentExecute(
 					);
 				}
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex, 'data');
 				dataSource = await getSqliteDataSource.call(this, item.binary, binaryPropertyName);
 			}
 
@@ -127,7 +121,7 @@ export async function sqlAgentAgentExecute(
 
 			let response: IDataObject;
 			try {
-				response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+				response = await agentExecutor.withConfig(this.getTracingConfig()).invoke({
 					input,
 					signal: this.getExecutionCancelSignal(),
 					chatHistory,
@@ -136,14 +130,14 @@ export async function sqlAgentAgentExecute(
 				if ((error.message as IDataObject)?.output) {
 					response = error.message as IDataObject;
 				} else {
-					throw new NodeOperationError(this.getNode(), error.message as string, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), error.message as string, { itemIndex });
 				}
 			}
 
 			returnData.push({ json: response });
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
+				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}
 

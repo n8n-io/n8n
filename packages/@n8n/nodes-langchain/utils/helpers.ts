@@ -4,16 +4,8 @@ import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import type { BaseChatMemory } from 'langchain/memory';
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
-import type {
-	AiEvent,
-	IDataObject,
-	IExecuteFunctions,
-	ISupplyDataFunctions,
-	IWebhookFunctions,
-} from 'n8n-workflow';
-
-import { N8nTool } from './N8nTool';
+import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -72,32 +64,6 @@ export function isToolsInstance(model: unknown): model is Tool {
 	return namespace.includes('tools');
 }
 
-export function getPromptInputByType(options: {
-	ctx: IExecuteFunctions;
-	i: number;
-	promptTypeKey: string;
-	inputKey: string;
-}) {
-	const { ctx, i, promptTypeKey, inputKey } = options;
-	const prompt = ctx.getNodeParameter(promptTypeKey, i) as string;
-
-	let input;
-	if (prompt === 'auto') {
-		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
-	} else {
-		input = ctx.getNodeParameter(inputKey, i) as string;
-	}
-
-	if (input === undefined) {
-		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
-		});
-	}
-
-	return input;
-}
-
 export function getSessionId(
 	ctx: ISupplyDataFunctions | IWebhookFunctions,
 	itemIndex: number,
@@ -139,18 +105,6 @@ export function getSessionId(
 	return sessionId;
 }
 
-export function logAiEvent(
-	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
-	event: AiEvent,
-	data?: IDataObject,
-) {
-	try {
-		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
-	} catch (error) {
-		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
-	}
-}
-
 export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 	return chatHistory
 		.map((chatMessage) => {
@@ -164,60 +118,3 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		})
 		.join('\n');
 }
-
-export function escapeSingleCurlyBrackets(text?: string): string | undefined {
-	if (text === undefined) return undefined;
-
-	let result = text;
-
-	result = result
-		// First handle triple brackets to avoid interference with double brackets
-		.replace(/(?<!{){{{(?!{)/g, '{{{{')
-		.replace(/(?<!})}}}(?!})/g, '}}}}')
-		// Then handle single brackets, but only if they're not part of double brackets
-		// Convert single { to {{ if it's not already part of {{ or {{{
-		.replace(/(?<!{){(?!{)/g, '{{')
-		// Convert single } to }} if it's not already part of }} or }}}
-		.replace(/(?<!})}(?!})/g, '}}');
-
-	return result;
-}
-
-export const getConnectedTools = async (
-	ctx: IExecuteFunctions,
-	enforceUniqueNames: boolean,
-	convertStructuredTool: boolean = true,
-	escapeCurlyBrackets: boolean = false,
-) => {
-	const connectedTools =
-		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
-
-	if (!enforceUniqueNames) return connectedTools;
-
-	const seenNames = new Set<string>();
-
-	const finalTools = [];
-
-	for (const tool of connectedTools) {
-		const { name } = tool;
-		if (seenNames.has(name)) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
-			);
-		}
-		seenNames.add(name);
-
-		if (escapeCurlyBrackets) {
-			tool.description = escapeSingleCurlyBrackets(tool.description) ?? tool.description;
-		}
-
-		if (convertStructuredTool && tool instanceof N8nTool) {
-			finalTools.push(tool.asDynamicTool());
-		} else {
-			finalTools.push(tool);
-		}
-	}
-
-	return finalTools;
-};

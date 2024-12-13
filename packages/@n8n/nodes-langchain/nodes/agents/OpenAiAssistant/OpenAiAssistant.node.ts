@@ -1,21 +1,17 @@
 import { AgentExecutor } from 'langchain/agents';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { AiRootNode, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
-	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { getConnectedTools } from '@utils/helpers';
-import { getTracingConfig } from '@utils/tracing';
-
 import { formatToOpenAIAssistantTool } from './utils';
 
-export class OpenAiAssistant implements INodeType {
+export class OpenAiAssistant extends AiRootNode {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Assistant',
 		name: 'openAiAssistant',
@@ -313,30 +309,30 @@ export class OpenAiAssistant implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const nodeVersion = this.getNode().typeVersion;
-		const tools = await getConnectedTools(this, nodeVersion > 1, false);
-		const credentials = await this.getCredentials('openAiApi');
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeVersion = context.getNode().typeVersion;
+		const tools = await context.getConnectedTools(nodeVersion > 1, false);
+		const credentials = await context.getCredentials('openAiApi');
 
-		const items = this.getInputData();
+		const items = context.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const input = this.getNodeParameter('text', itemIndex) as string;
-				const assistantId = this.getNodeParameter('assistantId', itemIndex, '') as string;
-				const nativeTools = this.getNodeParameter('nativeTools', itemIndex, []) as Array<
+				const input = context.getNodeParameter('text', itemIndex) as string;
+				const assistantId = context.getNodeParameter('assistantId', itemIndex, '') as string;
+				const nativeTools = context.getNodeParameter('nativeTools', itemIndex, []) as Array<
 					'code_interpreter' | 'retrieval'
 				>;
 
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
+				const options = context.getNodeParameter('options', itemIndex, {}) as {
 					baseURL?: string;
 					maxRetries: number;
 					timeout: number;
 				};
 
 				if (input === undefined) {
-					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+					throw new NodeOperationError(context.getNode(), 'The ‘text‘ parameter is empty.');
 				}
 
 				const client = new OpenAIClient({
@@ -358,9 +354,13 @@ export class OpenAiAssistant implements INodeType {
 						tools: newTools,
 					});
 				} else {
-					const name = this.getNodeParameter('name', itemIndex, '') as string;
-					const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
-					const model = this.getNodeParameter('model', itemIndex, 'gpt-3.5-turbo-1106') as string;
+					const name = context.getNodeParameter('name', itemIndex, '') as string;
+					const instructions = context.getNodeParameter('instructions', itemIndex, '') as string;
+					const model = context.getNodeParameter(
+						'model',
+						itemIndex,
+						'gpt-3.5-turbo-1106',
+					) as string;
 
 					agent = await OpenAIAssistantRunnable.createAssistant({
 						model,
@@ -377,15 +377,15 @@ export class OpenAiAssistant implements INodeType {
 					tools,
 				});
 
-				const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+				const response = await agentExecutor.withConfig(context.getTracingConfig()).invoke({
 					content: input,
-					signal: this.getExecutionCancelSignal(),
+					signal: context.getExecutionCancelSignal(),
 					timeout: options.timeout ?? 10000,
 				});
 
 				returnData.push({ json: response });
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (context.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

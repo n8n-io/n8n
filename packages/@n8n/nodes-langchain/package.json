@@ -168,7 +168,7 @@
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "jsdom": "23.0.1",
-    "langchain": "0.3.6",
+    "langchain": "catalog:",
     "lodash": "catalog:",
     "mammoth": "1.7.2",
     "mime-types": "2.1.35",

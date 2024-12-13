@@ -19,7 +19,7 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
+import { getMetadataFiltersValues } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
 import { N8nJsonLoader } from '@utils/N8nJsonLoader';
@@ -283,7 +283,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
-					logAiEvent(this, 'ai-vector-store-searched', { query: prompt });
+					this.logAiEvent('ai-vector-store-searched', { query: prompt });
 				}
 
 				return [resultData];
@@ -313,7 +313,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
-						logAiEvent(this, 'ai-vector-store-populated');
+						this.logAiEvent('ai-vector-store-populated');
 					} catch (error) {
 						throw error;
 					}
@@ -367,7 +367,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							ids: [documentId],
 						});
 
-						logAiEvent(this, 'ai-vector-store-updated');
+						this.logAiEvent('ai-vector-store-updated');
 					} catch (error) {
 						throw error;
 					}

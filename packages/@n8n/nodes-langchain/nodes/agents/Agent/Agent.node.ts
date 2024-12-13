@@ -1,10 +1,9 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { AiRootNode, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
 	INodeInputFilter,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
-	INodeType,
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -245,7 +244,7 @@ const agentTypeProperty: INodeProperties = {
 	default: '',
 };
 
-export class Agent implements INodeType {
+export class Agent extends AiRootNode {
 	description: INodeTypeDescription = {
 		displayName: 'AI Agent',
 		name: 'agent',
@@ -416,24 +415,27 @@ export class Agent implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const agentType = this.getNodeParameter('agent', 0, '') as string;
-		const nodeVersion = this.getNode().typeVersion;
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const agentType = context.getNodeParameter('agent', 0, '') as string;
+		const nodeVersion = context.getNode().typeVersion;
 
 		if (agentType === 'conversationalAgent') {
-			return await conversationalAgentExecute.call(this, nodeVersion);
+			return await conversationalAgentExecute.call(context, nodeVersion);
 		} else if (agentType === 'toolsAgent') {
-			return await toolsAgentExecute.call(this);
+			return await toolsAgentExecute.call(context);
 		} else if (agentType === 'openAiFunctionsAgent') {
-			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
+			return await openAiFunctionsAgentExecute.call(context, nodeVersion);
 		} else if (agentType === 'reActAgent') {
-			return await reActAgentAgentExecute.call(this, nodeVersion);
+			return await reActAgentAgentExecute.call(context, nodeVersion);
 		} else if (agentType === 'sqlAgent') {
-			return await sqlAgentAgentExecute.call(this);
+			return await sqlAgentAgentExecute.call(context);
 		} else if (agentType === 'planAndExecuteAgent') {
-			return await planAndExecuteAgentExecute.call(this, nodeVersion);
+			return await planAndExecuteAgentExecute.call(context, nodeVersion);
 		}
 
-		throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);
+		throw new NodeOperationError(
+			context.getNode(),
+			`The agent type "${agentType}" is not supported`,
+		);
 	}
 }

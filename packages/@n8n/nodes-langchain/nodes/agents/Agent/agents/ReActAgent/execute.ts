@@ -5,21 +5,18 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
-	type IExecuteFunctions,
+	type AiRootNodeExecuteFunctions,
 	type INodeExecutionData,
 	NodeConnectionType,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { isChatInstance } from '@utils/helpers';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
-
-import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function reActAgentAgentExecute(
-	this: IExecuteFunctions,
+	this: AiRootNodeExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing ReAct Agent');
@@ -28,9 +25,9 @@ export async function reActAgentAgentExecute(
 		| BaseLanguageModel
 		| BaseChatModel;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
+	const tools = await this.getConnectedTools(nodeVersion >= 1.5, true, true);
 
-	await checkForStructuredTools(tools, this.getNode(), 'ReAct Agent');
+	this.checkForStructuredTools(tools, this.getNode(), 'ReAct Agent');
 
 	const outputParsers = await getOptionalOutputParsers(this);
 
@@ -87,12 +84,7 @@ export async function reActAgentAgentExecute(
 			if (this.getNode().typeVersion <= 1.2) {
 				input = this.getNodeParameter('text', itemIndex) as string;
 			} else {
-				input = getPromptInputByType({
-					ctx: this,
-					i: itemIndex,
-					inputKey: 'text',
-					promptTypeKey: 'promptType',
-				});
+				input = this.getPromptInputByType(itemIndex);
 			}
 
 			if (input === undefined) {
@@ -104,11 +96,11 @@ export async function reActAgentAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(getTracingConfig(this))
+				.withConfig(this.getTracingConfig())
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response.output = await extractParsedOutput(this, outputParser, response.output as string);
+				response.output = await this.extractParsedOutput(outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

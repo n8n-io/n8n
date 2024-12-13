@@ -18,7 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
-import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
+import { isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { N8nJsonLoader } from './N8nJsonLoader';
 
@@ -182,7 +182,7 @@ export function logWrapper(
 						const payload = { action: 'getMessages', response };
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 
-						logAiEvent(executeFunctions, 'ai-messages-retrieved-from-memory', { response });
+						executeFunctions.logAiEvent('ai-messages-retrieved-from-memory', { response });
 						return response;
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
@@ -199,7 +199,7 @@ export function logWrapper(
 							arguments: [message],
 						});
 
-						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message });
+						executeFunctions.logAiEvent('ai-message-added-to-memory', { message });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 					};
 				}
@@ -236,7 +236,7 @@ export function logWrapper(
 							};
 						}
 
-						logAiEvent(executeFunctions, 'ai-documents-retrieved', { query });
+						executeFunctions.logAiEvent('ai-documents-retrieved', { query });
 						executeFunctions.addOutputData(
 							connectionType,
 							index,
@@ -266,7 +266,7 @@ export function logWrapper(
 							arguments: [documents],
 						})) as number[][];
 
-						logAiEvent(executeFunctions, 'ai-document-embedded');
+						executeFunctions.logAiEvent('ai-document-embedded');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -286,7 +286,7 @@ export function logWrapper(
 							method: target[prop],
 							arguments: [query],
 						})) as number[];
-						logAiEvent(executeFunctions, 'ai-query-embedded');
+						executeFunctions.logAiEvent('ai-query-embedded');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -331,7 +331,7 @@ export function logWrapper(
 							arguments: [item, itemIndex],
 						})) as number[];
 
-						logAiEvent(executeFunctions, 'ai-document-processed');
+						executeFunctions.logAiEvent('ai-document-processed');
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { response }, pairedItem: { item: itemIndex } }],
 						]);
@@ -357,7 +357,7 @@ export function logWrapper(
 							arguments: [text],
 						})) as string[];
 
-						logAiEvent(executeFunctions, 'ai-text-split');
+						executeFunctions.logAiEvent('ai-text-split');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -381,7 +381,7 @@ export function logWrapper(
 							arguments: [query],
 						})) as string;
 
-						logAiEvent(executeFunctions, 'ai-tool-called', { query, response });
+						executeFunctions.logAiEvent('ai-tool-called', { query, response });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -411,7 +411,7 @@ export function logWrapper(
 							arguments: [query, k, filter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 
-						logAiEvent(executeFunctions, 'ai-vector-store-searched', { query });
+						executeFunctions.logAiEvent('ai-vector-store-searched', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 
 						return response;

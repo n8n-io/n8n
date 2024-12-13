@@ -27,6 +27,7 @@ catalog:
   xss: 1.0.15
   zod: 3.23.8
   '@langchain/core': 0.3.19
+  langchain: 0.3.6
 
 catalogs:
   frontend:

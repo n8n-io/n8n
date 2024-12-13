@@ -7,7 +7,6 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
-import { logAiEvent } from '../helpers';
 
 export class N8nOutputFixingParser extends BaseOutputParser {
 	lc_namespace = ['langchain', 'output_parsers', 'fix'];
@@ -40,7 +39,7 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 		try {
 			// First attempt to parse the completion
 			const response = await this.outputParser.parse(completion, callbacks, (e) => e);
-			logAiEvent(this.context, 'ai-output-parsed', { text: completion, response });
+			this.context.logAiEvent('ai-output-parsed', { text: completion, response });
 
 			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
 				[{ json: { action: 'parse', response } }],

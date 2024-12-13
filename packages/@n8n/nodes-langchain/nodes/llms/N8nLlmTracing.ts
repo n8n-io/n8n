@@ -13,8 +13,6 @@ import { pick } from 'lodash';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionType, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
-
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;
 	promptTokens: number;
@@ -141,7 +139,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			[{ json: { ...response } }],
 		]);
 
-		logAiEvent(this.executionFunctions, 'ai-llm-generated-output', {
+		this.executionFunctions.logAiEvent('ai-llm-generated-output', {
 			messages: parsedMessages,
 			options: runDetails.options,
 			response,
@@ -204,7 +202,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			);
 		}
 
-		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
+		this.executionFunctions.logAiEvent('ai-llm-errored', {
 			error: Object.keys(error).length === 0 ? error.toString() : error,
 			runId,
 			parentRunId,

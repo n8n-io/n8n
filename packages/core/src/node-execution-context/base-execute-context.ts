@@ -1,3 +1,4 @@
+import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import { get } from 'lodash';
 import type {
 	Workflow,
@@ -9,7 +10,6 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 	ICredentialDataDecryptedObject,
-	CallbackManager,
 	IExecuteWorkflowInfo,
 	RelatedExecution,
 	ExecuteWorkflowData,
@@ -28,6 +28,7 @@ import {
 	NodeConnectionType,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
+	jsonStringify,
 } from 'n8n-workflow';
 import { Container } from 'typedi';
 
@@ -236,14 +237,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 	}
 
-	logAiEvent(eventName: AiEvent, msg: string) {
+	logAiEvent(eventName: AiEvent, msg: object) {
 		return this.additionalData.logAiEvent(eventName, {
 			executionId: this.additionalData.executionId ?? 'unsaved-execution',
 			nodeName: this.node.name,
 			workflowName: this.workflow.name ?? 'Unnamed workflow',
 			nodeType: this.node.type,
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
-			msg,
+			msg: jsonStringify(msg),
 		});
 	}
 }

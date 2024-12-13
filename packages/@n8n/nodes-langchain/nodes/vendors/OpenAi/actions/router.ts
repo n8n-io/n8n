@@ -1,6 +1,6 @@
 import {
 	NodeOperationError,
-	type IExecuteFunctions,
+	type AiRootNodeExecuteFunctions,
 	type INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -13,7 +13,7 @@ import type { OpenAiType } from './node.type';
 import * as text from './text';
 import { getCustomErrorMessage } from '../helpers/error-handling';
 
-export async function router(this: IExecuteFunctions) {
+export async function router(this: AiRootNodeExecuteFunctions) {
 	const returnData: INodeExecutionData[] = [];
 
 	const items = this.getInputData();

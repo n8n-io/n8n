@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type { CallbackManager, BaseCallbackConfig } from '@langchain/core/callbacks/manager';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import type { DynamicStructuredTool, Tool } from '@langchain/core/tools';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
@@ -11,6 +12,7 @@ import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
+import type { ZodObject } from 'zod';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -25,6 +27,8 @@ import type { Result } from './result';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import type { WorkflowHooks } from './WorkflowHooks';
+
+export type ZodObjectAny = ZodObject<any, any, any, any>;
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -893,7 +897,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+	logAiEvent(eventName: AiEvent, msg?: object): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -919,8 +923,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
-
-		// TODO: Make this one then only available in the new config one
 		addInputData(
 			connectionType: NodeConnectionType,
 			data: INodeExecutionData[][] | ExecutionError,
@@ -932,6 +934,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			data: INodeExecutionData[][] | ExecutionError,
 			metadata?: ITaskMetadata,
 		): void;
+		getAiRootNodeExecuteFunctions(): AiRootNodeExecuteFunctions;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -976,26 +979,49 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		};
 }
 
+export interface TracingConfig {
+	additionalMetadata?: Record<string, unknown>;
+}
+
+// TODO: `Pick` from IExecuteFunctions, but do not extends completely
+export type AiRootNodeExecuteFunctions = IExecuteFunctions & {
+	getConnectedTools(
+		enforceUniqueNames: boolean,
+		convertStructuredTool?: boolean,
+		escapeCurlyBrackets?: boolean,
+	): Promise<Tool[]>;
+	getPromptInputByType(itemIndex: number, promptTypeKey?: string, inputKey?: string): string;
+	getTracingConfig(config?: TracingConfig): BaseCallbackConfig;
+	extractParsedOutput(
+		outputParser: BaseOutputParser<unknown>,
+		output: string,
+	): Promise<Record<string, unknown> | undefined>;
+	checkForStructuredTools(
+		tools: Array<Tool | DynamicStructuredTool<ZodObjectAny>>,
+		node: INode,
+		currentAgentType: string,
+	): void;
+};
+
 export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 	FunctionsBaseWithRequiredKeys<'getMode'> &
 	Pick<
 		IExecuteFunctions,
 		| 'addInputData'
 		| 'addOutputData'
+		| 'continueOnFail'
+		| 'evaluateExpression'
+		| 'executeWorkflow'
+		| 'getExecutionCancelSignal'
 		| 'getInputConnectionData'
 		| 'getInputData'
 		| 'getNodeOutputs'
-		| 'executeWorkflow'
+		| 'getWorkflowDataProxy'
+		| 'logAiEvent'
+		| 'onExecutionCancellation'
 		| 'sendMessageToUI'
 		| 'helpers'
-	> & {
-		continueOnFail(): boolean;
-		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
-		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
-		getExecutionCancelSignal(): AbortSignal | undefined;
-		onExecutionCancellation(handler: () => unknown): void;
-		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
-	};
+	>;
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
@@ -1604,6 +1630,14 @@ export abstract class Node {
 	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+}
+
+/**
+ * This class serves as a base for all AI nodes that can invoke subnodes,
+ * like models, memory, and tools
+ */
+export abstract class AiRootNode extends Node {
+	execute?(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]>;
 }
 
 export interface IVersionedNodeType {
@@ -2775,8 +2809,6 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
-
-export type CallbackManager = CallbackManagerLC;
 
 export type IPersonalizationSurveyAnswersV4 = {
 	version: 'v4';

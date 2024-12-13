@@ -15,12 +15,12 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import type {
 	IBinaryData,
 	IDataObject,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
-	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
+	AiRootNode,
 	ApplicationError,
 	NodeApiError,
 	NodeConnectionType,
@@ -28,11 +28,10 @@ import {
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
-import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { isChatInstance } from '@utils/helpers';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
 import { getTemplateNoticeField } from '@utils/sharedFields';
-import { getTracingConfig } from '@utils/tracing';
 
 import {
 	getCustomErrorMessage as getCustomOpenAiErrorMessage,
@@ -49,7 +48,7 @@ interface MessagesTemplate {
 }
 
 async function getImageMessage(
-	context: IExecuteFunctions,
+	context: AiRootNodeExecuteFunctions,
 	itemIndex: number,
 	message: MessagesTemplate,
 ) {
@@ -106,7 +105,7 @@ async function getImageMessage(
 }
 
 async function getChainPromptTemplate(
-	context: IExecuteFunctions,
+	context: AiRootNodeExecuteFunctions,
 	itemIndex: number,
 	llm: BaseLanguageModel | BaseChatModel,
 	messages?: MessagesTemplate[],
@@ -165,7 +164,7 @@ async function getChainPromptTemplate(
 }
 
 async function createSimpleLLMChain(
-	context: IExecuteFunctions,
+	context: AiRootNodeExecuteFunctions,
 	llm: BaseLanguageModel,
 	query: string,
 	prompt: ChatPromptTemplate | PromptTemplate,
@@ -173,7 +172,7 @@ async function createSimpleLLMChain(
 	const chain = new LLMChain({
 		llm,
 		prompt,
-	}).withConfig(getTracingConfig(context));
+	}).withConfig(context.getTracingConfig());
 
 	const response = (await chain.invoke({
 		query,
@@ -184,7 +183,7 @@ async function createSimpleLLMChain(
 }
 
 async function getChain(
-	context: IExecuteFunctions,
+	context: AiRootNodeExecuteFunctions,
 	itemIndex: number,
 	query: string,
 	llm: BaseLanguageModel,
@@ -222,7 +221,7 @@ async function getChain(
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
-	const response = (await chain.withConfig(getTracingConfig(context)).invoke({ query })) as
+	const response = (await chain.withConfig(context.getTracingConfig()).invoke({ query })) as
 		| string
 		| string[];
 
@@ -249,7 +248,7 @@ function getInputs(parameters: IDataObject) {
 	return inputs;
 }
 
-export class ChainLlm implements INodeType {
+export class ChainLlm extends AiRootNode {
 	description: INodeTypeDescription = {
 		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
@@ -510,42 +509,37 @@ export class ChainLlm implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.debug('Executing LLM Chain');
-		const items = this.getInputData();
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		context.logger.debug('Executing LLM Chain');
+		const items = context.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const llm = (await this.getInputConnectionData(
+		const llm = (await context.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
-		const outputParsers = await getOptionalOutputParsers(this);
+		const outputParsers = await getOptionalOutputParsers(context);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				let prompt: string;
-				if (this.getNode().typeVersion <= 1.3) {
-					prompt = this.getNodeParameter('prompt', itemIndex) as string;
+				if (context.getNode().typeVersion <= 1.3) {
+					prompt = context.getNodeParameter('prompt', itemIndex) as string;
 				} else {
-					prompt = getPromptInputByType({
-						ctx: this,
-						i: itemIndex,
-						inputKey: 'text',
-						promptTypeKey: 'promptType',
-					});
+					prompt = context.getPromptInputByType(itemIndex);
 				}
-				const messages = this.getNodeParameter(
+				const messages = context.getNodeParameter(
 					'messages.messageValues',
 					itemIndex,
 					[],
 				) as MessagesTemplate[];
 
 				if (prompt === undefined) {
-					throw new NodeOperationError(this.getNode(), "The 'prompt' parameter is empty.");
+					throw new NodeOperationError(context.getNode(), "The 'prompt' parameter is empty.");
 				}
 
-				const responses = await getChain(this, itemIndex, prompt, llm, outputParsers, messages);
+				const responses = await getChain(context, itemIndex, prompt, llm, outputParsers, messages);
 
 				responses.forEach((response) => {
 					let data: IDataObject;
@@ -586,7 +580,7 @@ export class ChainLlm implements INodeType {
 					}
 				}
 
-				if (this.continueOnFail()) {
+				if (context.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

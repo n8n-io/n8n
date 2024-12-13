@@ -3,11 +3,10 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { AiRootNode, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	INodeType,
 	INodeTypeDescription,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 } from 'n8n-workflow';
@@ -15,7 +14,6 @@ import type { z } from 'zod';
 
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
 
 import { makeZodSchemaFromAttributes } from './helpers';
 import type { AttributeDefinition } from './types';
@@ -24,7 +22,7 @@ const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
 Only extract relevant information from the text.
 If you do not know the value of an attribute asked to extract, you may omit the attribute's value.`;
 
-export class InformationExtractor implements INodeType {
+export class InformationExtractor extends AiRootNode {
 	description: INodeTypeDescription = {
 		displayName: 'Information Extractor',
 		name: 'informationExtractor',
@@ -218,15 +216,15 @@ export class InformationExtractor implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = context.getInputData();
 
-		const llm = (await this.getInputConnectionData(
+		const llm = (await context.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
-		const schemaType = this.getNodeParameter('schemaType', 0, '') as
+		const schemaType = context.getNodeParameter('schemaType', 0, '') as
 			| 'fromAttributes'
 			| 'fromJson'
 			| 'manual';
@@ -234,14 +232,14 @@ export class InformationExtractor implements INodeType {
 		let parser: OutputFixingParser<object>;
 
 		if (schemaType === 'fromAttributes') {
-			const attributes = this.getNodeParameter(
+			const attributes = context.getNodeParameter(
 				'attributes.attributes',
 				0,
 				[],
 			) as AttributeDefinition[];
 
 			if (attributes.length === 0) {
-				throw new NodeOperationError(this.getNode(), 'At least one attribute must be specified');
+				throw new NodeOperationError(context.getNode(), 'At least one attribute must be specified');
 			}
 
 			parser = OutputFixingParser.fromLLM(
@@ -252,10 +250,10 @@ export class InformationExtractor implements INodeType {
 			let jsonSchema: JSONSchema7;
 
 			if (schemaType === 'fromJson') {
-				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as string;
+				const jsonExample = context.getNodeParameter('jsonSchemaExample', 0, '') as string;
 				jsonSchema = generateSchema(jsonExample);
 			} else {
-				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as string;
+				const inputSchema = context.getNodeParameter('inputSchema', 0, '') as string;
 				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
 			}
 
@@ -266,10 +264,10 @@ export class InformationExtractor implements INodeType {
 
 		const resultData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const input = this.getNodeParameter('text', itemIndex) as string;
+			const input = context.getNodeParameter('text', itemIndex) as string;
 			const inputPrompt = new HumanMessage(input);
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
+			const options = context.getNodeParameter('options', itemIndex, {}) as {
 				systemPromptTemplate?: string;
 			};
 
@@ -285,13 +283,13 @@ export class InformationExtractor implements INodeType {
 				inputPrompt,
 			];
 			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+			const chain = prompt.pipe(llm).pipe(parser).withConfig(context.getTracingConfig());
 
 			try {
 				const output = await chain.invoke(messages);
 				resultData.push({ json: { output } });
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (context.continueOnFail()) {
 					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

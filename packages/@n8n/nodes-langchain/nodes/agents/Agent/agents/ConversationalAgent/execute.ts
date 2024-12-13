@@ -3,18 +3,15 @@ import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { AiRootNodeExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { isChatInstance } from '@utils/helpers';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
-
-import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(
-	this: IExecuteFunctions,
+	this: AiRootNodeExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Conversational Agent');
@@ -28,10 +25,10 @@ export async function conversationalAgentExecute(
 		| BaseChatMemory
 		| undefined;
 
-	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
+	const tools = await this.getConnectedTools(nodeVersion >= 1.5, true, true);
 	const outputParsers = await getOptionalOutputParsers(this);
 
-	await checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');
+	this.checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');
 
 	// TODO: Make it possible in the future to use values for other items than just 0
 	const options = this.getNodeParameter('options', 0, {}) as {
@@ -86,12 +83,7 @@ export async function conversationalAgentExecute(
 			if (this.getNode().typeVersion <= 1.2) {
 				input = this.getNodeParameter('text', itemIndex) as string;
 			} else {
-				input = getPromptInputByType({
-					ctx: this,
-					i: itemIndex,
-					inputKey: 'text',
-					promptTypeKey: 'promptType',
-				});
+				input = this.getPromptInputByType(itemIndex);
 			}
 
 			if (input === undefined) {
@@ -103,11 +95,11 @@ export async function conversationalAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(getTracingConfig(this))
+				.withConfig(this.getTracingConfig())
 				.invoke({ input, outputParsers });
 
 			if (outputParser) {
-				response.output = await extractParsedOutput(this, outputParser, response.output as string);
+				response.output = await this.extractParsedOutput(outputParser, response.output as string);
 			}
 
 			returnData.push({ json: response });

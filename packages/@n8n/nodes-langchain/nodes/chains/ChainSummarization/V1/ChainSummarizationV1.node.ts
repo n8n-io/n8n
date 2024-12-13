@@ -8,8 +8,8 @@ import {
 	type INodeTypeBaseDescription,
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	type INodeType,
 	type INodeTypeDescription,
+	AiRootNode,
 } from 'n8n-workflow';
 
 import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
@@ -18,10 +18,11 @@ import { getTemplateNoticeField } from '@utils/sharedFields';
 
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
-export class ChainSummarizationV1 implements INodeType {
+export class ChainSummarizationV1 extends AiRootNode {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
+		super();
 		this.description = {
 			...baseDescription,
 			version: 1,
@@ -162,20 +163,21 @@ export class ChainSummarizationV1 implements INodeType {
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.debug('Executing Vector Store QA Chain');
-		const type = this.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
+	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		context.logger.debug('Executing Vector Store QA Chain');
+		const type = context.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
 
-		const model = (await this.getInputConnectionData(
+		const model = (await context.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
-			| N8nJsonLoader
-			| Array<Document<Record<string, unknown>>>;
+		const documentInput = (await context.getInputConnectionData(
+			NodeConnectionType.AiDocument,
+			0,
+		)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
 
-		const options = this.getNodeParameter('options', 0, {}) as {
+		const options = context.getNodeParameter('options', 0, {}) as {
 			prompt?: string;
 			refineQuestionPrompt?: string;
 			refinePrompt?: string;
@@ -241,7 +243,7 @@ export class ChainSummarizationV1 implements INodeType {
 
 		const chain = loadSummarizationChain(model, chainArgs);
 
-		const items = this.getInputData();
+		const items = context.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {

@@ -5,15 +5,12 @@ import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_par
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
-	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { z } from 'zod';
-
-import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
 	'You are highly intelligent and accurate sentiment analyzer. Analyze the sentiment of the provided text. Categorize it into one of the following: {categories}. Use the provided formatting instructions. Only output the JSON.';
@@ -28,7 +25,7 @@ const configuredOutputs = (parameters: INodeParameters, defaultCategories: strin
 	return ret;
 };
 
-export class SentimentAnalysis implements INodeType {
+export class SentimentAnalysis extends AiRootNode {
 	description: INodeTypeDescription = {
 		displayName: 'Sentiment Analysis',
 		name: 'sentimentAnalysis',
@@ -136,10 +133,10 @@ export class SentimentAnalysis implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = context.getInputData();
 
-		const llm = (await this.getInputConnectionData(
+		const llm = (await context.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
@@ -148,7 +145,7 @@ export class SentimentAnalysis implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const sentimentCategories = this.getNodeParameter(
+				const sentimentCategories = context.getNodeParameter(
 					'options.categories',
 					i,
 					DEFAULT_CATEGORIES,
@@ -160,7 +157,7 @@ export class SentimentAnalysis implements INodeType {
 					.filter(Boolean);
 
 				if (categories.length === 0) {
-					throw new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
+					throw new NodeOperationError(context.getNode(), 'No sentiment categories provided', {
 						itemIndex: i,
 					});
 				}
@@ -170,7 +167,7 @@ export class SentimentAnalysis implements INodeType {
 					returnData.push(...Array.from({ length: categories.length }, () => []));
 				}
 
-				const options = this.getNodeParameter('options', i, {}) as {
+				const options = context.getNodeParameter('options', i, {}) as {
 					systemPromptTemplate?: string;
 					includeDetailedResults?: boolean;
 					enableAutoFixing?: boolean;
@@ -197,7 +194,7 @@ export class SentimentAnalysis implements INodeType {
 		{format_instructions}`,
 				);
 
-				const input = this.getNodeParameter('inputText', i) as string;
+				const input = context.getNodeParameter('inputText', i) as string;
 				const inputPrompt = new HumanMessage(input);
 				const messages = [
 					await systemPromptTemplate.format({
@@ -208,7 +205,7 @@ export class SentimentAnalysis implements INodeType {
 				];
 
 				const prompt = ChatPromptTemplate.fromMessages(messages);
-				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+				const chain = prompt.pipe(llm).pipe(parser).withConfig(context.getTracingConfig());
 
 				try {
 					const output = await chain.invoke(messages);
@@ -233,7 +230,7 @@ export class SentimentAnalysis implements INodeType {
 					}
 				} catch (error) {
 					throw new NodeOperationError(
-						this.getNode(),
+						context.getNode(),
 						'Error during parsing of LLM output, please check your LLM model and configuration',
 						{
 							itemIndex: i,
@@ -241,9 +238,9 @@ export class SentimentAnalysis implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+				if (context.continueOnFail()) {
+					const executionErrorData = context.helpers.constructExecutionMetaData(
+						context.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
 					returnData[0].push(...executionErrorData);

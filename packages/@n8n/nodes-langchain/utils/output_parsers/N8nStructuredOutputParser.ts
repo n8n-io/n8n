@@ -5,8 +5,6 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { logAiEvent } from '../helpers';
-
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
 const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
@@ -41,7 +39,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed) as Record<string, unknown>;
 
-			logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
+			this.context.logAiEvent('ai-output-parsed', { text, response: result });
 
 			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
 				[{ json: { action: 'parse', response: result } }],
@@ -58,7 +56,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				},
 			);
 
-			logAiEvent(this.context, 'ai-output-parsed', {
+			this.context.logAiEvent('ai-output-parsed', {
 				text,
 				response: e.message ?? e,
 			});

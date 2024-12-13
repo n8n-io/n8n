@@ -2,18 +2,15 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, AiRootNode } from 'n8n-workflow';
 import type {
 	IDataObject,
-	IExecuteFunctions,
+	AiRootNodeExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
-	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { z } from 'zod';
-
-import { getTracingConfig } from '@utils/tracing';
 
 const SYSTEM_PROMPT_TEMPLATE =
 	"Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json.";
@@ -28,7 +25,7 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	return ret;
 };
 
-export class TextClassifier implements INodeType {
+export class TextClassifier extends AiRootNode {
 	description: INodeTypeDescription = {
 		displayName: 'Text Classifier',
 		name: 'textClassifier',
@@ -163,24 +160,24 @@ export class TextClassifier implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+	async execute(context: AiRootNodeExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = context.getInputData();
 
-		const llm = (await this.getInputConnectionData(
+		const llm = (await context.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
-		const categories = this.getNodeParameter('categories.categories', 0, []) as Array<{
+		const categories = context.getNodeParameter('categories.categories', 0, []) as Array<{
 			category: string;
 			description: string;
 		}>;
 
 		if (categories.length === 0) {
-			throw new NodeOperationError(this.getNode(), 'At least one category must be defined');
+			throw new NodeOperationError(context.getNode(), 'At least one category must be defined');
 		}
 
-		const options = this.getNodeParameter('options', 0, {}) as {
+		const options = context.getNodeParameter('options', 0, {}) as {
 			multiClass: boolean;
 			fallback?: string;
 			systemPromptTemplate?: string;
@@ -226,10 +223,10 @@ export class TextClassifier implements INodeType {
 		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
 			const item = items[itemIdx];
 			item.pairedItem = { item: itemIdx };
-			const input = this.getNodeParameter('inputText', itemIdx) as string;
+			const input = context.getNodeParameter('inputText', itemIdx) as string;
 			const inputPrompt = new HumanMessage(input);
 
-			const systemPromptTemplateOpt = this.getNodeParameter(
+			const systemPromptTemplateOpt = context.getNodeParameter(
 				'options.systemPromptTemplate',
 				itemIdx,
 				SYSTEM_PROMPT_TEMPLATE,
@@ -249,7 +246,7 @@ ${fallbackPrompt}`,
 				inputPrompt,
 			];
 			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+			const chain = prompt.pipe(llm).pipe(parser).withConfig(context.getTracingConfig());
 
 			try {
 				const output = await chain.invoke(messages);
@@ -259,7 +256,7 @@ ${fallbackPrompt}`,
 				});
 				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (context.continueOnFail()) {
 					returnData[0].push({
 						json: { error: error.message },
 						pairedItem: { item: itemIdx },

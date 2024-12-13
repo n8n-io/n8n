@@ -1,10 +1,8 @@
-import type { IExecuteFunctions, INodeType } from 'n8n-workflow';
-
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { listSearch, loadOptions } from './methods';
 
-export class OpenAi implements INodeType {
+export class OpenAi extends AiRootNode {
 	description = versionDescription;
 
 	methods = {
@@ -12,7 +10,7 @@ export class OpenAi implements INodeType {
 		loadOptions,
 	};
 
-	async execute(this: IExecuteFunctions) {
-		return await router.call(this);
+	async execute(context: AiRootNodeExecuteFunctions) {
+		return await router.call(context);
 	}
 }

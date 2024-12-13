@@ -51,6 +51,7 @@ import {
 	sleep,
 	ExecutionCancelledError,
 	Node,
+	AiRootNode,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import Container from 'typedi';
@@ -1047,6 +1048,7 @@ export class WorkflowExecute {
 
 		if (nodeType.execute) {
 			const closeFunctions: CloseFunction[] = [];
+
 			const context = new ExecuteContext(
 				workflow,
 				node,
@@ -1061,10 +1063,15 @@ export class WorkflowExecute {
 				abortSignal,
 			);
 
-			const data =
-				nodeType instanceof Node
-					? await nodeType.execute(context)
-					: await nodeType.execute.call(context);
+			let data: INodeExecutionData[][] | null;
+			if (nodeType instanceof AiRootNode) {
+				data = await nodeType.execute(context.getAiRootNodeExecuteFunctions());
+			} else {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context)
+						: await nodeType.execute.call(context);
+			}
 
 			const closeFunctionsResults = await Promise.allSettled(
 				closeFunctions.map(async (fn) => await fn()),

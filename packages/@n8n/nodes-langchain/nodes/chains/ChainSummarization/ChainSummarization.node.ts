@@ -1,4 +1,4 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import type { INodeType, INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { ChainSummarizationV1 } from './V1/ChainSummarizationV1.node';
@@ -30,8 +30,8 @@ export class ChainSummarization extends VersionedNodeType {
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new ChainSummarizationV1(baseDescription),
-			2: new ChainSummarizationV2(baseDescription),
+			1: new ChainSummarizationV1(baseDescription) as INodeType,
+			2: new ChainSummarizationV2(baseDescription) as INodeType,
 		};
 
 		super(nodeVersions, baseDescription);
