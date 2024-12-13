@@ -5,7 +5,6 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -19,12 +18,12 @@ import type {
 	IDataObject,
 	INodeParameterResourceLocator,
 	ITaskMetadata,
-	ResourceMapperField,
-	FieldValueOption,
-	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
+import type { FromAIArgument } from './FromAIParser';
+import { AIParametersParser } from './FromAIParser';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import type { DynamicZodObject } from '../../../types/zod.types';
 import {
@@ -32,11 +31,7 @@ import {
 	schemaTypeField,
 	inputSchemaField,
 } from '../../../utils/descriptions';
-import {
-	convertJsonSchemaToZod,
-	convertResourceMapperFieldsToZod,
-	generateSchema,
-} from '../../../utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 function getWorkflowInputValues(this: ISupplyDataFunctions) {
@@ -60,22 +55,6 @@ function getWorkflowInputValues(this: ISupplyDataFunctions) {
 			},
 		};
 	});
-}
-
-function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
-	const inputData = getWorkflowInputValues.call(this);
-
-	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
-
-	if (schema.length === 0) {
-		return inputData;
-	} else {
-		const newParams = schema
-			.filter((x) => !x.removed)
-			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
-
-		return getWorkflowInputData.call(this, inputData, newParams);
-	}
 }
 
 export class ToolWorkflow implements INodeType {
@@ -536,22 +515,19 @@ export class ToolWorkflow implements INodeType {
 				include: 'all',
 			};
 
-			// TODO: Move this to getCurrentWorkflowInputData and simplify
 			let items = [] as INodeExecutionData[];
-			if (nodeVersion < 1.3) {
-				const newItem = await manual.execute.call(
-					this,
-					{ json: { query } },
-					itemIndex,
-					options,
-					rawData,
-					this.getNode(),
-				);
-				items = [newItem] as INodeExecutionData[];
-			} else {
-				items = getCurrentWorkflowInputData.call(this);
-			}
 
+			const jsonData = typeof query === 'object' ? query : { query };
+			const newItem = await manual.execute.call(
+				this,
+				{ json: jsonData },
+				itemIndex,
+				options,
+				rawData,
+				this.getNode(),
+			);
+			items = [newItem] as INodeExecutionData[];
+			console.log('Items for subworkflow execution: ', JSON.stringify(items, null, 2));
 			let receivedData: ExecuteWorkflowData;
 			try {
 				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
@@ -664,17 +640,62 @@ export class ToolWorkflow implements INodeType {
 						...functionBase,
 					});
 				} else {
-					const workflowInputs = this.getNodeParameter(
-						'workflowInputs',
-						itemIndex,
-						{},
-					) as IDataObject;
-					const schema = convertResourceMapperFieldsToZod(workflowInputs as ResourceMapperValue);
-					console.log('schema', schema);
-					tool = new DynamicStructuredTool({
-						schema,
-						...functionBase,
-					});
+					const fromAIParser = new AIParametersParser(this);
+					const collectedArguments: FromAIArgument[] = [];
+					fromAIParser.traverseNodeParameters(this.getNode().parameters, collectedArguments);
+					console.log(collectedArguments);
+					// Validate each collected argument
+					const keyMap = new Map<string, FromAIArgument>();
+					for (const argument of collectedArguments) {
+						if (keyMap.has(argument.key)) {
+							// If the key already exists in the Map
+							const existingArg = keyMap.get(argument.key);
+							if (!existingArg) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Argument with key '${argument.key}' not found in keyMap`,
+								);
+							}
+
+							// Check if the existing argument has the same description and type
+							if (
+								!existingArg ||
+								(existingArg.description === argument.description &&
+									existingArg.type === argument.type)
+							) {
+								keyMap.set(argument.key, argument);
+							}
+						}
+					}
+
+					// Remove duplicate keys, latest occurrence takes precedence
+					const uniqueArgsMap = collectedArguments.reduce((map, arg) => {
+						map.set(arg.key, arg);
+						return map;
+					}, new Map<string, FromAIArgument>());
+
+					const uniqueArguments = Array.from(uniqueArgsMap.values());
+
+					if (uniqueArguments.length === 0) {
+						tool = new DynamicTool({
+							...functionBase,
+						});
+					} else {
+						// Generate Zod schema from unique arguments
+						const schemaObj = uniqueArguments.reduce(
+							(acc: Record<string, z.ZodTypeAny>, placeholder) => {
+								acc[placeholder.key] = fromAIParser.generateZodSchema(placeholder);
+								return acc;
+							},
+							{},
+						);
+
+						const schema = z.object(schemaObj).required();
+						tool = new DynamicStructuredTool({
+							schema,
+							...functionBase,
+						});
+					}
 				}
 			} catch (error) {
 				throw new NodeOperationError(

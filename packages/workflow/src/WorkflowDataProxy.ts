@@ -973,7 +973,12 @@ export class WorkflowDataProxy {
 					type: 'no_execution_data',
 				});
 			}
-			return placeholdersDataInputData?.[name] ?? defaultValue;
+			return (
+				// @ts-expect-error - TS does not know that the key exists, we need to address this in refactor
+				placeholdersDataInputData?.query?.[name] ??
+				placeholdersDataInputData?.[name] ??
+				defaultValue
+			);
 		};
 
 		const base = {

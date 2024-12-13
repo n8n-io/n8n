@@ -298,6 +298,15 @@ async function loadFieldsToMap(): Promise<void> {
 			...state.paramValue,
 			schema: newSchema,
 		};
+
+		fetchedFields.fields.forEach((field) => {
+			if (field.defaultValue) {
+				if (!state.paramValue.value) {
+					state.paramValue.value = {};
+				}
+				state.paramValue.value[field.id] = field.defaultValue;
+			}
+		});
 		emitValueChanged();
 	}
 }
