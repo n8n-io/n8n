@@ -1,10 +1,10 @@
 import type {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -20,25 +20,19 @@ export async function gotifyApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method,
-		headers: {
-			'X-Gotify-Key': method === 'POST' ? credentials.appApiToken : credentials.clientApiToken,
-			accept: 'application/json',
-		},
 		body,
 		qs,
-		uri: uri || `${credentials.url}${path}`,
+		url: uri ?? `${credentials.url}${path}`,
 		json: true,
-		rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
+		skipSslCertificateValidation: credentials.ignoreSSLIssues as boolean,
 	};
 	try {
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'gotifyApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

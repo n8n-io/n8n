@@ -1,4 +1,10 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class GotifyApi implements ICredentialType {
 	name = 'gotifyApi';
@@ -43,4 +49,27 @@ export class GotifyApi implements ICredentialType {
 			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 	];
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		const { appApiToken, clientApiToken } = credentials as {
+			appApiToken: string;
+			clientApiToken: string;
+		};
+		requestOptions.headers = {
+			'X-Gotify-Key': requestOptions.method === 'POST' ? appApiToken : clientApiToken,
+			accept: 'application/json',
+		};
+		return requestOptions;
+	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url.replace(new RegExp("/$"), "") }}',
+			url: '/current/user',
+			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
+		},
+	};
 }
