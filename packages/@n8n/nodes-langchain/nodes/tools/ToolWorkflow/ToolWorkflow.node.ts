@@ -5,7 +5,6 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -36,6 +35,7 @@ import {
 } from '../../../utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 
 function getWorkflowInputValues(this: ISupplyDataFunctions) {
 	const inputData = this.getInputData();
@@ -474,14 +474,13 @@ export class ToolWorkflow implements INodeType {
 		let subExecutionId: string | undefined;
 		let subWorkflowId: string | undefined;
 
-		// TODO: Check if we are actually using a schema
-		const inputsSchema =
+		const subworkflowInputsSchema =
 			nodeVersion > 1.3
 				? (this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[])
 				: [];
-		const useSchema =
-			inputsSchema.length > 0 ||
-			(nodeVersion < 1.4 && (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean));
+		const useExplicitSchema =
+			nodeVersion < 1.4 && (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean);
+		const useSchema = useExplicitSchema || subworkflowInputsSchema.length > 0;
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		const runFunction = async (
@@ -672,32 +671,28 @@ export class ToolWorkflow implements INodeType {
 					const fromAIParser = new AIParametersParser(this);
 					const collectedArguments: FromAIArgument[] = [];
 					fromAIParser.traverseNodeParameters(this.getNode().parameters, collectedArguments);
+					console.log(collectedArguments);
 					// Validate each collected argument
 					const keyMap = new Map<string, FromAIArgument>();
 					for (const argument of collectedArguments) {
 						if (keyMap.has(argument.key)) {
 							// If the key already exists in the Map
-							const existingArg = keyMap.get(argument.key)!;
+							const existingArg = keyMap.get(argument.key);
+							if (!existingArg) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Argument with key '${argument.key}' not found in keyMap`,
+								);
+							}
 
 							// Check if the existing argument has the same description and type
 							if (
-								existingArg.description !== argument.description ||
-								existingArg.type !== argument.type
+								!existingArg ||
+								(existingArg.description === argument.description &&
+									existingArg.type === argument.type)
 							) {
-								// If not, throw an error for inconsistent duplicate keys
-								// throw new NodeOperationError(
-								// 	this.ctx.getNode(),
-								// 	`Duplicate key '${argument.key}' found with different description or type`,
-								// 	{
-								// 		description:
-								// 			'Ensure all $fromAI() calls with the same key have consistent descriptions and types',
-								// 	},
-								// );
+								keyMap.set(argument.key, argument);
 							}
-							// If the duplicate key has consistent description and type, it's allowed (no action needed)
-						} else {
-							// If the key doesn't exist in the Map, add it
-							keyMap.set(argument.key, argument);
 						}
 					}
 
