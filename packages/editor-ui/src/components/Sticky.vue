@@ -358,7 +358,6 @@ const onContextMenu = (e: MouseEvent): void => {
 					<font-awesome-icon icon="trash" />
 				</div>
 				<n8n-popover
-					effect="dark"
 					trigger="click"
 					placement="top"
 					:popper-style="{ width: '208px' }"

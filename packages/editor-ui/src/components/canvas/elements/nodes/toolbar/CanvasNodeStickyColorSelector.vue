@@ -59,7 +59,6 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nPopover
-		effect="dark"
 		trigger="click"
 		placement="top"
 		:popper-class="$style.popover"

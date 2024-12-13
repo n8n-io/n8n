@@ -114,6 +114,7 @@
 
 	@include mixins.when(dark) {
 		background: var.$tooltip-fill;
+		border: var.$tooltip-border-width solid var.$tooltip-border-color;
 		color: var.$tooltip-color;
 
 		&[data-popper-placement^='top'] .el-popper__arrow {
