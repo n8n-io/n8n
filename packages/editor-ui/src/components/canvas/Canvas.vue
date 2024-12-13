@@ -435,6 +435,7 @@ function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
 	const offsetX = event?.clientX ?? 0;
 	const offsetY = event?.clientY ?? 0;
+
 	return project({
 		x: offsetX - bounds.left,
 		y: offsetY - bounds.top,
