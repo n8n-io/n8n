@@ -671,7 +671,6 @@ export class ToolWorkflow implements INodeType {
 					const fromAIParser = new AIParametersParser(this);
 					const collectedArguments: FromAIArgument[] = [];
 					fromAIParser.traverseNodeParameters(this.getNode().parameters, collectedArguments);
-					console.log(collectedArguments);
 					// Validate each collected argument
 					const keyMap = new Map<string, FromAIArgument>();
 					for (const argument of collectedArguments) {
