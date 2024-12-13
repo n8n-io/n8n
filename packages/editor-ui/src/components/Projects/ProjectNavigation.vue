@@ -1,13 +1,11 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
-import { sortByProperty } from '@/utils/sortUtils';
-import { useToast } from '@/composables/useToast';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 type Props = {
 	collapsed: boolean;
@@ -16,12 +14,12 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const router = useRouter();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
-const toast = useToast();
+const globalEntityCreation = useGlobalEntityCreation();
 
-const isCreatingProject = ref(false);
+const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
+const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -56,34 +54,6 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
-const displayProjects = computed(() =>
-	sortByProperty(
-		'name',
-		projectsStore.myProjects.filter((p) => p.type === 'team'),
-	),
-);
-
-const addProjectClicked = async () => {
-	isCreatingProject.value = true;
-
-	try {
-		const newProject = await projectsStore.createProject({
-			name: locale.baseText('projects.settings.newProjectName'),
-		});
-		await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
-		toast.showMessage({
-			title: locale.baseText('projects.settings.save.successful.title', {
-				interpolate: { projectName: newProject.name ?? '' },
-			}),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, locale.baseText('projects.error.title'));
-	} finally {
-		isCreatingProject.value = false;
-	}
-};
-
 const showAddFirstProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
 );
@@ -101,13 +71,10 @@ const showAddFirstProject = computed(
 			/>
 		</ElMenu>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
-		<N8nText
-			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
-			:class="$style.projectsLabel"
-			tag="h3"
-			bold
-		>
-			<span>{{ locale.baseText('projects.menu.title') }}</span>
+		<N8nText :class="[$style.projectsLabel, { [$style.collapsed]: props.collapsed }]" tag="h3" bold>
+			<span v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled">{{
+				locale.baseText('projects.menu.title')
+			}}</span>
 			<N8nButton
 				v-if="projectsStore.canCreateProjects"
 				icon="plus"
@@ -115,7 +82,7 @@ const showAddFirstProject = computed(
 				data-test-id="project-plus-button"
 				:disabled="isCreatingProject"
 				:class="$style.plusBtn"
-				@click="addProjectClicked"
+				@click="globalEntityCreation.createProject"
 			/>
 		</N8nText>
 		<ElMenu
@@ -155,7 +122,7 @@ const showAddFirstProject = computed(
 			type="tertiary"
 			icon="plus"
 			data-test-id="add-first-project-button"
-			@click="addProjectClicked"
+			@click="globalEntityCreation.createProject"
 		>
 			{{ locale.baseText('projects.menu.addFirstProject') }}
 		</N8nButton>
@@ -196,6 +163,12 @@ const showAddFirstProject = computed(
 	overflow: hidden;
 	box-sizing: border-box;
 	color: var(--color-text-base);
+
+	&.collapsed {
+		padding: 0;
+		margin-left: 0;
+		justify-content: center;
+	}
 }
 
 .plusBtn {

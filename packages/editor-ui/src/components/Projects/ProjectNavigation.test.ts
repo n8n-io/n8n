@@ -132,4 +132,16 @@ describe('ProjectsNavigation', () => {
 		expect(getByTestId('project-personal-menu-item')).toBeVisible();
 		expect(getByTestId('project-personal-menu-item').querySelector('svg')).not.toBeInTheDocument();
 	});
+
+	it('should not show plus button next to "Projects" title if user cannot create projects', async () => {
+		projectsStore.teamProjectsLimit = 0;
+
+		const { queryByRole } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
+	});
 });

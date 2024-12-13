@@ -1,4 +1,4 @@
-import { computed, toValue, type ComputedRef, type Ref } from 'vue';
+import { computed, toValue, type ComputedRef, type Ref, ref } from 'vue';
 import { VIEWS } from '@/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
@@ -37,6 +37,9 @@ export const useGlobalEntityCreation = (
 	const router = useRouter();
 	const i18n = useI18n();
 	const toast = useToast();
+
+	const isCreatingProject = ref(false);
+
 	const displayProjects = computed(() =>
 		sortByProperty(
 			'name',
@@ -182,6 +185,8 @@ export const useGlobalEntityCreation = (
 	});
 
 	const createProject = async () => {
+		isCreatingProject.value = true;
+
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
@@ -195,6 +200,8 @@ export const useGlobalEntityCreation = (
 			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('projects.error.title'));
+		} finally {
+			isCreatingProject.value = false;
 		}
 	};
 
@@ -225,5 +232,13 @@ export const useGlobalEntityCreation = (
 
 	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
 
-	return { menu, handleSelect, createProjectAppendSlotName, projectsLimitReachedMessage };
+	return {
+		menu,
+		handleSelect,
+		createProjectAppendSlotName,
+		projectsLimitReachedMessage,
+		createProject,
+		isCreatingProject,
+		displayProjects,
+	};
 };
