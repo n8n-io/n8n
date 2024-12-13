@@ -1,3 +1,5 @@
+import { snakeCase } from 'change-case';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,22 +9,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
+import { boardColumnFields, boardColumnOperations } from './BoardColumnDescription';
+import { boardFields, boardOperations } from './BoardDescription';
+import { boardGroupFields, boardGroupOperations } from './BoardGroupDescription';
+import { boardItemFields, boardItemOperations } from './BoardItemDescription';
+import { boardSubItemFields, boardSubItemOperations } from './BoardSubitemDescription';
 import {
 	mondayComApiPaginatedRequest,
 	mondayComApiRequest,
 	mondayComApiRequestAllItems,
 } from './GenericFunctions';
-
-import { boardFields, boardOperations } from './BoardDescription';
-
-import { boardColumnFields, boardColumnOperations } from './BoardColumnDescription';
-
-import { boardGroupFields, boardGroupOperations } from './BoardGroupDescription';
-
-import { boardItemFields, boardItemOperations } from './BoardItemDescription';
+import { forEach } from 'lodash';
 
 interface IGraphqlBody {
 	query: string;
@@ -102,6 +100,10 @@ export class MondayCom implements INodeType {
 						name: 'Board Item',
 						value: 'boardItem',
 					},
+					{
+						name: 'Board Subitem',
+						value: 'boardSubItem',
+					},
 				],
 				default: 'board',
 			},
@@ -117,6 +119,9 @@ export class MondayCom implements INodeType {
 			// BOARD ITEM
 			...boardItemOperations,
 			...boardItemFields,
+			// SUBITEM
+			...boardSubItemFields,
+			...boardSubItemOperations,
 		],
 	};
 
@@ -221,6 +226,46 @@ export class MondayCom implements INodeType {
 						value: groupId,
 					});
 				}
+				return returnData;
+			},
+			async getItems(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const boardId = this.getCurrentNodeParameter('boardId') as string;
+				const groupId = this.getCurrentNodeParameter('groupId') as string;
+
+				const fieldsToReturn = `
+					{
+						id
+						name
+					}
+				`;
+
+				const body = {
+					query: `query ($boardId: [ID!], $groupId: [String], $limit: Int) {
+						boards(ids: $boardId) {
+							groups(ids: $groupId) {
+								id
+								items_page(limit: $limit) {
+									cursor
+									items ${fieldsToReturn}
+								}
+							}
+						}
+					}`,
+					variables: {
+						boardId,
+						groupId,
+						limit: 100,
+					},
+				};
+
+				const { data } = await mondayComApiRequest.call(this, body);
+				const items = data.boards[0].groups[0].items_page.items;
+
+				items.forEach((item: { id: string; name: string }) => {
+					returnData.push({ name: item.name, value: item.id });
+				});
+
 				return returnData;
 			},
 		},
@@ -756,6 +801,144 @@ export class MondayCom implements INodeType {
 
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.move_item_to_group;
+					}
+				}
+				if (resource === 'boardSubItem') {
+					if (operation === 'create') {
+						const boardId = this.getNodeParameter('boardId', i);
+						const groupId = this.getNodeParameter('groupId', i) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+						const subItemName = this.getNodeParameter('subItemName', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const body: IGraphqlBody = {
+							query: `
+									mutation ($itemId: ID!, $subItemName: String!) {
+										create_subitem (parent_item_id: $itemId, item_name: $subItemName) {
+											id
+										}
+									}
+							`,
+							variables: {
+								itemId,
+								subItemName,
+							},
+						};
+
+						responseData = await mondayComApiRequest.call(this, body);
+						responseData = responseData.data.create_subitem;
+					}
+					if (operation === 'get') {
+						await this.getNodeParameter('boardId', i);
+						(await this.getNodeParameter('groupId', i)) as string;
+						const itemId = this.getNodeParameter('itemId', i) as string;
+
+						const body: IGraphqlBody = {
+							query: `query ($itemId: [ID!]){
+									items (ids: $itemId) {
+									id
+									name
+									column_values {
+											id
+											value
+										}
+								}
+							}
+									`,
+							variables: {
+								itemId,
+							},
+						};
+						let temp_values = await mondayComApiRequest.call(this, body);
+						temp_values = temp_values.data.items[0].column_values[0].value;
+						temp_values = JSON.parse(temp_values).linkedPulseIds;
+						const temp_arr = [];
+						for (let integer = 0; integer < temp_values.length; integer++) {
+							temp_arr.push(temp_values[integer].linkedPulseId);
+						}
+						const nbody: IGraphqlBody = {
+							query: `query ($temp_arr: [ID!]){
+									items (ids: $temp_arr) {
+										id
+										name
+										created_at
+										state
+										column_values {
+											id
+											text
+											type
+											value
+											column {
+
+												title
+												archived
+												description
+												settings_str
+											}
+										}
+									}
+								}`,
+							variables: {
+								temp_arr,
+							},
+						};
+						responseData = await mondayComApiRequest.call(this, nbody);
+						responseData = responseData.data.items;
+					}
+					if (operation === 'gets') {
+						const itemId = this.getNodeParameter('itemId', i) as string;
+
+						const body: IGraphqlBody = {
+							query: `query ($itemId: [ID!]){
+									items (ids: $itemId) {
+									id
+									name
+									column_values {
+											id
+											value
+										}
+								}
+							}
+									`,
+							variables: {
+								itemId,
+							},
+						};
+						let temp_values = await mondayComApiRequest.call(this, body);
+						temp_values = temp_values.data.items[0].column_values[0].value;
+						temp_values = JSON.parse(temp_values).linkedPulseIds;
+						const temp_arr = [];
+						for (let integer = 0; integer < temp_values.length; integer++) {
+							temp_arr.push(temp_values[integer].linkedPulseId);
+						}
+						const nbody: IGraphqlBody = {
+							query: `query ($temp_arr: [ID!]){
+									items (ids: $temp_arr) {
+										id
+										name
+										created_at
+										state
+										column_values {
+											id
+											text
+											type
+											value
+											column {
+
+												title
+												archived
+												description
+												settings_str
+											}
+										}
+									}
+								}`,
+							variables: {
+								temp_arr,
+							},
+						};
+						responseData = await mondayComApiRequest.call(this, nbody);
+						responseData = responseData.data.items;
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
