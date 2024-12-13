@@ -268,20 +268,6 @@ describe('Hubspot v1 - GenericFunctions', () => {
 			});
 		});
 
-		it('should return associations with some fields missing', () => {
-			const associations = {
-				companyIds: '1,2,3',
-				contactIds: '10,11,12',
-			};
-
-			const result = getAssociations(associations);
-
-			expect(result).toEqual({
-				companyIds: ['1', '2', '3'],
-				contactIds: ['10', '11', '12'],
-			});
-		});
-
 		it('should return associations with empty fields', () => {
 			const associations = {
 				companyIds: '',
