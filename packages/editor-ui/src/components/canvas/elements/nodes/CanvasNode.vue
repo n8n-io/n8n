@@ -38,6 +38,14 @@ type Props = NodeProps<CanvasNodeData> & {
 	hovered?: boolean;
 };
 
+const slots = defineSlots<{
+	toolbar?: (props: {
+		inputs: (typeof mainInputs)['value'];
+		outputs: (typeof mainOutputs)['value'];
+		data: CanvasNodeData;
+	}) => void;
+}>();
+
 const emit = defineEmits<{
 	add: [id: string, handle: string];
 	delete: [id: string];
@@ -59,6 +67,10 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle } = useCanvas();
 
+/*
+  Toolbar slot classes
+*/
+const nodeClasses = ref<string[]>([]);
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
@@ -80,6 +92,7 @@ const classes = computed(() => ({
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
 	selected: props.selected,
+	...Object.fromEntries([...nodeClasses.value].map((c) => [c, true])),
 }));
 
 /**
@@ -89,7 +102,7 @@ const classes = computed(() => ({
 const canvasNodeEventBus = ref(createEventBus<CanvasNodeEventBusEvents>());
 
 function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
-	if (event.ids.includes(props.id)) {
+	if (event.ids.includes(props.id) && canvasNodeEventBus.value) {
 		canvasNodeEventBus.value.emit(event.action, event.payload);
 	}
 }
@@ -265,12 +278,22 @@ watch(
 	},
 );
 
+function updateEventBusClass({ className, add = true }: { className: string; add: boolean }) {
+	if (add && !nodeClasses.value.includes(className)) {
+		nodeClasses.value.push(className);
+	} else if (!add) {
+		nodeClasses.value = nodeClasses.value.filter((c) => c !== className);
+	}
+}
+
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
+	canvasNodeEventBus.value?.on('update:node:class', updateEventBusClass);
 });
 
 onBeforeUnmount(() => {
 	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
+	canvasNodeEventBus.value?.off('update:node:class', updateEventBusClass);
 });
 </script>
 
@@ -308,8 +331,12 @@ onBeforeUnmount(() => {
 			/>
 		</template>
 
+		<template v-if="slots.toolbar">
+			<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
+		</template>
+
 		<CanvasNodeToolbar
-			v-if="nodeTypeDescription"
+			v-else-if="nodeTypeDescription"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"

@@ -663,7 +663,11 @@ provide(CanvasKey, {
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
 				@add="onClickNodeAdd"
-			/>
+			>
+				<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
+					<slot name="nodeToolbar" v-bind="toolbarProps" />
+				</template>
+			</Node>
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">

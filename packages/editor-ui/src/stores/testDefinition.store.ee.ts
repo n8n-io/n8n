@@ -50,7 +50,6 @@ export const useTestDefinitionStore = defineStore(
 		});
 
 		const getTestRunsByTestId = computed(() => (testId: string) => {
-			console.log('Compute getTestRunsByTestId', testId);
 			return Object.values(testRunsById.value).filter((run) => run.testDefinitionId === testId);
 		});
 
@@ -244,7 +243,6 @@ export const useTestDefinitionStore = defineStore(
 					testDefinitionId,
 				);
 				runs.forEach((run) => {
-					console.log('🚀 ~ runs.forEach ~ run.status:', run);
 					testRunsById.value[run.id] = run;
 					if (run.status === 'running') {
 						startPollingTestRun(testDefinitionId, run.id);

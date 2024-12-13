@@ -122,6 +122,7 @@ watch(
 		state.value.name,
 		state.value.tags,
 		state.value.evaluationWorkflow,
+		state.value.mockedNodes,
 	],
 	debounce(onSaveTest, { debounceTime: 400 }),
 	{ deep: true },
@@ -244,6 +245,7 @@ watch(
 				/>
 			</div>
 		</div>
+		<NodesPinning v-model="state.mockedNodes" />
 	</div>
 </template>
 

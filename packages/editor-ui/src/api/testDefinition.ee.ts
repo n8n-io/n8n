@@ -11,6 +11,7 @@ export interface TestDefinitionRecord {
 	updatedAt?: string;
 	createdAt?: string;
 	annotationTag?: string | null;
+	mockedNodes?: Array<{ name: string }>;
 }
 
 interface CreateTestDefinitionParams {
@@ -24,6 +25,7 @@ export interface UpdateTestDefinitionParams {
 	evaluationWorkflowId?: string | null;
 	annotationTagId?: string | null;
 	description?: string | null;
+	mockedNodes?: Array<{ name: string }>;
 }
 
 export interface UpdateTestResponse {

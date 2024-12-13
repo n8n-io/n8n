@@ -16,6 +16,7 @@ export interface EvaluationFormState extends EditableFormState {
 	description: string;
 	evaluationWorkflow: INodeParameterResourceLocator;
 	metrics: TestMetricRecord[];
+	mockedNodes: Array<{ name: string }>;
 }
 
 export interface TestExecution {

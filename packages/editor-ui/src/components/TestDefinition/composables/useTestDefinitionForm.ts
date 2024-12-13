@@ -33,6 +33,7 @@ export function useTestDefinitionForm() {
 			__rl: true,
 		},
 		metrics: [],
+		mockedNodes: [],
 	});
 
 	const isSaving = ref(false);
@@ -77,6 +78,7 @@ export function useTestDefinitionForm() {
 					__rl: true,
 				};
 				state.value.metrics = metrics;
+				state.value.mockedNodes = testDefinition.mockedNodes ?? [];
 			}
 		} catch (error) {
 			console.error('Failed to load test data', error);
@@ -150,6 +152,9 @@ export function useTestDefinitionForm() {
 			const annotationTagId = state.value.tags.value[0];
 			if (annotationTagId) {
 				params.annotationTagId = annotationTagId;
+			}
+			if (state.value.mockedNodes.length > 0) {
+				params.mockedNodes = state.value.mockedNodes;
 			}
 
 			return await evaluationsStore.update({ ...params, id: testId });
