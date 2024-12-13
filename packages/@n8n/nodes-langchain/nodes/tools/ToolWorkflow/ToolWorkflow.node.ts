@@ -5,6 +5,7 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -18,6 +19,8 @@ import type {
 	IDataObject,
 	INodeParameterResourceLocator,
 	ITaskMetadata,
+	ResourceMapperField,
+	FieldValueOption,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -55,6 +58,22 @@ function getWorkflowInputValues(this: ISupplyDataFunctions) {
 			},
 		};
 	});
+}
+
+function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+	const inputData = getWorkflowInputValues.call(this);
+
+	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
+
+	if (schema.length === 0) {
+		return inputData;
+	} else {
+		const newParams = schema
+			.filter((x) => !x.removed)
+			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
+
+		return getWorkflowInputData.call(this, inputData, newParams);
+	}
 }
 
 export class ToolWorkflow implements INodeType {
@@ -455,8 +474,14 @@ export class ToolWorkflow implements INodeType {
 		let subExecutionId: string | undefined;
 		let subWorkflowId: string | undefined;
 
+		// TODO: Check if we are actually using a schema
+		const inputsSchema =
+			nodeVersion > 1.3
+				? (this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[])
+				: [];
 		const useSchema =
-			nodeVersion >= 1.4 || (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean);
+			inputsSchema.length > 0 ||
+			(nodeVersion < 1.4 && (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean));
 		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		const runFunction = async (
@@ -517,7 +542,12 @@ export class ToolWorkflow implements INodeType {
 
 			let items = [] as INodeExecutionData[];
 
-			const jsonData = typeof query === 'object' ? query : { query };
+			let jsonData = typeof query === 'object' ? query : { query };
+			if (useSchema) {
+				const currentWorkflowInputs = getCurrentWorkflowInputData.call(this);
+				// TODO: Pull in master and not use 0 index here
+				jsonData = currentWorkflowInputs[0].json;
+			}
 			const newItem = await manual.execute.call(
 				this,
 				{ json: jsonData },
@@ -527,7 +557,6 @@ export class ToolWorkflow implements INodeType {
 				this.getNode(),
 			);
 			items = [newItem] as INodeExecutionData[];
-			console.log('Items for subworkflow execution: ', JSON.stringify(items, null, 2));
 			let receivedData: ExecuteWorkflowData;
 			try {
 				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
@@ -643,28 +672,32 @@ export class ToolWorkflow implements INodeType {
 					const fromAIParser = new AIParametersParser(this);
 					const collectedArguments: FromAIArgument[] = [];
 					fromAIParser.traverseNodeParameters(this.getNode().parameters, collectedArguments);
-					console.log(collectedArguments);
 					// Validate each collected argument
 					const keyMap = new Map<string, FromAIArgument>();
 					for (const argument of collectedArguments) {
 						if (keyMap.has(argument.key)) {
 							// If the key already exists in the Map
-							const existingArg = keyMap.get(argument.key);
-							if (!existingArg) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Argument with key '${argument.key}' not found in keyMap`,
-								);
-							}
+							const existingArg = keyMap.get(argument.key)!;
 
 							// Check if the existing argument has the same description and type
 							if (
-								!existingArg ||
-								(existingArg.description === argument.description &&
-									existingArg.type === argument.type)
+								existingArg.description !== argument.description ||
+								existingArg.type !== argument.type
 							) {
-								keyMap.set(argument.key, argument);
+								// If not, throw an error for inconsistent duplicate keys
+								// throw new NodeOperationError(
+								// 	this.ctx.getNode(),
+								// 	`Duplicate key '${argument.key}' found with different description or type`,
+								// 	{
+								// 		description:
+								// 			'Ensure all $fromAI() calls with the same key have consistent descriptions and types',
+								// 	},
+								// );
 							}
+							// If the duplicate key has consistent description and type, it's allowed (no action needed)
+						} else {
+							// If the key doesn't exist in the Map, add it
+							keyMap.set(argument.key, argument);
 						}
 					}
 
