@@ -20,7 +20,7 @@ catalog:
   iconv-lite: 0.6.3
   lodash: 4.17.21
   luxon: 3.4.4
-  nanoid: 3.3.6
+  nanoid: 3.3.8
   typedi: 0.10.0
   uuid: 10.0.0
   xml2js: 0.6.2
