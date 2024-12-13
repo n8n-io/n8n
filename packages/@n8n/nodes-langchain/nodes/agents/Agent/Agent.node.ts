@@ -9,6 +9,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
@@ -21,7 +23,6 @@ import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
 import { toolsAgentExecute } from './agents/ToolsAgent/execute';
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type

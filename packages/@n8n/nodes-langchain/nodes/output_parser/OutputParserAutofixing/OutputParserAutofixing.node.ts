@@ -8,12 +8,13 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { NAIVE_FIX_PROMPT } from './prompt';
 import {
 	N8nOutputFixingParser,
 	type N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { NAIVE_FIX_PROMPT } from './prompt';
 
 export class OutputParserAutofixing implements INodeType {
 	description: INodeTypeDescription = {

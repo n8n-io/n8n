@@ -15,6 +15,7 @@ import {
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
 import { getTracingConfig } from '@utils/tracing';
+
 import { extractParsedOutput } from '../utils';
 
 export async function openAiFunctionsAgentExecute(

@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { VectorStore } from '@langchain/core/vectorstores';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,7 +7,7 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { VectorStore } from '@langchain/core/vectorstores';
+
 import { logWrapper } from '@utils/logWrapper';
 
 export class RetrieverVectorStore implements INodeType {

@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
+import { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,8 +8,7 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
-import { CharacterTextSplitter } from '@langchain/textsplitters';
+
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 

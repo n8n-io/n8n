@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 

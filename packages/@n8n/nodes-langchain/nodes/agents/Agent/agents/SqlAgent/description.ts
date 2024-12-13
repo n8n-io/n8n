@@ -1,7 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+
+import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 
 const dataSourceOptions: INodeProperties = {
 	displayName: 'Data Source',

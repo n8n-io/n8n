@@ -1,3 +1,8 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { HumanMessage } from '@langchain/core/messages';
+import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,14 +11,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
+
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =

@@ -1,4 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,10 +10,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
 
 import { logWrapper } from '@utils/logWrapper';
 

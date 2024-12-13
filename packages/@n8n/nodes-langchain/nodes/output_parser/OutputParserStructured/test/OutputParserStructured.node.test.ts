@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import type { N8nStructuredOutputParser } from '@utils/output_parsers/N8nStructuredOutputParser';
+
 import { OutputParserStructured } from '../OutputParserStructured.node';
 
 describe('OutputParserStructured', () => {

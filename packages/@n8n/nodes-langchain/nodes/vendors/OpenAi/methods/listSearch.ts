@@ -4,9 +4,9 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-
-import type { Model } from 'openai/resources/models';
 import type { Assistant } from 'openai/resources/beta/assistants';
+import type { Model } from 'openai/resources/models';
+
 import { apiRequest } from '../transport';
 
 export async function fileSearch(

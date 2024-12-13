@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,7 +7,7 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
+
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 

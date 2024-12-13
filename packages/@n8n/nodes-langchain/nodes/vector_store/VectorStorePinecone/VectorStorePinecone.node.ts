@@ -1,9 +1,11 @@
-import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
+
 import { metadataFilterField } from '@utils/sharedFields';
+
+import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { pineconeIndexRLC } from '../shared/descriptions';
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 

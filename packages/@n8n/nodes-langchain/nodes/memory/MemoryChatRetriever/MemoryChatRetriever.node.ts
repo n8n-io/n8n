@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionType,
 	type IDataObject,
@@ -7,8 +9,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import type { BaseMessage } from '@langchain/core/messages';
 
 function simplifyMessages(messages: BaseMessage[]) {
 	const chunkedMessages = [];

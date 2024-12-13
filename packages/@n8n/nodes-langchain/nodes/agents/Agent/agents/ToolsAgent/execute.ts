@@ -14,12 +14,13 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { SYSTEM_MESSAGE } from './prompt';
 import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
 	getOptionalOutputParsers,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
+
+import { SYSTEM_MESSAGE } from './prompt';
 
 function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
 	const schema =

@@ -11,6 +11,7 @@ import {
 import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 
 export class MemoryMotorhead implements INodeType {

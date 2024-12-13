@@ -15,10 +15,11 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import type { DynamicZodObject } from '../../../types/zod.types';
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import type { DynamicZodObject } from '../../../types/zod.types';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {

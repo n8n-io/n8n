@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { OpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,9 +8,8 @@ import {
 	type ISupplyDataFunctions,
 	type INodeProperties,
 } from 'n8n-workflow';
-
 import type { ClientOptions } from 'openai';
-import { OpenAIEmbeddings } from '@langchain/openai';
+
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 

@@ -10,6 +10,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 
 type CollectionOptions = {

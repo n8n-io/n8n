@@ -1,3 +1,7 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import { VectorDBQAChain } from 'langchain/chains';
+import { VectorStoreQATool } from 'langchain/tools';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -6,12 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { VectorStoreQATool } from 'langchain/tools';
-import type { VectorStore } from '@langchain/core/vectorstores';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { VectorDBQAChain } from 'langchain/chains';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {

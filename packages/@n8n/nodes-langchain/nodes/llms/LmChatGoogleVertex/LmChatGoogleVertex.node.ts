@@ -1,4 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { SafetySetting } from '@google/generative-ai';
+import { ProjectsClient } from '@google-cloud/resource-manager';
+import { ChatVertexAI } from '@langchain/google-vertexai';
+import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -9,15 +13,13 @@ import {
 	type JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { ChatVertexAI } from '@langchain/google-vertexai';
-import type { SafetySetting } from '@google/generative-ai';
-import { ProjectsClient } from '@google-cloud/resource-manager';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
+
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
-import { additionalOptions } from '../gemini-common/additional-options';
+
 import { makeErrorFromStatus } from './error-handling';
+import { additionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
