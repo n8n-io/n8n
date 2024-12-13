@@ -19,6 +19,7 @@ export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
+	warnHtmlInMessage: 'off',
 });
 
 type BaseTextOptions = { adjustToNumber?: number; interpolate?: Record<string, string | number> };
