@@ -5,11 +5,14 @@ import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
 import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 
 const router = useRouter();
 const testDefinitionStore = useTestDefinitionStore();
 const isLoading = ref(false);
-
+const locale = useI18n();
+const toast = useToast();
 const selectedMetric = ref();
 const testId = computed(() => {
 	return router.currentRoute.value.params.testId as string;
@@ -44,6 +47,25 @@ const getRunDetail = (_run: TestRunRecord) => {
 	// TODO: Implement run detail
 };
 
+async function runTest() {
+	try {
+		const result = await testDefinitionStore.startTestRun(testId.value);
+		if (result.success) {
+			toast.showMessage({
+				title: locale.baseText('testDefinition.list.testStarted'),
+				type: 'success',
+			});
+
+			// Optionally fetch the updated test runs
+			await testDefinitionStore.fetchTestRuns(testId.value);
+		} else {
+			throw new Error('Test run failed to start');
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('testDefinition.list.testStartError'));
+	}
+}
+
 onMounted(async () => {
 	await loadInitialData();
 });
@@ -60,9 +82,17 @@ onMounted(async () => {
 			<N8nLoading :rows="5" />
 			<N8nLoading :rows="10" />
 		</template>
-		<template v-else>
+		<template v-else-if="runs.length > 0">
 			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" />
 			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" />
+		</template>
+		<template v-else>
+			<N8nActionBox
+				:heading="locale.baseText('testDefinition.listRuns.noRuns')"
+				:description="locale.baseText('testDefinition.listRuns.noRuns.description')"
+				:button-text="locale.baseText('testDefinition.listRuns.noRuns.button')"
+				@click:button="runTest"
+			/>
 		</template>
 	</div>
 </template>

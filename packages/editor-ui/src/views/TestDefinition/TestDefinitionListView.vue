@@ -46,10 +46,10 @@ function getTestExecution(testId: string): TestExecution {
 	const lastRun = testDefinitionStore.getLastRunByTestId(testId);
 	if (!lastRun) {
 		return {
-			lastRun: 'Never',
+			lastRun: null,
 			errorRate: 0,
 			metrics: {},
-			status: 'running',
+			status: 'new',
 		};
 	}
 

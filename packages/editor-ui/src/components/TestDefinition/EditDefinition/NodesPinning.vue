@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { createEventBus, N8nTooltip } from 'n8n-design-system';
-import type { CanvasEventBusEvents, CanvasNodeData } from '@/types';
+import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -28,6 +28,7 @@ const emit = defineEmits<{
 const isLoading = ref(true);
 
 const workflowId = computed(() => route.params.name as string);
+const testId = computed(() => route.params.testId as string);
 const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
 const workflowObject = computed(() => workflowsStore.getCurrentWorkflow(true));
 
@@ -42,30 +43,30 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	workflowObject,
 });
 async function loadData() {
+	workflowsStore.resetState();
+	resetWorkspace();
 	const loadingPromise = Promise.all([
 		nodeTypesStore.getNodeTypes(),
 		workflowsStore.fetchWorkflow(workflowId.value),
 	]);
 	await loadingPromise;
-	resetWorkspace();
-	disableAllNodes();
 	initializeWorkspace(workflow.value);
-	isLoading.value = false;
+	disableAllNodes();
 	eventBus.emit('fitView');
+	isLoading.value = false;
 }
 function getNodeNameById(id: string) {
 	return mappedNodes.value.find((node) => node.id === id)?.data?.name;
 }
 function disableAllNodes() {
 	const ids = mappedNodes.value.map((node) => node.id);
-	// @ts-expect-error: TODO: fix this
 	eventBus.emit('nodes:action', {
 		ids,
 		action: 'update:node:class',
+		// @ts-expect-error: TODO: fix this
 		payload: { className: style.notPinnedNode },
 	});
 
-	console.log('🚀 ~ pinnedNodes ~ pinnedNodes:', props.modelValue);
 	const pinnedNodes = props.modelValue
 		.map((node) => {
 			const matchedNode = mappedNodes.value.find(
@@ -79,16 +80,18 @@ function disableAllNodes() {
 		.filter(Boolean);
 
 	if (pinnedNodes.length > 0) {
-		// @ts-expect-error: TODO: fix this
 		eventBus.emit('nodes:action', {
+			// @ts-expect-error: TODO: fix this
 			ids: pinnedNodes,
 			action: 'update:node:class',
+			// @ts-expect-error: TODO: fix this
 			payload: { className: style.pinnedNode },
 		});
-		// @ts-expect-error: TODO: fix this
 		eventBus.emit('nodes:action', {
+			// @ts-expect-error: TODO: fix this
 			ids: pinnedNodes,
 			action: 'update:node:class',
+			// @ts-expect-error: TODO: fix this
 			payload: { className: style.notPinnedNode, add: false },
 		});
 	}
@@ -100,36 +103,38 @@ function onPinButtonClick(data: CanvasNodeData) {
 	if (props.modelValue.some((node) => node.name === nodeName)) {
 		const updatedNodes = props.modelValue.filter((node) => node.name !== nodeName);
 		emit('update:modelValue', updatedNodes);
-		// @ts-expect-error: TODO: fix this
 		eventBus.emit('nodes:action', {
 			ids: [data.id],
 			action: 'update:node:class',
+			// @ts-expect-error: TODO: fix this
 			payload: { className: style.notPinnedNode },
 		});
-		// @ts-expect-error: TODO: fix this
 		eventBus.emit('nodes:action', {
 			ids: [data.id],
 			action: 'update:node:class',
+			// @ts-expect-error: TODO: fix this
 			payload: { className: style.pinnedNode, add: false },
 		});
 	} else {
 		const updatedNodes = [...props.modelValue, { name: nodeName }];
 		emit('update:modelValue', updatedNodes);
-		// @ts-expect-error: TODO: fix this
 		eventBus.emit('nodes:action', {
 			ids: [data.id],
 			action: 'update:node:class',
+			// @ts-expect-error: TODO: fix this
 			payload: { className: style.pinnedNode },
 		});
-		// @ts-expect-error: TODO: fix this
 		eventBus.emit('nodes:action', {
 			ids: [data.id],
-			action: 'update:node:class',
+			// @ts-expect-error: TODO: fix this
 			payload: { className: style.notPinnedNode, add: false },
+			action: 'update:node:class',
 		});
 	}
 }
-
+function isPinButtonVisible(outputs: CanvasConnectionPort[]) {
+	return outputs.length === 1;
+}
 onMounted(loadData);
 </script>
 
@@ -137,16 +142,16 @@ onMounted(loadData);
 	<div :class="$style.container">
 		<Canvas
 			v-if="workflow"
-			:id="workflowId"
+			:id="testId"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"
 			:show-bug-reporting-button="false"
 			:read-only="true"
 			:event-bus="eventBus"
 		>
-			<template #nodeToolbar="{ data }">
+			<template #nodeToolbar="{ data, outputs }">
 				<div :class="$style.pinButtonContainer">
-					<N8nTooltip placement="left">
+					<N8nTooltip v-if="isPinButtonVisible(outputs)" placement="left">
 						<template #content> Pin execution data of this node during test run </template>
 						<n8n-icon-button
 							type="tertiary"

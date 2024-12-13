@@ -54,7 +54,7 @@ const actions = [
 			</div>
 			<div :class="$style.testCases">
 				<n8n-text size="small">
-					{{ locale.baseText('testDefinition.list.testCases', { adjustToNumber: test.testCases }) }}
+					{{ locale.baseText('testDefinition.list.testRuns', { adjustToNumber: test.testCases }) }}
 				</n8n-text>
 				<template v-if="test.execution.status === 'running'">
 					Running

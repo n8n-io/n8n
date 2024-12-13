@@ -38,6 +38,7 @@ const columns = computed(
 	(): Array<TestDefinitionTableColumn<TestCase>> => [
 		{
 			prop: 'id',
+			width: 200,
 			label: locale.baseText('testDefinition.runDetail.testCase'),
 			sortable: true,
 			route: (row: TestCase) => ({

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, watch, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
@@ -56,6 +56,8 @@ const buttonLabel = computed(() =>
 const tagUsageCount = computed(
 	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
 );
+
+const showNodesPinning = ref(false);
 
 onMounted(async () => {
 	void tagsStore.fetchAll({ withUsageCount: true });
@@ -187,13 +189,28 @@ watch(
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.nodes')"
 					:small="true"
-					:expanded="false"
+					:expanded="true"
 					:tooltip="locale.baseText('testDefinition.edit.step.nodes.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-					<template #cardContent>{{
-						locale.baseText('testDefinition.edit.step.mockedNodes', { adjustToNumber: 0 })
-					}}</template>
+					<template #cardContent>
+						<template v-if="state.mockedNodes?.length === 0 && !showNodesPinning">
+							<n8n-button
+								size="small"
+								data-test-id="select-nodes-button"
+								:label="locale.baseText('testDefinition.edit.selectNodes')"
+								type="tertiary"
+								@click="() => (showNodesPinning = true)"
+							/>
+						</template>
+						<span :class="$style.mockedNodesLabel" v-else>
+							{{
+								locale.baseText('testDefinition.edit.step.mockedNodes', {
+									adjustToNumber: state.mockedNodes?.length ?? 0,
+								})
+							}}
+						</span>
+					</template>
 				</EvaluationStep>
 
 				<EvaluationStep
@@ -245,7 +262,10 @@ watch(
 				/>
 			</div>
 		</div>
-		<NodesPinning v-model="state.mockedNodes" />
+		<NodesPinning
+			v-if="showNodesPinning || state.mockedNodes?.length > 0"
+			v-model="state.mockedNodes"
+		/>
 	</div>
 </template>
 
@@ -289,7 +309,7 @@ watch(
 	justify-self: center;
 }
 .evaluationArrows {
-	--arrow-height: 11rem;
+	--arrow-height: 13.8rem;
 	display: flex;
 	justify-content: space-between;
 	width: 100%;
@@ -324,5 +344,9 @@ watch(
 	gap: var(--spacing-2xs);
 	justify-items: end;
 	align-items: start;
+}
+.mockedNodesLabel {
+	min-height: 1.5rem;
+	display: block;
 }
 </style>

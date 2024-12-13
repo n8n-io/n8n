@@ -43,8 +43,20 @@ defineEmits<{
 
 <template>
 	<div>
-		<ElTable ref="filterTable" :default-sort="defaultSort" :data="data" style="width: 100%">
-			<ElTableColumn v-for="column in columns" :key="column.prop" v-bind="column">
+		<ElTable
+			ref="filterTable"
+			:default-sort="defaultSort"
+			:data="data"
+			style="width: 100%"
+			:border="true"
+		>
+			<ElTableColumn
+				v-for="column in columns"
+				:key="column.prop"
+				v-bind="column"
+				style="width: 100%"
+				:resizable="true"
+			>
 				<template #default="{ row }">
 					<TableCell :column="column" :row="row" @click="$emit('rowClick', row)" />
 				</template>

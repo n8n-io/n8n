@@ -38,16 +38,8 @@ const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => 
 			formatter: (row: TestRunRecord) => `${row.id}`,
 		},
 		{
-			prop: 'date',
-			label: locale.baseText('testDefinition.listRuns.runDate'),
-			width: 200,
-			sortable: true,
-			formatter: (row: TestRunRecord) => convertToDisplayDate(new Date(row.runAt).getTime()),
-		},
-		{
 			prop: 'status',
 			label: locale.baseText('testDefinition.listRuns.status'),
-			width: 120,
 			filters: [
 				{ text: locale.baseText('testDefinition.listRuns.status.new'), value: 'new' },
 				{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
@@ -56,6 +48,13 @@ const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => 
 			],
 			filterMethod: (value: string, row: TestRunRecord) => row.status === value,
 		},
+		{
+			prop: 'date',
+			label: locale.baseText('testDefinition.listRuns.runDate'),
+			sortable: true,
+			formatter: (row: TestRunRecord) => convertToDisplayDate(new Date(row.runAt).getTime()),
+		},
+
 		...metrics.value.map((metric) => ({
 			prop: `metrics.${metric}`,
 			label: metric,

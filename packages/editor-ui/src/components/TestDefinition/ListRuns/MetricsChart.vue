@@ -39,7 +39,7 @@ watchEffect(() => {
 </script>
 
 <template>
-	<div :class="$style.metricsChartContainer">
+	<div :class="$style.metricsChartContainer" v-if="availableMetrics.length > 0">
 		<div :class="$style.chartHeader">
 			<N8nText>{{ locale.baseText('testDefinition.listRuns.metricsOverTime') }}</N8nText>
 			<el-select
