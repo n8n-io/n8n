@@ -37,8 +37,8 @@ export class ErrorReporter {
 		}
 	}
 
-	async shutdown(code = 1000) {
-		await close(code);
+	async shutdown(timeoutInMs = 1000) {
+		await close(timeoutInMs);
 	}
 
 	async init() {
