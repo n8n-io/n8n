@@ -19,9 +19,8 @@ describe('RespondToWebhook Node', () => {
 
 	beforeEach(() => {
 		respondToWebhook = new RespondToWebhook();
-		mockHelpers = mock<IExecuteFunctions['helpers']>({ constructExecutionMetaData });
-		mockExecuteFunctions = mock<IExecuteFunctions>({
-			helpers: mockHelpers,
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>({
+			helpers: { constructExecutionMetaData },
 		});
 	});
 
