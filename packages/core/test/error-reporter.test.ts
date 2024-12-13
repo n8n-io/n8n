@@ -1,17 +1,12 @@
-import type { GlobalConfig } from '@n8n/config';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { mock } from 'jest-mock-extended';
 import { ApplicationError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/error-reporter';
-import type { InstanceSettings } from '@/InstanceSettings';
-
-const init = jest.fn();
 
 jest.mock('@sentry/node', () => ({
-	init,
+	init: jest.fn(),
 	setTag: jest.fn(),
 	captureException: jest.fn(),
 	Integrations: {},
@@ -20,9 +15,7 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
-	const globalConfig = mock<GlobalConfig>();
-	const instanceSettings = mock<InstanceSettings>();
-	const errorReporting = new ErrorReporter(globalConfig, instanceSettings);
+	const errorReporter = new ErrorReporter();
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {
@@ -30,14 +23,14 @@ describe('ErrorReporter', () => {
 			const originalException = new ApplicationError('test');
 			originalException.level = 'warning';
 
-			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(null);
+			expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
 		});
 
 		it('should keep events with a cause with error level', async () => {
 			const cause = new Error('cause-error');
 			const originalException = new ApplicationError('test', cause);
 
-			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(event);
+			expect(await errorReporter.beforeSend(event, { originalException })).toEqual(event);
 		});
 
 		it('should ignore events with error cause with warning level', async () => {
@@ -45,7 +38,7 @@ describe('ErrorReporter', () => {
 			cause.level = 'warning';
 			const originalException = new ApplicationError('test', cause);
 
-			expect(await errorReporting.beforeSend(event, { originalException })).toEqual(null);
+			expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
 		});
 
 		it('should set level, extra, and tags from ApplicationError', async () => {
@@ -57,7 +50,7 @@ describe('ErrorReporter', () => {
 
 			const testEvent = {} as ErrorEvent;
 
-			const result = await errorReporting.beforeSend(testEvent, { originalException });
+			const result = await errorReporter.beforeSend(testEvent, { originalException });
 
 			expect(result).toEqual({
 				level: 'error',
@@ -69,17 +62,17 @@ describe('ErrorReporter', () => {
 		it('should deduplicate errors with same stack trace', async () => {
 			const originalException = new Error();
 
-			const firstResult = await errorReporting.beforeSend(event, { originalException });
+			const firstResult = await errorReporter.beforeSend(event, { originalException });
 			expect(firstResult).toEqual(event);
 
-			const secondResult = await errorReporting.beforeSend(event, { originalException });
+			const secondResult = await errorReporter.beforeSend(event, { originalException });
 			expect(secondResult).toBeNull();
 		});
 
 		it('should handle Promise rejections', async () => {
 			const originalException = Promise.reject(new Error());
 
-			const result = await errorReporting.beforeSend(event, { originalException });
+			const result = await errorReporter.beforeSend(event, { originalException });
 
 			expect(result).toEqual(event);
 		});
@@ -103,7 +96,7 @@ describe('ErrorReporter', () => {
 				new Error('', { cause: new ApplicationError('', { level: 'warning' }) }),
 			],
 		])('should ignore if originalException is %s', async (_, originalException) => {
-			const result = await errorReporting.beforeSend(event, { originalException });
+			const result = await errorReporter.beforeSend(event, { originalException });
 			expect(result).toBeNull();
 		});
 	});
