@@ -1,5 +1,6 @@
 import get from 'lodash/get';
 import type {
+	AINodeConnectionType,
 	CloseFunction,
 	ExecutionBaseError,
 	IExecuteData,
@@ -12,10 +13,11 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
+	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -107,7 +109,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	async getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
@@ -137,7 +139,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	/** @deprecated create a context object with inputData for every runIndex */
 	addInputData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		data: INodeExecutionData[][],
 	): { index: number } {
 		const nodeName = this.node.name;
@@ -166,7 +168,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	/** @deprecated Switch to WorkflowExecute to store output on runExecutionData.resultData.runData */
 	addOutputData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		currentNodeRunIndex: number,
 		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
@@ -192,17 +194,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	async addExecutionDataFunctions(
 		type: 'input' | 'output',
 		data: INodeExecutionData[][] | ExecutionBaseError,
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		sourceNodeName: string,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
 	): Promise<void> {
-		if (connectionType === NodeConnectionType.Main) {
-			throw new ApplicationError('Setting type is not supported for main connection', {
-				extra: { type },
-			});
-		}
-
 		const {
 			additionalData,
 			runExecutionData,

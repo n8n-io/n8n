@@ -1,4 +1,5 @@
 import type {
+	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
 	IExecuteData,
@@ -149,7 +150,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	async getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(

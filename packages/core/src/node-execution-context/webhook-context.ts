@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type {
+	AINodeConnectionType,
 	CloseFunction,
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -11,7 +12,6 @@ import type {
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
@@ -139,7 +139,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	async getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		// To be able to use expressions like "$json.sessionId" set the

@@ -76,6 +76,7 @@ import type {
 	WebhookType,
 	SchedulingFunctions,
 	SupplyData,
+	AINodeConnectionType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -2018,7 +2019,7 @@ export async function getInputConnectionData(
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	connectionType: NodeConnectionType,
+	connectionType: AINodeConnectionType,
 	itemIndex: number,
 	abortSignal?: AbortSignal,
 ): Promise<unknown> {
