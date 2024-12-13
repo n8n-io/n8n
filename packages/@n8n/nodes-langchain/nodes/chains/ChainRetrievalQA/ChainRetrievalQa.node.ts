@@ -167,7 +167,8 @@ export class ChainRetrievalQa implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// Log input connections
+		this.logger.debug('Executing Retrieval QA Chain');
+
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
 			0,
@@ -182,7 +183,6 @@ export class ChainRetrievalQa implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
-		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				let query;
