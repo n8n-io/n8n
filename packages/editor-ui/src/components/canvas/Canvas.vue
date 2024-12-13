@@ -8,7 +8,6 @@ import type {
 } from '@/types';
 import type { Connection, XYPosition, NodeDragEvent, GraphNode } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
-import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
@@ -25,7 +24,7 @@ import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
-import CanvasBackgroundStripedPattern from './elements/CanvasBackgroundStripedPattern.vue';
+import CanvasBackground from './elements/background/CanvasBackground.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { NodeConnectionType } from 'n8n-workflow';
 
@@ -65,6 +64,7 @@ const emit = defineEmits<{
 	'run:workflow': [];
 	'save:workflow': [];
 	'create:workflow': [];
+	'drag-and-drop': [position: XYPosition, event: DragEvent];
 }>();
 
 const props = withDefaults(
@@ -98,14 +98,13 @@ const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
-	viewportRef,
 	fitView,
 	zoomIn,
 	zoomOut,
 	zoomTo,
 	setInteractive,
 	elementsSelectable,
-	project,
+	screenToFlowCoordinate,
 	nodes: graphNodes,
 	onPaneReady,
 	onNodesInitialized,
@@ -328,7 +327,12 @@ function onConnectEnd(event?: MouseEvent) {
 	if (connectedHandle.value) {
 		emit('create:connection:end', connectedHandle.value, event);
 	} else if (connectingHandle.value) {
-		emit('create:connection:cancelled', connectingHandle.value, getProjectedPosition(event), event);
+		emit(
+			'create:connection:cancelled',
+			connectingHandle.value,
+			screenToFlowCoordinate(event),
+			event,
+		);
 	}
 
 	connectedHandle.value = undefined;
@@ -365,7 +369,7 @@ onEdgeMouseMove(
 		}
 
 		if (!edge.data.maxConnections || edge.data.maxConnections > 1) {
-			const projectedPosition = getProjectedPosition(event);
+			const projectedPosition = screenToFlowCoordinate(event);
 			const yDiff = projectedPosition.y - edge.targetY;
 			if (yDiff < 4 * GRID_SIZE) {
 				edgesBringToFrontById.value = { [edge.id]: false };
@@ -431,19 +435,8 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 const defaultZoom = 1;
 const isPaneMoving = ref(false);
 
-function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
-	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-	const offsetX = event?.clientX ?? 0;
-	const offsetY = event?.clientY ?? 0;
-
-	return project({
-		x: offsetX - bounds.left,
-		y: offsetY - bounds.top,
-	});
-}
-
 function onClickPane(event: MouseEvent) {
-	emit('click:pane', getProjectedPosition(event));
+	emit('click:pane', screenToFlowCoordinate(event));
 }
 
 async function onFitView() {
@@ -533,6 +526,20 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 	}
+}
+
+/**
+ * Drag and drop
+ */
+
+function onDragOver(event: DragEvent) {
+	event.preventDefault();
+}
+
+function onDrop(event: DragEvent) {
+	const position = screenToFlowCoordinate(event);
+
+	emit('drag-and-drop', position, event);
 }
 
 /**
@@ -626,6 +633,7 @@ provide(CanvasKey, {
 		:id="id"
 		:nodes="nodes"
 		:edges="connections"
+		:class="classes"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
@@ -635,7 +643,6 @@ provide(CanvasKey, {
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"
 		:max-zoom="4"
-		:class="classes"
 		:selection-key-code="selectionKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
@@ -649,6 +656,8 @@ provide(CanvasKey, {
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
 		@selection-drag-stop="onSelectionDragStop"
+		@dragover="onDragOver"
+		@drop="onDrop"
 	>
 		<template #node-canvas-node="nodeProps">
 			<Node
@@ -687,16 +696,7 @@ provide(CanvasKey, {
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE">
-			<template v-if="readOnly" #pattern-container="patternProps">
-				<CanvasBackgroundStripedPattern
-					:id="patternProps.id"
-					:x="viewport.x"
-					:y="viewport.y"
-					:zoom="viewport.zoom"
-				/>
-			</template>
-		</Background>
+		<CanvasBackground :viewport="viewport" :striped="readOnly" />
 
 		<Transition name="minimap">
 			<MiniMap
@@ -736,6 +736,8 @@ provide(CanvasKey, {
 
 <style lang="scss" module>
 .canvas {
+	width: 100%;
+	height: 100%;
 	opacity: 0;
 
 	&.ready {
