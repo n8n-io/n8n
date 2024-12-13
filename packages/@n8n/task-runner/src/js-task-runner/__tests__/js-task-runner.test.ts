@@ -36,6 +36,7 @@ describe('JsTaskRunner', () => {
 				grantToken: 'grantToken',
 				maxConcurrency: 1,
 				taskBrokerUri: 'http://localhost',
+				taskTimeout: 60,
 				...baseRunnerOpts,
 			},
 			jsRunnerConfig: {
@@ -136,6 +137,36 @@ describe('JsTaskRunner', () => {
 				]);
 			},
 		);
+
+		it('should not throw when using unsupported console methods', async () => {
+			const task = newTaskWithSettings({
+				code: `
+					console.warn('test');
+					console.error('test');
+					console.info('test');
+					console.debug('test');
+					console.trace('test');
+					console.dir({});
+					console.time('test');
+					console.timeEnd('test');
+					console.timeLog('test');
+					console.assert(true);
+					console.clear();
+					console.group('test');
+					console.groupEnd();
+					console.table([]);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await expect(
+				execTaskWithParams({
+					task,
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
+				}),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('built-in methods and variables available in the context', () => {
@@ -214,6 +245,7 @@ describe('JsTaskRunner', () => {
 				['$runIndex', 0],
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],
+				['$getWorkflowStaticData("global")', {}],
 			],
 			'Node.js internal functions': [
 				['typeof Function', 'function'],
@@ -362,6 +394,177 @@ describe('JsTaskRunner', () => {
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
 				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
 			});
+		});
+
+		describe("$getWorkflowStaticData('global')", () => {
+			it('should have the global workflow static data available in runOnceForAllItems', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("global") }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+						staticData: {
+							global: { key: 'value' },
+						},
+					}),
+				});
+
+				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+			});
+
+			it('should have the global workflow static data available in runOnceForEachItem', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("global") }',
+						nodeMode: 'runOnceForEachItem',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+						staticData: {
+							global: { key: 'value' },
+						},
+					}),
+				});
+
+				expect(outcome.result).toEqual([
+					withPairedItem(0, wrapIntoJson({ val: { key: 'value' } })),
+				]);
+			});
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				"does not return static data if it hasn't been modified in %s",
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("global");
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+							staticData: {
+								global: { key: 'value' },
+							},
+						}),
+					});
+
+					expect(outcome.staticData).toBeUndefined();
+				},
+			);
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				'returns the updated static data in %s',
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("global");
+								staticData.newKey = 'newValue';
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+							staticData: {
+								global: { key: 'value' },
+								'node:OtherNode': { some: 'data' },
+							},
+						}),
+					});
+
+					expect(outcome.staticData).toEqual({
+						global: { key: 'value', newKey: 'newValue' },
+						'node:OtherNode': { some: 'data' },
+					});
+				},
+			);
+		});
+
+		describe("$getWorkflowStaticData('node')", () => {
+			const createTaskDataWithNodeStaticData = (nodeStaticData: IDataObject) => {
+				const taskData = newDataRequestResponse(inputItems.map(wrapIntoJson));
+				const taskDataKey = `node:${taskData.node.name}`;
+				taskData.workflow.staticData = {
+					global: { 'global-key': 'global-value' },
+					'node:OtherNode': { 'other-key': 'other-value' },
+					[taskDataKey]: nodeStaticData,
+				};
+
+				return taskData;
+			};
+
+			it('should have the node workflow static data available in runOnceForAllItems', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("node") }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+				});
+
+				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+			});
+
+			it('should have the node workflow static data available in runOnceForEachItem', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("node") }',
+						nodeMode: 'runOnceForEachItem',
+					}),
+					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+				});
+
+				expect(outcome.result).toEqual([
+					withPairedItem(0, wrapIntoJson({ val: { key: 'value' } })),
+				]);
+			});
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				"does not return static data if it hasn't been modified in %s",
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("node");
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+					});
+
+					expect(outcome.staticData).toBeUndefined();
+				},
+			);
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				'returns the updated static data in %s',
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("node");
+								staticData.newKey = 'newValue';
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+					});
+
+					expect(outcome.staticData).toEqual({
+						global: { 'global-key': 'global-value' },
+						'node:JsCode': {
+							key: 'value',
+							newKey: 'newValue',
+						},
+						'node:OtherNode': {
+							'other-key': 'other-value',
+						},
+					});
+				},
+			);
 		});
 
 		it('should allow access to Node.js Buffers', async () => {

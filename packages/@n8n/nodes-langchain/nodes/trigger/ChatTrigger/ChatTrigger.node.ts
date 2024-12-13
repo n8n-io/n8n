@@ -1,6 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { pick } from 'lodash';
-import { Node, NodeConnectionType, commonCORSParameters } from 'n8n-workflow';
+import { Node, NodeConnectionType } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -241,14 +241,19 @@ export class ChatTrigger extends Node {
 				default: {},
 				options: [
 					// CORS parameters are only valid for when chat is used in hosted or webhook mode
-					...commonCORSParameters.map((p) => ({
-						...p,
+					{
+						displayName: 'Allowed Origins (CORS)',
+						name: 'allowedOrigins',
+						type: 'string',
+						default: '*',
+						description:
+							'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
 						displayOptions: {
 							show: {
 								'/mode': ['hostedChat', 'webhook'],
 							},
 						},
-					})),
+					},
 					{
 						...allowFileUploadsOption,
 						displayOptions: {

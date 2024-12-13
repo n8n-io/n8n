@@ -66,9 +66,11 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
+		const { isLeader, isMultiMain } = this.instanceSettings;
 
-		if (this.orchestrationService.isMultiMainSetupEnabled) {
+		if (isLeader) this.scheduleQueueRecovery();
+
+		if (isMultiMain) {
 			this.orchestrationService.multiMainSetup
 				.on('leader-takeover', () => this.scheduleQueueRecovery())
 				.on('leader-stepdown', () => this.stopQueueRecovery());
@@ -127,7 +129,7 @@ export class ScalingService {
 	}
 
 	private async stopMain() {
-		if (this.orchestrationService.isSingleMainSetup) {
+		if (this.instanceSettings.isSingleMain) {
 			await this.queue.pause(true, true); // no more jobs will be picked up
 			this.logger.debug('Queue paused');
 		}
@@ -373,7 +375,7 @@ export class ScalingService {
 		return (
 			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
 			this.instanceSettings.instanceType === 'main' &&
-			!this.orchestrationService.isMultiMainSetupEnabled
+			this.instanceSettings.isSingleMain
 		);
 	}
 

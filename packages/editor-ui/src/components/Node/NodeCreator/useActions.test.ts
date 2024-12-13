@@ -73,10 +73,11 @@ describe('useActions', () => {
 			});
 		});
 
-		test('should insert a ChatTrigger node when an AI Agent is added without trigger', () => {
+		test('should insert a ChatTrigger node when an AI Agent is added on an empty canvas', () => {
 			const workflowsStore = useWorkflowsStore();
 
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([]);
+			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([]);
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -98,15 +99,15 @@ describe('useActions', () => {
 			});
 		});
 
-		test('should insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger', () => {
+		test('should insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
 			const workflowsStore = useWorkflowsStore();
 
 			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
 				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
 			]);
-			vi.spyOn(workflowsStore, 'getNodeTypes').mockReturnValue({
-				getByNameAndVersion: () => ({ description: { group: ['trigger'] } }),
-			} as never);
+			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
+				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
+			]);
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -128,15 +129,17 @@ describe('useActions', () => {
 			});
 		});
 
-		test('should not insert a ChatTrigger node when an AI Agent is added with a trigger already present', () => {
+		test('should not insert a ChatTrigger node when an AI Agent is added with a non-trigger node prseent', () => {
 			const workflowsStore = useWorkflowsStore();
+
+			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
+				{ type: GITHUB_TRIGGER_NODE_TYPE } as never,
+			]);
 
 			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
 				{ type: GITHUB_TRIGGER_NODE_TYPE } as never,
+				{ type: HTTP_REQUEST_NODE_TYPE } as never,
 			]);
-			vi.spyOn(workflowsStore, 'getNodeTypes').mockReturnValue({
-				getByNameAndVersion: () => ({ description: { group: ['trigger'] } }),
-			} as never);
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -155,9 +158,6 @@ describe('useActions', () => {
 			vi.spyOn(workflowsStore, 'allNodes', 'get').mockReturnValue([
 				{ type: CHAT_TRIGGER_NODE_TYPE } as never,
 			]);
-			vi.spyOn(workflowsStore, 'getNodeTypes').mockReturnValue({
-				getByNameAndVersion: () => ({ description: { group: ['trigger'] } }),
-			} as never);
 
 			const { getAddedNodesAndConnections } = useActions();
 
