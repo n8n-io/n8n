@@ -92,5 +92,8 @@
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.1.10": "patches/vue-tsc@2.1.10.patch"
     }
+  },
+  "dependencies": {
+    "proxy-agent": "^6.4.0"
   }
 }
