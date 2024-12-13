@@ -304,10 +304,19 @@ async function loadFieldsToMap(): Promise<void> {
 				if (!state.paramValue.value) {
 					state.paramValue.value = {};
 				}
-				state.paramValue.value[field.id] = field.defaultValue;
+				populateDefaultFieldValue(field);
 			}
 		});
 		emitValueChanged();
+	}
+}
+
+function populateDefaultFieldValue(field: ResourceMapperField): void {
+	if (field.defaultValue) {
+		state.paramValue.value = {
+			...state.paramValue.value,
+			[field.id]: field.defaultValue,
+		};
 	}
 }
 
@@ -454,6 +463,9 @@ function addField(name: string): void {
 	if (field) {
 		field.removed = false;
 		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
+		if (!state.paramValue.value[field.id]) {
+			state.paramValue.value[field.id] = field.defaultValue;
+		}
 	}
 	emitValueChanged();
 }
@@ -466,6 +478,7 @@ function addAllFields(): void {
 			field.removed = false;
 			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 		}
+		populateDefaultFieldValue(field);
 	});
 	state.paramValue.value = {
 		...state.paramValue.value,
