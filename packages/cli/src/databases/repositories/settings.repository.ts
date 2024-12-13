@@ -1,5 +1,5 @@
 import { DataSource, Repository } from '@n8n/typeorm';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
@@ -9,7 +9,10 @@ import { Settings } from '../entities/settings';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly errorReporter: ErrorReporter,
+	) {
 		super(Settings, dataSource.manager);
 	}
 
@@ -49,7 +52,7 @@ export class SettingsRepository extends Repository<Settings> {
 			config.set(key, value);
 			return { success: true };
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 		}
 		return { success: false };
 	}

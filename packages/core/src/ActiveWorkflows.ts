@@ -11,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	toCronExpression,
 	TriggerCloseError,
@@ -20,12 +19,18 @@ import {
 } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import { ErrorReporter } from './error-reporter';
 import type { IWorkflowData } from './Interfaces';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
+import { TriggersAndPollers } from './TriggersAndPollers';
 
 @Service()
 export class ActiveWorkflows {
-	constructor(private readonly scheduledTaskManager: ScheduledTaskManager) {}
+	constructor(
+		private readonly scheduledTaskManager: ScheduledTaskManager,
+		private readonly triggersAndPollers: TriggersAndPollers,
+		private readonly errorReporter: ErrorReporter,
+	) {}
 
 	private activeWorkflows: { [workflowId: string]: IWorkflowData } = {};
 
@@ -75,7 +80,8 @@ export class ActiveWorkflows {
 
 		for (const triggerNode of triggerNodes) {
 			try {
-				triggerResponse = await workflow.runTrigger(
+				triggerResponse = await this.triggersAndPollers.runTrigger(
+					workflow,
 					triggerNode,
 					getTriggerFunctions,
 					additionalData,
@@ -150,7 +156,7 @@ export class ActiveWorkflows {
 			});
 
 			try {
-				const pollResponse = await workflow.runPoll(node, pollFunctions);
+				const pollResponse = await this.triggersAndPollers.runPoll(workflow, node, pollFunctions);
 
 				if (pollResponse !== null) {
 					pollFunctions.__emit(pollResponse);
@@ -218,7 +224,7 @@ export class ActiveWorkflows {
 				Logger.error(
 					`There was a problem calling "closeFunction" on "${e.node.name}" in workflow "${workflowId}"`,
 				);
-				ErrorReporter.error(e, { extra: { workflowId } });
+				this.errorReporter.error(e, { extra: { workflowId } });
 				return;
 			}
 
