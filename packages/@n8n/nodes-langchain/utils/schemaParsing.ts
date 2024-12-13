@@ -2,9 +2,9 @@ import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
 import { json as generateJsonSchema } from 'generate-schema';
 import type { SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import type { IExecuteFunctions, ResourceMapperValue } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 export function generateSchema(schemaString: string): JSONSchema7 {
 	const parsedSchema = jsonParse<SchemaObject>(schemaString);
