@@ -14,7 +14,7 @@ import assert from 'node:assert';
  *   }
  * }
  *
- * @throws {ApplicationError} If decorator is used on something other than a getter
+ * @throws If decorator is used on something other than a getter
  */
 export function Memoized<T = unknown>(
 	target: object,
