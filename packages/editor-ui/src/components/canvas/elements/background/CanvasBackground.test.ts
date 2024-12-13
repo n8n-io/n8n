@@ -1,7 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import CanvasBackground from '@/components/canvas/elements/background/CanvasBackground.vue';
-import CanvasBackgroundStripedPattern from '@/components/canvas/elements/background/CanvasBackgroundStripedPattern.vue';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
 
 const renderComponent = createComponentRenderer(CanvasBackground);
 
