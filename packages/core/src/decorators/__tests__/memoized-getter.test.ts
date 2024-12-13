@@ -1,4 +1,6 @@
-import { AssertionError } from 'node:assert';
+import { AssertionError, ok } from 'node:assert';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 
 import { Memoized } from '../memoized-getter';
 
@@ -128,5 +130,24 @@ describe('Memoized Decorator', () => {
 		expect(afterDescriptor?.writable).toBe(false);
 		expect(afterDescriptor?.value).toBe(84);
 		expect(afterDescriptor?.get).toBeUndefined();
+	});
+
+	it('should not prevent garbage collection of instances', async () => {
+		setFlagsFromString('--expose_gc');
+		const gc = runInNewContext('gc') as unknown as () => void;
+
+		let instance: TestClass | undefined = new TestClass();
+		const weakRef = new WeakRef(instance);
+		instance.expensiveComputation;
+
+		// Remove the strong reference
+		instance = undefined;
+
+		// Wait for garbage collection, forcing it if needed
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		gc();
+
+		const ref = weakRef.deref();
+		ok(!ref, 'GC did not collect the instance ref');
 	});
 });
