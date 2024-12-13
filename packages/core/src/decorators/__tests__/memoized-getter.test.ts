@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { AssertionError } from 'node:assert';
 
 import { Memoized } from '../memoized-getter';
 
@@ -54,7 +54,7 @@ describe('Memoized Decorator', () => {
 				public normalProperty = 42;
 			}
 			new InvalidClass();
-		}).toThrow(ApplicationError);
+		}).toThrow(AssertionError);
 	});
 
 	it('should make cached value non-enumerable', () => {

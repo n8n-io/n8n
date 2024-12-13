@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 /**
  * A decorator that implements memoization for class property getters.
@@ -21,11 +21,8 @@ export function Memoized<T = unknown>(
 	propertyKey: string | symbol,
 	descriptor?: TypedPropertyDescriptor<T>,
 ): TypedPropertyDescriptor<T> {
-	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const originalGetter = descriptor?.get;
-	if (!originalGetter) {
-		throw new ApplicationError('@Memoized can only be used on getters');
-	}
+	assert(originalGetter, '@Memoized can only be used on getters');
 
 	// Replace the original getter for the first call
 	descriptor.get = function (this: typeof target.constructor): T {
