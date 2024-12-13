@@ -15,7 +15,7 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
-	const errorReporter = new ErrorReporter('main', 'test-dsn');
+	const errorReporter = new ErrorReporter();
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {
