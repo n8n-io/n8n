@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { DeepMockProxy } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
 	BINARY_ENCODING,
@@ -14,8 +14,7 @@ import { RespondToWebhook } from '../RespondToWebhook.node';
 
 describe('RespondToWebhook Node', () => {
 	let respondToWebhook: RespondToWebhook;
-	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
-	let mockHelpers: MockProxy<IExecuteFunctions['helpers']>;
+	let mockExecuteFunctions: DeepMockProxy<IExecuteFunctions>;
 
 	beforeEach(() => {
 		respondToWebhook = new RespondToWebhook();
@@ -215,7 +214,7 @@ describe('RespondToWebhook Node', () => {
 			const binary = { data: 'text', mimeType: 'text/plain' };
 			const inputItems: INodeExecutionData[] = [{ binary: { data: binary }, json: {} }];
 			mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
-			mockHelpers.assertBinaryData.mockReturnValue(binary);
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(binary);
 			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
 				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
