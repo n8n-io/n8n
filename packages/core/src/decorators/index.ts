@@ -1,1 +1,1 @@
-export { Lazy } from './lazy-getter';
+export { Memoized } from './memoized-getter';

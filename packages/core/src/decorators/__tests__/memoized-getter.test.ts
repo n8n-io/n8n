@@ -1,14 +1,14 @@
 import { ApplicationError } from 'n8n-workflow';
 
-import { Lazy } from '../lazy-getter';
+import { Memoized } from '../memoized-getter';
 
-describe('Lazy Decorator', () => {
+describe('Memoized Decorator', () => {
 	class TestClass {
 		private computeCount = 0;
 
 		constructor(private readonly value: number = 42) {}
 
-		@Lazy
+		@Memoized
 		get expensiveComputation() {
 			this.computeCount++;
 			return this.value * 2;
@@ -50,7 +50,7 @@ describe('Lazy Decorator', () => {
 		expect(() => {
 			class InvalidClass {
 				// @ts-expect-error this code will fail at compile time and at runtime
-				@Lazy
+				@Memoized
 				public normalProperty = 42;
 			}
 			new InvalidClass();

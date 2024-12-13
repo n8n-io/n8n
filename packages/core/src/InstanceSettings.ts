@@ -5,7 +5,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import path from 'path';
 import { Service } from 'typedi';
 
-import { Lazy } from './decorators';
+import { Memoized } from './decorators';
 import { InstanceSettingsConfig } from './InstanceSettingsConfig';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -139,7 +139,7 @@ export class InstanceSettings {
 	 *
 	 * Based on: https://github.com/sindresorhus/is-docker
 	 */
-	@Lazy
+	@Memoized
 	get isDocker() {
 		try {
 			return (

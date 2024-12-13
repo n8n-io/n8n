@@ -1,12 +1,13 @@
 import { ApplicationError } from 'n8n-workflow';
 
 /**
- * A decorator that implements lazy initialization for class property getters
+ * A decorator that implements memoization for class property getters.
+ *
  * The decorated getter will only be executed once and its value cached for subsequent access
  *
  * @example
  * class Example {
- *   @Lazy
+ *   @Memoized
  *   get computedValue() {
  *     // This will only run once and the result will be cached
  *     return heavyComputation();
@@ -15,7 +16,7 @@ import { ApplicationError } from 'n8n-workflow';
  *
  * @throws {ApplicationError} If decorator is used on something other than a getter
  */
-export function Lazy(
+export function Memoized(
 	target: object,
 	propertyKey: string,
 	descriptor?: PropertyDescriptor,
@@ -23,7 +24,7 @@ export function Lazy(
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const originalGetter = descriptor?.get;
 	if (!originalGetter) {
-		throw new ApplicationError('@Lazy can only be used on getters');
+		throw new ApplicationError('@Memoized can only be used on getters');
 	}
 
 	// Replace the original getter for the first call
