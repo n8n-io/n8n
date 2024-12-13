@@ -2,7 +2,7 @@ import { AssertionError, ok } from 'node:assert';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 
-import { Memoized } from '../memoized-getter';
+import { Memoized } from '../memoized';
 
 describe('Memoized Decorator', () => {
 	class TestClass {

@@ -1,1 +1,1 @@
-export { Memoized } from './memoized-getter';
+export { Memoized } from './memoized';
