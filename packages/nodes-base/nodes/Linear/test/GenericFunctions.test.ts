@@ -9,6 +9,8 @@ import { NodeApiError } from 'n8n-workflow';
 import { capitalizeFirstLetter, linearApiRequest, sort } from '../GenericFunctions';
 
 describe('Linear -> GenericFunctions', () => {
+	const mockHttpRequestWithAuthentication = jest.fn();
+
 	describe('linearApiRequest', () => {
 		let mockExecuteFunctions:
 			| IExecuteFunctions
@@ -20,7 +22,7 @@ describe('Linear -> GenericFunctions', () => {
 			mockExecuteFunctions = {
 				getNodeParameter: jest.fn().mockReturnValue(authentication),
 				helpers: {
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 				},
 				getNode: jest.fn().mockReturnValue({}),
 			} as unknown as
@@ -38,7 +40,7 @@ describe('Linear -> GenericFunctions', () => {
 		it('should make a successful API request', async () => {
 			const response = { data: { success: true } };
 
-			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(response);
+			mockHttpRequestWithAuthentication.mockResolvedValue(response);
 
 			const result = await linearApiRequest.call(mockExecuteFunctions, {
 				query: '{ viewer { id } }',
@@ -68,9 +70,7 @@ describe('Linear -> GenericFunctions', () => {
 				],
 			};
 
-			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockRejectedValue({
-				errorResponse: errorResponse.errors,
-			});
+			mockHttpRequestWithAuthentication.mockResolvedValue(errorResponse);
 
 			await expect(
 				linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' }),
