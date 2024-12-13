@@ -76,4 +76,57 @@ describe('Memoized Decorator', () => {
 			});
 		}).toThrow();
 	});
+
+	it('should work when child class references memoized getter in parent class', () => {
+		class ParentClass {
+			protected computeCount = 0;
+
+			@Memoized
+			get parentValue() {
+				this.computeCount++;
+				return 42;
+			}
+
+			getComputeCount() {
+				return this.computeCount;
+			}
+		}
+
+		class ChildClass extends ParentClass {
+			get childValue() {
+				return this.parentValue * 2;
+			}
+		}
+
+		const child = new ChildClass();
+
+		expect(child.childValue).toBe(84);
+		expect(child.getComputeCount()).toBe(1);
+
+		expect(child.childValue).toBe(84);
+		expect(child.getComputeCount()).toBe(1);
+	});
+
+	it('should have correct property descriptor after memoization', () => {
+		const instance = new TestClass();
+
+		// Before accessing (original getter descriptor)
+		const beforeDescriptor = Object.getOwnPropertyDescriptor(
+			TestClass.prototype,
+			'expensiveComputation',
+		);
+		expect(beforeDescriptor?.configurable).toBe(true);
+		expect(beforeDescriptor?.enumerable).toBe(false);
+		expect(typeof beforeDescriptor?.get).toBe('function');
+		expect(beforeDescriptor?.set).toBeUndefined();
+
+		// After accessing (memoized value descriptor)
+		instance.expensiveComputation; // Trigger memoization
+		const afterDescriptor = Object.getOwnPropertyDescriptor(instance, 'expensiveComputation');
+		expect(afterDescriptor?.configurable).toBe(false);
+		expect(afterDescriptor?.enumerable).toBe(false);
+		expect(afterDescriptor?.writable).toBe(false);
+		expect(afterDescriptor?.value).toBe(84);
+		expect(afterDescriptor?.get).toBeUndefined();
+	});
 });
