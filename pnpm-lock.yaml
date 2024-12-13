@@ -52,8 +52,8 @@ catalogs:
       specifier: 3.4.4
       version: 3.4.4
     nanoid:
-      specifier: 3.3.6
-      version: 3.3.6
+      specifier: 3.3.8
+      version: 3.3.8
     typedi:
       specifier: 0.10.0
       version: 0.10.0
@@ -239,7 +239,7 @@ importers:
         version: 4.17.21
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.6
+        version: 3.3.8
       start-server-and-test:
         specifier: ^2.0.8
         version: 2.0.8
@@ -289,7 +289,7 @@ importers:
         version: 8.6.0
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.6
+        version: 3.3.8
       zx:
         specifier: ^8.1.4
         version: 8.1.4
@@ -679,8 +679,8 @@ importers:
         specifier: workspace:*
         version: link:../../workflow
       nanoid:
-        specifier: ^3.3.6
-        version: 3.3.7
+        specifier: 'catalog:'
+        version: 3.3.8
       typedi:
         specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
@@ -915,7 +915,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.6
+        version: 3.3.8
       nodemailer:
         specifier: 6.9.9
         version: 6.9.9
@@ -1162,7 +1162,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.6
+        version: 3.3.8
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -10273,13 +10273,8 @@ packages:
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
-  nanoid@3.3.6:
-    resolution: {integrity: sha512-BGcqMMJuToF7i1rt+2PWSNVnWIkGCU78jBG3RxO/bZlnZPK2Cmi2QaffxGO/2RvWi9sL+FAiRiXMgsyxQ1DIDA==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@3.3.7:
-    resolution: {integrity: sha512-eSRppjcPIatRIMC1U6UngP8XFcz8MQWGQdt1MTBQ7NaAmvXDfvNxbvWV3x2y6CdEUciCSsDHDQZbhYaB8QEo2g==}
+  nanoid@3.3.8:
+    resolution: {integrity: sha512-WNLf5Sd8oZxOm+TzppcYk8gVOgP+l58xNy58D0nbUnOxOWRWvlcCV4kUF7ltmI6PsrLl/BgKEyS4mqsGChFN0w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -22284,7 +22279,7 @@ snapshots:
 
   ics@2.40.0:
     dependencies:
-      nanoid: 3.3.7
+      nanoid: 3.3.8
       yup: 0.32.11
 
   ieee754@1.2.1: {}
@@ -23754,7 +23749,7 @@ snapshots:
   minifaker@1.34.1:
     dependencies:
       '@types/uuid': 8.3.4
-      nanoid: 3.3.7
+      nanoid: 3.3.8
       uuid: 8.3.2
 
   minimalistic-assert@1.0.1: {}
@@ -24309,9 +24304,7 @@ snapshots:
 
   nanoclone@0.2.1: {}
 
-  nanoid@3.3.6: {}
-
-  nanoid@3.3.7: {}
+  nanoid@3.3.8: {}
 
   napi-build-utils@1.0.2: {}
 
@@ -25019,19 +25012,19 @@ snapshots:
 
   postcss@8.4.31:
     dependencies:
-      nanoid: 3.3.7
+      nanoid: 3.3.8
       picocolors: 1.0.1
       source-map-js: 1.2.1
 
   postcss@8.4.38:
     dependencies:
-      nanoid: 3.3.7
+      nanoid: 3.3.8
       picocolors: 1.0.1
       source-map-js: 1.2.0
 
   postcss@8.4.49:
     dependencies:
-      nanoid: 3.3.7
+      nanoid: 3.3.8
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
