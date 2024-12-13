@@ -59,6 +59,7 @@ export class CredentialsController {
 		const credentials = await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
 			includeScopes: query.includeScopes === 'true',
+			includeData: query.includeData === 'true',
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared

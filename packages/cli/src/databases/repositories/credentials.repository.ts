@@ -25,8 +25,22 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		});
 	}
 
-	async findMany(listQueryOptions?: ListQuery.Options, credentialIds?: string[]) {
+	async findMany(
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+		credentialIds?: string[],
+	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
+
+		if (listQueryOptions?.includeData) {
+			if (Array.isArray(findManyOptions.select)) {
+				findManyOptions.select.push('data');
+			} else if (typeof findManyOptions.select === 'object') {
+				findManyOptions.select.data = true;
+			} else {
+				findManyOptions.select ??= [];
+				findManyOptions.select.push('data');
+			}
+		}
 
 		if (credentialIds) {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };

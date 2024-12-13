@@ -38,6 +38,7 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
 
 export type CredentialsGetSharedOptions =
@@ -65,13 +66,24 @@ export class CredentialsService {
 		{
 			listQueryOptions = {},
 			includeScopes = false,
+			includeData = false,
 		}: {
-			listQueryOptions: ListQuery.Options;
+			listQueryOptions: ListQuery.Options & { includeData?: boolean };
 			includeScopes: boolean;
+			includeData: boolean;
 		},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
+
+		if (includeData) {
+			// We need the scopes to check if we're allowed to include the decrypted
+			// data.
+			// Only if the user has the `credential:update` scope the user is allowed
+			// to get the data.
+			includeScopes = true;
+			listQueryOptions.includeData = true;
+		}
 
 		let projectRelations: ProjectRelation[] | undefined = undefined;
 		if (includeScopes) {
@@ -114,6 +126,21 @@ export class CredentialsService {
 				credentials = credentials.map((c) =>
 					this.roleService.addScopes(c, user, projectRelations!),
 				);
+			}
+
+			if (includeData) {
+				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+					if (c.scopes.includes('credential:update')) {
+						return {
+							...c,
+							data: this.decrypt(c),
+						} as unknown as CredentialsEntity;
+					}
+					return {
+						...c,
+						data: undefined,
+					} as unknown as CredentialsEntity;
+				});
 			}
 
 			return credentials;
@@ -159,6 +186,21 @@ export class CredentialsService {
 
 		if (includeScopes) {
 			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+		}
+
+		if (includeData) {
+			credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+				if (c.scopes.includes('credential:update')) {
+					return {
+						...c,
+						data: this.decrypt(c),
+					} as unknown as CredentialsEntity;
+				}
+				return {
+					...c,
+					data: undefined,
+				} as unknown as CredentialsEntity;
+			});
 		}
 
 		return credentials;
