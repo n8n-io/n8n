@@ -41,16 +41,9 @@ export async function philipsHueApiRequest(
 			delete options.qs;
 		}
 
-		console.log('### OPTIONS ###');
-		console.log(options);
-		console.log('### OPTIONS ###');
-
 		const response = await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
-		console.log('### RESPONSE ###');
-		console.log(response);
-		console.log('### RESPONSE ###');
 		return response;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
