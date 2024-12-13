@@ -576,7 +576,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					text
 					size="mini"
 					icon="trash"
-					class="delete-option"
+					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
 				></N8nIconButton>
@@ -620,7 +620,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					text
 					size="mini"
 					icon="trash"
-					class="delete-option"
+					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
 				></N8nIconButton>

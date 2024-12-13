@@ -274,7 +274,7 @@ const onDragChange = (optionName: string) => {
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div v-if="!isReadOnly" class="delete-option">
+					<div v-if="!isReadOnly" class="icon-button">
 						<N8nIconButton
 							type="tertiary"
 							text
