@@ -1,12 +1,12 @@
 {
-	"name": "[TEST] Philips Hue",
+	"name": "[TEST] Hue",
 	"nodes": [
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-340, 0],
-			"id": "b4c1f6ce-b730-4b52-9b28-7d1cdf31e045",
+			"position": [0, 0],
+			"id": "9e687c5d-e3a5-436d-a96d-7bfde1110f40",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -16,12 +16,12 @@
 			},
 			"type": "n8n-nodes-base.philipsHue",
 			"typeVersion": 1,
-			"position": [-80, 0],
-			"id": "4c793cc6-e724-477d-9cca-8d9e7a9458e7",
+			"position": [260, 0],
+			"id": "063bcf31-3055-42f1-904f-d517f85db182",
 			"name": "Philips Hue",
 			"credentials": {
 				"philipsHueOAuth2Api": {
-					"id": "Y4sLtXQ4hjjvga7Y",
+					"id": "s6tRicNTKQoa9TDq",
 					"name": "PhilipHue account"
 				}
 			}
@@ -30,9 +30,62 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [140, 0],
-			"id": "31384e0f-19e7-4ccb-8b6b-8d23a03618ec",
+			"position": [480, 0],
+			"id": "d6c4f99a-d660-4113-aa08-a7bcc9391236",
 			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"lightId": "=1",
+				"additionalFields": {
+					"bri": 200,
+					"hue": 50000
+				}
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [260, 200],
+			"id": "c8311112-d24e-4787-80b1-cc5397aea98e",
+			"name": "Philips Hue1",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "s6tRicNTKQoa9TDq",
+					"name": "PhilipHue account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 200],
+			"id": "c438bf28-0cf8-459a-bd3a-28f6c30b3f2f",
+			"name": "No Operation, do nothing1"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"lightId": "=1"
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [280, 400],
+			"id": "fd197627-9221-4e6d-ab51-53d262004db8",
+			"name": "Philips Hue2",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "s6tRicNTKQoa9TDq",
+					"name": "PhilipHue account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [500, 400],
+			"id": "19796164-8527-462b-b01b-71d7f60c94af",
+			"name": "No Operation, do nothing2"
 		}
 	],
 	"pinData": {
@@ -87,6 +140,22 @@
 					"swversion": "5.105.0.21169"
 				}
 			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"/lights/1/state/bri": 200,
+					"/lights/1/state/on": true,
+					"/lights/1/state/hue": 50000
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"success": "/lights/1 deleted."
+				}
+			}
 		]
 	},
 	"connections": {
@@ -95,6 +164,16 @@
 				[
 					{
 						"node": "Philips Hue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Philips Hue1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Philips Hue2",
 						"type": "main",
 						"index": 0
 					}
@@ -111,16 +190,38 @@
 					}
 				]
 			]
+		},
+		"Philips Hue1": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Philips Hue2": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "129107d8-2091-42a1-b211-d84558cecaf8",
+	"versionId": "2c19891b-ba8e-4026-b8c2-b5f3f508b54a",
 	"meta": {
-		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
 	},
-	"id": "mp8GU0Saf16b0CAb",
+	"id": "LAngRPRzm3OGrfh0",
 	"tags": []
 }

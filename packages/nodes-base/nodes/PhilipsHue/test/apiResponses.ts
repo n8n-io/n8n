@@ -96,3 +96,13 @@ export const getConfigResponse = {
 		communication: 'disconnected',
 	},
 };
+
+export const updateLightResponse = [
+	{ success: { '/lights/1/state/bri': 200 } },
+	{ success: { '/lights/1/state/on': true } },
+	{ success: { '/lights/1/state/hue': 50000 } },
+];
+
+export const deleteLightResponse = {
+	success: '/lights/1 deleted.',
+};

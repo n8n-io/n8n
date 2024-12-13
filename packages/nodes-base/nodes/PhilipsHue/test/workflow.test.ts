@@ -1,8 +1,17 @@
 import nock from 'nock';
 
-import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
-
-import { getLightsResponse, getConfigResponse } from './apiResponses';
+import {
+	deleteLightResponse,
+	getLightsResponse,
+	getConfigResponse,
+	updateLightResponse,
+} from './apiResponses';
+import {
+	setup,
+	equalityTest,
+	workflowToTests,
+	getWorkflowFilenames,
+} from '../../../test/nodes/Helpers';
 
 describe('PhilipsHue', () => {
 	describe('Run workflow', () => {
@@ -11,11 +20,12 @@ describe('PhilipsHue', () => {
 
 		beforeAll(() => {
 			nock.disableNetConnect();
-			nock('https://api.meethue.com/route')
-				.get('/api/0/config')
-				.reply(200, getConfigResponse)
-				.get('/api/n8n/lights')
-				.reply(200, getLightsResponse);
+
+			const mock = nock('https://api.meethue.com/route');
+			mock.persist().get('/api/0/config').reply(200, getConfigResponse);
+			mock.get('/api/pAtwdCV8NZId25Gk/lights').reply(200, getLightsResponse);
+			mock.put('/api/pAtwdCV8NZId25Gk/lights/1/state').reply(200, updateLightResponse);
+			mock.delete('/api/pAtwdCV8NZId25Gk/lights/1').reply(200, deleteLightResponse);
 		});
 
 		afterAll(() => {
