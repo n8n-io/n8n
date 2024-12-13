@@ -1,6 +1,6 @@
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
-import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere } from '@n8n/typeorm';
 import { Service } from 'typedi';
 
 import type { ListQuery } from '@/requests';
@@ -61,7 +61,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		}
 
 		if (filter) findManyOptions.where = filter;
-		if (select) findManyOptions.select = select;
+		if (select) findManyOptions.select = [...new Set([...defaultSelect, ...select])];
 		if (take) findManyOptions.take = take;
 		if (skip) findManyOptions.skip = skip;
 
@@ -71,6 +71,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
+			findManyOptions.relations = defaultRelations;
+		}
+
+		const selectKeys = Object.keys(listQueryOptions.select ?? {});
+		if (selectKeys.length === 1 && selectKeys[0] === 'data') {
 			findManyOptions.relations = defaultRelations;
 		}
 

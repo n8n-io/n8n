@@ -10,6 +10,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/shared-cre
 import type { ICredentialsDb } from '@/interfaces';
 
 import type { CredentialPayload } from '../types';
+import { ProjectRole } from '@/databases/entities/project-relation';
 
 export async function encryptCredentialData(
 	credential: CredentialsEntity,

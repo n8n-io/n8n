@@ -1,3 +1,4 @@
+import { CredentialsGetManyRequest, CredentialsGetOneRequest } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -18,6 +19,7 @@ import {
 	RestController,
 	ProjectScope,
 } from '@/decorators';
+import { Param, Query } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -49,18 +51,29 @@ export class CredentialsController {
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	async getMany(req: CredentialRequest.GetMany) {
-		const credentials = await this.credentialsService.getMany(req.user, {
-			listQueryOptions: req.listQueryOptions,
-			includeScopes: req.query.includeScopes,
-		});
-		credentials.forEach((c) => {
-			// @ts-expect-error: This is to emulate the old behavior of removing the shared
-			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-			// though. So to avoid leaking the information we just delete it.
-			delete c.shared;
-		});
-		return credentials;
+	// TODO: create own dto
+	async getMany(
+		req: CredentialRequest.GetMany,
+		_res: unknown,
+		@Query query: CredentialsGetManyRequest,
+	) {
+		try {
+			const credentials = await this.credentialsService.getMany(req.user, {
+				listQueryOptions: req.listQueryOptions,
+				includeScopes: query.includeScopes === 'true',
+				includeData: query.includeData === 'true',
+			});
+			credentials.forEach((c) => {
+				// @ts-expect-error: This is to emulate the old behavior of removing the shared
+				// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+				// though. So to avoid leaking the information we just delete it.
+				delete c.shared;
+			});
+			return credentials;
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
 	}
 
 	@Get('/for-workflow')
@@ -82,21 +95,22 @@ export class CredentialsController {
 
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
-	async getOne(req: CredentialRequest.Get) {
+	async getOne(
+		req: CredentialRequest.Get,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+		@Query query: CredentialsGetOneRequest,
+	) {
 		const { shared, ...credential } = this.license.isSharingEnabled()
 			? await this.enterpriseCredentialsService.getOne(
 					req.user,
-					req.params.credentialId,
+					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
 					// the scopes and always decrypt the data if the user has the permissions
 					// to do so.
-					req.query.includeData === 'true',
+					query.includeData === 'true',
 				)
-			: await this.credentialsService.getOne(
-					req.user,
-					req.params.credentialId,
-					req.query.includeData === 'true',
-				);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData === 'true');
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
