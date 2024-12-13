@@ -439,7 +439,6 @@ export class Git implements INodeType {
 						});
 					}
 
-					// @ts-ignore
 					returnItems.push(
 						...this.helpers.returnJsonArray(data).map((item) => {
 							return {

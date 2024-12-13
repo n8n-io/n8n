@@ -1093,9 +1093,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 			},
 			Switch: {
 				main: [
-					// @ts-ignore
 					null,
-					// @ts-ignore
 					null,
 					[
 						{

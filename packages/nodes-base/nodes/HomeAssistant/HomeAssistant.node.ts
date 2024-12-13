@@ -222,7 +222,6 @@ export class HomeAssistant implements INodeType {
 						if (Object.entries(serviceAttributes).length) {
 							if (serviceAttributes.attributes !== undefined) {
 								serviceAttributes.attributes.map((attribute) => {
-									// @ts-ignore
 									body[attribute.name as string] = attribute.value;
 								});
 							}
