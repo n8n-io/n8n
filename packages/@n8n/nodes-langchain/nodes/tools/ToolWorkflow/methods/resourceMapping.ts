@@ -21,7 +21,7 @@ export async function loadWorkflowInputMappings(
 				defaultMatch: false,
 				display: true,
 				canBeUsedToMatch: true,
-				defaultValue: `={{ $ffromAI('${currentWorkflowInput.name}', '', '${currentWorkflowInput.type}') }}`,
+				defaultValue: `={{ $fromAI('${currentWorkflowInput.name}', '', '${currentWorkflowInput.type}') }}`,
 			};
 
 			if (currentWorkflowInput.type !== 'any') {

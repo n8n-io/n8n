@@ -5,6 +5,7 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -20,6 +21,7 @@ import type {
 	ITaskMetadata,
 	ResourceMapperField,
 	FieldValueOption,
+	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -35,7 +37,6 @@ import {
 } from '../../../utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 
 function getWorkflowInputValues(this: ISupplyDataFunctions) {
 	const inputData = this.getInputData();
@@ -475,9 +476,7 @@ export class ToolWorkflow implements INodeType {
 		let subWorkflowId: string | undefined;
 
 		const subworkflowInputsSchema =
-			nodeVersion > 1.3
-				? (this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[])
-				: [];
+			(this.getNode().parameters.workflowInputs as ResourceMapperValue)?.schema ?? [];
 		const useExplicitSchema =
 			nodeVersion < 1.4 && (this.getNodeParameter('specifyInputSchema', itemIndex) as boolean);
 		const useSchema = useExplicitSchema || subworkflowInputsSchema.length > 0;
