@@ -125,4 +125,7 @@ BQIDAQAB
 		accessToken: 'testToken',
 		baseUrl: 'https://api.telegram.org',
 	},
+	notionApi: {
+		apiKey: 'key123',
+	},
 } as const;
