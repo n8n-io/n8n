@@ -1,10 +1,10 @@
-import { createComponentRenderer } from '@/__tests__/render';
-import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createMemoryHistory } from 'vue-router';
-import { createProjectListItem } from '@/__tests__/data/projects';
-import ProjectsNavigation from '@/components/Projects//ProjectNavigation.vue';
-import { useProjectsStore } from '@/stores/projects.store';
+import { createTestingPinia } from '@pinia/testing';
+import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { createProjectListItem } from '@/__tests__/data/projects';
+import ProjectsNavigation from '@/components/Projects/ProjectNavigation.vue';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -133,15 +133,42 @@ describe('ProjectsNavigation', () => {
 		expect(getByTestId('project-personal-menu-item').querySelector('svg')).not.toBeInTheDocument();
 	});
 
-	it('should not show plus button next to "Projects" title if user cannot create projects', async () => {
-		projectsStore.teamProjectsLimit = 0;
+	it('should not show add first project button if there are projects already', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		projectsStore.myProjects = [...teamProjects];
 
-		const { queryByRole } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			props: {
 				collapsed: false,
 			},
 		});
 
-		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
+		expect(queryByTestId('add-first-project-button')).not.toBeInTheDocument();
+	});
+
+	it('should not show project plus button and add first project button if user cannot create projects', async () => {
+		projectsStore.teamProjectsLimit = 0;
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(queryByTestId('project-plus-button')).not.toBeInTheDocument();
+		expect(queryByTestId('add-first-project-button')).not.toBeInTheDocument();
+	});
+
+	it('should show project plus button and add first project button if user can create projects', async () => {
+		projectsStore.teamProjectsLimit = -1;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(getByTestId('project-plus-button')).toBeVisible();
+		expect(getByTestId('add-first-project-button')).toBeVisible();
 	});
 });
