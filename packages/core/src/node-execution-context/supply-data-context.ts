@@ -258,23 +258,16 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			if (additionalData.sendDataToUI) {
-				additionalData.sendDataToUI('nodeExecuteBefore', {
-					executionId: additionalData.executionId,
-					nodeName,
-				});
-			}
+			await additionalData.hooks?.executeHookFunctions('nodeExecuteBefore', [nodeName]);
 		} else {
 			// Outputs
 			taskData.executionTime = new Date().getTime() - taskData.startTime;
 
-			if (additionalData.sendDataToUI) {
-				additionalData.sendDataToUI('nodeExecuteAfter', {
-					executionId: additionalData.executionId,
-					nodeName,
-					data: taskData,
-				});
-			}
+			await additionalData.hooks?.executeHookFunctions('nodeExecuteAfter', [
+				nodeName,
+				taskData,
+				this.runExecutionData,
+			]);
 
 			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
 				runExecutionData.executionData!.metadata = {};
