@@ -94,7 +94,12 @@ describe('Form Node', () => {
 			);
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
-				{ type: 'n8n-nodes-base.formTrigger', name: 'Form Trigger', typeVersion: 2.1 },
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
 			]);
 			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
@@ -122,7 +127,12 @@ describe('Form Node', () => {
 		it('should return form data for POST request', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as Request);
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
-				{ type: 'n8n-nodes-base.formTrigger', name: 'Form Trigger', typeVersion: 2.1 },
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
 			]);
 			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
@@ -174,7 +184,12 @@ describe('Form Node', () => {
 				return {};
 			});
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
-				{ type: 'n8n-nodes-base.formTrigger', name: 'Form Trigger', typeVersion: 2.1 },
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
 			]);
 			mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
 

@@ -1,19 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
-import { WorkflowExecute } from 'n8n-core';
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	NodeOperationError,
-	Workflow,
-	WorkflowHooks,
-} from 'n8n-workflow';
+import { ErrorReporter, WorkflowExecute } from 'n8n-core';
+import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -215,7 +208,7 @@ export function executeErrorWorkflow(
 					);
 				})
 				.catch((error: Error) => {
-					ErrorReporter.error(error);
+					Container.get(ErrorReporter).error(error);
 					logger.error(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
@@ -423,7 +416,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
-							ErrorReporter.error(e);
+							Container.get(ErrorReporter).error(e);
 							logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
@@ -502,7 +495,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						);
 					}
 				} catch (error) {
-					ErrorReporter.error(error);
+					Container.get(ErrorReporter).error(error);
 					logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -584,7 +577,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
-							ErrorReporter.error(e);
+							Container.get(ErrorReporter).error(e);
 							logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
 								{ pushRef: this.pushRef, workflowId: this.workflowData.id },
@@ -653,7 +646,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							this.executionId,
 						]);
 					} catch (error) {
-						ErrorReporter.error(error);
+						Container.get(ErrorReporter).error(error);
 						Container.get(Logger).error(
 							'There was a problem running hook "workflow.postExecute"',
 							error,
@@ -1036,9 +1029,6 @@ export async function getBase(
 			mode: WorkflowExecuteMode,
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
-			defaultReturnRunIndex?: number,
-			selfData?: IDataObject,
-			contextNodeName?: string,
 		) {
 			return await Container.get(TaskManager).startTask(
 				additionalData,
@@ -1057,9 +1047,6 @@ export async function getBase(
 				mode,
 				envProviderState,
 				executeData,
-				defaultReturnRunIndex,
-				selfData,
-				contextNodeName,
 			);
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>

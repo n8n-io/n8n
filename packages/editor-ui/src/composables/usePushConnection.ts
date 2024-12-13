@@ -37,6 +37,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
 import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
+import { clearPopupWindowState } from '../utils/executionUtils';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -201,6 +202,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 
 			if (receivedData.type === 'executionFinished') {
+				clearPopupWindowState();
 				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
 				if (workflow?.meta?.templateId) {
 					const isEasyAIWorkflow =
@@ -397,7 +399,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
-							dangerouslyUseHTMLString: true,
 						});
 					}
 				}

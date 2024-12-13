@@ -97,7 +97,7 @@ export class WorkflowPage extends BasePage {
 		disabledNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.get('.node-box.disabled'),
-				() => cy.get('[data-test-id="canvas-trigger-node"][class*="disabled"]'),
+				() => cy.get('[data-test-id*="node"][class*="disabled"]'),
 			),
 		selectedNodes: () =>
 			cy.ifCanvasVersion(
