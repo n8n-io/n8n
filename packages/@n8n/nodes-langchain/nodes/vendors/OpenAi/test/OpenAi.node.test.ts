@@ -1,11 +1,11 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import get from 'lodash/get';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+
 import * as assistant from '../actions/assistant';
 import * as audio from '../actions/audio';
 import * as file from '../actions/file';
 import * as image from '../actions/image';
 import * as text from '../actions/text';
-
 import * as transport from '../transport';
 
 const createExecuteFunctionsMock = (parameters: IDataObject) => {
@@ -616,6 +616,74 @@ describe('OpenAi, Text resource', () => {
 				messages: [{ content: 'message', role: 'user' }],
 				model: 'gpt-model',
 				response_format: undefined,
+				tools: undefined,
+			},
+		});
+	});
+
+	it('message => json output, o1 models should not receive system prompt', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+			choices: [{ message: { tool_calls: undefined } }],
+		});
+
+		await text.message.execute.call(
+			createExecuteFunctionsMock({
+				modelId: 'o1-mini',
+				messages: {
+					values: [{ role: 'user', content: 'message' }],
+				},
+
+				jsonOutput: true,
+
+				options: {},
+			}),
+			0,
+		);
+
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/chat/completions', {
+			body: {
+				messages: [{ content: 'message', role: 'user' }],
+				model: 'o1-mini',
+				response_format: {
+					type: 'json_object',
+				},
+				tools: undefined,
+			},
+		});
+	});
+
+	it('message => json output, older models should receive system prompt', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+			choices: [{ message: { tool_calls: undefined } }],
+		});
+
+		await text.message.execute.call(
+			createExecuteFunctionsMock({
+				modelId: 'gpt-model',
+				messages: {
+					values: [{ role: 'user', content: 'message' }],
+				},
+
+				jsonOutput: true,
+
+				options: {},
+			}),
+			0,
+		);
+
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/chat/completions', {
+			body: {
+				messages: [
+					{
+						role: 'system',
+						content: 'You are a helpful assistant designed to output JSON.',
+					},
+					{ content: 'message', role: 'user' },
+				],
+				model: 'gpt-model',
+				response_format: {
+					type: 'json_object',
+				},
 				tools: undefined,
 			},
 		});
