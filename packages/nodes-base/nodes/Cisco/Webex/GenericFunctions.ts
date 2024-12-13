@@ -43,7 +43,6 @@ export async function webexApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});

@@ -36,7 +36,6 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleContactsOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

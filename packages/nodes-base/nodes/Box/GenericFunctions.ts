@@ -41,7 +41,6 @@ export async function boxApiRequest(
 			includeCredentialsOnRefreshOnBody: true,
 		};
 
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options, oAuth2Options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

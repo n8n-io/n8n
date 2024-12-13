@@ -137,7 +137,6 @@ export const extendTransform = (expression: string): { code: string } | undefine
 				// This is to match our fork of tmpl
 				const globalIdentifier = types.builders.identifier(
 					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-					// @ts-ignore
 					typeof window !== 'object' ? 'global' : 'window',
 				);
 				// We want to define all of our commonly used identifiers and member

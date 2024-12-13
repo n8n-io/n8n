@@ -838,7 +838,6 @@ export class Mandrill implements INodeType {
 								// @ts-ignore
 								attachmentsValues = map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
 									const aux: IDataObject = {};
-									// @ts-ignore
 									aux.name = o.name;
 									aux.content = o.content;
 									aux.type = o.type;

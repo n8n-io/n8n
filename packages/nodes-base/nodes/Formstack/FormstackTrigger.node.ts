@@ -163,7 +163,6 @@ export class FormstackTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData() as unknown as IFormstackWebhookResponseBody;
 		const simple = this.getNodeParameter('simple') as string;

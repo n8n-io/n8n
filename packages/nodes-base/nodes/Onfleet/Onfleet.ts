@@ -789,7 +789,6 @@ export class Onfleet {
 			const tasksData = {
 				tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)),
 			};
-			//@ts-ignore
 			const { tasks: tasksCreated } = await onfleetApiRequest.call(this, 'POST', path, tasksData);
 			return tasksCreated;
 		}

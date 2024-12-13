@@ -741,7 +741,6 @@ export class HttpRequestV2 implements INodeType {
 			};
 
 			if (fullResponse) {
-				// @ts-ignore
 				requestOptions.resolveWithFullResponse = true;
 			}
 
@@ -754,7 +753,6 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			if (options.ignoreResponseCode === true) {
-				// @ts-ignore
 				requestOptions.simple = false;
 			}
 			if (options.proxy !== undefined) {
@@ -1030,12 +1028,10 @@ export class HttpRequestV2 implements INodeType {
 			}
 		}
 
-		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			// @ts-ignore
 			response = promisesResponses.shift();
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {

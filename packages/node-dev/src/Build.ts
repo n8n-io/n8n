@@ -85,9 +85,7 @@ export async function buildFiles({
 
 		// Forward the output of the child process to the main one
 		// that the user can see what is happening
-		// @ts-ignore
 		buildProcess.stdout.pipe(process.stdout);
-		// @ts-ignore
 		buildProcess.stderr.pipe(process.stderr);
 
 		// Make sure that the child process gets also always terminated
