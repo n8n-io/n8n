@@ -2,7 +2,10 @@ import { mock } from 'jest-mock-extended';
 import type { FieldValueOption, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { ExecuteWorkflowTrigger } from './ExecuteWorkflowTrigger.node';
-import { getFieldEntries, getWorkflowInputData } from '../GenericFunctions';
+import {
+	getFieldEntries,
+	getWorkflowInputData,
+} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 jest.mock('../GenericFunctions');
 
