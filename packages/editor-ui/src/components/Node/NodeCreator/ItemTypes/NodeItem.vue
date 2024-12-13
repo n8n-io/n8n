@@ -9,7 +9,6 @@ import {
 } from '@/constants';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
@@ -93,15 +92,6 @@ const isTrigger = computed<boolean>(() => {
 });
 
 function onDragStart(event: DragEvent): void {
-	/**
-	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-	 * All browsers attach the correct page coordinates to the "dragover" event.
-	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-	 */
-	document.body.addEventListener('dragover', onDragOver);
-
-	const { pageX: x, pageY: y } = event;
-
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
 		event.dataTransfer.dropEffect = 'copy';
@@ -113,22 +103,9 @@ function onDragStart(event: DragEvent): void {
 	}
 
 	dragging.value = true;
-	draggablePosition.value = { x, y };
-}
-
-function onDragOver(event: DragEvent): void {
-	if (!dragging.value || (event.pageX === 0 && event.pageY === 0)) {
-		return;
-	}
-
-	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
-
-	draggablePosition.value = { x, y };
 }
 
 function onDragEnd(): void {
-	document.body.removeEventListener('dragover', onDragOver);
-
 	dragging.value = false;
 	setTimeout(() => {
 		draggablePosition.value = { x: -100, y: -100 };
@@ -144,7 +121,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 <template>
 	<!-- Node Item is draggable only if it doesn't contain actions -->
-	<n8n-node-creator-node
+	<N8nNodeCreatorNode
 		:draggable="!showActionArrow"
 		:class="$style.nodeItem"
 		:description="description"
@@ -176,12 +153,16 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			/>
 		</template>
 		<template #dragContent>
-			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
-			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
+			<div
+				ref="draggableDataTransfer"
+				v-show="dragging"
+				:class="$style.draggable"
+				:style="draggableStyle"
+			>
 				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
 			</div>
 		</template>
-	</n8n-node-creator-node>
+	</N8nNodeCreatorNode>
 </template>
 
 <style lang="scss" module>
