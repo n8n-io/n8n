@@ -131,22 +131,6 @@ export const fileFields: INodeProperties[] = [
 					'The channel to send the file to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Channel Name or ID',
-				name: 'channelId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getChannels',
-				},
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 2.2 } }],
-					},
-				},
-				default: [],
-				description:
-					'The channel to send the file to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
 				displayName: 'File Name',
 				name: 'fileName',
 				type: 'string',
