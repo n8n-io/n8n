@@ -98,13 +98,14 @@ const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
+	viewportRef,
 	fitView,
 	zoomIn,
 	zoomOut,
 	zoomTo,
 	setInteractive,
 	elementsSelectable,
-	screenToFlowCoordinate,
+	project,
 	nodes: graphNodes,
 	onPaneReady,
 	onNodesInitialized,
@@ -327,12 +328,7 @@ function onConnectEnd(event?: MouseEvent) {
 	if (connectedHandle.value) {
 		emit('create:connection:end', connectedHandle.value, event);
 	} else if (connectingHandle.value) {
-		emit(
-			'create:connection:cancelled',
-			connectingHandle.value,
-			screenToFlowCoordinate(event),
-			event,
-		);
+		emit('create:connection:cancelled', connectingHandle.value, getProjectedPosition(event), event);
 	}
 
 	connectedHandle.value = undefined;
@@ -369,7 +365,7 @@ onEdgeMouseMove(
 		}
 
 		if (!edge.data.maxConnections || edge.data.maxConnections > 1) {
-			const projectedPosition = screenToFlowCoordinate(event);
+			const projectedPosition = getProjectedPosition(event);
 			const yDiff = projectedPosition.y - edge.targetY;
 			if (yDiff < 4 * GRID_SIZE) {
 				edgesBringToFrontById.value = { [edge.id]: false };
@@ -435,8 +431,18 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 const defaultZoom = 1;
 const isPaneMoving = ref(false);
 
+function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
+	const offsetX = event?.clientX ?? 0;
+	const offsetY = event?.clientY ?? 0;
+	return project({
+		x: offsetX - bounds.left,
+		y: offsetY - bounds.top,
+	});
+}
+
 function onClickPane(event: MouseEvent) {
-	emit('click:pane', screenToFlowCoordinate(event));
+	emit('click:pane', getProjectedPosition(event));
 }
 
 async function onFitView() {
@@ -537,7 +543,7 @@ function onDragOver(event: DragEvent) {
 }
 
 function onDrop(event: DragEvent) {
-	const position = screenToFlowCoordinate(event);
+	const position = getProjectedPosition(event);
 
 	emit('drag-and-drop', position, event);
 }

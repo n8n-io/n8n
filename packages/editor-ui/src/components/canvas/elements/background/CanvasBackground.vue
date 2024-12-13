@@ -14,6 +14,7 @@ defineProps<{
 		<template v-if="striped" #pattern-container="patternProps">
 			<CanvasBackgroundStripedPattern
 				:id="patternProps.id"
+				data-test-id="canvas-background-striped-pattern"
 				:x="viewport.x"
 				:y="viewport.y"
 				:zoom="viewport.zoom"
