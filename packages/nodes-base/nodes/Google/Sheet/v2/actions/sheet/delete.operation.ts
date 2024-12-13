@@ -34,6 +34,18 @@ export const description: SheetProperties = [
 		description: 'What to delete',
 	},
 	{
+		displayName: 'Delete Empty Rows',
+		name: 'deleteEmptyRows',
+		type: 'boolean',
+		default: false,
+		description: 'Delete all empty rows',
+		displayOptions: {
+			show: {
+				toDelete: ['rows']
+			}
+		}
+	},
+	{
 		displayName: 'Start Row Number',
 		name: 'startIndex',
 		type: 'number',
@@ -49,6 +61,7 @@ export const description: SheetProperties = [
 				toDelete: ['rows'],
 			},
 			hide: {
+				deleteEmptyRows: [true],
 				...untilSheetSelected,
 			},
 		},
@@ -68,6 +81,7 @@ export const description: SheetProperties = [
 				toDelete: ['rows'],
 			},
 			hide: {
+				deleteEmptyRows: [true],
 				...untilSheetSelected,
 			},
 		},
@@ -114,6 +128,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	sheetId: string 	//router always gives us both name and id
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 
@@ -123,25 +138,55 @@ export async function execute(
 		const deleteType = this.getNodeParameter('toDelete', i) as string;
 
 		if (deleteType === 'rows') {
-			startIndex = this.getNodeParameter('startIndex', i) as number;
-			// We start from 1 now...
-			startIndex--;
-			numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
-			if (numberToDelete === 1) {
-				endIndex = startIndex + 1;
-			} else {
-				endIndex = startIndex + numberToDelete;
+			const deleteEmptyRows = this.getNodeParameter('deleteEmptyRows', i) as boolean;
+
+			if (deleteEmptyRows){
+				const range = sheetName; //full sheet
+				const response =  (await sheet.getData(range, 'UNFORMATTED_VALUE', 'FORMATTED_STRING'));
+				const rows = response || [];
+				const emptyRows: number[] = [];
+			
+				// Identify empty rows
+				rows.forEach((row, index) => {
+					if (!row.length)
+						emptyRows.push(index + 1); // Store the row number (1-indexed)
+				});
+				
+				// Delete empty rows (from bottom to top to avoid indices moving)
+				for(let rowIndex of emptyRows.reverse()){
+					requests.push({
+						deleteDimension: {
+							range: {
+								sheetId: sheetId,
+								dimension: 'ROWS',
+								startIndex: rowIndex-1,
+								endIndex: rowIndex,
+							}
+						}
+					})
+				};	
 			}
-			requests.push({
-				deleteDimension: {
-					range: {
-						sheetId: sheetName,
-						dimension: 'ROWS',
-						startIndex,
-						endIndex,
+			else{
+				startIndex = this.getNodeParameter('startIndex', i) as number;
+				// We start from 1 now...
+				startIndex--;
+				numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
+				if (numberToDelete === 1) {
+					endIndex = startIndex + 1;
+				} else {
+					endIndex = startIndex + numberToDelete;
+				}
+				requests.push({
+					deleteDimension: {
+						range: {
+							sheetId: sheetId,
+							dimension: 'ROWS',
+							startIndex,
+							endIndex,
+						},
 					},
-				},
-			});
+				});
+			}
 		} else if (deleteType === 'columns') {
 			startIndex = this.getNodeParameter('startIndex', i) as string;
 			numberToDelete = this.getNodeParameter('numberToDelete', i) as number;
@@ -154,7 +199,7 @@ export async function execute(
 			requests.push({
 				deleteDimension: {
 					range: {
-						sheetId: sheetName,
+						sheetId: sheetId,
 						dimension: 'COLUMNS',
 						startIndex,
 						endIndex,

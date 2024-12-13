@@ -52,9 +52,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'create':
 					sheetName = spreadsheetId;
 					break;
-				case 'delete':
-					sheetName = sheetId;
-					break;
 				case 'remove':
 					sheetName = `${spreadsheetId}||${sheetId}`;
 					break;
