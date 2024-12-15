@@ -1,30 +1,28 @@
+import type { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents';
+import type { CallbackManagerForChainRun, Callbacks } from '@langchain/core/callbacks/manager';
+import { CallbackManager } from '@langchain/core/callbacks/manager';
+import { Serializable } from '@langchain/core/load/serializable';
+import { OutputParserException } from '@langchain/core/output_parsers';
+import { Runnable, type RunnableConfig, patchConfig } from '@langchain/core/runnables';
 import {
 	type StructuredToolInterface,
 	type ToolInterface,
 	ToolInputParsingException,
 	Tool,
 } from '@langchain/core/tools';
-import { Runnable, type RunnableConfig, patchConfig } from '@langchain/core/runnables';
-import { AgentAction, AgentFinish, AgentStep } from '@langchain/core/agents';
-import { ChainValues } from '@langchain/core/utils/types';
-import {
-	CallbackManager,
-	CallbackManagerForChainRun,
-	Callbacks,
-} from '@langchain/core/callbacks/manager';
-import { OutputParserException } from '@langchain/core/output_parsers';
-import { Serializable } from '@langchain/core/load/serializable';
-import { SerializedLLMChain } from 'langchain/dist/chains/serde';
-import { StoppingMethod } from 'langchain/dist/agents/types';
+import type { ChainValues } from '@langchain/core/utils/types';
+import type { BaseMultiActionAgent, BaseSingleActionAgent } from 'langchain/dist/agents/agent';
 import {
 	AgentRunnableSequence,
-	BaseMultiActionAgent,
-	BaseSingleActionAgent,
 	RunnableMultiActionAgent,
 	RunnableSingleActionAgent,
 	isRunnableAgent,
 } from 'langchain/dist/agents/agent';
-import { BaseChain, ChainInputs } from 'langchain/dist/chains/base';
+import type { StoppingMethod } from 'langchain/dist/agents/types';
+import type { ChainInputs } from 'langchain/dist/chains/base';
+import { BaseChain } from 'langchain/dist/chains/base';
+import type { SerializedLLMChain } from 'langchain/dist/chains/serde';
+import { ApplicationError } from 'n8n-workflow';
 
 interface AgentExecutorIteratorInput {
 	agentExecutor: AgentExecutor;
@@ -153,7 +151,7 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 	 */
 	async onFirstStep(): Promise<void> {
 		if (this.iterations === 0) {
-			const callbackManager = await CallbackManager.configure(
+			const callbackManager = CallbackManager.configure(
 				this.callbacks ?? this.config?.callbacks,
 				this.agentExecutor.callbacks,
 				this.tags ?? this.config?.tags,
@@ -186,7 +184,7 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 	async _executeNextStep(
 		runManager?: CallbackManagerForChainRun,
 	): Promise<AgentFinish | AgentStep[]> {
-		return this.agentExecutor._takeNextStep(
+		return await this.agentExecutor._takeNextStep(
 			this.nameToToolMap,
 			this.inputs,
 			this.intermediateSteps,
@@ -205,7 +203,7 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 	): Promise<Record<string, string | AgentStep[]>> {
 		if ('returnValues' in nextStepOutput) {
 			const output = await this.agentExecutor._return(
-				nextStepOutput as AgentFinish,
+				nextStepOutput,
 				this.intermediateSteps,
 				runManager,
 			);
@@ -216,7 +214,7 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 			return output;
 		}
 
-		this.intermediateSteps = this.intermediateSteps.concat(nextStepOutput as AgentStep[]);
+		this.intermediateSteps = this.intermediateSteps.concat(nextStepOutput);
 
 		let output: Record<string, string | AgentStep[]> = {};
 		if (Array.isArray(nextStepOutput) && nextStepOutput.length === 1) {
@@ -228,7 +226,7 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 				await this.setFinalOutputs(output);
 			}
 		}
-		output = { intermediateSteps: nextStepOutput as AgentStep[] };
+		output = { intermediateSteps: nextStepOutput };
 		return output;
 	}
 
@@ -251,13 +249,13 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 	async _callNext(): Promise<Record<string, unknown>> {
 		// final output already reached: stopiteration (final output)
 		if (this.finalOutputs) {
-			throw new Error(
+			throw new ApplicationError(
 				`Final outputs already reached: ${JSON.stringify(this.finalOutputs, null, 2)}`,
 			);
 		}
 		// timeout/max iterations: stopiteration (stopped response)
 		if (!this.agentExecutor.shouldContinueGetter(this.iterations)) {
-			return this._stop();
+			return await this._stop();
 		}
 		const nextStepOutput = await this._executeNextStep(this.runManager);
 		const output = await this._processNextStepOutput(nextStepOutput, this.runManager);
@@ -266,8 +264,8 @@ export class AgentExecutorIterator extends Serializable implements AgentExecutor
 	}
 }
 
-type ExtractToolType<T> = T extends { ToolType: infer ToolInterface }
-	? ToolInterface
+type ExtractToolType<T> = T extends { ToolType: infer IToolInterface }
+	? IToolInterface
 	: StructuredToolInterface;
 
 /**
@@ -280,7 +278,7 @@ export interface AgentExecutorInput extends ChainInputs {
 		| BaseSingleActionAgent
 		| BaseMultiActionAgent
 		| Runnable<ChainValues & { steps?: AgentStep[] }, AgentAction[] | AgentAction | AgentFinish>;
-	tools: ExtractToolType<this['agent']>[];
+	tools: Array<ExtractToolType<this['agent']>>;
 	returnIntermediateSteps?: boolean;
 	maxIterations?: number;
 	earlyStoppingMethod?: StoppingMethod;
@@ -337,7 +335,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
 	agent: BaseSingleActionAgent | BaseMultiActionAgent;
 
-	tools: this['agent']['ToolType'][];
+	tools: Array<this['agent']['ToolType']>;
 
 	returnIntermediateSteps = false;
 
@@ -410,7 +408,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 		if (this.agent._agentActionType() === 'multi') {
 			for (const tool of this.tools) {
 				if (tool.returnDirect) {
-					throw new Error(
+					throw new ApplicationError(
 						`Tool with return direct ${tool.name} not supported for multi-action agent.`,
 					);
 				}
@@ -474,7 +472,6 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 			try {
 				output = await this.agent.plan(steps, inputs, runManager?.getChild(), config);
 			} catch (e) {
-				// eslint-disable-next-line no-instanceof/no-instanceof
 				if (e instanceof OutputParserException) {
 					let observation;
 					let text = e.message;
@@ -503,14 +500,14 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 			}
 			// Check if the agent has finished
 			if ('returnValues' in output) {
-				return getOutput(output);
+				return await getOutput(output);
 			}
 
 			let actions: AgentAction[];
 			if (Array.isArray(output)) {
-				actions = output as AgentAction[];
+				actions = output;
 			} else {
-				actions = [output as AgentAction];
+				actions = [output];
 			}
 
 			const newSteps = await Promise.all(
@@ -529,11 +526,12 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 								)
 							: `${action.tool} is not a valid tool, try another one.`;
 						if (typeof observation !== 'string') {
-							throw new Error('Received unsupported non-string response from tool call.');
+							throw new ApplicationError(
+								'Received unsupported non-string response from tool call.',
+							);
 						}
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					} catch (e: any) {
-						// eslint-disable-next-line no-instanceof/no-instanceof
 						if (e instanceof ToolInputParsingException) {
 							if (this.handleParsingErrors === true) {
 								observation = 'Invalid or incomplete tool input. Please try again.';
@@ -561,7 +559,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 			const lastTool = toolsByName[lastStep.action.tool?.toLowerCase()];
 
 			if (lastTool?.returnDirect) {
-				return getOutput({
+				return await getOutput({
 					returnValues: { [this.agent.returnValues[0]]: lastStep.observation },
 					log: '',
 				});
@@ -572,7 +570,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
 		const finish = await this.agent.returnStoppedResponse(this.earlyStoppingMethod, steps, inputs);
 
-		return getOutput(finish);
+		return await getOutput(finish);
 	}
 
 	async _takeNextStep(
@@ -586,7 +584,6 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 		try {
 			output = await this.agent.plan(intermediateSteps, inputs, runManager?.getChild(), config);
 		} catch (e) {
-			// eslint-disable-next-line no-instanceof/no-instanceof
 			if (e instanceof OutputParserException) {
 				let observation;
 				let text = e.message;
@@ -620,9 +617,9 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 
 		let actions: AgentAction[];
 		if (Array.isArray(output)) {
-			actions = output as AgentAction[];
+			actions = output;
 		} else {
-			actions = [output as AgentAction];
+			actions = [output];
 		}
 
 		const result: AgentStep[] = [];
@@ -636,10 +633,9 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 				try {
 					observation = await tool.call(agentAction.toolInput, runManager?.getChild());
 					if (typeof observation !== 'string') {
-						throw new Error('Received unsupported non-string response from tool call.');
+						throw new ApplicationError('Received unsupported non-string response from tool call.');
 					}
 				} catch (e) {
-					// eslint-disable-next-line no-instanceof/no-instanceof
 					if (e instanceof ToolInputParsingException) {
 						if (this.handleParsingErrors === true) {
 							observation = 'Invalid or incomplete tool input. Please try again.';
@@ -706,7 +702,7 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 				log: '',
 			} as AgentFinish;
 		}
-		throw new Error(`Got unsupported early_stopping_method: ${earlyStoppingMethod}`);
+		throw new ApplicationError(`Got unsupported early_stopping_method: ${earlyStoppingMethod}`);
 	}
 
 	async *_streamIterator(
@@ -737,6 +733,6 @@ export class AgentExecutor extends BaseChain<ChainValues, AgentExecutorOutput> {
 	}
 
 	serialize(): SerializedLLMChain {
-		throw new Error('Cannot serialize an AgentExecutor');
+		throw new ApplicationError('Cannot serialize an AgentExecutor');
 	}
 }
