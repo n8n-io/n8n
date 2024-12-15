@@ -37,7 +37,8 @@ export class LicenseMetricsService {
 
 	async collectPassthroughData() {
 		return {
-			activeWorkflowIds: await this.workflowRepository.getActiveIds(),
+			// Get only the first 1000 active workflow IDs to avoid sending too much data to License Server
+			activeWorkflowIds: (await this.workflowRepository.getActiveIds()).slice(0, 1000),
 		};
 	}
 }
