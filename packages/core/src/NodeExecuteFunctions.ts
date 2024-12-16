@@ -76,6 +76,7 @@ import type {
 	WebhookType,
 	SchedulingFunctions,
 	SupplyData,
+	AINodeConnectionType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -2018,7 +2019,7 @@ export async function getInputConnectionData(
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	connectionType: NodeConnectionType,
+	connectionType: AINodeConnectionType,
 	itemIndex: number,
 	abortSignal?: AbortSignal,
 ): Promise<unknown> {
@@ -2098,10 +2099,41 @@ export async function getInputConnectionData(
 
 		if (!connectedNodeType.supplyData) {
 			if (connectedNodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+				/**
+				 * This keeps track of how many times this specific AI tool node has been invoked.
+				 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
+				 */
+				let toolRunIndex = 0;
 				const supplyData = createNodeAsTool({
 					node: connectedNode,
 					nodeType: connectedNodeType,
-					contextFactory,
+					handleToolInvocation: async (toolArgs) => {
+						const runIndex = toolRunIndex++;
+						const context = contextFactory(runIndex, {});
+						context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
+
+						try {
+							// Execute the sub-node with the proxied context
+							const result = await connectedNodeType.execute?.call(
+								context as unknown as IExecuteFunctions,
+							);
+
+							// Process and map the results
+							const mappedResults = result?.[0]?.flatMap((item) => item.json);
+
+							// Add output data to the context
+							context.addOutputData(NodeConnectionType.AiTool, runIndex, [
+								[{ json: { response: mappedResults } }],
+							]);
+
+							// Return the stringified results
+							return JSON.stringify(mappedResults);
+						} catch (error) {
+							const nodeError = new NodeOperationError(connectedNode, error as Error);
+							context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
+							return 'Error during node execution: ' + nodeError.description;
+						}
+					},
 				});
 				nodes.push(supplyData);
 			} else {
