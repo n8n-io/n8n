@@ -32,7 +32,11 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.getByTestId('canvas-node'),
-				() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
+				() =>
+					cy
+						.getByTestId('canvas-node')
+						.not('[data-node-type="n8n-nodes-internal.addNodes"]')
+						.not('[data-node-type="n8n-nodes-base.stickyNote"]'),
 			),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
