@@ -1,0 +1,43 @@
+[
+	{
+		"id": "r5233616157454832357",
+		"threadId": "193bf839a6d0f3b1",
+		"labelIds": ["DRAFT"],
+		"sizeEstimate": 534,
+		"headers": {
+			"mime-version": "MIME-Version: 1.0",
+			"date": "Date: Fri, 13 Dec 2024 11:15:01 +0100",
+			"message-id": "Message-ID: <CAEGAProwudGnKXxqrhMjOuxamTh7yArjwP7OD9UBq-Jpkb0X9w@mail.gmail.com>",
+			"subject": "Subject: Test draft",
+			"from": "From: node qa <node8qa@gmail.com>",
+			"to": "To: test@gmail.com",
+			"content-type": "Content-Type: multipart/alternative; boundary=\"0000000000009d58b60629241a22\""
+		},
+		"html": "<div dir=\"ltr\">draft body<br></div>\n",
+		"text": "draft body\n",
+		"textAsHtml": "<p>draft body</p>",
+		"subject": "Test draft",
+		"date": "2024-12-13T10:15:01.000Z",
+		"to": {
+			"value": [
+				{
+					"address": "test@gmail.com",
+					"name": ""
+				}
+			],
+			"html": "<span class=\"mp_address_group\"><a href=\"mailto:test@gmail.com\" class=\"mp_address_email\">test@gmail.com</a></span>",
+			"text": "test@gmail.com"
+		},
+		"from": {
+			"value": [
+				{
+					"address": "node8qa@gmail.com",
+					"name": "node qa"
+				}
+			],
+			"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">node qa</span> &lt;<a href=\"mailto:node8qa@gmail.com\" class=\"mp_address_email\">node8qa@gmail.com</a>&gt;</span>",
+			"text": "\"node qa\" <node8qa@gmail.com>"
+		},
+		"messageId": "193bf83bd4f243f1"
+	}
+]
