@@ -16,9 +16,8 @@ describe('presendFields', () => {
 	});
 
 	test('should add PathPrefix for ListUsers operation', async () => {
-		// Mock the return value for getNodeParameter
-		mockContext.getNodeParameter.mockReturnValueOnce({ PathPrefix: 'test' }); // additionalFields
-		mockContext.getNodeParameter.mockReturnValueOnce(undefined); // options
+		mockContext.getNodeParameter.mockReturnValueOnce({ PathPrefix: 'test' });
+		mockContext.getNodeParameter.mockReturnValueOnce(undefined);
 
 		requestOptions.url = 'https://example.com/ListUsers';
 
@@ -35,9 +34,9 @@ describe('presendFields', () => {
 			Tags: { tags: [{ key: 'key1', value: 'value1' }] },
 		};
 
-		mockContext.getNodeParameter.mockReturnValueOnce(additionalFields); // additionalFields
-		mockContext.getNodeParameter.mockReturnValueOnce(options); // options
-		mockContext.getNodeParameter.mockReturnValueOnce('username'); // UserName
+		mockContext.getNodeParameter.mockReturnValueOnce(additionalFields);
+		mockContext.getNodeParameter.mockReturnValueOnce(options);
+		mockContext.getNodeParameter.mockReturnValueOnce('username');
 
 		requestOptions.url = 'https://example.com/CreateUser';
 
@@ -51,8 +50,17 @@ describe('presendFields', () => {
 	});
 
 	test('should throw error if options are missing for UpdateUser operation', async () => {
-		mockContext.getNodeParameter.mockReturnValueOnce(''); // options
-		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'username' }); // UserName mock value
+		mockContext.getNodeParameter.mockImplementation((param: string) => {
+			if (param === 'UserName') {
+				return { value: 'username' };
+			}
+			if (param === 'options') {
+				return { NewUserName: undefined, NewPath: undefined };
+			}
+			return undefined;
+		});
+
+		mockContext.getNode = jest.fn().mockReturnValue({});
 
 		requestOptions.url = 'https://example.com/UpdateUser';
 
@@ -62,10 +70,10 @@ describe('presendFields', () => {
 	});
 
 	test('should add GroupName for AddUserToGroup operation', async () => {
-		mockContext.getNodeParameter.mockReturnValueOnce(undefined); // additionalFields
-		mockContext.getNodeParameter.mockReturnValueOnce(undefined); // options
-		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'user1' }); // UserName
-		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'group1' }); // GroupName mock value
+		mockContext.getNodeParameter.mockReturnValueOnce(undefined);
+		mockContext.getNodeParameter.mockReturnValueOnce(undefined);
+		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'user1' });
+		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'group1' });
 
 		requestOptions.url = 'https://example.com/AddUserToGroup';
 
@@ -81,9 +89,9 @@ describe('presendFields', () => {
 			NewPath: '/newpath',
 		};
 
-		mockContext.getNodeParameter.mockReturnValueOnce(undefined); // additionalFields
-		mockContext.getNodeParameter.mockReturnValueOnce(options); // options
-		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'group1' }); // GroupName
+		mockContext.getNodeParameter.mockReturnValueOnce(undefined);
+		mockContext.getNodeParameter.mockReturnValueOnce(options);
+		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'group1' });
 
 		requestOptions.url = 'https://example.com/UpdateGroup';
 
@@ -95,9 +103,15 @@ describe('presendFields', () => {
 	});
 
 	test('should add Path for CreateGroup operation', async () => {
-		const options = { Path: '/newpath' };
-		mockContext.getNodeParameter.mockReturnValueOnce(options); // options
-		mockContext.getNodeParameter.mockReturnValueOnce({ value: 'group1' }); // GroupName mock value
+		mockContext.getNodeParameter.mockImplementation((param: string) => {
+			if (param === 'GroupName') {
+				return 'group1';
+			}
+			if (param === 'options') {
+				return { Path: '/newpath' };
+			}
+			return undefined;
+		});
 
 		requestOptions.url = 'https://example.com/CreateGroup';
 

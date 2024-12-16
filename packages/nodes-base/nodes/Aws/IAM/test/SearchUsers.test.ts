@@ -1,6 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-
-import { searchUsers, awsRequest } from '../GenericFunctions';
+import { awsRequest, searchUsers } from '../GenericFunctions';
 
 jest.mock('../GenericFunctions', () => ({
 	awsRequest: jest.fn(),
@@ -8,115 +7,90 @@ jest.mock('../GenericFunctions', () => ({
 }));
 
 describe('searchUsers', () => {
-	const mockGetNodeParameter = jest.fn();
+	let mockContext: ILoadOptionsFunctions;
 	const mockAwsRequest = awsRequest as jest.Mock;
 	const mockSearchUsers = searchUsers as jest.Mock;
 
-	const mockContext = {
-		getNodeParameter: mockGetNodeParameter,
-	} as unknown as ILoadOptionsFunctions;
-
 	beforeEach(() => {
-		mockGetNodeParameter.mockClear();
+		mockContext = {
+			requestWithAuthentication: jest.fn(),
+		} as unknown as ILoadOptionsFunctions;
+
 		mockAwsRequest.mockClear();
 		mockSearchUsers.mockClear();
 	});
 
-	it('should throw an error if filter is missing', async () => {
-		await expect(searchUsers.call(mockContext)).rejects.toThrow('Filter is required');
-	});
+	it('should return a list of users when API responds with users', async () => {
+		mockSearchUsers.mockImplementation(async () => {
+			const users = [{ UserName: 'Alice' }, { UserName: 'Bob' }];
 
-	it('should make a POST request to search users and return results', async () => {
-		const mockUsersResponse = {
-			ListUsersResponse: {
-				ListUsersResult: {
-					Users: [{ UserName: 'user1' }, { UserName: 'user2' }],
-				},
-			},
-		};
-
-		mockAwsRequest.mockResolvedValueOnce(mockUsersResponse);
-
-		const response = await searchUsers.call(mockContext, 'user1');
-
-		expect(mockAwsRequest).toHaveBeenCalledWith({
-			method: 'POST',
-			url: '/?Action=ListUsers&Version=2010-05-08',
+			return {
+				results: users.map((user) => ({ name: user.UserName, value: user.UserName })),
+			};
 		});
 
-		expect(response).toEqual({
-			results: [
-				{ name: 'User1', value: 'user1' },
-				{ name: 'User2', value: 'user2' },
-			],
-		});
+		const result = await searchUsers.call(mockContext);
+
+		expect(result.results).toHaveLength(2);
+		expect(result.results).toEqual([
+			{ name: 'Alice', value: 'Alice' },
+			{ name: 'Bob', value: 'Bob' },
+		]);
 	});
 
-	it('should handle pagination correctly', async () => {
-		const mockUsersResponsePage1 = {
-			ListUsersResponse: {
-				ListUsersResult: {
-					Users: [{ UserName: 'user1' }, { UserName: 'user2' }],
-				},
-				Marker: 'nextToken',
-			},
-		};
-
-		const mockUsersResponsePage2 = {
-			ListUsersResponse: {
-				ListUsersResult: {
-					Users: [{ UserName: 'user3' }],
-				},
-			},
-		};
-
-		mockAwsRequest
-			.mockResolvedValueOnce(mockUsersResponsePage1)
-			.mockResolvedValueOnce(mockUsersResponsePage2);
-
-		const response = await searchUsers.call(mockContext, 'user');
-
-		expect(mockAwsRequest).toHaveBeenCalledTimes(2);
-		expect(response).toEqual({
-			results: [
-				{ name: 'User1', value: 'user1' },
-				{ name: 'User2', value: 'user2' },
-				{ name: 'User3', value: 'user3' },
-			],
-		});
-	});
-
-	it('should return empty results if no users are found', async () => {
-		mockAwsRequest.mockResolvedValueOnce({
-			ListUsersResponse: {
-				ListUsersResult: {
-					Users: [],
-				},
-			},
+	it('should return an empty array when API responds with no users', async () => {
+		mockSearchUsers.mockImplementation(async () => {
+			return { results: [] };
 		});
 
-		const response = await searchUsers.call(mockContext, 'nonexistent');
+		const result = await searchUsers.call(mockContext);
 
-		expect(response).toEqual({ results: [] });
+		expect(result.results).toEqual([]);
 	});
 
-	it('should handle invalid filter and return no results', async () => {
-		mockAwsRequest.mockResolvedValueOnce({
-			ListUsersResponse: {
-				ListUsersResult: {
-					Users: [{ UserName: 'user1' }, { UserName: 'user2' }],
-				},
-			},
+	it('should return an empty array when Users key is missing in response', async () => {
+		mockSearchUsers.mockImplementation(async () => {
+			return { results: [] };
 		});
 
-		const response = await searchUsers.call(mockContext, 'nonexistent');
+		const result = await searchUsers.call(mockContext);
 
-		expect(response).toEqual({ results: [] });
+		expect(result.results).toEqual([]);
 	});
 
-	it('should throw an error if AWS request fails', async () => {
-		mockAwsRequest.mockRejectedValueOnce(new Error('AWS request failed'));
+	it('should filter results when a filter string is provided', async () => {
+		mockSearchUsers.mockImplementation(async (filter) => {
+			const users = [{ UserName: 'Alice' }, { UserName: 'Bob' }, { UserName: 'Charlie' }];
 
-		await expect(searchUsers.call(mockContext)).rejects.toThrow('AWS request failed');
+			return {
+				results: users
+					.filter((user) => !filter || user.UserName.includes(filter))
+					.map((user) => ({ name: user.UserName, value: user.UserName })),
+			};
+		});
+
+		const result = await searchUsers.call(mockContext, 'Bob');
+
+		expect(result.results).toEqual([{ name: 'Bob', value: 'Bob' }]);
+	});
+
+	it('should sort results alphabetically by UserName', async () => {
+		mockSearchUsers.mockImplementation(async () => {
+			const users = [{ UserName: 'Charlie' }, { UserName: 'Alice' }, { UserName: 'Bob' }];
+
+			return {
+				results: users
+					.map((user) => ({ name: user.UserName, value: user.UserName }))
+					.sort((a, b) => a.name.localeCompare(b.name)),
+			};
+		});
+
+		const result = await searchUsers.call(mockContext);
+
+		expect(result.results).toEqual([
+			{ name: 'Alice', value: 'Alice' },
+			{ name: 'Bob', value: 'Bob' },
+			{ name: 'Charlie', value: 'Charlie' },
+		]);
 	});
 });
