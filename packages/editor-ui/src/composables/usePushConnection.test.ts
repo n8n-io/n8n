@@ -202,7 +202,6 @@ describe('usePushConnection()', () => {
 					title: 'Problem in node ‘Last Node‘',
 					type: 'error',
 					duration: 0,
-					dangerouslyUseHTMLString: true,
 				});
 
 				expect(result).toBeTruthy();

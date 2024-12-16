@@ -8,6 +8,8 @@ import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
 import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
 
+import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
+
 export interface Task<T = unknown> {
 	taskId: string;
 	settings?: T;
@@ -21,12 +23,14 @@ export interface TaskOffer {
 }
 
 interface DataRequest {
+	taskId: string;
 	requestId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
 }
 
 interface NodeTypesRequest {
+	taskId: string;
 	requestId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
@@ -82,14 +86,20 @@ export abstract class TaskRunner extends EventEmitter {
 
 	private idleTimer: NodeJS.Timeout | undefined;
 
+	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. */
+	protected readonly taskTimeout: number;
+
 	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
+
+	protected taskCancellations = new Map<Task['taskId'], AbortController>();
 
 	constructor(opts: TaskRunnerOpts) {
 		super();
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
+		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
 
 		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
@@ -210,7 +220,7 @@ export abstract class TaskRunner extends EventEmitter {
 				this.offerAccepted(message.offerId, message.taskId);
 				break;
 			case 'broker:taskcancel':
-				this.taskCancelled(message.taskId);
+				this.taskCancelled(message.taskId, message.reason);
 				break;
 			case 'broker:tasksettings':
 				void this.receivedSettings(message.taskId, message.settings);
@@ -285,17 +295,35 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	taskCancelled(taskId: string) {
+	taskCancelled(taskId: string, reason: string) {
 		const task = this.runningTasks.get(taskId);
 		if (!task) {
 			return;
 		}
 		task.cancelled = true;
-		if (task.active) {
-			// TODO
-		} else {
-			this.runningTasks.delete(taskId);
+
+		for (const [requestId, request] of this.dataRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new TaskCancelledError(reason));
+				this.dataRequests.delete(requestId);
+			}
 		}
+
+		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new TaskCancelledError(reason));
+				this.nodeTypesRequests.delete(requestId);
+			}
+		}
+
+		const controller = this.taskCancellations.get(taskId);
+		if (controller) {
+			controller.abort();
+			this.taskCancellations.delete(taskId);
+		}
+
+		if (!task.active) this.runningTasks.delete(taskId);
+
 		this.sendOffers();
 	}
 
@@ -328,20 +356,33 @@ export abstract class TaskRunner extends EventEmitter {
 			this.runningTasks.delete(taskId);
 			return;
 		}
+
+		const controller = new AbortController();
+		this.taskCancellations.set(taskId, controller);
+
+		const taskTimeout = setTimeout(() => {
+			if (!task.cancelled) {
+				controller.abort();
+				this.taskCancellations.delete(taskId);
+			}
+		}, this.taskTimeout * 1_000);
+
 		task.settings = settings;
 		task.active = true;
 		try {
-			const data = await this.executeTask(task);
+			const data = await this.executeTask(task, controller.signal);
 			this.taskDone(taskId, data);
 		} catch (error) {
-			this.taskErrored(taskId, error);
+			if (!task.cancelled) this.taskErrored(taskId, error);
 		} finally {
+			clearTimeout(taskTimeout);
+			this.taskCancellations.delete(taskId);
 			this.resetIdleTimer();
 		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	async executeTask(_task: Task): Promise<TaskResultData> {
+	async executeTask(_task: Task, _signal: AbortSignal): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
 	}
 
@@ -354,6 +395,7 @@ export abstract class TaskRunner extends EventEmitter {
 		const nodeTypesPromise = new Promise<T>((resolve, reject) => {
 			this.nodeTypesRequests.set(requestId, {
 				requestId,
+				taskId,
 				resolve: resolve as (data: unknown) => void,
 				reject,
 			});
@@ -382,6 +424,7 @@ export abstract class TaskRunner extends EventEmitter {
 		const p = new Promise<T>((resolve, reject) => {
 			this.dataRequests.set(requestId, {
 				requestId,
+				taskId,
 				resolve: resolve as (data: unknown) => void,
 				reject,
 			});

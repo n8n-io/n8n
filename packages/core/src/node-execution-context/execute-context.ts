@@ -1,7 +1,6 @@
 import type {
 	CallbackManager,
 	CloseFunction,
-	ExecutionBaseError,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -10,15 +9,18 @@ import type {
 	INodeExecutionData,
 	IRunExecutionData,
 	ITaskDataConnections,
-	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
+	Result,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createDeferredPromise,
+	createEnvProviderState,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
-import { createAgentStartJob } from '@/Agent';
 // eslint-disable-next-line import/no-cycle
 import {
 	returnJsonArray,
@@ -26,7 +28,6 @@ import {
 	normalizeItems,
 	constructExecutionMetaData,
 	getInputConnectionData,
-	addExecutionDataFunctions,
 	assertBinaryData,
 	getBinaryDataBuffer,
 	copyBinaryFile,
@@ -45,8 +46,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	readonly nodeHelpers: IExecuteFunctions['nodeHelpers'];
 
 	readonly getNodeParameter: IExecuteFunctions['getNodeParameter'];
-
-	readonly startJob: IExecuteFunctions['startJob'];
 
 	constructor(
 		workflow: Workflow,
@@ -122,23 +121,37 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
+	}
 
-		this.startJob = createAgentStartJob(
+	async startJob<T = unknown, E = unknown>(
+		jobType: string,
+		settings: unknown,
+		itemIndex: number,
+	): Promise<Result<T, E>> {
+		return await this.additionalData.startAgentJob<T, E>(
 			this.additionalData,
+			jobType,
+			settings,
+			this,
 			this.inputData,
 			this.node,
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,
+			itemIndex,
 			this.node.name,
 			this.connectionInputData,
 			{},
 			this.mode,
+			createEnvProviderState(),
 			this.executeData,
 		);
 	}
 
-	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
+	async getInputConnectionData(
+		connectionType: NodeConnectionType,
+		itemIndex: number,
+	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
 			this.workflow,
@@ -150,33 +163,18 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			this.executeData,
 			this.mode,
 			this.closeFunctions,
-			inputName,
+			connectionType,
 			itemIndex,
 			this.abortSignal,
 		);
 	}
 
-	getInputData(inputIndex = 0, inputName = 'main') {
-		if (!this.inputData.hasOwnProperty(inputName)) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
 		}
-
-		const inputData = this.inputData[inputName];
-		// TODO: Check if nodeType has input with that index defined
-		if (inputData.length < inputIndex) {
-			throw new ApplicationError('Could not get input with given index', {
-				extra: { inputIndex, inputName },
-			});
-		}
-
-		if (inputData[inputIndex] === null) {
-			throw new ApplicationError('Value of input was not set', {
-				extra: { inputIndex, inputName },
-			});
-		}
-
-		return inputData[inputIndex];
+		return super.getInputItems(inputIndex, connectionType) ?? [];
 	}
 
 	logNodeOutput(...args: unknown[]): void {
@@ -194,60 +192,14 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 	}
 
-	addInputData(
-		connectionType: NodeConnectionType,
-		data: INodeExecutionData[][] | ExecutionBaseError,
-	): { index: number } {
-		const nodeName = this.node.name;
-		let currentNodeRunIndex = 0;
-		if (this.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-			currentNodeRunIndex = this.runExecutionData.resultData.runData[nodeName].length;
-		}
-
-		void addExecutionDataFunctions(
-			'input',
-			nodeName,
-			data,
-			this.runExecutionData,
-			connectionType,
-			this.additionalData,
-			nodeName,
-			this.runIndex,
-			currentNodeRunIndex,
-		).catch((error) => {
-			this.logger.warn(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				`There was a problem logging input data of node "${nodeName}": ${error.message}`,
-			);
-		});
-
-		return { index: currentNodeRunIndex };
+	/** @deprecated use ISupplyDataFunctions.addInputData */
+	addInputData(): { index: number } {
+		throw new ApplicationError('addInputData should not be called on IExecuteFunctions');
 	}
 
-	addOutputData(
-		connectionType: NodeConnectionType,
-		currentNodeRunIndex: number,
-		data: INodeExecutionData[][] | ExecutionBaseError,
-		metadata?: ITaskMetadata,
-	): void {
-		const nodeName = this.node.name;
-		addExecutionDataFunctions(
-			'output',
-			nodeName,
-			data,
-			this.runExecutionData,
-			connectionType,
-			this.additionalData,
-			nodeName,
-			this.runIndex,
-			currentNodeRunIndex,
-			metadata,
-		).catch((error) => {
-			this.logger.warn(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				`There was a problem logging output data of node "${nodeName}": ${error.message}`,
-			);
-		});
+	/** @deprecated use ISupplyDataFunctions.addOutputData */
+	addOutputData(): void {
+		throw new ApplicationError('addOutputData should not be called on IExecuteFunctions');
 	}
 
 	getParentCallbackManager(): CallbackManager | undefined {
