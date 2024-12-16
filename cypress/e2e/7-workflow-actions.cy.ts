@@ -355,13 +355,20 @@ describe('Workflow Actions', () => {
 		successToast().should('contain.text', 'Workflow executed successfully');
 	});
 
-	// TODO: Does not work on cavas v2
 	it('should not run empty workflows', () => {
 		// Clear the canvas
 		WorkflowPage.actions.hitDeleteAllNodes();
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 		// Button should be disabled
-		WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
+		cy.ifCanvasVersion(
+			() => {
+				WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
+			},
+			() => {
+				// In new canvas, button does not exist when there are no nodes
+				WorkflowPage.getters.executeWorkflowButton().should('not.exist');
+			},
+		);
 		// Keyboard shortcut should not work
 		WorkflowPage.actions.hitExecuteWorkflow();
 		successToast().should('not.exist');
