@@ -109,6 +109,7 @@ onBeforeUnmount(() => {
 		:model-value="renderOptions.content"
 		:background-color="renderOptions.color"
 		:edit-mode="isActive"
+		:read-only="isReadOnly"
 		@edit="onEdit"
 		@dblclick="onDoubleClick"
 		@update:model-value="onInputChange"
