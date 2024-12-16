@@ -13,9 +13,10 @@ import {
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { getSessionId } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	sessionIdOption,
 	sessionKeyProperty,
