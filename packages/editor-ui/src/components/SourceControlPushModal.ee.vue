@@ -276,7 +276,8 @@ const successNotificationMessage = () => {
 	if (selectedChanges.value.size) {
 		messages.push(
 			i18n.baseText('generic.workflow', {
-				adjustToNumber: selectedChanges.value.size > 1 ? selectedChanges.value.size : 0,
+				adjustToNumber: selectedChanges.value.size,
+				interpolate: { count: selectedChanges.value.size },
 			}),
 		);
 	}
@@ -284,28 +285,24 @@ const successNotificationMessage = () => {
 	if (changes.value.credentials.length) {
 		messages.push(
 			i18n.baseText('generic.credential', {
-				adjustToNumber: changes.value.credentials.length > 1 ? changes.value.credentials.length : 0,
+				adjustToNumber: changes.value.credentials.length,
+				interpolate: { count: changes.value.credentials.length },
 			}),
 		);
 	}
 
 	if (changes.value.variables.length) {
-		messages.push(
-			i18n.baseText('generic.variable', {
-				adjustToNumber: 1,
-			}),
-		);
+		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
 	if (changes.value.tags.length) {
-		messages.push(
-			i18n.baseText('generic.tag', {
-				adjustToNumber: 1,
-			}),
-		);
+		messages.push(i18n.baseText('generic.tag_plural'));
 	}
 
-	return new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
+	return [
+		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
+		i18n.baseText('settings.sourceControl.modals.push.success.description'),
+	].join(' ');
 };
 
 async function commitAndPush() {
@@ -362,23 +359,18 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
 			<div class="mt-l">
-				<N8nText v-if="changes.workflows.length" tag="div">
+				<N8nText tag="div">
 					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 					</N8nLink>
 				</N8nText>
-				<template v-else>
-					<N8nText tag="div">
-						{{ i18n.baseText('settings.sourceControl.modals.push.noWorkflowChanges') }}
-					</N8nText>
 
-					<N8nNotice v-if="userNotices.length" class="mt-xs" :compact="false">
-						<ul class="ml-m">
-							<li v-for="notice in userNotices" :key="notice">{{ notice }}</li>
-						</ul>
-					</N8nNotice>
-				</template>
+				<N8nNotice v-if="userNotices.length" class="mt-xs" :compact="false">
+					<ul class="ml-m">
+						<li v-for="notice in userNotices" :key="notice">{{ notice }}</li>
+					</ul>
+				</N8nNotice>
 			</div>
 
 			<div v-if="changes.workflows.length" :class="[$style.filers]" class="mt-l">
