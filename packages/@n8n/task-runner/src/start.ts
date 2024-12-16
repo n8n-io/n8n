@@ -1,3 +1,4 @@
+import './polyfills';
 import type { ErrorReporter } from 'n8n-core';
 import { ensureError, setGlobalState } from 'n8n-workflow';
 import Container from 'typedi';
