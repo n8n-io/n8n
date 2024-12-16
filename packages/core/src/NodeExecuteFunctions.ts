@@ -2099,6 +2099,10 @@ export async function getInputConnectionData(
 
 		if (!connectedNodeType.supplyData) {
 			if (connectedNodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+				/**
+				 * This keeps track of how many times this specific AI tool node has been invoked.
+				 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
+				 */
 				let toolRunIndex = 0;
 				const supplyData = createNodeAsTool({
 					node: connectedNode,
