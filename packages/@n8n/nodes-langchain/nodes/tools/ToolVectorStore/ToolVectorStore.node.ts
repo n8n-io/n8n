@@ -15,14 +15,14 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store QA Tool',
+		displayName: 'Vector Store Question Answer Tool',
 		name: 'toolVectorStore',
 		icon: 'fa:database',
 		group: ['transform'],
 		version: [1],
-		description: 'Answers queries on vector store and summarizes response',
+		description: 'Answer questions with a vector store',
 		defaults: {
-			name: 'Vector Store QA Tool',
+			name: 'Answer questions with a vector store',
 		},
 		codex: {
 			categories: ['AI'],
