@@ -12,12 +12,14 @@ import { get } from 'lodash-es';
 import type { ExecutionSummaryWithScopes } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useToast } from '@/composables/useToast';
 
 interface TestCase extends ExecutionSummaryWithScopes {
 	metrics: Record<string, number>;
 }
 
 const router = useRouter();
+const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const executionsStore = useExecutionsStore();
 const workflowStore = useWorkflowsStore();
@@ -49,7 +51,7 @@ const columns = computed(
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: row.workflowId, executionId: row.id },
 			}),
-			formatter: (row: TestCase) => `[${row.id}] ${workflow.value.name}`,
+			formatter: (row: TestCase) => `[${row.id}] ${workflow.value?.name}`,
 			openInNewTab: true,
 		},
 		{
@@ -125,9 +127,10 @@ const fetchExecutionTestCases = async () => {
 				};
 			}),
 		);
+
 		testCases.value = executionsData ?? [];
 	} catch (error) {
-		console.error('Failed to load run details:', error);
+		toast.showError(error, 'Failed to load run details');
 	} finally {
 		isLoading.value = false;
 	}
@@ -145,7 +148,9 @@ onMounted(async () => {
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
 				<n8n-heading size="large" :bold="true">{{ test?.name }}</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
-				<n8n-heading size="large" :bold="true">Run {{ run?.id }}</n8n-heading>
+				<n8n-heading size="large" :bold="true"
+					>{{ locale.baseText('testDefinition.listRuns.runNumber') }}{{ run?.id }}</n8n-heading
+				>
 			</button>
 		</div>
 
@@ -198,7 +203,6 @@ onMounted(async () => {
 				:data="filteredTestCases"
 				:columns="columns"
 				:default-sort="{ prop: 'id', order: 'descending' }"
-				@row-click="(testCase) => $emit('view-case', testCase.id)"
 			/>
 		</N8nCard>
 	</div>
@@ -245,7 +249,6 @@ onMounted(async () => {
 .stat {
 	display: flex;
 	flex-direction: column;
-	// gap: var(--spacing-s);
 }
 
 .controls {

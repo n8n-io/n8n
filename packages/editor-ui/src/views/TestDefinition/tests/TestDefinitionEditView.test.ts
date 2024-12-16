@@ -9,8 +9,10 @@ import { useToast } from '@/composables/useToast';
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { ref, nextTick } from 'vue';
-import { mockedStore } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { TestRunRecord } from '@/api/testDefinition.ee';
 
 vi.mock('vue-router');
 vi.mock('@/composables/useToast');
@@ -28,8 +30,21 @@ describe('TestDefinitionEditView', () => {
 	let showMessageMock: Mock;
 	let showErrorMock: Mock;
 
+	const renderComponentWithFeatureEnabled = ({
+		testRunsById = {},
+	}: { testRunsById?: Record<string, TestRunRecord> } = {}) => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const mockedTestDefinitionStore = mockedStore(useTestDefinitionStore);
+		mockedTestDefinitionStore.isFeatureEnabled = true;
+		mockedTestDefinitionStore.testRunsById = testRunsById;
+		return { ...renderComponent({ pinia }), mockedTestDefinitionStore };
+	};
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		createAppModals();
 
 		// Default route mock: no testId
 		vi.mocked(useRoute).mockReturnValue({
@@ -41,6 +56,7 @@ describe('TestDefinitionEditView', () => {
 			push: vi.fn(),
 			replace: vi.fn(),
 			resolve: vi.fn().mockReturnValue({ href: '/test-href' }),
+			currentRoute: { value: { params: {} } },
 		} as unknown as ReturnType<typeof useRouter>);
 
 		createTestMock = vi.fn().mockResolvedValue({ id: 'newTestId' });
@@ -50,12 +66,12 @@ describe('TestDefinitionEditView', () => {
 		updateMetricsMock = vi.fn();
 		showMessageMock = vi.fn();
 		showErrorMock = vi.fn();
+		// const mockedTestDefinitionStore = mockedStore(useTestDefinitionStore);
 
 		vi.mocked(useToast).mockReturnValue({
 			showMessage: showMessageMock,
 			showError: showErrorMock,
 		} as unknown as ReturnType<typeof useToast>);
-
 		vi.mocked(useTestDefinitionForm).mockReturnValue({
 			state: ref({
 				name: { value: '', isEditing: false, tempValue: '' },
@@ -88,6 +104,7 @@ describe('TestDefinitionEditView', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		cleanupAppModals();
 	});
 
 	it('should load test data when testId is provided', async () => {
@@ -95,13 +112,9 @@ describe('TestDefinitionEditView', () => {
 			params: { testId: '1' },
 			name: VIEWS.TEST_DEFINITION_EDIT,
 		} as unknown as ReturnType<typeof useRoute>);
+		renderComponentWithFeatureEnabled();
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
-
-		renderComponent({ pinia });
-		await nextTick();
 
 		expect(loadTestDataMock).toHaveBeenCalledWith('1');
 	});
@@ -112,13 +125,7 @@ describe('TestDefinitionEditView', () => {
 			params: {},
 			name: VIEWS.NEW_TEST_DEFINITION,
 		} as unknown as ReturnType<typeof useRoute>);
-
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
-
-		renderComponent({ pinia });
-		await nextTick();
+		renderComponentWithFeatureEnabled();
 
 		expect(loadTestDataMock).not.toHaveBeenCalled();
 	});
@@ -128,22 +135,16 @@ describe('TestDefinitionEditView', () => {
 			params: {},
 			name: VIEWS.NEW_TEST_DEFINITION,
 		} as ReturnType<typeof useRoute>);
+		const { getByTestId } = renderComponentWithFeatureEnabled();
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
 		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
 
-		const { getByTestId } = renderComponent({ pinia });
 		await nextTick();
 		const saveButton = getByTestId('run-test-button');
 		saveButton.click();
 		await nextTick();
 
 		expect(createTestMock).toHaveBeenCalled();
-		expect(showMessageMock).toHaveBeenCalledWith({
-			title: expect.any(String),
-			type: 'success',
-		});
 	});
 
 	it('should update test and show success message on save if testId is present', async () => {
@@ -152,21 +153,13 @@ describe('TestDefinitionEditView', () => {
 			name: VIEWS.TEST_DEFINITION_EDIT,
 		} as unknown as ReturnType<typeof useRoute>);
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
+		const { getByTestId } = renderComponentWithFeatureEnabled();
 
-		const { getByTestId } = renderComponent({ pinia });
-		await nextTick();
 		const saveButton = getByTestId('run-test-button');
 		saveButton.click();
 		await nextTick();
 
 		expect(updateTestMock).toHaveBeenCalledWith('1');
-		expect(showMessageMock).toHaveBeenCalledWith({
-			title: expect.any(String),
-			type: 'success',
-		});
 	});
 
 	it('should show error message on failed test creation', async () => {
@@ -177,12 +170,8 @@ describe('TestDefinitionEditView', () => {
 			name: VIEWS.NEW_TEST_DEFINITION,
 		} as unknown as ReturnType<typeof useRoute>);
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
+		const { getByTestId } = renderComponentWithFeatureEnabled();
 
-		const { getByTestId } = renderComponent({ pinia });
-		await nextTick();
 		const saveButton = getByTestId('run-test-button');
 		saveButton.click();
 		await nextTick();
@@ -191,20 +180,17 @@ describe('TestDefinitionEditView', () => {
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
 
-	it('should display "Update Test" button when editing existing test', async () => {
+	it('should display "Save Test" button when editing test without eval workflow and tags', async () => {
 		vi.mocked(useRoute).mockReturnValue({
 			params: { testId: '1' },
 			name: VIEWS.TEST_DEFINITION_EDIT,
 		} as unknown as ReturnType<typeof useRoute>);
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
+		const { getByTestId } = renderComponentWithFeatureEnabled();
 
-		const { getByTestId } = renderComponent({ pinia });
 		await nextTick();
 		const updateButton = getByTestId('run-test-button');
-		expect(updateButton.textContent?.toLowerCase()).toContain('update');
+		expect(updateButton.textContent?.toLowerCase()).toContain('save');
 	});
 
 	it('should display "Save Test" button when creating new test', async () => {
@@ -213,14 +199,10 @@ describe('TestDefinitionEditView', () => {
 			name: VIEWS.NEW_TEST_DEFINITION,
 		} as unknown as ReturnType<typeof useRoute>);
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
+		const { getByTestId } = renderComponentWithFeatureEnabled();
 
-		const { getByTestId } = renderComponent({ pinia });
-		await nextTick();
 		const saveButton = getByTestId('run-test-button');
-		expect(saveButton.textContent?.toLowerCase()).toContain('run test');
+		expect(saveButton.textContent?.toLowerCase()).toContain('save test');
 	});
 
 	it('should apply "has-issues" class to inputs with issues', async () => {
@@ -232,23 +214,87 @@ describe('TestDefinitionEditView', () => {
 			]),
 		} as unknown as ReturnType<typeof useTestDefinitionForm>);
 
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
+		const { container } = renderComponentWithFeatureEnabled();
 
-		const { container } = renderComponent({ pinia });
 		await nextTick();
 		const issueElements = container.querySelectorAll('.has-issues');
 		expect(issueElements.length).toBeGreaterThan(0);
 	});
 
 	it('should fetch all tags on mount', async () => {
-		const pinia = createTestingPinia();
-		setActivePinia(pinia);
-		mockedStore(useAnnotationTagsStore).fetchAll.mockResolvedValue([]);
-
-		renderComponent({ pinia });
+		renderComponentWithFeatureEnabled();
 		await nextTick();
 		expect(mockedStore(useAnnotationTagsStore).fetchAll).toHaveBeenCalled();
+	});
+
+	describe('Test Runs functionality', () => {
+		it('should display test runs table when runs exist', async () => {
+			vi.mocked(useRoute).mockReturnValue({
+				params: { testId: '1' },
+				name: VIEWS.TEST_DEFINITION_EDIT,
+			} as unknown as ReturnType<typeof useRoute>);
+
+			const { getByTestId } = renderComponentWithFeatureEnabled({
+				testRunsById: {
+					run1: {
+						id: 'run1',
+						testDefinitionId: '1',
+						status: 'completed',
+						runAt: '2023-01-01',
+						createdAt: '2023-01-01',
+						updatedAt: '2023-01-01',
+						completedAt: '2023-01-01',
+					},
+					run2: {
+						id: 'run2',
+						testDefinitionId: '1',
+						status: 'running',
+						runAt: '2023-01-02',
+						createdAt: '2023-01-02',
+						updatedAt: '2023-01-02',
+						completedAt: '',
+					},
+				},
+			});
+
+			const runsTable = getByTestId('past-runs-table');
+			expect(runsTable).toBeTruthy();
+		});
+
+		it('should not display test runs table when no runs exist', async () => {
+			const { container } = renderComponentWithFeatureEnabled();
+
+			const runsTable = container.querySelector('[data-test-id="past-runs-table"]');
+			expect(runsTable).toBeFalsy();
+		});
+
+		it('should start a test run when run test button is clicked', async () => {
+			vi.mocked(useTestDefinitionForm).mockReturnValue({
+				...vi.mocked(useTestDefinitionForm)(),
+				state: ref({
+					name: { value: 'Test', isEditing: false, tempValue: '' },
+					description: '',
+					tags: { value: ['tag1'], tempValue: [], isEditing: false },
+					evaluationWorkflow: { mode: 'list', value: 'workflow1', __rl: true },
+					metrics: [],
+					mockedNodes: [],
+				}),
+			} as unknown as ReturnType<typeof useTestDefinitionForm>);
+
+			vi.mocked(useRoute).mockReturnValue({
+				params: { testId: '1' },
+				name: VIEWS.TEST_DEFINITION_EDIT,
+			} as unknown as ReturnType<typeof useRoute>);
+
+			const { getByTestId, mockedTestDefinitionStore } = renderComponentWithFeatureEnabled();
+			await nextTick();
+
+			const runButton = getByTestId('run-test-button');
+			runButton.click();
+			await nextTick();
+
+			expect(mockedTestDefinitionStore.startTestRun).toHaveBeenCalledWith('1');
+			expect(mockedTestDefinitionStore.fetchTestRuns).toHaveBeenCalledWith('1');
+		});
 	});
 });

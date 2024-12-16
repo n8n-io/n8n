@@ -47,7 +47,11 @@ const actions = [
 </script>
 
 <template>
-	<div :class="$style.testItem" @click="$emit('view-details', test.id)">
+	<div
+		:class="$style.testItem"
+		@click="$emit('view-details', test.id)"
+		:data-test-id="`test-item-${test.id}`"
+	>
 		<div :class="$style.testInfo">
 			<div :class="$style.testName">
 				{{ test.name }}

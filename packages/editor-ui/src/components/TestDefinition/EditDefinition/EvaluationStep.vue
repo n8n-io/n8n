@@ -46,7 +46,11 @@ const hideTooltip = () => {
 </script>
 
 <template>
-	<div ref="containerRef" :class="[$style.evaluationStep, small && $style.small]">
+	<div
+		ref="containerRef"
+		:class="[$style.evaluationStep, small && $style.small]"
+		data-test-id="evaluation-step"
+	>
 		<N8nTooltip :disabled="!tooltip" placement="right" :offset="25" :visible="isTooltipVisible">
 			<template #content>
 				{{ tooltip }}
@@ -65,6 +69,7 @@ const hideTooltip = () => {
 					:class="$style.collapseButton"
 					:aria-expanded="isExpanded"
 					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
+					data-test-id="evaluation-step-collapse-button"
 					@click="toggleExpand"
 				>
 					{{
@@ -77,7 +82,7 @@ const hideTooltip = () => {
 			</div>
 			<ElCollapseTransition v-if="$slots.cardContent">
 				<div v-show="isExpanded" :class="$style.cardContentWrapper">
-					<div ref="contentRef" :class="$style.cardContent">
+					<div ref="contentRef" :class="$style.cardContent" data-test-id="evaluation-step-content">
 						<slot name="cardContent" />
 					</div>
 				</div>

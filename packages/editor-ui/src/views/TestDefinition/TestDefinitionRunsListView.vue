@@ -43,8 +43,11 @@ const testDefinition = computed(() => {
 	return testDefinitionStore.testDefinitionsById[testId.value];
 });
 
-const getRunDetail = (_run: TestRunRecord) => {
-	// TODO: Implement run detail
+const getRunDetail = (run: TestRunRecord) => {
+	void router.push({
+		name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+		params: { testId: testId.value, runId: run.id },
+	});
 };
 
 async function runTest() {
@@ -66,9 +69,9 @@ async function runTest() {
 	}
 }
 
-async function onDeleteRuns(runs: TestRunRecord[]) {
+async function onDeleteRuns(runsToDelete: TestRunRecord[]) {
 	await Promise.all(
-		runs.map(async (run) => {
+		runsToDelete.map(async (run) => {
 			await testDefinitionStore.deleteTestRun({ testDefinitionId: testId.value, runId: run.id });
 		}),
 	);
@@ -117,12 +120,5 @@ onMounted(async () => {
 .description {
 	margin-top: var(--spacing-xs);
 	display: block;
-}
-
-.loading {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 200px;
 }
 </style>

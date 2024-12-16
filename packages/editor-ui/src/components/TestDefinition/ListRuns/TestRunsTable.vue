@@ -87,9 +87,14 @@ function deleteRuns() {
 				:class="$style.activator"
 				:size="'medium'"
 				:icon="'trash'"
+				data-test-id="delete-runs-button"
 				@click="deleteRuns"
 			>
-				Delete {{ selectedRows.length }} runs
+				{{
+					locale.baseText('testDefinition.listRuns.deleteRuns', {
+						adjustToNumber: selectedRows.length,
+					})
+				}}
 			</n8n-button>
 		</div>
 		<TestDefinitionTable

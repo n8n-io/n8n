@@ -2805,6 +2805,7 @@
 	"testDefinition.listRuns.runStatus": "Run status",
 	"testDefinition.listRuns.noRuns": "No test runs",
 	"testDefinition.listRuns.noRuns.description": "Run a test to see the results here",
+	"testDefinition.listRuns.deleteRuns": "No runs to delete | Delete {count} run | Delete {count} runs",
 	"testDefinition.listRuns.noRuns.button": "Run Test",
 	"testDefinition.runDetail.ranAt": "Ran at",
 	"testDefinition.runDetail.testCase": "Test case",

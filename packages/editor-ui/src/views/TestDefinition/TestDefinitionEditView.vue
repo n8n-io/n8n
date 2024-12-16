@@ -16,7 +16,7 @@ import WorkflowSelector from '@/components/TestDefinition/EditDefinition/Workflo
 import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import Modal from '@/components/Modal.vue';
-import { ModalState } from '@/Interface';
+import type { ModalState } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
@@ -36,7 +36,6 @@ const uiStore = useUIStore();
 const {
 	state,
 	fieldsIssues,
-	isSaving,
 	cancelEditing,
 	loadTestData,
 	createTest,
@@ -62,6 +61,18 @@ const nodePinningModal = ref<ModalState | null>(null);
 const modalContentWidth = ref(0);
 
 onMounted(async () => {
+	if (!testDefinitionStore.isFeatureEnabled) {
+		toast.showMessage({
+			title: locale.baseText('testDefinition.notImplemented'),
+			type: 'warning',
+		});
+
+		void router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: router.currentRoute.value.params.name },
+		});
+		return; // Add early return to prevent loading if feature is disabled
+	}
 	void tagsStore.fetchAll({ withUsageCount: true });
 	if (testId.value) {
 		await loadTestData(testId.value);
@@ -84,10 +95,6 @@ async function onSaveTest() {
 				params: { testId: savedTest.id },
 			});
 		}
-		toast.showMessage({
-			title: locale.baseText('testDefinition.edit.testSaved'),
-			type: 'success',
-		});
 	} catch (e: unknown) {
 		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));
 	}
@@ -122,15 +129,11 @@ async function runTest() {
 	await testDefinitionStore.fetchTestRuns(testId.value);
 }
 
-async function handleSelectionChange(runs: TestRunRecord[]) {
-	console.log('runs', runs);
-}
-
-const runs = computed(() => {
-	return Object.values(testDefinitionStore.testRunsById ?? {}).filter(
+const runs = computed(() =>
+	Object.values(testDefinitionStore.testRunsById ?? {}).filter(
 		(run) => run.testDefinitionId === testId.value,
-	);
-});
+	),
+);
 
 async function onDeleteRuns(runs: TestRunRecord[]) {
 	await Promise.all(
@@ -285,37 +288,49 @@ watch(
 			</div>
 
 			<n8n-button
-				:class="$style.runTestButton"
 				v-if="state.evaluationWorkflow.value && state.tags.value.length > 0"
+				:class="$style.runTestButton"
 				size="small"
-				data-test-id="run-tests-button"
+				data-test-id="run-test-button"
 				:label="locale.baseText('testDefinition.runTest')"
 				type="primary"
 				@click="runTest"
 			/>
+			<n8n-button
+				v-else
+				:class="$style.runTestButton"
+				size="small"
+				data-test-id="run-test-button"
+				:label="'Save Test'"
+				type="primary"
+				@click="onSaveTest"
+			/>
 		</div>
 		<!-- Past Runs Table -->
-		<div :class="$style.runsTable" v-if="runs.length > 0">
+		<div v-if="runs.length > 0" :class="$style.runsTable">
 			<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
 				locale.baseText('testDefinition.edit.pastRuns')
 			}}</N8nHeading>
 			<TestRunsTable
 				:runs="runs"
 				:selectable="true"
-				@selection-change="handleSelectionChange"
+				data-test-id="past-runs-table"
 				@delete-runs="onDeleteRuns"
 			/>
 		</div>
 
-		<Modal
-			width="80vw"
-			height="85vh"
-			:title="'Pin Nodes'"
-			:name="NODE_PINNING_MODAL_KEY"
-			ref="nodePinningModal"
-		>
+		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
+			<template #header>
+				<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
+					locale.baseText('testDefinition.edit.selectNodes')
+				}}</N8nHeading>
+			</template>
 			<template #content>
-				<NodesPinning v-model="state.mockedNodes" :width="modalContentWidth" />
+				<NodesPinning
+					v-model="state.mockedNodes"
+					:width="modalContentWidth"
+					data-test-id="nodes-pinning-modal"
+				/>
 			</template>
 		</Modal>
 	</div>

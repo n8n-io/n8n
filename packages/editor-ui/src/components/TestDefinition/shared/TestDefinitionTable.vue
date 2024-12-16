@@ -67,16 +67,28 @@ const handleSelectionChange = (rows: T[]) => {
 		resizable
 		@selection-change="handleSelectionChange"
 	>
-		<ElTableColumn v-if="selectable" type="selection" :selectable="selectableFilter" width="55" />
+		<ElTableColumn
+			v-if="selectable"
+			type="selection"
+			:selectable="selectableFilter"
+			width="55"
+			data-test-id="table-column-select"
+		/>
 		<ElTableColumn
 			v-for="column in columns"
 			:key="column.prop"
 			v-bind="column"
 			style="width: 100%"
 			:resizable="true"
+			data-test-id="table-column"
 		>
 			<template #default="{ row }">
-				<TableCell :column="column" :row="row" @click="$emit('rowClick', row)" />
+				<TableCell
+					:column="column"
+					:row="row"
+					@click="$emit('rowClick', row)"
+					data-test-id="table-cell"
+				/>
 			</template>
 		</ElTableColumn>
 	</ElTable>

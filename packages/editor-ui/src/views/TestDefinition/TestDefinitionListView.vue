@@ -41,7 +41,6 @@ function getTagName(tagId: string) {
 	return matchingTag?.name ?? '';
 }
 
-// TODO: Replace with actual API call once implemented
 function getTestExecution(testId: string): TestExecution {
 	const lastRun = testDefinitionStore.getLastRunByTestId(testId);
 	if (!lastRun) {
