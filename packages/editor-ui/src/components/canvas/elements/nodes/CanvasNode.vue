@@ -49,6 +49,7 @@ const emit = defineEmits<{
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
 	'update:inputs': [id: string];
+	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 }>();
 
