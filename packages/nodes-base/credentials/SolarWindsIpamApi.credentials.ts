@@ -17,6 +17,12 @@ export class SolarWindsIpamApi implements ICredentialType {
 		dark: 'file:icons/SolarWindsIpam.svg',
 	} as const;
 
+	httpRequestNode = {
+		name: 'SolarWinds IPAM',
+		docsUrl: 'https://www.solarwinds.com/ip-address-manager',
+		apiBaseUrlPlaceholder: 'https://your-ipam-server',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Base URL',
