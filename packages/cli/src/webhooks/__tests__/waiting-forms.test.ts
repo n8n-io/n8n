@@ -6,7 +6,7 @@ import { WaitingForms } from '@/webhooks/waiting-forms';
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingWebhooks = new WaitingForms(mock(), mock(), executionRepository);
+	const waitingWebhooks = new WaitingForms(mock(), mock(), executionRepository, mock());
 
 	beforeEach(() => {
 		jest.restoreAllMocks();

@@ -112,7 +112,7 @@ describe('Data pinning', () => {
 	it('Should be able to pin data from canvas (context menu or shortcut)', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
-		workflowPage.actions.openContextMenu(EDIT_FIELDS_SET_NODE_NAME, 'overflow-button');
+		workflowPage.actions.openContextMenu(EDIT_FIELDS_SET_NODE_NAME, { method: 'overflow-button' });
 		workflowPage.getters
 			.contextMenuAction('toggle_pin')
 			.parent()

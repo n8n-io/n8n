@@ -752,10 +752,20 @@ export class Ftp implements INodeType {
 
 						if (operation === 'rename') {
 							const oldPath = this.getNodeParameter('oldPath', i) as string;
-
 							const newPath = this.getNodeParameter('newPath', i) as string;
+							const options = this.getNodeParameter('options', i);
 
-							await ftp!.rename(oldPath, newPath);
+							try {
+								await ftp!.rename(oldPath, newPath);
+							} catch (error) {
+								if ([451, 550].includes(error.code) && options.createDirectories) {
+									const dirPath = newPath.replace(basename(newPath), '');
+									await ftp!.mkdir(dirPath, true);
+									await ftp!.rename(oldPath, newPath);
+								} else {
+									throw new NodeApiError(this.getNode(), error as JsonObject);
+								}
+							}
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },

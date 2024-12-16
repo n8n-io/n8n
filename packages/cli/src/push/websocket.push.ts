@@ -1,4 +1,4 @@
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
@@ -24,7 +24,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
 			} catch (error) {
-				ErrorReporterProxy.error(
+				this.errorReporter.error(
 					new ApplicationError('Error parsing push message', {
 						extra: {
 							userId,

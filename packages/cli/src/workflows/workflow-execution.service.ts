@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -11,11 +12,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	SubworkflowOperationError,
-	Workflow,
-	ErrorReporterProxy as ErrorReporter,
-} from 'n8n-workflow';
+import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
@@ -36,6 +33,7 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 export class WorkflowExecutionService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -293,7 +291,7 @@ export class WorkflowExecutionService {
 
 			await this.workflowRunner.run(runData);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			this.logger.error(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,

@@ -85,7 +85,7 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
-import { closeFormPopupWindow, openFormPopupWindow } from '@/utils/executionUtils';
+import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUtils';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
@@ -1608,7 +1608,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
 
-		closeFormPopupWindow();
+		clearPopupWindowState();
 
 		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
 		for (const nodeName in runData) {

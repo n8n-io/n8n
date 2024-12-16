@@ -210,7 +210,11 @@ export class MongoDb implements INodeType {
 						query = query.sort(sort);
 					}
 
-					if (projection && projection instanceof Document) {
+					if (
+						projection &&
+						Object.keys(projection).length !== 0 &&
+						projection.constructor === Object
+					) {
 						query = query.project(projection);
 					}
 

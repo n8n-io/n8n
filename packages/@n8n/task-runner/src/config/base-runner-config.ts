@@ -37,6 +37,9 @@ export class BaseRunnerConfig {
 	@Env('GENERIC_TIMEZONE')
 	timezone: string = 'America/New_York';
 
+	@Env('N8N_RUNNERS_TASK_TIMEOUT')
+	taskTimeout: number = 60;
+
 	@Nested
 	healthcheckServer!: HealthcheckServerConfig;
 }

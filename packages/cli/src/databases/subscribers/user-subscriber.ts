@@ -1,6 +1,7 @@
 import type { EntitySubscriberInterface, UpdateEvent } from '@n8n/typeorm';
 import { EventSubscriber } from '@n8n/typeorm';
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
+import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { Logger } from '@/logging/logger.service';
@@ -11,6 +12,8 @@ import { UserRepository } from '../repositories/user.repository';
 
 @EventSubscriber()
 export class UserSubscriber implements EntitySubscriberInterface<User> {
+	private readonly eventReporter = Container.get(ErrorReporter);
+
 	listenTo() {
 		return User;
 	}
@@ -47,7 +50,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 						const message = "Could not update the personal project's name";
 						Container.get(Logger).warn(message, event.entity);
 						const exception = new ApplicationError(message);
-						ErrorReporterProxy.warn(exception, event.entity);
+						this.eventReporter.warn(exception, event.entity);
 						return;
 					}
 
@@ -69,7 +72,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 					const message = "Could not update the personal project's name";
 					Container.get(Logger).warn(message, event.entity);
 					const exception = new ApplicationError(message);
-					ErrorReporterProxy.warn(exception, event.entity);
+					this.eventReporter.warn(exception, event.entity);
 				}
 			}
 		}

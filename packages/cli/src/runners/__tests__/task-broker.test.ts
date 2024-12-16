@@ -6,6 +6,7 @@ import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 import { Time } from '@/constants';
 
 import { TaskRejectError } from '../errors';
+import { TaskRunnerTimeoutError } from '../errors/task-runner-timeout.error';
 import type { RunnerLifecycleEvents } from '../runner-lifecycle-events';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
@@ -721,7 +722,7 @@ describe('TaskBroker', () => {
 
 		beforeAll(() => {
 			jest.useFakeTimers();
-			config = mock<TaskRunnersConfig>({ taskTimeout: 30 });
+			config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'internal' });
 			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
 		});
 
@@ -800,7 +801,7 @@ describe('TaskBroker', () => {
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
 
-		it('on timeout, we should emit `runner:timed-out-during-task` event and send error to requester', async () => {
+		it('[internal mode] on timeout, we should emit `runner:timed-out-during-task` event and send error to requester', async () => {
 			jest.spyOn(global, 'clearTimeout');
 
 			const taskId = 'task1';
@@ -837,6 +838,51 @@ describe('TaskBroker', () => {
 
 			await Promise.resolve();
 
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+
+		it('[external mode] on timeout, we should instruct the runner to cancel and send error to requester', async () => {
+			const config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'external' });
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+
+			jest.spyOn(global, 'clearTimeout');
+
+			const taskId = 'task1';
+			const runnerId = 'runner1';
+			const requesterId = 'requester1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const runnerCallback = jest.fn();
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRunner(runner, runnerCallback);
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+
+			await taskBroker.sendTaskSettings(taskId, {});
+			runnerCallback.mockClear();
+
+			jest.runAllTimers();
+
+			await Promise.resolve(); // for timeout callback
+			await Promise.resolve(); // for sending messages to runner and requester
+			await Promise.resolve(); // for task cleanup and removal
+
+			expect(runnerCallback).toHaveBeenLastCalledWith({
+				type: 'broker:taskcancel',
+				taskId,
+				reason: 'Task execution timed out',
+			});
+
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: expect.any(TaskRunnerTimeoutError),
+			});
+
+			expect(clearTimeout).toHaveBeenCalled();
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
 	});
