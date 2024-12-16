@@ -45,15 +45,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
 		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
 		// Should be saved only once
-		cy.ifCanvasVersion(
-			() => {
-				cy.get('@saveWorkflow.all').should('have.length', 1);
-			},
-			() => {
-				// TODO: This is a bug in new canvas, should be 1
-				cy.get('@saveWorkflow.all').should('have.length', 3);
-			},
-		);
+		cy.get('@saveWorkflow.all').should('have.length', 1);
 	});
 
 	it('should not be able to activate unsaved workflow', () => {
