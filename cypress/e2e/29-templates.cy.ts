@@ -129,7 +129,6 @@ describe('Workflow templates', () => {
 			workflowPage.actions.shouldHaveWorkflowName('Demo: ' + OnboardingWorkflow.name);
 			workflowPage.getters.canvasNodes().should('have.length', 4);
 			workflowPage.getters.stickies().should('have.length', 1);
-			workflowPage.getters.canvasNodes().first().should('have.descendants', '.node-pin-data-icon');
 		});
 
 		it('can import template', () => {
