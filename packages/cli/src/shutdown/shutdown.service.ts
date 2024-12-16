@@ -1,5 +1,5 @@
-import type { Class } from 'n8n-core';
-import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
+import { type Class, ErrorReporter } from 'n8n-core';
+import { ApplicationError, assert } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
 
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
@@ -31,7 +31,10 @@ export class ShutdownService {
 
 	private shutdownPromise: Promise<void> | undefined;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
+	) {}
 
 	/** Registers given listener to be notified when the application is shutting down */
 	register(priority: number, handler: ShutdownHandler) {
@@ -108,7 +111,7 @@ export class ShutdownService {
 			await method.call(service);
 		} catch (error) {
 			assert(error instanceof Error);
-			ErrorReporterProxy.error(new ComponentShutdownError(name, error));
+			this.errorReporter.error(new ComponentShutdownError(name, error));
 		}
 	}
 }

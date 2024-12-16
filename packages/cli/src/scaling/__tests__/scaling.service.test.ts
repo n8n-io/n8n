@@ -5,7 +5,6 @@ import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
 
-import type { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance, mockLogger } from '@test/mocking';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
@@ -47,7 +46,6 @@ describe('ScalingService', () => {
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
-	const orchestrationService = mock<OrchestrationService>({ isMultiMainSetupEnabled: false });
 	const jobProcessor = mock<JobProcessor>();
 
 	let scalingService: ScalingService;
@@ -77,11 +75,12 @@ describe('ScalingService', () => {
 		scalingService = new ScalingService(
 			mockLogger(),
 			mock(),
+			mock(),
 			jobProcessor,
 			globalConfig,
 			mock(),
 			instanceSettings,
-			orchestrationService,
+			mock(),
 			mock(),
 		);
 

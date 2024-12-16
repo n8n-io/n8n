@@ -110,7 +110,7 @@ function mockNodeOutputData(nodeName: string, data: IDataObject[], outputIndex =
 	});
 }
 
-describe('RunDataSchema.vue', () => {
+describe('VirtualSchema.vue', () => {
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 	const DynamicScrollerStub = {

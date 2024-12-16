@@ -391,7 +391,8 @@ class AIParametersParser {
 			description,
 			schema,
 			func: async (toolArgs: z.infer<typeof schema>) => {
-				const context = this.options.contextFactory(this.runIndex, {});
+				const currentRunIndex = this.runIndex++;
+				const context = this.options.contextFactory(currentRunIndex, {});
 				context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
 
 				try {
@@ -402,7 +403,7 @@ class AIParametersParser {
 					const mappedResults = result?.[0]?.flatMap((item) => item.json);
 
 					// Add output data to the context
-					context.addOutputData(NodeConnectionType.AiTool, this.runIndex, [
+					context.addOutputData(NodeConnectionType.AiTool, currentRunIndex, [
 						[{ json: { response: mappedResults } }],
 					]);
 
@@ -410,10 +411,8 @@ class AIParametersParser {
 					return JSON.stringify(mappedResults);
 				} catch (error) {
 					const nodeError = new NodeOperationError(this.options.node, error as Error);
-					context.addOutputData(NodeConnectionType.AiTool, this.runIndex, nodeError);
+					context.addOutputData(NodeConnectionType.AiTool, currentRunIndex, nodeError);
 					return 'Error during node execution: ' + nodeError.description;
-				} finally {
-					this.runIndex++;
 				}
 			},
 		});
