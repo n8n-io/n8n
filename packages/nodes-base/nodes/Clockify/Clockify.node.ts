@@ -734,6 +734,10 @@ export class Clockify implements INodeType {
 
 						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
 
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						Object.assign(qs, additionalFields);
+
 						responseData = await clockifyApiRequest.call(
 							this,
 							'GET',
@@ -742,7 +746,63 @@ export class Clockify implements INodeType {
 							qs,
 						);
 					}
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const inProgress = this.getNodeParameter('inProgress', i) as boolean;
+						const userId = this.getNodeParameter('userId', i, '') as string;
+						const options = this.getNodeParameter('options', i, {});
 
+						let url = `/workspaces/${workspaceId}`;
+
+						if (inProgress) {
+							url += '/time-entries/status/in-progress';
+						} else {
+							url += `/user/${userId}/time-entries`;
+						}
+
+						const dateTimeFields = ['start', 'end', 'get-week-before'];
+						for (const dtField of dateTimeFields) {
+							if (options[dtField] && typeof options[dtField] === 'string') {
+								if (!options[dtField].endsWith('Z')) {
+									options[dtField] += 'Z';
+								}
+							}
+						}
+
+						Object.assign(qs, options);
+
+						if (options['get-week-before']) {
+							responseData = await clockifyApiRequest.call(this, 'GET', url, {}, qs);
+						} else if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(this, 'GET', url, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await clockifyApiRequestAllItems.call(this, 'GET', url, {}, qs);
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+
+					if (operation === 'stopTimer') {
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const userId = this.getNodeParameter('userId', i, '') as string;
+						const options = this.getNodeParameter('options', i, {});
+
+						// Get current UTC time
+						options.end = (options.end || new Date().toISOString()) as string;
+
+						if (typeof options.end === 'string' && !options.end.endsWith('Z')) {
+							options.end += 'Z';
+						}
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'PATCH',
+							`/workspaces/${workspaceId}/user/${userId}/time-entries`,
+							options,
+							{},
+						);
+					}
 					if (operation === 'update') {
 						const timezone = this.getTimezone();
 
@@ -790,6 +850,18 @@ export class Clockify implements INodeType {
 				}
 
 				if (resource === 'user') {
+					if (operation === 'get') {
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+						const userId = this.getNodeParameter('userId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'GET',
+							`/workspaces/${workspaceId}/member-profile/${userId}`,
+							{},
+							qs,
+						);
+					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -821,6 +893,9 @@ export class Clockify implements INodeType {
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
+				}
+				if (operation === 'getSelf') {
+					responseData = await clockifyApiRequest.call(this, 'GET', '/user', {}, qs);
 				}
 
 				if (resource === 'workspace') {
