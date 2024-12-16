@@ -436,7 +436,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 									return { type: 'text', text: JSON.stringify(document[0]) };
 								}
 
-								return { type: 'text', text: document[0].pageContent };
+								return {
+									type: 'text',
+									text: JSON.stringify({ pageContent: document[0].pageContent }),
+								};
 							})
 							.filter((document) => !!document);
 					},
