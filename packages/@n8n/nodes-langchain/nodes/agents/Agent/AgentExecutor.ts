@@ -11,17 +11,15 @@ import {
 	Tool,
 } from '@langchain/core/tools';
 import type { ChainValues } from '@langchain/core/utils/types';
-import type { BaseMultiActionAgent, BaseSingleActionAgent } from 'langchain/dist/agents/agent';
+import type { BaseMultiActionAgent, BaseSingleActionAgent, StoppingMethod } from 'langchain/agents';
 import {
 	AgentRunnableSequence,
 	RunnableMultiActionAgent,
 	RunnableSingleActionAgent,
 	isRunnableAgent,
-} from 'langchain/dist/agents/agent';
-import type { StoppingMethod } from 'langchain/dist/agents/types';
-import type { ChainInputs } from 'langchain/dist/chains/base';
-import { BaseChain } from 'langchain/dist/chains/base';
-import type { SerializedLLMChain } from 'langchain/dist/chains/serde';
+} from 'langchain/agents';
+import type { ChainInputs, SerializedLLMChain } from 'langchain/chains';
+import { BaseChain } from 'langchain/chains';
 import { ApplicationError } from 'n8n-workflow';
 
 interface AgentExecutorIteratorInput {

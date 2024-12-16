@@ -1,0 +1,55 @@
+diff --git a/dist/agents/index.cjs b/dist/agents/index.cjs
+index d7c4a2e371ddb587c1c8416f350c99c8649f090f..9fa1e7d50564b2becc0870d606f407ac60cdb3ae 100644
+--- a/dist/agents/index.cjs
++++ b/dist/agents/index.cjs
+@@ -1,12 +1,17 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+-exports.createReactAgent = exports.createXmlAgent = exports.XMLAgent = exports.createToolCallingAgent = exports.createOpenAIToolsAgent = exports.createOpenAIFunctionsAgent = exports.OpenAIAgent = exports.StructuredChatOutputParserWithRetries = exports.StructuredChatOutputParser = exports.createStructuredChatAgent = exports.StructuredChatAgent = exports.AgentActionOutputParser = exports.ZeroShotAgentOutputParser = exports.ZeroShotAgent = exports.initializeAgentExecutorWithOptions = exports.initializeAgentExecutor = exports.AgentExecutor = exports.ChatConversationalAgentOutputParserWithRetries = exports.ChatConversationalAgentOutputParser = exports.ChatConversationalAgent = exports.ChatAgentOutputParser = exports.ChatAgent = exports.Toolkit = exports.createVectorStoreRouterAgent = exports.createVectorStoreAgent = exports.createOpenApiAgent = exports.createJsonAgent = exports.VectorStoreToolkit = exports.VectorStoreRouterToolkit = exports.RequestsToolkit = exports.OpenApiToolkit = exports.JsonToolkit = exports.LLMSingleActionAgent = exports.RunnableAgent = exports.BaseMultiActionAgent = exports.BaseSingleActionAgent = exports.Agent = void 0;
++exports.createReactAgent = exports.createXmlAgent = exports.XMLAgent = exports.createToolCallingAgent = exports.createOpenAIToolsAgent = exports.createOpenAIFunctionsAgent = exports.OpenAIAgent = exports.StructuredChatOutputParserWithRetries = exports.StructuredChatOutputParser = exports.createStructuredChatAgent = exports.StructuredChatAgent = exports.AgentActionOutputParser = exports.ZeroShotAgentOutputParser = exports.ZeroShotAgent = exports.initializeAgentExecutorWithOptions = exports.initializeAgentExecutor = exports.AgentExecutor = exports.ChatConversationalAgentOutputParserWithRetries = exports.ChatConversationalAgentOutputParser = exports.ChatConversationalAgent = exports.ChatAgentOutputParser = exports.ChatAgent = exports.Toolkit = exports.createVectorStoreRouterAgent = exports.createVectorStoreAgent = exports.createOpenApiAgent = exports.createJsonAgent = exports.VectorStoreToolkit = exports.VectorStoreRouterToolkit = exports.RequestsToolkit = exports.OpenApiToolkit = exports.JsonToolkit = exports.LLMSingleActionAgent = exports.RunnableAgent = exports.BaseMultiActionAgent = exports.BaseSingleActionAgent = exports.Agent = exports.AgentRunnableSequence = exports.RunnableMultiActionAgent = exports.RunnableSingleActionAgent = exports.isRunnableAgent = void 0;
+ var agent_js_1 = require("./agent.cjs");
+ Object.defineProperty(exports, "Agent", { enumerable: true, get: function () { return agent_js_1.Agent; } });
+ Object.defineProperty(exports, "BaseSingleActionAgent", { enumerable: true, get: function () { return agent_js_1.BaseSingleActionAgent; } });
+ Object.defineProperty(exports, "BaseMultiActionAgent", { enumerable: true, get: function () { return agent_js_1.BaseMultiActionAgent; } });
+ Object.defineProperty(exports, "RunnableAgent", { enumerable: true, get: function () { return agent_js_1.RunnableAgent; } });
+ Object.defineProperty(exports, "LLMSingleActionAgent", { enumerable: true, get: function () { return agent_js_1.LLMSingleActionAgent; } });
++Object.defineProperty(exports, "AgentRunnableSequence", { enumerable: true, get: function () { return agent_js_1.AgentRunnableSequence; } });
++Object.defineProperty(exports, "RunnableMultiActionAgent", { enumerable: true, get: function () { return agent_js_1.RunnableMultiActionAgent; } });
++Object.defineProperty(exports, "RunnableSingleActionAgent", { enumerable: true, get: function () { return agent_js_1.RunnableSingleActionAgent; } });
++Object.defineProperty(exports, "isRunnableAgent", { enumerable: true, get: function () { return agent_js_1.isRunnableAgent; } });
++var index_js_1 = require("./toolkits/index.cjs");
+ var index_js_1 = require("./toolkits/index.cjs");
+ Object.defineProperty(exports, "JsonToolkit", { enumerable: true, get: function () { return index_js_1.JsonToolkit; } });
+ Object.defineProperty(exports, "OpenApiToolkit", { enumerable: true, get: function () { return index_js_1.OpenApiToolkit; } });
+diff --git a/dist/agents/index.d.ts b/dist/agents/index.d.ts
+index 05f874b2341e529f1f7b79d8ff227935a312d160..ba60c04331753c489dfe4a3378d143ddf130ff86 100644
+--- a/dist/agents/index.d.ts
++++ b/dist/agents/index.d.ts
+@@ -1,4 +1,4 @@
+-export { Agent, type AgentArgs, BaseSingleActionAgent, BaseMultiActionAgent, RunnableAgent, LLMSingleActionAgent, type LLMSingleActionAgentInput, type OutputParserArgs, type AgentRunnableSequence, } from "./agent.js";
++export { Agent, type AgentArgs, BaseSingleActionAgent, BaseMultiActionAgent, RunnableAgent, LLMSingleActionAgent, type LLMSingleActionAgentInput, type OutputParserArgs, AgentRunnableSequence, RunnableMultiActionAgent, RunnableSingleActionAgent, isRunnableAgent } from "./agent.js";
+ export { JsonToolkit, OpenApiToolkit, RequestsToolkit, type VectorStoreInfo, VectorStoreRouterToolkit, VectorStoreToolkit, createJsonAgent, createOpenApiAgent, createVectorStoreAgent, createVectorStoreRouterAgent, } from "./toolkits/index.js";
+ export { Toolkit } from "./toolkits/base.js";
+ export { ChatAgent, type ChatAgentInput, type ChatCreatePromptArgs, } from "./chat/index.js";
+diff --git a/dist/agents/index.js b/dist/agents/index.js
+index ca4a1ab41dabd8cf4f3874c24ad39a93279a6bd1..83cdb02f9b6c9be62af7389400ac6fe9b0f87a14 100644
+--- a/dist/agents/index.js
++++ b/dist/agents/index.js
+@@ -1,4 +1,4 @@
+-export { Agent, BaseSingleActionAgent, BaseMultiActionAgent, RunnableAgent, LLMSingleActionAgent, } from "./agent.js";
++export { Agent, BaseSingleActionAgent, BaseMultiActionAgent, RunnableAgent, LLMSingleActionAgent, AgentRunnableSequence, RunnableMultiActionAgent, RunnableSingleActionAgent, isRunnableAgent } from "./agent.js";
+ export { JsonToolkit, OpenApiToolkit, RequestsToolkit, VectorStoreRouterToolkit, VectorStoreToolkit, createJsonAgent, createOpenApiAgent, createVectorStoreAgent, createVectorStoreRouterAgent, } from "./toolkits/index.js";
+ export { Toolkit } from "./toolkits/base.js";
+ export { ChatAgent, } from "./chat/index.js";
+diff --git a/schema/document.cjs b/schema/document.cjs
+deleted file mode 100644
+index 18746fea69bdc22290c631c8534656d2490f9634..0000000000000000000000000000000000000000
+diff --git a/schema/document.d.cts b/schema/document.d.cts
+deleted file mode 100644
+index d9c69889bdff03b3ecedc7c10283447d36a34f26..0000000000000000000000000000000000000000
+diff --git a/schema/document.d.ts b/schema/document.d.ts
+deleted file mode 100644
+index d9c69889bdff03b3ecedc7c10283447d36a34f26..0000000000000000000000000000000000000000
+diff --git a/schema/document.js b/schema/document.js
+deleted file mode 100644
+index d9c69889bdff03b3ecedc7c10283447d36a34f26..0000000000000000000000000000000000000000
