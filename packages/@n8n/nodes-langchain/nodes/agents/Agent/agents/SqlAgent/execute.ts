@@ -12,12 +12,13 @@ import {
 	type IDataObject,
 } from 'n8n-workflow';
 
+import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
+import { getTracingConfig } from '@utils/tracing';
+
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
-import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
 
 const parseTablesString = (tablesString: string) =>
 	tablesString

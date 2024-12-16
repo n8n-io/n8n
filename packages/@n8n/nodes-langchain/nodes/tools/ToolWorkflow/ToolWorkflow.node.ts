@@ -21,14 +21,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { jsonSchemaExampleField, schemaTypeField, inputSchemaField } from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import type { DynamicZodObject } from '../../../types/zod.types';
-import {
-	jsonSchemaExampleField,
-	schemaTypeField,
-	inputSchemaField,
-} from '../../../utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
