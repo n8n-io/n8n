@@ -141,6 +141,7 @@ describe('Workflow templates', () => {
 		});
 
 		it('should save template id with the workflow', () => {
+			cy.intercept('POST', '/rest/workflows').as('saveWorkflow');
 			templatesPage.actions.importTemplate();
 
 			cy.visit(templatesPage.url);
@@ -158,10 +159,8 @@ describe('Workflow templates', () => {
 			workflowPage.actions.hitSelectAll();
 			workflowPage.actions.hitCopy();
 
-			cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
-			// Check workflow JSON by copying it to clipboard
-			cy.readClipboard().then((workflowJSON) => {
-				expect(workflowJSON).to.contain('"templateId": "1"');
+			cy.wait('@saveWorkflow').then((interception) => {
+				expect(interception.request.body.meta.templateId).to.equal('1');
 			});
 		});
 
