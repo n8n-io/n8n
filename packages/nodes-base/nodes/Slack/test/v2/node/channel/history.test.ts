@@ -207,7 +207,7 @@ describe('Test SlackV2, channel => history', () => {
 			'GET',
 			'/conversations.history',
 			{},
-			{ channel: 'C08514ZPKB8', inclusive: true, latest: 1734386400, oldest: 1734300000 },
+			{ channel: 'C08514ZPKB8', inclusive: true },
 		);
 	};
 

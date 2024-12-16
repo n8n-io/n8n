@@ -21,9 +21,7 @@
 				},
 				"returnAll": true,
 				"filters": {
-					"inclusive": true,
-					"latest": "2024-12-17T00:00:00",
-					"oldest": "2024-12-16T00:00:00"
+					"inclusive": true
 				}
 			},
 			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
