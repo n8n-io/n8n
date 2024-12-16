@@ -66,6 +66,14 @@ async function runTest() {
 	}
 }
 
+async function onDeleteRuns(runs: TestRunRecord[]) {
+	await Promise.all(
+		runs.map(async (run) => {
+			await testDefinitionStore.deleteTestRun({ testDefinitionId: testId.value, runId: run.id });
+		}),
+	);
+}
+
 onMounted(async () => {
 	await loadInitialData();
 });
@@ -73,7 +81,7 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container">
-		<router-link :to="{ name: VIEWS.TEST_DEFINITION }">
+		<router-link :to="{ name: VIEWS.TEST_DEFINITION }" :class="$style.backButton">
 			<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
 			<n8n-heading size="large" :bold="true">{{ testDefinition?.name }}</n8n-heading>
 		</router-link>
@@ -84,7 +92,7 @@ onMounted(async () => {
 		</template>
 		<template v-else-if="runs.length > 0">
 			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" />
-			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" />
+			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" @delete-runs="onDeleteRuns" />
 		</template>
 		<template v-else>
 			<N8nActionBox
@@ -103,7 +111,9 @@ onMounted(async () => {
 	width: 100%;
 	max-width: var(--content-container-width);
 }
-
+.backButton {
+	color: var(--color-text-base);
+}
 .description {
 	margin-top: var(--spacing-xs);
 	display: block;

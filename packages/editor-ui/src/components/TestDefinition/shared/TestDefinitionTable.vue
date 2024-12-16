@@ -2,6 +2,8 @@
 import type { RouteLocationRaw } from 'vue-router';
 import TableCell from './TableCell.vue';
 import { ElTable, ElTableColumn } from 'element-plus';
+import { ref } from 'vue';
+import type { TableInstance } from 'element-plus';
 
 /**
  * A reusable table component for displaying test definition data
@@ -30,37 +32,52 @@ withDefaults(
 		columns: Array<TestDefinitionTableColumn<T>>;
 		showControls?: boolean;
 		defaultSort?: { prop: string; order: 'ascending' | 'descending' };
+		selectable?: boolean;
+		selectableFilter?: (row: T) => boolean;
 	}>(),
 	{
-		defaultSort: () => ({ prop: 'date', order: 'ascending' }),
+		defaultSort: () => ({ prop: 'date', order: 'descending' }),
+		selectable: false,
+		selectableFilter: () => true,
 	},
 );
 
-defineEmits<{
+const tableRef = ref<TableInstance>();
+const selectedRows = ref<T[]>([]);
+
+const emit = defineEmits<{
 	rowClick: [row: T];
+	selectionChange: [rows: T[]];
 }>();
+
+const handleSelectionChange = (rows: T[]) => {
+	selectedRows.value = rows;
+	emit('selectionChange', rows);
+};
 </script>
 
 <template>
-	<div>
-		<ElTable
-			ref="filterTable"
-			:default-sort="defaultSort"
-			:data="data"
+	<ElTable
+		ref="tableRef"
+		:default-sort="defaultSort"
+		:data="data"
+		style="width: 100%"
+		:border="true"
+		max-height="800"
+		resizable
+		@selection-change="handleSelectionChange"
+	>
+		<ElTableColumn v-if="selectable" type="selection" :selectable="selectableFilter" width="55" />
+		<ElTableColumn
+			v-for="column in columns"
+			:key="column.prop"
+			v-bind="column"
 			style="width: 100%"
-			:border="true"
+			:resizable="true"
 		>
-			<ElTableColumn
-				v-for="column in columns"
-				:key="column.prop"
-				v-bind="column"
-				style="width: 100%"
-				:resizable="true"
-			>
-				<template #default="{ row }">
-					<TableCell :column="column" :row="row" @click="$emit('rowClick', row)" />
-				</template>
-			</ElTableColumn>
-		</ElTable>
-	</div>
+			<template #default="{ row }">
+				<TableCell :column="column" :row="row" @click="$emit('rowClick', row)" />
+			</template>
+		</ElTableColumn>
+	</ElTable>
 </template>

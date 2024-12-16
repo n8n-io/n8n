@@ -53,6 +53,7 @@ export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
+export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';

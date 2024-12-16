@@ -7,6 +7,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { createEventBus, N8nTooltip } from 'n8n-design-system';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
+import { useVueFlow } from '@vue-flow/core';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -16,7 +17,7 @@ const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
 const eventBus = createEventBus<CanvasEventBusEvents>();
 const style = useCssModule();
-
+const uuid = crypto.randomUUID();
 const props = defineProps<{
 	modelValue: Array<{ name: string }>;
 }>();
@@ -31,7 +32,9 @@ const workflowId = computed(() => route.params.name as string);
 const testId = computed(() => route.params.testId as string);
 const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
 const workflowObject = computed(() => workflowsStore.getCurrentWorkflow(true));
+const canvasId = computed(() => `${uuid}-${testId.value}`);
 
+const { onNodesInitialized, fitView, zoomTo } = useVueFlow({ id: canvasId.value });
 const nodes = computed(() => {
 	return workflow.value.nodes ?? [];
 });
@@ -52,8 +55,9 @@ async function loadData() {
 	await loadingPromise;
 	initializeWorkspace(workflow.value);
 	disableAllNodes();
-	eventBus.emit('fitView');
-	isLoading.value = false;
+	setTimeout(() => {
+		isLoading.value = false;
+	}, 4000);
 }
 function getNodeNameById(id: string) {
 	return mappedNodes.value.find((node) => node.id === id)?.data?.name;
@@ -135,14 +139,22 @@ function onPinButtonClick(data: CanvasNodeData) {
 function isPinButtonVisible(outputs: CanvasConnectionPort[]) {
 	return outputs.length === 1;
 }
+
+onNodesInitialized(async () => {
+	await fitView();
+	isLoading.value = false;
+	await zoomTo(0.7, { duration: 400 });
+});
 onMounted(loadData);
 </script>
 
 <template>
 	<div :class="$style.container">
+		<N8nSpinner v-if="isLoading" size="xlarge" type="dots" :class="$style.spinner" />
 		<Canvas
-			v-if="workflow"
-			:id="testId"
+			:style="{ opacity: isLoading ? 0 : 1 }"
+			:id="canvasId"
+			:class="{ [$style.canvas]: true }"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"
 			:show-bug-reporting-button="false"
@@ -169,10 +181,13 @@ onMounted(loadData);
 
 <style lang="scss" module>
 .container {
-	width: 100%;
-	max-height: 100vh;
+	width: 100vw;
+	height: 100%;
 }
-
+.canvas {
+	opacity: 0;
+	transition: opacity 1s ease-in-out;
+}
 .pinButtonContainer {
 	position: absolute;
 	right: 0;
@@ -198,5 +213,11 @@ onMounted(loadData);
 	:global(.n8n-node-icon) > div {
 		filter: contrast(40%) brightness(1.5) grayscale(100%);
 	}
+}
+.spinner {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 }
 </style>

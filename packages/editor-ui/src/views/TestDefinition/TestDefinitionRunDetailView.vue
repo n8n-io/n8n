@@ -11,6 +11,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { get } from 'lodash-es';
 import type { ExecutionSummaryWithScopes } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 interface TestCase extends ExecutionSummaryWithScopes {
 	metrics: Record<string, number>;
@@ -19,6 +20,7 @@ interface TestCase extends ExecutionSummaryWithScopes {
 const router = useRouter();
 const testDefinitionStore = useTestDefinitionStore();
 const executionsStore = useExecutionsStore();
+const workflowStore = useWorkflowsStore();
 const locale = useI18n();
 
 const isLoading = ref(true);
@@ -29,7 +31,9 @@ const testId = computed(() => router.currentRoute.value.params.testId as string)
 
 const run = computed(() => testDefinitionStore.testRunsById[runId.value]);
 const test = computed(() => testDefinitionStore.testDefinitionsById[testId.value]);
-
+const workflow = computed(
+	() => workflowStore.workflowsById[test.value?.evaluationWorkflowId ?? ''],
+);
 const filteredTestCases = computed(() => {
 	return testCases.value;
 });
@@ -45,6 +49,7 @@ const columns = computed(
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: row.workflowId, executionId: row.id },
 			}),
+			formatter: (row: TestCase) => `[${row.id}] ${workflow.value.name}`,
 			openInNewTab: true,
 		},
 		{
@@ -136,12 +141,12 @@ onMounted(async () => {
 <template>
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
 		<div :class="$style.header">
-			<router-link :to="{ name: VIEWS.TEST_DEFINITION_RUNS, params: { testId } }">
+			<button :class="$style.backButton" @click="router.back()">
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
 				<n8n-heading size="large" :bold="true">{{ test?.name }}</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
-				<n8n-heading size="large" :bold="true">{{ run?.id }}</n8n-heading>
-			</router-link>
+				<n8n-heading size="large" :bold="true">Run {{ run?.id }}</n8n-heading>
+			</button>
 		</div>
 
 		<div :class="$style.cardGrid">
@@ -205,6 +210,16 @@ onMounted(async () => {
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
+}
+
+.backButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color-text-base);
 }
 
 .header {

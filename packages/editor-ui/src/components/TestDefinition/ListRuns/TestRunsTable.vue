@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { TestDefinitionTableColumn } from '../shared/TestDefinitionTable.vue';
 import TestDefinitionTable from '../shared/TestDefinitionTable.vue';
 import { convertToDisplayDate } from '@/utils/typesUtils';
@@ -9,14 +9,18 @@ import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	getRunDetail: [run: TestRunRecord];
+	selectionChange: [runs: TestRunRecord[]];
+	deleteRuns: [runs: TestRunRecord[]];
 }>();
 
 const props = defineProps<{
 	runs: TestRunRecord[];
+	selectable?: boolean;
 }>();
 
 const locale = useI18n();
 const navigateToRunDetail = (run: TestRunRecord) => emit('getRunDetail', run);
+const selectedRows = ref<TestRunRecord[]>([]);
 
 const metrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
@@ -63,8 +67,48 @@ const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => 
 		})),
 	];
 });
+
+function onSelectionChange(runs: TestRunRecord[]) {
+	selectedRows.value = runs;
+	emit('selectionChange', runs);
+}
+
+function deleteRuns() {
+	emit('deleteRuns', selectedRows.value);
+}
 </script>
 
 <template>
-	<TestDefinitionTable :data="runs" :columns="columns" @row-click="navigateToRunDetail" />
+	<div :class="$style.container">
+		<div :class="$style.footer">
+			<n8n-button
+				v-show="selectedRows.length > 0"
+				type="danger"
+				:class="$style.activator"
+				:size="'medium'"
+				:icon="'trash'"
+				@click="deleteRuns"
+			>
+				Delete {{ selectedRows.length }} runs
+			</n8n-button>
+		</div>
+		<TestDefinitionTable
+			:data="runs"
+			:columns="columns"
+			selectable
+			@row-click="navigateToRunDetail"
+			@selection-change="onSelectionChange"
+		/>
+		<N8nText :class="$style.runsTableTotal">{{
+			locale.baseText('testDefinition.edit.pastRuns.total', { adjustToNumber: runs.length })
+		}}</N8nText>
+	</div>
 </template>
+
+<style module lang="scss">
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+</style>

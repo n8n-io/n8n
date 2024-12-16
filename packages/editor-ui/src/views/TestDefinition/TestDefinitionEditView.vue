@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { NODE_PINNING_MODAL_KEY, VIEWS } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
@@ -14,7 +14,12 @@ import EvaluationStep from '@/components/TestDefinition/EditDefinition/Evaluatio
 import TagsInput from '@/components/TestDefinition/EditDefinition/TagsInput.vue';
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
-import type { TestMetricRecord } from '@/api/testDefinition.ee';
+import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
+import Modal from '@/components/Modal.vue';
+import { ModalState } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
+import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 
 const props = defineProps<{
 	testId?: string;
@@ -25,7 +30,9 @@ const route = useRoute();
 const locale = useI18n();
 const { debounce } = useDebounce();
 const toast = useToast();
+const testDefinitionStore = useTestDefinitionStore();
 const tagsStore = useAnnotationTagsStore();
+const uiStore = useUIStore();
 const {
 	state,
 	fieldsIssues,
@@ -47,17 +54,12 @@ const tagsById = computed(() => tagsStore.tagsById);
 const testId = computed(() => props.testId ?? (route.params.testId as string));
 const currentWorkflowId = computed(() => route.params.name as string);
 
-const buttonLabel = computed(() =>
-	testId.value
-		? locale.baseText('testDefinition.edit.updateTest')
-		: locale.baseText('testDefinition.edit.saveTest'),
-);
-
 const tagUsageCount = computed(
 	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
 );
 
-const showNodesPinning = ref(false);
+const nodePinningModal = ref<ModalState | null>(null);
+const modalContentWidth = ref(0);
 
 onMounted(async () => {
 	void tagsStore.fetchAll({ withUsageCount: true });
@@ -111,6 +113,33 @@ async function handleCreateTag(tagName: string) {
 	}
 }
 
+async function openPinningModal() {
+	uiStore.openModal(NODE_PINNING_MODAL_KEY);
+}
+
+async function runTest() {
+	await testDefinitionStore.startTestRun(testId.value);
+	await testDefinitionStore.fetchTestRuns(testId.value);
+}
+
+async function handleSelectionChange(runs: TestRunRecord[]) {
+	console.log('runs', runs);
+}
+
+const runs = computed(() => {
+	return Object.values(testDefinitionStore.testRunsById ?? {}).filter(
+		(run) => run.testDefinitionId === testId.value,
+	);
+});
+
+async function onDeleteRuns(runs: TestRunRecord[]) {
+	await Promise.all(
+		runs.map(async (run) => {
+			await testDefinitionStore.deleteTestRun({ testDefinitionId: testId.value, runId: run.id });
+		}),
+	);
+}
+
 // Debounced watchers for auto-saving
 watch(
 	() => state.value.metrics,
@@ -133,7 +162,8 @@ watch(
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.content">
+		<div :class="$style.formContent">
+			<!-- Name -->
 			<EvaluationHeader
 				v-model="state.name"
 				:class="{ 'has-issues': hasIssues('name') }"
@@ -142,6 +172,7 @@ watch(
 				:handle-keydown="handleKeydown"
 			/>
 
+			<!-- Description -->
 			<EvaluationStep
 				:class="$style.step"
 				:title="locale.baseText('testDefinition.edit.description')"
@@ -157,6 +188,7 @@ watch(
 			<div :class="$style.panelIntro">{{ locale.baseText('testDefinition.edit.step.intro') }}</div>
 			<BlockArrow :class="$style.introArrow" />
 			<div :class="$style.panelBlock">
+				<!-- Select Executions -->
 				<EvaluationStep
 					:class="$style.step"
 					:title="
@@ -185,34 +217,32 @@ watch(
 					<BlockArrow />
 					<BlockArrow />
 				</div>
+
+				<!-- Mocked Nodes -->
 				<EvaluationStep
 					:class="$style.step"
-					:title="locale.baseText('testDefinition.edit.step.nodes')"
+					:title="
+						locale.baseText('testDefinition.edit.step.mockedNodes', {
+							adjustToNumber: state.mockedNodes?.length ?? 0,
+						})
+					"
 					:small="true"
 					:expanded="true"
 					:tooltip="locale.baseText('testDefinition.edit.step.nodes.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 					<template #cardContent>
-						<template v-if="state.mockedNodes?.length === 0 && !showNodesPinning">
-							<n8n-button
-								size="small"
-								data-test-id="select-nodes-button"
-								:label="locale.baseText('testDefinition.edit.selectNodes')"
-								type="tertiary"
-								@click="() => (showNodesPinning = true)"
-							/>
-						</template>
-						<span :class="$style.mockedNodesLabel" v-else>
-							{{
-								locale.baseText('testDefinition.edit.step.mockedNodes', {
-									adjustToNumber: state.mockedNodes?.length ?? 0,
-								})
-							}}
-						</span>
+						<n8n-button
+							size="small"
+							data-test-id="select-nodes-button"
+							:label="locale.baseText('testDefinition.edit.selectNodes')"
+							type="tertiary"
+							@click="openPinningModal"
+						/>
 					</template>
 				</EvaluationStep>
 
+				<!-- Re-run Executions -->
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
@@ -222,6 +252,7 @@ watch(
 					<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 				</EvaluationStep>
 
+				<!-- Compare Executions -->
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
@@ -236,6 +267,7 @@ watch(
 					</template>
 				</EvaluationStep>
 
+				<!-- Metrics -->
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.metrics')"
@@ -252,20 +284,40 @@ watch(
 				</EvaluationStep>
 			</div>
 
-			<div :class="$style.footer">
-				<n8n-button
-					type="primary"
-					data-test-id="run-test-button"
-					:label="buttonLabel"
-					:loading="isSaving"
-					@click="onSaveTest"
-				/>
-			</div>
+			<n8n-button
+				:class="$style.runTestButton"
+				v-if="state.evaluationWorkflow.value && state.tags.value.length > 0"
+				size="small"
+				data-test-id="run-tests-button"
+				:label="locale.baseText('testDefinition.runTest')"
+				type="primary"
+				@click="runTest"
+			/>
 		</div>
-		<NodesPinning
-			v-if="showNodesPinning || state.mockedNodes?.length > 0"
-			v-model="state.mockedNodes"
-		/>
+		<!-- Past Runs Table -->
+		<div :class="$style.runsTable" v-if="runs.length > 0">
+			<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
+				locale.baseText('testDefinition.edit.pastRuns')
+			}}</N8nHeading>
+			<TestRunsTable
+				:runs="runs"
+				:selectable="true"
+				@selection-change="handleSelectionChange"
+				@delete-runs="onDeleteRuns"
+			/>
+		</div>
+
+		<Modal
+			width="80vw"
+			height="85vh"
+			:title="'Pin Nodes'"
+			:name="NODE_PINNING_MODAL_KEY"
+			ref="nodePinningModal"
+		>
+			<template #content>
+				<NodesPinning v-model="state.mockedNodes" :width="modalContentWidth" />
+			</template>
+		</Modal>
 	</div>
 </template>
 
@@ -273,17 +325,33 @@ watch(
 .container {
 	width: 100%;
 	height: 100%;
+	overflow: hidden;
 	padding: var(--spacing-s);
 	display: grid;
 	grid-template-columns: minmax(auto, 24rem) 1fr;
 	gap: var(--spacing-2xl);
 }
 
-.content {
-	min-width: 0;
+.formContent {
 	width: 100%;
+	min-width: fit-content;
+	padding-bottom: 10px;
+	overflow: auto;
 }
-
+.runsTableTotal {
+	display: block;
+	margin-bottom: var(--spacing-xs);
+}
+.runsTable {
+	flex-shrink: 1;
+	max-width: 100%;
+	max-height: 80vh;
+	overflow: auto;
+}
+.runsTableHeading {
+	display: block;
+	margin-bottom: var(--spacing-xl);
+}
 .panelBlock {
 	max-width: var(--evaluation-edit-panel-width, 24rem);
 	display: grid;
@@ -348,5 +416,8 @@ watch(
 .mockedNodesLabel {
 	min-height: 1.5rem;
 	display: block;
+}
+.runTestButton {
+	margin-top: var(--spacing-m);
 }
 </style>

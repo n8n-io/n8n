@@ -244,7 +244,7 @@ export const useTestDefinitionStore = defineStore(
 				);
 				runs.forEach((run) => {
 					testRunsById.value[run.id] = run;
-					if (run.status === 'running') {
+					if (['running', 'new'].includes(run.status)) {
 						startPollingTestRun(testDefinitionId, run.id);
 					}
 				});
@@ -282,7 +282,7 @@ export const useTestDefinitionStore = defineStore(
 		const startPollingTestRun = (testDefinitionId: string, runId: string) => {
 			const poll = async () => {
 				const run = await getTestRun({ testDefinitionId, runId });
-				if (run.status === 'running') {
+				if (['running', 'new'].includes(run.status)) {
 					pollingTimeouts.value[runId] = setTimeout(poll, 1000);
 				} else {
 					delete pollingTimeouts.value[runId];
