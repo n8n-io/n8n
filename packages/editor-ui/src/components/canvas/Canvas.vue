@@ -40,6 +40,8 @@ const emit = defineEmits<{
 	'update:node:selected': [id: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'update:node:inputs': [id: string];
+	'update:node:outputs': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -300,6 +302,14 @@ function onDeleteNode(id: string) {
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	emit('update:node:parameters', id, parameters);
+}
+
+function onUpdateNodeInputs(id: string) {
+	emit('update:node:inputs', id);
+}
+
+function onUpdateNodeOutputs(id: string) {
+	emit('update:node:outputs', id);
 }
 
 /**
@@ -663,6 +673,8 @@ provide(CanvasKey, {
 				@activate="onSetNodeActive"
 				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
+				@update:inputs="onUpdateNodeInputs"
+				@update:outputs="onUpdateNodeOutputs"
 				@move="onUpdateNodePosition"
 				@add="onClickNodeAdd"
 			/>

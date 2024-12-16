@@ -52,6 +52,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
+	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 } from '@/types';
@@ -1230,11 +1231,85 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		});
 	}
 
+	function revalidateNodeInputConnections(id: string) {
+		const targetNode = workflowsStore.getNodeById(id);
+		if (!targetNode) {
+			return;
+		}
+
+		const nodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
+		if (!nodeType) {
+			return;
+		}
+
+		const connections = mapLegacyConnectionsToCanvasConnections(
+			workflowsStore.workflow.connections,
+			workflowsStore.workflow.nodes,
+		);
+
+		connections.forEach((connection) => {
+			if (connection.target === id) {
+				const sourceNode = workflowsStore.getNodeById(connection.source);
+				if (!sourceNode || !connection.data) {
+					return;
+				}
+
+				if (
+					!isConnectionAllowed(
+						sourceNode,
+						targetNode,
+						connection.data.source,
+						connection.data.target,
+					)
+				) {
+					void nextTick(() => deleteConnection(connection));
+				}
+			}
+		});
+	}
+
+	function revalidateNodeOutputConnections(id: string) {
+		const sourceNode = workflowsStore.getNodeById(id);
+		if (!sourceNode) {
+			return;
+		}
+
+		const nodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+		if (!nodeType) {
+			return;
+		}
+
+		const connections = mapLegacyConnectionsToCanvasConnections(
+			workflowsStore.workflow.connections,
+			workflowsStore.workflow.nodes,
+		);
+
+		connections.forEach((connection) => {
+			if (connection.source === id) {
+				const targetNode = workflowsStore.getNodeById(connection.target);
+				if (!targetNode || !connection.data) {
+					return;
+				}
+
+				if (
+					!isConnectionAllowed(
+						targetNode,
+						sourceNode,
+						connection.data.source,
+						connection.data.target,
+					)
+				) {
+					void nextTick(() => deleteConnection(connection));
+				}
+			}
+		});
+	}
+
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		sourceConnection: IConnection,
-		targetConnection: IConnection,
+		sourceConnection: IConnection | CanvasConnectionPort,
+		targetConnection: IConnection | CanvasConnectionPort,
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
@@ -1908,6 +1983,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		deleteConnection,
 		revertDeleteConnection,
 		deleteConnectionsByNodeId,
+		revalidateNodeInputConnections,
+		revalidateNodeOutputConnections,
 		isConnectionAllowed,
 		filterConnectionsByNodes,
 		importWorkflowData,

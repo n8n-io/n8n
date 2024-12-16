@@ -31,6 +31,7 @@ import { useCanvas } from '@/composables/useCanvas';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import { deepCompare } from '@/utils/objectUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -47,6 +48,7 @@ const emit = defineEmits<{
 	activate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
+	'update:inputs': [id: string];
 	move: [id: string, position: XYPosition];
 }>();
 
@@ -264,6 +266,18 @@ watch(
 		emit('select', props.id, value);
 	},
 );
+
+watch(inputs, (newValue, oldValue) => {
+	if (!deepCompare(newValue, oldValue)) {
+		emit('update:inputs', props.id);
+	}
+});
+
+watch(outputs, (newValue, oldValue) => {
+	if (!deepCompare(newValue, oldValue)) {
+		emit('update:outputs', props.id);
+	}
+});
 
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
