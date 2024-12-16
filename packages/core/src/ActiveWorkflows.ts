@@ -132,7 +132,7 @@ export class ActiveWorkflows {
 	/**
 	 * Activates polling for the given node
 	 */
-	async activatePolling(
+	private async activatePolling(
 		node: INode,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
