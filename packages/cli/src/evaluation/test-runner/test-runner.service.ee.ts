@@ -11,7 +11,7 @@ import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -30,9 +30,7 @@ import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
  * past executions, creates pin data from them,
  * and runs the workflow-under-test with the pin data.
  * After the workflow-under-test finishes, it runs the evaluation workflow
- * with the original and new run data.
- * TODO: Node pinning
- * TODO: Collect metrics
+ * with the original and new run data, and collects the metrics.
  */
 @Service()
 export class TestRunnerService {
@@ -52,10 +50,11 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		mockedNodes: MockedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, pastExecutionData);
+		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
 
 		// Determine the start node of the past execution
 		const pastExecutionStartNode = getPastExecutionTriggerNode(pastExecutionData);
@@ -196,7 +195,12 @@ export class TestRunnerService {
 			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(workflow, executionData, user.id);
+			const testCaseExecution = await this.runTestCase(
+				workflow,
+				executionData,
+				test.mockedNodes,
+				user.id,
+			);
 
 			// In case of a permission check issue, the test case execution will be undefined.
 			// Skip them and continue with the next test case

@@ -16,10 +16,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
-import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { getTracingConfig } from '../../../utils/tracing';
+import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
 
 const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.

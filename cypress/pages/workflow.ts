@@ -333,8 +333,14 @@ export class WorkflowPage extends BasePage {
 			this.actions.contextMenuAction('select_all');
 		},
 		deselectAll: () => {
-			this.actions.openContextMenu();
-			this.actions.contextMenuAction('deselect_all');
+			cy.ifCanvasVersion(
+				() => {
+					this.actions.openContextMenu();
+					this.actions.contextMenuAction('deselect_all');
+				},
+				// rightclick doesn't work with vueFlow canvas
+				() => this.getters.nodeViewBackground().click('topLeft'),
+			);
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
