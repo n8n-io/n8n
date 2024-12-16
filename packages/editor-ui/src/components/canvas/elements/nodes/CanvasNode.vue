@@ -275,7 +275,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
+	<div
+		:class="classes"
+		data-test-id="canvas-node"
+		:data-node-type="data.type"
+		:data-name="data.name"
+	>
 		<template
 			v-for="source in mappedOutputs"
 			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"

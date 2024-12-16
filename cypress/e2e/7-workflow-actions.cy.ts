@@ -200,7 +200,6 @@ describe('Workflow Actions', () => {
 		});
 	});
 
-	// TODO: Does not work on cavas v2
 	it('should allow importing nodes without names', () => {
 		cy.fixture('Test_workflow-actions_import_nodes_empty_name.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
