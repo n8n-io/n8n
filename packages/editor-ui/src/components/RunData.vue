@@ -46,7 +46,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeType } from '@/composables/useNodeType';
-import { useSettingsStore } from '@/stores/settings.store';
 import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -88,10 +87,8 @@ const LazyRunDataJson = defineAsyncComponent(
 	async () => await import('@/components/RunDataJson.vue'),
 );
 
-const LazyRunDataSchema = defineAsyncComponent(async () =>
-	useSettingsStore().settings.virtualSchemaView
-		? await import('@/components/VirtualSchema.vue')
-		: await import('@/components/RunDataSchema.vue'),
+const LazyRunDataSchema = defineAsyncComponent(
+	async () => await import('@/components/VirtualSchema.vue'),
 );
 const LazyRunDataHtml = defineAsyncComponent(
 	async () => await import('@/components/RunDataHtml.vue'),

@@ -96,7 +96,6 @@ async function send() {
 			message: Number(form.value.value) >= 8 ? i18n.baseText('prompts.npsSurvey.reviewUs') : '',
 			type: 'success',
 			duration: 15000,
-			dangerouslyUseHTMLString: true,
 		});
 
 		setTimeout(() => {

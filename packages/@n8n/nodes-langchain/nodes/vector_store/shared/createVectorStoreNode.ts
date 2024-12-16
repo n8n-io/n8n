@@ -3,6 +3,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
+import { DynamicTool } from 'langchain/tools';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -19,13 +20,13 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
+import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { processDocument } from './processDocuments';
-import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { DynamicTool } from 'langchain/tools';
 
 type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
 

@@ -49,6 +49,7 @@ import type {
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -587,7 +588,6 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 				cancelButtonText: i18n.baseText(
 					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 				),
-				dangerouslyUseHTMLString: true,
 			},
 		);
 
@@ -911,7 +911,10 @@ async function onAddNodesAndConnections(
 	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
-	selectNodes([addedNodes[addedNodes.length - 1].id]);
+
+	if (addedNodes.length > 0) {
+		selectNodes([addedNodes[addedNodes.length - 1].id]);
+	}
 }
 
 async function onRevertAddNode({ node }: { node: INodeUi }) {
@@ -1365,7 +1368,6 @@ function checkIfEditingIsAllowed(): boolean {
 					: 'readOnly.showMessage.executions.message',
 			),
 			type: 'info',
-			dangerouslyUseHTMLString: true,
 		}) as unknown as { visible: boolean };
 
 		return false;
@@ -1442,6 +1444,28 @@ function onClickPane(position: CanvasNode['position']) {
 }
 
 /**
+ * Drag and Drop events
+ */
+
+async function onDragAndDrop(position: VueFlowXYPosition, event: DragEvent) {
+	if (!event.dataTransfer) {
+		return;
+	}
+
+	const dropData = jsonParse<AddedNodesAndConnections>(
+		event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
+	);
+
+	if (dropData) {
+		const insertNodePosition: XYPosition = [position.x, position.y];
+
+		await onAddNodesAndConnections(dropData, true, insertNodePosition);
+
+		onToggleNodeCreator({ createNodeActive: false, hasAddedNodes: true });
+	}
+}
+
+/**
  * Custom Actions
  */
 
@@ -1482,6 +1506,13 @@ function unregisterCustomActions() {
 	unregisterCustomAction('openNodeDetail');
 	unregisterCustomAction('openSelectiveNodeCreator');
 	unregisterCustomAction('showNodeCreator');
+}
+
+function showAddFirstStepIfEnabled() {
+	if (uiStore.addFirstStepOnLoad) {
+		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		uiStore.addFirstStepOnLoad = false;
+	}
 }
 
 /**
@@ -1546,6 +1577,7 @@ onMounted(() => {
 
 onActivated(async () => {
 	addUndoRedoEventBindings();
+	showAddFirstStepIfEnabled();
 });
 
 onDeactivated(() => {
@@ -1606,6 +1638,7 @@ onBeforeUnmount(() => {
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
+		@drag-and-drop="onDragAndDrop"
 	>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton

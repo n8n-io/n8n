@@ -163,7 +163,7 @@ export interface FrontendSettings {
 		pruneTime: number;
 		licensePruneTime: number;
 	};
-	pruning: {
+	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;
 		maxCount: number;
@@ -172,5 +172,5 @@ export interface FrontendSettings {
 		blockFileAccessToN8nFiles: boolean;
 	};
 	betaFeatures: FrontendBetaFeatures[];
-	virtualSchemaView: boolean;
+	easyAIWorkflowOnboarded: boolean;
 }

@@ -14,7 +14,7 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -56,7 +56,8 @@ describe('SupplyDataContext', () => {
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];
-	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
+	const connectionType = NodeConnectionType.Main;
+	const inputData: ITaskDataConnections = { [connectionType]: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
 	const closeFn = jest.fn();
@@ -71,6 +72,7 @@ describe('SupplyDataContext', () => {
 		runIndex,
 		connectionInputData,
 		inputData,
+		connectionType,
 		executeData,
 		[closeFn],
 		abortSignal,
@@ -91,33 +93,38 @@ describe('SupplyDataContext', () => {
 
 	describe('getInputData', () => {
 		const inputIndex = 0;
-		const inputName = 'main';
 
 		afterEach(() => {
-			inputData[inputName] = [[{ json: { test: 'data' } }]];
+			inputData[connectionType] = [[{ json: { test: 'data' } }]];
 		});
 
 		it('should return the input data correctly', () => {
 			const expectedData = [{ json: { test: 'data' } }];
 
-			expect(supplyDataContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(supplyDataContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
 		});
 
 		it('should return an empty array if the input name does not exist', () => {
-			const inputName = 'nonExistent';
-			expect(supplyDataContext.getInputData(inputIndex, inputName)).toEqual([]);
+			const connectionType = 'nonExistent';
+			expect(
+				supplyDataContext.getInputData(inputIndex, connectionType as NodeConnectionType),
+			).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
 			const inputIndex = 2;
 
-			expect(() => supplyDataContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
+			expect(() => supplyDataContext.getInputData(inputIndex, connectionType)).toThrow(
+				ApplicationError,
+			);
 		});
 
 		it('should throw an error if the input index was not set', () => {
 			inputData.main[inputIndex] = null;
 
-			expect(() => supplyDataContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
+			expect(() => supplyDataContext.getInputData(inputIndex, connectionType)).toThrow(
+				ApplicationError,
+			);
 		});
 	});
 

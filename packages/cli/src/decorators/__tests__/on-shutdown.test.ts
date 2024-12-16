@@ -8,7 +8,7 @@ describe('OnShutdown', () => {
 	let shutdownService: ShutdownService;
 
 	beforeEach(() => {
-		shutdownService = new ShutdownService(mock());
+		shutdownService = new ShutdownService(mock(), mock());
 		Container.set(ShutdownService, shutdownService);
 		jest.spyOn(shutdownService, 'register');
 	});

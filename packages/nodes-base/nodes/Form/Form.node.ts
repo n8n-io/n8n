@@ -7,7 +7,6 @@ import type {
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import {
-	WAIT_TIME_UNLIMITED,
 	Node,
 	updateDisplayOptions,
 	NodeOperationError,
@@ -16,6 +15,7 @@ import {
 	tryToParseJsonToFormFields,
 	NodeConnectionType,
 	WAIT_NODE_TYPE,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -267,7 +267,7 @@ export class Form extends Node {
 
 		const method = context.getRequestObject().method;
 
-		if (operation === 'completion') {
+		if (operation === 'completion' && method === 'GET') {
 			const staticData = context.getWorkflowStaticData('node');
 			const id = `${context.getExecutionId()}-${context.getNode().name}`;
 			const config = staticData?.[id] as CompletionPageConfig;
@@ -298,6 +298,12 @@ export class Form extends Node {
 			});
 
 			return { noWebhookResponse: true };
+		}
+
+		if (operation === 'completion' && method === 'POST') {
+			return {
+				workflowData: [context.evaluateExpression('{{ $input.all() }}') as INodeExecutionData[]],
+			};
 		}
 
 		if (method === 'GET') {
@@ -336,7 +342,7 @@ export class Form extends Node {
 			const connectedNodes = context.getChildNodes(context.getNode().name);
 
 			const hasNextPage = connectedNodes.some(
-				(node) => node.type === FORM_NODE_TYPE || node.type === WAIT_NODE_TYPE,
+				(node) => !node.disabled && (node.type === FORM_NODE_TYPE || node.type === WAIT_NODE_TYPE),
 			);
 
 			if (hasNextPage) {
@@ -409,8 +415,7 @@ export class Form extends Node {
 		}
 
 		if (operation !== 'completion') {
-			const waitTill = new Date(WAIT_TIME_UNLIMITED);
-			await context.putExecutionToWait(waitTill);
+			await context.putExecutionToWait(WAIT_INDEFINITELY);
 		} else {
 			const staticData = context.getWorkflowStaticData('node');
 			const completionTitle = context.getNodeParameter('completionTitle', 0, '') as string;
@@ -427,6 +432,9 @@ export class Form extends Node {
 			};
 
 			staticData[id] = config;
+
+			const waitTill = new Date(WAIT_INDEFINITELY);
+			await context.putExecutionToWait(waitTill);
 		}
 
 		return [context.getInputData()];

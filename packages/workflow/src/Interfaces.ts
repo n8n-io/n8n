@@ -421,60 +421,6 @@ export interface IRunNodeResponse {
 	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
 }
-export interface IGetExecuteFunctions {
-	(
-		workflow: Workflow,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		inputData: ITaskDataConnections,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
-		closeFunctions: CloseFunction[],
-		abortSignal?: AbortSignal,
-	): IExecuteFunctions;
-}
-
-export interface IGetExecuteSingleFunctions {
-	(
-		workflow: Workflow,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		inputData: ITaskDataConnections,
-		node: INode,
-		itemIndex: number,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
-		abortSignal?: AbortSignal,
-	): IExecuteSingleFunctions;
-}
-
-export interface IGetExecuteHookFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-		webhookData?: IWebhookData,
-	): IHookFunctions;
-}
-
-export interface IGetExecuteWebhookFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		webhookData: IWebhookData,
-		closeFunctions: CloseFunction[],
-		runExecutionData: IRunExecutionData | null,
-	): IWebhookFunctions;
-}
 
 export interface ISourceDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
@@ -903,6 +849,7 @@ export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
 	typeVersion: number;
+	disabled: boolean;
 };
 
 export interface FunctionsBase {
@@ -943,7 +890,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
-	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
+	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
 	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
@@ -962,11 +909,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			},
 		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
-			inputName: NodeConnectionType,
+			connectionType: AINodeConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
-		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
@@ -1013,7 +960,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
-	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData;
 	getItemIndex(): number;
 	getNodeParameter(
 		parameterName: string,
@@ -1127,7 +1074,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		inputName: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -1225,10 +1172,6 @@ export interface INodeExecutionData {
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
 	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
-	getExecuteFunctions: IGetExecuteFunctions;
-	getExecuteSingleFunctions: IGetExecuteSingleFunctions;
-	getExecuteHookFunctions: IGetExecuteHookFunctions;
-	getExecuteWebhookFunctions: IGetExecuteWebhookFunctions;
 }
 
 export type NodeParameterValue = string | number | boolean | undefined | null;
@@ -1559,6 +1502,7 @@ export interface ITriggerResponse {
 export interface ExecuteWorkflowData {
 	executionId: string;
 	data: Array<INodeExecutionData[] | null>;
+	waitTill?: Date | null;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -1861,29 +1805,20 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 
 export const enum NodeConnectionType {
 	AiAgent = 'ai_agent',
-
 	AiChain = 'ai_chain',
-
 	AiDocument = 'ai_document',
-
 	AiEmbedding = 'ai_embedding',
-
 	AiLanguageModel = 'ai_languageModel',
-
 	AiMemory = 'ai_memory',
-
 	AiOutputParser = 'ai_outputParser',
-
 	AiRetriever = 'ai_retriever',
-
 	AiTextSplitter = 'ai_textSplitter',
-
 	AiTool = 'ai_tool',
-
 	AiVectorStore = 'ai_vectorStore',
-
 	Main = 'main',
 }
+
+export type AINodeConnectionType = Exclude<NodeConnectionType, NodeConnectionType.Main>;
 
 export const nodeConnectionTypes: NodeConnectionType[] = [
 	NodeConnectionType.AiAgent,
@@ -2014,7 +1949,6 @@ export interface IWebhookDescription {
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
 	isForm?: boolean;
-	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
@@ -2143,6 +2077,7 @@ export interface IRunExecutionData {
 		waitingExecution: IWaitingForExecution;
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
+	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
 }
@@ -2371,9 +2306,6 @@ export interface IWorkflowExecuteAdditionalData {
 		mode: WorkflowExecuteMode,
 		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
-		defaultReturnRunIndex?: number,
-		selfData?: IDataObject,
-		contextNodeName?: string,
 	): Promise<Result<T, E>>;
 }
 
@@ -2777,6 +2709,7 @@ export interface IUserSettings {
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
+	easyAIWorkflowOnboarded?: boolean;
 }
 
 export interface IProcessedDataConfig {

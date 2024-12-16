@@ -1,4 +1,4 @@
-export { ApplicationError } from './application.error';
+export { ApplicationError, type ReportingOptions } from './application.error';
 export { ExpressionError } from './expression.error';
 export { CredentialAccessError } from './credential-access-error';
 export { ExecutionCancelledError } from './execution-cancelled.error';

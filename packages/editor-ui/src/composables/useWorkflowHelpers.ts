@@ -882,7 +882,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					}),
 					i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
 					{
-						dangerouslyUseHTMLString: true,
 						confirmButtonText: i18n.baseText(
 							'workflows.concurrentChanges.confirmMessage.confirmButtonText',
 						),
@@ -1181,6 +1180,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		tagsStore.upsertTags(tags);
 	}
 
+	/**
+	 * Check if workflow contains any node from specified package
+	 * by performing a quick check based on the node type name.
+	 */
+	const containsNodeFromPackage = (workflow: IWorkflowDb, packageName: string) => {
+		return workflow.nodes.some((node) => node.type.startsWith(packageName));
+	};
+
 	return {
 		setDocumentTitle,
 		resolveParameter,
@@ -1207,5 +1214,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		promptSaveUnsavedWorkflowChanges,
 		initState,
 		getNodeParametersWithResolvedExpressions,
+		containsNodeFromPackage,
 	};
 }

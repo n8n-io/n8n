@@ -20,7 +20,7 @@ import {
 	NodeConnectionType,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
-	WAIT_TIME_UNLIMITED,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -379,7 +379,7 @@ export class SlackV2 implements INodeType {
 				createSendAndWaitMessageBody(this),
 			);
 
-			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
 			return [this.getInputData()];
 		}
 

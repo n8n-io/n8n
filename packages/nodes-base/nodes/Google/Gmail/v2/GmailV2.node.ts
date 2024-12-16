@@ -12,7 +12,7 @@ import {
 	NodeConnectionType,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
-	WAIT_TIME_UNLIMITED,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
@@ -270,7 +270,7 @@ export class GmailV2 implements INodeType {
 				raw: await encodeEmail(email),
 			});
 
-			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
 			return [this.getInputData()];
 		}
 
