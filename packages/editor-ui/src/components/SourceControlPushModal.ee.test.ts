@@ -207,11 +207,9 @@ describe('SourceControlPushModal', () => {
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		const commitMessage = 'commit message';
 		expect(submitButton).toBeDisabled();
-		expect(
-			getByText(
-				'No workflow changes to push. Only modified credentials, variables, and tags will be pushed.',
-			),
-		).toBeInTheDocument();
+		expect(getByText('1 new credentials added, 0 deleted and 0 changed')).toBeInTheDocument();
+		expect(getByText('At least one new variable has been added or modified')).toBeInTheDocument();
+		expect(getByText('At least one new tag has been added or modified')).toBeInTheDocument();
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
 
