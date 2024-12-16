@@ -11,7 +11,7 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -76,31 +76,18 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 		return super.evaluateExpression(expression, itemIndex);
 	}
 
-	getInputData(inputIndex = 0, inputName = 'main') {
-		if (!this.inputData.hasOwnProperty(inputName)) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return { json: {} };
 		}
 
-		// TODO: Check if nodeType has input with that index defined
-		if (this.inputData[inputName].length < inputIndex) {
-			throw new ApplicationError('Could not get input index', {
-				extra: { inputIndex, inputName },
-			});
-		}
+		const allItems = super.getInputItems(inputIndex, connectionType);
 
-		const allItems = this.inputData[inputName][inputIndex];
-
-		if (allItems === null || allItems === undefined) {
-			throw new ApplicationError('Input index was not set', {
-				extra: { inputIndex, inputName },
-			});
-		}
-
-		const data = allItems[this.itemIndex];
-		if (data === null || data === undefined) {
+		const data = allItems?.[this.itemIndex];
+		if (data === undefined) {
 			throw new ApplicationError('Value of input with given index was not set', {
-				extra: { inputIndex, inputName, itemIndex: this.itemIndex },
+				extra: { inputIndex, connectionType, itemIndex: this.itemIndex },
 			});
 		}
 

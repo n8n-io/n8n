@@ -7,9 +7,7 @@ import type {
 	NodeApiError,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
-	Workflow,
 	NodeOperationError,
-	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -221,18 +219,6 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 	}
 
 	return workflow;
-}
-
-export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
-	let startNode;
-	if (
-		data.startNodes?.length === 1 &&
-		Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
-	) {
-		startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
-	}
-
-	return startNode;
 }
 
 export async function getVariables(): Promise<IDataObject> {

@@ -138,7 +138,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
+	async getInputConnectionData(
+		connectionType: NodeConnectionType,
+		itemIndex: number,
+	): Promise<unknown> {
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data.
@@ -170,7 +173,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			executeData,
 			this.mode,
 			this.closeFunctions,
-			inputName,
+			connectionType,
 			itemIndex,
 		);
 	}

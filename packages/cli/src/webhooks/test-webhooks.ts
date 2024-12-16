@@ -1,5 +1,5 @@
 import type express from 'express';
-import * as NodeExecuteFunctions from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -17,7 +17,6 @@ import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { removeTrailingSlash } from '@/utils';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
@@ -25,6 +24,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
+import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
@@ -42,8 +42,9 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
-		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -155,7 +156,7 @@ export class TestWebhooks implements IWebhookManager {
 			 * the handler process commands the creator process to clear its test webhooks.
 			 */
 			if (
-				this.orchestrationService.isMultiMainSetupEnabled &&
+				this.instanceSettings.isMultiMain &&
 				pushRef &&
 				!this.push.getBackend().hasPushRef(pushRef)
 			) {
@@ -314,7 +315,7 @@ export class TestWebhooks implements IWebhookManager {
 				 */
 				await this.registrations.register(registration);
 
-				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
+				await this.webhookService.createWebhookIfNotExists(workflow, webhook, 'manual', 'manual');
 
 				cacheableWebhook.staticData = workflow.staticData;
 
@@ -431,7 +432,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (staticData) workflow.staticData = staticData;
 
-			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
+			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
 		}
 
 		await this.registrations.deregisterAll();
