@@ -28,6 +28,7 @@ import {
 	N8nSelect,
 	N8nOption,
 	N8nInputLabel,
+	N8nInfoTip,
 } from 'n8n-design-system';
 import {
 	SOURCE_CONTROL_FILE_STATUS,
@@ -104,7 +105,7 @@ const classifyFilesByType = (
 const userNotices = computed(() => {
 	const messages: string[] = [];
 
-	if (changes.value.credentials) {
+	if (changes.value.credentials.length) {
 		const { created, deleted, modified } = groupBy(changes.value.credentials, 'status');
 
 		messages.push(
@@ -112,11 +113,11 @@ const userNotices = computed(() => {
 		);
 	}
 
-	if (changes.value.variables) {
+	if (changes.value.variables.length) {
 		messages.push('At least one new variable has been added or modified');
 	}
 
-	if (changes.value.tags) {
+	if (changes.value.tags.length) {
 		messages.push('At least one new tag has been added or modified');
 	}
 
@@ -142,9 +143,12 @@ const maybeSelectCurrentWorkflow = (workflow?: SourceControlAggregatedFile) =>
 	workflow && selectedChanges.value.add(workflow.id);
 onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
 
-const filters = ref<{ status?: SourceControlledFileStatus }>({
-	status: undefined,
-});
+const filters = ref<{ status?: SourceControlledFileStatus }>({});
+const filtersApplied = computed(() => Boolean(Object.keys(filters.value).length));
+const resetFilters = () => {
+	filters.value = {};
+};
+
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
 		label: 'New',
@@ -266,12 +270,49 @@ async function onCommitKeyDownEnter() {
 	}
 }
 
+const successNotificationMessage = () => {
+	const messages: string[] = [];
+
+	if (selectedChanges.value.size) {
+		messages.push(
+			i18n.baseText('generic.workflow', {
+				adjustToNumber: selectedChanges.value.size > 1 ? selectedChanges.value.size : 0,
+			}),
+		);
+	}
+
+	if (changes.value.credentials.length) {
+		messages.push(
+			i18n.baseText('generic.credential', {
+				adjustToNumber: changes.value.credentials.length > 1 ? changes.value.credentials.length : 0,
+			}),
+		);
+	}
+
+	if (changes.value.variables.length) {
+		messages.push(
+			i18n.baseText('generic.variable', {
+				adjustToNumber: 1,
+			}),
+		);
+	}
+
+	if (changes.value.tags.length) {
+		messages.push(
+			i18n.baseText('generic.tag', {
+				adjustToNumber: 1,
+			}),
+		);
+	}
+
+	return new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
+};
+
 async function commitAndPush() {
 	const files = changes.value.tags
 		.concat(changes.value.variables)
 		.concat(changes.value.credentials)
 		.concat(changes.value.workflows.filter((file) => selectedChanges.value.has(file.id)));
-
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
 	close();
 
@@ -284,7 +325,7 @@ async function commitAndPush() {
 
 		toast.showToast({
 			title: i18n.baseText('settings.sourceControl.modals.push.success.title'),
-			message: i18n.baseText('settings.sourceControl.modals.push.success.description'),
+			message: successNotificationMessage(),
 			type: 'success',
 		});
 	} catch (error) {
@@ -400,8 +441,14 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 			</div>
 		</template>
 		<template #content>
+			<N8nInfoTip v-if="filtersApplied && !sortedWorkflows.length" :bold="false">
+				{{ i18n.baseText('workflows.filters.active') }}
+				<N8nLink size="small" @click="resetFilters">
+					{{ i18n.baseText('workflows.filters.active.reset') }}
+				</N8nLink>
+			</N8nInfoTip>
 			<RecycleScroller
-				v-if="changes.workflows.length"
+				v-if="sortedWorkflows.length"
 				:class="[$style.scroller]"
 				:items="sortedWorkflows"
 				:item-size="69"
@@ -486,8 +533,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 }
 
 .scroller {
-	height: 380px;
-	max-height: 100%;
+	max-height: 380px;
 }
 
 .listItem {
