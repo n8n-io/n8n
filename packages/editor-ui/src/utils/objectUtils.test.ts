@@ -97,7 +97,7 @@ describe('objectUtils', () => {
 	});
 
 	describe('deepCompare', () => {
-		it('compares primitive values correctly', () => {
+		it('should compare primitive values correctly', () => {
 			const obj1 = { name: 'John', age: 30 };
 			const obj2 = { name: 'John', age: 30 };
 			const obj3 = { name: 'Jane', age: 30 };
@@ -106,7 +106,7 @@ describe('objectUtils', () => {
 			expect(deepCompare(obj1, obj3)).toBe(false);
 		});
 
-		it('handles nested objects', () => {
+		it('should handle nested objects', () => {
 			const obj1 = {
 				address: { street: '123 Main', city: 'Boston' },
 			};
@@ -121,7 +121,7 @@ describe('objectUtils', () => {
 			expect(deepCompare(obj1, obj3)).toBe(false);
 		});
 
-		it('compares arrays correctly', () => {
+		it('should compare arrays correctly', () => {
 			const obj1 = { hobbies: ['reading', 'hiking'] };
 			const obj2 = { hobbies: ['reading', 'hiking'] };
 			const obj3 = { hobbies: ['reading', 'swimming'] };
@@ -130,7 +130,7 @@ describe('objectUtils', () => {
 			expect(deepCompare(obj1, obj3)).toBe(false);
 		});
 
-		it('handles arrays of objects', () => {
+		it('should handle arrays of objects', () => {
 			const obj1 = {
 				contacts: [
 					{ name: 'Alice', phone: '123' },
@@ -154,7 +154,7 @@ describe('objectUtils', () => {
 			expect(deepCompare(obj1, obj3)).toBe(false);
 		});
 
-		it('handles null and undefined', () => {
+		it('should handle null and undefined', () => {
 			type DataObject = { data: unknown };
 
 			const obj1: DataObject = { data: null };
@@ -168,14 +168,14 @@ describe('objectUtils', () => {
 			expect(deepCompare(null, undefined)).toBe(false);
 		});
 
-		it('compares objects with different number of keys', () => {
+		it('should compare objects with different number of keys', () => {
 			const obj1 = { name: 'John', age: 30 };
 			const obj2 = { name: 'John', age: 30, city: 'Boston' };
 
 			expect(deepCompare(obj1, obj2)).toBe(false);
 		});
 
-		it('handles circular references', () => {
+		it('should handle circular references', () => {
 			type DataObject = { name: string; self?: unknown };
 
 			const obj1: DataObject = { name: 'John' };
