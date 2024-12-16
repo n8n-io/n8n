@@ -443,7 +443,7 @@ const getStatusTheme = (status: SourceControlledFileStatus) => {
 		<template #content>
 			<N8nInfoTip v-if="filtersApplied && !sortedWorkflows.length" :bold="false">
 				{{ i18n.baseText('workflows.filters.active') }}
-				<N8nLink size="small" @click="resetFilters">
+				<N8nLink size="small" data-test-id="source-control-filters-reset" @click="resetFilters">
 					{{ i18n.baseText('workflows.filters.active.reset') }}
 				</N8nLink>
 			</N8nInfoTip>

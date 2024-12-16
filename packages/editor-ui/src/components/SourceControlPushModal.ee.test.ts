@@ -373,5 +373,57 @@ describe('SourceControlPushModal', () => {
 				expect(items[0]).toHaveTextContent('Created Workflow');
 			});
 		});
+
+		it('should reset', async () => {
+			const status: SourceControlAggregatedFile[] = [
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'Modified workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			const { getByTestId, getAllByTestId, queryAllByTestId, html } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+
+			expect(getByTestId('source-control-status-filter')).toBeVisible();
+
+			await userEvent.click(
+				within(getByTestId('source-control-status-filter')).getByRole('combobox'),
+			);
+
+			await waitFor(() =>
+				expect(getAllByTestId('source-control-status-filter-option')[0]).toBeVisible(),
+			);
+
+			const menu = getAllByTestId('source-control-status-filter-option')[0]
+				.parentElement as HTMLElement;
+
+			await userEvent.click(within(menu).getByText('New'));
+			await waitFor(() => {
+				expect(queryAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(0);
+				expect(getByTestId('source-control-filters-reset')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('source-control-filters-reset'));
+
+			const items = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(items).toHaveLength(1);
+		});
 	});
 });
