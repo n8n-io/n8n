@@ -614,7 +614,7 @@ export function useCanvasMapping({
 	}
 
 	function getConnectionLabel(connection: CanvasConnection): string {
-		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
+		const fromNode = nodes.value.find((node) => node.name === connection.data?.source.node);
 		if (!fromNode) {
 			return '';
 		}
