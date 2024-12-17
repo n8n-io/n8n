@@ -49,8 +49,8 @@ const actions = [
 <template>
 	<div
 		:class="$style.testItem"
-		@click="$emit('view-details', test.id)"
 		:data-test-id="`test-item-${test.id}`"
+		@click="$emit('view-details', test.id)"
 	>
 		<div :class="$style.testInfo">
 			<div :class="$style.testName">
@@ -61,11 +61,11 @@ const actions = [
 					{{ locale.baseText('testDefinition.list.testRuns', { adjustToNumber: test.testCases }) }}
 				</n8n-text>
 				<template v-if="test.execution.status === 'running'">
-					Running
+					{{ locale.baseText('testDefinition.list.running') }}
 					<n8n-spinner />
 				</template>
 				<span v-else-if="test.execution.lastRun">
-					Last run
+					{{ locale.baseText('testDefinition.list.lastRun') }}
 					<TimeAgo :date="test.execution.lastRun" />
 				</span>
 			</div>

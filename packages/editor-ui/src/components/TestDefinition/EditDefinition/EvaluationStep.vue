@@ -55,7 +55,10 @@ const hideTooltip = () => {
 			<template #content>
 				{{ tooltip }}
 			</template>
-			<div :class="$style.fakeContent"></div>
+			<!-- This empty div is needed to ensure the tooltip trigger area spans the full width of the step.
+			     Without it, the tooltip would only show when hovering over the content div, which is narrower.
+			     The contentPlaceholder creates an invisible full-width area that can trigger the tooltip. -->
+			<div :class="$style.contentPlaceholder"></div>
 		</N8nTooltip>
 		<div :class="$style.content" @mouseenter="showTooltip" @mouseleave="hideTooltip">
 			<div :class="$style.header">
@@ -108,7 +111,7 @@ const hideTooltip = () => {
 		width: 80%;
 	}
 }
-.fakeContent {
+.contentPlaceholder {
 	position: absolute;
 	top: 0;
 	left: 0;
