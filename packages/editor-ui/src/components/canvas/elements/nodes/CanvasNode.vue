@@ -310,7 +310,6 @@ onBeforeUnmount(() => {
 
 		<CanvasNodeToolbar
 			v-if="nodeTypeDescription"
-			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
