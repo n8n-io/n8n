@@ -18,6 +18,7 @@ export function setupRedisClient(credentials: RedisCredential): RedisClient {
 			tls: credentials.ssl === true,
 		},
 		database: credentials.database,
+		username: credentials.user || undefined,
 		password: credentials.password || undefined,
 	});
 }

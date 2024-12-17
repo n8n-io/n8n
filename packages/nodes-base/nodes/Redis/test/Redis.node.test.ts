@@ -51,6 +51,26 @@ describe('Redis Node', () => {
 				},
 			});
 		});
+
+		it('should set user on auth', () => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				user: 'test_user',
+				password: 'test_password',
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				database: 0,
+				username: 'test_user',
+				password: 'test_password',
+				socket: {
+					host: 'redis.domain',
+					port: 1234,
+					tls: false,
+				},
+			});
+		});
 	});
 
 	describe('operations', () => {
