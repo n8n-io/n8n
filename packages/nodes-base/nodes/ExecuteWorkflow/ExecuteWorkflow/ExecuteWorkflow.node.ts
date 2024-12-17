@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
@@ -13,8 +14,6 @@ import type {
 import { getWorkflowInfo } from './GenericFunctions';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
-import { getWorkflowInputData } from '../GenericFunctions';
-import _ from 'lodash';
 import { FALLBACK_DEFAULT_VALUE } from '../constants';
 
 function getWorkflowInputValues(this: IExecuteFunctions): INodeExecutionData[] {

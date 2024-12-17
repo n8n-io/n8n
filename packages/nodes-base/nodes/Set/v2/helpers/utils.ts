@@ -190,7 +190,7 @@ export const validateEntry = (
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expect s a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
 					{ description },
 				);
 			}

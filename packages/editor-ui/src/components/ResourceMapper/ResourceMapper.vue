@@ -603,9 +603,9 @@ defineExpose({
 			:parameter="{
 				name: 'ignoreTypeMismatchErrors',
 				type: 'boolean',
-				displayName: 'To Do',
+				displayName: 'Ignore Type Mismatch Errors',
 				default: false,
-				description: 'To Do',
+				description: 'Whether type mismatches should be ignored, rather than returning an Error',
 			}"
 			:path="props.path + '.attemptToConvertTypes'"
 			:value="state.paramValue.ignoreTypeMismatchErrors"

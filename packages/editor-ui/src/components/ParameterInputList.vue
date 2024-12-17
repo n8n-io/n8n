@@ -423,7 +423,6 @@ function displayNodeParameter(
 }
 
 function valueChanged(parameterData: IUpdateInformation): void {
-	console.log('ParameterInputList valueChanged');
 	emit('valueChanged', parameterData);
 }
 

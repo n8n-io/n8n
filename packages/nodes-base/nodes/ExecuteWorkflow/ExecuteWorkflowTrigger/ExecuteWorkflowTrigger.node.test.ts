@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { FieldValueOption, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { ExecuteWorkflowTrigger } from './ExecuteWorkflowTrigger.node';
-import { getFieldEntries, getWorkflowInputData } from '../GenericFunctions';
+import { getFieldEntries } from '../GenericFunctions';
 
 jest.mock('../GenericFunctions');
 
@@ -32,14 +32,10 @@ describe('ExecuteWorkflowTrigger', () => {
 			{ name: 'value2', type: 'number' },
 		] as FieldValueOption[];
 		const getFieldEntriesMock = (getFieldEntries as jest.Mock).mockReturnValue(mockNewParams);
-		const getWorkflowInputDataMock = (getWorkflowInputData as jest.Mock).mockReturnValue(
-			mockInputData,
-		);
 
 		const result = await new ExecuteWorkflowTrigger().execute.call(executeFns);
 
 		expect(result).toEqual([mockInputData]);
 		expect(getFieldEntriesMock).toHaveBeenCalledWith(executeFns);
-		expect(getWorkflowInputDataMock).toHaveBeenCalledWith(mockInputData, mockNewParams);
 	});
 });

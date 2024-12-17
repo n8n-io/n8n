@@ -102,7 +102,6 @@ function optionSelected(command: string) {
 }
 
 function valueChanged(parameterData: IUpdateInformation) {
-	console.log('valueChanged', parameterData);
 	emit('update', parameterData);
 }
 

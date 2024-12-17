@@ -305,7 +305,7 @@ export function validateFieldType(
 	const valueOptions = options.valueOptions ?? [];
 	const parseStrings = options.parseStrings ?? false;
 
-	const defaultErrorMessage = `'${fieldName}' expect   s a ${type} but we got ${getValueDescription(value)}`;
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got ${getValueDescription(value)}`;
 	switch (type.toLowerCase()) {
 		case 'string': {
 			if (!parseStrings) return { valid: true, newValue: value };
