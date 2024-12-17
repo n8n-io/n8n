@@ -63,7 +63,6 @@ onBeforeUnmount(() => {
 		:popper-class="$style.popover"
 		:popper-style="{ width: '208px' }"
 		:teleported="true"
-		:hide-after="300"
 		@before-enter="onMouseEnter"
 		@after-leave="onMouseLeave"
 	>
