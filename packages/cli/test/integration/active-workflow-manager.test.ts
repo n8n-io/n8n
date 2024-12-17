@@ -1,5 +1,4 @@
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
 import { NodeApiError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -10,6 +9,7 @@ import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
+import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { SecretsHelper } from '@/secrets-helpers';
@@ -25,6 +25,7 @@ import * as utils from './shared/utils/';
 import { mockInstance } from '../shared/mocking';
 
 mockInstance(ActiveExecutions);
+mockInstance(Logger);
 mockInstance(Push);
 mockInstance(SecretsHelper);
 mockInstance(ExecutionService);
@@ -85,7 +86,7 @@ describe('init()', () => {
 		await Promise.all([createActiveWorkflow(), createActiveWorkflow()]);
 
 		const checkSpy = jest
-			.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated')
+			.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated')
 			.mockReturnValue(true);
 
 		await activeWorkflowManager.init();
@@ -166,7 +167,6 @@ describe('remove()', () => {
 
 		it('should remove all webhooks of a workflow from external service', async () => {
 			const dbWorkflow = await createActiveWorkflow();
-			const deleteWebhookSpy = jest.spyOn(Workflow.prototype, 'deleteWebhook');
 			jest
 				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
 				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
@@ -174,7 +174,7 @@ describe('remove()', () => {
 			await activeWorkflowManager.init();
 			await activeWorkflowManager.remove(dbWorkflow.id);
 
-			expect(deleteWebhookSpy).toHaveBeenCalledTimes(1);
+			expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(1);
 		});
 
 		it('should stop running triggers and pollers', async () => {
@@ -258,82 +258,11 @@ describe('addWebhooks()', () => {
 		const [node] = dbWorkflow.nodes;
 
 		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValue(node);
-		jest.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
-		jest.spyOn(Workflow.prototype, 'createWebhookIfNotExists').mockResolvedValue(undefined);
+		jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
+		webhookService.createWebhookIfNotExists.mockResolvedValue(undefined);
 
 		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe('shouldAddWebhooks', () => {
-	describe('if leader', () => {
-		const activeWorkflowManager = new ActiveWorkflowManager(
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock<InstanceSettings>({ isLeader: true, isFollower: false }),
-			mock(),
-		);
-
-		test('should return `true` for `init`', () => {
-			// ensure webhooks are populated on init: https://github.com/n8n-io/n8n/pull/8830
-			const result = activeWorkflowManager.shouldAddWebhooks('init');
-			expect(result).toBe(true);
-		});
-
-		test('should return `false` for `leadershipChange`', () => {
-			const result = activeWorkflowManager.shouldAddWebhooks('leadershipChange');
-			expect(result).toBe(false);
-		});
-
-		test('should return `true` for `update` or `activate`', () => {
-			const modes = ['update', 'activate'] as WorkflowActivateMode[];
-			for (const mode of modes) {
-				const result = activeWorkflowManager.shouldAddWebhooks(mode);
-				expect(result).toBe(true);
-			}
-		});
-	});
-
-	describe('if follower', () => {
-		const activeWorkflowManager = new ActiveWorkflowManager(
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock<InstanceSettings>({ isLeader: false, isFollower: true }),
-			mock(),
-		);
-
-		test('should return `false` for `update` or `activate`', () => {
-			const modes = ['update', 'activate'] as WorkflowActivateMode[];
-			for (const mode of modes) {
-				const result = activeWorkflowManager.shouldAddWebhooks(mode);
-				expect(result).toBe(false);
-			}
-		});
 	});
 });

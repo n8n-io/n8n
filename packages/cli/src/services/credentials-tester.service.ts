@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import get from 'lodash/get';
-import { ErrorReporter, NodeExecuteFunctions } from 'n8n-core';
+import { ErrorReporter, NodeExecuteFunctions, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -23,13 +23,7 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 } from 'n8n-workflow';
-import {
-	VersionedNodeType,
-	NodeHelpers,
-	RoutingNode,
-	Workflow,
-	ApplicationError,
-} from 'n8n-workflow';
+import { VersionedNodeType, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
@@ -312,7 +306,6 @@ export class CredentialsTester {
 				runIndex,
 				nodeTypeCopy,
 				{ node, data: {}, source: null },
-				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
 		} catch (error) {

@@ -1,13 +1,6 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type {
-	IExecuteFunctions,
-	INode,
-	INodeParameters,
-	INodeType,
-	ISupplyDataFunctions,
-	ITaskDataConnections,
-} from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INode, INodeType } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 type AllowedTypes = 'string' | 'number' | 'boolean' | 'json';
@@ -21,7 +14,7 @@ interface FromAIArgument {
 type ParserOptions = {
 	node: INode;
 	nodeType: INodeType;
-	contextFactory: (runIndex: number, inputData: ITaskDataConnections) => ISupplyDataFunctions;
+	handleToolInvocation: (toolArgs: IDataObject) => Promise<unknown>;
 };
 
 /**
@@ -31,8 +24,6 @@ type ParserOptions = {
  * generating Zod schemas, and creating LangChain tools.
  */
 class AIParametersParser {
-	private runIndex = 0;
-
 	/**
 	 * Constructs an instance of AIParametersParser.
 	 */
@@ -291,39 +282,19 @@ class AIParametersParser {
 	}
 
 	/**
-	 * Generates a description for a node based on the provided parameters.
-	 * @param node The node type.
-	 * @param nodeParameters The parameters of the node.
-	 * @returns A string description for the node.
+	 * Retrieves and validates the Zod schema for the tool.
+	 *
+	 * This method:
+	 * 1. Collects all $fromAI arguments from node parameters
+	 * 2. Validates parameter keys against naming rules
+	 * 3. Checks for duplicate keys and ensures consistency
+	 * 4. Generates a Zod schema from the validated arguments
+	 *
+	 * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
+	 * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
 	 */
-	private getDescription(node: INodeType, nodeParameters: INodeParameters): string {
-		const manualDescription = nodeParameters.toolDescription as string;
-
-		if (nodeParameters.descriptionType === 'auto') {
-			const resource = nodeParameters.resource as string;
-			const operation = nodeParameters.operation as string;
-			let description = node.description.description;
-			if (resource) {
-				description += `\n Resource: ${resource}`;
-			}
-			if (operation) {
-				description += `\n Operation: ${operation}`;
-			}
-			return description.trim();
-		}
-		if (nodeParameters.descriptionType === 'manual') {
-			return manualDescription ?? node.description.description;
-		}
-
-		return node.description.description;
-	}
-
-	/**
-	 * Creates a DynamicStructuredTool from a node.
-	 * @returns A DynamicStructuredTool instance.
-	 */
-	public createTool(): DynamicStructuredTool {
-		const { node, nodeType } = this.options;
+	private getSchema() {
+		const { node } = this.options;
 		const collectedArguments: FromAIArgument[] = [];
 		this.traverseNodeParameters(node.parameters, collectedArguments);
 
@@ -381,43 +352,56 @@ class AIParametersParser {
 			return acc;
 		}, {});
 
-		const schema = z.object(schemaObj).required();
-		const description = this.getDescription(nodeType, node.parameters);
+		return z.object(schemaObj).required();
+	}
+
+	/**
+	 * Generates a description for a node based on the provided parameters.
+	 * @param node The node type.
+	 * @param nodeParameters The parameters of the node.
+	 * @returns A string description for the node.
+	 */
+	private getDescription(): string {
+		const { node, nodeType } = this.options;
+		const manualDescription = node.parameters.toolDescription as string;
+
+		if (node.parameters.descriptionType === 'auto') {
+			const resource = node.parameters.resource as string;
+			const operation = node.parameters.operation as string;
+			let description = nodeType.description.description;
+			if (resource) {
+				description += `\n Resource: ${resource}`;
+			}
+			if (operation) {
+				description += `\n Operation: ${operation}`;
+			}
+			return description.trim();
+		}
+		if (node.parameters.descriptionType === 'manual') {
+			return manualDescription ?? nodeType.description.description;
+		}
+
+		return nodeType.description.description;
+	}
+
+	/**
+	 * Creates a DynamicStructuredTool from a node.
+	 * @returns A DynamicStructuredTool instance.
+	 */
+	public createTool(): DynamicStructuredTool {
+		const { node, nodeType } = this.options;
+		const schema = this.getSchema();
+		const description = this.getDescription();
 		const nodeName = node.name.replace(/ /g, '_');
 		const name = nodeName || nodeType.description.name;
 
-		const tool = new DynamicStructuredTool({
+		return new DynamicStructuredTool({
 			name,
 			description,
 			schema,
-			func: async (toolArgs: z.infer<typeof schema>) => {
-				const currentRunIndex = this.runIndex++;
-				const context = this.options.contextFactory(currentRunIndex, {});
-				context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
-
-				try {
-					// Execute the node with the proxied context
-					const result = await nodeType.execute?.call(context as IExecuteFunctions);
-
-					// Process and map the results
-					const mappedResults = result?.[0]?.flatMap((item) => item.json);
-
-					// Add output data to the context
-					context.addOutputData(NodeConnectionType.AiTool, currentRunIndex, [
-						[{ json: { response: mappedResults } }],
-					]);
-
-					// Return the stringified results
-					return JSON.stringify(mappedResults);
-				} catch (error) {
-					const nodeError = new NodeOperationError(this.options.node, error as Error);
-					context.addOutputData(NodeConnectionType.AiTool, currentRunIndex, nodeError);
-					return 'Error during node execution: ' + nodeError.description;
-				}
-			},
+			func: async (toolArgs: z.infer<typeof schema>) =>
+				await this.options.handleToolInvocation(toolArgs),
 		});
-
-		return tool;
 	}
 }
 

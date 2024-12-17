@@ -32,7 +32,11 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.getByTestId('canvas-node'),
-				() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
+				() =>
+					cy
+						.getByTestId('canvas-node')
+						.not('[data-node-type="n8n-nodes-internal.addNodes"]')
+						.not('[data-node-type="n8n-nodes-base.stickyNote"]'),
 			),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
@@ -333,8 +337,14 @@ export class WorkflowPage extends BasePage {
 			this.actions.contextMenuAction('select_all');
 		},
 		deselectAll: () => {
-			this.actions.openContextMenu();
-			this.actions.contextMenuAction('deselect_all');
+			cy.ifCanvasVersion(
+				() => {
+					this.actions.openContextMenu();
+					this.actions.contextMenuAction('deselect_all');
+				},
+				// rightclick doesn't work with vueFlow canvas
+				() => this.getters.nodeViewBackground().click('topLeft'),
+			);
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
