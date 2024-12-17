@@ -2,12 +2,14 @@
 import { useI18n } from '@/composables/useI18n';
 import { ElCollapseTransition } from 'element-plus';
 import { ref, nextTick } from 'vue';
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip';
 
 interface EvaluationStep {
 	title: string;
 	warning?: boolean;
 	small?: boolean;
 	expanded?: boolean;
+	tooltip?: string;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
@@ -15,12 +17,14 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	warning: false,
 	small: false,
 	expanded: true,
+	tooltip: '',
 });
 
 const locale = useI18n();
 const isExpanded = ref(props.expanded);
 const contentRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const isTooltipVisible = ref(false);
 
 const toggleExpand = async () => {
 	isExpanded.value = !isExpanded.value;
@@ -31,11 +35,32 @@ const toggleExpand = async () => {
 		}
 	}
 };
+
+const showTooltip = () => {
+	isTooltipVisible.value = true;
+};
+
+const hideTooltip = () => {
+	isTooltipVisible.value = false;
+};
 </script>
 
 <template>
-	<div ref="containerRef" :class="[$style.evaluationStep, small && $style.small]">
-		<div :class="$style.content">
+	<div
+		ref="containerRef"
+		:class="[$style.evaluationStep, small && $style.small]"
+		data-test-id="evaluation-step"
+	>
+		<N8nTooltip :disabled="!tooltip" placement="right" :offset="25" :visible="isTooltipVisible">
+			<template #content>
+				{{ tooltip }}
+			</template>
+			<!-- This empty div is needed to ensure the tooltip trigger area spans the full width of the step.
+			     Without it, the tooltip would only show when hovering over the content div, which is narrower.
+			     The contentPlaceholder creates an invisible full-width area that can trigger the tooltip. -->
+			<div :class="$style.contentPlaceholder"></div>
+		</N8nTooltip>
+		<div :class="$style.content" @mouseenter="showTooltip" @mouseleave="hideTooltip">
 			<div :class="$style.header">
 				<div :class="[$style.icon, warning && $style.warning]">
 					<slot name="icon" />
@@ -47,6 +72,7 @@ const toggleExpand = async () => {
 					:class="$style.collapseButton"
 					:aria-expanded="isExpanded"
 					:aria-controls="'content-' + title.replace(/\s+/g, '-')"
+					data-test-id="evaluation-step-collapse-button"
 					@click="toggleExpand"
 				>
 					{{
@@ -59,7 +85,7 @@ const toggleExpand = async () => {
 			</div>
 			<ElCollapseTransition v-if="$slots.cardContent">
 				<div v-show="isExpanded" :class="$style.cardContentWrapper">
-					<div ref="contentRef" :class="$style.cardContent">
+					<div ref="contentRef" :class="$style.cardContent" data-test-id="evaluation-step-content">
 						<slot name="cardContent" />
 					</div>
 				</div>
@@ -84,6 +110,14 @@ const toggleExpand = async () => {
 	&.small {
 		width: 80%;
 	}
+}
+.contentPlaceholder {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: -1;
 }
 .icon {
 	display: flex;

@@ -24,7 +24,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	);
 
 	const filteredResources = computed(() => {
-		return workflowsStore.allWorkflows
+		return sortedWorkflows.value
 			.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
 			.map(workflowDbToResourceMapper);
 	});

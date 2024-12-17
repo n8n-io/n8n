@@ -18,6 +18,8 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
+import TestDefinitionRunsListView from './views/TestDefinition/TestDefinitionRunsListView.vue';
+import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -291,6 +293,32 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_EDIT,
 				components: {
 					default: TestDefinitionEditView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId/runs',
+				name: VIEWS.TEST_DEFINITION_RUNS,
+				components: {
+					default: TestDefinitionRunsListView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId/runs/:runId',
+				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+				components: {
+					default: TestDefinitionRunDetailView,
 					header: MainHeader,
 					sidebar: MainSidebar,
 				},

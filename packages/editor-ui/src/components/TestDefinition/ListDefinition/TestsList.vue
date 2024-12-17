@@ -12,7 +12,7 @@ const locale = useI18n();
 </script>
 
 <template>
-	<div :class="$style.testsList">
+	<div :class="$style.testsList" data-test-id="test-definition-list">
 		<div :class="$style.testsHeader">
 			<n8n-button
 				:label="locale.baseText('testDefinition.list.createNew')"
