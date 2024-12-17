@@ -1,43 +1,86 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import type { JSONSchema7 } from 'json-schema';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
+	ExecuteWorkflowData,
+	ExecutionError,
+	FieldValueOption,
+	IDataObject,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	IWorkflowBase,
-	ISupplyDataFunctions,
-	SupplyData,
-	ExecutionError,
-	ExecuteWorkflowData,
-	IDataObject,
 	INodeParameterResourceLocator,
-	ITaskMetadata,
 	INodeTypeBaseDescription,
+	ISupplyDataFunctions,
+	ITaskMetadata,
+	IWorkflowBase,
+	ResourceMapperField,
+	ResourceMapperValue,
+	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
-
-import type { DynamicZodObject } from '../../../../types/zod.types';
 import {
-	inputSchemaField,
-	jsonSchemaExampleField,
-	schemaTypeField,
-} from '../../../../utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '../../../../utils/schemaParsing';
-import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
+	jsonParse,
+	NodeConnectionType,
+	NodeOperationError,
+	type INodeType,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
+import { z } from 'zod';
 
-export class ToolWorkflowV1 implements INodeType {
+import { loadWorkflowInputMappings } from './methods/resourceMapping';
+import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
+import type { FromAIArgument } from '../FromAIParser';
+import { AIParametersParser } from '../FromAIParser';
+
+function getWorkflowInputValues(this: ISupplyDataFunctions) {
+	const inputData = this.getInputData();
+
+	return inputData.map((item, itemIndex) => {
+		const itemFieldValues = this.getNodeParameter(
+			'workflowInputs.value',
+			itemIndex,
+			{},
+		) as IDataObject;
+
+		return {
+			json: {
+				...item.json,
+				...itemFieldValues,
+			},
+			index: itemIndex,
+			pairedItem: {
+				item: itemIndex,
+			},
+		};
+	});
+}
+
+function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+	const inputData = getWorkflowInputValues.call(this);
+
+	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
+
+	if (schema.length === 0) {
+		return inputData;
+	} else {
+		const newParams = schema
+			.filter((x) => !x.removed)
+			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
+
+		return getWorkflowInputData.call(this, inputData, newParams);
+	}
+}
+
+export class ToolWorkflowV2 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [1, 1.1, 1.2, 1.3],
+			version: [2],
 			defaults: {
 				name: 'Call n8n Workflow Tool',
 			},
@@ -152,7 +195,43 @@ export class ToolWorkflowV1 implements INodeType {
 					default: '',
 					required: true,
 				},
-
+				// -----------------------------------------------
+				//         Resource mapper for workflow inputs
+				// -----------------------------------------------
+				{
+					displayName: 'Workflow Inputs',
+					name: 'workflowInputs',
+					type: 'resourceMapper',
+					noDataExpression: true,
+					default: {
+						mappingMode: 'defineBelow',
+						value: null,
+					},
+					required: true,
+					typeOptions: {
+						loadOptionsDependsOn: ['workflowId.value'],
+						resourceMapper: {
+							localResourceMapperMethod: 'loadWorkflowInputMappings',
+							valuesLabel: 'Workflow Inputs',
+							mode: 'map',
+							fieldWords: {
+								singular: 'workflow input',
+								plural: 'workflow inputs',
+							},
+							addAllFields: true,
+							multiKeyMatch: false,
+							supportAutoMap: false,
+						},
+					},
+					displayOptions: {
+						show: {
+							source: ['database'],
+						},
+						hide: {
+							workflowId: [''],
+						},
+					},
+				},
 				// ----------------------------------
 				//         source:parameter
 				// ----------------------------------
@@ -172,194 +251,28 @@ export class ToolWorkflowV1 implements INodeType {
 					required: true,
 					description: 'The workflow JSON code to execute',
 				},
-				// ----------------------------------
-				//         For all
-				// ----------------------------------
-				{
-					displayName: 'Field to Return',
-					name: 'responsePropertyName',
-					type: 'string',
-					default: 'response',
-					required: true,
-					hint: 'The field in the last-executed node of the workflow that contains the response',
-					description:
-						'Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.',
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { lt: 1.3 } }],
-						},
-					},
-				},
-				{
-					displayName: 'Extra Workflow Inputs',
-					name: 'fields',
-					placeholder: 'Add Value',
-					type: 'fixedCollection',
-					description:
-						"These will be output by the 'execute workflow' trigger of the workflow being called",
-					typeOptions: {
-						multipleValues: true,
-						sortable: true,
-					},
-					default: {},
-					options: [
-						{
-							name: 'values',
-							displayName: 'Values',
-							values: [
-								{
-									displayName: 'Name',
-									name: 'name',
-									type: 'string',
-									default: '',
-									placeholder: 'e.g. fieldName',
-									description:
-										'Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.',
-									requiresDataPath: 'single',
-								},
-								{
-									displayName: 'Type',
-									name: 'type',
-									type: 'options',
-									description: 'The field value type',
-									// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-									options: [
-										{
-											name: 'String',
-											value: 'stringValue',
-										},
-										{
-											name: 'Number',
-											value: 'numberValue',
-										},
-										{
-											name: 'Boolean',
-											value: 'booleanValue',
-										},
-										{
-											name: 'Array',
-											value: 'arrayValue',
-										},
-										{
-											name: 'Object',
-											value: 'objectValue',
-										},
-									],
-									default: 'stringValue',
-								},
-								{
-									displayName: 'Value',
-									name: 'stringValue',
-									type: 'string',
-									default: '',
-									displayOptions: {
-										show: {
-											type: ['stringValue'],
-										},
-									},
-									validateType: 'string',
-									ignoreValidationDuringExecution: true,
-								},
-								{
-									displayName: 'Value',
-									name: 'numberValue',
-									type: 'string',
-									default: '',
-									displayOptions: {
-										show: {
-											type: ['numberValue'],
-										},
-									},
-									validateType: 'number',
-									ignoreValidationDuringExecution: true,
-								},
-								{
-									displayName: 'Value',
-									name: 'booleanValue',
-									type: 'options',
-									default: 'true',
-									options: [
-										{
-											name: 'True',
-											value: 'true',
-										},
-										{
-											name: 'False',
-											value: 'false',
-										},
-									],
-									displayOptions: {
-										show: {
-											type: ['booleanValue'],
-										},
-									},
-									validateType: 'boolean',
-									ignoreValidationDuringExecution: true,
-								},
-								{
-									displayName: 'Value',
-									name: 'arrayValue',
-									type: 'string',
-									default: '',
-									placeholder: 'e.g. [ arrayItem1, arrayItem2, arrayItem3 ]',
-									displayOptions: {
-										show: {
-											type: ['arrayValue'],
-										},
-									},
-									validateType: 'array',
-									ignoreValidationDuringExecution: true,
-								},
-								{
-									displayName: 'Value',
-									name: 'objectValue',
-									type: 'json',
-									default: '={}',
-									typeOptions: {
-										rows: 2,
-									},
-									displayOptions: {
-										show: {
-											type: ['objectValue'],
-										},
-									},
-									validateType: 'object',
-									ignoreValidationDuringExecution: true,
-								},
-							],
-						},
-					],
-				},
-				// ----------------------------------
-				//         Output Parsing
-				// ----------------------------------
-				{
-					displayName: 'Specify Input Schema',
-					name: 'specifyInputSchema',
-					type: 'boolean',
-					description:
-						'Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.',
-					noDataExpression: true,
-					default: false,
-				},
-				{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
-				jsonSchemaExampleField,
-				inputSchemaField,
 			],
 		};
 	}
 
-	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const workflowProxy = this.getWorkflowDataProxy(0);
+	methods = {
+		localResourceMapping: {
+			loadWorkflowInputMappings,
+		},
+	};
 
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
+		const workflowProxy = this.getWorkflowDataProxy(0);
+
+		const subworkflowInputsSchema =
+			(this.getNode().parameters.workflowInputs as ResourceMapperValue)?.schema ?? [];
+		const useSchema = subworkflowInputsSchema.length > 0;
+		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		let subExecutionId: string | undefined;
 		let subWorkflowId: string | undefined;
-
-		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
-		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
 
 		const runFunction = async (
 			query: string | IDataObject,
@@ -369,17 +282,12 @@ export class ToolWorkflowV1 implements INodeType {
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
-				const nodeVersion = this.getNode().typeVersion;
-				if (nodeVersion <= 1.1) {
-					workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
-				} else {
-					const { value } = this.getNodeParameter(
-						'workflowId',
-						itemIndex,
-						{},
-					) as INodeParameterResourceLocator;
-					workflowInfo.id = value as string;
-				}
+				const { value } = this.getNodeParameter(
+					'workflowId',
+					itemIndex,
+					{},
+				) as INodeParameterResourceLocator;
+				workflowInfo.id = value as string;
 
 				subWorkflowId = workflowInfo.id;
 			} else if (source === 'parameter') {
@@ -418,16 +326,25 @@ export class ToolWorkflowV1 implements INodeType {
 				include: 'all',
 			};
 
+			let items = [] as INodeExecutionData[];
+
+			let jsonData = typeof query === 'object' ? query : { query };
+			if (useSchema) {
+				const currentWorkflowInputs = getCurrentWorkflowInputData.call(this);
+				// TODO: Pull in master and not use 0 index here
+				jsonData = currentWorkflowInputs[0].json;
+			}
+
 			const newItem = await manual.execute.call(
 				this,
-				{ json: { query } },
+				{ json: jsonData },
 				itemIndex,
 				options,
 				rawData,
 				this.getNode(),
 			);
 
-			const items = [newItem] as INodeExecutionData[];
+			items = [newItem] as INodeExecutionData[];
 
 			let receivedData: ExecuteWorkflowData;
 			try {
@@ -520,23 +437,61 @@ export class ToolWorkflowV1 implements INodeType {
 
 		if (useSchema) {
 			try {
-				// We initialize these even though one of them will always be empty
-				// it makes it easier to navigate the ternary operator
-				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
-				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
+				const fromAIParser = new AIParametersParser(this);
+				const collectedArguments: FromAIArgument[] = [];
+				fromAIParser.traverseNodeParameters(this.getNode().parameters, collectedArguments);
+				// Validate each collected argument
+				const keyMap = new Map<string, FromAIArgument>();
+				for (const argument of collectedArguments) {
+					if (keyMap.has(argument.key)) {
+						// If the key already exists in the Map
+						const existingArg = keyMap.get(argument.key);
+						if (!existingArg) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Argument with key '${argument.key}' not found in keyMap`,
+							);
+						}
 
-				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
-				const jsonSchema =
-					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
-						: jsonParse<JSONSchema7>(inputSchema);
+						// Check if the existing argument has the same description and type
+						if (
+							!existingArg ||
+							(existingArg.description === argument.description &&
+								existingArg.type === argument.type)
+						) {
+							keyMap.set(argument.key, argument);
+						}
+					}
+				}
 
-				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+				// Remove duplicate keys, latest occurrence takes precedence
+				const uniqueArgsMap = collectedArguments.reduce((map, arg) => {
+					map.set(arg.key, arg);
+					return map;
+				}, new Map<string, FromAIArgument>());
 
-				tool = new DynamicStructuredTool({
-					schema: zodSchema,
-					...functionBase,
-				});
+				const uniqueArguments = Array.from(uniqueArgsMap.values());
+
+				if (uniqueArguments.length === 0) {
+					tool = new DynamicTool({
+						...functionBase,
+					});
+				} else {
+					// Generate Zod schema from unique arguments
+					const schemaObj = uniqueArguments.reduce(
+						(acc: Record<string, z.ZodTypeAny>, placeholder) => {
+							acc[placeholder.key] = fromAIParser.generateZodSchema(placeholder);
+							return acc;
+						},
+						{},
+					);
+
+					const schema = z.object(schemaObj).required();
+					tool = new DynamicStructuredTool({
+						schema,
+						...functionBase,
+					});
+				}
 			} catch (error) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -546,7 +501,6 @@ export class ToolWorkflowV1 implements INodeType {
 		} else {
 			tool = new DynamicTool(functionBase);
 		}
-
 		return {
 			response: tool,
 		};
