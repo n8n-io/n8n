@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
@@ -136,5 +136,46 @@ describe('CanvasNodeToolbar', () => {
 		await fireEvent.click(getAllByTestId('color')[0]);
 
 		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+	});
+
+	it('should have "forceVisible" class when hovered', async () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide(),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		const toolbar = getByTestId('canvas-node-toolbar');
+
+		await fireEvent.mouseEnter(toolbar);
+
+		expect(toolbar).toHaveClass('forceVisible');
+	});
+
+	it('should have "forceVisible" class when sticky color picker is visible', async () => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.StickyNote,
+								options: { color: 3 },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		const toolbar = getByTestId('canvas-node-toolbar');
+
+		await fireEvent.click(getByTestId('change-sticky-color'));
+
+		await waitFor(() => expect(toolbar).toHaveClass('forceVisible'));
 	});
 });
