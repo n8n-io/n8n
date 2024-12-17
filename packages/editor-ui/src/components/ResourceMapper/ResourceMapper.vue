@@ -7,6 +7,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeParameterValueType,
 	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
@@ -597,7 +598,7 @@ defineExpose({
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"
 				@update="
-					(x) => {
+					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.attemptToConvertTypes = x.value as boolean;
 						emitValueChanged();
 					}
@@ -614,7 +615,7 @@ defineExpose({
 				:path="props.path + '.ignoreTypeMismatchErrors'"
 				:value="state.paramValue.ignoreTypeMismatchErrors"
 				@update="
-					(x) => {
+					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
 						emitValueChanged();
 					}
