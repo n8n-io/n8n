@@ -1,13 +1,13 @@
-import type { RedisClientType } from '@redis/client';
 import { mock } from 'jest-mock-extended';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
-const mockClient = mock<RedisClientType>();
+const mockClient = mock<RedisClient>();
 const createClient = jest.fn().mockReturnValue(mockClient);
 jest.mock('redis', () => ({ createClient }));
 
 import { Redis } from '../Redis.node';
 import { setupRedisClient } from '../utils';
+import type { RedisClient } from '../types';
 
 describe('Redis Node', () => {
 	const node = new Redis();
@@ -27,7 +27,6 @@ describe('Redis Node', () => {
 			});
 			expect(createClient).toHaveBeenCalledWith({
 				database: 0,
-				password: undefined,
 				socket: {
 					host: 'redis.domain',
 					port: 1234,
@@ -45,7 +44,6 @@ describe('Redis Node', () => {
 			});
 			expect(createClient).toHaveBeenCalledWith({
 				database: 0,
-				password: undefined,
 				socket: {
 					host: 'redis.domain',
 					port: 1234,
