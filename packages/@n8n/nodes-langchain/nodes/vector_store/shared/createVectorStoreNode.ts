@@ -217,6 +217,13 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						},
 					},
 				},
+				{
+					displayName: 'Include Metadata',
+					name: 'includeDocumentMetadata',
+					type: 'boolean',
+					default: true,
+					description: 'Whether or not to include document metadata',
+				},
 				// ID is always used for update operation
 				{
 					displayName: 'ID',
@@ -269,11 +276,16 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						topK,
 						filter,
 					);
+					const includeDocumentMetadata = this.getNodeParameter(
+						'includeDocumentMetadata',
+						itemIndex,
+						true,
+					) as boolean;
 
 					const serializedDocs = docs.map(([doc, score]) => {
 						const document = {
-							metadata: doc.metadata,
 							pageContent: doc.pageContent,
+							...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
 						};
 
 						return {
@@ -409,7 +421,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const includeDocumentMetadata = this.getNodeParameter(
 					'includeDocumentMetadata',
 					itemIndex,
-					false,
+					true,
 				) as boolean;
 
 				const vectorStoreTool = new DynamicTool({
@@ -483,17 +495,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			// 	],
 			// 	default: 'auto',
 			// };
-
-			// todo move out
-			const metadataProp: INodeProperties = {
-				displayName: 'Include Metadata',
-				name: 'includeDocumentMetadata',
-				type: 'boolean',
-				default: false,
-				description: 'Whether or not to include document metadata',
-			};
-
-			description.properties.unshift(metadataProp);
 
 			const descProp: INodeProperties = {
 				displayName: 'Description',
