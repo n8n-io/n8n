@@ -477,9 +477,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			description.name += 'Tool';
 			description.outputs = [NodeConnectionType.AiTool];
 			description.displayName += ' Tool';
-			if (description.defaults.name) {
-				description.defaults.name += ' Tool';
-			}
 
 			const operationParameter = description.properties.find((prop) => prop.name === 'mode');
 			if (operationParameter?.options) {
