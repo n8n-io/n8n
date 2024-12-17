@@ -13,7 +13,6 @@ import type {
 import { getWorkflowInfo } from './GenericFunctions';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
-import { FALLBACK_DEFAULT_VALUE } from '../constants';
 
 function getWorkflowInputValues(this: IExecuteFunctions): INodeExecutionData[] {
 	const inputData = this.getInputData();

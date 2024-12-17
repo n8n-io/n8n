@@ -1,12 +1,6 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import type {
-	FieldValueOption,
-	FieldType,
-	IWorkflowNodeContext,
-	INodeExecutionData,
-	IExecuteFunctions,
-} from 'n8n-workflow';
+import type { FieldValueOption, FieldType, IWorkflowNodeContext } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import {
@@ -15,7 +9,6 @@ import {
 	WORKFLOW_INPUTS,
 	VALUES,
 	TYPE_OPTIONS,
-	FALLBACK_DEFAULT_VALUE,
 	PASSTHROUGH,
 } from './constants';
 
