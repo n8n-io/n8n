@@ -36,7 +36,7 @@ withDefaults(
 		selectableFilter?: (row: T) => boolean;
 	}>(),
 	{
-		defaultSort: () => ({ prop: 'date', order: 'descending' }),
+		defaultSort: () => ({ prop: 'date', order: 'ascending' }),
 		selectable: false,
 		selectableFilter: () => true,
 	},
