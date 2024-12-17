@@ -20,14 +20,10 @@ import type {
 	ResourceMapperField,
 	ResourceMapperValue,
 	SupplyData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	jsonParse,
-	NodeConnectionType,
-	NodeOperationError,
-	type INodeType,
-	type INodeTypeDescription,
-} from 'n8n-workflow';
+import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { FromAIArgument } from './FromAIParser';
