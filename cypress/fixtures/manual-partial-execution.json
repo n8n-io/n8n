@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f4467143-fdb9-46fa-8020-6417cc5eea7d",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1140,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "path": "30ff316d-405f-4288-a0ac-e713546c9d4e",
+        "options": {}
+      },
+      "id": "4760aafb-5d56-4633-99d3-7a97c576a216",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        680,
+        340
+      ],
+      "webhookId": "30ff316d-405f-4288-a0ac-e713546c9d4e"
+    },
+    {
+      "parameters": {
+        "articleId": "123",
+        "additionalFields": {}
+      },
+      "id": "8c811eca-8978-44d9-b8f7-ef2c7725784c",
+      "name": "Hacker News",
+      "type": "n8n-nodes-base.hackerNews",
+      "typeVersion": 1,
+      "position": [
+        920,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "path": "4a3398e4-1388-4e10-9d21-add90b804955",
+        "options": {}
+      },
+      "id": "1c2c2d06-45c9-4712-9fa0-c655bef8d0e5",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        680,
+        180
+      ],
+      "webhookId": "4a3398e4-1388-4e10-9d21-add90b804955"
+    }
+  ],
+  "connections": {
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Hacker News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacker News": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Hacker News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "name": "First item",
+        "code": 1
+      }
+    ]
+  }
+}

@@ -85,3 +85,32 @@ export async function getRepositories(
 	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
+
+export async function getWorkflows(
+	this: ILoadOptionsFunctions,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
+	const repository = this.getCurrentNodeParameter('repository', { extractValue: true });
+	const page = paginationToken ? +paginationToken : 1;
+	const per_page = 100;
+	const endpoint = `/repos/${owner}/${repository}/actions/workflows`;
+	let responseData: { workflows: Array<{ id: string; name: string }>; total_count: number } = {
+		workflows: [],
+		total_count: 0,
+	};
+
+	try {
+		responseData = await githubApiRequest.call(this, 'GET', endpoint, {}, { page, per_page });
+	} catch {
+		// will fail if the repository does not have any workflows
+	}
+
+	const results: INodeListSearchItems[] = responseData.workflows.map((workflow) => ({
+		name: workflow.name,
+		value: workflow.id,
+	}));
+
+	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
+	return { results, paginationToken: nextPaginationToken };
+}

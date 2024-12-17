@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { NodeVMOptions, VMRequire } from 'vm2';
-import { NodeVM } from 'vm2';
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -9,7 +9,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
+import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +25,8 @@ export class FunctionItem implements INodeType {
 			name: 'Function Item',
 			color: '#ddbb33',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
@@ -39,7 +40,7 @@ export class FunctionItem implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					codeAutocomplete: 'functionItem',
-					editor: 'code',
+					editor: 'jsEditor',
 					rows: 10,
 				},
 				type: 'string',
@@ -70,7 +71,7 @@ return item;`,
 		const cleanupData = (inputData: IDataObject): IDataObject => {
 			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
-					if (inputData[key]!.constructor.name === 'Object') {
+					if (inputData[key].constructor.name === 'Object') {
 						// Is regular node.js object so check its data
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
@@ -112,8 +113,8 @@ return item;`,
 						}
 						item.binary = data;
 					},
-					getNodeParameter: this.getNodeParameter,
-					getWorkflowStaticData: this.getWorkflowStaticData,
+					getNodeParameter: this.getNodeParameter.bind(this),
+					getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
 					helpers: this.helpers,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
@@ -125,7 +126,7 @@ return item;`,
 								)?.toString('base64');
 							}
 						}
-						// Retrun Data
+						// Return Data
 						return item.binary;
 					},
 					setBinaryDataAsync: async (data: IBinaryKeyData) => {
@@ -158,28 +159,13 @@ return item;`,
 				const options: NodeVMOptions = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
 					sandbox,
-					require: {
-						external: false,
-						builtin: [],
-					},
+					require: vmResolver,
 				};
-
-				const vmRequire = options.require as VMRequire;
-				if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-					vmRequire.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-				}
-
-				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					vmRequire.external = {
-						modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
-						transitive: false,
-					};
-				}
 
 				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 				if (mode === 'manual') {
-					vm.on('console.log', this.sendMessageToUI);
+					vm.on('console.log', this.sendMessageToUI.bind(this));
 				}
 
 				// Get the code to execute
@@ -208,14 +194,14 @@ return item;`,
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber as number)) {
 									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
-									return Promise.reject(error);
+									throw error;
 								}
 							}
 						}
 
 						error.message = `${error.message} [Item Index: ${itemIndex}]`;
 
-						return Promise.reject(error);
+						throw error;
 					}
 				}
 
@@ -254,6 +240,6 @@ return item;`,
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -18,7 +18,7 @@ export const channelCreateDescription: ChannelProperties = [
 			},
 		},
 		description:
-			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Display Name',

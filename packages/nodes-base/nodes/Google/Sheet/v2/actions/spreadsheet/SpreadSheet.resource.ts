@@ -1,6 +1,6 @@
+import type { INodeProperties } from 'n8n-workflow';
 import * as create from './create.operation';
 import * as deleteSpreadsheet from './delete.operation';
-import type { INodeProperties } from 'n8n-workflow';
 
 export { create, deleteSpreadsheet };
 
@@ -20,13 +20,13 @@ export const descriptions: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a spreadsheet',
-				action: 'Create a spreadsheet',
+				action: 'Create spreadsheet',
 			},
 			{
 				name: 'Delete',
 				value: 'deleteSpreadsheet',
 				description: 'Delete a spreadsheet',
-				action: 'Delete a spreadsheet',
+				action: 'Delete spreadsheet',
 			},
 		],
 		default: 'create',

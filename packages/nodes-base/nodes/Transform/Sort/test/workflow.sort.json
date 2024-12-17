@@ -1,0 +1,213 @@
+{
+	"name": "sort test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-440, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 3, char: 'c'},\n  {id: 4, char: 'd'},\n  {id: 5, char: 'e'},\n  {id: 1, char: 'a'},\n  {id: 2, char: 'b'},\n];"
+			},
+			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-180, 300]
+		},
+		{
+			"parameters": {
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "char",
+							"order": "descending"
+						},
+						{
+							"fieldName": "id",
+							"order": "descending"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "20031848-2374-45b2-98db-69d7b8d055ad",
+			"name": "Item Lists1",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [80, 300]
+		},
+		{
+			"parameters": {
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "id"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "93dd8c32-21e1-4762-a340-b3e8c6866811",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [80, 120]
+		},
+		{
+			"parameters": {
+				"type": "code",
+				"code": "// The two items to compare are in the variables a and b\n// Access the fields in a.json and b.json\n// Return -1 if a should go before b\n// Return 1 if b should go before a\n// Return 0 if there's no difference\n\nfieldName = 'id';\n\nif (a.json[fieldName] < b.json[fieldName]) {\n\t\treturn -1;\n}\nif (a.json[fieldName] > b.json[fieldName]) {\n\t\treturn 1;\n}\nreturn 0;"
+			},
+			"id": "112c72e6-b5d9-4d6d-87fc-2621fbaa5bf7",
+			"name": "Item Lists2",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [80, 500]
+		}
+	],
+	"pinData": {
+		"Item Lists": [
+			{
+				"json": {
+					"id": 1,
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"char": "b"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"char": "c"
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"char": "d"
+				}
+			},
+			{
+				"json": {
+					"id": 5,
+					"char": "e"
+				}
+			}
+		],
+		"Item Lists1": [
+			{
+				"json": {
+					"id": 5,
+					"char": "e"
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"char": "d"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"char": "c"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"char": "b"
+				}
+			},
+			{
+				"json": {
+					"id": 1,
+					"char": "a"
+				}
+			}
+		],
+		"Item Lists2": [
+			{
+				"json": {
+					"id": 1,
+					"char": "a"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"char": "b"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"char": "c"
+				}
+			},
+			{
+				"json": {
+					"id": 4,
+					"char": "d"
+				}
+			},
+			{
+				"json": {
+					"id": 5,
+					"char": "e"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "6f896427-a3be-44bc-898f-c1a6f58fa1e1",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

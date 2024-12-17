@@ -1,10 +1,9 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -12,15 +11,15 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: string | object = {},
-	query: object = {},
+	query: IDataObject = {},
 	headers: IDataObject | undefined = undefined,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',
@@ -58,14 +57,13 @@ export async function matrixApiRequest(
 
 export async function handleMatrixCall(
 	this: IExecuteFunctions,
-	item: IDataObject,
 	index: number,
 	resource: string,
 	operation: string,
 ): Promise<any> {
 	if (resource === 'account') {
 		if (operation === 'me') {
-			return matrixApiRequest.call(this, 'GET', '/account/whoami');
+			return await matrixApiRequest.call(this, 'GET', '/account/whoami');
 		}
 	} else if (resource === 'room') {
 		if (operation === 'create') {
@@ -79,20 +77,20 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return matrixApiRequest.call(this, 'POST', '/createRoom', body);
+			return await matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
 		} else if (operation === 'leave') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
 		} else if (operation === 'invite') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
 			const body: IDataObject = {
 				user_id: userId,
 			};
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
 		} else if (operation === 'kick') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
@@ -101,7 +99,7 @@ export async function handleMatrixCall(
 				user_id: userId,
 				reason,
 			};
-			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
 		}
 	} else if (resource === 'message') {
 		if (operation === 'create') {
@@ -120,7 +118,7 @@ export async function handleMatrixCall(
 				body.body = fallbackText;
 			}
 			const messageId = uuid();
-			return matrixApiRequest.call(
+			return await matrixApiRequest.call(
 				this,
 				'PUT',
 				`/rooms/${roomId}/send/m.room.message/${messageId}`,
@@ -182,13 +180,14 @@ export async function handleMatrixCall(
 		if (operation === 'get') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const eventId = this.getNodeParameter('eventId', index) as string;
-			return matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
+			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
 		}
 	} else if (resource === 'media') {
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
+			const additionalFields = this.getNodeParameter('additionalFields', index);
 
 			let body;
 			const qs: IDataObject = {};
@@ -197,7 +196,12 @@ export async function handleMatrixCall(
 			const { fileName, mimeType } = this.helpers.assertBinaryData(index, binaryPropertyName);
 			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
-			qs.filename = fileName;
+			if (additionalFields.fileName) {
+				qs.filename = additionalFields.fileName as string;
+			} else {
+				qs.filename = fileName;
+			}
+
 			headers['Content-Type'] = mimeType;
 			headers.accept = 'application/json,text/*;q=0.99';
 
@@ -216,11 +220,11 @@ export async function handleMatrixCall(
 
 			body = {
 				msgtype: `m.${mediaType}`,
-				body: fileName,
+				body: qs.filename,
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();
-			return matrixApiRequest.call(
+			return await matrixApiRequest.call(
 				this,
 				'PUT',
 				`/rooms/${roomId}/send/m.room.message/${messageId}`,

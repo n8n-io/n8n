@@ -1,51 +1,80 @@
-import type { IDataObject } from 'n8n-workflow';
-
-import { Client } from 'ssh2';
-import type { ConnectConfig } from 'ssh2';
-
-import type { Server } from 'net';
-import { createServer } from 'net';
-
+import { createServer, type AddressInfo } from 'node:net';
 import pgPromise from 'pg-promise';
+import type {
+	IExecuteFunctions,
+	ICredentialTestFunctions,
+	ILoadOptionsFunctions,
+	ITriggerFunctions,
+} from 'n8n-workflow';
 
-import { rm, writeFile } from 'fs/promises';
-import { file } from 'tmp-promise';
+import type {
+	ConnectionsData,
+	PgpConnectionParameters,
+	PostgresNodeCredentials,
+	PostgresNodeOptions,
+} from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
+import { LOCALHOST } from '@utils/constants';
 
-import type { PgpClient, PgpDatabase } from '../helpers/interfaces';
+const getPostgresConfig = (
+	credentials: PostgresNodeCredentials,
+	options: PostgresNodeOptions = {},
+) => {
+	const dbConfig: PgpConnectionParameters = {
+		host: credentials.host,
+		port: credentials.port,
+		database: credentials.database,
+		user: credentials.user,
+		password: credentials.password,
+		keepAlive: true,
+	};
 
-async function createSshConnectConfig(credentials: IDataObject) {
-	if (credentials.sshAuthenticateWith === 'password') {
-		return {
-			host: credentials.sshHost as string,
-			port: credentials.sshPort as number,
-			username: credentials.sshUser as string,
-			password: credentials.sshPassword as string,
-		} as ConnectConfig;
-	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
-		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
-		};
-
-		if (credentials.passphrase) {
-			options.passphrase = credentials.passphrase as string;
-		}
-
-		return options;
+	if (options.connectionTimeout) {
+		dbConfig.connectionTimeoutMillis = options.connectionTimeout * 1000;
 	}
-}
 
-async function configurePostgres(
-	credentials: IDataObject,
-	options: IDataObject = {},
-	createdSshClient?: Client,
-) {
-	const pgp = pgPromise();
+	if (options.delayClosingIdleConnection) {
+		dbConfig.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
+	}
+
+	if (credentials.allowUnauthorizedCerts === true) {
+		dbConfig.ssl = {
+			rejectUnauthorized: false,
+		};
+	} else {
+		dbConfig.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+		// @ts-ignore these typings need to be updated
+		dbConfig.sslmode = credentials.ssl || 'disable';
+	}
+
+	return dbConfig;
+};
+
+export async function configurePostgres(
+	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions | ITriggerFunctions,
+	credentials: PostgresNodeCredentials,
+	options: PostgresNodeOptions = {},
+): Promise<ConnectionsData> {
+	const pgp = pgPromise({
+		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
+		// duplicate connections created when auto loading parameters, they are closed immediately after, but several could be open at the same time
+		noWarnings: true,
+	});
+
+	if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
+		// Always return dates as ISO strings
+		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
+			pgp.pg.types.setTypeParser(type, (value: string) => {
+				const parsedDate = new Date(value);
+
+				if (isNaN(parsedDate.getTime())) {
+					return value;
+				}
+
+				return parsedDate.toISOString();
+			});
+		});
+	}
 
 	if (options.largeNumbersOutput === 'numbers') {
 		pgp.pg.types.setTypeParser(20, (value: string) => {
@@ -56,91 +85,55 @@ async function configurePostgres(
 		});
 	}
 
-	const dbConfig: IDataObject = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
-	};
-
-	if (options.connectionTimeout) {
-		dbConfig.connectionTimeoutMillis = (options.connectionTimeout as number) * 1000;
-	}
-
-	if (credentials.allowUnauthorizedCerts === true) {
-		dbConfig.ssl = {
-			rejectUnauthorized: false,
-		};
-	} else {
-		dbConfig.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		dbConfig.sslmode = (credentials.ssl as string) || 'disable';
-	}
+	const dbConfig = getPostgresConfig(credentials, options);
 
 	if (!credentials.sshTunnel) {
 		const db = pgp(dbConfig);
 		return { db, pgp };
 	} else {
-		const sshClient = createdSshClient || new Client();
+		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
+			credentials.privateKey = formatPrivateKey(credentials.privateKey);
+		}
+		const sshClient = await this.helpers.getSSHClient(credentials);
 
-		const tunnelConfig = await createSshConnectConfig(credentials);
+		// Create a TCP proxy listening on a random available port
+		const proxy = createServer();
+		const proxyPort = await new Promise<number>((resolve) => {
+			proxy.listen(0, LOCALHOST, () => {
+				resolve((proxy.address() as AddressInfo).port);
+			});
+		});
 
-		const localHost = '127.0.0.1';
-		const localPort = credentials.sshPostgresPort as number;
+		const close = () => {
+			proxy.close();
+			sshClient.off('end', close);
+			sshClient.off('error', close);
+		};
+		sshClient.on('end', close);
+		sshClient.on('error', close);
 
-		let proxy: Server | undefined;
-
-		const db = await new Promise<PgpDatabase>((resolve, reject) => {
-			let sshClientReady = false;
-
-			proxy = createServer((socket) => {
-				if (!sshClientReady) return socket.destroy();
-
+		await new Promise<void>((resolve, reject) => {
+			proxy.on('error', (err) => reject(err));
+			proxy.on('connection', (localSocket) => {
 				sshClient.forwardOut(
-					socket.remoteAddress as string,
-					socket.remotePort as number,
-					credentials.host as string,
-					credentials.port as number,
-					(err, stream) => {
-						if (err) reject(err);
-
-						socket.pipe(stream);
-						stream.pipe(socket);
+					LOCALHOST,
+					localSocket.remotePort!,
+					credentials.host,
+					credentials.port,
+					(err, clientChannel) => {
+						if (err) {
+							proxy.close();
+							localSocket.destroy();
+						} else {
+							localSocket.pipe(clientChannel);
+							clientChannel.pipe(localSocket);
+						}
 					},
 				);
-			}).listen(localPort, localHost);
-
-			proxy.on('error', (err) => {
-				reject(err);
 			});
-
-			sshClient.connect(tunnelConfig);
-
-			sshClient.on('ready', () => {
-				sshClientReady = true;
-
-				const updatedDbConfig = {
-					...dbConfig,
-					port: localPort,
-					host: localHost,
-				};
-				const dbConnection = pgp(updatedDbConfig);
-				resolve(dbConnection);
-			});
-
-			sshClient.on('error', (err) => {
-				reject(err);
-			});
-
-			sshClient.on('end', async () => {
-				if (tunnelConfig.privateKey) {
-					await rm(tunnelConfig.privateKey as string, { force: true });
-				}
-				if (proxy) proxy.close();
-			});
+			resolve();
 		}).catch((err) => {
-			if (proxy) proxy.close();
-			if (sshClient) sshClient.end();
+			proxy.close();
 
 			let message = err.message;
 			let description = err.description;
@@ -171,39 +164,11 @@ async function configurePostgres(
 			throw err;
 		});
 
-		return { db, pgp, sshClient };
+		const db = pgp({
+			...dbConfig,
+			port: proxyPort,
+			host: LOCALHOST,
+		});
+		return { db, pgp };
 	}
 }
-
-export const Connections = (function () {
-	let instance: { db: PgpDatabase; pgp: PgpClient; sshClient?: Client } | null = null;
-
-	return {
-		async getInstance(
-			credentials: IDataObject = {},
-			options: IDataObject = {},
-			reload = false,
-			createdSshClient?: Client,
-			nulify = false,
-		) {
-			if (nulify) {
-				instance = null;
-				return instance;
-			}
-
-			if (instance !== null && reload) {
-				if (instance.sshClient) {
-					instance.sshClient.end();
-				}
-				instance.pgp.end();
-
-				instance = null;
-			}
-
-			if (instance === null && Object.keys(credentials).length) {
-				instance = await configurePostgres(credentials, options, createdSshClient);
-			}
-			return instance;
-		},
-	};
-})();

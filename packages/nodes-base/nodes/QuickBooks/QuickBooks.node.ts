@@ -7,8 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
+import isEmpty from 'lodash/isEmpty';
 import {
 	billFields,
 	billOperations,
@@ -45,10 +47,6 @@ import {
 	simplifyTransactionReport,
 } from './GenericFunctions';
 
-import { capitalCase } from 'change-case';
-
-import isEmpty from 'lodash.isempty';
-
 import type { QuickBooksOAuth2Credentials, TransactionFields, TransactionReport } from './types';
 
 export class QuickBooks implements INodeType {
@@ -63,8 +61,8 @@ export class QuickBooks implements INodeType {
 		defaults: {
 			name: 'QuickBooks Online',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'quickBooksOAuth2Api',
@@ -147,39 +145,39 @@ export class QuickBooks implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'customer');
+				return await loadResource.call(this, 'customer');
 			},
 
 			async getCustomFields(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'preferences');
+				return await loadResource.call(this, 'preferences');
 			},
 
 			async getDepartments(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'department');
+				return await loadResource.call(this, 'department');
 			},
 
 			async getItems(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'item');
+				return await loadResource.call(this, 'item');
 			},
 
 			async getMemos(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'CreditMemo');
+				return await loadResource.call(this, 'CreditMemo');
 			},
 
 			async getPurchases(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'purchase');
+				return await loadResource.call(this, 'purchase');
 			},
 
 			async getTaxCodeRefs(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'TaxCode');
+				return await loadResource.call(this, 'TaxCode');
 			},
 
 			async getTerms(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'Term');
+				return await loadResource.call(this, 'Term');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'vendor');
+				return await loadResource.call(this, 'vendor');
 			},
 		},
 	};
@@ -265,7 +263,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -530,7 +528,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
@@ -690,7 +688,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -1161,9 +1159,9 @@ export class QuickBooks implements INodeType {
 			['get'].includes(operation) &&
 			download
 		) {
-			return this.prepareOutputData(responseData as INodeExecutionData[]);
+			return [responseData as INodeExecutionData[]];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

@@ -35,5 +35,11 @@ export class Redis implements ICredentialType {
 			type: 'number',
 			default: 0,
 		},
+		{
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'boolean',
+			default: false,
+		},
 	];
 }

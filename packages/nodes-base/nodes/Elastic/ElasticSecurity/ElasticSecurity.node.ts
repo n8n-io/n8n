@@ -1,16 +1,13 @@
 import type {
 	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	elasticSecurityApiRequest,
@@ -18,7 +15,6 @@ import {
 	getVersion,
 	handleListing,
 	throwOnEmptyUpdate,
-	tolerateTrailingSlash,
 } from './GenericFunctions';
 
 import {
@@ -32,14 +28,7 @@ import {
 	connectorOperations,
 } from './descriptions';
 
-import type {
-	Connector,
-	ConnectorCreatePayload,
-	ConnectorType,
-	ElasticSecurityApiCredentials,
-} from './types';
-
-import type { OptionsWithUri } from 'request';
+import type { Connector, ConnectorCreatePayload, ConnectorType } from './types';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,13 +42,12 @@ export class ElasticSecurity implements INodeType {
 		defaults: {
 			name: 'Elastic Security',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'elasticSecurityApi',
 				required: true,
-				testedBy: 'elasticSecurityApiTest',
 			},
 		],
 		properties: [
@@ -114,49 +102,6 @@ export class ElasticSecurity implements INodeType {
 					endpoint,
 				)) as Connector[];
 				return connectors.map(({ name, id }) => ({ name, value: id }));
-			},
-		},
-		credentialTest: {
-			async elasticSecurityApiTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				const {
-					username,
-					password,
-					baseUrl: rawBaseUrl,
-				} = credential.data as ElasticSecurityApiCredentials;
-
-				const baseUrl = tolerateTrailingSlash(rawBaseUrl);
-
-				const token = Buffer.from(`${username}:${password}`).toString('base64');
-
-				const endpoint = '/cases/status';
-
-				const options: OptionsWithUri = {
-					headers: {
-						Authorization: `Basic ${token}`,
-						'kbn-xsrf': true,
-					},
-					method: 'GET',
-					body: {},
-					qs: {},
-					uri: `${baseUrl}/api${endpoint}`,
-					json: true,
-				};
-
-				try {
-					await this.helpers.request(options);
-					return {
-						status: 'OK',
-						message: 'Authentication successful',
-					};
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: error.message,
-					};
-				}
 			},
 		},
 	};
@@ -590,6 +535,6 @@ export class ElasticSecurity implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

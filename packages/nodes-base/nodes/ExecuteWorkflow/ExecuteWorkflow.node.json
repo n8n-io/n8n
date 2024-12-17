@@ -13,6 +13,6 @@
 	},
 	"alias": ["n8n"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Helpers", "Flow"]
 	}
 }

@@ -9,21 +9,21 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import set from 'lodash.set';
-import concat from 'lodash.concat';
-import split from 'lodash.split';
-import every from 'lodash.every';
-import toString from 'lodash.tostring';
-import toNumber from 'lodash.tonumber';
-import isString from 'lodash.isstring';
-import compact from 'lodash.compact';
-import first from 'lodash.first';
-import last from 'lodash.last';
-import clone from 'lodash.clone';
-import some from 'lodash.some';
-import isArray from 'lodash.isarray';
-import trim from 'lodash.trim';
-import escapeRegExp from 'lodash.escaperegexp';
+import set from 'lodash/set';
+import concat from 'lodash/concat';
+import split from 'lodash/split';
+import every from 'lodash/every';
+import toString from 'lodash/toString';
+import toNumber from 'lodash/toNumber';
+import isString from 'lodash/isString';
+import compact from 'lodash/compact';
+import first from 'lodash/first';
+import last from 'lodash/last';
+import clone from 'lodash/clone';
+import some from 'lodash/some';
+import isArray from 'lodash/isArray';
+import trim from 'lodash/trim';
+import escapeRegExp from 'lodash/escapeRegExp';
 
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -84,7 +84,7 @@ export async function koBoToolboxRawRequest(
 		option.url = (credentials.URL as string) + option.url;
 	}
 
-	return this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
 }
 
 function parseGeoPoint(geoPoint: string): null | number[] {
@@ -132,7 +132,7 @@ const formatValue = (value: any, format: string): any => {
 			// Only return if all values are properly parsed
 			if (coordinates.length === points.length) {
 				// If the shape is closed, declare it as Polygon, otherwise as LineString
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				if (first(points) === last(points)) {
 					return {
 						type: 'Polygon',

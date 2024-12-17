@@ -40,7 +40,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -68,7 +68,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file to upload',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -81,7 +81,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded',
+		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
 		displayName: 'Options',
@@ -95,7 +95,7 @@ export const fileFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Channel Names or IDs',
@@ -106,7 +106,7 @@ export const fileFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File Name',
@@ -196,7 +196,7 @@ export const fileFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				description:
-					'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Show Files Hidden By Limit',
@@ -267,7 +267,7 @@ export const fileFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				description:
-					'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

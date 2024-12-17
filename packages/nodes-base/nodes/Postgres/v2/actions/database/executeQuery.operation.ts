@@ -1,14 +1,23 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-
-import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
+import type {
+	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -17,21 +26,15 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
+		noDataExpression: true,
 		required: true,
 		description:
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
-			rows: 3,
+			editor: 'sqlEditor',
+			sqlDialect: 'PostgreSQL',
 		},
-		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
-	},
-	{
-		displayName: `
-		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters">More info</a>.
-		`,
-		name: 'notice',
-		type: 'notice',
-		default: '',
+		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
 	},
 	optionsCollection,
 ];
@@ -49,7 +52,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
@@ -57,28 +60,91 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const query = this.getNodeParameter('query', i) as string;
+		let query = this.getNodeParameter('query', i) as string;
 
-		let values: IDataObject[] = [];
+		for (const resolvable of getResolvables(query)) {
+			query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+		}
+
+		let values: Array<IDataObject | string> = [];
 
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
 
+		if (typeof queryReplacement === 'number') {
+			queryReplacement = String(queryReplacement);
+		}
+
 		if (typeof queryReplacement === 'string') {
-			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
-		}
+			const node = this.getNode();
 
-		if (Array.isArray(queryReplacement)) {
-			values = queryReplacement as IDataObject[];
+			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
+
+			const stringToArray = (str: NodeParameterValueType | undefined) => {
+				if (str === undefined) return [];
+				return String(str)
+					.split(',')
+					.filter((entry) => entry)
+					.map((entry) => entry.trim());
+			};
+
+			if (rawReplacements) {
+				const nodeVersion = nodeOptions.nodeVersion as number;
+
+				if (nodeVersion >= 2.5) {
+					const rawValues = rawReplacements.replace(/^=+/, '');
+					const resolvables = getResolvables(rawValues);
+					if (resolvables.length) {
+						for (const resolvable of resolvables) {
+							const evaluatedValues = stringToArray(this.evaluateExpression(`${resolvable}`, i));
+							if (evaluatedValues.length) values.push(...evaluatedValues);
+						}
+					} else {
+						values.push(...stringToArray(rawValues));
+					}
+				} else {
+					const rawValues = rawReplacements
+						.replace(/^=+/, '')
+						.split(',')
+						.filter((entry) => entry)
+						.map((entry) => entry.trim());
+
+					for (const rawValue of rawValues) {
+						const resolvables = getResolvables(rawValue);
+
+						if (resolvables.length) {
+							for (const resolvable of resolvables) {
+								values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+							}
+						} else {
+							values.push(rawValue);
+						}
+					}
+				}
+			}
 		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Query Replacement must be a string of comma-separated values, or an array of values',
-				{ itemIndex: i },
-			);
+			if (Array.isArray(queryReplacement)) {
+				values = queryReplacement as IDataObject[];
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Query Parameters must be a string of comma-separated values or an array of values',
+					{ itemIndex: i },
+				);
+			}
 		}
 
-		queries.push({ query, values });
+		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+			let nextValueIndex = values.length + 1;
+			const literals = query.match(/'\$[0-9]+'/g) ?? [];
+			for (const literal of literals) {
+				query = query.replace(literal, `$${nextValueIndex}`);
+				values.push(literal.replace(/'/g, ''));
+				nextValueIndex++;
+			}
+		}
+
+		queries.push({ query, values, options: { partial: true } });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

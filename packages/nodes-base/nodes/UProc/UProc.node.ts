@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { uprocApiRequest } from './GenericFunctions';
 
@@ -26,8 +27,8 @@ export class UProc implements INodeType {
 		defaults: {
 			name: 'uProc',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'uprocApi',
@@ -42,7 +43,7 @@ export class UProc implements INodeType {
 				displayName: 'Additional Options',
 				name: 'additionalOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -102,7 +103,6 @@ export class UProc implements INodeType {
 				return field.name;
 			});
 
-		const _requestPromises = [];
 		for (let i = 0; i < length; i++) {
 			try {
 				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();

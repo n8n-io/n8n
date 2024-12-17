@@ -43,7 +43,7 @@ export const responderFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Entity Type Name or ID',
@@ -61,7 +61,7 @@ export const responderFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -233,7 +233,7 @@ export const responderFields: INodeProperties[] = [
 								name: 'artifactValues',
 								values: [
 									{
-										displayName: 'Binary Property',
+										displayName: 'Binary Field',
 										name: 'binaryProperty',
 										type: 'string',
 										displayOptions: {
@@ -490,7 +490,7 @@ export const responderFields: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Binary Property',
+						displayName: 'Input Binary Field',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -499,7 +499,7 @@ export const responderFields: INodeProperties[] = [
 								dataType: ['file'],
 							},
 						},
-						description: 'Name of the binary property which contains the attachement data',
+						hint: 'The name of the input binary field containing the attachement data',
 					},
 					{
 						displayName: 'Data',

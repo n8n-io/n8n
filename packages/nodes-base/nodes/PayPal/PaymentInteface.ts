@@ -1,10 +1,10 @@
-export enum RecipientType {
+export const enum RecipientType {
 	email = 'EMAIL',
 	phone = 'PHONE',
 	paypalId = 'PAYPAL_ID',
 }
 
-export enum RecipientWallet {
+export const enum RecipientWallet {
 	paypal = 'PAYPAL',
 	venmo = 'VENMO',
 }

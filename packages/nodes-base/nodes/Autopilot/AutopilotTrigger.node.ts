@@ -6,10 +6,10 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-
-import { autopilotApiRequest } from './GenericFunctions';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
+import { autopilotApiRequest } from './GenericFunctions';
 
 export class AutopilotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +24,7 @@ export class AutopilotTrigger implements INodeType {
 			name: 'Autopilot Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'autopilotApi',

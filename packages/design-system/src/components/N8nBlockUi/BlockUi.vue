@@ -1,3 +1,13 @@
+<script lang="ts" setup>
+type BlockUiProps = {
+	show: boolean;
+};
+
+withDefaults(defineProps<BlockUiProps>(), {
+	show: false,
+});
+</script>
+
 <template>
 	<transition name="fade" mode="out-in">
 		<div
@@ -9,16 +19,6 @@
 	</transition>
 </template>
 
-<script lang="ts" setup>
-type BlockUiProps = {
-	show: boolean;
-};
-
-withDefaults(defineProps<BlockUiProps>(), {
-	show: false,
-});
-</script>
-
 <style lang="scss" module>
 .uiBlocker {
 	position: absolute;
@@ -26,7 +26,7 @@ withDefaults(defineProps<BlockUiProps>(), {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-dark);
+	background-color: var(--color-block-ui-overlay);
 	z-index: 10;
 	opacity: 0.6;
 	border-radius: var(--border-radius-large);
@@ -38,7 +38,7 @@ withDefaults(defineProps<BlockUiProps>(), {
 .fade-leave-active {
 	transition: opacity 200ms;
 }
-.fade-enter,
+.fade-enter-from,
 .fade-leave-to {
 	opacity: 0;
 }

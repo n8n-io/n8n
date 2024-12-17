@@ -1,30 +1,6 @@
-<template>
-	<div :class="alertBoxClassNames" role="alert">
-		<div :class="$style.content">
-			<span v-if="showIcon || $slots.icon" :class="$style.icon">
-				<n8n-icon v-if="showIcon" :icon="icon" />
-				<slot v-else-if="$slots.icon" name="icon" />
-			</span>
-			<div :class="$style.text">
-				<div v-if="$slots.title || title" :class="$style.title">
-					<slot name="title">{{ title }}</slot>
-				</div>
-				<div
-					v-if="$slots.default || description"
-					:class="{ [$style.description]: true, [$style.hasTitle]: $slots.title || title }"
-				>
-					<slot>{{ description }}</slot>
-				</div>
-			</div>
-		</div>
-		<div v-if="$slots.aside" :class="$style.aside">
-			<slot name="aside" />
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
+
 import N8nIcon from '../N8nIcon';
 
 type AlertProps = {
@@ -57,24 +33,49 @@ const icon = computed(() => {
 	}
 });
 
-const style = useCssModule();
+const $style = useCssModule();
 const alertBoxClassNames = computed(() => {
-	const classNames = ['n8n-alert', style.alert];
+	const classNames = ['n8n-alert', $style.alert];
 	if (props.type) {
-		classNames.push(style[props.type]);
+		classNames.push($style[props.type]);
 	}
 	if (props.effect) {
-		classNames.push(style[props.effect]);
+		classNames.push($style[props.effect]);
 	}
 	if (props.center) {
-		classNames.push(style.center);
+		classNames.push($style.center);
 	}
 	if (props.background) {
-		classNames.push(style.background);
+		classNames.push($style.background);
 	}
 	return classNames;
 });
 </script>
+
+<template>
+	<div :class="alertBoxClassNames" role="alert">
+		<div :class="$style.content">
+			<span v-if="showIcon || $slots.icon" :class="$style.icon">
+				<N8nIcon v-if="showIcon" :icon="icon" />
+				<slot v-else-if="$slots.icon" name="icon" />
+			</span>
+			<div :class="$style.text">
+				<div v-if="$slots.title || title" :class="$style.title">
+					<slot name="title">{{ title }}</slot>
+				</div>
+				<div
+					v-if="$slots.default || description"
+					:class="{ [$style.description]: true, [$style.hasTitle]: $slots.title || title }"
+				>
+					<slot>{{ description }}</slot>
+				</div>
+			</div>
+		</div>
+		<div v-if="$slots.aside" :class="$style.aside">
+			<slot name="aside" />
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 @import '../../css/common/var.scss';

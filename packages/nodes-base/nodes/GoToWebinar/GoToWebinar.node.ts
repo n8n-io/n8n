@@ -7,8 +7,22 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+
+import moment from 'moment-timezone';
+import {
+	goToWebinarApiRequest,
+	goToWebinarApiRequestAllItems,
+	handleGetAll,
+	loadAnswers,
+	loadRegistranMultiChoiceQuestions,
+	loadRegistranSimpleQuestions,
+	loadWebinars,
+	loadWebinarSessions,
+} from './GenericFunctions';
 import {
 	attendeeFields,
 	attendeeOperations,
@@ -24,22 +38,6 @@ import {
 	webinarOperations,
 } from './descriptions';
 
-import {
-	goToWebinarApiRequest,
-	goToWebinarApiRequestAllItems,
-	handleGetAll,
-	loadAnswers,
-	loadRegistranMultiChoiceQuestions,
-	loadRegistranSimpleQuestions,
-	loadWebinars,
-	loadWebinarSessions,
-} from './GenericFunctions';
-
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
-
-import moment from 'moment-timezone';
-
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GoToWebinar',
@@ -52,8 +50,8 @@ export class GoToWebinar implements INodeType {
 		defaults: {
 			name: 'GoToWebinar',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'goToWebinarOAuth2Api',
@@ -112,15 +110,15 @@ export class GoToWebinar implements INodeType {
 	methods = {
 		loadOptions: {
 			async getWebinars(this: ILoadOptionsFunctions) {
-				return loadWebinars.call(this);
+				return await loadWebinars.call(this);
 			},
 			async getAnswers(this: ILoadOptionsFunctions) {
-				return loadAnswers.call(this);
+				return await loadAnswers.call(this);
 			},
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
-				return loadWebinarSessions.call(this);
+				return await loadWebinarSessions.call(this);
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -137,12 +135,12 @@ export class GoToWebinar implements INodeType {
 			async getRegistranSimpleQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return loadRegistranSimpleQuestions.call(this);
+				return await loadRegistranSimpleQuestions.call(this);
 			},
 			async getRegistranMultiChoiceQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return loadRegistranMultiChoiceQuestions.call(this);
+				return await loadRegistranMultiChoiceQuestions.call(this);
 			},
 		},
 	};
@@ -156,9 +154,9 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
 
-		const { oauthTokenData } = (await this.getCredentials('goToWebinarOAuth2Api')) as {
+		const { oauthTokenData } = await this.getCredentials<{
 			oauthTokenData: { account_key: string; organizer_key: string };
-		};
+		}>('goToWebinarOAuth2Api');
 
 		const accountKey = oauthTokenData.account_key;
 		const organizerKey = oauthTokenData.organizer_key;
@@ -652,6 +650,6 @@ export class GoToWebinar implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

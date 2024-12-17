@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -8,11 +6,11 @@ import type {
 	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
-	JsonObject,
+	IHttpRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import { query } from './Queries';
 
@@ -23,21 +21,45 @@ export async function linearApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	const endpoint = 'https://api.linear.app/graphql';
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken') as string;
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method: 'POST',
 		body,
-		uri: endpoint,
+		url: endpoint,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'linearApi', options);
+		const response = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api',
+			options,
+		);
+
+		if (response.errors) {
+			throw new NodeApiError(this.getNode(), response.errors, {
+				message: response.errors[0].message,
+			});
+		}
+
+		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: error.errorResponse
+					? error.errorResponse[0].message
+					: error.context.data.errors[0].message,
+				description: error.errorResponse
+					? error.errorResponse[0].extensions.userPresentableMessage
+					: error.context.data.errors[0].extensions.userPresentableMessage,
+			},
+		);
 	}
 }
 
@@ -48,20 +70,30 @@ export function capitalizeFirstLetter(data: string) {
 export async function linearApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-
 	body: any = {},
+	limit?: number,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	body.variables.first = 50;
+	body.variables.first = limit && limit < 50 ? limit : 50;
 	body.variables.after = null;
+
+	const propertyPath = propertyName.split('.');
+	const nodesPath = [...propertyPath, 'nodes'];
+	const endCursorPath = [...propertyPath, 'pageInfo', 'endCursor'];
+	const hasNextPagePath = [...propertyPath, 'pageInfo', 'hasNextPage'];
 
 	do {
 		responseData = await linearApiRequest.call(this, body);
-		returnData.push.apply(returnData, get(responseData, `${propertyName}.nodes`) as IDataObject[]);
-		body.variables.after = get(responseData, `${propertyName}.pageInfo.endCursor`);
-	} while (get(responseData, `${propertyName}.pageInfo.hasNextPage`));
+		const nodes = get(responseData, nodesPath) as IDataObject[];
+		returnData.push(...nodes);
+		body.variables.after = get(responseData, endCursorPath);
+		if (limit && returnData.length >= limit) {
+			return returnData;
+		}
+	} while (get(responseData, hasNextPagePath));
+
 	return returnData;
 }
 
@@ -71,7 +103,7 @@ export async function validateCredentials(
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: credentials.apiKey,
@@ -83,11 +115,11 @@ export async function validateCredentials(
 				first: 1,
 			},
 		},
-		uri: 'https://api.linear.app/graphql',
+		url: 'https://api.linear.app/graphql',
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 //@ts-ignore

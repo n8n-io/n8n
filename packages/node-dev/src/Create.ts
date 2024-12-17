@@ -1,12 +1,6 @@
-import * as fs from 'fs';
+import { copyFile } from 'fs/promises';
 import type { ReplaceInFileConfig } from 'replace-in-file';
 import { replaceInFile } from 'replace-in-file';
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { promisify } = require('util');
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-const fsCopyFile = promisify(fs.copyFile);
 
 /**
  * Creates a new credentials or node
@@ -21,8 +15,8 @@ export async function createTemplate(
 	replaceValues: object,
 ): Promise<void> {
 	// Copy the file to then replace the values in it
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-	await fsCopyFile(sourceFilePath, destinationFilePath);
+
+	await copyFile(sourceFilePath, destinationFilePath);
 
 	// Replace the variables in the template file
 	const options: ReplaceInFileConfig = {

@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { conditionFields } from './ConditionDescription';
@@ -27,7 +27,7 @@ export class ZendeskTrigger implements INodeType {
 			name: 'Zendesk Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'zendeskApi',
@@ -101,7 +101,7 @@ export class ZendeskTrigger implements INodeType {
 						displayName: 'Field Names or IDs',
 						name: 'fields',
 						description:
-							'The fields to return the values of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The fields to return the values of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 						type: 'multiOptions',
 						default: [],
 						typeOptions: {
@@ -109,7 +109,7 @@ export class ZendeskTrigger implements INodeType {
 						},
 					},
 				],
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 			},
 			{
 				displayName: 'Conditions',
@@ -144,7 +144,7 @@ export class ZendeskTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the fields to display them to user so that he can
+			// Get all the fields to display them to user so that they can
 			// select them easily
 			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = triggerPlaceholders;
@@ -177,7 +177,7 @@ export class ZendeskTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -192,7 +192,7 @@ export class ZendeskTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

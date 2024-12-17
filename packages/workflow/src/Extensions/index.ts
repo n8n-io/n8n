@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-cycle
 export {
 	extend,
 	extendOptional,
@@ -8,4 +7,10 @@ export {
 	EXTENSION_OBJECTS as ExpressionExtensions,
 } from './ExpressionExtension';
 
-export type { DocMetadata } from './Extensions';
+export type {
+	DocMetadata,
+	NativeDoc,
+	Extension,
+	DocMetadataArgument,
+	DocMetadataExample,
+} from './Extensions';

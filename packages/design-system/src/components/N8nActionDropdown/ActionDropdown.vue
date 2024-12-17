@@ -1,140 +1,183 @@
-<template>
-	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown
-			:placement="placement"
-			:trigger="trigger"
-			@command="onSelect"
-			ref="elementDropdown"
-		>
-			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
-				<n8n-icon :icon="activatorIcon" />
-			</div>
-			<template #dropdown>
-				<el-dropdown-menu :class="$style.userActionsMenu">
-					<el-dropdown-item
-						v-for="item in items"
-						:key="item.id"
-						:command="item.id"
-						:disabled="item.disabled"
-						:divided="item.divided"
-					>
-						<div
-							:class="{
-								[$style.itemContainer]: true,
-								[$style.hasCustomStyling]: item.customClass !== undefined,
-								[item.customClass]: item.customClass !== undefined,
-							}"
-							:data-test-id="`workflow-menu-item-${item.id}`"
-						>
-							<span v-if="item.icon" :class="$style.icon">
-								<n8n-icon :icon="item.icon" :size="iconSize" />
-							</span>
-							<span :class="$style.label">
-								{{ item.label }}
-							</span>
-						</div>
-					</el-dropdown-item>
-				</el-dropdown-menu>
-			</template>
-		</el-dropdown>
-	</div>
-</template>
-
-<script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
-	Dropdown as ElDropdown,
-	DropdownMenu as ElDropdownMenu,
-	DropdownItem as ElDropdownItem,
-} from 'element-ui';
-import N8nIcon from '../N8nIcon';
-
-interface IActionDropdownItem {
-	id: string;
-	label: string;
-	icon?: string;
-	divided?: boolean;
-	disabled?: boolean;
-	customClass?: string;
-}
-
+<script lang="ts" setup>
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
 // (supports icons, separators, custom styling and all options provided
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
-	name: 'n8n-action-dropdown',
-	components: {
-		ElDropdown,
-		ElDropdownMenu,
-		ElDropdownItem,
-		N8nIcon,
-	},
-	props: {
-		items: {
-			type: Array as PropType<IActionDropdownItem[]>,
-			required: true,
-		},
-		placement: {
-			type: String,
-			default: 'bottom',
-			validator: (value: string): boolean =>
-				['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'].includes(value),
-		},
-		activatorIcon: {
-			type: String,
-			default: 'ellipsis-v',
-		},
-		iconSize: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean => ['small', 'medium', 'large'].includes(value),
-		},
-		trigger: {
-			type: String,
-			default: 'click',
-			validator: (value: string): boolean => ['click', 'hover'].includes(value),
-		},
-	},
-	methods: {
-		onSelect(action: string): void {
-			this.$emit('select', action);
-		},
-		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as
-				| (Vue & { hide: () => void })
-				| undefined;
-			// Hide dropdown when clicking outside of current document
-			if (elementDropdown && event.relatedTarget === null) {
-				elementDropdown.hide();
-			}
-		},
-	},
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
+import { ref, useCssModule, useAttrs, computed } from 'vue';
+
+import type { IconSize } from 'n8n-design-system/types/icon';
+
+import type { ActionDropdownItem } from '../../types';
+import N8nIcon from '../N8nIcon';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+
+const TRIGGER = ['click', 'hover'] as const;
+
+interface ActionDropdownProps {
+	items: ActionDropdownItem[];
+	placement?: Placement;
+	activatorIcon?: string;
+	activatorSize?: IconSize;
+	iconSize?: IconSize;
+	trigger?: (typeof TRIGGER)[number];
+	hideArrow?: boolean;
+	teleported?: boolean;
+	disabled?: boolean;
+}
+
+const props = withDefaults(defineProps<ActionDropdownProps>(), {
+	placement: 'bottom',
+	activatorIcon: 'ellipsis-h',
+	activatorSize: 'medium',
+	iconSize: 'medium',
+	trigger: 'click',
+	hideArrow: false,
+	teleported: true,
+	disabled: false,
 });
+
+const attrs = useAttrs();
+const testIdPrefix = attrs['data-test-id'];
+
+const $style = useCssModule();
+const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
+	return {
+		[$style.itemContainer]: true,
+		[$style.disabled]: !!item.disabled,
+		[$style.hasCustomStyling]: item.customClass !== undefined,
+		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+	};
+};
+
+const emit = defineEmits<{
+	select: [action: string];
+	visibleChange: [open: boolean];
+}>();
+const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
+
+const popperClass = computed(
+	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
+);
+
+const onSelect = (action: string) => emit('select', action);
+const onVisibleChange = (open: boolean) => emit('visibleChange', open);
+
+const onButtonBlur = (event: FocusEvent) => {
+	// Hide dropdown when clicking outside of current document
+	if (elementDropdown.value?.handleClose && event.relatedTarget === null) {
+		elementDropdown.value.handleClose();
+	}
+};
+
+const open = () => elementDropdown.value?.handleOpen();
+const close = () => elementDropdown.value?.handleClose();
+defineExpose({ open, close });
 </script>
 
-<style lang="scss" module>
-.activator {
-	cursor: pointer;
-	padding: var(--spacing-2xs);
-	margin: 0;
-	border-radius: var(--border-radius-base);
-	line-height: normal !important;
+<template>
+	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
+		<ElDropdown
+			ref="elementDropdown"
+			:placement="placement"
+			:trigger="trigger"
+			:popper-class="popperClass"
+			:teleported="teleported"
+			:disabled="disabled"
+			@command="onSelect"
+			@visible-change="onVisibleChange"
+		>
+			<slot v-if="$slots.activator" name="activator" />
+			<n8n-icon-button
+				v-else
+				type="tertiary"
+				text
+				:class="$style.activator"
+				:size="activatorSize"
+				:icon="activatorIcon"
+				@blur="onButtonBlur"
+			/>
 
-	svg {
-		position: static !important;
+			<template #dropdown>
+				<ElDropdownMenu :class="$style.userActionsMenu">
+					<ElDropdownItem
+						v-for="item in items"
+						:key="item.id"
+						:command="item.id"
+						:disabled="item.disabled"
+						:divided="item.divided"
+						:class="$style.elementItem"
+					>
+						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
+							<span v-if="item.icon" :class="$style.icon">
+								<N8nIcon :icon="item.icon" :size="iconSize" />
+							</span>
+							<span :class="$style.label">
+								{{ item.label }}
+							</span>
+							<span v-if="item.badge">
+								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
+									{{ item.badge }}
+								</N8nBadge>
+							</span>
+							<N8nKeyboardShortcut
+								v-if="item.shortcut"
+								v-bind="item.shortcut"
+								:class="$style.shortcut"
+							>
+							</N8nKeyboardShortcut>
+						</div>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+			</template>
+		</ElDropdown>
+	</div>
+</template>
+
+<style lang="scss" module>
+:global(.el-dropdown__list) {
+	.userActionsMenu {
+		min-width: 160px;
+		padding: var(--spacing-4xs) 0;
 	}
 
+	.elementItem {
+		padding: 0;
+	}
+}
+
+:global(.el-popper).hideArrow {
+	:global(.el-popper__arrow) {
+		display: none;
+	}
+}
+
+.shadow {
+	box-shadow: var(--box-shadow-light);
+}
+
+.activator {
 	&:hover {
 		background-color: var(--color-background-base);
-		color: initial !important;
 	}
 }
 
 .itemContainer {
 	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
+	justify-content: space-between;
+	font-size: var(--font-size-2xs);
+	line-height: 18px;
+	padding: var(--spacing-3xs) var(--spacing-2xs);
+
+	&.disabled {
+		.shortcut {
+			opacity: 0.3;
+		}
+	}
 }
 
 .icon {
@@ -144,6 +187,10 @@ export default Vue.extend({
 	svg {
 		width: 1.2em !important;
 	}
+}
+
+.shortcut {
+	display: flex;
 }
 
 :global(li.is-disabled) {

@@ -67,7 +67,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization for which the teams should be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization for which the teams should be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -120,7 +120,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -139,7 +139,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the team to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the team to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -161,7 +161,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -220,7 +220,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -239,7 +239,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the team to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the team to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -290,7 +290,7 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the team belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -309,6 +309,6 @@ export const teamFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the team to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the team to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 ];

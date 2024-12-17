@@ -1,14 +1,15 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { configOperations } from './ConfigDescription';
@@ -45,8 +46,8 @@ export class HomeAssistant implements INodeType {
 		defaults: {
 			name: 'Home Assistant',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'homeAssistantApi',
@@ -158,18 +159,18 @@ export class HomeAssistant implements INodeType {
 
 		loadOptions: {
 			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getHomeAssistantEntities.call(this);
+				return await getHomeAssistantEntities.call(this);
 			},
 			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getHomeAssistantEntities.call(this, 'camera');
+				return await getHomeAssistantEntities.call(this, 'camera');
 			},
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getHomeAssistantServices.call(this);
+				return await getHomeAssistantServices.call(this);
 			},
 			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const currentDomain = this.getCurrentNodeParameter('domain') as string;
 				if (currentDomain) {
-					return getHomeAssistantServices.call(this, currentDomain);
+					return await getHomeAssistantServices.call(this, currentDomain);
 				} else {
 					return [];
 				}
@@ -459,9 +460,9 @@ export class HomeAssistant implements INodeType {
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

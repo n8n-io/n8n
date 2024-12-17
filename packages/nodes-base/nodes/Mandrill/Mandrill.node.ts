@@ -8,8 +8,12 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+
+import map from 'lodash/map';
+import isEmpty from 'lodash/isEmpty';
 import {
 	getGoogleAnalyticsDomainsArray,
 	getTags,
@@ -17,11 +21,6 @@ import {
 	mandrillApiRequest,
 	validateJSON,
 } from './GenericFunctions';
-
-import moment from 'moment';
-
-import map from 'lodash.map';
-import isEmpty from 'lodash.isempty';
 
 interface Attachments {
 	type: string;
@@ -107,8 +106,8 @@ export class Mandrill implements INodeType {
 		defaults: {
 			name: 'Mandrill',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mandrillApi',
@@ -172,7 +171,7 @@ export class Mandrill implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -217,7 +216,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -685,7 +684,7 @@ export class Mandrill implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available templates to display them to user so that he can
+			// Get all the available templates to display them to user so that they can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -903,6 +902,6 @@ export class Mandrill implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

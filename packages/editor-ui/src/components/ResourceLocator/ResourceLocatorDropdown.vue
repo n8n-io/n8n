@@ -1,73 +1,293 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { N8nLoading } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { NodeParameterValue } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+const SEARCH_BAR_HEIGHT_PX = 40;
+const SCROLL_MARGIN_PX = 10;
+
+type Props = {
+	modelValue?: NodeParameterValue;
+	resources?: IResourceLocatorResultExpanded[];
+	show?: boolean;
+	filterable?: boolean;
+	loading?: boolean;
+	filter?: string;
+	hasMore?: boolean;
+	errorView?: boolean;
+	filterRequired?: boolean;
+	width?: number;
+	eventBus?: EventBus;
+	allowNewResources?: {
+		label?: string;
+	};
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: undefined,
+	resources: () => [],
+	show: false,
+	filterable: false,
+	loading: false,
+	filter: '',
+	hasMore: false,
+	errorView: false,
+	filterRequired: false,
+	width: undefined,
+	allowNewResources: () => ({}),
+	eventBus: () => createEventBus(),
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: NodeParameterValue];
+	loadMore: [];
+	filter: [filter: string];
+	addResourceClick: [];
+}>();
+
+const i18n = useI18n();
+
+const hoverIndex = ref(0);
+const showHoverUrl = ref(false);
+const searchRef = ref<HTMLInputElement>();
+const resultsContainerRef = ref<HTMLDivElement>();
+const itemsRef = ref<HTMLDivElement[]>([]);
+
+const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
+	const seen = new Set();
+	const { selected, notSelected } = props.resources.reduce(
+		(acc, item: IResourceLocatorResultExpanded) => {
+			if (seen.has(item.value)) {
+				return acc;
+			}
+			seen.add(item.value);
+
+			if (props.modelValue && item.value === props.modelValue) {
+				acc.selected = item;
+			} else {
+				acc.notSelected.push(item);
+			}
+
+			return acc;
+		},
+		{
+			selected: null as IResourceLocatorResultExpanded | null,
+			notSelected: [] as IResourceLocatorResultExpanded[],
+		},
+	);
+
+	if (selected) {
+		return [selected, ...notSelected];
+	}
+
+	return notSelected;
+});
+
+watch(
+	() => props.show,
+	(value) => {
+		if (value) {
+			hoverIndex.value = 0;
+			showHoverUrl.value = false;
+
+			setTimeout(() => {
+				if (value && props.filterable && searchRef.value) {
+					searchRef.value.focus();
+				}
+			}, 0);
+		}
+	},
+);
+
+watch(
+	() => props.loading,
+	() => {
+		setTimeout(() => onResultsEnd(), 0); // in case of filtering
+	},
+);
+onMounted(() => {
+	props.eventBus.on('keyDown', onKeyDown);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus.off('keyDown', onKeyDown);
+});
+
+function openUrl(event: MouseEvent, url: string) {
+	event.preventDefault();
+	event.stopPropagation();
+
+	window.open(url, '_blank');
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'ArrowDown') {
+		if (hoverIndex.value < sortedResources.value.length - 1) {
+			hoverIndex.value++;
+
+			if (resultsContainerRef.value && itemsRef.value.length === 1) {
+				const item = itemsRef.value[0];
+				if (
+					item.offsetTop + item.clientHeight >
+					resultsContainerRef.value.scrollTop + resultsContainerRef.value.offsetHeight
+				) {
+					const top = item.offsetTop - resultsContainerRef.value.offsetHeight + item.clientHeight;
+					resultsContainerRef.value.scrollTo({ top });
+				}
+			}
+		}
+	} else if (e.key === 'ArrowUp') {
+		if (hoverIndex.value > 0) {
+			hoverIndex.value--;
+
+			const searchOffset = props.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
+			if (resultsContainerRef.value && itemsRef.value.length === 1) {
+				const item = itemsRef.value[0];
+				if (item.offsetTop <= resultsContainerRef.value.scrollTop + searchOffset) {
+					resultsContainerRef.value.scrollTo({ top: item.offsetTop - searchOffset });
+				}
+			}
+		}
+	} else if (e.key === 'Enter') {
+		const selected = sortedResources.value[hoverIndex.value]?.value;
+
+		// Selected resource can be empty when loading or empty results
+		if (selected) {
+			emit('update:modelValue', selected);
+		}
+	}
+}
+
+function onFilterInput(value: string) {
+	emit('filter', value);
+}
+
+function onItemClick(selected: string | number | boolean) {
+	emit('update:modelValue', selected);
+}
+
+function onItemHover(index: number) {
+	hoverIndex.value = index;
+
+	setTimeout(() => {
+		if (hoverIndex.value === index) {
+			showHoverUrl.value = true;
+		}
+	}, 250);
+}
+
+function onItemHoverLeave() {
+	showHoverUrl.value = false;
+}
+
+function onResultsEnd() {
+	if (props.loading || !props.loading) {
+		return;
+	}
+
+	if (resultsContainerRef.value) {
+		const diff =
+			resultsContainerRef.value.offsetHeight -
+			(resultsContainerRef.value.scrollHeight - resultsContainerRef.value.scrollTop);
+		if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
+			emit('loadMore');
+		}
+	}
+}
+</script>
+
 <template>
 	<n8n-popover
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
-		trigger="manual"
-		v-click-outside="onClickOutside"
+		:visible="show"
+		:teleported="false"
+		data-test-id="resource-locator-dropdown"
 	>
-		<div :class="$style.messageContainer" v-if="errorView">
+		<div v-if="errorView" :class="$style.messageContainer">
 			<slot name="error"></slot>
 		</div>
-		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
-			<n8n-input
-				size="medium"
-				:value="filter"
+		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
+			<N8nInput
+				ref="searchRef"
+				:model-value="filter"
 				:clearable="true"
-				@input="onFilterInput"
-				ref="search"
-				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				:placeholder="i18n.baseText('resourceLocator.search.placeholder')"
+				data-test-id="rlc-search"
+				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
 				</template>
-			</n8n-input>
+			</N8nInput>
 		</div>
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
-			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
+			{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
+			v-else-if="!errorView && !allowNewResources.label && sortedResources.length === 0 && !loading"
 			:class="$style.messageContainer"
-			v-else-if="!errorView && sortedResources.length === 0 && !loading"
 		>
-			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
+			{{ i18n.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
 		<div
 			v-else-if="!errorView"
-			ref="resultsContainer"
+			ref="resultsContainerRef"
 			:class="$style.container"
 			@scroll="onResultsEnd"
 		>
 			<div
-				v-for="(result, i) in sortedResources"
-				:key="result.value"
+				v-if="allowNewResources.label"
+				key="addResourceKey"
+				ref="itemsRef"
+				data-test-id="rlc-item"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
-					[$style.hovering]: hoverIndex === i,
+					[$style.hovering]: hoverIndex === 0,
 				}"
-				class="ph-no-capture"
-				@click="() => onItemClick(result.value)"
-				@mouseenter="() => onItemHover(i)"
+				@mouseenter="() => onItemHover(0)"
 				@mouseleave="() => onItemHoverLeave()"
-				:ref="`item-${i}`"
+				@click="() => emit('addResourceClick')"
+			>
+				<div :class="$style.resourceNameContainer">
+					<span :class="$style.addResourceText">{{ allowNewResources.label }}</span>
+					<font-awesome-icon :class="$style.addResourceIcon" :icon="['fa', 'plus']" />
+				</div>
+			</div>
+			<div
+				v-for="(result, i) in sortedResources"
+				:key="result.value.toString()"
+				ref="itemsRef"
+				:class="{
+					[$style.resourceItem]: true,
+					[$style.selected]: result.value === modelValue,
+					[$style.hovering]: hoverIndex === i + 1,
+				}"
+				data-test-id="rlc-item"
+				@click="() => onItemClick(result.value)"
+				@mouseenter="() => onItemHover(i + 1)"
+				@mouseleave="() => onItemHoverLeave()"
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
-						v-if="showHoverUrl && result.url && hoverIndex === i"
+						v-if="showHoverUrl && result.url && hoverIndex === i + 1"
 						icon="external-link-alt"
-						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
+						:title="result.linkAlt || i18n.baseText('resourceLocator.mode.list.openUrl')"
 						@click="openUrl($event, result.url)"
 					/>
 				</div>
 			</div>
 			<div v-if="loading && !errorView">
 				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
-					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+					<N8nLoading :class="$style.loader" variant="p" :rows="1" />
 				</div>
 			</div>
 		</div>
@@ -77,186 +297,10 @@
 	</n8n-popover>
 </template>
 
-<script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
-
-const SEARCH_BAR_HEIGHT_PX = 40;
-const SCROLL_MARGIN_PX = 10;
-
-export default Vue.extend({
-	name: 'resource-locator-dropdown',
-	props: {
-		value: {
-			type: [String, Number],
-		},
-		show: {
-			type: Boolean,
-			default: false,
-		},
-		resources: {
-			type: Array as PropType<IResourceLocatorResultExpanded[]>,
-		},
-		filterable: {
-			type: Boolean,
-		},
-		loading: {
-			type: Boolean,
-		},
-		filter: {
-			type: String,
-		},
-		hasMore: {
-			type: Boolean,
-		},
-		errorView: {
-			type: Boolean,
-		},
-		filterRequired: {
-			type: Boolean,
-		},
-		width: {
-			type: Number,
-		},
-	},
-	data() {
-		return {
-			hoverIndex: 0,
-			showHoverUrl: false,
-		};
-	},
-	mounted() {
-		this.$on('keyDown', this.onKeyDown);
-	},
-	computed: {
-		sortedResources(): IResourceLocatorResultExpanded[] {
-			const seen = new Set();
-			const { selected, notSelected } = this.resources.reduce(
-				(acc, item: IResourceLocatorResultExpanded) => {
-					if (seen.has(item.value)) {
-						return acc;
-					}
-					seen.add(item.value);
-
-					if (this.value && item.value === this.value) {
-						acc.selected = item;
-					} else {
-						acc.notSelected.push(item);
-					}
-
-					return acc;
-				},
-				{
-					selected: null as IResourceLocatorResultExpanded | null,
-					notSelected: [] as IResourceLocatorResultExpanded[],
-				},
-			);
-
-			if (selected) {
-				return [selected, ...notSelected];
-			}
-
-			return notSelected;
-		},
-	},
-	methods: {
-		openUrl(event: MouseEvent, url: string) {
-			event.preventDefault();
-			event.stopPropagation();
-
-			window.open(url, '_blank');
-		},
-		onKeyDown(e: KeyboardEvent) {
-			const container = this.$refs.resultsContainer as HTMLElement;
-
-			if (e.key === 'ArrowDown') {
-				if (this.hoverIndex < this.sortedResources.length - 1) {
-					this.hoverIndex++;
-
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop + item.clientHeight > container.scrollTop + container.offsetHeight) {
-							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
-							container.scrollTo({ top });
-						}
-					}
-				}
-			} else if (e.key === 'ArrowUp') {
-				if (this.hoverIndex > 0) {
-					this.hoverIndex--;
-
-					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop <= container.scrollTop + searchOffset) {
-							container.scrollTo({ top: item.offsetTop - searchOffset });
-						}
-					}
-				}
-			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
-			}
-		},
-		onFilterInput(value: string) {
-			this.$emit('filter', value);
-		},
-		onClickOutside() {
-			this.$emit('hide');
-		},
-		onItemClick(selected: string) {
-			this.$emit('input', selected);
-		},
-		onItemHover(index: number) {
-			this.hoverIndex = index;
-
-			setTimeout(() => {
-				if (this.hoverIndex === index) {
-					this.showHoverUrl = true;
-				}
-			}, 250);
-		},
-		onItemHoverLeave() {
-			this.showHoverUrl = false;
-		},
-		onResultsEnd() {
-			if (this.loading || !this.hasMore) {
-				return;
-			}
-
-			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container) {
-				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
-				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
-					this.$emit('loadMore');
-				}
-			}
-		},
-	},
-	watch: {
-		show(toShow) {
-			if (toShow) {
-				this.hoverIndex = 0;
-				this.showHoverUrl = false;
-			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
-		},
-		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
-		},
-	},
-});
-</script>
-
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));
@@ -362,5 +406,15 @@ export default Vue.extend({
 
 .searchIcon {
 	color: var(--color-text-light);
+}
+
+.addResourceText {
+	font-weight: bold;
+}
+
+.addResourceIcon {
+	color: var(--color-text-light);
+
+	margin-left: var(--spacing-2xs);
 }
 </style>

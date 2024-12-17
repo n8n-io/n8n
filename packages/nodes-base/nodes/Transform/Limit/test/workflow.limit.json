@@ -1,0 +1,97 @@
+{
+	"name": "itemLists test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "bd7af0bb-de39-44b4-ac11-eb1d22f5e8d7",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 180]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {entry: 1},\n  {entry: 2},\n  {entry: 3},\n  {entry: 4},\n  {entry: 5},\n];"
+			},
+			"id": "21185d7a-f0c1-49a0-9c2d-f0f198ceea7e",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [520, 180]
+		},
+		{
+			"parameters": {
+				"maxItems": 1
+			},
+			"id": "7cc02cc4-1f5f-489a-81e2-4c96b3bdf221",
+			"name": "Item Lists limit first",
+			"type": "n8n-nodes-base.limit",
+			"typeVersion": 1,
+			"position": [740, 80]
+		},
+		{
+			"parameters": {
+				"keep": "lastItems",
+				"maxItems": 1
+			},
+			"id": "2bf79d53-7a0b-4716-aa09-55ad43d306ae",
+			"name": "Item Lists limit last",
+			"type": "n8n-nodes-base.limit",
+			"typeVersion": 1,
+			"position": [740, 300]
+		}
+	],
+	"pinData": {
+		"Item Lists limit first": [
+			{
+				"json": {
+					"entry": 1
+				}
+			}
+		],
+		"Item Lists limit last": [
+			{
+				"json": {
+					"entry": 5
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Item Lists limit first",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists limit last",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "5036d554-1ba4-4b5f-ba9f-1de6df09e807",
+	"id": "105",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

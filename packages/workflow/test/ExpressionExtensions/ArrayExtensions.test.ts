@@ -3,6 +3,7 @@
  */
 
 import { evaluate } from './Helpers';
+import { arrayExtensions } from '../../src/Extensions/ArrayExtensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
@@ -25,9 +26,7 @@ describe('Data Transformation Functions', () => {
 				{ value: 6, string: '6' },
 				{ value: { something: 'else' } }
 			].pluck("value") }}`),
-			).toEqual(
-				expect.arrayContaining([1, 2, 3, 4, 5, 6, { something: 'else' }]),
-			);
+			).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6, { something: 'else' }]));
 		});
 
 		test('.pluck() should work correctly for multiple values', () => {
@@ -50,7 +49,10 @@ describe('Data Transformation Functions', () => {
 					}
 			].pluck("firstName", "lastName") }}`),
 			).toEqual(
-				expect.arrayContaining([["John", "Doe"],["Jane", "Doe"]]),
+				expect.arrayContaining([
+					['John', 'Doe'],
+					['Jane', 'Doe'],
+				]),
 			);
 		});
 
@@ -73,7 +75,7 @@ describe('Data Transformation Functions', () => {
 					{ value: 4, string: '4' },
 					{ value: 5, string: '5' },
 					{ value: 6, string: '6' },
-					{ value: { something: 'else' } }
+					{ value: { something: 'else' } },
 				]),
 			);
 		});
@@ -86,10 +88,19 @@ describe('Data Transformation Functions', () => {
 
 		test('.unique() should work on an arrays containing nulls, objects and arrays', () => {
 			expect(
+				evaluate('={{ [1, 2, 3, "as", {}, {}, 1, 2, [1,2], "[sad]", "[sad]", null].unique() }}'),
+			).toEqual([1, 2, 3, 'as', {}, [1, 2], '[sad]', null]);
+		});
+
+		test('.unique() should work on an arrays of objects', () => {
+			expect(
 				evaluate(
-					'={{ [1, 2, 3, "as", {}, {}, 1, 2, [1,2], "[sad]", "[sad]", null].unique() }}',
+					"={{ [{'name':'Nathan', age:42}, {'name':'Jan', age:16}, {'name':'Nathan', age:21}].unique('name') }}",
 				),
-			).toEqual([1, 2, 3, "as", {}, [1,2], "[sad]", null]);
+			).toEqual([
+				{ name: 'Nathan', age: 42 },
+				{ name: 'Jan', age: 16 },
+			]);
 		});
 
 		test('.isEmpty() should work correctly on an array', () => {
@@ -113,7 +124,7 @@ describe('Data Transformation Functions', () => {
 				evaluate(
 					'={{ [{ test1: 1, test2: 2 }, { test1: 1, test3: 3 }].merge([{ test1: 2, test3: 3 }, { test4: 4 }]) }}',
 				),
-			).toEqual({"test1": 1, "test2": 2, "test3": 3, "test4": 4});
+			).toEqual({ test1: 1, test2: 2, test3: 3, test4: 4 });
 		});
 
 		test('.merge() should work correctly without arguments', () => {
@@ -121,7 +132,7 @@ describe('Data Transformation Functions', () => {
 				evaluate(
 					'={{ [{ a: 1, some: null }, { a: 2, c: "something" }, 2, "asds", { b: 23 }, null, [1, 2]].merge() }}',
 				),
-			).toEqual({"a": 1, "some": null, "c": "something", "b": 23});
+			).toEqual({ a: 1, some: null, c: 'something', b: 23 });
 		});
 
 		test('.smartJoin() should work correctly on an array of objects', () => {
@@ -175,11 +186,14 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.union() should work on an arrays containing nulls, objects and arrays', () => {
-			expect(
-				evaluate(
-					'={{ [1, 2, "dd", {}, null].union([1, {}, null, 3]) }}',
-				),
-			).toEqual([1, 2, "dd", {}, null, 3]);
+			expect(evaluate('={{ [1, 2, "dd", {}, null].union([1, {}, null, 3]) }}')).toEqual([
+				1,
+				2,
+				'dd',
+				{},
+				null,
+				3,
+			]);
 		});
 
 		test('.intersection() should work on an array of objects', () => {
@@ -191,11 +205,11 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.intersection() should work on an arrays containing nulls, objects and arrays', () => {
-			expect(
-				evaluate(
-					'={{ [1, 2, "dd", {}, null].intersection([1, {}, null]) }}',
-				),
-			).toEqual([1, {}, null]);
+			expect(evaluate('={{ [1, 2, "dd", {}, null].intersection([1, {}, null]) }}')).toEqual([
+				1,
+				{},
+				null,
+			]);
 		});
 
 		test('.difference() should work on an array of objects', () => {
@@ -212,10 +226,8 @@ describe('Data Transformation Functions', () => {
 
 		test('.difference() should work on an arrays containing nulls, objects and arrays', () => {
 			expect(
-				evaluate(
-					'={{ [1, 2, "dd", {}, null, ["a", 1]].difference([1, {}, null, ["a", 1]]) }}',
-				),
-			).toEqual([2, "dd"]);
+				evaluate('={{ [1, 2, "dd", {}, null, ["a", 1]].difference([1, {}, null, ["a", 1]]) }}'),
+			).toEqual([2, 'dd']);
 		});
 
 		test('.compact() should work on an array', () => {
@@ -233,6 +245,32 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
+		});
+
+		test('.toJsonString() should work on an array', () => {
+			expect(evaluate('={{ [true, 1, "one", {foo: "bar"}].toJsonString() }}')).toEqual(
+				'[true,1,"one",{"foo":"bar"}]',
+			);
+		});
+
+		test('.append() should work on an array', () => {
+			expect(evaluate('={{ [1,2,3].append(4,5,"done") }}')).toEqual([1, 2, 3, 4, 5, 'done']);
+		});
+
+		describe('Conversion methods', () => {
+			test('should exist but return undefined (to not break expressions with mixed data)', () => {
+				expect(evaluate('={{ numberList(1, 20).toInt() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toFloat() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toBoolean() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toDateTime() }}')).toBeUndefined();
+			});
+
+			test('should not have a doc (hidden from autocomplete)', () => {
+				expect(arrayExtensions.functions.toInt.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toFloat.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toBoolean.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toDateTime.doc).toBeUndefined();
+			});
 		});
 	});
 });

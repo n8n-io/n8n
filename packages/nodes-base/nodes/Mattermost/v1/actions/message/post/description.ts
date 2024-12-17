@@ -18,7 +18,7 @@ export const messagePostDescription: MessageProperties = [
 			},
 		},
 		description:
-			'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Message',
@@ -113,7 +113,7 @@ export const messagePostDescription: MessageProperties = [
 							{
 								displayName: 'Options',
 								name: 'options',
-								placeholder: 'Add Option',
+								placeholder: 'Add option',
 								description: 'Adds a new option to select field',
 								type: 'fixedCollection',
 								typeOptions: {
@@ -367,7 +367,7 @@ export const messagePostDescription: MessageProperties = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Make Comment',

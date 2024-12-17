@@ -1,75 +1,73 @@
-<template>
-	<fragment></fragment>
-</template>
+<script lang="ts" setup>
+import type { ITelemetrySettings } from '@n8n/api-types';
+import { useRootStore } from '@/stores/root.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { computed, onMounted, watch, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useRoute } from 'vue-router';
 
-<script lang="ts">
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { ITelemetrySettings } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import { externalHooks } from '@/mixins/externalHooks';
+const isTelemetryInitialized = ref(false);
 
-export default mixins(externalHooks).extend({
-	name: 'Telemetry',
-	data() {
-		return {
-			isTelemetryInitialized: false,
-		};
-	},
-	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUsersStore),
-		currentUserId(): string {
-			return this.usersStore.currentUserId || '';
-		},
-		isTelemetryEnabledOnRoute(): boolean {
-			return this.$route.meta && this.$route.meta.telemetry
-				? !this.$route.meta.telemetry.disabled
-				: true;
-		},
-		telemetry(): ITelemetrySettings {
-			return this.settingsStore.telemetry;
-		},
-		isTelemetryEnabled(): boolean {
-			return !!this.telemetry?.enabled;
-		},
-	},
-	mounted() {
-		this.init();
-	},
-	methods: {
-		init() {
-			if (
-				this.isTelemetryInitialized ||
-				!this.isTelemetryEnabledOnRoute ||
-				!this.isTelemetryEnabled
-			)
-				return;
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
+const projectsStore = useProjectsStore();
+const telemetryPlugin = useTelemetry();
+const route = useRoute();
 
-			this.$telemetry.init(this.telemetry, {
-				instanceId: this.rootStore.instanceId,
-				userId: this.currentUserId,
-				versionCli: this.rootStore.versionCli,
-			});
-
-			this.isTelemetryInitialized = true;
-		},
-	},
-	watch: {
-		telemetry() {
-			this.init();
-		},
-		currentUserId(userId) {
-			if (this.isTelemetryEnabled) {
-				this.$telemetry.identify(this.rootStore.instanceId, userId);
-			}
-		},
-		isTelemetryEnabledOnRoute(enabled) {
-			if (enabled) {
-				this.init();
-			}
-		},
-	},
+const currentUserId = computed((): string => {
+	return usersStore.currentUserId ?? '';
 });
+
+const isTelemetryEnabledOnRoute = computed((): boolean => {
+	const routeMeta = route.meta as { telemetry?: { disabled?: boolean } } | undefined;
+	return routeMeta?.telemetry ? !routeMeta.telemetry.disabled : true;
+});
+
+const telemetry = computed((): ITelemetrySettings => {
+	return settingsStore.telemetry;
+});
+
+const isTelemetryEnabled = computed((): boolean => {
+	return !!telemetry.value?.enabled;
+});
+
+const selfInstallSrc = computed((): string => {
+	return `https://n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
+});
+
+watch(telemetry, () => {
+	init();
+});
+
+watch(isTelemetryEnabledOnRoute, (enabled) => {
+	if (enabled) {
+		init();
+	}
+});
+
+onMounted(() => {
+	init();
+});
+
+function init() {
+	if (isTelemetryInitialized.value || !isTelemetryEnabledOnRoute.value || !isTelemetryEnabled.value)
+		return;
+
+	telemetryPlugin.init(telemetry.value, {
+		instanceId: rootStore.instanceId,
+		userId: currentUserId.value,
+		projectId: projectsStore.personalProject?.id,
+		versionCli: rootStore.versionCli,
+	});
+
+	isTelemetryInitialized.value = true;
+}
 </script>
+
+<template>
+	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="false" :src="selfInstallSrc" />
+	<span v-else v-show="false" />
+</template>

@@ -1,13 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
-import { START_NODES } from './constants';
+
+import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
  */
 export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
+	// TODO: could also check if id only contains nanoId characters
+	return typeof id === 'string' && id?.length <= 16;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
@@ -18,7 +19,7 @@ function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 
 		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
 
-		const startNode = nodes.find((node) => START_NODES.includes(node.type));
+		const startNode = nodes.find((node) => STARTING_NODES.includes(node.type));
 
 		if (startNode) return startNode;
 
@@ -38,18 +39,6 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const alphabetizeKeys = (obj: INode) =>
-	Object.keys(obj)
-		.sort()
-		.reduce<Partial<INode>>(
-			(acc, key) => ({
-				...acc,
-				// @ts-expect-error @TECH_DEBT Adding index signature to INode causes type issues downstream
-				[key]: obj[key],
-			}),
-			{},
-		);
-
 export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	const pass: T[] = [];
 	const fail: T[] = [];
@@ -58,3 +47,50 @@ export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 
 	return [pass, fail];
 };
+
+export const toError = (maybeError: unknown) =>
+	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
+
+export function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+export const isIntegerString = (value: string) => /^\d+$/.test(value);
+
+export function isObjectLiteral(item: unknown): item is { [key: string]: unknown } {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
+
+export function removeTrailingSlash(path: string) {
+	return path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
+// return the difference between two arrays
+export function rightDiff<T1, T2>(
+	[arr1, keyExtractor1]: [T1[], (item: T1) => string],
+	[arr2, keyExtractor2]: [T2[], (item: T2) => string],
+): T2[] {
+	// create map { itemKey => true } for fast lookup for diff
+	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
+		map[keyExtractor1(item)] = true;
+		return map;
+	}, {});
+
+	// diff against map
+	return arr2.reduce<T2[]>((acc, item) => {
+		if (!keyMap[keyExtractor2(item)]) {
+			acc.push(item);
+		}
+		return acc;
+	}, []);
+}
+
+/**
+ * Asserts that the passed in type is never.
+ * Can be used to make sure the type is exhausted
+ * in switch statements or if/else chains.
+ */
+export const assertNever = (_value: never) => {};
+
+export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);

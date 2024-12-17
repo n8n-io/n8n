@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
 
 export class Rundeck implements INodeType {
@@ -21,8 +21,8 @@ export class Rundeck implements INodeType {
 		defaults: {
 			name: 'Rundeck',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'rundeckApi',
@@ -119,6 +119,20 @@ export class Rundeck implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['execute'],
+						resource: ['job'],
+					},
+				},
+				default: '',
+				placeholder: 'Add Filters',
+				description: 'Filter Rundeck nodes by name',
+			},
 
 			// ----------------------------------
 			//         job:getMetadata
@@ -161,7 +175,8 @@ export class Rundeck implements INodeType {
 					const jobid = this.getNodeParameter('jobid', i) as string;
 					const rundeckArguments = (this.getNodeParameter('arguments', i) as IDataObject)
 						.arguments as IDataObject[];
-					const response = await rundeckApi.executeJob(jobid, rundeckArguments);
+					const filter = this.getNodeParameter('filter', i) as string;
+					const response = await rundeckApi.executeJob(jobid, rundeckArguments, filter);
 
 					returnData.push(response);
 				} else if (operation === 'getMetadata') {

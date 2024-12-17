@@ -11,14 +11,12 @@ export interface IUser {
 	signInType: string;
 }
 
-export interface IUserListAction {
+export interface UserAction {
 	label: string;
 	value: string;
+	disabled: boolean;
+	type?: 'external-link';
 	guard?: (user: IUser) => boolean;
 }
 
-export interface IUserListAction {
-	label: string;
-	value: string;
-	guard?: (user: IUser) => boolean;
-}
+export type UserStackGroups = { [groupName: string]: IUser[] };

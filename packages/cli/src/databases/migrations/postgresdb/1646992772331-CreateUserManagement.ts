@@ -1,13 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-import { getTablePrefix, loadSurveyFromDisk } from '@db/utils/migrationHelpers';
 
-export class CreateUserManagement1646992772331 implements MigrationInterface {
-	name = 'CreateUserManagement1646992772331';
+import type { InsertResult, MigrationContext, ReversibleMigration } from '@/databases/types';
 
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+export class CreateUserManagement1646992772331 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix, loadSurveyFromDisk }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
 				"id" serial NOT NULL,
@@ -92,7 +88,9 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 			`INSERT INTO ${tablePrefix}role (name, scope) VALUES ('owner', 'global');`,
 		);
 
-		const instanceOwnerRole = await queryRunner.query('SELECT lastval() as "insertId"');
+		const instanceOwnerRole = (await queryRunner.query(
+			'SELECT lastval() as "insertId"',
+		)) as InsertResult;
 
 		await queryRunner.query(
 			`INSERT INTO ${tablePrefix}role (name, scope) VALUES ('member', 'global');`,
@@ -102,13 +100,17 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 			`INSERT INTO ${tablePrefix}role (name, scope) VALUES ('owner', 'workflow');`,
 		);
 
-		const workflowOwnerRole = await queryRunner.query('SELECT lastval() as "insertId"');
+		const workflowOwnerRole = (await queryRunner.query(
+			'SELECT lastval() as "insertId"',
+		)) as InsertResult;
 
 		await queryRunner.query(
 			`INSERT INTO ${tablePrefix}role (name, scope) VALUES ('owner', 'credential');`,
 		);
 
-		const credentialOwnerRole = await queryRunner.query('SELECT lastval() as "insertId"');
+		const credentialOwnerRole = (await queryRunner.query(
+			'SELECT lastval() as "insertId"',
+		)) as InsertResult;
 
 		const survey = loadSurveyFromDisk();
 
@@ -131,11 +133,14 @@ export class CreateUserManagement1646992772331 implements MigrationInterface {
 		await queryRunner.query(
 			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)`,
 		);
+
+		await queryRunner.query(
+			`INSERT INTO ${tablePrefix}settings ("key", "value", "loadOnStartup") VALUES ($1, $2, $3)`,
+			['ui.banners.dismissed', '["V1"]', true],
+		);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_${tablePrefix}a252c527c4c89237221fe2c0ab" ON ${tablePrefix}workflow_entity ("name")`,
 		);

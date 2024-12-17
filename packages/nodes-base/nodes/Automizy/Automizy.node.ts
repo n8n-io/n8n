@@ -1,12 +1,13 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	NodeExecutionWithMetadata,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type NodeExecutionWithMetadata,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
@@ -28,8 +29,9 @@ export class Automizy implements INodeType {
 		defaults: {
 			name: 'Automizy',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		hidden: true,
 		credentials: [
 			{
 				name: 'automizyApi',
@@ -37,6 +39,13 @@ export class Automizy implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'This service may no longer exist and will be removed from n8n in a future release.',
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -65,7 +74,7 @@ export class Automizy implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -362,6 +371,6 @@ export class Automizy implements INodeType {
 
 		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

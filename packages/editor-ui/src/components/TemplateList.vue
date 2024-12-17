@@ -1,8 +1,86 @@
+<script lang="ts" setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import TemplateCard from './TemplateCard.vue';
+import type { ITemplatesWorkflow } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+
+interface Props {
+	workflows?: ITemplatesWorkflow[];
+	infiniteScrollEnabled?: boolean;
+	loading?: boolean;
+	useWorkflowButton?: boolean;
+	totalWorkflows?: number;
+	simpleView?: boolean;
+	totalCount?: number;
+}
+
+const emit = defineEmits<{
+	loadMore: [];
+	openTemplate: [{ event: MouseEvent; id: number }];
+	useWorkflow: [{ event: MouseEvent; id: number }];
+}>();
+
+const props = withDefaults(defineProps<Props>(), {
+	infiniteScrollEnabled: false,
+	loading: false,
+	useWorkflowButton: false,
+	workflows: () => [],
+	totalWorkflows: 0,
+	simpleView: false,
+	totalCount: 0,
+});
+
+const i18n = useI18n();
+
+const loader = ref<HTMLElement | null>(null);
+
+onMounted(() => {
+	if (props.infiniteScrollEnabled) {
+		const content = document.getElementById('content');
+		if (content) {
+			content.addEventListener('scroll', onScroll);
+		}
+	}
+});
+
+onBeforeUnmount(() => {
+	const content = document.getElementById('content');
+	if (content) {
+		content.removeEventListener('scroll', onScroll);
+	}
+});
+
+function onScroll() {
+	const loaderRef = loader.value as HTMLElement | undefined;
+	if (!loaderRef || props.loading) {
+		return;
+	}
+
+	const rect = loaderRef.getBoundingClientRect();
+	const inView =
+		rect.top >= 0 &&
+		rect.left >= 0 &&
+		rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+		rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+	if (inView) {
+		emit('loadMore');
+	}
+}
+function onCardClick(event: MouseEvent, id: number) {
+	emit('openTemplate', { event, id });
+}
+function onUseWorkflow(event: MouseEvent, id: number) {
+	emit('useWorkflow', { event, id });
+}
+</script>
+
 <template>
-	<div :class="$style.list" v-if="loading || workflows.length">
-		<div :class="$style.header">
+	<div v-if="loading || workflows.length" :class="$style.list">
+		<div v-if="!simpleView" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
-				{{ $locale.baseText('templates.workflows') }}
+				{{ i18n.baseText('templates.workflows') }}
+				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
@@ -11,96 +89,26 @@
 				v-for="(workflow, index) in workflows"
 				:key="workflow.id"
 				:workflow="workflow"
-				:firstItem="index === 0"
-				:lastItem="index === workflows.length - 1 && !loading"
-				:useWorkflowButton="useWorkflowButton"
+				:first-item="index === 0"
+				:simple-view="simpleView"
+				:last-item="index === workflows.length - 1 && !loading"
+				:use-workflow-button="useWorkflowButton"
 				@click="(e) => onCardClick(e, workflow.id)"
-				@useWorkflow="(e) => onUseWorkflow(e, workflow.id)"
+				@use-workflow="(e) => onUseWorkflow(e, workflow.id)"
 			/>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
-			<div v-if="loading">
+			<div v-if="loading" data-test-id="templates-loading-container">
 				<TemplateCard
 					v-for="n in 4"
 					:key="'index-' + n"
 					:loading="true"
-					:firstItem="workflows.length === 0 && n === 1"
-					:lastItem="n === 4"
+					:first-item="workflows.length === 0 && n === 1"
+					:last-item="n === 4"
 				/>
 			</div>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
-import TemplateCard from './TemplateCard.vue';
-
-export default mixins(genericHelpers).extend({
-	name: 'TemplateList',
-	props: {
-		infiniteScrollEnabled: {
-			type: Boolean,
-			default: false,
-		},
-		loading: {
-			type: Boolean,
-		},
-		useWorkflowButton: {
-			type: Boolean,
-			default: false,
-		},
-		workflows: {
-			type: Array,
-		},
-		totalWorkflows: {
-			type: Number,
-		},
-	},
-	mounted() {
-		if (this.infiniteScrollEnabled) {
-			const content = document.getElementById('content');
-			if (content) {
-				content.addEventListener('scroll', this.onScroll);
-			}
-		}
-	},
-	destroyed() {
-		const content = document.getElementById('content');
-		if (content) {
-			content.removeEventListener('scroll', this.onScroll);
-		}
-	},
-	components: {
-		TemplateCard,
-	},
-	methods: {
-		onScroll() {
-			const el = this.$refs.loader;
-			if (!el || this.loading) {
-				return;
-			}
-
-			const rect = (el as Element).getBoundingClientRect();
-			const inView =
-				rect.top >= 0 &&
-				rect.left >= 0 &&
-				rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-				rect.right <= (window.innerWidth || document.documentElement.clientWidth);
-
-			if (inView) {
-				this.$emit('loadMore');
-			}
-		},
-		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openTemplate', { event, id });
-		},
-		onUseWorkflow(event: MouseEvent, id: string) {
-			this.$emit('useWorkflow', { event, id });
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .header {

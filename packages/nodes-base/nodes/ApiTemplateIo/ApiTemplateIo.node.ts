@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -28,8 +28,8 @@ export class ApiTemplateIo implements INodeType {
 		defaults: {
 			name: 'APITemplate.io',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'apiTemplateIoApi',
@@ -74,7 +74,27 @@ export class ApiTemplateIo implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: ['image', 'pdf'],
+						resource: ['image'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create a pdf',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['pdf'],
 					},
 				},
 			},
@@ -105,7 +125,7 @@ export class ApiTemplateIo implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -123,7 +143,7 @@ export class ApiTemplateIo implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
@@ -161,12 +181,12 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 				displayOptions: {
 					show: {
 						resource: ['pdf', 'image'],
@@ -330,11 +350,11 @@ export class ApiTemplateIo implements INodeType {
 	methods = {
 		loadOptions: {
 			async getImageTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return loadResource.call(this, 'image');
+				return await loadResource.call(this, 'image');
 			},
 
 			async getPdfTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return loadResource.call(this, 'pdf');
+				return await loadResource.call(this, 'pdf');
 			},
 		},
 	};
@@ -460,7 +480,7 @@ export class ApiTemplateIo implements INodeType {
 				}
 
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		} else if (resource === 'pdf') {
@@ -549,7 +569,7 @@ export class ApiTemplateIo implements INodeType {
 					}
 				}
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		}

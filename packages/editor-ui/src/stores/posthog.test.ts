@@ -1,12 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { usePostHog } from './posthog';
-import { useUsersStore } from './users';
-import { useSettingsStore } from './settings';
-import { IN8nUISettings } from '@/Interface';
-import { useRootStore } from './n8nRootStore';
-import { useTelemetryStore } from './telemetry';
+import { usePostHog } from '@/stores/posthog.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/root.store';
+import type { FrontendSettings } from '@n8n/api-types';
+import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
+import { nextTick } from 'vue';
+import { defaultSettings } from '../__tests__/defaults';
+import { useTelemetry } from '@/composables/useTelemetry';
 
-const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
+export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
@@ -17,12 +20,13 @@ const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';
 
-function setSettings(overrides?: Partial<IN8nUISettings>) {
+function setSettings(overrides?: Partial<FrontendSettings>) {
 	useSettingsStore().setSettings({
+		...defaultSettings,
 		posthog: DEFAULT_POSTHOG_SETTINGS,
 		instanceId: CURRENT_INSTANCE_ID,
 		...overrides,
-	} as IN8nUISettings);
+	} as FrontendSettings);
 
 	useRootStore().setInstanceId(CURRENT_INSTANCE_ID);
 }
@@ -40,8 +44,8 @@ function setCurrentUser() {
 }
 
 function resetStores() {
-	useSettingsStore().$reset();
-	useUsersStore().$reset();
+	useSettingsStore().reset();
+	useUsersStore().reset();
 }
 
 function setup() {
@@ -51,12 +55,11 @@ function setup() {
 		identify: () => {},
 	};
 
-	const telemetryStore = useTelemetryStore();
+	const telemetry = useTelemetry();
 
 	vi.spyOn(window.posthog, 'init');
 	vi.spyOn(window.posthog, 'identify');
-	vi.spyOn(window.Storage.prototype, 'setItem');
-	vi.spyOn(telemetryStore, 'track');
+	vi.spyOn(telemetry, 'track');
 }
 
 describe('Posthog store', () => {
@@ -117,7 +120,7 @@ describe('Posthog store', () => {
 			});
 		});
 
-		it('sets override feature flags', () => {
+		it('sets override feature flags', async () => {
 			const TEST = 'test';
 			const flags = {
 				[TEST]: 'variant',
@@ -126,17 +129,17 @@ describe('Posthog store', () => {
 			posthog.init(flags);
 
 			window.featureFlags?.override(TEST, 'override');
+			await nextTick();
 
 			expect(posthog.getVariant('test')).toEqual('override');
 			expect(window.posthog?.init).toHaveBeenCalled();
-			expect(window.localStorage.setItem).toHaveBeenCalledWith(
-				'N8N_EXPERIMENT_OVERRIDES',
+			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
 				JSON.stringify({ test: 'override' }),
 			);
 
 			window.featureFlags?.override('other_test', 'override');
-			expect(window.localStorage.setItem).toHaveBeenCalledWith(
-				'N8N_EXPERIMENT_OVERRIDES',
+			await nextTick();
+			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
 				JSON.stringify({ test: 'override', other_test: 'override' }),
 			);
 		});

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -6,16 +7,13 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-
-import { figmaApiRequest } from './GenericFunctions';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
-
-import { randomBytes } from 'crypto';
+import { figmaApiRequest } from './GenericFunctions';
 
 export class FigmaTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Figma Trigger (Beta)',
 		name: 'figmaTrigger',
 		icon: 'file:figma.svg',
@@ -27,7 +25,7 @@ export class FigmaTrigger implements INodeType {
 			name: 'Figma Trigger (Beta)',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'figmaApi',

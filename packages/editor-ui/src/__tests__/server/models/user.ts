@@ -1,4 +1,4 @@
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import { Model } from 'miragejs';
 import type { ModelDefinition } from 'miragejs/-types';
 

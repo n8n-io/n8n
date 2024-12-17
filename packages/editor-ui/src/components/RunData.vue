@@ -1,40 +1,1308 @@
+<script setup lang="ts">
+import { useStorage } from '@/composables/useStorage';
+import { saveAs } from 'file-saver';
+import type {
+	IBinaryData,
+	IConnectedNode,
+	IDataObject,
+	INodeExecutionData,
+	INodeOutputConfiguration,
+	IRunData,
+	IRunExecutionData,
+	ITaskMetadata,
+	NodeError,
+	NodeHint,
+	Workflow,
+} from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
+
+import type {
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IRunDataDisplayMode,
+	ITab,
+	NodePanelType,
+} from '@/Interface';
+
+import {
+	DATA_EDITING_DOCS_URL,
+	DATA_PINNING_DOCS_URL,
+	HTML_NODE_TYPE,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
+	MAX_DISPLAY_DATA_SIZE,
+	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
+	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
+	TEST_PIN_DATA,
+} from '@/constants';
+
+import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
+import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
+
+import RunDataPinButton from '@/components/RunDataPinButton.vue';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeType } from '@/composables/useNodeType';
+import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { dataPinningEventBus } from '@/event-bus';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRootStore } from '@/stores/root.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { getGenericHints } from '@/utils/nodeViewUtils';
+import { searchInObject } from '@/utils/objectUtils';
+import { clearJsonKey, isEmpty } from '@/utils/typesUtils';
+import { isEqual, isObject } from 'lodash-es';
+import {
+	N8nBlockUi,
+	N8nButton,
+	N8nCallout,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nLink,
+	N8nOption,
+	N8nRadioButtons,
+	N8nSelect,
+	N8nSpinner,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
+} from 'n8n-design-system';
+import { storeToRefs } from 'pinia';
+import { useRoute } from 'vue-router';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+
+const LazyRunDataTable = defineAsyncComponent(
+	async () => await import('@/components/RunDataTable.vue'),
+);
+const LazyRunDataJson = defineAsyncComponent(
+	async () => await import('@/components/RunDataJson.vue'),
+);
+
+const LazyRunDataSchema = defineAsyncComponent(
+	async () => await import('@/components/VirtualSchema.vue'),
+);
+const LazyRunDataHtml = defineAsyncComponent(
+	async () => await import('@/components/RunDataHtml.vue'),
+);
+const LazyRunDataSearch = defineAsyncComponent(
+	async () => await import('@/components/RunDataSearch.vue'),
+);
+
+export type EnterEditModeArgs = {
+	origin: 'editIconButton' | 'insertTestDataLink';
+};
+
+type Props = {
+	workflow: Workflow;
+	runIndex: number;
+	tooMuchDataTitle: string;
+	executingMessage: string;
+	pushRef: string;
+	paneType: NodePanelType;
+	noDataInBranchMessage: string;
+	node?: INodeUi | null;
+	nodes?: IConnectedNode[];
+	linkedRuns?: boolean;
+	canLinkRuns?: boolean;
+	isExecuting?: boolean;
+	overrideOutputs?: number[];
+	mappingEnabled?: boolean;
+	distanceFromActive?: number;
+	blockUI?: boolean;
+	isProductionExecutionPreview?: boolean;
+	isPaneActive?: boolean;
+	hidePagination?: boolean;
+	calloutMessage?: string;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	node: null,
+	nodes: () => [],
+	overrideOutputs: undefined,
+	distanceFromActive: 0,
+	blockUI: false,
+	isPaneActive: false,
+	isProductionExecutionPreview: false,
+	mappingEnabled: false,
+	isExecuting: false,
+	hidePagination: false,
+	calloutMessage: undefined,
+});
+const emit = defineEmits<{
+	search: [search: string];
+	runChange: [runIndex: number];
+	itemHover: [
+		item: {
+			outputIndex: number;
+			itemIndex: number;
+		} | null,
+	];
+	linkRun: [];
+	unlinkRun: [];
+	activatePane: [];
+	tableMounted: [
+		{
+			avgRowHeight: number;
+		},
+	];
+}>();
+
+const connectionType = ref<NodeConnectionType>(NodeConnectionType.Main);
+const dataSize = ref(0);
+const showData = ref(false);
+const userEnabledShowData = ref(false);
+const outputIndex = ref(0);
+const binaryDataDisplayVisible = ref(false);
+const binaryDataDisplayData = ref<IBinaryData | null>(null);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const pageSizes = [1, 10, 25, 50, 100];
+
+const pinDataDiscoveryTooltipVisible = ref(false);
+const isControlledPinDataTooltip = ref(false);
+const search = ref('');
+
+const dataContainerRef = ref<HTMLDivElement>();
+
+const nodeTypesStore = useNodeTypesStore();
+const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const sourceControlStore = useSourceControlStore();
+const rootStore = useRootStore();
+
+const toast = useToast();
+const route = useRoute();
+const nodeHelpers = useNodeHelpers();
+const externalHooks = useExternalHooks();
+const telemetry = useTelemetry();
+const i18n = useI18n();
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
+
+const node = toRef(props, 'node');
+
+const pinnedData = usePinnedData(node, {
+	runIndex: props.runIndex,
+	displayMode:
+		props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
+});
+const { isSubNodeType } = useNodeType({
+	node,
+});
+
+const displayMode = computed(() =>
+	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
+);
+
+const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
+const isWaitNodeWaiting = computed(() => {
+	return (
+		node.value?.name &&
+		workflowExecution.value?.data?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
+			?.executionStatus === 'waiting'
+	);
+});
+
+const { activeNode } = storeToRefs(ndvStore);
+const nodeType = computed(() => {
+	if (!node.value) return null;
+
+	return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+});
+
+const isSchemaView = computed(() => displayMode.value === 'schema');
+const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
+const displaysMultipleNodes = computed(
+	() => isSchemaView.value && props.paneType === 'input' && props.nodes.length > 0,
+);
+
+const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
+
+const canPinData = computed(
+	() =>
+		!!node.value &&
+		pinnedData.canPinNode(false, currentOutputIndex.value) &&
+		!isPaneTypeInput.value &&
+		pinnedData.isValidNodeType.value &&
+		!(binaryData.value && binaryData.value.length > 0),
+);
+const displayModes = computed(() => {
+	const defaults: Array<{ label: string; value: IRunDataDisplayMode }> = [
+		{ label: i18n.baseText('runData.table'), value: 'table' },
+		{ label: i18n.baseText('runData.json'), value: 'json' },
+	];
+
+	if (binaryData.value.length) {
+		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
+	}
+
+	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' } as const;
+	if (isPaneTypeInput.value) {
+		defaults.unshift(schemaView);
+	} else {
+		defaults.push(schemaView);
+	}
+
+	if (
+		isPaneTypeOutput.value &&
+		activeNode.value?.type === HTML_NODE_TYPE &&
+		activeNode.value.parameters.operation === 'generateHtmlTemplate'
+	) {
+		defaults.unshift({ label: 'HTML', value: 'html' });
+	}
+
+	return defaults;
+});
+
+const hasNodeRun = computed(() =>
+	Boolean(
+		!props.isExecuting &&
+			node.value &&
+			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
+				pinnedData.hasData.value),
+	),
+);
+
+const isArtificialRecoveredEventItem = computed(
+	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
+);
+
+const subworkflowExecutionError = computed(() => {
+	if (!node.value) return null;
+	return {
+		node: node.value,
+		messages: [workflowsStore.subWorkflowExecutionError?.message ?? ''],
+	} as NodeError;
+});
+
+const hasSubworkflowExecutionError = computed(() =>
+	Boolean(workflowsStore.subWorkflowExecutionError),
+);
+const workflowRunErrorAsNodeError = computed(() => {
+	if (!node.value) {
+		return null;
+	}
+
+	// If the node is a sub-node, we need to get the parent node error to check for input errors
+	if (isSubNodeType.value && props.paneType === 'input') {
+		const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
+		return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
+	}
+	return workflowRunData.value?.[node.value?.name]?.[props.runIndex]?.error as NodeError;
+});
+
+const hasRunError = computed(() => Boolean(node.value && workflowRunErrorAsNodeError.value));
+
+const executionHints = computed(() => {
+	if (hasNodeRun.value) {
+		const hints = node.value && workflowRunData.value?.[node.value.name]?.[props.runIndex]?.hints;
+
+		if (hints) return hints;
+	}
+
+	return [];
+});
+
+const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowRunData = computed(() => {
+	if (workflowExecution.value === null) {
+		return null;
+	}
+	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
+	if (executionData?.resultData) {
+		return executionData.resultData.runData;
+	}
+	return null;
+});
+const dataCount = computed(() =>
+	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
+
+const unfilteredDataCount = computed(() =>
+	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
+);
+const dataSizeInMB = computed(() => (dataSize.value / (1024 * 1024)).toFixed(1));
+const maxOutputIndex = computed(() => {
+	if (node.value === null || props.runIndex === undefined) {
+		return 0;
+	}
+
+	const runData: IRunData | null = workflowRunData.value;
+
+	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+		return 0;
+	}
+
+	if (runData[node.value.name].length < props.runIndex) {
+		return 0;
+	}
+
+	if (runData[node.value.name][props.runIndex]) {
+		const taskData = runData[node.value.name][props.runIndex].data;
+		if (taskData?.main) {
+			return taskData.main.length - 1;
+		}
+	}
+
+	return 0;
+});
+const currentPageOffset = computed(() => pageSize.value * (currentPage.value - 1));
+const maxRunIndex = computed(() => {
+	if (!node.value) {
+		return 0;
+	}
+
+	const runData: IRunData | null = workflowRunData.value;
+
+	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+		return 0;
+	}
+
+	if (runData[node.value.name].length) {
+		return runData[node.value.name].length - 1;
+	}
+
+	return 0;
+});
+
+const rawInputData = computed(() =>
+	getRawInputData(props.runIndex, currentOutputIndex.value, connectionType.value),
+);
+
+const unfilteredInputData = computed(() => getPinDataOrLiveData(rawInputData.value));
+const inputData = computed(() => getFilteredData(unfilteredInputData.value));
+const inputDataPage = computed(() => {
+	const offset = pageSize.value * (currentPage.value - 1);
+	return inputData.value.slice(offset, offset + pageSize.value);
+});
+const jsonData = computed(() => executionDataToJson(inputData.value));
+const binaryData = computed(() => {
+	if (!node.value) {
+		return [];
+	}
+
+	return nodeHelpers
+		.getBinaryData(workflowRunData.value, node.value.name, props.runIndex, currentOutputIndex.value)
+		.filter((data) => Boolean(data && Object.keys(data).length));
+});
+const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
+const currentOutputIndex = computed(() => {
+	if (props.overrideOutputs?.length && !props.overrideOutputs.includes(outputIndex.value)) {
+		return props.overrideOutputs[0];
+	}
+
+	// In some cases nodes may switch their outputCount while the user still
+	// has a higher outputIndex selected. We could adjust outputIndex directly,
+	// but that loses data as we can keep the user selection if the branch reappears.
+	return Math.min(outputIndex.value, maxOutputIndex.value);
+});
+const branches = computed(() => {
+	const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
+
+	const result: Array<ITab<number>> = [];
+
+	for (let i = 0; i <= maxOutputIndex.value; i++) {
+		if (props.overrideOutputs && !props.overrideOutputs.includes(i)) {
+			continue;
+		}
+		const totalItemsCount = getRawInputData(props.runIndex, i).length;
+		const itemsCount = getDataCount(props.runIndex, i);
+		const items = search.value
+			? i18n.baseText('ndv.search.items', {
+					adjustToNumber: totalItemsCount,
+					interpolate: { matched: itemsCount, total: totalItemsCount },
+				})
+			: i18n.baseText('ndv.output.items', {
+					adjustToNumber: itemsCount,
+					interpolate: { count: itemsCount },
+				});
+		let outputName = getOutputName(i);
+
+		if (`${outputName}` === `${i}`) {
+			outputName = `${i18n.baseText('ndv.output')} ${outputName}`;
+		} else {
+			const appendBranchWord = NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND.includes(
+				node.value?.type ?? '',
+			)
+				? ''
+				: ` ${i18n.baseText('ndv.output.branch')}`;
+			outputName = capitalize(`${getOutputName(i)}${appendBranchWord}`);
+		}
+		result.push({
+			label:
+				(search.value && itemsCount) || totalItemsCount ? `${outputName} (${items})` : outputName,
+			value: i,
+		});
+	}
+	return result;
+});
+
+const editMode = computed(() => {
+	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.outputPanelEditMode;
+});
+
+const isPaneTypeInput = computed(() => props.paneType === 'input');
+const isPaneTypeOutput = computed(() => props.paneType === 'output');
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const showIOSearch = computed(
+	() => hasNodeRun.value && !hasRunError.value && unfilteredInputData.value.length > 0,
+);
+const inputSelectLocation = computed(() => {
+	if (isSchemaView.value) return 'none';
+	if (!hasNodeRun.value) return 'header';
+	if (maxRunIndex.value > 0) return 'runs';
+	if (maxOutputIndex.value > 0 && branches.value.length > 1) {
+		return 'outputs';
+	}
+
+	return 'items';
+});
+
+const showIoSearchNoMatchContent = computed(
+	() => hasNodeRun.value && !inputData.value.length && !!search.value,
+);
+
+const parentNodeOutputData = computed(() => {
+	const parentNode = props.workflow.getParentNodesByDepth(node.value?.name ?? '')[0];
+	let parentNodeData: INodeExecutionData[] = [];
+
+	if (parentNode?.name) {
+		parentNodeData = nodeHelpers.getNodeInputData(
+			props.workflow.getNode(parentNode?.name),
+			props.runIndex,
+			outputIndex.value,
+			'input',
+			connectionType.value,
+		);
+	}
+
+	return parentNodeData;
+});
+
+const parentNodePinnedData = computed(() => {
+	const parentNode = props.workflow.getParentNodesByDepth(node.value?.name ?? '')[0];
+	return props.workflow.pinData?.[parentNode?.name || ''] ?? [];
+});
+
+const showPinButton = computed(() => {
+	if (!rawInputData.value.length && !pinnedData.hasData.value) {
+		return false;
+	}
+	if (editMode.value.enabled) {
+		return false;
+	}
+	if (binaryData.value?.length) {
+		return isPaneTypeOutput.value;
+	}
+	return canPinData.value;
+});
+
+const pinButtonDisabled = computed(
+	() =>
+		pinnedData.hasData.value ||
+		!rawInputData.value.length ||
+		!!binaryData.value?.length ||
+		isReadOnlyRoute.value ||
+		readOnlyEnv.value,
+);
+
+const activeTaskMetadata = computed((): ITaskMetadata | null => {
+	if (!node.value) {
+		return null;
+	}
+
+	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
+});
+
+const hasReleatedExectuion = computed((): boolean => {
+	return Boolean(
+		activeTaskMetadata.value?.subExecution || activeTaskMetadata.value?.parentExecution,
+	);
+});
+
+const hasInputOverwrite = computed((): boolean => {
+	if (!node.value) {
+		return false;
+	}
+	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
+	return Boolean(taskData?.inputOverride);
+});
+
+watch(node, (newNode, prevNode) => {
+	if (newNode?.id === prevNode?.id) return;
+	init();
+});
+
+watch(hasNodeRun, () => {
+	if (props.paneType === 'output') setDisplayMode();
+	else {
+		// InputPanel relies on the outputIndex to check if we have data
+		outputIndex.value = determineInitialOutputIndex();
+	}
+});
+
+watch(
+	inputDataPage,
+	(data: INodeExecutionData[]) => {
+		if (props.paneType && data) {
+			ndvStore.setNDVPanelDataIsEmpty({
+				panel: props.paneType,
+				isEmpty: data.every((item) => isEmpty(item.json)),
+			});
+		}
+	},
+	{ immediate: true, deep: true },
+);
+
+watch(jsonData, (data: IDataObject[], prevData: IDataObject[]) => {
+	if (isEqual(data, prevData)) return;
+	refreshDataSize();
+	if (dataCount.value) {
+		resetCurrentPageIfTooFar();
+	}
+	showPinDataDiscoveryTooltip(data);
+});
+
+watch(binaryData, (newData, prevData) => {
+	if (newData.length && !prevData.length && displayMode.value !== 'binary') {
+		switchToBinary();
+	} else if (!newData.length && displayMode.value === 'binary') {
+		onDisplayModeChange('table');
+	}
+});
+
+watch(currentOutputIndex, (branchIndex: number) => {
+	ndvStore.setNDVBranchIndex({
+		pane: props.paneType,
+		branchIndex,
+	});
+});
+
+watch(search, (newSearch) => {
+	emit('search', newSearch);
+});
+
+onMounted(() => {
+	init();
+
+	if (!isPaneTypeInput.value) {
+		showPinDataDiscoveryTooltip(jsonData.value);
+	}
+	ndvStore.setNDVBranchIndex({
+		pane: props.paneType,
+		branchIndex: currentOutputIndex.value,
+	});
+
+	if (props.paneType === 'output') {
+		setDisplayMode();
+		activatePane();
+	}
+
+	if (hasRunError.value && node.value) {
+		const error = workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error;
+		const errorsToTrack = ['unknown error'];
+
+		if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
+			telemetry.track(
+				'User encountered an error',
+				{
+					node: node.value.type,
+					errorMessage: error.message,
+					nodeVersion: node.value.typeVersion,
+					n8nVersion: rootStore.versionCli,
+				},
+				{
+					withPostHog: true,
+				},
+			);
+		}
+	}
+});
+
+onBeforeUnmount(() => {
+	hidePinDataDiscoveryTooltip();
+});
+
+function getResolvedNodeOutputs() {
+	if (node.value && nodeType.value) {
+		const workflowNode = props.workflow.getNode(node.value.name);
+
+		if (workflowNode) {
+			const outputs = NodeHelpers.getNodeOutputs(props.workflow, workflowNode, nodeType.value);
+			return outputs;
+		}
+	}
+	return [];
+}
+function shouldHintBeDisplayed(hint: NodeHint): boolean {
+	const { location, whenToDisplay } = hint;
+
+	if (location) {
+		if (location === 'ndv' && !['input', 'output'].includes(props.paneType)) {
+			return false;
+		}
+		if (location === 'inputPane' && props.paneType !== 'input') {
+			return false;
+		}
+
+		if (location === 'outputPane' && props.paneType !== 'output') {
+			return false;
+		}
+	}
+
+	if (whenToDisplay === 'afterExecution' && !hasNodeRun.value) {
+		return false;
+	}
+
+	if (whenToDisplay === 'beforeExecution' && hasNodeRun.value) {
+		return false;
+	}
+
+	return true;
+}
+function getNodeHints(): NodeHint[] {
+	try {
+		if (node.value && nodeType.value) {
+			const workflowNode = props.workflow.getNode(node.value.name);
+
+			if (workflowNode) {
+				const nodeHints = NodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
+					runExecutionData: workflowExecution.value?.data ?? null,
+					runIndex: props.runIndex,
+					connectionInputData: parentNodeOutputData.value,
+				});
+
+				const hasMultipleInputItems =
+					parentNodeOutputData.value.length > 1 || parentNodePinnedData.value.length > 1;
+
+				const nodeOutputData =
+					workflowRunData.value?.[node.value.name]?.[props.runIndex]?.data?.main?.[0] ?? [];
+
+				const genericHints = getGenericHints({
+					workflowNode,
+					node: node.value,
+					nodeType: nodeType.value,
+					nodeOutputData,
+					workflow: props.workflow,
+					hasNodeRun: hasNodeRun.value,
+					hasMultipleInputItems,
+				});
+
+				return executionHints.value.concat(nodeHints, genericHints).filter(shouldHintBeDisplayed);
+			}
+		}
+	} catch (error) {
+		console.error('Error while getting node hints', error);
+	}
+
+	return [];
+}
+
+function onItemHover(itemIndex: number | null) {
+	if (itemIndex === null) {
+		emit('itemHover', null);
+
+		return;
+	}
+	emit('itemHover', {
+		outputIndex: currentOutputIndex.value,
+		itemIndex,
+	});
+}
+
+function onClickDataPinningDocsLink() {
+	telemetry.track('User clicked ndv link', {
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		node_type: activeNode.value?.type,
+		pane: 'output',
+		type: 'data-pinning-docs',
+	});
+}
+
+function showPinDataDiscoveryTooltip(value: IDataObject[]) {
+	if (!isTriggerNode.value) {
+		return;
+	}
+
+	const pinDataDiscoveryFlag = useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value;
+
+	if (value && value.length > 0 && !isReadOnlyRoute.value && !pinDataDiscoveryFlag) {
+		pinDataDiscoveryComplete();
+
+		setTimeout(() => {
+			isControlledPinDataTooltip.value = true;
+			pinDataDiscoveryTooltipVisible.value = true;
+			dataPinningEventBus.emit('data-pinning-discovery', { isTooltipVisible: true });
+		}, 500); // Wait for NDV to open
+	}
+}
+
+function hidePinDataDiscoveryTooltip() {
+	if (pinDataDiscoveryTooltipVisible.value) {
+		isControlledPinDataTooltip.value = false;
+		pinDataDiscoveryTooltipVisible.value = false;
+		dataPinningEventBus.emit('data-pinning-discovery', { isTooltipVisible: false });
+	}
+}
+
+function pinDataDiscoveryComplete() {
+	useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value = 'true';
+	useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG).value = 'true';
+}
+
+function enterEditMode({ origin }: EnterEditModeArgs) {
+	const inputData = pinnedData.data.value
+		? clearJsonKey(pinnedData.data.value)
+		: executionDataToJson(rawInputData.value);
+
+	const inputDataLength = Array.isArray(inputData)
+		? inputData.length
+		: Object.keys(inputData ?? {}).length;
+
+	const data = inputDataLength > 0 ? inputData : TEST_PIN_DATA;
+
+	ndvStore.setOutputPanelEditModeEnabled(true);
+	ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
+
+	telemetry.track('User opened ndv edit state', {
+		node_type: activeNode.value?.type,
+		click_type: origin === 'editIconButton' ? 'button' : 'link',
+		push_ref: props.pushRef,
+		run_index: props.runIndex,
+		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
+		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : displayMode.value,
+		is_data_pinned: pinnedData.hasData.value,
+	});
+}
+
+function onClickCancelEdit() {
+	ndvStore.setOutputPanelEditModeEnabled(false);
+	ndvStore.setOutputPanelEditModeValue('');
+	onExitEditMode({ type: 'cancel' });
+}
+
+function onClickSaveEdit() {
+	if (!node.value) {
+		return;
+	}
+
+	const { value } = editMode.value;
+
+	toast.clearAllStickyNotifications();
+
+	try {
+		const clearedValue = clearJsonKey(value) as INodeExecutionData[];
+		try {
+			pinnedData.setData(clearedValue, 'save-edit');
+		} catch (error) {
+			// setData function already shows toasts on error, so just return here
+			return;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('ndv.pinData.error.syntaxError.title'));
+		return;
+	}
+
+	ndvStore.setOutputPanelEditModeEnabled(false);
+
+	onExitEditMode({ type: 'save' });
+}
+
+function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
+	telemetry.track('User closed ndv edit state', {
+		node_type: activeNode.value?.type,
+		push_ref: props.pushRef,
+		run_index: props.runIndex,
+		view: displayMode.value,
+		type,
+	});
+}
+
+async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {
+	if (!node.value) {
+		return;
+	}
+
+	if (source === 'pin-icon-click') {
+		const telemetryPayload = {
+			node_type: activeNode.value?.type,
+			push_ref: props.pushRef,
+			run_index: props.runIndex,
+			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : displayMode.value,
+		};
+
+		void externalHooks.run('runData.onTogglePinData', telemetryPayload);
+		telemetry.track('User clicked pin data icon', telemetryPayload);
+	}
+
+	nodeHelpers.updateNodeParameterIssues(node.value);
+
+	if (pinnedData.hasData.value) {
+		pinnedData.unsetData(source);
+		return;
+	}
+
+	try {
+		pinnedData.setData(rawInputData.value, 'pin-icon-click');
+	} catch (error) {
+		console.error(error);
+		return;
+	}
+
+	if (maxRunIndex.value > 0) {
+		toast.showToast({
+			title: i18n.baseText('ndv.pinData.pin.multipleRuns.title', {
+				interpolate: {
+					index: `${props.runIndex}`,
+				},
+			}),
+			message: i18n.baseText('ndv.pinData.pin.multipleRuns.description'),
+			type: 'success',
+			duration: 2000,
+		});
+	}
+
+	hidePinDataDiscoveryTooltip();
+	pinDataDiscoveryComplete();
+}
+
+function switchToBinary() {
+	onDisplayModeChange('binary');
+}
+
+function onBranchChange(value: number) {
+	outputIndex.value = value;
+
+	telemetry.track('User changed ndv branch', {
+		push_ref: props.pushRef,
+		branch_index: value,
+		node_type: activeNode.value?.type,
+		node_type_input_selection: nodeType.value ? nodeType.value.name : '',
+		pane: props.paneType,
+	});
+}
+
+function showTooMuchData() {
+	showData.value = true;
+	userEnabledShowData.value = true;
+	telemetry.track('User clicked ndv button', {
+		node_type: activeNode.value?.type,
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		pane: props.paneType,
+		type: 'showTooMuchData',
+	});
+}
+
+function toggleLinkRuns() {
+	if (props.linkedRuns) {
+		unlinkRun();
+	} else {
+		linkRun();
+	}
+}
+
+function linkRun() {
+	emit('linkRun');
+}
+
+function unlinkRun() {
+	emit('unlinkRun');
+}
+
+function onCurrentPageChange(value: number) {
+	currentPage.value = value;
+	telemetry.track('User changed ndv page', {
+		node_type: activeNode.value?.type,
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		pane: props.paneType,
+		page_selected: currentPage.value,
+		page_size: pageSize.value,
+		items_total: dataCount.value,
+	});
+}
+
+function resetCurrentPageIfTooFar() {
+	const maxPage = Math.ceil(dataCount.value / pageSize.value);
+	if (maxPage < currentPage.value) {
+		currentPage.value = maxPage;
+	}
+}
+
+function onPageSizeChange(newPageSize: number) {
+	pageSize.value = newPageSize;
+
+	resetCurrentPageIfTooFar();
+
+	telemetry.track('User changed ndv page size', {
+		node_type: activeNode.value?.type,
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		pane: props.paneType,
+		page_selected: currentPage.value,
+		page_size: pageSize.value,
+		items_total: dataCount.value,
+	});
+}
+
+function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
+	const previous = displayMode.value;
+	ndvStore.setPanelDisplayMode({ pane: props.paneType, mode: newDisplayMode });
+
+	if (!userEnabledShowData.value) updateShowData();
+
+	if (dataContainerRef.value) {
+		const dataDisplay = dataContainerRef.value.children[0];
+
+		if (dataDisplay) {
+			dataDisplay.scrollTo(0, 0);
+		}
+	}
+
+	closeBinaryDataDisplay();
+	void externalHooks.run('runData.displayModeChanged', {
+		newValue: newDisplayMode,
+		oldValue: previous,
+	});
+	if (activeNode.value) {
+		telemetry.track('User changed ndv item view', {
+			previous_view: previous,
+			new_view: newDisplayMode,
+			node_type: activeNode.value.type,
+			workflow_id: workflowsStore.workflowId,
+			push_ref: props.pushRef,
+			pane: props.paneType,
+		});
+	}
+}
+
+function getRunLabel(option: number) {
+	if (!node.value) {
+		return;
+	}
+
+	let itemsCount = 0;
+	for (let i = 0; i <= maxOutputIndex.value; i++) {
+		itemsCount += getPinDataOrLiveData(getRawInputData(option - 1, i)).length;
+	}
+	const items = i18n.baseText('ndv.output.items', {
+		adjustToNumber: itemsCount,
+		interpolate: { count: itemsCount },
+	});
+
+	const metadata = workflowRunData.value?.[node.value.name]?.[option - 1]?.metadata ?? null;
+	const subexecutions = metadata?.subExecutionsCount
+		? i18n.baseText('ndv.output.andSubExecutions', {
+				adjustToNumber: metadata.subExecutionsCount,
+				interpolate: {
+					count: metadata.subExecutionsCount,
+				},
+			})
+		: '';
+
+	const itemsLabel = itemsCount > 0 ? ` (${items}${subexecutions})` : '';
+	return option + i18n.baseText('ndv.output.of') + (maxRunIndex.value + 1) + itemsLabel;
+}
+
+function getRawInputData(
+	runIndex: number,
+	outputIndex: number,
+	connectionType: NodeConnectionType = NodeConnectionType.Main,
+): INodeExecutionData[] {
+	let inputData: INodeExecutionData[] = [];
+
+	if (node.value) {
+		inputData = nodeHelpers.getNodeInputData(
+			node.value,
+			runIndex,
+			outputIndex,
+			props.paneType,
+			connectionType,
+		);
+	}
+
+	if (inputData.length === 0 || !Array.isArray(inputData)) {
+		return [];
+	}
+
+	return inputData;
+}
+
+function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] {
+	if (pinnedData.data.value && !props.isProductionExecutionPreview) {
+		return Array.isArray(pinnedData.data.value)
+			? pinnedData.data.value.map((value) => ({
+					json: value,
+				}))
+			: [
+					{
+						json: pinnedData.data.value,
+					},
+				];
+	}
+	return data;
+}
+
+function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
+	if (!search.value || isSchemaView.value) {
+		return data;
+	}
+
+	currentPage.value = 1;
+	return data.filter(({ json }) => searchInObject(json, search.value));
+}
+
+function getDataCount(
+	runIndex: number,
+	outputIndex: number,
+	connectionType: NodeConnectionType = NodeConnectionType.Main,
+) {
+	if (!node.value) {
+		return 0;
+	}
+
+	if (workflowRunData.value?.[node.value.name]?.[runIndex]?.hasOwnProperty('error')) {
+		return 1;
+	}
+
+	const rawInputData = getRawInputData(runIndex, outputIndex, connectionType);
+	const pinOrLiveData = getPinDataOrLiveData(rawInputData);
+	return getFilteredData(pinOrLiveData).length;
+}
+
+function determineInitialOutputIndex() {
+	for (let i = 0; i <= maxOutputIndex.value; i++) {
+		if (getRawInputData(props.runIndex, i).length) {
+			return i;
+		}
+	}
+
+	return 0;
+}
+
+function init() {
+	// Reset the selected output index every time another node gets selected
+	outputIndex.value = determineInitialOutputIndex();
+	refreshDataSize();
+	closeBinaryDataDisplay();
+	let outputTypes: NodeConnectionType[] = [];
+	if (node.value && nodeType.value) {
+		const outputs = getResolvedNodeOutputs();
+		outputTypes = NodeHelpers.getConnectionTypes(outputs);
+	}
+	connectionType.value = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
+	if (binaryData.value.length > 0) {
+		ndvStore.setPanelDisplayMode({
+			pane: props.paneType,
+			mode: 'binary',
+		});
+	} else if (displayMode.value === 'binary') {
+		ndvStore.setPanelDisplayMode({
+			pane: props.paneType,
+			mode: 'table',
+		});
+	}
+}
+
+function closeBinaryDataDisplay() {
+	binaryDataDisplayVisible.value = false;
+	binaryDataDisplayData.value = null;
+}
+
+function isViewable(index: number, key: string | number): boolean {
+	const { fileType } = binaryData.value[index][key];
+	return (
+		!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
+	);
+}
+
+function isDownloadable(index: number, key: string | number): boolean {
+	const { mimeType, fileName } = binaryData.value[index][key];
+	return !!(mimeType && fileName);
+}
+
+async function downloadBinaryData(index: number, key: string | number) {
+	const { id, data, fileName, fileExtension, mimeType } = binaryData.value[index][key];
+
+	if (id) {
+		const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
+		saveAs(url, [fileName, fileExtension].join('.'));
+		return;
+	} else {
+		const bufferString = 'data:' + mimeType + ';base64,' + data;
+		const blob = await fetch(bufferString).then(async (d) => await d.blob());
+		saveAs(blob, fileName);
+	}
+}
+
+async function downloadJsonData() {
+	const fileName = (node.value?.name ?? '').replace(/[^\w\d]/g, '_');
+	const blob = new Blob([JSON.stringify(rawInputData.value, null, 2)], {
+		type: 'application/json',
+	});
+
+	saveAs(blob, `${fileName}.json`);
+}
+
+function displayBinaryData(index: number, key: string | number) {
+	const { data, mimeType } = binaryData.value[index][key];
+	binaryDataDisplayVisible.value = true;
+
+	binaryDataDisplayData.value = {
+		node: node.value?.name,
+		runIndex: props.runIndex,
+		outputIndex: currentOutputIndex.value,
+		index,
+		key,
+		data,
+		mimeType,
+	};
+}
+
+function getOutputName(outputIndex: number) {
+	if (node.value === null) {
+		return outputIndex + 1;
+	}
+
+	const outputs = getResolvedNodeOutputs();
+	const outputConfiguration = outputs?.[outputIndex] as INodeOutputConfiguration;
+
+	if (outputConfiguration && isObject(outputConfiguration)) {
+		return outputConfiguration?.displayName;
+	}
+	if (!nodeType.value?.outputNames || nodeType.value.outputNames.length <= outputIndex) {
+		return outputIndex + 1;
+	}
+
+	return nodeType.value.outputNames[outputIndex];
+}
+
+function refreshDataSize() {
+	// Hide by default the data from being displayed
+	showData.value = false;
+	const jsonItems = inputDataPage.value.map((item) => item.json);
+	const byteSize = new Blob([JSON.stringify(jsonItems)]).size;
+	dataSize.value = byteSize;
+	updateShowData();
+}
+
+function updateShowData() {
+	// Display data if it is reasonably small (< 1MB)
+	showData.value =
+		(isSchemaView.value && dataSize.value < MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW) ||
+		dataSize.value < MAX_DISPLAY_DATA_SIZE;
+}
+
+function onRunIndexChange(run: number) {
+	emit('runChange', run);
+}
+
+function enableNode() {
+	if (node.value) {
+		const updateInformation = {
+			name: node.value.name,
+			properties: {
+				disabled: !node.value.disabled,
+			} as IDataObject,
+		} as INodeUpdatePropertiesInformation;
+
+		workflowsStore.updateNodeProperties(updateInformation);
+	}
+}
+
+function setDisplayMode() {
+	if (!activeNode.value) return;
+
+	const shouldDisplayHtml =
+		activeNode.value.type === HTML_NODE_TYPE &&
+		activeNode.value.parameters.operation === 'generateHtmlTemplate';
+
+	if (shouldDisplayHtml) {
+		ndvStore.setPanelDisplayMode({
+			pane: 'output',
+			mode: 'html',
+		});
+	}
+}
+
+function activatePane() {
+	emit('activatePane');
+}
+
+function onSearchClear() {
+	search.value = '';
+	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
+}
+
+function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
+	if (task.parentExecution) {
+		return i18n.baseText('runData.openParentExecution', {
+			interpolate: { id: task.parentExecution.executionId },
+		});
+	}
+
+	if (task.subExecution) {
+		return i18n.baseText('runData.openSubExecution', {
+			interpolate: { id: task.subExecution.executionId },
+		});
+	}
+
+	return;
+}
+
+defineExpose({ enterEditMode });
+</script>
+
 <template>
-	<div :class="$style.container">
-		<n8n-callout
-			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
+	<div :class="['run-data', $style.container]" @mouseover="activatePane">
+		<N8nCallout
+			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
 		>
-			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnly">
-				<n8n-link
+			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
+			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
+				<N8nLink
 					theme="secondary"
 					size="small"
 					underline
 					bold
-					@click="onTogglePinData({ source: 'banner-link' })"
+					data-test-id="ndv-unpin-data"
+					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
-					{{ $locale.baseText('runData.pindata.unpin') }}
-				</n8n-link>
+					{{ i18n.baseText('runData.pindata.unpin') }}
+				</N8nLink>
 			</span>
 			<template #trailingContent>
-				<n8n-link
-					:to="dataPinningDocsUrl"
+				<N8nLink
+					:to="DATA_PINNING_DOCS_URL"
 					size="small"
 					theme="secondary"
 					bold
 					underline
 					@click="onClickDataPinningDocsLink"
 				>
-					{{ $locale.baseText('runData.pindata.learnMore') }}
-				</n8n-link>
+					{{ i18n.baseText('runData.pindata.learnMore') }}
+				</N8nLink>
 			</template>
-		</n8n-callout>
+		</N8nCallout>
 
 		<BinaryDataDisplay
-			:windowVisible="binaryDataDisplayVisible"
-			:displayData="binaryDataDisplayData"
+			v-if="binaryDataDisplayData"
+			:window-visible="binaryDataDisplayVisible"
+			:display-data="binaryDataDisplayData"
 			@close="closeBinaryDataDisplay"
 		/>
 
@@ -43,303 +1311,464 @@
 
 			<div
 				v-show="!hasRunError"
-				@click.stop
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
+				@click.stop
 			>
-				<n8n-radio-buttons
+				<Suspense>
+					<LazyRunDataSearch
+						v-if="showIOSearch"
+						v-model="search"
+						:class="$style.search"
+						:pane-type="paneType"
+						:display-mode="displayMode"
+						:is-area-active="isPaneActive"
+						@focus="activatePane"
+					/>
+				</Suspense>
+
+				<N8nRadioButtons
 					v-show="
-						hasNodeRun &&
-						((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) &&
-						!editMode.enabled
+						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
 					"
-					:value="displayMode"
-					:options="buttons"
-					@input="onDisplayModeChange"
+					:model-value="displayMode"
+					:options="displayModes"
 					data-test-id="ndv-run-data-display-mode"
+					@update:model-value="onDisplayModeChange"
 				/>
-				<n8n-icon-button
-					v-if="canPinData && !isReadOnly"
+
+				<N8nIconButton
+					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
-					:title="$locale.baseText('runData.editOutput')"
+					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
-					:disabled="node.disabled"
-					class="ml-2xs"
+					:disabled="node?.disabled"
 					icon="pencil-alt"
 					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
-				<n8n-tooltip
-					placement="bottom-end"
-					v-if="canPinData && jsonData && jsonData.length > 0"
-					v-show="!editMode.enabled"
-					:value="pinDataDiscoveryTooltipVisible"
-					:manual="isControlledPinDataTooltip"
-				>
-					<template #content v-if="!isControlledPinDataTooltip">
-						<div :class="$style.tooltipContainer">
-							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
-							<n8n-text size="small" tag="p">
-								{{ $locale.baseText('ndv.pinData.pin.description') }}
 
-								<n8n-link :to="dataPinningDocsUrl" size="small">
-									{{ $locale.baseText('ndv.pinData.pin.link') }}
-								</n8n-link>
-							</n8n-text>
-						</div>
-					</template>
-					<template #content v-else>
-						<div :class="$style.tooltipContainer">
-							{{ $locale.baseText('node.discovery.pinData.ndv') }}
-						</div>
-					</template>
-					<n8n-icon-button
-						:class="['ml-2xs', $style.pinDataButton]"
-						type="tertiary"
-						:active="hasPinData"
-						icon="thumbtack"
-						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
-						@click="onTogglePinData({ source: 'pin-icon-click' })"
-						data-test-id="ndv-pin-data"
-					/>
-				</n8n-tooltip>
+				<RunDataPinButton
+					v-if="showPinButton"
+					:disabled="pinButtonDisabled"
+					:tooltip-contents-visibility="{
+						binaryDataTooltipContent: !!binaryData?.length,
+						pinDataDiscoveryTooltipContent:
+							isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible,
+					}"
+					:data-pinning-docs-url="DATA_PINNING_DOCS_URL"
+					:pinned-data="pinnedData"
+					@toggle-pin-data="onTogglePinData({ source: 'pin-icon-click' })"
+				/>
 
-				<div :class="$style.editModeActions" v-show="editMode.enabled">
-					<n8n-button
+				<div v-show="editMode.enabled" :class="$style.editModeActions">
+					<N8nButton
 						type="tertiary"
-						:label="$locale.baseText('runData.editor.cancel')"
+						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
-					<n8n-button
+					<N8nButton
 						class="ml-2xs"
 						type="primary"
-						:label="$locale.baseText('runData.editor.save')"
+						:label="i18n.baseText('runData.editor.save')"
 						@click="onClickSaveEdit"
 					/>
 				</div>
 			</div>
 		</div>
 
-		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
-			<n8n-select
-				size="small"
-				:value="runIndex"
-				@input="onRunIndexChange"
-				@click.stop
-				popper-append-to-body
-			>
-				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
-				<n8n-option
-					v-for="option in maxRunIndex + 1"
-					:label="getRunLabel(option)"
-					:value="option - 1"
-					:key="option"
-				></n8n-option>
-			</n8n-select>
-
-			<n8n-tooltip
-				placement="right"
-				v-if="canLinkRuns"
-				:content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint')"
-			>
-				<n8n-icon-button
-					v-if="linkedRuns"
-					icon="unlink"
-					text
-					type="tertiary"
-					size="small"
-					@click="unlinkRun"
-				/>
-				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
-			</n8n-tooltip>
-
-			<slot name="run-info"></slot>
+		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
+			<slot name="input-select"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
-			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
+		<div
+			v-if="maxRunIndex > 0 && !displaysMultipleNodes"
+			v-show="!editMode.enabled"
+			:class="$style.runSelector"
+		>
+			<div :class="$style.runSelectorInner">
+				<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
+
+				<N8nSelect
+					:model-value="runIndex"
+					:class="$style.runSelectorSelect"
+					size="small"
+					teleported
+					data-test-id="run-selector"
+					@update:model-value="onRunIndexChange"
+					@click.stop
+				>
+					<template #prepend>{{ i18n.baseText('ndv.output.run') }}</template>
+					<N8nOption
+						v-for="option in maxRunIndex + 1"
+						:key="option"
+						:label="getRunLabel(option)"
+						:value="option - 1"
+					></N8nOption>
+				</N8nSelect>
+
+				<N8nTooltip v-if="canLinkRuns" placement="right">
+					<template #content>
+						{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+					</template>
+					<N8nIconButton
+						:icon="linkedRuns ? 'unlink' : 'link'"
+						class="linkRun"
+						text
+						type="tertiary"
+						size="small"
+						data-test-id="link-run"
+						@click="toggleLinkRuns"
+					/>
+				</N8nTooltip>
+
+				<slot name="run-info"></slot>
+			</div>
+
+			<a
+				v-if="
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+				"
+				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
+			</a>
+		</div>
+
+		<slot v-if="!displaysMultipleNodes" name="before-data" />
+
+		<div v-if="props.calloutMessage" :class="$style.hintCallout">
+			<N8nCallout theme="secondary" data-test-id="run-data-callout">
+				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
+			</N8nCallout>
+		</div>
+
+		<N8nCallout
+			v-for="hint in getNodeHints()"
+			:key="hint.message"
+			:class="$style.hintCallout"
+			:theme="hint.type || 'info'"
+		>
+			<N8nText v-n8n-html="hint.message" size="small"></N8nText>
+		</N8nCallout>
+
+		<div
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !displaysMultipleNodes"
+			:class="$style.outputs"
+			data-test-id="branches"
+		>
+			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
+
+			<div :class="$style.tabs">
+				<N8nTabs
+					:model-value="currentOutputIndex"
+					:options="branches"
+					@update:model-value="onBranchChange"
+				/>
+			</div>
 		</div>
 
 		<div
 			v-else-if="
-				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+				!hasRunError &&
+				hasNodeRun &&
+				!isSearchInSchemaView &&
+				((dataCount > 0 && maxRunIndex === 0) || search) &&
+				!isArtificialRecoveredEventItem &&
+				!displaysMultipleNodes
 			"
-			v-show="!editMode.enabled"
-			:class="$style.itemsCount"
+			v-show="!editMode.enabled && !hasRunError"
+			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
+			data-test-id="ndv-items-count"
 		>
-			<n8n-text>
-				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
-			</n8n-text>
+			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
+
+			<N8nText v-if="search" :class="$style.itemsText">
+				{{
+					i18n.baseText('ndv.search.items', {
+						adjustToNumber: unfilteredDataCount,
+						interpolate: { matched: dataCount, total: unfilteredDataCount },
+					})
+				}}
+			</N8nText>
+			<N8nText v-else :class="$style.itemsText">
+				<span>
+					{{
+						i18n.baseText('ndv.output.items', {
+							adjustToNumber: dataCount,
+							interpolate: { count: dataCount },
+						})
+					}}
+				</span>
+				<span v-if="activeTaskMetadata?.subExecutionsCount">
+					{{
+						i18n.baseText('ndv.output.andSubExecutions', {
+							adjustToNumber: activeTaskMetadata.subExecutionsCount,
+							interpolate: { count: activeTaskMetadata.subExecutionsCount },
+						})
+					}}
+				</span>
+			</N8nText>
+
+			<a
+				v-if="
+					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+				"
+				:class="$style.relatedExecutionInfo"
+				data-test-id="related-execution-link"
+				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
+				target="_blank"
+				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
+			>
+				<N8nIcon icon="external-link-alt" size="xsmall" />
+				{{ getExecutionLinkLabel(activeTaskMetadata) }}
+			</a>
 		</div>
 
-		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
-			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
-				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
-				<n8n-text>{{ executingMessage }}</n8n-text>
+		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
+			<div
+				v-if="isExecuting && !isWaitNodeWaiting"
+				:class="$style.center"
+				data-test-id="ndv-executing"
+			>
+				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
+				<N8nText>{{ executingMessage }}</N8nText>
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
-				<div :class="[$style.editModeBody, 'ignore-key-press']">
-					<code-editor
-						:value="editMode.value"
-						:options="{ scrollBeyondLastLine: false }"
-						type="json"
-						@input="ndvStore.setOutputPanelEditModeValue($event)"
+				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
+					<JsonEditor
+						:model-value="editMode.value"
+						:fill-parent="true"
+						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
-					<n8n-info-tip :bold="false" :class="$style.editModeFooterInfotip">
-						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<n8n-link :to="dataEditingDocsUrl" size="small">
-							{{ $locale.baseText('generic.learnMore') }}
-						</n8n-link>
-					</n8n-info-tip>
+					<N8nInfoTip :bold="false" :class="$style.editModeFooterInfotip">
+						{{ i18n.baseText('runData.editor.copyDataInfo') }}
+						<N8nLink :to="DATA_EDITING_DOCS_URL" size="small">
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
+					</N8nInfoTip>
 				</div>
 			</div>
 
 			<div
-				v-else-if="paneType === 'output' && hasSubworkflowExecutionError"
+				v-else-if="
+					paneType === 'output' && hasSubworkflowExecutionError && subworkflowExecutionError
+				"
 				:class="$style.stretchVertically"
 			>
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun" :class="$style.center">
+			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
+				<slot name="node-waiting">xxx</slot>
+			</div>
+
+			<div
+				v-else-if="!hasNodeRun && !(displaysMultipleNodes && node?.disabled)"
+				:class="$style.center"
+			>
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="paneType === 'input' && node.disabled" :class="$style.center">
-				<n8n-text>
-					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
-					<n8n-link @click="enableNode">
-						{{ $locale.baseText('ndv.input.disabled.cta') }}
-					</n8n-link>
-				</n8n-text>
+			<div
+				v-else-if="paneType === 'input' && !displaysMultipleNodes && node?.disabled"
+				:class="$style.center"
+			>
+				<N8nText>
+					{{ i18n.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
+					<N8nLink @click="enableNode">
+						{{ i18n.baseText('ndv.input.disabled.cta') }}
+					</N8nLink>
+				</N8nText>
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
-				<slot name="recovered-artifical-output-data"></slot>
+				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
+				<N8nText v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
 					{{
-						$locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
-							interpolate: { nodeName: node.name },
+						i18n.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
+							interpolate: { nodeName: node?.name ?? '' },
 						})
 					}}
-				</n8n-text>
+				</N8nText>
+				<div v-else-if="$slots['content']">
+					<NodeErrorView
+						v-if="workflowRunErrorAsNodeError"
+						:error="workflowRunErrorAsNodeError"
+						:class="$style.inlineError"
+						compact
+					/>
+					<slot name="content"></slot>
+				</div>
 				<NodeErrorView
-					v-else
-					:error="workflowRunData[node.name][runIndex].error"
+					v-else-if="workflowRunErrorAsNodeError"
+					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
 				/>
 			</div>
 
 			<div
-				v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1"
+				v-else-if="
+					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
+				"
 				:class="$style.center"
 			>
-				<n8n-text>
+				<div v-if="search">
+					<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
+					<N8nText>
+						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+							<template #link>
+								<a href="#" @click="onSearchClear">
+									{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+								</a>
+							</template>
+						</i18n-t>
+					</N8nText>
+				</div>
+				<N8nText v-else>
 					{{ noDataInBranchMessage }}
-				</n8n-text>
+				</N8nText>
 			</div>
 
-			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
+			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
 				<slot name="no-output-data">xxx</slot>
 			</div>
 
-			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
-				<n8n-text align="center" tag="div"
+			<div
+				v-else-if="hasNodeRun && !showData"
+				data-test-id="ndv-data-size-warning"
+				:class="$style.center"
+			>
+				<N8nText :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</N8nText>
+				<N8nText align="center" tag="div"
 					><span
-						v-html="
-							$locale.baseText('ndv.output.tooMuchData.message', {
+						v-n8n-html="
+							i18n.baseText('ndv.output.tooMuchData.message', {
 								interpolate: { size: dataSizeInMB },
 							})
 						"
 					></span
-				></n8n-text>
+				></N8nText>
 
-				<n8n-button
+				<N8nButton
 					outline
-					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
+					:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showTooMuchData"
 				/>
+
+				<N8nButton
+					size="small"
+					:label="i18n.baseText('runData.downloadBinaryData')"
+					@click="downloadJsonData()"
+				/>
 			</div>
+
+			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
+			<slot v-else-if="hasNodeRun && $slots['content']" name="content"></slot>
 
 			<div
 				v-else-if="
 					hasNodeRun &&
 					displayMode === 'table' &&
 					binaryData.length > 0 &&
-					jsonData.length === 1 &&
+					inputData.length === 1 &&
 					Object.keys(jsonData[0] || {}).length === 0
 				"
 				:class="$style.center"
 			>
-				<n8n-text>
-					{{ $locale.baseText('runData.switchToBinary.info') }}
+				<N8nText>
+					{{ i18n.baseText('runData.switchToBinary.info') }}
 					<a @click="switchToBinary">
-						{{ $locale.baseText('runData.switchToBinary.binary') }}
+						{{ i18n.baseText('runData.switchToBinary.binary') }}
 					</a>
-				</n8n-text>
+				</N8nText>
 			</div>
 
-			<run-data-table
-				v-else-if="hasNodeRun && displayMode === 'table'"
-				:node="node"
-				:inputData="inputData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:runIndex="runIndex"
-				:pageOffset="currentPageOffset"
-				:totalRuns="maxRunIndex"
-				:hasDefaultHoverState="paneType === 'input'"
-				@mounted="$emit('tableMounted', $event)"
-				@activeRowChanged="onItemHover"
-				@displayModeChange="onDisplayModeChange"
-			/>
+			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
+				<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noMatch.title') }}</N8nText>
+				<N8nText>
+					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+						<template #link>
+							<a href="#" @click="onSearchClear">
+								{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</i18n-t>
+				</N8nText>
+			</div>
 
-			<run-data-json
-				v-else-if="hasNodeRun && displayMode === 'json'"
-				:paneType="paneType"
-				:editMode="editMode"
-				:sessioId="sessionId"
-				:node="node"
-				:inputData="inputData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:runIndex="runIndex"
-				:totalRuns="maxRunIndex"
-			/>
+			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
+				<LazyRunDataTable
+					:node="node"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:page-offset="currentPageOffset"
+					:total-runs="maxRunIndex"
+					:has-default-hover-state="paneType === 'input' && !search"
+					:search="search"
+					@mounted="emit('tableMounted', $event)"
+					@active-row-changed="onItemHover"
+					@display-mode-change="onDisplayModeChange"
+				/>
+			</Suspense>
 
-			<run-data-html
-				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
-				:inputData="inputData"
-			/>
+			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
+				<LazyRunDataJson
+					:pane-type="paneType"
+					:edit-mode="editMode"
+					:push-ref="pushRef"
+					:node="node"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:total-runs="maxRunIndex"
+					:search="search"
+				/>
+			</Suspense>
 
-			<run-data-schema
-				v-else-if="hasNodeRun && isSchemaView"
-				:data="jsonData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:node="node"
-				:paneType="paneType"
-				:runIndex="runIndex"
-				:totalRuns="maxRunIndex"
-			/>
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
+				<LazyRunDataHtml :input-html="inputHtml" />
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && isSchemaView">
+				<LazyRunDataSchema
+					:nodes="nodes"
+					:mapping-enabled="mappingEnabled"
+					:node="node"
+					:data="jsonData"
+					:pane-type="paneType"
+					:connection-type="connectionType"
+					:run-index="runIndex"
+					:output-index="currentOutputIndex"
+					:total-runs="maxRunIndex"
+					:search="search"
+					:class="$style.schema"
+					@clear:search="onSearchClear"
+				/>
+			</Suspense>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
-				<n8n-text align="center" tag="div">{{
-					$locale.baseText('runData.noBinaryDataFound')
-				}}</n8n-text>
+				<N8nText align="center" tag="div">{{ i18n.baseText('runData.noBinaryDataFound') }}</N8nText>
 			</div>
 
 			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
 				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div :class="$style.binaryIndex" v-if="binaryData.length > 1">
+					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
 						<div>
 							{{ index + 1 }}
 						</div>
@@ -347,69 +1776,69 @@
 
 					<div :class="$style.binaryRow">
 						<div
-							:class="$style.binaryCell"
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
+							:class="$style.binaryCell"
 						>
-							<div>
+							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
 									{{ key }}
 								</div>
 								<div v-if="binaryData.fileName">
 									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileName') }}:
-										</n8n-text>
+										<N8nText size="small" :bold="true"
+											>{{ i18n.baseText('runData.fileName') }}:
+										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
 								</div>
 								<div v-if="binaryData.directory">
 									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.directory') }}:
-										</n8n-text>
+										<N8nText size="small" :bold="true"
+											>{{ i18n.baseText('runData.directory') }}:
+										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
 								</div>
 								<div v-if="binaryData.fileExtension">
 									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
+										<N8nText size="small" :bold="true"
+											>{{ i18n.baseText('runData.fileExtension') }}:</N8nText
 										>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
 								</div>
 								<div v-if="binaryData.mimeType">
 									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.mimeType') }}:
-										</n8n-text>
+										<N8nText size="small" :bold="true"
+											>{{ i18n.baseText('runData.mimeType') }}:
+										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
 								</div>
 								<div v-if="binaryData.fileSize">
 									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileSize') }}:
-										</n8n-text>
+										<N8nText size="small" :bold="true"
+											>{{ i18n.baseText('runData.fileSize') }}:
+										</N8nText>
 									</div>
 									<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
 								</div>
 
 								<div :class="$style.binaryButtonContainer">
-									<n8n-button
+									<N8nButton
 										v-if="isViewable(index, key)"
 										size="small"
-										:label="$locale.baseText('runData.showBinaryData')"
-										class="binary-data-show-data-button"
+										:label="i18n.baseText('runData.showBinaryData')"
+										data-test-id="ndv-view-binary-data"
 										@click="displayBinaryData(index, key)"
 									/>
-									<n8n-button
+									<N8nButton
 										v-if="isDownloadable(index, key)"
 										size="small"
 										type="secondary"
-										:label="$locale.baseText('runData.downloadBinaryData')"
-										class="binary-data-show-data-button"
+										:label="i18n.baseText('runData.downloadBinaryData')"
+										data-test-id="ndv-download-binary-data"
 										@click="downloadBinaryData(index, key)"
 									/>
 								</div>
@@ -420,947 +1849,47 @@
 			</div>
 		</div>
 		<div
-			:class="$style.pagination"
-			v-if="hasNodeRun && !hasRunError && dataCount > pageSize && !isSchemaView"
+			v-if="
+				hidePagination === false &&
+				hasNodeRun &&
+				!hasRunError &&
+				displayMode !== 'binary' &&
+				dataCount > pageSize &&
+				!isSchemaView &&
+				!isArtificialRecoveredEventItem
+			"
 			v-show="!editMode.enabled"
+			:class="$style.pagination"
+			data-test-id="ndv-data-pagination"
 		>
 			<el-pagination
 				background
 				:hide-on-single-page="true"
-				:current-page.sync="currentPage"
+				:current-page="currentPage"
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				@current-change="onCurrentPageChange"
 				:total="dataCount"
+				@update:current-page="onCurrentPageChange"
 			>
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
-					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
-					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
-					</n8n-option>
-					<n8n-option :label="$locale.baseText('ndv.output.all')" :value="dataCount"> </n8n-option>
-				</n8n-select>
+				<N8nSelect
+					size="mini"
+					:model-value="pageSize"
+					teleported
+					@update:model-value="onPageSizeChange"
+				>
+					<template #prepend>{{ i18n.baseText('ndv.output.pageSize') }}</template>
+					<N8nOption v-for="size in pageSizes" :key="size" :label="size" :value="size"> </N8nOption>
+					<N8nOption :label="i18n.baseText('ndv.output.all')" :value="dataCount"> </N8nOption>
+				</N8nSelect>
 			</div>
 		</div>
-		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
-
-<script lang="ts">
-import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
-import { saveAs } from 'file-saver';
-import {
-	IBinaryData,
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	IRunData,
-	IRunExecutionData,
-} from 'n8n-workflow';
-
-import {
-	IExecutionResponse,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IRunDataDisplayMode,
-	ITab,
-	NodePanelType,
-} from '@/Interface';
-
-import {
-	DATA_PINNING_DOCS_URL,
-	DATA_EDITING_DOCS_URL,
-	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
-	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
-	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-	MAX_DISPLAY_DATA_SIZE,
-	MAX_DISPLAY_ITEMS_AUTO_ALL,
-	TEST_PIN_DATA,
-	HTML_NODE_TYPE,
-} from '@/constants';
-
-import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import WarningTooltip from '@/components/WarningTooltip.vue';
-import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { pinData } from '@/mixins/pinData';
-import { CodeEditor } from '@/components/forms';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
-import { isEmpty } from '@/utils';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-
-const RunDataTable = () => import('@/components/RunDataTable.vue');
-const RunDataJson = () => import('@/components/RunDataJson.vue');
-const RunDataSchema = () => import('@/components/RunDataSchema.vue');
-const RunDataHtml = () => import('@/components/RunDataHtml.vue');
-
-export type EnterEditModeArgs = {
-	origin: 'editIconButton' | 'insertTestDataLink';
-};
-
-export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).extend({
-	name: 'RunData',
-	components: {
-		BinaryDataDisplay,
-		NodeErrorView,
-		WarningTooltip,
-		CodeEditor,
-		RunDataTable,
-		RunDataJson,
-		RunDataSchema,
-		RunDataHtml,
-	},
-	props: {
-		nodeUi: {
-			type: Object as PropType<INodeUi>,
-		},
-		runIndex: {
-			type: Number,
-		},
-		linkedRuns: {
-			type: Boolean,
-		},
-		canLinkRuns: {
-			type: Boolean,
-		},
-		tooMuchDataTitle: {
-			type: String,
-		},
-		noDataInBranchMessage: {
-			type: String,
-		},
-		isExecuting: {
-			type: Boolean,
-		},
-		executingMessage: {
-			type: String,
-		},
-		sessionId: {
-			type: String,
-		},
-		paneType: {
-			type: String as PropType<NodePanelType>,
-		},
-		overrideOutputs: {
-			type: Array as PropType<number[]>,
-		},
-		mappingEnabled: {
-			type: Boolean,
-		},
-		distanceFromActive: {
-			type: Number,
-		},
-		blockUI: {
-			type: Boolean,
-			default: false,
-		},
-		isProductionExecutionPreview: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			binaryDataPreviewActive: false,
-			dataSize: 0,
-			showData: false,
-			outputIndex: 0,
-			binaryDataDisplayVisible: false,
-			binaryDataDisplayData: null as IBinaryData | null,
-
-			MAX_DISPLAY_DATA_SIZE,
-			MAX_DISPLAY_ITEMS_AUTO_ALL,
-			currentPage: 1,
-			pageSize: 10,
-			pageSizes: [10, 25, 50, 100],
-			eventBus: dataPinningEventBus,
-
-			pinDataDiscoveryTooltipVisible: false,
-			isControlledPinDataTooltip: false,
-		};
-	},
-	mounted() {
-		this.init();
-
-		if (!this.isPaneTypeInput) {
-			this.eventBus.$on('data-pinning-error', this.onDataPinningError);
-			this.eventBus.$on('data-unpinning', this.onDataUnpinning);
-
-			this.showPinDataDiscoveryTooltip(this.jsonData);
-		}
-		this.ndvStore.setNDVBranchIndex({
-			pane: this.paneType as 'input' | 'output',
-			branchIndex: this.currentOutputIndex,
-		});
-
-		if (this.paneType === 'output') this.setDisplayMode();
-	},
-	destroyed() {
-		this.hidePinDataDiscoveryTooltip();
-		this.eventBus.$off('data-pinning-error', this.onDataPinningError);
-		this.eventBus.$off('data-unpinning', this.onDataUnpinning);
-	},
-	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
-		activeNode(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-		dataPinningDocsUrl(): string {
-			return DATA_PINNING_DOCS_URL;
-		},
-		dataEditingDocsUrl(): string {
-			return DATA_EDITING_DOCS_URL;
-		},
-		displayMode(): IRunDataDisplayMode {
-			return this.ndvStore.getPanelDisplayMode(this.paneType);
-		},
-		node(): INodeUi | null {
-			return (this.nodeUi as INodeUi | null) || null;
-		},
-		nodeType(): INodeTypeDescription | null {
-			if (this.node) {
-				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-			}
-			return null;
-		},
-		isSchemaView(): boolean {
-			return this.displayMode === 'schema';
-		},
-		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
-		},
-		canPinData(): boolean {
-			return (
-				!this.isPaneTypeInput &&
-				this.isPinDataNodeType &&
-				!(this.binaryData && this.binaryData.length > 0)
-			);
-		},
-		buttons(): Array<{ label: string; value: string }> {
-			const defaults = [
-				{ label: this.$locale.baseText('runData.table'), value: 'table' },
-				{ label: this.$locale.baseText('runData.json'), value: 'json' },
-			];
-
-			if (this.binaryData.length) {
-				defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary' });
-			}
-
-			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
-			if (this.isPaneTypeInput) {
-				defaults.unshift(schemaView);
-			} else {
-				defaults.push(schemaView);
-			}
-
-			if (
-				this.isPaneTypeOutput &&
-				this.activeNode?.type === HTML_NODE_TYPE &&
-				this.activeNode.parameters.operation === 'generateHtmlTemplate'
-			) {
-				defaults.unshift({ label: 'HTML', value: 'html' });
-			}
-
-			return defaults;
-		},
-		hasNodeRun(): boolean {
-			return Boolean(
-				!this.isExecuting &&
-					this.node &&
-					((this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name)) ||
-						this.hasPinData),
-			);
-		},
-		isArtificialRecoveredEventItem(): boolean {
-			return this.inputData?.[0]?.json?.isArtificialRecoveredEventItem !== undefined ?? false;
-		},
-		subworkflowExecutionError(): Error | null {
-			return this.workflowsStore.subWorkflowExecutionError;
-		},
-		hasSubworkflowExecutionError(): boolean {
-			return Boolean(this.subworkflowExecutionError);
-		},
-		hasRunError(): boolean {
-			return Boolean(
-				this.node &&
-					this.workflowRunData &&
-					this.workflowRunData[this.node.name] &&
-					this.workflowRunData[this.node.name][this.runIndex] &&
-					this.workflowRunData[this.node.name][this.runIndex].error,
-			);
-		},
-		workflowExecution(): IExecutionResponse | null {
-			return this.workflowsStore.getWorkflowExecution;
-		},
-		workflowRunData(): IRunData | null {
-			if (this.workflowExecution === null) {
-				return null;
-			}
-			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
-				return executionData.resultData.runData;
-			}
-			return null;
-		},
-		dataCount(): number {
-			return this.getDataCount(this.runIndex, this.currentOutputIndex);
-		},
-		dataSizeInMB(): string {
-			return (this.dataSize / 1024 / 1000).toLocaleString();
-		},
-		maxOutputIndex(): number {
-			if (this.node === null) {
-				return 0;
-			}
-
-			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return 0;
-			}
-
-			if (runData[this.node.name].length < this.runIndex) {
-				return 0;
-			}
-
-			if (runData[this.node.name][this.runIndex]) {
-				const taskData = runData[this.node.name][this.runIndex].data;
-				if (taskData && taskData.main) {
-					return taskData.main.length - 1;
-				}
-			}
-
-			return 0;
-		},
-		currentPageOffset(): number {
-			return this.pageSize * (this.currentPage - 1);
-		},
-		maxRunIndex(): number {
-			if (this.node === null) {
-				return 0;
-			}
-
-			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return 0;
-			}
-
-			if (runData[this.node.name].length) {
-				return runData[this.node.name].length - 1;
-			}
-
-			return 0;
-		},
-		rawInputData(): INodeExecutionData[] {
-			let inputData: INodeExecutionData[] = [];
-
-			if (this.node) {
-				inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
-			}
-
-			if (inputData.length === 0 || !Array.isArray(inputData)) {
-				return [];
-			}
-
-			return inputData;
-		},
-		inputData(): INodeExecutionData[] {
-			let inputData = this.rawInputData;
-
-			if (this.node && this.pinData && !this.isProductionExecutionPreview) {
-				inputData = Array.isArray(this.pinData)
-					? this.pinData.map((value) => ({
-							json: value,
-					  }))
-					: [
-							{
-								json: this.pinData,
-							},
-					  ];
-			}
-
-			// We don't want to paginate the schema view
-			if (this.isSchemaView) {
-				return inputData;
-			}
-
-			const offset = this.pageSize * (this.currentPage - 1);
-			inputData = inputData.slice(offset, offset + this.pageSize);
-
-			return inputData;
-		},
-		jsonData(): IDataObject[] {
-			return executionDataToJson(this.inputData);
-		},
-		binaryData(): IBinaryKeyData[] {
-			if (!this.node) {
-				return [];
-			}
-
-			const binaryData = this.getBinaryData(
-				this.workflowRunData,
-				this.node.name,
-				this.runIndex,
-				this.currentOutputIndex,
-			);
-			return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
-		},
-		currentOutputIndex(): number {
-			if (
-				this.overrideOutputs &&
-				this.overrideOutputs.length &&
-				!this.overrideOutputs.includes(this.outputIndex)
-			) {
-				return this.overrideOutputs[0] as number;
-			}
-
-			return this.outputIndex;
-		},
-		branches(): ITab[] {
-			function capitalize(name: string) {
-				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
-			}
-			const branches: ITab[] = [];
-
-			for (let i = 0; i <= this.maxOutputIndex; i++) {
-				if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
-					continue;
-				}
-				const itemsCount = this.getDataCount(this.runIndex, i);
-				const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
-				let outputName = this.getOutputName(i);
-				if (`${outputName}` === `${i}`) {
-					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
-				} else {
-					const appendBranchWord = NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND.includes(
-						this.node?.type,
-					)
-						? ''
-						: ` ${this.$locale.baseText('ndv.output.branch')}`;
-					outputName = capitalize(`${this.getOutputName(i)}${appendBranchWord}`);
-				}
-				branches.push({
-					label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
-					value: i,
-				});
-			}
-			return branches;
-		},
-		editMode(): { enabled: boolean; value: string } {
-			return this.isPaneTypeInput
-				? { enabled: false, value: '' }
-				: this.ndvStore.outputPanelEditMode;
-		},
-		isPaneTypeInput(): boolean {
-			return this.paneType === 'input';
-		},
-		isPaneTypeOutput(): boolean {
-			return this.paneType === 'output';
-		},
-	},
-	methods: {
-		onItemHover(itemIndex: number | null) {
-			if (itemIndex === null) {
-				this.$emit('itemHover', null);
-
-				return;
-			}
-			this.$emit('itemHover', {
-				outputIndex: this.currentOutputIndex,
-				itemIndex,
-			});
-		},
-		onClickDataPinningDocsLink() {
-			this.$telemetry.track('User clicked ndv link', {
-				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
-				node_type: this.activeNode?.type,
-				pane: 'output',
-				type: 'data-pinning-docs',
-			});
-		},
-		showPinDataDiscoveryTooltip(value: IDataObject[]) {
-			if (!this.isTriggerNode) {
-				return;
-			}
-
-			if (
-				value &&
-				value.length > 0 &&
-				!this.isReadOnly &&
-				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
-			) {
-				this.pinDataDiscoveryComplete();
-
-				setTimeout(() => {
-					this.isControlledPinDataTooltip = true;
-					this.pinDataDiscoveryTooltipVisible = true;
-					this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: true });
-				}, 500); // Wait for NDV to open
-			}
-		},
-		hidePinDataDiscoveryTooltip() {
-			if (this.pinDataDiscoveryTooltipVisible) {
-				this.isControlledPinDataTooltip = false;
-				this.pinDataDiscoveryTooltipVisible = false;
-				this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: false });
-			}
-		},
-		pinDataDiscoveryComplete() {
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
-		},
-		enterEditMode({ origin }: EnterEditModeArgs) {
-			const inputData = this.pinData
-				? clearJsonKey(this.pinData)
-				: executionDataToJson(this.rawInputData);
-
-			const data = inputData.length > 0 ? inputData : TEST_PIN_DATA;
-
-			this.ndvStore.setOutputPanelEditModeEnabled(true);
-			this.ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
-
-			this.$telemetry.track('User opened ndv edit state', {
-				node_type: this.activeNode?.type,
-				click_type: origin === 'editIconButton' ? 'button' : 'link',
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				is_output_present: this.hasNodeRun || this.hasPinData,
-				view: !this.hasNodeRun && !this.hasPinData ? 'undefined' : this.displayMode,
-				is_data_pinned: this.hasPinData,
-			});
-		},
-		onClickCancelEdit() {
-			this.ndvStore.setOutputPanelEditModeEnabled(false);
-			this.ndvStore.setOutputPanelEditModeValue('');
-			this.onExitEditMode({ type: 'cancel' });
-		},
-		onClickSaveEdit() {
-			const { value } = this.editMode;
-
-			this.clearAllStickyNotifications();
-
-			if (!this.isValidPinDataSize(value)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
-				return;
-			}
-
-			if (!this.isValidPinDataJSON(value)) {
-				this.onDataPinningError({ errorType: 'invalid-json', source: 'save-edit' });
-				return;
-			}
-
-			this.ndvStore.setOutputPanelEditModeEnabled(false);
-			this.workflowsStore.pinData({
-				node: this.node,
-				data: clearJsonKey(value) as INodeExecutionData[],
-			});
-
-			this.onDataPinningSuccess({ source: 'save-edit' });
-
-			this.onExitEditMode({ type: 'save' });
-		},
-		onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
-			this.$telemetry.track('User closed ndv edit state', {
-				node_type: this.activeNode?.type,
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				view: this.displayMode,
-				type,
-			});
-		},
-		onDataUnpinning({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
-			this.$telemetry.track('User unpinned ndv data', {
-				node_type: this.activeNode?.type,
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				source,
-				data_size: stringSizeInBytes(this.pinData),
-			});
-		},
-		onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-			const telemetryPayload = {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-			};
-			this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
-			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
-		},
-		onDataPinningError({
-			errorType,
-			source,
-		}: {
-			errorType: 'data-too-large' | 'invalid-json';
-			source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit';
-		}) {
-			this.$telemetry.track('Ndv data pinning failure', {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-				error_type: errorType,
-			});
-		},
-		async onTogglePinData({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
-			if (source === 'pin-icon-click') {
-				const telemetryPayload = {
-					node_type: this.activeNode.type,
-					session_id: this.sessionId,
-					run_index: this.runIndex,
-					view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
-				};
-
-				this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
-				this.$telemetry.track('User clicked pin data icon', telemetryPayload);
-			}
-
-			this.updateNodeParameterIssues(this.node);
-
-			if (this.hasPinData) {
-				this.onDataUnpinning({ source });
-				this.workflowsStore.unpinData({ node: this.node });
-				return;
-			}
-
-			const data = executionDataToJson(this.rawInputData) as INodeExecutionData[];
-
-			if (!this.isValidPinDataSize(data)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
-				return;
-			}
-
-			this.onDataPinningSuccess({ source: 'pin-icon-click' });
-
-			this.workflowsStore.pinData({ node: this.node, data });
-
-			if (this.maxRunIndex > 0) {
-				this.$showToast({
-					title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
-						interpolate: {
-							index: `${this.runIndex}`,
-						},
-					}),
-					message: this.$locale.baseText('ndv.pinData.pin.multipleRuns.description'),
-					type: 'success',
-					duration: 2000,
-				});
-			}
-
-			this.hidePinDataDiscoveryTooltip();
-			this.pinDataDiscoveryComplete();
-		},
-		switchToBinary() {
-			this.onDisplayModeChange('binary');
-		},
-		onBranchChange(value: number) {
-			this.outputIndex = value;
-
-			this.$telemetry.track('User changed ndv branch', {
-				session_id: this.sessionId,
-				branch_index: value,
-				node_type: this.activeNode.type,
-				node_type_input_selection: this.nodeType ? this.nodeType.name : '',
-				pane: this.paneType,
-			});
-		},
-		showTooMuchData() {
-			this.showData = true;
-			this.$telemetry.track('User clicked ndv button', {
-				node_type: this.activeNode.type,
-				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
-				pane: this.paneType,
-				type: 'showTooMuchData',
-			});
-		},
-		linkRun() {
-			this.$emit('linkRun');
-		},
-		unlinkRun() {
-			this.$emit('unlinkRun');
-		},
-		onCurrentPageChange() {
-			this.$telemetry.track('User changed ndv page', {
-				node_type: this.activeNode?.type,
-				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
-				pane: this.paneType,
-				page_selected: this.currentPage,
-				page_size: this.pageSize,
-				items_total: this.dataCount,
-			});
-		},
-		onPageSizeChange(pageSize: number) {
-			this.pageSize = pageSize;
-			const maxPage = Math.ceil(this.dataCount / this.pageSize);
-			if (maxPage < this.currentPage) {
-				this.currentPage = maxPage;
-			}
-
-			this.$telemetry.track('User changed ndv page size', {
-				node_type: this.activeNode?.type,
-				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
-				pane: this.paneType,
-				page_selected: this.currentPage,
-				page_size: this.pageSize,
-				items_total: this.dataCount,
-			});
-		},
-		onDisplayModeChange(displayMode: IRunDataDisplayMode) {
-			const previous = this.displayMode;
-			this.ndvStore.setPanelDisplayMode({ pane: this.paneType, mode: displayMode });
-
-			const dataContainer = this.$refs.dataContainer;
-			if (dataContainer) {
-				const dataDisplay = (dataContainer as Element).children[0];
-
-				if (dataDisplay) {
-					dataDisplay.scrollTo(0, 0);
-				}
-			}
-
-			this.closeBinaryDataDisplay();
-			this.$externalHooks().run('runData.displayModeChanged', {
-				newValue: displayMode,
-				oldValue: previous,
-			});
-			if (this.activeNode) {
-				this.$telemetry.track('User changed ndv item view', {
-					previous_view: previous,
-					new_view: displayMode,
-					node_type: this.activeNode.type,
-					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
-					pane: this.paneType,
-				});
-			}
-		},
-		getRunLabel(option: number) {
-			let itemsCount = 0;
-			for (let i = 0; i <= this.maxOutputIndex; i++) {
-				itemsCount += this.getDataCount(option - 1, i);
-			}
-			const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
-			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
-			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
-		},
-		getDataCount(runIndex: number, outputIndex: number) {
-			if (this.pinData) {
-				return this.pinData.length;
-			}
-
-			if (this.node === null) {
-				return 0;
-			}
-
-			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return 0;
-			}
-
-			if (runData[this.node.name].length <= runIndex) {
-				return 0;
-			}
-
-			if (runData[this.node.name][runIndex].hasOwnProperty('error')) {
-				return 1;
-			}
-
-			if (
-				!runData[this.node.name][runIndex].hasOwnProperty('data') ||
-				runData[this.node.name][runIndex].data === undefined
-			) {
-				return 0;
-			}
-
-			const inputData = this.getMainInputData(runData[this.node.name][runIndex].data!, outputIndex);
-
-			return inputData.length;
-		},
-		init() {
-			// Reset the selected output index every time another node gets selected
-			this.outputIndex = 0;
-			this.refreshDataSize();
-			this.closeBinaryDataDisplay();
-			if (this.binaryData.length > 0) {
-				this.ndvStore.setPanelDisplayMode({
-					pane: this.paneType as 'input' | 'output',
-					mode: 'binary',
-				});
-			} else if (this.displayMode === 'binary') {
-				this.ndvStore.setPanelDisplayMode({
-					pane: this.paneType as 'input' | 'output',
-					mode: 'table',
-				});
-			}
-		},
-		closeBinaryDataDisplay() {
-			this.binaryDataDisplayVisible = false;
-			this.binaryDataDisplayData = null;
-		},
-		clearExecutionData() {
-			this.workflowsStore.setWorkflowExecutionData(null);
-			this.updateNodesExecutionIssues();
-		},
-		isViewable(index: number, key: string): boolean {
-			const { fileType } = this.binaryData[index][key];
-			return !!fileType && ['image', 'video', 'text', 'json'].includes(fileType);
-		},
-		isDownloadable(index: number, key: string): boolean {
-			const { mimeType, fileName } = this.binaryData[index][key];
-			return !!(mimeType && fileName);
-		},
-		async downloadBinaryData(index: number, key: string) {
-			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
-
-			if (id) {
-				const url = this.restApi().getBinaryUrl(id, 'download', fileName, mimeType);
-				saveAs(url, [fileName, fileExtension].join('.'));
-				return;
-			} else {
-				const bufferString = 'data:' + mimeType + ';base64,' + data;
-				const blob = await fetch(bufferString).then((d) => d.blob());
-				saveAs(blob, fileName);
-			}
-		},
-		displayBinaryData(index: number, key: string) {
-			this.binaryDataDisplayVisible = true;
-
-			this.binaryDataDisplayData = {
-				node: this.node!.name,
-				runIndex: this.runIndex,
-				outputIndex: this.currentOutputIndex,
-				index,
-				key,
-			};
-		},
-		getOutputName(outputIndex: number) {
-			if (this.node === null) {
-				return outputIndex + 1;
-			}
-
-			const nodeType = this.nodeType;
-			if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
-				return outputIndex + 1;
-			}
-
-			return nodeType.outputNames[outputIndex];
-		},
-		refreshDataSize() {
-			// Hide by default the data from being displayed
-			this.showData = false;
-
-			// Check how much data there is to display
-			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
-
-			const offset = this.pageSize * (this.currentPage - 1);
-			const jsonItems = inputData.slice(offset, offset + this.pageSize).map((item) => item.json);
-
-			this.dataSize = JSON.stringify(jsonItems).length;
-
-			if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
-				// Data is reasonable small (< 200kb) so display it directly
-				this.showData = true;
-			}
-		},
-		onRunIndexChange(run: number) {
-			this.$emit('runChange', run);
-		},
-		enableNode() {
-			if (this.node) {
-				const updateInformation = {
-					name: this.node.name,
-					properties: {
-						disabled: !this.node.disabled,
-					} as IDataObject,
-				} as INodeUpdatePropertiesInformation;
-
-				this.workflowsStore.updateNodeProperties(updateInformation);
-			}
-		},
-		setDisplayMode() {
-			if (!this.activeNode) return;
-
-			const shouldDisplayHtml =
-				this.activeNode.type === HTML_NODE_TYPE &&
-				this.activeNode.parameters.operation === 'generateHtmlTemplate';
-
-			if (shouldDisplayHtml) {
-				this.ndvStore.setPanelDisplayMode({
-					pane: 'output',
-					mode: 'html',
-				});
-			}
-		},
-	},
-	watch: {
-		node() {
-			this.init();
-		},
-		hasNodeRun() {
-			if (this.paneType === 'output') this.setDisplayMode();
-		},
-		inputData: {
-			handler(data: INodeExecutionData[]) {
-				if (this.paneType && data) {
-					this.ndvStore.setNDVPanelDataIsEmpty({
-						panel: this.paneType as 'input' | 'output',
-						isEmpty: data.every((item) => isEmpty(item.json)),
-					});
-				}
-			},
-			immediate: true,
-			deep: true,
-		},
-		jsonData(value: IDataObject[]) {
-			this.refreshDataSize();
-			this.showPinDataDiscoveryTooltip(value);
-		},
-		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
-			if (newData.length && !prevData.length && this.displayMode !== 'binary') {
-				this.switchToBinary();
-			} else if (!newData.length && this.displayMode === 'binary') {
-				this.onDisplayModeChange('table');
-			}
-		},
-		currentOutputIndex(branchIndex: number) {
-			this.ndvStore.setNDVBranchIndex({
-				pane: this.paneType as 'input' | 'output',
-				branchIndex,
-			});
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .infoIcon {
@@ -1386,7 +1915,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-base);
+	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 }
@@ -1408,6 +1937,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	overflow-x: auto;
 	overflow-y: hidden;
 	min-height: calc(30px + var(--spacing-s));
+	scrollbar-width: thin;
 
 	> *:first-child {
 		flex-grow: 1;
@@ -1416,6 +1946,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 
 .dataContainer {
 	position: relative;
+	overflow-y: auto;
 	height: 100%;
 
 	&:hover {
@@ -1437,25 +1968,84 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	height: 100%;
 }
 
+.inlineError {
+	line-height: var(--font-line-height-xloose);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
+.outputs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-s);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
 .tabs {
-	margin-bottom: var(--spacing-s);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	min-height: 30px;
+	--color-tabs-arrow-buttons: var(--color-run-data-background);
 }
 
 .itemsCount {
-	margin-left: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+	flex-flow: wrap;
+
+	.itemsText {
+		flex-shrink: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	&.muted .itemsText {
+		color: var(--color-text-light);
+		font-size: var(--font-size-2xs);
+	}
+}
+
+.inputSelect {
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .runSelector {
-	max-width: 210px;
-	margin-left: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
 	display: flex;
 	align-items: center;
+	flex-flow: wrap;
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
+	gap: var(--spacing-3xs);
 
-	> * {
-		margin-right: var(--spacing-4xs);
+	:global(.el-input--suffix .el-input__inner) {
+		padding-right: var(--spacing-l);
 	}
+}
+
+.runSelectorInner {
+	display: flex;
+	gap: var(--spacing-4xs);
+	align-items: center;
+}
+
+.runSelectorSelect {
+	max-width: 205px;
+}
+
+.search {
+	margin-left: auto;
 }
 
 .pagination {
@@ -1465,7 +2055,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	align-items: center;
 	bottom: 0;
 	padding: 5px;
-	overflow: auto;
+	overflow-y: hidden;
 }
 
 .pageSizeSelector {
@@ -1539,15 +2129,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	display: flex;
 	justify-content: flex-end;
 	flex-grow: 1;
-}
-.tooltipContain {
-	max-width: 240px;
+	gap: var(--spacing-2xs);
 }
 
-.pinDataButton {
-	svg {
-		transition: transform 0.3s ease;
-	}
+.tooltipContain {
+	max-width: 240px;
 }
 
 .spinner {
@@ -1563,28 +2149,29 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 }
 
 .editMode {
-	height: calc(100% - var(--spacing-s));
+	height: 100%;
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-end;
-	align-items: flex-end;
+	justify-content: stretch;
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 }
 
 .editModeBody {
 	flex: 1 1 auto;
+	max-height: 100%;
 	width: 100%;
-	height: 100%;
-	overflow: hidden;
+	overflow: auto;
 }
 
 .editModeFooter {
+	flex: 0 1 auto;
 	display: flex;
 	width: 100%;
 	justify-content: space-between;
 	align-items: center;
 	padding-top: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .editModeFooterInfotip {
@@ -1607,5 +2194,43 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+
+.hintCallout {
+	margin-bottom: var(--spacing-xs);
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-s);
+}
+
+.schema {
+	padding: 0 var(--spacing-s);
+}
+
+.relatedExecutionInfo {
+	font-size: var(--font-size-s);
+	margin-left: var(--spacing-3xs);
+
+	svg {
+		padding-bottom: 2px;
+	}
+}
+</style>
+
+<style lang="scss" scoped>
+.run-data {
+	.code-node-editor {
+		height: 100%;
+	}
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.highlight) {
+	background-color: #f7dc55;
+	color: black;
+	border-radius: var(--border-radius-base);
+	padding: 0 1px;
+	font-weight: normal;
+	font-style: normal;
 }
 </style>

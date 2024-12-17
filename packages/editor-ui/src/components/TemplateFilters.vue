@@ -1,32 +1,126 @@
+<script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
+import type { ITemplatesCategory } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
+
+interface Props {
+	categories?: ITemplatesCategory[];
+	sortOnPopulate?: boolean;
+	expandLimit?: number;
+	loading?: boolean;
+	selected?: ITemplatesCategory[];
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	categories: () => [],
+	sortOnPopulate: false,
+	expandLimit: 12,
+	loading: false,
+	selected: () => [],
+});
+
+const emit = defineEmits<{
+	clearAll: [];
+	select: [category: ITemplatesCategory];
+	clear: [category: ITemplatesCategory];
+}>();
+
+const i18n = useI18n();
+
+const collapsed = ref(true);
+const sortedCategories = ref<ITemplatesCategory[]>([]);
+
+const allSelected = computed((): boolean => {
+	return props.selected.length === 0;
+});
+
+function sortCategories() {
+	if (!props.sortOnPopulate) {
+		sortedCategories.value = props.categories;
+	} else {
+		const selected = props.selected || [];
+		const selectedCategories = props.categories.filter((cat) => selected.includes(cat));
+		const notSelectedCategories = props.categories.filter((cat) => !selected.includes(cat));
+		sortedCategories.value = selectedCategories.concat(notSelectedCategories);
+	}
+}
+function collapseAction() {
+	collapsed.value = false;
+}
+
+function handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
+	if (value) {
+		emit('select', selectedCategory);
+	} else {
+		emit('clear', selectedCategory);
+	}
+}
+
+function isSelected(category: ITemplatesCategory) {
+	return props.selected.includes(category);
+}
+
+function resetCategories() {
+	emit('clearAll');
+}
+
+watch(
+	() => props.sortOnPopulate,
+	(value: boolean) => {
+		if (value) {
+			sortCategories();
+		}
+	},
+	{
+		immediate: true,
+	},
+);
+
+watch(
+	() => props.categories,
+	(categories: ITemplatesCategory[]) => {
+		if (categories.length > 0) {
+			sortCategories();
+		}
+	},
+	{
+		immediate: true,
+	},
+);
+</script>
+
 <template>
-	<div :class="$style.filters" class="template-filters">
-		<div :class="$style.title" v-text="$locale.baseText('templates.categoriesHeading')" />
+	<div :class="$style.filters" class="template-filters" data-test-id="templates-filter-container">
+		<div :class="$style.title" v-text="i18n.baseText('templates.categoriesHeading')" />
 		<div v-if="loading" :class="$style.list">
 			<n8n-loading :loading="loading" :rows="expandLimit" />
 		</div>
 		<ul v-if="!loading" :class="$style.categories">
-			<li :class="$style.item">
-				<el-checkbox
-					:label="$locale.baseText('templates.allCategories')"
-					:value="allSelected"
-					@change="(value) => resetCategories(value)"
-				/>
+			<li :class="$style.item" data-test-id="template-filter-all-categories">
+				<el-checkbox :model-value="allSelected" @update:model-value="() => resetCategories()">
+					{{ i18n.baseText('templates.allCategories') }}
+				</el-checkbox>
 			</li>
 			<li
-				v-for="category in collapsed ? sortedCategories.slice(0, expandLimit) : sortedCategories"
-				:key="category.id"
+				v-for="(category, index) in collapsed
+					? sortedCategories.slice(0, expandLimit)
+					: sortedCategories"
+				:key="index"
 				:class="$style.item"
+				:data-test-id="`template-filter-${category.name.toLowerCase().replaceAll(' ', '-')}`"
 			>
 				<el-checkbox
-					:label="category.name"
-					:value="isSelected(category.id)"
-					@change="(value) => handleCheckboxChanged(value, category)"
-				/>
+					:model-value="isSelected(category)"
+					@update:model-value="(value: boolean) => handleCheckboxChanged(value, category)"
+				>
+					{{ category.name }}
+				</el-checkbox>
 			</li>
 		</ul>
 		<div
-			:class="$style.button"
 			v-if="sortedCategories.length > expandLimit && collapsed && !loading"
+			:class="$style.button"
+			data-test-id="expand-categories-button"
 			@click="collapseAction"
 		>
 			<n8n-text size="small" color="primary">
@@ -35,75 +129,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { ITemplatesCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-
-export default mixins(genericHelpers).extend({
-	name: 'TemplateFilters',
-	props: {
-		sortOnPopulate: {
-			type: Boolean,
-			default: false,
-		},
-		categories: {
-			type: Array,
-		},
-		expandLimit: {
-			type: Number,
-			default: 12,
-		},
-		loading: {
-			type: Boolean,
-		},
-		selected: {
-			type: Array,
-		},
-	},
-	watch: {
-		categories: {
-			handler(categories: ITemplatesCategory[]) {
-				if (!this.sortOnPopulate) {
-					this.sortedCategories = categories;
-				} else {
-					const selected = this.selected || [];
-					const selectedCategories = categories.filter(({ id }) => selected.includes(id));
-					const notSelectedCategories = categories.filter(({ id }) => !selected.includes(id));
-					this.sortedCategories = selectedCategories.concat(notSelectedCategories);
-				}
-			},
-			immediate: true,
-		},
-	},
-	data() {
-		return {
-			collapsed: true,
-			sortedCategories: [] as ITemplatesCategory[],
-		};
-	},
-	computed: {
-		allSelected(): boolean {
-			return this.selected.length === 0;
-		},
-	},
-	methods: {
-		collapseAction() {
-			this.collapsed = false;
-		},
-		handleCheckboxChanged(value: boolean, selectedCategory: ITemplatesCategory) {
-			this.$emit(value ? 'select' : 'clear', selectedCategory.id);
-		},
-		isSelected(categoryId: string) {
-			return this.selected.includes(categoryId);
-		},
-		resetCategories() {
-			this.$emit('clearAll');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .title {

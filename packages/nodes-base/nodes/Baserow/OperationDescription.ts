@@ -11,7 +11,7 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description:
-			'Database to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Database to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getDatabaseIds',
 		},
@@ -23,7 +23,7 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description:
-			'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: ['databaseId'],
 			loadOptionsMethod: 'getTableIds',
@@ -132,7 +132,7 @@ export const operationFields: INodeProperties[] = [
 						name: 'fieldId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['tableId'],
 							loadOptionsMethod: 'getTableFields',
@@ -203,7 +203,7 @@ export const operationFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -232,7 +232,7 @@ export const operationFields: INodeProperties[] = [
 								type: 'options',
 								default: '',
 								description:
-									'Field to compare. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Field to compare. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								typeOptions: {
 									loadOptionsDependsOn: ['tableId'],
 									loadOptionsMethod: 'getTableFields',
@@ -411,7 +411,7 @@ export const operationFields: INodeProperties[] = [
 								type: 'options',
 								default: '',
 								description:
-									'Field name to sort by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Field name to sort by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								typeOptions: {
 									loadOptionsDependsOn: ['tableId'],
 									loadOptionsMethod: 'getTableFields',

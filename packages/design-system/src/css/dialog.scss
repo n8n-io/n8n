@@ -3,6 +3,35 @@
 @use './common/var';
 @use 'common/popup';
 
+@include mixins.b(overlay) {
+	width: 100%;
+	height: 100%;
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	background-color: hsla(247deg, 14%, 30%, 0.75);
+}
+
+@include mixins.b(overlay-dialog) {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+@include mixins.b(overlay-message-box) {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 @include mixins.b(dialog) {
 	position: relative;
 	margin: 0 auto 50px;
@@ -10,7 +39,7 @@
 	border-radius: var(--border-radius-small);
 	box-shadow: var.$dialog-box-shadow;
 	box-sizing: border-box;
-	width: 50%;
+	width: var(#{utils.getCssVarName('dialog-width')}, 50%);
 
 	@include mixins.when(fullscreen) {
 		width: 100%;
@@ -32,7 +61,6 @@
 
 	@include mixins.e(header) {
 		padding: var.$dialog-padding-primary;
-		padding-bottom: 0px;
 	}
 
 	@include mixins.e(headerbtn) {
@@ -67,6 +95,7 @@
 
 	@include mixins.e(body) {
 		padding: var.$dialog-padding-primary;
+		padding-top: 0;
 		color: var(--color-text-base);
 	}
 
@@ -75,19 +104,9 @@
 		padding-top: 10px;
 		text-align: right;
 		box-sizing: border-box;
-	}
 
-	// 内容居中布局
-	@include mixins.m(center) {
-		text-align: center;
-
-		@include mixins.e(body) {
-			text-align: initial;
-			padding: 25px (var.$dialog-padding-primary + 5px) 30px;
-		}
-
-		@include mixins.e(footer) {
-			text-align: inherit;
+		.button + .button {
+			margin-left: var(--spacing-2xs);
 		}
 	}
 }

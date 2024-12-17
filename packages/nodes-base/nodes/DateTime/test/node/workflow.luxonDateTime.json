@@ -1,0 +1,165 @@
+{
+	"name": "My workflow 10",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4d3b2f7b-1ae9-432d-b765-c6134cd11afc",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 2060]
+		},
+		{
+			"parameters": {
+				"value": "={{ DateTime.fromISO($json.testData) }}",
+				"toFormat": "X",
+				"options": {
+					"toTimezone": "UTC"
+				}
+			},
+			"id": "31ad53db-5cfd-44e5-917b-b90105ae687d",
+			"name": "Date & Time",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [400, 1960]
+		},
+		{
+			"parameters": {
+				"value": "={{ DateTime.fromISO($json.testData).minus({days:1}) }}",
+				"toFormat": "X",
+				"options": {
+					"toTimezone": "UTC"
+				}
+			},
+			"id": "f959c146-2cd3-4bc5-aa55-5b974466ba90",
+			"name": "Date & Time1",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [400, 2180]
+		},
+		{
+			"parameters": {
+				"value": "={{ Number($json.data) }}",
+				"toFormat": "YYYY-MM-DD",
+				"options": {
+					"toTimezone": "UTC"
+				}
+			},
+			"id": "8bf5b635-607e-4207-8b0e-66f0540b103c",
+			"name": "Date & Time2",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 1960]
+		},
+		{
+			"parameters": {
+				"value": "={{ Number($json.data) }}",
+				"toFormat": "YYYY-MM-DD",
+				"options": {
+					"toTimezone": "UTC"
+				}
+			},
+			"id": "350ce053-d415-4a7d-8447-6d7c73758f35",
+			"name": "Date & Time3",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [620, 2180]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "testData",
+							"value": "2023-03-31T06:31:01.000"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b57950a6-3a6a-4e23-8c3b-16abe12bfe16",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [140, 2060]
+		}
+	],
+	"pinData": {
+		"Date & Time2": [
+			{
+				"json": {
+					"testData": "2023-03-31T06:31:01.000",
+					"data": "2023-03-31"
+				}
+			}
+		],
+		"Date & Time3": [
+			{
+				"json": {
+					"testData": "2023-03-31T06:31:01.000",
+					"data": "2023-03-30"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time": {
+			"main": [
+				[
+					{
+						"node": "Date & Time2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time1": {
+			"main": [
+				[
+					{
+						"node": "Date & Time3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Date & Time",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Date & Time1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "ff99618e-6e8e-49d8-b899-021caff6d01d",
+	"id": "151",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

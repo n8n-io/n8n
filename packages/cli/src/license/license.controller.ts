@@ -1,134 +1,77 @@
-/* eslint-disable no-param-reassign */
+import { CommunityRegisteredRequestDto } from '@n8n/api-types';
+import type { AxiosError } from 'axios';
+import { InstanceSettings } from 'n8n-core';
 
-import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
+import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
-import { getLogger } from '@/Logger';
-import * as ResponseHelper from '@/ResponseHelper';
-import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { LicenseService } from './License.service';
-import { License } from '@/License';
-import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
-import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
-import { Container } from 'typedi';
-import { InternalHooks } from '@/InternalHooks';
+import { LicenseService } from './license.service';
 
-export const licenseController = express.Router();
+@RestController('/license')
+export class LicenseController {
+	constructor(
+		private readonly licenseService: LicenseService,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly urlService: UrlService,
+	) {}
 
-const OWNER_ROUTES = ['/activate', '/renew'];
-
-/**
- * Initialize Logger if needed
- */
-licenseController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
+	@Get('/')
+	async getLicenseData() {
+		return await this.licenseService.getLicenseData();
 	}
-	next();
-});
 
-/**
- * Owner checking
- */
-licenseController.use((req: AuthenticatedRequest, res, next) => {
-	if (OWNER_ROUTES.includes(req.path) && req.user) {
-		if (!isInstanceOwner(req.user)) {
-			LoggerProxy.info('Non-owner attempted to activate or renew a license', {
-				userId: req.user.id,
-			});
-			ResponseHelper.sendErrorResponse(
-				res,
-				new ResponseHelper.UnauthorizedError(
-					'Only an instance owner may activate or renew a license',
-				),
-			);
-			return;
-		}
-	}
-	next();
-});
-
-/**
- * GET /license
- * Get the license data, usable by everyone
- */
-licenseController.get(
-	'/',
-	ResponseHelper.send(async (): Promise<ILicenseReadResponse> => {
-		return LicenseService.getLicenseData();
-	}),
-);
-
-/**
- * POST /license/activate
- * Only usable by the instance owner, activates a license.
- */
-licenseController.post(
-	'/activate',
-	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<ILicensePostResponse> => {
-		// Call the license manager activate function and tell it to throw an error
-		const license = Container.get(License);
+	@Post('/enterprise/request_trial')
+	@GlobalScope('license:manage')
+	async requestEnterpriseTrial(req: AuthenticatedRequest) {
 		try {
-			await license.activate(req.body.activationKey);
-		} catch (e) {
-			const error = e as Error & { errorId?: string };
+			await this.licenseService.requestEnterpriseTrial(req.user);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				const errorMsg =
+					(error as AxiosError<{ message: string }>).response?.data?.message ?? error.message;
 
-			switch (error.errorId ?? 'UNSPECIFIED') {
-				case 'SCHEMA_VALIDATION':
-					error.message = 'Activation key is in the wrong format';
-					break;
-				case 'RESERVATION_EXHAUSTED':
-					error.message =
-						'Activation key has been used too many times. Please contact sales@n8n.io if you would like to extend it';
-					break;
-				case 'RESERVATION_EXPIRED':
-					error.message = 'Activation key has expired';
-					break;
-				case 'NOT_FOUND':
-				case 'RESERVATION_CONFLICT':
-					error.message = 'Activation key not found';
-					break;
-			}
-
-			throw new ResponseHelper.BadRequestError((e as Error).message);
-		}
-
-		// Return the read data, plus the management JWT
-		return {
-			managementToken: license.getManagementJwt(),
-			...(await LicenseService.getLicenseData()),
-		};
-	}),
-);
-
-/**
- * POST /license/renew
- * Only usable by instance owner, renews a license
- */
-licenseController.post(
-	'/renew',
-	ResponseHelper.send(async (): Promise<ILicensePostResponse> => {
-		// Call the license manager activate function and tell it to throw an error
-		const license = Container.get(License);
-		try {
-			await license.renew();
-		} catch (e) {
-			// not awaiting so as not to make the endpoint hang
-			void Container.get(InternalHooks).onLicenseRenewAttempt({ success: false });
-			if (e instanceof Error) {
-				throw new ResponseHelper.BadRequestError(e.message);
+				throw new BadRequestError(errorMsg);
+			} else {
+				throw new BadRequestError('Failed to request trial');
 			}
 		}
+	}
 
-		// not awaiting so as not to make the endpoint hang
-		void Container.get(InternalHooks).onLicenseRenewAttempt({ success: true });
+	@Post('/enterprise/community-registered')
+	async registerCommunityEdition(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: CommunityRegisteredRequestDto,
+	) {
+		return await this.licenseService.registerCommunityEdition({
+			userId: req.user.id,
+			email: payload.email,
+			instanceId: this.instanceSettings.instanceId,
+			instanceUrl: this.urlService.getInstanceBaseUrl(),
+			licenseType: 'community-registered',
+		});
+	}
 
-		// Return the read data, plus the management JWT
-		return {
-			managementToken: license.getManagementJwt(),
-			...(await LicenseService.getLicenseData()),
-		};
-	}),
-);
+	@Post('/activate')
+	@GlobalScope('license:manage')
+	async activateLicense(req: LicenseRequest.Activate) {
+		const { activationKey } = req.body;
+		await this.licenseService.activateLicense(activationKey);
+		return await this.getTokenAndData();
+	}
+
+	@Post('/renew')
+	@GlobalScope('license:manage')
+	async renewLicense() {
+		await this.licenseService.renewLicense();
+		return await this.getTokenAndData();
+	}
+
+	private async getTokenAndData() {
+		const managementToken = this.licenseService.getManagementJwt();
+		const data = await this.licenseService.getLicenseData();
+		return { ...data, managementToken };
+	}
+}

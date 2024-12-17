@@ -43,7 +43,7 @@ export const analyzerFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 	},
 	{
@@ -66,7 +66,7 @@ export const analyzerFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 
 	// Observable type != file
@@ -89,7 +89,7 @@ export const analyzerFields: INodeProperties[] = [
 		description: 'Enter the observable value',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -101,7 +101,7 @@ export const analyzerFields: INodeProperties[] = [
 				operation: ['execute'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 	{
 		displayName: 'TLP',

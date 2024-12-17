@@ -1,0 +1,606 @@
+{
+	"name": "itemList refactor",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e7ecaa9c-e35d-4095-a85b-85b83f807c2a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [420, 400]
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople",
+				"returnAll": true
+			},
+			"id": "7d925077-afaa-46d5-ba2f-0c19d93afecc",
+			"name": "Customer Datastore (n8n training)",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [640, 400]
+		},
+		{
+			"parameters": {
+				"operation": "concatenateItems",
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "email"
+						},
+						{
+							"fieldToAggregate": "notes"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "f80182d8-54f6-4a26-82b3-27d67e4ca39b",
+			"name": "Item Lists1",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1120, -120]
+		},
+		{
+			"parameters": {
+				"operation": "concatenateItems",
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "data2"
+			},
+			"id": "23eefe2c-6394-4b53-a791-852dcd671ea0",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1120, 40]
+		},
+		{
+			"parameters": {
+				"operation": "limit",
+				"maxItems": 2
+			},
+			"id": "676dc72f-9766-43c0-aab7-2f8a93ed46e5",
+			"name": "Item Lists2",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1120, 200]
+		},
+		{
+			"parameters": {
+				"operation": "limit",
+				"keep": "lastItems"
+			},
+			"id": "9615299b-5acc-4459-a7d3-2cb23c3224ab",
+			"name": "Item Lists3",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1120, 360]
+		},
+		{
+			"parameters": {
+				"operation": "sort",
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "country"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "fd2f190a-b161-48ff-93e1-0f30efce051a",
+			"name": "Item Lists4",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1120, 540]
+		},
+		{
+			"parameters": {
+				"operation": "limit",
+				"maxItems": 4
+			},
+			"id": "14759521-76ad-46d8-8add-1d7361788fe1",
+			"name": "Item Lists5",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1360, 540]
+		},
+		{
+			"parameters": {
+				"operation": "removeDuplicates",
+				"compare": "selectedFields",
+				"fieldsToCompare": "country",
+				"options": {}
+			},
+			"id": "c0eba4d0-f975-4987-8bb2-853e8a98665e",
+			"name": "Item Lists6",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1560, 540]
+		},
+		{
+			"parameters": {
+				"operation": "concatenateItems",
+				"aggregate": "aggregateAllItemData",
+				"include": "specifiedFields",
+				"fieldsToInclude": "country, notes, name, created"
+			},
+			"id": "b5962f40-a891-4b02-8fec-c2d76f85375f",
+			"name": "Item Lists7",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1120, 740]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"include": "allOtherFields",
+				"options": {
+					"destinationFieldName": "newData"
+				}
+			},
+			"id": "15c6fc86-7e38-4d76-836a-8f8426ca05e3",
+			"name": "Item Lists8",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1380, 740]
+		},
+		{
+			"parameters": {
+				"operation": "summarize",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "append",
+							"field": "newData.notes"
+						},
+						{
+							"aggregation": "max",
+							"field": "newData.created"
+						},
+						{
+							"aggregation": "min",
+							"field": "newData.created"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8c51ae57-487e-472a-b268-6e8ad347edbb",
+			"name": "Item Lists9",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 3,
+			"position": [1560, 940]
+		},
+		{
+			"parameters": {},
+			"id": "e859b082-284c-4bb3-96b6-39a86152d8f6",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, -120]
+		},
+		{
+			"parameters": {},
+			"id": "9da56c21-739d-4f2f-adf7-953cf0550d97",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, 40]
+		},
+		{
+			"parameters": {},
+			"id": "f85ac031-24de-4701-bb3d-76c684924002",
+			"name": "No Operation, do nothing2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, 200]
+		},
+		{
+			"parameters": {},
+			"id": "e7faff14-55d6-4d78-983d-027fd56bcd5a",
+			"name": "No Operation, do nothing3",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, 360]
+		},
+		{
+			"parameters": {},
+			"id": "dc8b7bbc-b1a8-4ba8-b214-d73341cb9f85",
+			"name": "No Operation, do nothing4",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, 740]
+		},
+		{
+			"parameters": {},
+			"id": "09bdeca1-6a9e-4668-b9d1-14ed6139e047",
+			"name": "No Operation, do nothing5",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, 540]
+		},
+		{
+			"parameters": {},
+			"id": "7d508889-d94e-4818-abc8-b669a0fe64ea",
+			"name": "No Operation, do nothing6",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1760, 940]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"email": [
+						"gatsby@west-egg.com",
+						"jab@macondo.co",
+						"info@in-and-out-of-weeks.org",
+						"captain@heartofgold.com",
+						"edmund@narnia.gov"
+					],
+					"notes": [
+						"Keeps asking about a green light??",
+						"Lots of people named after him. Very confusing",
+						"Keeps rolling his terrible eyes",
+						"Felt like I was talking to more than one person",
+						"Passionate sailor"
+					]
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"data2": [
+						{
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						{
+							"id": "23423533",
+							"name": "José Arcadio Buendía",
+							"email": "jab@macondo.co",
+							"notes": "Lots of people named after him. Very confusing",
+							"country": "CO",
+							"created": "1967-05-05"
+						},
+						{
+							"id": "23423534",
+							"name": "Max Sendak",
+							"email": "info@in-and-out-of-weeks.org",
+							"notes": "Keeps rolling his terrible eyes",
+							"country": "US",
+							"created": "1963-04-09"
+						},
+						{
+							"id": "23423535",
+							"name": "Zaphod Beeblebrox",
+							"email": "captain@heartofgold.com",
+							"notes": "Felt like I was talking to more than one person",
+							"country": null,
+							"created": "1979-10-12"
+						},
+						{
+							"id": "23423536",
+							"name": "Edmund Pevensie",
+							"email": "edmund@narnia.gov",
+							"notes": "Passionate sailor",
+							"country": "UK",
+							"created": "1950-10-16"
+						}
+					]
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05"
+				}
+			}
+		],
+		"No Operation, do nothing3": [
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16"
+				}
+			}
+		],
+		"No Operation, do nothing5": [
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10"
+				}
+			}
+		],
+		"No Operation, do nothing4": [
+			{
+				"json": {
+					"newData": {
+						"name": "Jay Gatsby",
+						"notes": "Keeps asking about a green light??",
+						"country": "US",
+						"created": "1925-04-10"
+					}
+				}
+			},
+			{
+				"json": {
+					"newData": {
+						"name": "José Arcadio Buendía",
+						"notes": "Lots of people named after him. Very confusing",
+						"country": "CO",
+						"created": "1967-05-05"
+					}
+				}
+			},
+			{
+				"json": {
+					"newData": {
+						"name": "Max Sendak",
+						"notes": "Keeps rolling his terrible eyes",
+						"country": "US",
+						"created": "1963-04-09"
+					}
+				}
+			},
+			{
+				"json": {
+					"newData": {
+						"name": "Zaphod Beeblebrox",
+						"notes": "Felt like I was talking to more than one person",
+						"country": null,
+						"created": "1979-10-12"
+					}
+				}
+			},
+			{
+				"json": {
+					"newData": {
+						"name": "Edmund Pevensie",
+						"notes": "Passionate sailor",
+						"country": "UK",
+						"created": "1950-10-16"
+					}
+				}
+			}
+		],
+		"No Operation, do nothing6": [
+			{
+				"json": {
+					"appended_newData_notes": [
+						"Keeps asking about a green light??",
+						"Lots of people named after him. Very confusing",
+						"Keeps rolling his terrible eyes",
+						"Felt like I was talking to more than one person",
+						"Passionate sailor"
+					],
+					"max_newData_created": "1979-10-12",
+					"min_newData_created": "1925-04-10"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Customer Datastore (n8n training)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Customer Datastore (n8n training)": {
+			"main": [
+				[
+					{
+						"node": "Item Lists1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Lists7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists1": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists4": {
+			"main": [
+				[
+					{
+						"node": "Item Lists5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists5": {
+			"main": [
+				[
+					{
+						"node": "Item Lists6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists7": {
+			"main": [
+				[
+					{
+						"node": "Item Lists8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists8": {
+			"main": [
+				[
+					{
+						"node": "Item Lists9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "No Operation, do nothing4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists2": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists3": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists6": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists9": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "ce3e0124-aa56-497c-a2e1-24158837c7f9",
+	"id": "m7QDuxo599dkZ0Ex",
+	"meta": {
+		"instanceId": "e34acda144ba98351e38adb4db781751ca8cd64a8248aef8b65608fc9a49008c"
+	},
+	"tags": []
+}

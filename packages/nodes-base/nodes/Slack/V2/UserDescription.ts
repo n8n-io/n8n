@@ -25,6 +25,12 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get many users',
 			},
 			{
+				name: "Get User's Profile",
+				value: 'getProfile',
+				description: "Get a user's profile",
+				action: "Get a user's profile",
+			},
+			{
 				name: "Get User's Status",
 				value: 'getPresence',
 				description: 'Get online status of a user',
@@ -54,7 +60,7 @@ export const userFields: INodeProperties[] = [
 		description: 'The ID of the user to get information about',
 		displayOptions: {
 			show: {
-				operation: ['info'],
+				operation: ['info', 'getProfile'],
 				resource: ['user'],
 			},
 		},
@@ -204,7 +210,7 @@ export const userFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

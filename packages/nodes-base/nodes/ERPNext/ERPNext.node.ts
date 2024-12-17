@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
 
@@ -29,8 +29,8 @@ export class ERPNext implements INodeType {
 		defaults: {
 			name: 'ERPNext',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'erpNextApi',
@@ -89,7 +89,6 @@ export class ERPNext implements INodeType {
 
 				docFields.unshift({ name: '*', value: '*' });
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -107,7 +106,6 @@ export class ERPNext implements INodeType {
 					},
 				);
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 		},
@@ -290,6 +288,6 @@ export class ERPNext implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

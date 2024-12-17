@@ -1,82 +1,111 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
-import { ValidationError } from './ValidationError';
-import { ExecutionError } from './ExecutionError';
-import type { CodeNodeMode } from './utils';
-import { isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
-
+import { EventEmitter } from 'events';
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	ISupplyDataFunctions,
 	IWorkflowDataProxyData,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-export class Sandbox extends NodeVM {
-	private jsCode = '';
+import { isObject } from './utils';
+import { ValidationError } from './ValidationError';
 
-	private itemIndex: number | undefined = undefined;
+interface SandboxTextKeys {
+	object: {
+		singular: string;
+		plural: string;
+	};
+}
 
+export interface SandboxContext extends IWorkflowDataProxyData {
+	$getNodeParameter: IExecuteFunctions['getNodeParameter'];
+	$getWorkflowStaticData: IExecuteFunctions['getWorkflowStaticData'];
+	helpers: IExecuteFunctions['helpers'];
+}
+
+export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
+
+export function getSandboxContext(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	index: number,
+): SandboxContext {
+	const helpers = {
+		...this.helpers,
+		httpRequestWithAuthentication: this.helpers.httpRequestWithAuthentication.bind(this),
+		requestWithAuthenticationPaginated: this.helpers.requestWithAuthenticationPaginated.bind(this),
+	};
+	return {
+		// from NodeExecuteFunctions
+		$getNodeParameter: this.getNodeParameter.bind(this),
+		$getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
+		helpers,
+
+		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
+		// $node, $items(), $parameter, $json, $env, etc.
+		...this.getWorkflowDataProxy(index),
+	};
+}
+
+export abstract class Sandbox extends EventEmitter {
 	constructor(
-		context: ReturnType<typeof getSandboxContext>,
-		workflowMode: WorkflowExecuteMode,
-		private nodeMode: CodeNodeMode,
-		private helpers: IExecuteFunctions['helpers'],
+		private textKeys: SandboxTextKeys,
+		protected helpers: IExecuteFunctions['helpers'],
 	) {
-		super(Sandbox.getSandboxOptions(context, workflowMode));
+		super();
 	}
 
-	static getSandboxOptions(
-		context: ReturnType<typeof getSandboxContext>,
-		workflowMode: WorkflowExecuteMode,
-	): NodeVMOptions {
-		const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
-			process.env;
+	abstract runCode<T = unknown>(): Promise<T>;
 
-		return {
-			console: workflowMode === 'manual' ? 'redirect' : 'inherit',
-			sandbox: context,
-			require: {
-				builtin: builtIn ? builtIn.split(',') : [],
-				external: external ? { modules: external.split(','), transitive: false } : false,
-			},
-		};
-	}
+	abstract runCodeAllItems(): Promise<INodeExecutionData[] | INodeExecutionData[][]>;
 
-	async runCode(jsCode: string, itemIndex?: number) {
-		this.jsCode = jsCode;
-		this.itemIndex = itemIndex;
+	abstract runCodeEachItem(itemIndex: number): Promise<INodeExecutionData | undefined>;
 
-		return this.nodeMode === 'runOnceForAllItems' ? this.runCodeAllItems() : this.runCodeEachItem();
-	}
-
-	private async runCodeAllItems() {
-		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-
-		let executionResult;
-
-		try {
-			executionResult = await this.run(script, __dirname);
-		} catch (error) {
-			// anticipate user expecting `items` to pre-exist as in Function Item node
-			if (error.message === 'items is not defined' && !/(let|const|var) items =/.test(script)) {
-				const quoted = error.message.replace('items', '`items`');
-				error.message = (quoted as string) + '. Did you mean `$input.all()`?';
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			throw new ExecutionError(error);
+	validateRunCodeEachItem(
+		executionResult: INodeExecutionData | undefined,
+		itemIndex: number,
+	): INodeExecutionData {
+		if (typeof executionResult !== 'object') {
+			throw new ValidationError({
+				message: `Code doesn't return ${this.getTextKey('object', { includeArticle: true })}`,
+				description: `Please return ${this.getTextKey('object', {
+					includeArticle: true,
+				})} representing the output item. ('${executionResult}' was returned instead.)`,
+				itemIndex,
+			});
 		}
 
-		if (executionResult === null) return [];
+		if (Array.isArray(executionResult)) {
+			const firstSentence =
+				executionResult.length > 0
+					? `An array of ${typeof executionResult[0]}s was returned.`
+					: 'An empty array was returned.';
+			throw new ValidationError({
+				message: `Code doesn't return a single ${this.getTextKey('object')}`,
+				description: `${firstSentence} If you need to output multiple items, please use the 'Run Once for All Items' mode instead.`,
+				itemIndex,
+			});
+		}
 
-		if (executionResult === undefined || typeof executionResult !== 'object') {
+		const [returnData] = this.helpers.normalizeItems([executionResult]);
+
+		this.validateItem(returnData, itemIndex);
+
+		// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
+		// and another top-level key is unrecognized, then the user mis-added a property
+		// directly on the item, when they intended to add it on the `json` property
+		this.validateTopLevelKeys(returnData, itemIndex);
+
+		return returnData;
+	}
+
+	validateRunCodeAllItems(
+		executionResult: INodeExecutionData | INodeExecutionData[] | undefined,
+	): INodeExecutionData[] {
+		if (typeof executionResult !== 'object') {
 			throw new ValidationError({
 				message: "Code doesn't return items properly",
-				description:
-					'Please return an array of objects, one for each item you would like to output',
-				itemIndex: this.itemIndex,
+				description: `Please return an array of ${this.getTextKey('object', {
+					plural: true,
+				})}, one for each item you would like to output.`,
 			});
 		}
 
@@ -89,172 +118,68 @@ export class Sandbox extends NodeVM {
 			 * item keys to be wrapped in `json` when normalizing items below.
 			 */
 			const mustHaveTopLevelN8nKey = executionResult.some((item) =>
-				Object.keys(item as IDataObject).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
+				Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
 			);
 
-			for (const item of executionResult) {
-				if (item.json !== undefined && !isObject(item.json)) {
-					throw new ValidationError({
-						message: "A 'json' property isn't an object",
-						description: "In the returned data, every key named 'json' must point to an object",
-						itemIndex: this.itemIndex,
-					});
+			if (mustHaveTopLevelN8nKey) {
+				for (let index = 0; index < executionResult.length; index++) {
+					const item = executionResult[index];
+					this.validateTopLevelKeys(item, index);
 				}
-
-				if (mustHaveTopLevelN8nKey) {
-					Object.keys(item as IDataObject).forEach((key) => {
-						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
-						throw new ValidationError({
-							message: `Unknown top-level item key: ${key}`,
-							description: 'Access the properties of an item under `.json`, e.g. `item.json`',
-							itemIndex: this.itemIndex,
-						});
-					});
-				}
-
-				if (item.binary !== undefined && !isObject(item.binary)) {
-					throw new ValidationError({
-						message: "A 'binary' property isn't an object",
-						description: "In the returned data, every key named 'binary’ must point to an object.",
-						itemIndex: this.itemIndex,
-					});
-				}
-			}
-		} else {
-			if (executionResult.json !== undefined && !isObject(executionResult.json)) {
-				throw new ValidationError({
-					message: "A 'json' property isn't an object",
-					description: "In the returned data, every key named 'json' must point to an object",
-					itemIndex: this.itemIndex,
-				});
-			}
-
-			if (executionResult.binary !== undefined && !isObject(executionResult.binary)) {
-				throw new ValidationError({
-					message: "A 'binary' property isn't an object",
-					description: "In the returned data, every key named 'binary’ must point to an object.",
-					itemIndex: this.itemIndex,
-				});
 			}
 		}
 
-		return this.helpers.normalizeItems(executionResult as INodeExecutionData[]);
+		const returnData = this.helpers.normalizeItems(executionResult);
+		returnData.forEach((item, index) => this.validateItem(item, index));
+		return returnData;
 	}
 
-	private async runCodeEachItem() {
-		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-
-		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
-
-		if (match?.groups?.disallowedMethod) {
-			const { disallowedMethod } = match.groups;
-
-			const lineNumber =
-				this.jsCode.split('\n').findIndex((line) => {
-					return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
-				}) + 1;
-
-			const disallowedMethodFound = lineNumber !== 0;
-
-			if (disallowedMethodFound) {
-				throw new ValidationError({
-					message: `Can't use .${disallowedMethod}() here`,
-					description: "This is only available in 'Run Once for All Items' mode",
-					itemIndex: this.itemIndex,
-					lineNumber,
-				});
-			}
+	private getTextKey(
+		key: keyof SandboxTextKeys,
+		options?: { includeArticle?: boolean; plural?: boolean },
+	) {
+		const response = this.textKeys[key][options?.plural ? 'plural' : 'singular'];
+		if (!options?.includeArticle) {
+			return response;
 		}
-
-		let executionResult;
-
-		try {
-			executionResult = await this.run(script, __dirname);
-		} catch (error) {
-			// anticipate user expecting `item` to pre-exist as in Function Item node
-			if (error.message === 'item is not defined' && !/(let|const|var) item =/.test(script)) {
-				const quoted = error.message.replace('item', '`item`');
-				error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
-			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			throw new ExecutionError(error, this.itemIndex);
+		if (['a', 'e', 'i', 'o', 'u'].some((value) => response.startsWith(value))) {
+			return `an ${response}`;
 		}
+		return `a ${response}`;
+	}
 
-		if (executionResult === null) return;
-
-		if (executionResult === undefined || typeof executionResult !== 'object') {
+	private validateItem({ json, binary }: INodeExecutionData, itemIndex: number) {
+		if (json === undefined || !isObject(json)) {
 			throw new ValidationError({
-				message: "Code doesn't return an object",
-				description: `Please return an object representing the output item. ('${executionResult}' was returned instead.)`,
-				itemIndex: this.itemIndex,
+				message: `A 'json' property isn't ${this.getTextKey('object', { includeArticle: true })}`,
+				description: `In the returned data, every key named 'json' must point to ${this.getTextKey(
+					'object',
+					{ includeArticle: true },
+				)}.`,
+				itemIndex,
 			});
 		}
 
-		if (executionResult.json !== undefined && !isObject(executionResult.json)) {
+		if (binary !== undefined && !isObject(binary)) {
 			throw new ValidationError({
-				message: "A 'json' property isn't an object",
-				description: "In the returned data, every key named 'json' must point to an object",
-				itemIndex: this.itemIndex,
+				message: `A 'binary' property isn't ${this.getTextKey('object', { includeArticle: true })}`,
+				description: `In the returned data, every key named 'binary’ must point to ${this.getTextKey(
+					'object',
+					{ includeArticle: true },
+				)}.`,
+				itemIndex,
 			});
 		}
+	}
 
-		if (executionResult.binary !== undefined && !isObject(executionResult.binary)) {
-			throw new ValidationError({
-				message: "A 'binary' property isn't an object",
-				description: "In the returned data, every key named 'binary’ must point to an object.",
-				itemIndex: this.itemIndex,
-			});
-		}
-
-		// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
-		// and another top-level key is unrecognized, then the user mis-added a property
-		// directly on the item, when they intended to add it on the `json` property
-
-		Object.keys(executionResult as IDataObject).forEach((key) => {
+	private validateTopLevelKeys(item: INodeExecutionData, itemIndex: number) {
+		Object.keys(item).forEach((key) => {
 			if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
-
 			throw new ValidationError({
 				message: `Unknown top-level item key: ${key}`,
 				description: 'Access the properties of an item under `.json`, e.g. `item.json`',
-				itemIndex: this.itemIndex,
+				itemIndex,
 			});
 		});
-
-		if (Array.isArray(executionResult)) {
-			const firstSentence =
-				executionResult.length > 0
-					? `An array of ${typeof executionResult[0]}s was returned.`
-					: 'An empty array was returned.';
-
-			throw new ValidationError({
-				message: "Code doesn't return a single object",
-				description: `${firstSentence} If you need to output multiple items, please use the 'Run Once for All Items' mode instead`,
-				itemIndex: this.itemIndex,
-			});
-		}
-
-		return executionResult.json ? executionResult : { json: executionResult };
 	}
-}
-
-export function getSandboxContext(this: IExecuteFunctions, index?: number) {
-	const sandboxContext: Record<string, unknown> & {
-		$item: (i: number) => IWorkflowDataProxyData;
-		$input: any;
-	} = {
-		// from NodeExecuteFunctions
-		$getNodeParameter: this.getNodeParameter,
-		$getWorkflowStaticData: this.getWorkflowStaticData,
-		helpers: this.helpers,
-
-		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
-		$item: this.getWorkflowDataProxy,
-		$input: null,
-	};
-
-	// $node, $items(), $parameter, $json, $env, etc.
-	Object.assign(sandboxContext, sandboxContext.$item(index ?? 0));
-
-	return sandboxContext;
 }

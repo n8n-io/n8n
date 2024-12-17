@@ -1,8 +1,8 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 export class ExecuteWorkflowTrigger implements INodeType {
@@ -20,9 +20,9 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			name: 'Execute Workflow Trigger',
 			color: '#ff6d5a',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:
@@ -49,9 +49,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-
-		return this.prepareOutputData(items);
+	async execute(this: IExecuteFunctions) {
+		return [this.getInputData()];
 	}
 }

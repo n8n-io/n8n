@@ -8,8 +8,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { moceanApiRequest } from './GenericFunctions';
 
@@ -18,15 +19,15 @@ export class Mocean implements INodeType {
 		displayName: 'Mocean',
 		name: 'mocean',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		icon: 'file:mocean.svg',
+		icon: { light: 'file:mocean.svg', dark: 'file:mocean.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Send SMS and voice messages via Mocean',
 		defaults: {
 			name: 'Mocean',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'moceanApi',
@@ -220,7 +221,7 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let resource: string;
 		let text: string;
 		let dlrUrl: string;

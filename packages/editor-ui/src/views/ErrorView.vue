@@ -1,49 +1,42 @@
+<script setup lang="ts">
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
+const router = useRouter();
+
+const props = defineProps<{
+	messageKey: BaseTextKey;
+	errorCode: number;
+	redirectTextKey: BaseTextKey;
+	redirectPage?: keyof typeof VIEWS;
+}>();
+
+const i18n = useI18n();
+
+function onButtonClick() {
+	void router.push({ name: props.redirectPage ?? VIEWS.HOMEPAGE });
+}
+</script>
+
 <template>
 	<div :class="$style.container">
 		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
 		<div :class="$style.message">
 			<div>
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(messageKey) }}
+					{{ i18n.baseText(messageKey) }}
 				</n8n-heading>
 			</div>
 			<div>
-				<n8n-text size="large" v-if="errorCode">
-					{{ errorCode }} {{ $locale.baseText('error') }}
+				<n8n-text v-if="errorCode" size="large">
+					{{ errorCode }} {{ i18n.baseText('error') }}
 				</n8n-text>
 			</div>
 		</div>
-		<n8n-button :label="$locale.baseText(redirectTextKey)" @click="onButtonClick" />
+		<n8n-button :label="i18n.baseText(redirectTextKey)" @click="onButtonClick" />
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'ErrorView',
-	props: {
-		messageKey: {
-			type: String,
-			required: true,
-		},
-		errorCode: {
-			type: Number,
-		},
-		redirectTextKey: {
-			type: String,
-		},
-		redirectPage: {
-			type: String,
-		},
-	},
-	methods: {
-		onButtonClick() {
-			this.$router.push({ name: this.redirectPage });
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

@@ -42,7 +42,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'Name of the file',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -54,7 +54,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded',
+		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -94,7 +94,7 @@ export const documentFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'ID of the owner of this document. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the owner of this document. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

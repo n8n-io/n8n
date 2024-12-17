@@ -1,4 +1,5 @@
 import { evaluate } from './Helpers';
+import { objectExtensions } from '../../src/Extensions/ObjectExtensions';
 
 describe('Data Transformation Functions', () => {
 	describe('Object Data Transformation Functions', () => {
@@ -37,8 +38,8 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.removeFieldsContaining should not work for empty string', () => {
-			expect(
-				() => evaluate(
+			expect(() =>
+				evaluate(
 					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).removeFieldsContaining("") }}',
 				),
 			).toThrow();
@@ -65,8 +66,8 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.keepFieldsContaining should not work for empty string', () => {
-			expect(
-				() => evaluate(
+			expect(() =>
+				evaluate(
 					'={{ ({ test1: "i exist", test2: "i should be removed", test3: "i should also be removed" }).keepFieldsContaining("") }}',
 				),
 			).toThrow();
@@ -80,6 +81,36 @@ describe('Data Transformation Functions', () => {
 
 		test('.urlEncode should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).urlEncode() }}')).toEqual('test1=1&test2=2');
+		});
+
+		test('.keys should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).keys() }}')).toEqual(['test1', 'test2']);
+		});
+
+		test('.values should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).values() }}')).toEqual([1, '2']);
+		});
+
+		test('.toJsonString() should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).toJsonString() }}')).toEqual(
+				'{"test1":1,"test2":"2"}',
+			);
+		});
+
+		describe('Conversion methods', () => {
+			test('should exist but return undefined (to not break expressions with mixed data)', () => {
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toInt() }}')).toBeUndefined();
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toFloat() }}')).toBeUndefined();
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toBoolean() }}')).toBeUndefined();
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toDateTime() }}')).toBeUndefined();
+			});
+
+			it('should not have a doc (hidden from autocomplete)', () => {
+				expect(objectExtensions.functions.toInt.doc).toBeUndefined();
+				expect(objectExtensions.functions.toFloat.doc).toBeUndefined();
+				expect(objectExtensions.functions.toBoolean.doc).toBeUndefined();
+				expect(objectExtensions.functions.toDateTime.doc).toBeUndefined();
+			});
 		});
 	});
 });

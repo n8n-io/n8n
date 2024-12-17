@@ -7,12 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
-
-import moment from 'moment-timezone';
 
 export class GetResponse implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,8 +27,8 @@ export class GetResponse implements INodeType {
 		defaults: {
 			name: 'GetResponse',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'getResponseApi',
@@ -86,7 +86,7 @@ export class GetResponse implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the campaigns to display them to user so that he can
+			// Get all the campaigns to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -99,7 +99,7 @@ export class GetResponse implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tagd to display them to user so that he can
+			// Get all the tagd to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -112,7 +112,7 @@ export class GetResponse implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -277,6 +277,11 @@ export class GetResponse implements INodeType {
 						if (updateFields.customFieldsUi) {
 							const customFieldValues = (updateFields.customFieldsUi as IDataObject)
 								.customFieldValues as IDataObject[];
+							customFieldValues.forEach((entry) => {
+								if (typeof entry.value === 'string') {
+									entry.value = entry.value.split(',').map((value) => value.trim());
+								}
+							});
 							if (customFieldValues) {
 								body.customFieldValues = customFieldValues;
 								delete body.customFieldsUi;
@@ -308,6 +313,6 @@ export class GetResponse implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

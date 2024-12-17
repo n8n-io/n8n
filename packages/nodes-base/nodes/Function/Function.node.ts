@@ -1,5 +1,5 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -8,7 +8,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
+import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +25,8 @@ export class Function implements INodeType {
 			name: 'Function',
 			color: '#FF9922',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
@@ -39,7 +40,7 @@ export class Function implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					codeAutocomplete: 'function',
-					editor: 'code',
+					editor: 'jsEditor',
 					rows: 10,
 				},
 				type: 'string',
@@ -77,7 +78,7 @@ return items;`,
 		const cleanupData = (inputData: IDataObject): IDataObject => {
 			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
-					if (inputData[key]!.constructor.name === 'Object') {
+					if (inputData[key].constructor.name === 'Object') {
 						// Is regular node.js object so check its data
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
@@ -91,8 +92,8 @@ return items;`,
 
 		// Define the global objects for the custom function
 		const sandbox = {
-			getNodeParameter: this.getNodeParameter,
-			getWorkflowStaticData: this.getWorkflowStaticData,
+			getNodeParameter: this.getNodeParameter.bind(this),
+			getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
 			helpers: this.helpers,
 			items,
 			// To be able to access data of other items
@@ -150,27 +151,13 @@ return items;`,
 		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
-			require: {
-				external: false as boolean | { modules: string[]; transitive: boolean },
-				builtin: [] as string[],
-			},
+			require: vmResolver,
 		};
-
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN && typeof options.require === 'object') {
-			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-		}
-
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL && typeof options.require === 'object') {
-			options.require.external = {
-				modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
-				transitive: false,
-			};
-		}
 
 		const vm = new NodeVM(options);
 
 		if (mode === 'manual') {
-			vm.on('console.log', this.sendMessageToUI);
+			vm.on('console.log', this.sendMessageToUI.bind(this));
 		}
 
 		// Get the code to execute
@@ -233,10 +220,10 @@ return items;`,
 					}
 				}
 
-				return Promise.reject(error);
+				throw error;
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

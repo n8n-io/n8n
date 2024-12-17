@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useUsageStore } from '@/stores/usage';
+import { useUsageStore } from '@/stores/usage.store';
 
 describe('Usage and plan store', () => {
 	beforeEach(() => {
@@ -21,7 +21,7 @@ describe('Usage and plan store', () => {
 			const store = useUsageStore();
 			store.setData({
 				usage: {
-					executions: {
+					activeWorkflowTriggers: {
 						limit,
 						value,
 						warningThreshold,

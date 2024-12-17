@@ -1,88 +1,113 @@
-<template>
-	<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-output"></div>
-</template>
+<script setup lang="ts">
+import type { EditorState, SelectionRange } from '@codemirror/state';
 
-<script lang="ts">
-import Vue, { PropType } from 'vue';
-import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
-
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { useI18n } from '@/composables/useI18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import type { Segment } from '@/types/expressions';
+import { onBeforeUnmount } from 'vue';
+import ExpressionOutput from './ExpressionOutput.vue';
+import OutputItemSelect from './OutputItemSelect.vue';
+import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
 
-import type { Plaintext, Resolved, Segment } from '@/types/expressions';
+interface InlineExpressionEditorOutputProps {
+	segments: Segment[];
+	unresolvedExpression?: string;
+	editorState?: EditorState;
+	selection?: SelectionRange;
+	visible?: boolean;
+	isReadOnly?: boolean;
+}
 
-export default Vue.extend({
-	name: 'InlineExpressionEditorOutput',
-	props: {
-		segments: {
-			type: Array as PropType<Segment[]>,
-		},
-	},
-	watch: {
-		segments() {
-			if (!this.editor) return;
+withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+	visible: false,
+	editorState: undefined,
+	selection: undefined,
+	isReadOnly: false,
+	unresolvedExpression: undefined,
+});
 
-			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
-			});
+const i18n = useI18n();
+const theme = outputTheme();
+const ndvStore = useNDVStore();
 
-			highlighter.addColor(this.editor, this.resolvedSegments);
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-		},
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-		};
-	},
-	mounted() {
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.resolvedExpression,
-				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
-			}),
-		});
-	},
-	destroyed() {
-		this.editor?.destroy();
-	},
-	computed: {
-		resolvedExpression(): string {
-			return this.segments.reduce((acc, segment) => {
-				acc += segment.kind === 'resolvable' ? segment.resolved : segment.plaintext;
-				return acc;
-			}, '');
-		},
-		plaintextSegments(): Plaintext[] {
-			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
-		},
-		resolvedSegments(): Resolved[] {
-			let cursor = 0;
-
-			return this.segments
-				.map((segment) => {
-					segment.from = cursor;
-					cursor +=
-						segment.kind === 'plaintext'
-							? segment.plaintext.length
-							: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-							segment.resolved
-							? (segment.resolved as any).toString().length
-							: 0;
-					segment.to = cursor;
-					return segment;
-				})
-				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
-		},
-	},
-	methods: {
-		getValue() {
-			return '=' + this.resolvedExpression;
-		},
-	},
+onBeforeUnmount(() => {
+	ndvStore.expressionOutputItemIndex = 0;
 });
 </script>
 
-<style lang="scss"></style>
+<template>
+	<div v-if="visible" :class="$style.dropdown" title="">
+		<div :class="$style.header">
+			<n8n-text bold size="small" compact>
+				{{ i18n.baseText('parameterInput.result') }}
+			</n8n-text>
+
+			<OutputItemSelect />
+		</div>
+		<n8n-text :class="$style.body">
+			<ExpressionOutput
+				data-test-id="inline-expression-editor-output"
+				:segments="segments"
+				:extensions="theme"
+			>
+			</ExpressionOutput>
+		</n8n-text>
+		<div :class="$style.footer" v-if="!isReadOnly">
+			<InlineExpressionTip
+				:editor-state="editorState"
+				:selection="selection"
+				:unresolved-expression="unresolvedExpression"
+			/>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.dropdown {
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	z-index: 2; // cover tooltips
+	background: var(--color-code-background);
+	border: var(--border-base);
+	border-top: none;
+	width: 100%;
+	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+
+	:global(.cm-editor) {
+		background-color: var(--color-code-background);
+	}
+
+	.body {
+		padding: var(--spacing-3xs);
+	}
+
+	.footer {
+		border-top: var(--border-base);
+	}
+
+	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--spacing-2xs);
+		color: var(--color-text-dark);
+		font-weight: var(--font-weight-bold);
+		padding: 0 var(--spacing-2xs);
+		padding-top: var(--spacing-2xs);
+	}
+
+	.body {
+		padding-top: 0;
+		padding-left: var(--spacing-2xs);
+		color: var(--color-text-dark);
+
+		&:first-child {
+			padding-top: var(--spacing-2xs);
+		}
+	}
+}
+</style>

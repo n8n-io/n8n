@@ -1,6 +1,7 @@
-import N8nCheckbox from './Checkbox.vue';
-import type { StoryFn } from '@storybook/vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue3';
+
+import N8nCheckbox from './Checkbox.vue';
 
 export default {
 	title: 'Atoms/Checkbox',
@@ -8,12 +9,13 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onUpdateModelValue: action('update:modelValue'),
 	onFocus: action('focus'),
 	onChange: action('change'),
 };
 
 const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nCheckbox,
@@ -21,7 +23,8 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 	data: () => ({
 		isChecked: false,
 	}),
-	template: '<n8n-checkbox v-model="isChecked" v-bind="$props" @input="onInput"></n8n-checkbox>',
+	template:
+		'<n8n-checkbox v-model="isChecked" v-bind="args" @update:modelValue="onUpdateModelValue"></n8n-checkbox>',
 	methods,
 });
 

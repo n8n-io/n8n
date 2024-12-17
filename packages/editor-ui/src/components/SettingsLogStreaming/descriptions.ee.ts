@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const webhookModalDescription = [
 	{
@@ -258,7 +258,7 @@ export const webhookModalDescription = [
 		default: {},
 		options: [
 			{
-				displayName: 'Ignore SSL Issues',
+				displayName: 'Ignore SSL Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				noDataExpression: true,

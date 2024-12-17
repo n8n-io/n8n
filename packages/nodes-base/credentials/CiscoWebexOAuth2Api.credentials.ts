@@ -9,6 +9,8 @@ export class CiscoWebexOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'ciscowebex';
 
+	icon = { light: 'file:icons/Cisco.svg', dark: 'file:icons/Cisco.dark.svg' } as const;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

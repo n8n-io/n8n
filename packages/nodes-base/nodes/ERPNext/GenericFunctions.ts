@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -13,21 +13,21 @@ import { NodeApiError } from 'n8n-workflow';
  * Return the base API URL based on the user's environment.
  */
 const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
-	environment === 'cloudHosted' ? `https://${subdomain}.erpnext.com` : domain;
+	environment === 'cloudHosted' ? `https://${subdomain}.${domain}` : domain;
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('erpNextApi')) as ERPNextApiCredentials;
+	const credentials = await this.getCredentials<ERPNextApiCredentials>('erpNextApi');
 	const baseUrl = getBaseUrl(credentials);
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ export async function erpNextApiRequest(
 export async function erpNextApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},

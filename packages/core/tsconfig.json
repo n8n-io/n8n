@@ -1,18 +1,20 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
 		"rootDir": ".",
-		"types": ["node", "jest"],
-		"composite": true,
-		"noEmit": true,
 		"baseUrl": "src",
 		"paths": {
 			"@/*": ["./*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
-	"references": [{ "path": "../workflow/tsconfig.build.json" }]
+	"references": [
+		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
+	]
 }

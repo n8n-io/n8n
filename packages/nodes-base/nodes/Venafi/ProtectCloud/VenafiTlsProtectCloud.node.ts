@@ -1,11 +1,12 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { encryptPassphrase, venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
@@ -37,8 +38,8 @@ export class VenafiTlsProtectCloud implements INodeType {
 		defaults: {
 			name: 'Venafi TLS Protect Cloud',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'venafiTlsProtectCloudApi',
@@ -84,23 +85,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 					returnData.push({
 						name: application.name,
 						value: application.id,
-					});
-				}
-				return returnData;
-			},
-			async getApplicationServerTypes(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { applicationServerTypes } = await venafiApiRequest.call(
-					this,
-					'GET',
-					'/outagedetection/v1/applicationservertypes',
-				);
-				for (const applicationServerType of applicationServerTypes) {
-					returnData.push({
-						name: applicationServerType.platformName,
-						value: applicationServerType.id,
 					});
 				}
 				return returnData;
@@ -157,10 +141,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 						};
 
 						if (generateCsr) {
-							const applicationServerTypeId = this.getNodeParameter(
-								'applicationServerTypeId',
-								i,
-							) as string;
 							const commonName = this.getNodeParameter('commonName', i) as string;
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -169,7 +149,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 							const subjectAltNamesByType: ISubjectAltNamesByType = {};
 
 							body.isVaaSGenerated = true;
-							body.applicationServerTypeId = applicationServerTypeId;
 
 							csrAttributes.commonName = commonName;
 
@@ -323,7 +302,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/contents`,
 								{},
 								qs,
-								undefined,
 								{ encoding: null, json: false, resolveWithFullResponse: true, cert: true },
 							);
 						} else {
@@ -364,7 +342,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/keystore`,
 								body,
 								{},
-								undefined,
 								{ encoding: null, json: false, resolveWithFullResponse: true },
 							);
 						}

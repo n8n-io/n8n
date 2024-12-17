@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 type AggregationType =
 	| 'append'
@@ -29,16 +29,16 @@ type Aggregation = {
 
 type Aggregations = Aggregation[];
 
-enum AggregationDisplayNames {
-	append = 'appended_',
-	average = 'average_',
-	concatenate = 'concatenated_',
-	count = 'count_',
-	countUnique = 'unique_count_',
-	max = 'max_',
-	min = 'min_',
-	sum = 'sum_',
-}
+const AggregationDisplayNames = {
+	append: 'appended_',
+	average: 'average_',
+	concatenate: 'concatenated_',
+	count: 'count_',
+	countUnique: 'unique_count_',
+	max: 'max_',
+	min: 'min_',
+	sum: 'sum_',
+};
 
 const NUMERICAL_AGGREGATIONS = ['average', 'max', 'min', 'sum'];
 
@@ -272,7 +272,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -570,7 +570,11 @@ export async function execute(
 
 	const getValue = fieldValueGetter(options.disableDotNotation);
 
-	checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	const nodeVersion = this.getNode().typeVersion;
+
+	if (nodeVersion < 2.1) {
+		checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	}
 
 	const aggregationResult = splitData(
 		fieldsToSplitBy,
@@ -587,7 +591,7 @@ export async function execute(
 				item: index,
 			})),
 		};
-		return this.prepareOutputData([executionData]);
+		return [[executionData]];
 	} else {
 		if (!fieldsToSplitBy.length) {
 			const { pairedItems, ...json } = aggregationResult;
@@ -597,7 +601,7 @@ export async function execute(
 					item: index,
 				})),
 			};
-			return this.prepareOutputData([executionData]);
+			return [[executionData]];
 		}
 		const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
 		const executionData = returnData.map((item) => {
@@ -609,6 +613,6 @@ export async function execute(
 				})),
 			};
 		});
-		return this.prepareOutputData(executionData);
+		return [executionData];
 	}
 }

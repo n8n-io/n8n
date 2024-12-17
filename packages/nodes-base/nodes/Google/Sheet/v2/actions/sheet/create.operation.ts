@@ -3,6 +3,7 @@ import type { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { getExistingSheetNames, hexToRgb } from '../../helpers/GoogleSheets.utils';
+import { wrapData } from '../../../../../../utils/utilities';
 
 export const description: SheetProperties = [
 	{
@@ -23,7 +24,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -78,7 +79,7 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	let responseData;
-	const returnData: IDataObject[] = [];
+	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	const existingSheetNames = await getExistingSheetNames(sheet);
@@ -120,7 +121,12 @@ export async function execute(
 
 		existingSheetNames.push(sheetTitle);
 
-		returnData.push(responseData as IDataObject);
+		const executionData = this.helpers.constructExecutionMetaData(
+			wrapData(responseData as IDataObject[]),
+			{ itemData: { item: i } },
+		);
+
+		returnData.push(...executionData);
 	}
-	return this.helpers.returnJsonArray(returnData);
+	return returnData;
 }

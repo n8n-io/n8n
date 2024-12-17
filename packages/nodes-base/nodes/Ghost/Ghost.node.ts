@@ -7,13 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 import { postFields, postOperations } from './PostDescription';
-
-import moment from 'moment-timezone';
 
 export class Ghost implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,8 +26,8 @@ export class Ghost implements INodeType {
 		defaults: {
 			name: 'Ghost',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'ghostAdminApi',
@@ -87,7 +86,7 @@ export class Ghost implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the authors to display them to user so that he can
+			// Get all the authors to display them to user so that they can
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -100,7 +99,7 @@ export class Ghost implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -195,6 +194,14 @@ export class Ghost implements INodeType {
 							if (contentFormat === 'html') {
 								post.html = content;
 								qs.source = 'html';
+							} else if (contentFormat === 'lexical') {
+								const lexical = validateJSON(content);
+								if (lexical === undefined) {
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
+										itemIndex: i,
+									});
+								}
+								post.lexical = content;
 							} else {
 								const mobileDoc = validateJSON(content);
 								if (mobileDoc === undefined) {
@@ -293,6 +300,15 @@ export class Ghost implements INodeType {
 								post.html = updateFields.content || '';
 								qs.source = 'html';
 								delete updateFields.content;
+							} else if (contentFormat === 'lexical') {
+								const lexical = validateJSON((updateFields.contentJson as string) || undefined);
+								if (lexical === undefined) {
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', {
+										itemIndex: i,
+									});
+								}
+								post.lexical = updateFields.contentJson;
+								delete updateFields.contentJson;
 							} else {
 								const mobileDoc = validateJSON((updateFields.contentJson as string) || undefined);
 								if (mobileDoc === undefined) {
@@ -359,6 +375,6 @@ export class Ghost implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

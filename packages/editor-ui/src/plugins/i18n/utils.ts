@@ -6,7 +6,7 @@
  *
  * Location: `n8n-nodes-base.nodes.github.nodeView.<middleKey>.placeholder`
  */
-export function deriveMiddleKey(path: string, parameter: { name: string; type: string }) {
+export function deriveMiddleKey(path: string, parameter: { name: string; type?: string }) {
 	let middleKey = parameter.name;
 
 	if (isTopLevelCollection(path, parameter) || isNestedInCollectionLike(path)) {
@@ -28,17 +28,17 @@ export function deriveMiddleKey(path: string, parameter: { name: string; type: s
  */
 export const isNestedInCollectionLike = (path: string) => path.split('.').length >= 3;
 
-const isTopLevelCollection = (path: string, parameter: { type: string }) =>
+const isTopLevelCollection = (path: string, parameter: { type?: string }) =>
 	path.split('.').length === 2 && parameter.type === 'collection';
 
-const isNestedCollection = (path: string, parameter: { type: string }) =>
+const isNestedCollection = (path: string, parameter: { type?: string }) =>
 	path.split('.').length > 2 && parameter.type === 'collection';
 
 /**
  * Check if the param is a normal `fixedCollection`, i.e. a FC other than the wrapper
  * that sits at the root of a node's top-level param and contains all of them.
  */
-const isFixedCollection = (path: string, parameter: { type: string }) =>
+const isFixedCollection = (path: string, parameter: { type?: string }) =>
 	parameter.type === 'fixedCollection' && path !== 'parameters';
 
 /**

@@ -5,7 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
@@ -23,8 +25,6 @@ import { reportFields, reportOperations } from './descriptions/ReportDescription
 
 import { scorecardApiRequest, simplify } from './GenericFunctions';
 
-import moment from 'moment';
-
 export class SecurityScorecard implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SecurityScorecard',
@@ -37,8 +37,8 @@ export class SecurityScorecard implements INodeType {
 		defaults: {
 			name: 'SecurityScorecard',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'securityScorecardApi',
@@ -520,7 +520,7 @@ export class SecurityScorecard implements INodeType {
 		}
 		// Handle file download output data differently
 		if (resource === 'report' && operation === 'download') {
-			return this.prepareOutputData(items);
+			return [items];
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

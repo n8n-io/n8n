@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/imap"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/imap/"
 			}
 		],
 		"primaryDocumentation": [
@@ -23,6 +23,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": ["Helpers", "Other Trigger Nodes"]
+		"Core Nodes": ["Other Trigger Nodes"]
 	}
 }

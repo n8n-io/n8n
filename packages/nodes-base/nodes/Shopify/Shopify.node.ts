@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
 
@@ -31,8 +31,8 @@ export class Shopify implements INodeType {
 		defaults: {
 			name: 'Shopify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'shopifyApi',
@@ -63,6 +63,13 @@ export class Shopify implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Shopify API Version: 2024-07',
+				type: 'notice',
+				name: 'apiVersion',
+				default: '',
+				isNodeSetting: true,
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -111,7 +118,7 @@ export class Shopify implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available products to display them to user so that he can
+			// Get all the available products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -133,7 +140,7 @@ export class Shopify implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available locations to display them to user so that he can
+			// Get all the available locations to display them to user so that they can
 			// select them easily
 			async getLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -470,6 +477,6 @@ export class Shopify implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

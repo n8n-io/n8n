@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class SplunkApi implements ICredentialType {
 	name = 'splunkApi';
@@ -12,6 +17,7 @@ export class SplunkApi implements ICredentialType {
 			displayName: 'Auth Token',
 			name: 'authToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -30,4 +36,21 @@ export class SplunkApi implements ICredentialType {
 			default: false,
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials?.authToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			url: '={{$credentials.baseUrl}}/services/alerts/fired_alerts',
+			method: 'GET',
+			skipSslCertificateValidation: '={{$credentials?.allowUnauthorizedCerts}}',
+		},
+	};
 }

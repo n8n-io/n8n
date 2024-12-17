@@ -1,34 +1,30 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { EnterpriseEditionFeatureValue } from '@/Interface';
+import { useSettingsStore } from '@/stores/settings.store';
+
+const props = withDefaults(
+	defineProps<{
+		features: EnterpriseEditionFeatureValue[];
+	}>(),
+	{
+		features: () => [],
+	},
+);
+
+const settingsStore = useSettingsStore();
+
+const canAccess = computed(() =>
+	props.features.reduce(
+		(acc: boolean, feature) => acc && !!settingsStore.isEnterpriseFeatureEnabled[feature],
+		true,
+	),
+);
+</script>
+
 <template>
 	<div>
 		<slot v-if="canAccess" />
-		<slot name="fallback" v-else />
+		<slot v-else name="fallback" />
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-import { EnterpriseEditionFeature } from '@/constants';
-import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-
-export default Vue.extend({
-	name: 'EnterpriseEdition',
-	props: {
-		features: {
-			type: Array,
-			default: () => [] as EnterpriseEditionFeature[],
-		},
-	},
-	computed: {
-		...mapStores(useSettingsStore),
-		canAccess(): boolean {
-			return this.features.reduce((acc: boolean, feature) => {
-				return (
-					acc &&
-					!!this.settingsStore.isEnterpriseFeatureEnabled(feature as EnterpriseEditionFeature)
-				);
-			}, true);
-		},
-	},
-});
-</script>

@@ -1,3 +1,196 @@
+<script setup lang="ts">
+import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
+import { useExecutionsStore } from '@/stores/executions.store';
+
+const props = withDefaults(
+	defineProps<{
+		loading?: boolean;
+		mode?: 'workflow' | 'execution';
+		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
+		executionId?: string;
+		executionMode?: string;
+		loaderType?: 'image' | 'spinner';
+		canOpenNDV?: boolean;
+		hideNodeIssues?: boolean;
+	}>(),
+	{
+		loading: false,
+		mode: 'workflow',
+		workflow: undefined,
+		executionId: undefined,
+		executionMode: undefined,
+		loaderType: 'image',
+		canOpenNDV: true,
+		hideNodeIssues: false,
+	},
+);
+
+const emit = defineEmits<{
+	close: [];
+}>();
+
+const i18n = useI18n();
+const toast = useToast();
+const executionsStore = useExecutionsStore();
+
+const iframeRef = ref<HTMLIFrameElement | null>(null);
+const nodeViewDetailsOpened = ref(false);
+const ready = ref(false);
+const insideIframe = ref(false);
+const scrollX = ref(0);
+const scrollY = ref(0);
+
+const iframeSrc = computed(() => {
+	return `${window.BASE_PATH ?? '/'}workflows/demo`;
+});
+
+const showPreview = computed(() => {
+	return (
+		!props.loading &&
+		((props.mode === 'workflow' && !!props.workflow) ||
+			(props.mode === 'execution' && !!props.executionId)) &&
+		ready.value
+	);
+});
+
+const loadWorkflow = () => {
+	try {
+		if (!props.workflow) {
+			throw new Error(i18n.baseText('workflowPreview.showError.missingWorkflow'));
+		}
+		if (!props.workflow.nodes || !Array.isArray(props.workflow.nodes)) {
+			throw new Error(i18n.baseText('workflowPreview.showError.arrayEmpty'));
+		}
+		iframeRef.value?.contentWindow?.postMessage?.(
+			JSON.stringify({
+				command: 'openWorkflow',
+				workflow: props.workflow,
+				canOpenNDV: props.canOpenNDV,
+				hideNodeIssues: props.hideNodeIssues,
+			}),
+			'*',
+		);
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('workflowPreview.showError.previewError.title'),
+			i18n.baseText('workflowPreview.showError.previewError.message'),
+		);
+	}
+};
+
+const loadExecution = () => {
+	try {
+		if (!props.executionId) {
+			throw new Error(i18n.baseText('workflowPreview.showError.missingExecution'));
+		}
+		iframeRef.value?.contentWindow?.postMessage?.(
+			JSON.stringify({
+				command: 'openExecution',
+				executionId: props.executionId,
+				executionMode: props.executionMode ?? '',
+				canOpenNDV: props.canOpenNDV,
+			}),
+			'*',
+		);
+
+		if (executionsStore.activeExecution) {
+			iframeRef.value?.contentWindow?.postMessage?.(
+				JSON.stringify({
+					command: 'setActiveExecution',
+					executionId: executionsStore.activeExecution.id,
+				}),
+				'*',
+			);
+		}
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('workflowPreview.showError.previewError.title'),
+			i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
+		);
+	}
+};
+
+const onMouseEnter = () => {
+	insideIframe.value = true;
+	scrollX.value = window.scrollX;
+	scrollY.value = window.scrollY;
+};
+const onMouseLeave = () => {
+	insideIframe.value = false;
+};
+
+const receiveMessage = ({ data }: MessageEvent) => {
+	if (!data?.includes?.('"command"')) {
+		return;
+	}
+	try {
+		const json = JSON.parse(data);
+		if (json.command === 'n8nReady') {
+			ready.value = true;
+		} else if (json.command === 'openNDV') {
+			nodeViewDetailsOpened.value = true;
+		} else if (json.command === 'closeNDV') {
+			nodeViewDetailsOpened.value = false;
+		} else if (json.command === 'error') {
+			emit('close');
+		}
+	} catch (e) {
+		console.error(e);
+	}
+};
+const onDocumentScroll = () => {
+	if (insideIframe.value) {
+		window.scrollTo(scrollX.value, scrollY.value);
+	}
+};
+
+onMounted(() => {
+	window.addEventListener('message', receiveMessage);
+	document.addEventListener('scroll', onDocumentScroll);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('message', receiveMessage);
+	document.removeEventListener('scroll', onDocumentScroll);
+});
+
+watch(
+	() => showPreview.value,
+	() => {
+		if (showPreview.value) {
+			if (props.mode === 'workflow') {
+				loadWorkflow();
+			} else if (props.mode === 'execution') {
+				loadExecution();
+			}
+		}
+	},
+);
+
+watch(
+	() => props.executionId,
+	() => {
+		if (props.mode === 'execution' && props.executionId) {
+			loadExecution();
+		}
+	},
+);
+
+watch(
+	() => props.workflow,
+	() => {
+		if (props.mode === 'workflow' && props.workflow) {
+			loadWorkflow();
+		}
+	},
+);
+</script>
+
 <template>
 	<div :class="$style.container">
 		<div v-if="loaderType === 'image' && !showPreview" :class="$style.imageLoader">
@@ -7,183 +200,20 @@
 			<n8n-spinner type="dots" />
 		</div>
 		<iframe
+			ref="iframeRef"
 			:class="{
-				[$style.workflow]: !this.nodeViewDetailsOpened,
+				[$style.workflow]: !nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
-				[$style.openNDV]: this.nodeViewDetailsOpened,
-				[$style.show]: this.showPreview,
+				[$style.openNDV]: nodeViewDetailsOpened,
+				[$style.show]: showPreview,
 			}"
-			ref="preview_iframe"
-			:src="`${rootStore.baseUrl}workflows/demo`"
+			:src="iframeSrc"
+			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
-		></iframe>
+		/>
 	</div>
 </template>
-
-<script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { IWorkflowDb } from '../Interface';
-import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
-
-export default mixins(showMessage).extend({
-	name: 'WorkflowPreview',
-	props: {
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		mode: {
-			type: String,
-			default: 'workflow',
-			validator: (value: string): boolean => ['workflow', 'execution'].includes(value),
-		},
-		workflow: {
-			type: Object as () => IWorkflowDb,
-			required: false,
-		},
-		executionId: {
-			type: String,
-			required: false,
-		},
-		executionMode: {
-			type: String,
-			required: false,
-		},
-		loaderType: {
-			type: String,
-			default: 'image',
-			validator: (value: string): boolean => ['image', 'spinner'].includes(value),
-		},
-	},
-	data() {
-		return {
-			nodeViewDetailsOpened: false,
-			ready: false,
-			insideIframe: false,
-			scrollX: 0,
-			scrollY: 0,
-		};
-	},
-	computed: {
-		...mapStores(useRootStore),
-		showPreview(): boolean {
-			return (
-				!this.loading &&
-				((this.mode === 'workflow' && !!this.workflow) ||
-					(this.mode === 'execution' && !!this.executionId)) &&
-				this.ready
-			);
-		},
-	},
-	methods: {
-		onMouseEnter() {
-			this.insideIframe = true;
-			this.scrollX = window.scrollX;
-			this.scrollY = window.scrollY;
-		},
-		onMouseLeave() {
-			this.insideIframe = false;
-		},
-		loadWorkflow() {
-			try {
-				if (!this.workflow) {
-					throw new Error(this.$locale.baseText('workflowPreview.showError.missingWorkflow'));
-				}
-				if (!this.workflow.nodes || !Array.isArray(this.workflow.nodes)) {
-					throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
-				}
-
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
-						JSON.stringify({
-							command: 'openWorkflow',
-							workflow: this.workflow,
-						}),
-						'*',
-					);
-				}
-			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('workflowPreview.showError.previewError.title'),
-					this.$locale.baseText('workflowPreview.showError.previewError.message'),
-				);
-			}
-		},
-		loadExecution() {
-			try {
-				if (!this.executionId) {
-					throw new Error(this.$locale.baseText('workflowPreview.showError.missingExecution'));
-				}
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
-						JSON.stringify({
-							command: 'openExecution',
-							executionId: this.executionId,
-							executionMode: this.executionMode || '',
-						}),
-						'*',
-					);
-				}
-			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('workflowPreview.showError.previewError.title'),
-					this.$locale.baseText('workflowPreview.executionMode.showError.previewError.message'),
-				);
-			}
-		},
-		receiveMessage({ data }: MessageEvent) {
-			try {
-				const json = JSON.parse(data);
-				if (json.command === 'n8nReady') {
-					this.ready = true;
-				} else if (json.command === 'openNDV') {
-					this.nodeViewDetailsOpened = true;
-				} else if (json.command === 'closeNDV') {
-					this.nodeViewDetailsOpened = false;
-				} else if (json.command === 'error') {
-					this.$emit('close');
-				}
-			} catch (e) {}
-		},
-		onDocumentScroll() {
-			if (this.insideIframe) {
-				window.scrollTo(this.scrollX, this.scrollY);
-			}
-		},
-	},
-	watch: {
-		showPreview(show) {
-			if (show) {
-				if (this.mode === 'workflow') {
-					this.loadWorkflow();
-				} else if (this.mode === 'execution') {
-					this.loadExecution();
-				}
-			}
-		},
-		executionId(value) {
-			if (this.mode === 'execution' && this.executionId) {
-				this.loadExecution();
-			}
-		},
-	},
-	mounted() {
-		window.addEventListener('message', this.receiveMessage);
-		document.addEventListener('scroll', this.onDocumentScroll);
-	},
-	beforeDestroy() {
-		window.removeEventListener('message', this.receiveMessage);
-		document.removeEventListener('scroll', this.onDocumentScroll);
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {
@@ -212,7 +242,7 @@ export default mixins(showMessage).extend({
 	left: 0;
 	height: 100%;
 	width: 100%;
-	z-index: 9999999;
+	z-index: var(--z-index-workflow-preview-ndv);
 }
 
 .spinner {
@@ -225,6 +255,10 @@ export default mixins(showMessage).extend({
 
 .imageLoader {
 	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
 }
 
 .executionPreview {

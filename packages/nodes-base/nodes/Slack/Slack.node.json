@@ -3,10 +3,11 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
+	"alias": ["human", "form", "wait"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/slack"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
 			}
 		],
 		"primaryDocumentation": [

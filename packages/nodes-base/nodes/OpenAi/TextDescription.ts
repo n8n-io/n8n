@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { sendErrorPostReceive } from './GenericFunctions';
 
 export const textOperations: INodeProperties[] = [
 	{
@@ -22,6 +23,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/completions',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 			{
@@ -34,6 +36,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/edits',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 			{
@@ -46,6 +49,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/moderations',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 		],
@@ -84,13 +88,12 @@ const completeOperations: INodeProperties[] = [
 							{
 								type: 'filter',
 								properties: {
-									pass: "={{ !$responseItem.id.startsWith('audio-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
+									pass: "={{ !$responseItem.id.startsWith('audio-') && ($responseItem.id === 'gpt-3.5-turbo-instruct' || !$responseItem.id.startsWith('gpt-') ) && !$responseItem.id.startsWith('dall-') && !$responseItem.id.startsWith('tts-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
 								},
 							},
 							{
 								type: 'setKeyValue',
 								properties: {
-									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id
 									name: '={{$responseItem.id}}',
 									value: '={{$responseItem.id}}',
 								},
@@ -112,7 +115,7 @@ const completeOperations: INodeProperties[] = [
 				property: 'model',
 			},
 		},
-		default: 'text-davinci-003',
+		default: 'gpt-3.5-turbo-instruct',
 	},
 	{
 		displayName: 'Prompt',
@@ -247,7 +250,7 @@ const moderateOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'e.g. I want to kill them',
+		placeholder: 'e.g. My cat is adorable ❤️❤️',
 		description: 'The input text to classify',
 		displayOptions: {
 			show: {
@@ -350,7 +353,7 @@ const sharedOperations: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
@@ -399,7 +402,7 @@ const sharedOperations: INodeProperties[] = [
 				name: 'maxTokens',
 				default: 16,
 				description:
-					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 4096).',
+					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
 				type: 'number',
 				displayOptions: {
 					show: {
@@ -407,7 +410,7 @@ const sharedOperations: INodeProperties[] = [
 					},
 				},
 				typeOptions: {
-					maxValue: 4096,
+					maxValue: 32768,
 				},
 				routing: {
 					send: {

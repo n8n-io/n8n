@@ -1,34 +1,34 @@
+<script setup lang="ts">
+import { useUIStore } from '@/stores/ui.store';
+
+defineProps<{
+	name: string;
+	keepAlive?: boolean;
+}>();
+
+defineSlots<{
+	default: {
+		modalName: string;
+		active: boolean;
+		open: boolean;
+		activeId: string;
+		mode: string;
+		data: Record<string, unknown>;
+	};
+}>();
+
+const uiStore = useUIStore();
+</script>
+
 <template>
-	<div v-if="uiStore.isModalOpen(name) || keepAlive">
+	<div v-if="uiStore.modalsById[name].open || keepAlive">
 		<slot
-			:modalName="name"
-			:active="uiStore.isModalActive(name)"
-			:open="uiStore.isModalOpen(name)"
-			:activeId="uiStore.getModalActiveId(name)"
-			:mode="uiStore.getModalMode(name)"
-			:data="uiStore.getModalData(name)"
+			:modal-name="name"
+			:active="uiStore.isModalActiveById[name]"
+			:open="uiStore.modalsById[name].open"
+			:active-id="uiStore.modalsById[name].activeId"
+			:mode="uiStore.modalsById[name].mode"
+			:data="uiStore.modalsById[name].data"
 		></slot>
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-import { useUIStore } from '@/stores/ui';
-import { mapStores } from 'pinia';
-
-export default Vue.extend({
-	name: 'ModalRoot',
-	props: {
-		name: {
-			type: String,
-			required: true,
-		},
-		keepAlive: {
-			type: Boolean,
-		},
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-});
-</script>

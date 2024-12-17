@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import {
 	extractID,
@@ -34,8 +34,9 @@ export class GoogleDocs implements INodeType {
 		defaults: {
 			name: 'Google Docs',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'googleApi',
@@ -120,7 +121,7 @@ export class GoogleDocs implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the drives to display them to user so that he can
+			// Get all the drives to display them to user so that they can
 			// select them easily
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [
@@ -528,6 +529,6 @@ export class GoogleDocs implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,13 +1,68 @@
+<script setup lang="ts">
+import { useClipboard } from '@/composables/useClipboard';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+
+type Props = {
+	label?: string;
+	hint?: string;
+	value?: string;
+	copyButtonText?: string;
+	toastTitle?: string;
+	toastMessage?: string;
+	size?: 'medium' | 'large';
+	collapse?: boolean;
+	redactValue?: boolean;
+	disableCopy?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	value: '',
+	placeholder: '',
+	label: '',
+	hint: '',
+	size: 'medium',
+	copyButtonText: useI18n().baseText('generic.copy'),
+	toastTitle: useI18n().baseText('generic.copiedToClipboard'),
+	disableCopy: false,
+});
+const emit = defineEmits<{
+	copy: [];
+}>();
+
+const clipboard = useClipboard();
+const { showMessage } = useToast();
+
+function copy() {
+	if (props.disableCopy) return;
+
+	emit('copy');
+	void clipboard.copy(props.value ?? '');
+
+	showMessage({
+		title: props.toastTitle,
+		message: props.toastMessage,
+		type: 'success',
+	});
+}
+</script>
+
 <template>
 	<div>
 		<n8n-input-label :label="label">
 			<div
-				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
-				@click="copy"
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					[$style.noHover]: disableCopy,
+					'ph-no-capture': redactValue,
+				}"
 				data-test-id="copy-input"
+				@click="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
-				<div :class="$style.copyButton">
+				<div v-if="!disableCopy" :class="$style.copyButton">
 					<span>{{ copyButtonText }}</span>
 				</div>
 			</div>
@@ -15,61 +70,6 @@
 		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
 	</div>
 </template>
-
-<script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
-
-export default mixins(copyPaste, showMessage).extend({
-	props: {
-		label: {
-			type: String,
-		},
-		hint: {
-			type: String,
-		},
-		value: {
-			type: String,
-		},
-		copyButtonText: {
-			type: String,
-			default(): string {
-				return this.$locale.baseText('generic.copy');
-			},
-		},
-		toastTitle: {
-			type: String,
-			default(): string {
-				return this.$locale.baseText('generic.copiedToClipboard');
-			},
-		},
-		toastMessage: {
-			type: String,
-		},
-		collapse: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'large',
-		},
-	},
-	methods: {
-		copy(): void {
-			this.$emit('copy');
-			this.copyToClipboard(this.value);
-
-			this.$showMessage({
-				title: this.toastTitle,
-				message: this.toastMessage,
-				type: 'success',
-			});
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .copyText {
@@ -93,6 +93,10 @@ export default mixins(copyPaste, showMessage).extend({
 	}
 }
 
+.noHover {
+	cursor: default;
+}
+
 .large {
 	span {
 		font-size: var(--font-size-s);
@@ -102,7 +106,7 @@ export default mixins(copyPaste, showMessage).extend({
 
 .medium {
 	span {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-xs);
 		line-height: 1;
 	}
 }

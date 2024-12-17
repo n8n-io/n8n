@@ -61,7 +61,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -280,7 +280,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'updateFieldsUi',
 		type: 'collection',
 		required: true,
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['message'],

@@ -7,11 +7,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
 export class LinkedIn implements INodeType {
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
@@ -23,15 +23,45 @@ export class LinkedIn implements INodeType {
 		defaults: {
 			name: 'LinkedIn',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'linkedInOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['standard'],
+					},
+				},
+			},
+			{
+				name: 'linkedInCommunityManagementOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['communityManagement'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Standard',
+						value: 'standard',
+					},
+					{
+						name: 'Community Management',
+						value: 'communityManagement',
+					},
+				],
+				default: 'standard',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -56,12 +86,24 @@ export class LinkedIn implements INodeType {
 			// Get Person URN which has to be used with other LinkedIn API Requests
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const person = await linkedInApiRequest.call(this, 'GET', '/me', {});
-				returnData.push({
-					name: `${person.localizedFirstName} ${person.localizedLastName}`,
-					value: person.id,
-				});
+				const authentication = this.getNodeParameter('authentication', 0);
+				let endpoint = '/v2/me';
+				if (authentication === 'standard') {
+					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
+					if (!legacy) {
+						endpoint = '/v2/userinfo';
+					}
+				}
+				const person = await linkedInApiRequest.call(this, 'GET', endpoint, {});
+				const firstName = person.localizedFirstName ?? person.given_name;
+				const lastName = person.localizedLastName ?? person.family_name;
+				const name = `${firstName} ${lastName}`;
+				const returnData: INodePropertyOptions[] = [
+					{
+						name,
+						value: person.id ?? person.sub,
+					},
+				];
 				return returnData;
 			},
 		},
@@ -80,10 +122,13 @@ export class LinkedIn implements INodeType {
 			try {
 				if (resource === 'post') {
 					if (operation === 'create') {
-						const text = this.getNodeParameter('text', i) as string;
+						let text = this.getNodeParameter('text', i) as string;
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						// LinkedIn uses "little text" https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/little-text-format?view=li-lms-2024-06
+						text = text.replace(/[\(*\)\[\]\{\}<>@|~_]/gm, (char) => '\\' + char);
 
 						let authorUrn = '';
 						let visibility = 'PUBLIC';
@@ -107,16 +152,12 @@ export class LinkedIn implements INodeType {
 							lifecycleState: 'PUBLISHED',
 							distribution: {
 								feedDistribution: 'MAIN_FEED',
-								targetEnties: [],
 								thirdPartyDistributionChannels: [],
 							},
 							visibility,
 						};
 
 						if (shareMediaCategory === 'IMAGE') {
-							if (additionalFields.description) {
-								description = additionalFields.description as string;
-							}
 							if (additionalFields.title) {
 								title = additionalFields.title as string;
 							}
@@ -135,18 +176,28 @@ export class LinkedIn implements INodeType {
 							);
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							this.helpers.assertBinaryData(i, binaryPropertyName);
+							const imageMetadata = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							const { uploadUrl, image } = registerObject.value;
-							await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
+
+							const headers = {};
+							Object.assign(headers, { 'Content-Type': imageMetadata.mimeType });
+
+							await linkedInApiRequest.call(
+								this,
+								'POST',
+								uploadUrl as string,
+								buffer,
+								true,
+								headers,
+							);
 
 							const imageBody = {
 								content: {
 									media: {
 										title,
 										id: image,
-										description,
 									},
 								},
 								commentary: text,
@@ -173,6 +224,41 @@ export class LinkedIn implements INodeType {
 								},
 								commentary: text,
 							};
+
+							if (additionalFields.thumbnailBinaryPropertyName) {
+								const registerRequest = {
+									initializeUploadRequest: {
+										owner: authorUrn,
+									},
+								};
+
+								const registerObject = await linkedInApiRequest.call(
+									this,
+									'POST',
+									'/images?action=initializeUpload',
+									registerRequest,
+								);
+
+								const binaryPropertyName = additionalFields.thumbnailBinaryPropertyName as string;
+								const imageMetadata = this.helpers.assertBinaryData(i, binaryPropertyName);
+
+								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+								const { uploadUrl, image } = registerObject.value;
+
+								const headers = {};
+								Object.assign(headers, { 'Content-Type': imageMetadata.mimeType });
+
+								await linkedInApiRequest.call(
+									this,
+									'POST',
+									uploadUrl as string,
+									buffer,
+									true,
+									headers,
+								);
+								Object.assign(articleBody.content.article, { thumbnail: image });
+							}
+
 							Object.assign(body, articleBody);
 							if (description === '') {
 								delete body.description;
@@ -182,7 +268,9 @@ export class LinkedIn implements INodeType {
 								delete body.title;
 							}
 						} else {
-							Object.assign(body, { commentary: text });
+							Object.assign(body, {
+								commentary: text,
+							});
 						}
 						const endpoint = '/posts';
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
@@ -206,6 +294,6 @@ export class LinkedIn implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

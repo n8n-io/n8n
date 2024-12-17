@@ -1,11 +1,11 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class MicrosoftOAuth2Api implements ICredentialType {
 	name = 'microsoftOAuth2Api';
 
 	extends = ['oAuth2Api'];
 
-	icon = 'file:Microsoft.svg';
+	icon: Icon = 'file:icons/Microsoft.svg';
 
 	displayName = 'Microsoft OAuth2 API';
 
@@ -18,8 +18,9 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'authorizationCode',
 		},
-		//info about the tenantID
-		//https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
+		// Info about the tenantID
+		// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
+		// Endpoints `/common` can only be used for multitenant apps
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',

@@ -1,164 +1,207 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
+import { computed } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
+import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
+
+interface Props {
+	parameter: INodeProperties;
+	isReadOnly: boolean;
+	value: NodeParameterValueType;
+	showOptions?: boolean;
+	showExpressionSelector?: boolean;
+	customActions?: Array<{ label: string; value: string; disabled?: boolean }>;
+	iconOrientation?: 'horizontal' | 'vertical';
+	loading?: boolean;
+	loadingMessage?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	showOptions: true,
+	showExpressionSelector: true,
+	customActions: () => [],
+	iconOrientation: 'vertical',
+	loading: false,
+	loadingMessage: () => useI18n().baseText('genericHelpers.loading'),
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: string];
+	'menu-expanded': [visible: boolean];
+}>();
+
+const i18n = useI18n();
+
+const isDefault = computed(() => props.parameter.default === props.value);
+const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
+const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
+const shouldShowExpressionSelector = computed(
+	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
+);
+const shouldShowOptions = computed(() => {
+	if (props.isReadOnly) {
+		return false;
+	}
+
+	if (props.parameter.type === 'collection' || props.parameter.type === 'credentialsSelect') {
+		return false;
+	}
+
+	if (['codeNodeEditor', 'sqlEditor'].includes(props.parameter.typeOptions?.editor ?? '')) {
+		return false;
+	}
+
+	if (props.showOptions) {
+		return true;
+	}
+
+	return false;
+});
+const selectedView = computed(() => (isValueAnExpression.value ? 'expression' : 'fixed'));
+const activeNode = computed(() => useNDVStore().activeNode);
+const hasRemoteMethod = computed(
+	() =>
+		!!props.parameter.typeOptions?.loadOptionsMethod || !!props.parameter.typeOptions?.loadOptions,
+);
+const resetValueLabel = computed(() => {
+	if (activeNode.value && [AI_TRANSFORM_NODE_TYPE].includes(activeNode.value.type)) {
+		return i18n.baseText('parameterInput.clearContents');
+	}
+
+	return i18n.baseText('parameterInput.resetValue');
+});
+
+const actions = computed(() => {
+	if (Array.isArray(props.customActions) && props.customActions.length > 0) {
+		return props.customActions;
+	}
+
+	if (isHtmlEditor.value && !isValueAnExpression.value) {
+		return [
+			{
+				label: i18n.baseText('parameterInput.formatHtml'),
+				value: 'formatHtml',
+			},
+		];
+	}
+
+	const parameterActions = [
+		{
+			label: resetValueLabel.value,
+			value: 'resetValue',
+			disabled: isDefault.value,
+		},
+	];
+
+	if (
+		hasRemoteMethod.value ||
+		(props.parameter.type === 'resourceLocator' &&
+			isResourceLocatorValue(props.value) &&
+			props.value.mode === 'list')
+	) {
+		return [
+			{
+				label: i18n.baseText('parameterInput.refreshList'),
+				value: 'refreshOptions',
+			},
+			...parameterActions,
+		];
+	}
+
+	return parameterActions;
+});
+
+const onMenuToggle = (visible: boolean) => emit('menu-expanded', visible);
+const onViewSelected = (selected: string) => {
+	if (selected === 'expression') {
+		emit('update:modelValue', isValueAnExpression.value ? 'openExpression' : 'addExpression');
+	}
+
+	if (selected === 'fixed' && isValueAnExpression.value) {
+		emit('update:modelValue', 'removeExpression');
+	}
+};
+const getArgument = (argumentName: string) => {
+	if (props.parameter.typeOptions === undefined) {
+		return undefined;
+	}
+
+	if (props.parameter.typeOptions[argumentName] === undefined) {
+		return undefined;
+	}
+
+	return props.parameter.typeOptions[argumentName];
+};
+</script>
+
 <template>
-	<div :class="$style.container">
-		<n8n-action-toggle
-			v-if="shouldShowOptions"
-			placement="bottom-end"
-			size="small"
-			color="foreground-xdark"
-			iconSize="small"
-			:actions="actions"
-			@action="(action) => $emit('optionSelected', action)"
-			@visible-change="onMenuToggle"
-		/>
-		<n8n-radio-buttons
-			v-if="parameter.noDataExpression !== true && showExpressionSelector"
-			size="small"
-			:value="selectedView"
-			:disabled="isReadOnly"
-			@input="onViewSelected"
-			:options="[
-				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
-				{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
-			]"
-		/>
+	<div :class="$style.container" data-test-id="parameter-options-container">
+		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
+			<n8n-text v-if="loading" size="small">
+				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				{{ loadingMessage }}
+			</n8n-text>
+		</div>
+		<div v-else :class="$style.controlsContainer">
+			<div
+				:class="{
+					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
+				}"
+			>
+				<n8n-action-toggle
+					v-if="shouldShowOptions"
+					placement="bottom-end"
+					size="small"
+					color="foreground-xdark"
+					icon-size="small"
+					:actions="actions"
+					:icon-orientation="iconOrientation"
+					@action="(action: string) => $emit('update:modelValue', action)"
+					@visible-change="onMenuToggle"
+				/>
+			</div>
+			<n8n-radio-buttons
+				v-if="shouldShowExpressionSelector"
+				size="small"
+				:model-value="selectedView"
+				:disabled="isReadOnly"
+				:options="[
+					{ label: i18n.baseText('parameterInput.fixed'), value: 'fixed' },
+					{ label: i18n.baseText('parameterInput.expression'), value: 'expression' },
+				]"
+				@update:model-value="onViewSelected"
+			/>
+		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { NodeParameterValueType } from 'n8n-workflow';
-import Vue, { PropType } from 'vue';
-import { isValueExpression, isResourceLocatorValue } from '@/utils';
-
-export default Vue.extend({
-	name: 'parameter-options',
-	props: {
-		parameter: {
-			type: Object,
-		},
-		isReadOnly: {
-			type: Boolean,
-		},
-		value: {
-			type: [Object, String, Number, Boolean, Array] as PropType<NodeParameterValueType>,
-		},
-		showOptions: {
-			type: Boolean,
-			default: true,
-		},
-		showExpressionSelector: {
-			type: Boolean,
-			default: true,
-		},
-	},
-	computed: {
-		isDefault(): boolean {
-			return this.parameter.default === this.value;
-		},
-		isValueExpression(): boolean {
-			return isValueExpression(this.parameter, this.value);
-		},
-		isHtmlEditor(): boolean {
-			return this.getArgument('editor') === 'htmlEditor';
-		},
-		shouldShowOptions(): boolean {
-			if (this.isReadOnly === true) {
-				return false;
-			}
-
-			if (this.parameter.type === 'collection' || this.parameter.type === 'credentialsSelect') {
-				return false;
-			}
-
-			if (
-				this.parameter.typeOptions &&
-				this.parameter.typeOptions.editor &&
-				this.parameter.typeOptions.editor === 'codeNodeEditor'
-			) {
-				return false;
-			}
-
-			if (this.showOptions === true) {
-				return true;
-			}
-
-			return false;
-		},
-		selectedView() {
-			if (this.isValueExpression) {
-				return 'expression';
-			}
-
-			return 'fixed';
-		},
-		hasRemoteMethod(): boolean {
-			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
-		},
-		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
-			if (this.isHtmlEditor && !this.isValueExpression) {
-				return [
-					{
-						label: this.$locale.baseText('parameterInput.formatHtml'),
-						value: 'formatHtml',
-					},
-				];
-			}
-
-			const actions = [
-				{
-					label: this.$locale.baseText('parameterInput.resetValue'),
-					value: 'resetValue',
-					disabled: this.isDefault,
-				},
-			];
-
-			if (
-				this.hasRemoteMethod ||
-				(this.parameter.type === 'resourceLocator' &&
-					isResourceLocatorValue(this.value) &&
-					this.value.mode === 'list')
-			) {
-				return [
-					{
-						label: this.$locale.baseText('parameterInput.refreshList'),
-						value: 'refreshOptions',
-					},
-					...actions,
-				];
-			}
-
-			return actions;
-		},
-	},
-	methods: {
-		onMenuToggle(visible: boolean) {
-			this.$emit('menu-expanded', visible);
-		},
-		onViewSelected(selected: string) {
-			if (selected === 'expression') {
-				this.$emit('optionSelected', this.isValueExpression ? 'openExpression' : 'addExpression');
-			}
-
-			if (selected === 'fixed' && this.isValueExpression) {
-				this.$emit('optionSelected', 'removeExpression');
-			}
-		},
-		getArgument(argumentName: string): string | number | boolean | undefined {
-			if (this.parameter.typeOptions === undefined) {
-				return undefined;
-			}
-
-			if (this.parameter.typeOptions[argumentName] === undefined) {
-				return undefined;
-			}
-
-			return this.parameter.typeOptions[argumentName];
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {
 	display: flex;
+	min-height: 22px;
+}
+
+.loader {
+	padding-bottom: var(--spacing-4xs);
+
+	& > span {
+		line-height: 1em;
+	}
+}
+.controlsContainer {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+}
+
+.noExpressionSelector {
+	margin-bottom: var(--spacing-4xs);
+
+	span {
+		padding-right: 0 !important;
+	}
 }
 </style>

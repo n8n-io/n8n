@@ -1,38 +1,15 @@
-<template>
-	<div
-		:class="$style.canvasAddButton"
-		:style="containerCssVars"
-		ref="container"
-		data-test-id="canvas-add-button"
-	>
-		<n8n-tooltip
-			placement="top"
-			:value="showTooltip"
-			manual
-			:disabled="nodeCreatorStore.showScrim"
-			:popper-class="$style.tooltip"
-			:open-delay="700"
-		>
-			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
-				<font-awesome-icon icon="plus" size="lg" />
-			</button>
-			<template #content>
-				<p v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')" />
-			</template>
-		</n8n-tooltip>
-		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
-import { XYPosition } from '@/Interface';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import type { XYPosition } from '@/Interface';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useI18n } from '@/composables/useI18n';
 
 export interface Props {
 	showTooltip: boolean;
 	position: XYPosition;
 }
+
+const i18n = useI18n();
 
 const props = defineProps<Props>();
 
@@ -42,6 +19,31 @@ const containerCssVars = computed(() => ({
 	'--trigger-placeholder-top-position': `${props.position[1]}px`,
 }));
 </script>
+
+<template>
+	<div
+		ref="container"
+		:class="$style.canvasAddButton"
+		:style="containerCssVars"
+		data-test-id="canvas-add-button"
+	>
+		<n8n-tooltip
+			placement="top"
+			:visible="showTooltip"
+			:disabled="nodeCreatorStore.showScrim"
+			:popper-class="$style.tooltip"
+			:show-after="700"
+		>
+			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
+				<font-awesome-icon icon="plus" size="lg" />
+			</button>
+			<template #content>
+				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
+			</template>
+		</n8n-tooltip>
+		<p :class="$style.label" v-text="i18n.baseText('nodeView.canvasAddButton.addFirstStep')" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .canvasAddButton {
@@ -55,8 +57,8 @@ const containerCssVars = computed(() => ({
 	top: var(--trigger-placeholder-top-position);
 	left: var(--trigger-placeholder-left-position);
 	// We have to increase z-index to make sure it's higher than selecting box in NodeView
-	// otherwise the clics wouldn't register
-	z-index: 101;
+	// otherwise the clicks wouldn't register
+	z-index: var(--z-index-canvas-add-button);
 
 	&:hover .button svg path {
 		fill: var(--color-primary);
@@ -80,10 +82,6 @@ const containerCssVars = computed(() => ({
 			fill: var(--color-foreground-xdark);
 		}
 	}
-}
-
-:root .tooltip {
-	max-width: 180px;
 }
 
 .label {

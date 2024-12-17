@@ -1,3 +1,41 @@
+<script lang="ts" setup generic="Value extends string">
+import RadioButton from './RadioButton.vue';
+
+interface RadioOption {
+	label: string;
+	value: Value;
+	disabled?: boolean;
+}
+
+interface RadioButtonsProps {
+	modelValue?: Value;
+	options?: RadioOption[];
+	/** @default medium */
+	size?: 'small' | 'medium';
+	disabled?: boolean;
+}
+
+const props = withDefaults(defineProps<RadioButtonsProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: Value, e: MouseEvent];
+}>();
+
+const onClick = (
+	option: { label: string; value: Value; disabled?: boolean },
+	event: MouseEvent,
+) => {
+	if (props.disabled || option.disabled) {
+		return;
+	}
+	emit('update:modelValue', option.value, event);
+};
+</script>
+
 <template>
 	<div
 		role="radiogroup"
@@ -7,46 +45,13 @@
 			v-for="option in options"
 			:key="option.value"
 			v-bind="option"
-			:active="value === option.value"
+			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click="(e) => onClick(option, e)"
+			@click.prevent.stop="onClick(option, $event)"
 		/>
 	</div>
 </template>
-
-<script lang="ts">
-import RadioButton from './RadioButton.vue';
-
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'n8n-radio-buttons',
-	props: {
-		value: {
-			type: String,
-		},
-		options: {},
-		size: {
-			type: String,
-		},
-		disabled: {
-			type: Boolean,
-		},
-	},
-	components: {
-		RadioButton,
-	},
-	methods: {
-		onClick(option: { label: string; value: string; disabled?: boolean }) {
-			if (this.disabled || option.disabled) {
-				return;
-			}
-			this.$emit('input', option.value);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .radioGroup {

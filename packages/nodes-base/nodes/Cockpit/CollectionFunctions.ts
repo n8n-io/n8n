@@ -1,15 +1,10 @@
-import type {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { ICollection } from './CollectionInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
 export async function createCollectionEntry(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 	data: IDataObject,
 	id?: string,
@@ -25,11 +20,11 @@ export async function createCollectionEntry(
 		};
 	}
 
-	return cockpitApiRequest.call(this, 'post', `/collections/save/${resourceName}`, body);
+	return await cockpitApiRequest.call(this, 'POST', `/collections/save/${resourceName}`, body);
 }
 
 export async function getAllCollectionEntries(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 	options: IDataObject,
 ): Promise<any> {
@@ -81,11 +76,11 @@ export async function getAllCollectionEntries(
 		body.lang = options.language as string;
 	}
 
-	return cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
+	return await cockpitApiRequest.call(this, 'POST', `/collections/get/${resourceName}`, body);
 }
 
 export async function getAllCollectionNames(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<string[]> {
-	return cockpitApiRequest.call(this, 'GET', '/collections/listCollections', {});
+	return await cockpitApiRequest.call(this, 'GET', '/collections/listCollections', {});
 }

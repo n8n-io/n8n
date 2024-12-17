@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
 import { dropcontactApiRequest, mapPairedItemsFrom } from './GenericFunction';
 
@@ -21,8 +21,8 @@ export class Dropcontact implements INodeType {
 		defaults: {
 			name: 'Dropcontact',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'dropcontactApi',
@@ -190,7 +190,7 @@ export class Dropcontact implements INodeType {
 						operation: ['enrich'],
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -294,7 +294,7 @@ export class Dropcontact implements INodeType {
 				if (!simplify) {
 					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
 
-					const delay = async (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
+					const delay = async (ms: any) => await new Promise((res) => setTimeout(res, ms * 1000));
 					await delay(waitTime);
 					responseData = await dropcontactApiRequest.call(
 						this,
@@ -370,6 +370,6 @@ export class Dropcontact implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

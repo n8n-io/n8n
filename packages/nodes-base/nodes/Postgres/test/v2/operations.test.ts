@@ -1,8 +1,13 @@
-import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-
-import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IGetNodeParameterOptions,
+	INode,
+	INodeParameters,
+} from 'n8n-workflow';
 
 import { get } from 'lodash';
+import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
@@ -38,7 +43,11 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			return get(nodeParameters, parameter, fallbackValue);
 		},
 		getNode() {
+			node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
 			return node;
+		},
+		evaluateExpression(str: string, _: number) {
+			return str.replace('{{', '').replace('}}', '');
 		},
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
@@ -52,7 +61,7 @@ const createMockDb = (columnInfo: ColumnInfo[]) => {
 	} as unknown as PgpDatabase;
 };
 
-// if node parameters copied from canvas all default parameters has to be added manualy as JSON would not have them
+// if node parameters copied from canvas all default parameters has to be added manually as JSON would not have them
 describe('Test PostgresV2, deleteTable operation', () => {
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -82,7 +91,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					},
 				],
 			},
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -161,7 +170,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 				cachedResultName: 'my_table',
 			},
 			deleteCommand: 'drop',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -208,7 +217,146 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
-			[{ query: 'select * from $1:name;', values: ['my_table'] }],
+			[{ query: 'select * from $1:name;', values: ['my_table'], options: { partial: true } }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries and insert enclosed placeholder into values', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'select $1;', values: ['$1'], options: { partial: true } }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries and not insert enclosed placeholder into values because queryReplacement is defined', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {
+				queryReplacement: 'my_table',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: "select '$1';", values: ['my_table'], options: { partial: true } }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries and insert enclosed placeholder into values because treatQueryParametersInSingleQuotesAsText is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {
+				queryReplacement: 'my_table',
+				treatQueryParametersInSingleQuotesAsText: true,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'select $2;', values: ['my_table', '$1'], options: { partial: true } }],
+			items,
+			nodeOptions,
+		);
+	});
+
+	it('should call runQueries with falsy query replacements', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '={{ 0 }}, {{ null }}, {{ 0 }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should allow users to use $$ instead of strings', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO dollar_bug (description) VALUES ($$34test$$);',
+			options: {},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should allow users to use $$ instead of strings while using query parameters', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO dollar_bug (description) VALUES ($1 || $$4more text$$)',
+			options: {
+				queryReplacement: '={{ $3This is a test }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO dollar_bug (description) VALUES ($1 || $$4more text$$)',
+					values: [' $3This is a test '],
+					options: { partial: true },
+				},
+			],
 			items,
 			nodeOptions,
 		);
@@ -249,12 +397,12 @@ describe('Test PostgresV2, insert operation', () => {
 					},
 				],
 			},
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -292,12 +440,12 @@ describe('Test PostgresV2, insert operation', () => {
 				mode: 'list',
 			},
 			dataMode: 'autoMapInputData',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const inputItems = [
@@ -502,12 +650,13 @@ describe('Test PostgresV2, update operation', () => {
 			},
 			options: {
 				outputColumns: ['json', 'foo'],
+				nodeVersion: 2.1,
 			},
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -558,12 +707,12 @@ describe('Test PostgresV2, update operation', () => {
 			},
 			dataMode: 'autoMapInputData',
 			columnToMatchOn: 'id',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const inputItems = [
@@ -661,12 +810,13 @@ describe('Test PostgresV2, upsert operation', () => {
 			},
 			options: {
 				outputColumns: ['json'],
+				nodeVersion: 2.1,
 			},
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -717,12 +867,12 @@ describe('Test PostgresV2, upsert operation', () => {
 			},
 			dataMode: 'autoMapInputData',
 			columnToMatchOn: 'id',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const inputItems = [

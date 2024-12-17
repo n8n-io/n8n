@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
 
@@ -28,7 +28,7 @@ export class AsanaTrigger implements INodeType {
 			name: 'Asana Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'asanaApi',
@@ -92,14 +92,14 @@ export class AsanaTrigger implements INodeType {
 				options: [],
 				default: '',
 				description:
-					'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	};
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
+			// Get all the available workspaces to display them to user so that they can
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workspaces = await getWorkspaces.call(this);
@@ -123,9 +123,7 @@ export class AsanaTrigger implements INodeType {
 
 				const workspace = this.getNodeParameter('workspace') as string;
 
-				const endpoint = '/webhooks';
-
-				const { data } = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
+				const { data } = await asanaApiRequest.call(this, 'GET', '/webhooks', {}, { workspace });
 
 				for (const webhook of data) {
 					if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
@@ -151,14 +149,12 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
-				const endpoint = '/webhooks';
-
 				const body = {
 					resource,
 					target: webhookUrl,
 				};
 
-				const responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await asanaApiRequest.call(this, 'POST', '/webhooks', body);
 
 				if (responseData.data === undefined || responseData.data.gid === undefined) {
 					// Required data is missing so was not successful
@@ -173,11 +169,10 @@ export class AsanaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
-						await asanaApiRequest.call(this, 'DELETE', endpoint, body);
+						await asanaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`, body);
 					} catch (error) {
 						return false;
 					}

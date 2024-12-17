@@ -1,12 +1,14 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IRequestOptions,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
@@ -34,8 +36,6 @@ import { containerFields, containerOperations } from './descriptions/ContainerDe
 
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
 
-import type { OptionsWithUri } from 'request';
-
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,8 +49,8 @@ export class Onfleet implements INodeType {
 		defaults: {
 			name: 'Onfleet',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'onfleetApi',
@@ -142,7 +142,7 @@ export class Onfleet implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						'Content-Type': 'application/json',
 						'User-Agent': 'n8n-onfleet',

@@ -1,0 +1,134 @@
+{
+	"name": "My workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "7f04c09e-5a60-4a0c-a336-ef38e4732452",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [860, 380]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      a: {\n        b: {\n          c: 1\n        }\n      }\n    }\n  }\n];\n"
+			},
+			"id": "be80ce82-d312-460d-ac79-05c0626845ad",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1080, 380]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToxml",
+				"options": {}
+			},
+			"id": "c352655b-e0dc-4f7c-a63a-ff1bc5f1909f",
+			"name": "XML",
+			"type": "n8n-nodes-base.xml",
+			"typeVersion": 1,
+			"position": [1300, 380]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "21547e44-133e-4c3b-a601-0cffba1daf9b",
+			"name": "XML1",
+			"type": "n8n-nodes-base.xml",
+			"typeVersion": 1,
+			"position": [1500, 380]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "new",
+							"value": "={{ $json.a }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "632dee22-10d1-424d-b1d2-673b95b32943",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1720, 380]
+		}
+	],
+	"pinData": {
+		"Set": [
+			{
+				"json": {
+					"a": {
+						"b": {
+							"c": "1"
+						}
+					},
+					"new": {
+						"b": {
+							"c": "1"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "XML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"XML": {
+			"main": [
+				[
+					{
+						"node": "XML1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"XML1": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "14c1d4b8-3546-4692-8e8a-44c244c79bcc",
+	"id": "0G78Fh2FTnM46kuR",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

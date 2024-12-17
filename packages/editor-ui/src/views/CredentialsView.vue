@@ -1,162 +1,228 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
+import CredentialCard from '@/components/CredentialCard.vue';
+import type { ICredentialType } from 'n8n-workflow';
+import {
+	CREDENTIAL_SELECT_MODAL_KEY,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	EnterpriseEditionFeature,
+} from '@/constants';
+import { useUIStore, listenForModalChanges } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { getResourcePermissions } from '@/permissions';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+
+const props = defineProps<{
+	credentialId?: string;
+}>();
+
+const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
+const sourceControlStore = useSourceControlStore();
+const externalSecretsStore = useExternalSecretsStore();
+const projectsStore = useProjectsStore();
+
+const documentTitle = useDocumentTitle();
+const route = useRoute();
+const router = useRouter();
+const telemetry = useTelemetry();
+const i18n = useI18n();
+
+const filters = ref<IFilters>({
+	search: '',
+	homeProject: '',
+	type: [],
+});
+
+const loading = ref(false);
+
+const allCredentials = computed<IResource[]>(() =>
+	credentialsStore.allCredentials.map((credential) => ({
+		id: credential.id,
+		name: credential.name,
+		value: '',
+		updatedAt: credential.updatedAt,
+		createdAt: credential.createdAt,
+		homeProject: credential.homeProject,
+		scopes: credential.scopes,
+		type: credential.type,
+		sharedWithProjects: credential.sharedWithProjects,
+		readOnly: !getResourcePermissions(credential.scopes).credential.update,
+	})),
+);
+
+const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.allCredentialTypes);
+
+const credentialTypesById = computed<ICredentialTypeMap>(
+	() => credentialsStore.credentialTypesById,
+);
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const projectPermissions = computed(() =>
+	getResourcePermissions(
+		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+	),
+);
+
+const setRouteCredentialId = (credentialId?: string) => {
+	void router.replace({ params: { credentialId } });
+};
+
+const addCredential = () => {
+	setRouteCredentialId('create');
+	telemetry.track('User clicked add cred button', {
+		source: 'Creds list',
+	});
+};
+
+listenForModalChanges({
+	store: uiStore,
+	onModalClosed(modalName) {
+		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
+			void router.replace({ params: { credentialId: '' } });
+		}
+	},
+});
+
+watch(
+	() => props.credentialId,
+	(id) => {
+		if (!id) return;
+
+		if (id === 'create') {
+			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+			return;
+		}
+
+		uiStore.openExistingCredential(id);
+	},
+	{
+		immediate: true,
+	},
+);
+
+const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iResource = resource as ICredentialsResponse;
+	const filtersToApply = newFilters as IFilters & { type: string[] };
+	if (filtersToApply.type.length > 0) {
+		matches = matches && filtersToApply.type.includes(iResource.type);
+	}
+
+	if (filtersToApply.search) {
+		const searchString = filtersToApply.search.toLowerCase();
+
+		matches =
+			matches ||
+			(credentialTypesById.value[iResource.type] &&
+				credentialTypesById.value[iResource.type].displayName.toLowerCase().includes(searchString));
+	}
+
+	return matches;
+};
+
+const initialize = async () => {
+	loading.value = true;
+	const isVarsEnabled =
+		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+
+	const loadPromises = [
+		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
+		credentialsStore.fetchCredentialTypes(false),
+		externalSecretsStore.fetchAllSecrets(),
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
+		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
+	];
+
+	await Promise.all(loadPromises);
+	loading.value = false;
+};
+
+sourceControlStore.$onAction(({ name, after }) => {
+	if (name !== 'pullWorkfolder') return;
+	after(() => {
+		void initialize();
+	});
+});
+
+watch(() => route?.params?.projectId, initialize);
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('credentials.heading'));
+});
+</script>
+
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="credentials"
 		:resources="allCredentials"
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
-		:item-size="77"
+		:type-props="{ itemSize: 77 }"
+		:loading="loading"
+		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
+		<template #header>
+			<ProjectHeader />
+		</template>
 		<template #default="{ data }">
-			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+			<CredentialCard
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				:read-only="data.readOnly"
+				@click="setRouteCredentialId"
+			/>
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('credentials.filters.type')"
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.type')"
 					:bold="false"
 					size="small"
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select
-					:value="filters.type"
+				<N8nSelect
+					ref="typeInput"
+					:model-value="filters.type"
 					size="medium"
 					multiple
 					filterable
-					ref="typeInput"
 					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
+					@update:model-value="setKeyValue('type', $event)"
 				>
-					<n8n-option
+					<N8nOption
 						v-for="credentialType in allCredentialTypes"
 						:key="credentialType.name"
 						:value="credentialType.name"
 						:label="credentialType.displayName"
 					/>
-				</n8n-select>
+				</N8nSelect>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
-
-<script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { ICredentialsResponse, ICredentialTypeMap, IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-
-import SettingsView from './SettingsView.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
-import CredentialCard from '@/components/CredentialCard.vue';
-import { ICredentialType } from 'n8n-workflow';
-import TemplateCard from '@/components/TemplateCard.vue';
-import { debounceHelper } from '@/mixins/debounce';
-import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
-import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import Vue from 'vue';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
-
-export default mixins(showMessage, debounceHelper).extend({
-	name: 'SettingsPersonalView',
-	components: {
-		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
-		CredentialCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
-	},
-	data() {
-		return {
-			filters: {
-				search: '',
-				ownedBy: '',
-				sharedWith: '',
-				type: '',
-			},
-		};
-	},
-	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
-		allCredentials(): ICredentialsResponse[] {
-			return this.credentialsStore.allCredentials;
-		},
-		allCredentialTypes(): ICredentialType[] {
-			return this.credentialsStore.allCredentialTypes;
-		},
-		credentialTypesById(): ICredentialTypeMap {
-			return this.credentialsStore.credentialTypesById;
-		},
-	},
-	methods: {
-		addCredential() {
-			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
-
-			this.$telemetry.track('User clicked add cred button', {
-				source: 'Creds list',
-			});
-		},
-		async initialize() {
-			const loadPromises = [
-				this.credentialsStore.fetchAllCredentials(),
-				this.credentialsStore.fetchCredentialTypes(false),
-			];
-
-			if (this.nodeTypesStore.allNodeTypes.length === 0) {
-				loadPromises.push(this.nodeTypesStore.getNodeTypes());
-			}
-
-			await Promise.all(loadPromises);
-
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
-		},
-		onFilter(
-			resource: ICredentialsResponse,
-			filters: { type: string[]; search: string },
-			matches: boolean,
-		): boolean {
-			if (filters.type.length > 0) {
-				matches = matches && filters.type.includes(resource.type);
-			}
-
-			if (filters.search) {
-				const searchString = filters.search.toLowerCase();
-
-				matches =
-					matches ||
-					(this.credentialTypesById[resource.type] &&
-						this.credentialTypesById[resource.type].displayName
-							.toLowerCase()
-							.includes(searchString));
-			}
-
-			return matches;
-		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
-		},
-	},
-	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .type-input {

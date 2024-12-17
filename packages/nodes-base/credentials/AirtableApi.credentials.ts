@@ -9,6 +9,13 @@ export class AirtableApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				"This type of connection (API Key) was deprecated and can't be used anymore. Please create a new credential of type 'Access Token' instead.",
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',

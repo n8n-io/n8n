@@ -1,67 +1,71 @@
+<script setup lang="ts">
+import { ElTooltip } from 'element-plus';
+import type { PropType } from 'vue';
+
+import type { IN8nButton } from 'n8n-design-system/types';
+
+import N8nButton from '../N8nButton';
+
+export type Justify =
+	| 'flex-start'
+	| 'flex-end'
+	| 'start'
+	| 'end'
+	| 'left'
+	| 'right'
+	| 'center'
+	| 'space-between'
+	| 'space-around'
+	| 'space-evenly';
+
+const props = defineProps({
+	...ElTooltip.props,
+	content: {
+		type: String,
+		default: '',
+	},
+	justifyButtons: {
+		type: String as PropType<Justify>,
+		default: 'flex-end',
+	},
+	buttons: {
+		type: Array as PropType<IN8nButton[]>,
+		default: () => [],
+	},
+});
+
+defineOptions({
+	inheritAttrs: false,
+});
+</script>
+
 <template>
-	<el-tooltip v-bind="$attrs">
-		<template v-for="(_, slotName) in $slots" #[slotName]>
-			<slot :name="slotName" />
+	<ElTooltip v-bind="{ ...props, ...$attrs }" :popper-class="props.popperClass ?? 'n8n-tooltip'">
+		<slot />
+		<template #content>
+			<slot name="content">
+				<div v-n8n-html="props.content"></div>
+			</slot>
 			<div
-				:key="slotName"
-				v-if="slotName === 'content' && buttons.length"
+				v-if="props.buttons.length"
 				:class="$style.buttons"
-				:style="{ justifyContent: justifyButtons }"
+				:style="{ justifyContent: props.justifyButtons }"
 			>
-				<n8n-button
-					v-for="button in buttons"
+				<N8nButton
+					v-for="button in props.buttons"
 					:key="button.attrs.label"
-					v-bind="button.attrs"
-					v-on="button.listeners"
+					v-bind="{ ...button.attrs, ...button.listeners }"
 				/>
 			</div>
 		</template>
-	</el-tooltip>
+	</ElTooltip>
 </template>
-
-<script lang="ts">
-import Vue, { PropType } from 'vue';
-import { Tooltip as ElTooltip } from 'element-ui';
-import type { IN8nButton } from '@/types';
-import N8nButton from '../N8nButton';
-
-export default Vue.extend({
-	name: 'n8n-tooltip',
-	inheritAttrs: false,
-	components: {
-		ElTooltip,
-		N8nButton,
-	},
-	props: {
-		justifyButtons: {
-			type: String,
-			default: 'flex-end',
-			validator: (value: string): boolean =>
-				[
-					'flex-start',
-					'flex-end',
-					'start',
-					'end',
-					'left',
-					'right',
-					'center',
-					'space-between',
-					'space-around',
-					'space-evenly',
-				].includes(value),
-		},
-		buttons: {
-			type: Array as PropType<IN8nButton[]>,
-			default: () => [],
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .buttons {
 	display: flex;
 	align-items: center;
 	margin-top: var(--spacing-s);
+	gap: var(--spacing-2xs);
 }
 </style>

@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { demioApiRequest } from './GenericFunctions';
 
@@ -26,8 +27,8 @@ export class Demio implements INodeType {
 		defaults: {
 			name: 'Demio',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'demioApi',
@@ -63,7 +64,7 @@ export class Demio implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the events to display them to user so that he can
+			// Get all the events to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -77,7 +78,7 @@ export class Demio implements INodeType {
 				return returnData;
 			},
 
-			// Get all the sessions to display them to user so that he can
+			// Get all the sessions to display them to user so that they can
 			// select them easily
 			async getEventSessions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const eventId = this.getCurrentNodeParameter('eventId') as string;

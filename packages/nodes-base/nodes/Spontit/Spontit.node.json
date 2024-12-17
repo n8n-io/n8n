@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/spontit"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/spontit/"
 			}
 		],
 		"primaryDocumentation": [

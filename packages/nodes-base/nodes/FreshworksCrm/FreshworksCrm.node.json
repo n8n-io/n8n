@@ -2,11 +2,11 @@
 	"node": "n8n-nodes-base.freshworksCrm",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Marketing & Content", "Sales"],
+	"categories": ["Marketing", "Sales"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/freshworksCrm"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/freshworksCrm/"
 			}
 		],
 		"primaryDocumentation": [

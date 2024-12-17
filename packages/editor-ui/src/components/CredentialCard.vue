@@ -1,175 +1,217 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import dateformat from 'dateformat';
+import type { ICredentialsResponse } from '@/Interface';
+import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
+import { useMessage } from '@/composables/useMessage';
+import CredentialIcon from '@/components/CredentialIcon.vue';
+import { getResourcePermissions } from '@/permissions';
+import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/types/projects.types';
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useI18n } from '@/composables/useI18n';
+import { ResourceType } from '@/utils/projects.utils';
+
+const CREDENTIAL_LIST_ITEM_ACTIONS = {
+	OPEN: 'open',
+	DELETE: 'delete',
+	MOVE: 'move',
+};
+
+const emit = defineEmits<{
+	click: [credentialId: string];
+}>();
+
+const props = withDefaults(
+	defineProps<{
+		data: ICredentialsResponse;
+		readOnly?: boolean;
+	}>(),
+	{
+		data: () => ({
+			id: '',
+			createdAt: '',
+			updatedAt: '',
+			type: '',
+			name: '',
+			sharedWithProjects: [],
+			homeProject: {} as ProjectSharingData,
+		}),
+		readOnly: false,
+	},
+);
+
+const locale = useI18n();
+const message = useMessage();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
+
+const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
+const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
+const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
+const actions = computed(() => {
+	const items = [
+		{
+			label: locale.baseText('credentials.item.open'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
+		},
+	];
+
+	if (credentialPermissions.value.delete) {
+		items.push({
+			label: locale.baseText('credentials.item.delete'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
+		});
+	}
+
+	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
+		items.push({
+			label: locale.baseText('credentials.item.move'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	return items;
+});
+const formattedCreatedAtDate = computed(() => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return dateformat(
+		props.data.createdAt,
+		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
+	);
+});
+
+function onClick() {
+	emit('click', props.data.id);
+}
+
+async function onAction(action: string) {
+	switch (action) {
+		case CREDENTIAL_LIST_ITEM_ACTIONS.OPEN:
+			onClick();
+			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.DELETE:
+			await deleteResource();
+			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.MOVE:
+			moveResource();
+			break;
+	}
+}
+
+async function deleteResource() {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
+			interpolate: { savedCredentialName: props.data.name },
+		}),
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
+		{
+			confirmButtonText: locale.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed === MODAL_CONFIRM) {
+		await credentialsStore.deleteCredential({ id: props.data.id });
+	}
+}
+
+function moveResource() {
+	uiStore.openModalWithData({
+		name: PROJECT_MOVE_RESOURCE_MODAL,
+		data: {
+			resource: props.data,
+			resourceType: ResourceType.Credential,
+			resourceTypeLabel: resourceTypeLabel.value,
+		},
+	});
+}
+</script>
+
 <template>
-	<n8n-card :class="$style['card-link']" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
-			<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
+			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
-			<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style['card-heading']">
+			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
+				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('credentials.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
-		<n8n-text color="text-light" size="small">
-			<span v-if="credentialType">{{ credentialType.displayName }} | </span>
-			<span v-show="data"
-				>{{ $locale.baseText('credentials.item.updated') }} <time-ago :date="data.updatedAt" /> |
-			</span>
-			<span v-show="data"
-				>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
-			</span>
-		</n8n-text>
+		<div :class="$style.cardDescription">
+			<n8n-text color="text-light" size="small">
+				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
+				<span v-show="data"
+					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+				</span>
+				<span v-show="data"
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+				</span>
+			</n8n-text>
+		</div>
 		<template #append>
-			<div :class="$style['card-actions']">
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('credentials.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+			<div :class="$style.cardActions" @click.stop>
+				<ProjectCardBadge
+					:resource="data"
+					:resource-type="ResourceType.Credential"
+					:resource-type-label="resourceTypeLabel"
+					:personal-project="projectsStore.personalProject"
+				/>
+				<n8n-action-toggle
+					data-test-id="credential-card-actions"
+					:actions="actions"
+					theme="dark"
+					@action="onAction"
+				/>
 			</div>
 		</template>
 	</n8n-card>
 </template>
 
-<script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { ICredentialsResponse, IUser } from '@/Interface';
-import { ICredentialType } from 'n8n-workflow';
-import { EnterpriseEditionFeature } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
-import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getCredentialPermissions, IPermissions } from '@/permissions';
-import dateformat from 'dateformat';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from '@/stores/credentials';
-
-export const CREDENTIAL_LIST_ITEM_ACTIONS = {
-	OPEN: 'open',
-	DELETE: 'delete',
-};
-
-export default mixins(showMessage).extend({
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
-	components: {
-		CredentialIcon,
-	},
-	props: {
-		data: {
-			type: Object,
-			required: true,
-			default: (): ICredentialsResponse => ({
-				id: '',
-				createdAt: '',
-				updatedAt: '',
-				type: '',
-				name: '',
-				nodesAccess: [],
-				sharedWith: [],
-				ownedBy: {} as IUser,
-			}),
-		},
-		readonly: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		...mapStores(useCredentialsStore, useUIStore, useUsersStore),
-		currentUser(): IUser | null {
-			return this.usersStore.currentUser;
-		},
-		credentialType(): ICredentialType {
-			return this.credentialsStore.getCredentialTypeByName(this.data.type);
-		},
-		credentialPermissions(): IPermissions | null {
-			return !this.currentUser ? null : getCredentialPermissions(this.currentUser, this.data);
-		},
-		actions(): Array<{ label: string; value: string }> {
-			if (!this.credentialPermissions) {
-				return [];
-			}
-
-			return [
-				{
-					label: this.$locale.baseText('credentials.item.open'),
-					value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
-				},
-			].concat(
-				this.credentialPermissions.delete
-					? [
-							{
-								label: this.$locale.baseText('credentials.item.delete'),
-								value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
-							},
-					  ]
-					: [],
-			);
-		},
-		formattedCreatedAtDate(): string {
-			const currentYear = new Date().getFullYear();
-
-			return dateformat(
-				this.data.createdAt,
-				`d mmmm${this.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
-			);
-		},
-	},
-	methods: {
-		async onClick() {
-			this.uiStore.openExistingCredential(this.data.id);
-		},
-		async onAction(action: string) {
-			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				this.onClick();
-			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirmMessage(
-					this.$locale.baseText(
-						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.message',
-						{
-							interpolate: { savedCredentialName: this.data.name },
-						},
-					),
-					this.$locale.baseText(
-						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline',
-					),
-					null,
-					this.$locale.baseText(
-						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-					),
-				);
-
-				if (deleteConfirmed) {
-					this.credentialsStore.deleteCredential({ id: this.data.id });
-				}
-			}
-		},
-	},
-});
-</script>
-
 <style lang="scss" module>
-.card-link {
+.cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
+	padding: 0 0 0 var(--spacing-s);
+	align-items: stretch;
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
 
-.card-heading {
+.cardHeading {
 	font-size: var(--font-size-s);
+	padding: var(--spacing-s) 0 0;
+
+	span {
+		color: var(--color-text-light);
+	}
 }
 
-.card-actions {
+.cardDescription {
+	min-height: 19px;
+	display: flex;
+	align-items: center;
+	padding: 0 0 var(--spacing-s);
+}
+
+.cardActions {
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing-s) 0 0;
+	cursor: default;
 }
 </style>

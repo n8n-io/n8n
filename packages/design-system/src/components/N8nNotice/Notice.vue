@@ -1,101 +1,94 @@
+<script lang="ts" setup>
+import sanitize from 'sanitize-html';
+import { computed, ref, useCssModule } from 'vue';
+
+import N8nText from '../../components/N8nText';
+import { uid } from '../../utils';
+
+interface NoticeProps {
+	id?: string;
+	theme?: 'success' | 'warning' | 'danger' | 'info';
+	content?: string;
+	fullContent?: string;
+	compact?: boolean;
+}
+
+const props = withDefaults(defineProps<NoticeProps>(), {
+	id: () => uid('notice'),
+	theme: 'warning',
+	content: '',
+	fullContent: '',
+	compact: true,
+});
+
+const emit = defineEmits<{
+	action: [key: string];
+}>();
+
+const $style = useCssModule();
+
+const classes = computed(() => ['notice', $style.notice, $style[props.theme]]);
+const canTruncate = computed(() => props.fullContent !== undefined);
+
+const showFullContent = ref(false);
+const displayContent = computed(() =>
+	sanitize(showFullContent.value ? props.fullContent : props.content, {
+		allowedAttributes: {
+			a: [
+				'data-key',
+				'href',
+				'target',
+				'data-action',
+				'data-action-parameter-connectiontype',
+				'data-action-parameter-creatorview',
+			],
+		},
+	}),
+);
+
+const onClick = (event: MouseEvent) => {
+	if (!(event.target instanceof HTMLElement)) return;
+
+	if (event.target.localName !== 'a') return;
+
+	const anchorKey = event.target.dataset?.key;
+	if (anchorKey) {
+		event.stopPropagation();
+		event.preventDefault();
+
+		if (anchorKey === 'show-less') {
+			showFullContent.value = false;
+		} else if (canTruncate.value && anchorKey === 'toggle-expand') {
+			showFullContent.value = !showFullContent.value;
+		} else {
+			emit('action', anchorKey);
+		}
+	}
+};
+</script>
+
 <template>
 	<div :id="id" :class="classes" role="alert" @click="onClick">
 		<div class="notice-content">
-			<n8n-text size="small" :compact="true">
+			<N8nText size="small" :compact="compact">
 				<slot>
 					<span
-						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
+						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
-						v-html="sanitizeHtml(showFullContent ? fullContent : content)"
+						v-n8n-html="displayContent"
 					/>
 				</slot>
-			</n8n-text>
+			</N8nText>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-import sanitizeHtml from 'sanitize-html';
-import N8nText from '../../components/N8nText';
-import Locale from '../../mixins/locale';
-import { uid } from '../../utils';
-
-export default Vue.extend({
-	name: 'n8n-notice',
-	directives: {},
-	mixins: [Locale],
-	props: {
-		id: {
-			type: String,
-			default: () => uid('notice'),
-		},
-		theme: {
-			type: String,
-			default: 'warning',
-		},
-		content: {
-			type: String,
-			default: '',
-		},
-		fullContent: {
-			type: String,
-			default: '',
-		},
-	},
-	components: {
-		N8nText,
-	},
-	data() {
-		return {
-			showFullContent: false,
-		};
-	},
-	computed: {
-		classes(): string[] {
-			return ['notice', this.$style.notice, this.$style[this.theme]];
-		},
-		canTruncate(): boolean {
-			return this.fullContent !== undefined;
-		},
-	},
-	methods: {
-		toggleExpanded() {
-			this.showFullContent = !this.showFullContent;
-		},
-		sanitizeHtml(text: string): string {
-			return sanitizeHtml(text, {
-				allowedAttributes: { a: ['data-key', 'href', 'target'] },
-			});
-		},
-		onClick(event: MouseEvent) {
-			if (!(event.target instanceof HTMLElement)) return;
-
-			if (event.target.localName !== 'a') return;
-
-			if (event.target.dataset && event.target.dataset.key) {
-				event.stopPropagation();
-				event.preventDefault();
-
-				if (event.target.dataset.key === 'show-less') {
-					this.showFullContent = false;
-				} else if (this.canTruncate && event.target.dataset.key === 'toggle-expand') {
-					this.showFullContent = !this.showFullContent;
-				} else {
-					this.$emit('action', event.target.dataset.key);
-				}
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .notice {
 	font-size: var(--font-size-2xs);
 	display: flex;
-	color: var(--custom-font-black);
+	color: var(--color-notice-font);
 	margin: var(--notice-margin, var(--spacing-s) 0);
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
@@ -111,8 +104,8 @@ export default Vue.extend({
 }
 
 .warning {
-	--border-color: var(--color-warning-tint-1);
-	--background-color: var(--color-warning-tint-2);
+	--border-color: var(--color-notice-warning-border);
+	--background-color: var(--color-notice-warning-background);
 }
 
 .danger {

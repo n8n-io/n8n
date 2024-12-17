@@ -1,9 +1,9 @@
-import { CurlToJSONResponse, IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import type { CurlToJSONResponse, IRestApiContext } from '@/Interface';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
-export function getCurlToJson(
+export async function getCurlToJson(
 	context: IRestApiContext,
 	curlCommand: string,
 ): Promise<CurlToJSONResponse> {
-	return makeRestApiRequest(context, 'POST', '/curl-to-json', { curlCommand });
+	return await makeRestApiRequest(context, 'POST', '/curl/to-json', { curlCommand });
 }

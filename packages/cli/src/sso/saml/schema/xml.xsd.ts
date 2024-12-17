@@ -1,4 +1,8 @@
-export const xsdXml = `<?xml version='1.0'?>
+import type { XMLFileInfo } from 'xmllint-wasm';
+
+export const xmlFileInfo: XMLFileInfo = {
+	fileName: 'xml.xsd',
+	contents: `<?xml version='1.0'?>
 <!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd" >
 <xs:schema targetNamespace="http://www.w3.org/XML/1998/namespace" xmlns:xs="http://www.w3.org/2001/XMLSchema" xml:lang="en">
 
@@ -114,4 +118,5 @@ export const xsdXml = `<?xml version='1.0'?>
   <xs:attribute ref="xml:space"/>
  </xs:attributeGroup>
 
-</xs:schema>`;
+</xs:schema>`,
+};

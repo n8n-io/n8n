@@ -1,5 +1,78 @@
+<script lang="ts" setup>
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import type { Placement } from 'element-plus';
+import { computed } from 'vue';
+
+import N8nTooltip from '../N8nTooltip';
+
+interface NodeIconProps {
+	type: 'file' | 'icon' | 'unknown';
+	src?: string;
+	name?: string;
+	nodeTypeName?: string;
+	size?: number;
+	disabled?: boolean;
+	circle?: boolean;
+	color?: string;
+	showTooltip?: boolean;
+	tooltipPosition?: Placement;
+	badge?: { src: string; type: string };
+}
+
+const props = withDefaults(defineProps<NodeIconProps>(), {
+	tooltipPosition: 'top',
+});
+
+const iconStyleData = computed((): Record<string, string> => {
+	if (!props.size) {
+		return {
+			color: props.color || '',
+		};
+	}
+
+	return {
+		color: props.color || '',
+		width: `${props.size}px`,
+		height: `${props.size}px`,
+		'font-size': `${props.size}px`,
+		'line-height': `${props.size}px`,
+	};
+});
+
+const badgeSize = computed((): number => {
+	switch (props.size) {
+		case 40:
+			return 18;
+		case 24:
+			return 10;
+		case 18:
+		default:
+			return 12;
+	}
+});
+
+const fontStyleData = computed((): Record<string, string> => {
+	if (!props.size) {
+		return {};
+	}
+
+	return {
+		'max-width': `${props.size}px`,
+	};
+});
+
+const badgeStyleData = computed((): Record<string, string> => {
+	const size = badgeSize.value;
+	return {
+		padding: `${Math.floor(size / 4)}px`,
+		right: `-${Math.floor(size / 2)}px`,
+		bottom: `-${Math.floor(size / 2)}px`,
+	};
+});
+</script>
+
 <template>
-	<div class="n8n-node-icon">
+	<div class="n8n-node-icon" v-bind="$attrs">
 		<div
 			:class="{
 				[$style.nodeIconWrapper]: true,
@@ -7,99 +80,33 @@
 				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
-			v-on="$listeners"
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
-			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
+			<N8nTooltip v-if="showTooltip" :placement="tooltipPosition" :disabled="!showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+					<FontAwesomeIcon v-else :icon="`${name}`" :class="$style.iconFa" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-					?
 				</div>
-			</n8n-tooltip>
+			</N8nTooltip>
 			<template v-else>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+					<FontAwesomeIcon v-else :icon="`${name}`" :style="fontStyleData" />
+					<div v-if="badge" :class="$style.badge" :style="badgeStyleData">
+						<n8n-node-icon :type="badge.type" :src="badge.src" :size="badgeSize"></n8n-node-icon>
+					</div>
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
-					?
 				</div>
 			</template>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-import N8nTooltip from '../N8nTooltip';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-
-export default Vue.extend({
-	name: 'n8n-node-icon',
-	components: {
-		N8nTooltip,
-		FontAwesomeIcon,
-	},
-	props: {
-		type: {
-			type: String,
-			required: true,
-			validator: (value: string): boolean => ['file', 'icon', 'unknown'].includes(value),
-		},
-		src: {
-			type: String,
-		},
-		name: {
-			type: String,
-		},
-		nodeTypeName: {
-			type: String,
-		},
-		size: {
-			type: Number,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		circle: {
-			type: Boolean,
-		},
-		color: {
-			type: String,
-		},
-		showTooltip: {
-			type: Boolean,
-		},
-	},
-	computed: {
-		iconStyleData(): object {
-			if (!this.size) {
-				return {
-					color: this.color || '',
-				};
-			}
-			return {
-				color: this.color || '',
-				width: `${this.size}px`,
-				height: `${this.size}px`,
-				'font-size': `${this.size}px`,
-				'line-height': `${this.size}px`,
-			};
-		},
-		fontStyleData(): object {
-			return {
-				'max-width': `${this.size}px`,
-			};
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .nodeIconWrapper {
@@ -109,7 +116,6 @@ export default Vue.extend({
 	color: var(--node-icon-color, #444);
 	line-height: var(--node-icon-size, 26px);
 	font-size: 1.1em;
-	overflow: hidden;
 	text-align: center;
 	font-weight: bold;
 	font-size: 20px;
@@ -121,15 +127,32 @@ export default Vue.extend({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	pointer-events: none;
+	position: relative;
+
+	svg {
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	img,
+	svg {
+		pointer-events: none;
+	}
 }
 .nodeIconPlaceholder {
 	text-align: center;
 }
 .nodeIconImage {
-	width: 100%;
 	max-width: 100%;
 	max-height: 100%;
+	width: auto;
+	height: auto;
+}
+
+.badge {
+	position: absolute;
+	background: var(--color-background-node-icon-badge, var(--color-background-base));
+	border-radius: 50%;
 }
 
 .circle {

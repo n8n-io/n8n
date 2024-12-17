@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { getUser, philipsHueApiRequest } from './GenericFunctions';
 
@@ -25,8 +26,8 @@ export class PhilipsHue implements INodeType {
 		defaults: {
 			name: 'Philips Hue',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'philipsHueOAuth2Api',
@@ -54,7 +55,7 @@ export class PhilipsHue implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the lights to display them to user so that he can
+			// Get all the lights to display them to user so that they can
 			// select them easily
 			async getLights(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -181,6 +182,6 @@ export class PhilipsHue implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

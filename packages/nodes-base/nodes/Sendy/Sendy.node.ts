@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { sendyApiRequest } from './GenericFunctions';
 
@@ -27,8 +27,8 @@ export class Sendy implements INodeType {
 		defaults: {
 			name: 'Sendy',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'sendyApi',
@@ -86,6 +86,11 @@ export class Sendy implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
+					let brandId = null;
+					if (!sendCampaign) {
+						brandId = this.getNodeParameter('brandId', i) as string;
+					}
+
 					const body: IDataObject = {
 						from_name: fromName,
 						from_email: fromEmail,
@@ -95,6 +100,10 @@ export class Sendy implements INodeType {
 						send_campaign: sendCampaign ? 1 : 0,
 						html_text: htmlText,
 					};
+
+					if (brandId) {
+						body.brand_id = brandId;
+					}
 
 					if (additionalFields.plainText) {
 						body.plain_text = additionalFields.plainText;
@@ -114,10 +123,6 @@ export class Sendy implements INodeType {
 
 					if (additionalFields.excludeSegmentIds) {
 						body.exclude_segments_ids = additionalFields.excludeSegmentIds as string;
-					}
-
-					if (additionalFields.brandId) {
-						body.brand_id = additionalFields.brandId as string;
 					}
 
 					if (additionalFields.queryString) {

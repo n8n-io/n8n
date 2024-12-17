@@ -1,11 +1,9 @@
-import get from 'lodash.get';
-import set from 'lodash.set';
-import unset from 'lodash.unset';
-import prettyBytes from 'pretty-bytes';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 import type {
 	IExecuteFunctions,
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -16,11 +14,12 @@ import {
 	BINARY_ENCODING,
 	deepCopy,
 	jsonParse,
+	NodeConnectionType,
 	NodeOperationError,
-	fileTypeFromMimeType,
 } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
+
 iconv.encodingExists('utf8');
 
 // Create options for bomAware and encoding
@@ -49,19 +48,20 @@ encodeDecodeOptions.sort((a, b) => {
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Move Binary Data',
+		hidden: true,
+		displayName: 'Convert to/from binary data',
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
 		description: 'Move data between binary and JSON properties',
 		defaults: {
-			name: 'Move Binary Data',
+			name: 'Convert to/from binary data',
 			color: '#7722CC',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -183,9 +183,23 @@ export class MoveBinaryData implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
+					{
+						displayName: 'Add Byte Order Mark (BOM)',
+						name: 'addBOM',
+						description:
+							'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
+						displayOptions: {
+							show: {
+								'/mode': ['jsonToBinary'],
+								encoding: bomAware,
+							},
+						},
+						type: 'boolean',
+						default: false,
+					},
 					{
 						displayName: 'Data Is Base64',
 						name: 'dataIsBase64',
@@ -213,7 +227,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: 'utf8',
-						description: 'Set the encoding of the data stream',
+						description: 'Choose the character set to use to encode the data',
 					},
 					{
 						displayName: 'Strip BOM',
@@ -226,18 +240,6 @@ export class MoveBinaryData implements INodeType {
 						},
 						type: 'boolean',
 						default: true,
-					},
-					{
-						displayName: 'Add BOM',
-						name: 'addBOM',
-						displayOptions: {
-							show: {
-								'/mode': ['jsonToBinary'],
-								encoding: bomAware,
-							},
-						},
-						type: 'boolean',
-						default: false,
 					},
 					{
 						displayName: 'File Name',
@@ -292,7 +294,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
-						displayName: 'Mime Type',
+						displayName: 'MIME Type',
 						name: 'mimeType',
 						type: 'string',
 						displayOptions: {
@@ -326,9 +328,7 @@ export class MoveBinaryData implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
 		const mode = this.getNodeParameter('mode', 0) as string;
-
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
@@ -421,29 +421,39 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
-				const mimeType = (options.mimeType as string) || 'application/json';
-				const convertedValue: IBinaryData = {
-					data: '',
-					mimeType,
-					fileType: fileTypeFromMimeType(mimeType),
-				};
+				const nodeVersion = this.getNode().typeVersion;
+				let mimeType = options.mimeType as string;
 
+				let data: Buffer;
 				if (options.dataIsBase64 !== true) {
 					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
+
+						if (!mimeType) {
+							mimeType = 'application/json';
+						}
 					}
 
-					convertedValue.fileSize = prettyBytes(value.length);
-
-					convertedValue.data = iconv
-						.encode(value, encoding, { addBOM: options.addBOM as boolean })
-						.toString(BINARY_ENCODING);
+					data = iconv.encode(value, encoding, { addBOM: options.addBOM as boolean });
 				} else {
-					convertedValue.data = value as unknown as string;
+					data = Buffer.from(value as unknown as string, BINARY_ENCODING);
 				}
 
-				if (options.fileName) {
-					convertedValue.fileName = options.fileName as string;
+				if (!mimeType && nodeVersion === 1) {
+					mimeType = 'application/json';
+				}
+
+				const convertedValue = await this.helpers.prepareBinaryData(
+					data,
+					options.fileName as string,
+					mimeType,
+				);
+
+				if (!convertedValue.fileName && nodeVersion > 1) {
+					const fileExtension = convertedValue.fileExtension
+						? `.${convertedValue.fileExtension}`
+						: '';
+					convertedValue.fileName = `file${fileExtension}`;
 				}
 
 				set(newItem.binary, destinationKey, convertedValue);

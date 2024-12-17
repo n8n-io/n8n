@@ -8,9 +8,13 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+import { v4 as uuid } from 'uuid';
 import {
+	addNextOccurrence,
+	addTimezoneToDate,
 	encodeURIComponentOnce,
 	getCalendars,
 	getTimezones,
@@ -24,24 +28,21 @@ import { calendarFields, calendarOperations } from './CalendarDescription';
 
 import type { IEvent } from './EventInterface';
 
-import moment from 'moment-timezone';
-
-import { v4 as uuid } from 'uuid';
-
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Calendar',
 		name: 'googleCalendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
 		defaults: {
 			name: 'Google Calendar',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'googleCalendarOAuth2Api',
@@ -70,6 +71,13 @@ export class GoogleCalendar implements INodeType {
 			...calendarFields,
 			...eventOperations,
 			...eventFields,
+			{
+				displayName:
+					'This node will use the time zone set in n8n’s settings, but you can override this in the workflow settings',
+				name: 'useN8nTimeZone',
+				type: 'notice',
+				default: '',
+			},
 		],
 	};
 
@@ -79,12 +87,12 @@ export class GoogleCalendar implements INodeType {
 			getTimezones,
 		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
-			async getConferenceSolutations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getConferenceSolutions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const calendar = this.getCurrentNodeParameter('calendar') as string;
-				const posibleSolutions: IDataObject = {
+				const calendar = this.getCurrentNodeParameter('calendar', { extractValue: true }) as string;
+				const possibleSolutions: IDataObject = {
 					eventHangout: 'Google Hangout',
 					eventNamedHangout: 'Google Hangout Classic',
 					hangoutsMeet: 'Google Meet',
@@ -98,13 +106,13 @@ export class GoogleCalendar implements INodeType {
 				);
 				for (const solution of allowedConferenceSolutionTypes) {
 					returnData.push({
-						name: posibleSolutions[solution] as string,
+						name: possibleSolutions[solution] as string,
 						value: solution,
 					});
 				}
 				return returnData;
 			},
-			// Get all the colors to display them to user so that he can
+			// Get all the colors to display them to user so that they can
 			// select them easily
 			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -128,9 +136,12 @@ export class GoogleCalendar implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
+
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const timezone = this.getTimezone();
+		const nodeVersion = this.getNode().typeVersion;
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'calendar') {
@@ -269,7 +280,7 @@ export class GoogleCalendar implements INodeType {
 							}
 						}
 
-						if (additionalFields.allday) {
+						if (additionalFields.allday === 'yes') {
 							body.start = {
 								date: timezone
 									? moment.tz(start, timezone).utc(true).format('YYYY-MM-DD')
@@ -281,6 +292,7 @@ export class GoogleCalendar implements INodeType {
 									: moment.tz(end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
+
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 						//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 						body.recurrence = [];
@@ -377,6 +389,10 @@ export class GoogleCalendar implements INodeType {
 							{},
 							qs,
 						);
+
+						if (responseData) {
+							responseData = addNextOccurrence([responseData]);
+						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/list
 					if (operation === 'getAll') {
@@ -410,17 +426,21 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = options.timeMax as string;
+							qs.timeMax = addTimezoneToDate(options.timeMax as string, tz || timezone);
 						}
 						if (options.timeMin) {
-							qs.timeMin = options.timeMin as string;
+							qs.timeMin = addTimezoneToDate(options.timeMin as string, tz || timezone);
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = options.updatedMin as string;
+							qs.updatedMin = addTimezoneToDate(options.updatedMin as string, tz || timezone);
 						}
+						if (options.fields) {
+							qs.fields = options.fields as string;
+						}
+
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
@@ -441,6 +461,10 @@ export class GoogleCalendar implements INodeType {
 							);
 							responseData = responseData.items;
 						}
+
+						if (responseData) {
+							responseData = addNextOccurrence(responseData);
+						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch
 					if (operation === 'update') {
@@ -450,7 +474,11 @@ export class GoogleCalendar implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i);
-						const updateTimezone = updateFields.timezone as string;
+						let updateTimezone = updateFields.timezone as string;
+
+						if (nodeVersion > 1 && updateTimezone === undefined) {
+							updateTimezone = timezone;
+						}
 
 						if (updateFields.maxAttendees) {
 							qs.maxAttendees = updateFields.maxAttendees as number;
@@ -474,9 +502,41 @@ export class GoogleCalendar implements INodeType {
 								timeZone: updateTimezone,
 							};
 						}
+						// nodeVersion < 1.2
 						if (updateFields.attendees) {
 							body.attendees = [];
 							(updateFields.attendees as string[]).forEach((attendee) => {
+								body.attendees!.push.apply(
+									body.attendees,
+									attendee
+										.split(',')
+										.map((a) => a.trim())
+										.map((email) => ({ email })),
+								);
+							});
+						}
+						// nodeVersion >= 1.2
+						if (updateFields.attendeesUi) {
+							const { mode, attendees } = (
+								updateFields.attendeesUi as {
+									values: {
+										mode: string;
+										attendees: string[];
+									};
+								}
+							).values;
+							body.attendees = [];
+							if (mode === 'add') {
+								const event = await googleApiRequest.call(
+									this,
+									'GET',
+									`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+								);
+								((event?.attendees as IDataObject[]) || []).forEach((attendee) => {
+									body.attendees?.push(attendee);
+								});
+							}
+							(attendees as string[]).forEach((attendee) => {
 								body.attendees!.push.apply(
 									body.attendees,
 									attendee
@@ -526,7 +586,8 @@ export class GoogleCalendar implements INodeType {
 								body.reminders.overrides = reminders;
 							}
 						}
-						if (updateFields.allday && updateFields.start && updateFields.end) {
+
+						if (updateFields.allday === 'yes' && updateFields.start && updateFields.end) {
 							body.start = {
 								date: updateTimezone
 									? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
@@ -538,7 +599,7 @@ export class GoogleCalendar implements INodeType {
 									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
-						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
+						//example: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 						//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 						body.recurrence = [];
 						if (updateFields.rrule) {
@@ -600,6 +661,6 @@ export class GoogleCalendar implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,0 +1,16 @@
+{
+	"sessionId": "1",
+	"messages": [
+			{
+					"role": "assistant",
+					"type": "message",
+					"title": "Glad to Help",
+					"text": "I'm glad I could help. If you have any more questions or need further assistance with your n8n workflows, feel free to ask!"
+			},
+			{
+					"role": "assistant",
+					"type": "event",
+					"eventName": "end-session"
+			}
+	]
+}

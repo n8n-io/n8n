@@ -1,18 +1,17 @@
-import type { OptionsWithUrl } from 'request';
-
 import type {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	projectId: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,11 +19,9 @@ export async function googleApiRequest(
 	headers: IDataObject = {},
 	uri: string | null = null,
 ): Promise<any> {
-	const { region } = (await this.getCredentials(
-		'googleFirebaseRealtimeDatabaseOAuth2Api',
-	)) as IDataObject;
+	const { region } = await this.getCredentials('googleFirebaseRealtimeDatabaseOAuth2Api');
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -54,9 +51,9 @@ export async function googleApiRequest(
 }
 
 export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	projectId: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

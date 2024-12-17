@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	capitalize,
@@ -20,21 +20,21 @@ import type { ICreateContactBody } from './ContactInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-enum Status {
+const enum Status {
 	Open = 2,
 	Pending = 3,
 	Resolved = 4,
 	Closed = 5,
 }
 
-enum Priority {
+const enum Priority {
 	Low = 1,
 	Medium = 2,
 	High = 3,
 	Urgent = 4,
 }
 
-enum Source {
+const enum Source {
 	Email = 1,
 	Portal = 2,
 	Phone = 3,
@@ -74,8 +74,8 @@ export class Freshdesk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:freshdesk.png',
+
+		icon: 'file:freshdesk.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -83,8 +83,8 @@ export class Freshdesk implements INodeType {
 		defaults: {
 			name: 'Freshdesk',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'freshdeskApi',
@@ -347,7 +347,7 @@ export class Freshdesk implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -365,7 +365,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getAgents',
 						},
 						description:
-							'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'CC Emails',
@@ -384,7 +384,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getCompanies',
 						},
 						description:
-							'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Description',
@@ -427,7 +427,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getGroups',
 						},
 						description:
-							'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Name',
@@ -446,7 +446,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getProducts',
 						},
 						description:
-							'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Subject',
@@ -604,7 +604,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getAgents',
 						},
 						description:
-							'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'CC Emails',
@@ -623,7 +623,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getCompanies',
 						},
 						description:
-							'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Due By',
@@ -656,7 +656,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getGroups',
 						},
 						description:
-							'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Name',
@@ -675,7 +675,7 @@ export class Freshdesk implements INodeType {
 							loadOptionsMethod: 'getProducts',
 						},
 						description:
-							'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Priority',
@@ -901,7 +901,7 @@ export class Freshdesk implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -1019,7 +1019,7 @@ export class Freshdesk implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the agents to display them to user so that he can
+			// Get all the agents to display them to user so that they can
 			// select them easily
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1036,7 +1036,7 @@ export class Freshdesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1053,7 +1053,7 @@ export class Freshdesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the products to display them to user so that he can
+			// Get all the products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1070,7 +1070,7 @@ export class Freshdesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the companies to display them to user so that he can
+			// Get all the companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1420,6 +1420,6 @@ export class Freshdesk implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

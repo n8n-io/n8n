@@ -1,14 +1,17 @@
-import { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import type { ApiKey, IRestApiContext } from '@/Interface';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
-export function getApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {
-	return makeRestApiRequest(context, 'GET', '/me/api-key');
+export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
+	return await makeRestApiRequest(context, 'GET', '/api-keys');
 }
 
-export function createApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {
-	return makeRestApiRequest(context, 'POST', '/me/api-key');
+export async function createApiKey(context: IRestApiContext): Promise<ApiKey> {
+	return await makeRestApiRequest(context, 'POST', '/api-keys');
 }
 
-export function deleteApiKey(context: IRestApiContext): Promise<{ success: boolean }> {
-	return makeRestApiRequest(context, 'DELETE', '/me/api-key');
+export async function deleteApiKey(
+	context: IRestApiContext,
+	id: string,
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(context, 'DELETE', `/api-keys/${id}`);
 }

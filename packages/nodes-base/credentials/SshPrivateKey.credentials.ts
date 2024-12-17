@@ -45,6 +45,7 @@ export class SshPrivateKey implements ICredentialType {
 			type: 'string',
 			default: '',
 			description: 'Passphase used to create the key, if no passphase was used leave empty',
+			typeOptions: { password: true },
 		},
 	];
 }

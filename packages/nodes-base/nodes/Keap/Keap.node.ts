@@ -7,7 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import { capitalCase, pascalCase } from 'change-case';
+import moment from 'moment-timezone';
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -47,10 +50,6 @@ import type { IFile } from './FileInterface';
 
 import type { ICompany } from './CompanyInterface';
 
-import { capitalCase, pascalCase } from 'change-case';
-
-import moment from 'moment-timezone';
-
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap',
@@ -64,8 +63,8 @@ export class Keap implements INodeType {
 		defaults: {
 			name: 'Keap',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'keapOAuth2Api',
@@ -143,7 +142,7 @@ export class Keap implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -158,7 +157,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -173,7 +172,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the countries to display them to user so that he can
+			// Get all the countries to display them to user so that they can
 			// select them easily
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +187,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the provinces to display them to user so that he can
+			// Get all the provinces to display them to user so that they can
 			// select them easily
 			async getProvinces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('countryCode') as string;
@@ -208,7 +207,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the contact types to display them to user so that he can
+			// Get all the contact types to display them to user so that they can
 			// select them easily
 			async getContactTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -223,7 +222,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -606,7 +605,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/getOrderUsingGET
 				if (operation === 'get') {
 					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
-					responseData = await keapApiRequest.call(this, 'get', `/orders/${orderId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/orders/${orderId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
@@ -651,7 +650,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/retrieveProductUsingGET
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await keapApiRequest.call(this, 'get', `/products/${productId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/products/${productId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
 				if (operation === 'getAll') {
@@ -830,6 +829,6 @@ export class Keap implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

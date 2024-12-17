@@ -5,8 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import { contenfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
+import { contentfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
 
 import * as SpaceDescription from './SpaceDescription';
 import * as ContentTypeDescription from './ContentTypeDescription';
@@ -23,12 +24,12 @@ export class Contentful implements INodeType {
 		icon: 'file:contentful.png',
 		group: ['input'],
 		version: 1,
-		description: 'Consume Contenful API',
+		description: 'Consume Contentful API',
 		defaults: {
 			name: 'Contentful',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'contentfulApi',
@@ -187,7 +188,7 @@ export class Contentful implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(
+							responseData = await contentfulApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
@@ -286,7 +287,7 @@ export class Contentful implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(
+							responseData = await contentfulApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
@@ -335,7 +336,7 @@ export class Contentful implements INodeType {
 						const env = this.getNodeParameter('environmentId', i) as string;
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(
+							responseData = await contentfulApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
@@ -370,6 +371,6 @@ export class Contentful implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -5,7 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { uptimeRobotApiRequest } from './GenericFunctions';
 
 import { monitorFields, monitorOperations } from './MonitorDescription';
@@ -19,8 +21,6 @@ import {
 
 import { publicStatusPageFields, publicStatusPageOperations } from './PublicStatusPageDescription';
 
-import moment from 'moment-timezone';
-
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UptimeRobot',
@@ -33,8 +33,8 @@ export class UptimeRobot implements INodeType {
 		defaults: {
 			name: 'UptimeRobot',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'uptimeRobotApi',

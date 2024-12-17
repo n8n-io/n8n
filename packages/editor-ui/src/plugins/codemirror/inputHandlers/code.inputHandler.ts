@@ -1,5 +1,6 @@
 import { closeBrackets, completionStatus, insertBracket } from '@codemirror/autocomplete';
-import { codePointAt, codePointSize, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { codePointAt, codePointSize } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 const handler = EditorView.inputHandler.of((view, from, to, insert) => {

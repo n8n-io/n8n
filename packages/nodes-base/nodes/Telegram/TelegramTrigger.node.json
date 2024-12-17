@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/telegram"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
 			}
 		],
 		"primaryDocumentation": [

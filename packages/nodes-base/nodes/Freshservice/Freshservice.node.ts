@@ -7,7 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import { tz } from 'moment-timezone';
 import {
 	adjustAddress,
 	adjustAgentRoles,
@@ -57,8 +59,6 @@ import {
 
 import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
 
-import { tz } from 'moment-timezone';
-
 export class Freshservice implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshservice',
@@ -71,8 +71,8 @@ export class Freshservice implements INodeType {
 		defaults: {
 			name: 'Freshservice',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'freshserviceApi',
@@ -236,7 +236,7 @@ export class Freshservice implements INodeType {
 				fields = fields
 					.concat(...asset_type_fields.map((data) => data.fields))
 					.map((data) => ({ name: data.label, id: data.name }));
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				return toOptions(fields);
 			},
 
@@ -1390,6 +1390,6 @@ export class Freshservice implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

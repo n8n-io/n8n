@@ -7,7 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
+import moment from 'moment-timezone';
 import { twistApiRequest } from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -19,8 +22,6 @@ import {
 
 import { threadFields, threadOperations } from './ThreadDescription';
 import { commentFields, commentOperations } from './CommentDescription';
-import { v4 as uuid } from 'uuid';
-import moment from 'moment';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,8 +36,8 @@ export class Twist implements INodeType {
 		defaults: {
 			name: 'Twist',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'twistOAuth2Api',
@@ -82,7 +83,7 @@ export class Twist implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
+			// Get all the available workspaces to display them to user so that they can
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -96,7 +97,7 @@ export class Twist implements INodeType {
 
 				return returnData;
 			},
-			// Get all the available conversations to display them to user so that he can
+			// Get all the available conversations to display them to user so that they can
 			// select them easily
 			async getConversations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -113,7 +114,7 @@ export class Twist implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available users to display them to user so that he can
+			// Get all the available users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -130,7 +131,7 @@ export class Twist implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

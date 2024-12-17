@@ -5,12 +5,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import type { IRecord } from './GenericFunctions';
-import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
+import type { IRecord } from './v1/GenericFunctions';
+import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
 
 export class AirtableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,12 +27,55 @@ export class AirtableTrigger implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableTokenApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableOAuth2Api'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'airtableApi',
+					},
+					{
+						name: 'Access Token',
+						value: 'airtableTokenApi',
+					},
+					{
+						name: 'OAuth2',
+						value: 'airtableOAuth2Api',
+					},
+				],
+				default: 'airtableApi',
+			},
 			{
 				displayName: 'Base',
 				name: 'baseId',
@@ -192,18 +234,13 @@ export class AirtableTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-
 		const webhookData = this.getWorkflowStaticData('node');
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
+		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const qs: IDataObject = {};
-
-		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-
-		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
-
-		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
-
-		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const endpoint = `${base}/${table}`;
 

@@ -1,3 +1,4 @@
+import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,8 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { NodeConnectionType, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -22,7 +22,8 @@ import { videoFields, videoOperations } from './VideoDescription';
 
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 
-import { countriesCodes } from './CountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
+import { validateAndSetDate } from '../GenericFunctions';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
@@ -39,8 +40,8 @@ export class YouTube implements INodeType {
 		defaults: {
 			name: 'YouTube',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'youTubeOAuth2Api',
@@ -96,7 +97,7 @@ export class YouTube implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the languages to display them to user so that he can
+			// Get all the languages to display them to user so that they can
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -116,11 +117,11 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the countries codes to display them to user so that he can
+			// Get all the countries codes to display them to user so that they can
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const countryCode of countriesCodes) {
+				for (const countryCode of isoCountryCodes) {
 					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
 					const countryCodeId = countryCode.alpha2;
 					returnData.push({
@@ -130,7 +131,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the video categories to display them to user so that he can
+			// Get all the video categories to display them to user so that they can
 			// select them easily
 			async getVideoCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('regionCode') as string;
@@ -157,7 +158,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the playlists to display them to user so that he can
+			// Get all the playlists to display them to user so that they can
 			// select them easily
 			async getPlaylists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -763,6 +764,14 @@ export class YouTube implements INodeType {
 
 						qs.forMine = true;
 
+						if (filters.publishedAfter) {
+							validateAndSetDate(filters, 'publishedAfter', this.getTimezone(), this);
+						}
+
+						if (filters.publishedBefore) {
+							validateAndSetDate(filters, 'publishedBefore', this.getTimezone(), this);
+						}
+
 						Object.assign(qs, options, filters);
 
 						if (Object.keys(filters).length > 0) {
@@ -838,7 +847,7 @@ export class YouTube implements INodeType {
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
-							fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+							fileContent = await this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;
@@ -1068,6 +1077,6 @@ export class YouTube implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

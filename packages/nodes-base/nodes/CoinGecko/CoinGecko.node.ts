@@ -7,14 +7,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { coinFields, coinOperations } from './CoinDescription';
 
 import { eventFields, eventOperations } from './EventDescription';
 
 import { coinGeckoApiRequest, coinGeckoRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 export class CoinGecko implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +28,8 @@ export class CoinGecko implements INodeType {
 		defaults: {
 			name: 'CoinGecko',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -485,6 +485,6 @@ export class CoinGecko implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

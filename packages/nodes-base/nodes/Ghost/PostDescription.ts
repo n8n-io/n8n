@@ -114,6 +114,10 @@ export const postFields: INodeProperties[] = [
 				name: 'Mobile Doc',
 				value: 'mobileDoc',
 			},
+			{
+				name: 'Lexical',
+				value: 'lexical',
+			},
 		],
 		default: 'html',
 		description: 'The format of the post',
@@ -151,6 +155,22 @@ export const postFields: INodeProperties[] = [
 			'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info</a>.',
 	},
 	{
+		displayName: 'Content (JSON)',
+		name: 'content',
+		type: 'json',
+		displayOptions: {
+			show: {
+				source: ['adminApi'],
+				resource: ['post'],
+				operation: ['create'],
+				contentFormat: ['lexical'],
+			},
+		},
+
+		default: '',
+		description: 'Lexical is the JSON format returned by the Ghost Default editor',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -169,7 +189,7 @@ export const postFields: INodeProperties[] = [
 				name: 'authors',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
@@ -269,7 +289,7 @@ export const postFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -363,7 +383,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -395,6 +415,10 @@ export const postFields: INodeProperties[] = [
 						name: 'Mobile Doc',
 						value: 'mobiledoc',
 					},
+					{
+						name: 'Lexical',
+						value: 'lexical',
+					},
 				],
 				default: ['mobiledoc'],
 			},
@@ -404,7 +428,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -482,7 +506,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -532,6 +556,10 @@ export const postFields: INodeProperties[] = [
 						name: 'Plaintext',
 						value: 'plaintext',
 					},
+					{
+						name: 'Lexical',
+						value: 'lexical',
+					},
 				],
 				default: ['html'],
 				description:
@@ -543,7 +571,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -593,6 +621,10 @@ export const postFields: INodeProperties[] = [
 						name: 'Mobile Doc',
 						value: 'mobiledoc',
 					},
+					{
+						name: 'Lexical',
+						value: 'lexical',
+					},
 				],
 				default: ['mobiledoc'],
 			},
@@ -636,6 +668,10 @@ export const postFields: INodeProperties[] = [
 				name: 'Mobile Doc',
 				value: 'mobileDoc',
 			},
+			{
+				name: 'Lexical',
+				value: 'lexical',
+			},
 		],
 		default: 'html',
 		description: 'The format of the post',
@@ -659,7 +695,7 @@ export const postFields: INodeProperties[] = [
 				name: 'authors',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
@@ -706,6 +742,18 @@ export const postFields: INodeProperties[] = [
 				default: '',
 				description:
 					'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info.</a>.',
+			},
+			{
+				displayName: 'Content (JSON)',
+				name: 'contentJson',
+				type: 'json',
+				displayOptions: {
+					show: {
+						'/contentFormat': ['lexical'],
+					},
+				},
+				default: '',
+				description: 'Lexical is the JSON format returned by the Ghost Default editor',
 			},
 			{
 				displayName: 'Featured',
@@ -781,7 +829,7 @@ export const postFields: INodeProperties[] = [
 				name: 'tags',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},

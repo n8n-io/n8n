@@ -7,7 +7,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 import { getRepositories, getUsers } from './SearchFunctions';
@@ -16,7 +16,7 @@ export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github Trigger',
 		name: 'githubTrigger',
-		icon: 'file:github.svg',
+		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle:
@@ -26,7 +26,7 @@ export class GithubTrigger implements INodeType {
 			name: 'Github Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'githubApi',
@@ -213,12 +213,6 @@ export class GithubTrigger implements INodeType {
 						name: 'Commit Comment',
 						value: 'commit_comment',
 						description: 'Triggered when a commit comment is created',
-					},
-					{
-						name: 'Content Reference',
-						value: 'content_reference',
-						description:
-							'Triggered when the body or comment of an issue or pull request includes a URL that matches a configured content reference domain. Only GitHub Apps can receive this event.',
 					},
 					{
 						name: 'Create',
@@ -440,6 +434,23 @@ export class GithubTrigger implements INodeType {
 				default: [],
 				description: 'The events to listen to',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				options: [
+					{
+						displayName: 'Insecure SSL',
+						name: 'insecureSSL',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether the SSL certificate of the n8n host be verified by GitHub when delivering payloads',
+					},
+				],
+			},
 		],
 	};
 
@@ -471,7 +482,7 @@ export class GithubTrigger implements INodeType {
 						return false;
 					}
 
-					// Some error occured
+					// Some error occurred
 					throw error;
 				}
 				// If it did not error then the webhook exists
@@ -494,14 +505,14 @@ export class GithubTrigger implements INodeType {
 				const events = this.getNodeParameter('events', []);
 
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
+				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
 
 				const body = {
 					name: 'web',
 					config: {
 						url: webhookUrl,
 						content_type: 'json',
-						// secret: '...later...',
-						insecure_ssl: '1', // '0' -> not allow inscure ssl | '1' -> allow insercure SSL
+						insecure_ssl: options.insecureSSL ? '1' : '0',
 					},
 					events,
 					active: true,
@@ -535,6 +546,7 @@ export class GithubTrigger implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							'A webhook with the identical URL probably exists already. Please delete it manually on Github!',
+							{ level: 'warning' },
 						);
 					}
 
@@ -542,6 +554,7 @@ export class GithubTrigger implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Check that the repository exists and that you have permission to create the webhooks this node requires',
+							{ level: 'warning' },
 						);
 					}
 

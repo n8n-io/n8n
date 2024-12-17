@@ -1,0 +1,1020 @@
+{
+  "name": "DEMO: Create a new record in Google Sheets when something happens in Hubspot",
+  "nodes": [
+    {
+      "parameters": {
+        "eventsUi": {
+          "eventValues": [
+            {}
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "78395fdf-2e8b-4064-a102-c1c0335e0d94",
+      "name": "HubSpot Trigger",
+      "type": "n8n-nodes-base.hubspotTrigger",
+      "typeVersion": 1,
+      "position": [
+        580,
+        320
+      ],
+      "webhookId": "25833e56-c646-4af0-8bbe-2eea8bda4c00",
+      "notesInFlow": true,
+      "notes": "On Contact Created"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json['identity-profiles'][0].identities[0].value }}",
+              "operation": "contains",
+              "value2": "@gmail"
+            }
+          ]
+        }
+      },
+      "id": "3888d918-c140-47a1-8024-d50fddb3f8f0",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        820,
+        320
+      ],
+      "notesInFlow": true,
+      "notes": "Is Gmail Email?"
+    },
+    {
+      "parameters": {},
+      "id": "416a8876-f496-499c-a089-aad243daabc6",
+      "name": "Is Gmail, Don't Add to Sheet",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Demo: Creating Google Sheets records when something happens in HubSpot\nThis workflow runs each time a new Contact is added in HubSpot. It filters out Contacts with Gmail email addresses then pushes the remaining new Contacts to [this Google Sheet](https://docs.google.com/spreadsheets/d/1GeWRcu5cvNVA-0hpHZHtatjnFtyunbgWUgRur5uT08A/edit?usp=sharing).",
+        "height": 160.1450000000002,
+        "width": 480.31999999999596
+      },
+      "id": "cf69cda9-ba96-468f-990c-6c3ad5242053",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GeWRcu5cvNVA-0hpHZHtatjnFtyunbgWUgRur5uT08A",
+          "mode": "list",
+          "cachedResultName": "New HubSpot Contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GeWRcu5cvNVA-0hpHZHtatjnFtyunbgWUgRur5uT08A/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "New Contacts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GeWRcu5cvNVA-0hpHZHtatjnFtyunbgWUgRur5uT08A/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.properties.num_unique_conversion_events.versions[0]['source-type'] }}",
+            "Email": "={{ $json.properties.num_unique_conversion_events.versions[0]['source-label'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sync timestamp",
+              "displayName": "Sync timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1e4084bd-b7fb-41f1-a340-1414ef134468",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1140,
+        440
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FrRoXgPJOrFwkeN4",
+          "name": "Replace me with your own Sheets credential"
+        }
+      },
+      "notes": "Append new contact to sheet"
+    }
+  ],
+  "pinData": {
+    "HubSpot Trigger": [
+      {
+        "json": {
+          "vid": 51,
+          "canonical-vid": 51,
+          "merged-vids": [],
+          "portal-id": 8924380,
+          "is-contact": true,
+          "properties": {
+            "hs_latest_source_data_2": {
+              "value": "sample-contact",
+              "versions": [
+                {
+                  "value": "sample-contact",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillContactUpdatesKafka",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1639158301358,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_latest_source_data_1": {
+              "value": "API",
+              "versions": [
+                {
+                  "value": "API",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillContactUpdatesKafka",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1639158301358,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_is_unworked": {
+              "value": "true",
+              "versions": [
+                {
+                  "value": "true",
+                  "source-type": "CALCULATED",
+                  "source-id": null,
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045782,
+                  "selected": false
+                }
+              ]
+            },
+            "firstname": {
+              "value": "Brian",
+              "versions": [
+                {
+                  "value": "Brian",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "associatedcompanyid": {
+              "value": "4931550080",
+              "versions": [
+                {
+                  "value": "4931550080",
+                  "source-type": "CALCULATED",
+                  "source-id": "RollupProperties",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827057264,
+                  "selected": false
+                }
+              ]
+            },
+            "city": {
+              "value": "Cambridge",
+              "versions": [
+                {
+                  "value": "Cambridge",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "num_unique_conversion_events": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillReadtimeCalculatedPropertiesJob",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1629469311146,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_latest_source": {
+              "value": "OFFLINE",
+              "versions": [
+                {
+                  "value": "OFFLINE",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillContactUpdatesKafka",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1639158301358,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_pipeline": {
+              "value": "contacts-lifecycle-pipeline",
+              "versions": [
+                {
+                  "value": "contacts-lifecycle-pipeline",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillHsPipelineForContacts",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1628846625829,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_revenue": {
+              "value": "0.0",
+              "versions": [
+                {
+                  "value": "0.0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_social_num_broadcast_clicks": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "createdate": {
+              "value": "1606827045698",
+              "versions": [
+                {
+                  "value": "1606827045698",
+                  "source-type": "API",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045698,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_num_visits": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_social_linkedin_clicks": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_marketable_until_renewal": {
+              "value": "true",
+              "versions": [
+                {
+                  "value": "true",
+                  "source-type": "API",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045876,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_marketable_status": {
+              "value": "true",
+              "versions": [
+                {
+                  "value": "true",
+                  "source-type": "API",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045876,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_source": {
+              "value": "OFFLINE",
+              "versions": [
+                {
+                  "value": "OFFLINE",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_email_domain": {
+              "value": "hubspot.com",
+              "versions": [
+                {
+                  "value": "hubspot.com",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillReadtimeCalculatedPropertiesJob",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1629469311146,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_num_page_views": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_marketable_reason_id": {
+              "value": "Sample Contact",
+              "versions": [
+                {
+                  "value": "Sample Contact",
+                  "source-type": "API",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045876,
+                  "selected": false
+                }
+              ]
+            },
+            "company": {
+              "value": "HubSpot",
+              "versions": [
+                {
+                  "value": "HubSpot",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "state": {
+              "value": "MA",
+              "versions": [
+                {
+                  "value": "MA",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "email": {
+              "value": "bh@hubspot.com",
+              "versions": [
+                {
+                  "value": "bh@hubspot.com",
+                  "source-type": "API",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_latest_source_timestamp": {
+              "value": "1606827045720",
+              "versions": [
+                {
+                  "value": "1606827045720",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillContactUpdatesKafka",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1651750884919,
+                  "selected": false
+                }
+              ]
+            },
+            "website": {
+              "value": "http://www.HubSpot.com",
+              "versions": [
+                {
+                  "value": "http://www.HubSpot.com",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_marketable_reason_type": {
+              "value": "SAMPLE_CONTACT",
+              "versions": [
+                {
+                  "value": "SAMPLE_CONTACT",
+                  "source-type": "API",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045876,
+                  "selected": false
+                }
+              ]
+            },
+            "jobtitle": {
+              "value": "CEO",
+              "versions": [
+                {
+                  "value": "CEO",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "lastmodifieddate": {
+              "value": "1651750891986",
+              "versions": [
+                {
+                  "value": "1651750891986",
+                  "source-type": "CALCULATED",
+                  "source-id": null,
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1651750891986,
+                  "selected": false
+                },
+                {
+                  "value": "1639158305597",
+                  "source-type": "CALCULATED",
+                  "source-id": null,
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1639158305597,
+                  "selected": false
+                },
+                {
+                  "value": "1628846625829",
+                  "source-type": "CALCULATED",
+                  "source-id": "BackfillHsPipelineForContacts",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1628846625829,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_first_timestamp": {
+              "value": "1606827045444",
+              "versions": [
+                {
+                  "value": "1606827045444",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_social_google_plus_clicks": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_average_page_views": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "lastname": {
+              "value": "Halligan (Sample Contact)",
+              "versions": [
+                {
+                  "value": "Halligan (Sample Contact)",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_all_contact_vids": {
+              "value": "51",
+              "versions": [
+                {
+                  "value": "51",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillReadtimeCalculatedPropertiesJob",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1629469311146,
+                  "selected": false
+                }
+              ]
+            },
+            "twitterhandle": {
+              "value": "bhalligan",
+              "versions": [
+                {
+                  "value": "bhalligan",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_social_facebook_clicks": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_is_contact": {
+              "value": "true",
+              "versions": [
+                {
+                  "value": "true",
+                  "source-type": "CALCULATED",
+                  "source-id": null,
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045698,
+                  "selected": false
+                }
+              ]
+            },
+            "num_conversion_events": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillReadtimeCalculatedPropertiesJob",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1629469311146,
+                  "selected": false
+                }
+              ]
+            },
+            "twitterprofilephoto": {
+              "value": "https://pbs.twimg.com/profile_images/3491742741/212e42c07d3348251da10872e85aa6b0.jpeg",
+              "versions": [
+                {
+                  "value": "https://pbs.twimg.com/profile_images/3491742741/212e42c07d3348251da10872e85aa6b0.jpeg",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_object_id": {
+              "value": "51",
+              "versions": [
+                {
+                  "value": "51",
+                  "source-type": "MIGRATION",
+                  "source-id": "BackfillReadtimeCalculatedPropertiesJob",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1629469311146,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_num_event_completions": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_social_twitter_clicks": {
+              "value": "0",
+              "versions": [
+                {
+                  "value": "0",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827047569,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_source_data_2": {
+              "value": "sample-contact",
+              "versions": [
+                {
+                  "value": "sample-contact",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827054762,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_lifecyclestage_lead_date": {
+              "value": "1606827045444",
+              "versions": [
+                {
+                  "value": "1606827045444",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            },
+            "hs_analytics_source_data_1": {
+              "value": "API",
+              "versions": [
+                {
+                  "value": "API",
+                  "source-type": "ANALYTICS",
+                  "source-id": "ContactAnalyticsDetailsUpdateWorker",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827054762,
+                  "selected": false
+                }
+              ]
+            },
+            "lifecyclestage": {
+              "value": "lead",
+              "versions": [
+                {
+                  "value": "lead",
+                  "source-type": "CONTACTS_WEB",
+                  "source-id": "sample-contact",
+                  "source-label": null,
+                  "updated-by-user-id": null,
+                  "timestamp": 1606827045444,
+                  "selected": false
+                }
+              ]
+            }
+          },
+          "form-submissions": [],
+          "list-memberships": [],
+          "identity-profiles": [
+            {
+              "vid": 51,
+              "saved-at-timestamp": 1606827045720,
+              "deleted-changed-timestamp": 0,
+              "identities": [
+                {
+                  "type": "EMAIL",
+                  "value": "bh@hubspot.com",
+                  "timestamp": 1606827045444,
+                  "is-primary": true
+                },
+                {
+                  "type": "LEAD_GUID",
+                  "value": "d3749acc-06e1-4511-84fd-7b0d847f6eff",
+                  "timestamp": 1606827045717
+                }
+              ]
+            }
+          ],
+          "merge-audits": [],
+          "associated-company": {
+            "company-id": 4931550080,
+            "portal-id": 8924380,
+            "properties": {
+              "country": {
+                "value": "United States"
+              },
+              "city": {
+                "value": "Cambridge"
+              },
+              "num_associated_contacts": {
+                "value": "2"
+              },
+              "timezone": {
+                "value": "America/New_York"
+              },
+              "facebook_company_page": {
+                "value": "https://www.facebook.com/hubspot"
+              },
+              "createdate": {
+                "value": "1606827053844"
+              },
+              "description": {
+                "value": "HubSpot is an American developer and marketer of software products for inbound marketing, sales, and customer service."
+              },
+              "hs_analytics_latest_source_data_2": {
+                "value": "sample-contact"
+              },
+              "hs_analytics_latest_source_data_1": {
+                "value": "API"
+              },
+              "hs_num_blockers": {
+                "value": "0"
+              },
+              "industry": {
+                "value": "COMPUTER_SOFTWARE"
+              },
+              "total_money_raised": {
+                "value": "100.5M"
+              },
+              "web_technologies": {
+                "value": "unbounce;instagram;app_nexus;piwik;google_analytics;mixpanel;google_tag_manager;facebook_advertiser;salesforce;cloud_flare;dstillery;twitter_button;hubspot;vidyard;facebook_connect;crazy_egg;amazon__cloudfront;wistia;optimizely"
+              },
+              "numberofemployees": {
+                "value": "5000"
+              },
+              "hs_analytics_num_visits": {
+                "value": "0"
+              },
+              "linkedin_company_page": {
+                "value": "https://www.linkedin.com/company/hubspot"
+              },
+              "hs_analytics_latest_source_timestamp": {
+                "value": "1606827045720"
+              },
+              "hs_analytics_source": {
+                "value": "OFFLINE"
+              },
+              "annualrevenue": {
+                "value": "250000000"
+              },
+              "founded_year": {
+                "value": "2006"
+              },
+              "hs_annual_revenue_currency_code": {
+                "value": "USD"
+              },
+              "hs_analytics_num_page_views": {
+                "value": "0"
+              },
+              "state": {
+                "value": "MA"
+              },
+              "linkedinbio": {
+                "value": "HubSpot is an American developer and marketer of software products for inbound marketing, sales, and customer service."
+              },
+              "hs_num_open_deals": {
+                "value": "0"
+              },
+              "zip": {
+                "value": "02141"
+              },
+              "website": {
+                "value": "hubspot.com"
+              },
+              "address": {
+                "value": "25 First Street"
+              },
+              "hs_analytics_first_timestamp": {
+                "value": "1606827045444"
+              },
+              "first_contact_createdate": {
+                "value": "1606827045444"
+              },
+              "twitterhandle": {
+                "value": "HubSpot"
+              },
+              "hs_target_account_probability": {
+                "value": "0.49565839767456055"
+              },
+              "hs_lastmodifieddate": {
+                "value": "1653392172246"
+              },
+              "hs_num_decision_makers": {
+                "value": "0"
+              },
+              "phone": {
+                "value": "+1 888-482-7768"
+              },
+              "domain": {
+                "value": "hubspot.com"
+              },
+              "hs_num_child_companies": {
+                "value": "0"
+              },
+              "hs_num_contacts_with_buying_roles": {
+                "value": "0"
+              },
+              "hs_object_id": {
+                "value": "4931550080"
+              },
+              "is_public": {
+                "value": "true"
+              },
+              "name": {
+                "value": "HubSpot, Inc."
+              },
+              "hs_analytics_source_data_2": {
+                "value": "sample-contact"
+              },
+              "hs_analytics_latest_source": {
+                "value": "OFFLINE"
+              },
+              "hs_analytics_source_data_1": {
+                "value": "API"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "HubSpot Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "Is Gmail, Don't Add to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4748dbbc-75dd-400e-98d1-41bbd82c7208",
+  "id": "cGYp8fpTdh3LAgP5",
+  "meta": {
+    "instanceId": "dbd43d88d26a9e30d8aadc002c9e77f1400c683dd34efe3778d43d27250dde50"
+  },
+  "tags": [
+    {
+      "createdAt": "2023-09-21T09:36:34.726Z",
+      "updatedAt": "2023-09-21T09:36:52.231Z",
+      "id": "vh6ctEIEfFztmSF2",
+      "name": "release-template-version"
+    }
+  ]
+}

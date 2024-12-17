@@ -1,11 +1,12 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
@@ -21,8 +22,8 @@ export class Gitlab implements INodeType {
 		defaults: {
 			name: 'GitLab',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'gitlabApi',
@@ -745,8 +746,8 @@ export class Gitlab implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['release', 'file'],
-						operation: ['getAll', 'list'],
+						resource: ['release', 'file', 'repository'],
+						operation: ['getAll', 'list', 'getIssues'],
 					},
 				},
 				default: false,
@@ -758,8 +759,8 @@ export class Gitlab implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['release', 'file'],
-						operation: ['getAll', 'list'],
+						resource: ['release', 'file', 'repository'],
+						operation: ['getAll', 'list', 'getIssues'],
 						returnAll: [false],
 					},
 				},
@@ -936,6 +937,13 @@ export class Gitlab implements INodeType {
 						description: 'Return only issues which were created by a specific user',
 					},
 					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description: 'Search issues against their title and description',
+					},
+					{
 						displayName: 'Labels',
 						name: 'labels',
 						type: 'string',
@@ -1080,6 +1088,38 @@ export class Gitlab implements INodeType {
 				default: 1,
 				description: 'Page of results to display',
 			},
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['file'],
+						operation: ['list'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'ref',
+						type: 'string',
+						default: '',
+						placeholder: 'main',
+						description:
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
+					},
+					{
+						displayName: 'Recursive',
+						name: 'recursive',
+						type: 'boolean',
+						default: false,
+						description: 'Whether or not to get a recursive file tree. Default is false.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         file:get
@@ -1099,7 +1139,7 @@ export class Gitlab implements INodeType {
 					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1112,8 +1152,7 @@ export class Gitlab implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property in which to save the binary data of the received file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 			{
 				displayName: 'Additional Parameters',
@@ -1134,9 +1173,9 @@ export class Gitlab implements INodeType {
 						name: 'reference',
 						type: 'string',
 						default: '',
-						placeholder: 'master',
+						placeholder: 'main',
 						description:
-							'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
 					},
 				],
 			},
@@ -1145,7 +1184,7 @@ export class Gitlab implements INodeType {
 			//         file:create/edit
 			// ----------------------------------
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -1175,7 +1214,7 @@ export class Gitlab implements INodeType {
 				description: 'The text content of the file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1188,7 +1227,7 @@ export class Gitlab implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Commit Message',
@@ -1287,22 +1326,22 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		let _credentials;
+		// let _credentials;
 
-		const authenticationMethod = this.getNodeParameter('authentication', 0);
+		// const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		try {
-			if (authenticationMethod === 'accessToken') {
-				_credentials = await this.getCredentials('gitlabApi');
-			} else {
-				_credentials = await this.getCredentials('gitlabOAuth2Api');
-			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray([{ error: error.message }])];
-			}
-			throw new NodeOperationError(this.getNode(), error as Error);
-		}
+		// try {
+		// 	if (authenticationMethod === 'accessToken') {
+		// 		_credentials = await this.getCredentials('gitlabApi');
+		// 	} else {
+		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
+		// 	}
+		// } catch (error) {
+		// 	if (this.continueOnFail()) {
+		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
+		// 	}
+		// 	throw new NodeOperationError(this.getNode(), error as Error);
+		// }
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
@@ -1335,7 +1374,7 @@ export class Gitlab implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 
@@ -1531,6 +1570,12 @@ export class Gitlab implements INodeType {
 
 						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
+
 						endpoint = `${baseEndpoint}/issues`;
 					}
 				} else if (resource === 'user') {
@@ -1561,7 +1606,13 @@ export class Gitlab implements INodeType {
 						body.commit_message = this.getNodeParameter('commitMessage', i) as string;
 
 						if (additionalParameters.author) {
-							body.author = additionalParameters.author;
+							const author = additionalParameters.author as IDataObject;
+							if (author.name) {
+								body.author_name = author.name;
+							}
+							if (author.email) {
+								body.author_email = author.email;
+							}
 						}
 						if (
 							additionalParameters.branchStart &&
@@ -1603,7 +1654,13 @@ export class Gitlab implements INodeType {
 							{},
 						) as IDataObject;
 						if (additionalParameters.author) {
-							body.author = additionalParameters.author;
+							const author = additionalParameters.author as IDataObject;
+							if (author.name) {
+								body.author_name = author.name;
+							}
+							if (author.email) {
+								body.author_email = author.email;
+							}
 						}
 						body.branch = this.getNodeParameter('branch', i) as string;
 						body.commit_message = this.getNodeParameter('commitMessage', i) as string;
@@ -1635,7 +1692,8 @@ export class Gitlab implements INodeType {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i);
-						qs = this.getNodeParameter('additionalFields', i, {});
+
+						qs = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
 						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
@@ -1733,10 +1791,10 @@ export class Gitlab implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		} else {
 			// For all other ones simply return the unchanged items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 	}
 }

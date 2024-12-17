@@ -48,21 +48,21 @@ all the basics.
 
 A n8n node is a JavaScript file (normally written in TypeScript) which describes
 some basic information (like name, description, ...) and also at least one method.
-Depending on which method got implemented defines if it is a a regular-, trigger-
+Depending on which method gets implemented defines if it is a regular-, trigger-
 or webhook-node.
 
 A simple regular node which:
 
 - defines one node property
-- sets its value do all items it receives
+- sets its value to all items it receives
 
 would look like this:
 
 File named: `MyNode.node.ts`
 
 ```TypeScript
-import { IExecuteFunctions } from 'n8n-core';
 import {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -114,41 +114,38 @@ export class MyNode implements INodeType {
 			item.json['myString'] = myString;
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 
 	}
 }
 ```
 
 The "description" property has to be set on all nodes because it contains all
-the base information. Additionally do all nodes have to have exactly one of the
+the base information. Additionally all nodes have to have exactly one of the
 following methods defined which contains the actual logic:
 
 **Regular node**
 
-Method get called when the workflow gets executed
+Method is called when the workflow gets executed
 
 - `execute`: Executed once no matter how many items
-- `executeSingle`: Executed once for every item
 
-By default always `execute` should be used especially when creating a
-third-party integration. The reason for that is that it is way more flexible
-and allows to, for example, return a different amount of items than it received
-as input. This is very important when a node should query data like _return
-all users_. In that case, does the node normally just receive one input-item
-but returns as many as users exist. So in doubt always `execute` should be
-used!
+By default, `execute` should always be used, especially when creating a
+third-party integration. The reason for this is that it provides much more
+flexibility and allows, for example, returning a different number of items than
+it received as input. This becomes crucial when a node needs to query data such as _return
+all users_. In such cases, the node typically receives only one input item but returns as
+many items as there are users. Therefore, when in doubt, it is recommended to use `execute`!
 
 **Trigger node**
 
-Method gets called once when the workflow gets activated. It can then trigger
-workflow runs which data it provides by itself.
+Method is called once when the workflow gets activated. It can then trigger workflow runs and provide the necessary data by itself.
 
 - `trigger`
 
 **Webhook node**
 
-Method gets called when webhook gets called.
+Method is called when webhook gets called.
 
 - `webhook`
 
@@ -157,12 +154,11 @@ Method gets called when webhook gets called.
 Property overview
 
 - **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
-- **execute** [optional]: Method get called when the workflow gets executed (once).
-- **executeSingle** [optional]: Method get called when the workflow gets executed (once for every item).
+- **execute** [optional]: Method is called when the workflow gets executed (once).
 - **hooks** [optional]: The hook methods.
 - **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
-- **trigger** [optional]: Method gets called once when the workflow gets activated.
-- **webhook** [optional]: Method gets called when webhook gets called.
+- **trigger** [optional]: Method is called once when the workflow gets activated.
+- **webhook** [optional]: Method is called when webhook gets called.
 - **webhookMethods** [optional]: Methods to setup webhooks on external services.
 
 ### Node Type Description
@@ -175,15 +171,15 @@ The following properties can be set in the node description:
 - **description** [required]: Description to display users in Editor UI
 - **group** [required]: Node group for example "transform" or "trigger"
 - **hooks** [optional]: Methods to execute at different points in time like when the workflow gets activated or deactivated
-- **icon** [optional]: Icon to display (can be an icon or a font awsome icon)
+- **icon** [optional]: Icon to display (can be an icon or a font awesome icon)
 - **inputs** [required]: Types of inputs the node has (currently only "main" exists) and the amount
 - **outputs** [required]: Types of outputs the node has (currently only "main" exists) and the amount
-- **outputNames** [optional]: In case a node has multiple outputs names can be set that users know what data to expect
-- **maxNodes** [optional]: If not an unlimited amount of nodes of that type can exist in a workflow the max-amount can be specified
+- **outputNames** [optional]: In case a node has multiple outputs, names can be set that users know what data to expect
+- **maxNodes** [optional]: If an unlimited number of nodes of that type cannot exist in a workflow, the max-amount can be specified
 - **name** [required]: Name of the node (for n8n to use internally, in camelCase)
 - **properties** [required]: Properties which get displayed in the Editor UI and can be set by the user
 - **subtitle** [optional]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
-- **version** [required]: Version of the node. Currently always "1" (integer). For future usage, does not get used yet.
+- **version** [required]: Version of the node. Currently always "1" (integer). For future usage, does not get used yet
 - **webhooks** [optional]: Webhooks the node should listen to
 
 ### Node Properties
@@ -203,22 +199,20 @@ The following properties can be set in the node properties:
 
 ### Node Property Options
 
-The following properties can be set in the node property options.
+The following properties can be set in the node property options:
 
 All properties are optional. However, most only work when the node-property is of a specfic type.
 
-- **alwaysOpenEditWindow** [type: json]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
+- **alwaysOpenEditWindow** [type: json]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property
 - **loadOptionsMethod** [type: options]: Method to use to load options from an external service
 - **maxValue** [type: number]: Maximum value of the number
 - **minValue** [type: number]: Minimum value of the number
 - **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
-- **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" got set
-- **numberPrecision** [type: number]: The precision of the number. By default it is "0" and will so only allow integers.
-- **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and get saved in clear-text)
+- **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" were set
+- **numberPrecision** [type: number]: The precision of the number. By default, it is "0" and will only allow integers
+- **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and gets saved in clear-text)
 - **rows** [type: string]: Number of rows the input field should have. By default it is "1"
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
-
-Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

@@ -1,2 +1,0 @@
-#!/bin/bash
-docker build --build-arg N8N_VERSION=$DOCKER_TAG -f $DOCKERFILE_PATH -t $IMAGE_NAME .

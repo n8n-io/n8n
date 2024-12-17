@@ -1,57 +1,19 @@
-<template>
-	<div
-		:class="{
-			[$style.zoomMenu]: true,
-			[$style.regularZoomMenu]: !isDemo,
-			[$style.demoZoomMenu]: isDemo,
-		}"
-	>
-		<n8n-icon-button
-			@click="zoomToFit"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.zoomToFit')"
-			icon="expand"
-			data-test-id="zoom-to-fit"
-		/>
-		<n8n-icon-button
-			@click="zoomIn"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.zoomIn')"
-			icon="search-plus"
-			data-test-id="zoom-in-button"
-		/>
-		<n8n-icon-button
-			@click="zoomOut"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.zoomOut')"
-			icon="search-minus"
-			data-test-id="zoom-out-button"
-		/>
-		<n8n-icon-button
-			v-if="nodeViewScale !== 1 && !isDemo"
-			@click="resetZoom"
-			type="tertiary"
-			size="large"
-			:title="$locale.baseText('nodeView.resetZoom')"
-			icon="undo"
-			data-test-id="reset-zoom-button"
-		/>
-	</div>
-</template>
 <script lang="ts" setup>
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useCanvasStore } from '@/stores/canvas';
+import { useCanvasStore } from '@/stores/canvas.store';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useDeviceSupport } from 'n8n-design-system';
+import { useI18n } from '@/composables/useI18n';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
 const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
+const deviceSupport = useDeviceSupport();
+const i18n = useI18n();
 
 const keyDown = (e: KeyboardEvent) => {
-	const isCtrlKeyPressed = e.metaKey || e.ctrlKey;
+	const isCtrlKeyPressed = deviceSupport.isCtrlKeyPressed(e);
 	if ((e.key === '=' || e.key === '+') && !isCtrlKeyPressed) {
 		zoomIn();
 	} else if ((e.key === '_' || e.key === '-') && !isCtrlKeyPressed) {
@@ -72,12 +34,65 @@ onBeforeUnmount(() => {
 });
 </script>
 
+<template>
+	<div
+		:class="{
+			[$style.zoomMenu]: true,
+			[$style.regularZoomMenu]: !isDemo,
+			[$style.demoZoomMenu]: isDemo,
+		}"
+	>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.zoomToFit')"
+			:shortcut="{ keys: ['1'] }"
+		>
+			<n8n-icon-button
+				type="tertiary"
+				size="large"
+				icon="expand"
+				data-test-id="zoom-to-fit"
+				@click="zoomToFit"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
+			<n8n-icon-button
+				type="tertiary"
+				size="large"
+				icon="search-plus"
+				data-test-id="zoom-in-button"
+				@click="zoomIn"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomOut')" :shortcut="{ keys: ['-'] }">
+			<n8n-icon-button
+				type="tertiary"
+				size="large"
+				icon="search-minus"
+				data-test-id="zoom-out-button"
+				@click="zoomOut"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="i18n.baseText('nodeView.resetZoom')"
+			:shortcut="{ keys: ['0'] }"
+		>
+			<n8n-icon-button
+				v-if="nodeViewScale !== 1 && !isDemo"
+				type="tertiary"
+				size="large"
+				icon="undo"
+				data-test-id="reset-zoom-button"
+				@click="resetZoom"
+			/>
+		</KeyboardShortcutTooltip>
+	</div>
+</template>
+
 <style lang="scss" module>
 .zoomMenu {
 	position: absolute;
-	width: 210px;
-	bottom: 108px;
-	left: 35px;
+	bottom: var(--spacing-s);
+	left: var(--spacing-s);
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;

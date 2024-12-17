@@ -1,54 +1,70 @@
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+
+const props = withDefaults(
+	defineProps<{
+		threshold: number;
+		enabled: boolean;
+		eventBus: EventBus;
+	}>(),
+	{
+		threshold: 0,
+		enabled: false,
+		default: () => createEventBus(),
+	},
+);
+
+const emit = defineEmits<{
+	observed: [{ el: HTMLElement; isIntersecting: boolean }];
+}>();
+
+const observer = ref<IntersectionObserver | null>(null);
+const root = ref<HTMLElement | null>(null);
+
+onBeforeUnmount(() => {
+	if (props.enabled && observer.value) {
+		observer.value.disconnect();
+	}
+});
+
+onMounted(() => {
+	if (!props.enabled) {
+		return;
+	}
+
+	const options = {
+		root: root.value,
+		rootMargin: '0px',
+		threshold: props.threshold,
+	};
+
+	const intersectionObserver = new IntersectionObserver((entries) => {
+		entries.forEach(({ target, isIntersecting }) => {
+			emit('observed', {
+				el: target as HTMLElement,
+				isIntersecting,
+			});
+		});
+	}, options);
+
+	observer.value = intersectionObserver;
+
+	props.eventBus.on('observe', (observed: Element) => {
+		if (observed) {
+			intersectionObserver.observe(observed);
+		}
+	});
+
+	props.eventBus.on('unobserve', (observed: Element) => {
+		intersectionObserver.unobserve(observed);
+	});
+});
+</script>
+
 <template>
 	<div ref="root">
 		<slot></slot>
 	</div>
 </template>
-
-<script lang="ts">
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'IntersectionObserver',
-	props: ['threshold', 'enabled'],
-	data() {
-		return {
-			observer: null,
-		};
-	},
-	mounted() {
-		if (!this.$props.enabled) {
-			return;
-		}
-
-		const options = {
-			root: this.$refs.root as Element,
-			rootMargin: '0px',
-			threshold: this.$props.threshold,
-		};
-
-		const observer = new IntersectionObserver((entries) => {
-			entries.forEach(({ target, isIntersecting }) => {
-				this.$emit('observed', {
-					el: target,
-					isIntersecting,
-				});
-			});
-		}, options);
-
-		this.$data.observer = observer;
-
-		this.$on('observe', (observed: Element) => {
-			observer.observe(observed);
-		});
-
-		this.$on('unobserve', (observed: Element) => {
-			observer.unobserve(observed);
-		});
-	},
-	beforeDestroy() {
-		if (this.$props.enabled) {
-			this.$data.observer.disconnect();
-		}
-	},
-});
-</script>

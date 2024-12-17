@@ -1,4 +1,8 @@
-export const xsdSamlSchemaMetadata20 = `<?xml version="1.0" encoding="UTF-8"?>
+import type { XMLFileInfo } from 'xmllint-wasm';
+
+export const xmlFileInfo: XMLFileInfo = {
+	fileName: 'saml-schema-metadata-2.0.xsd',
+	contents: `<?xml version="1.0" encoding="UTF-8"?>
 <schema
     targetNamespace="urn:oasis:names:tc:SAML:2.0:metadata"
     xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
@@ -18,6 +22,8 @@ export const xsdSamlSchemaMetadata20 = `<?xml version="1.0" encoding="UTF-8"?>
         schemaLocation="saml-schema-assertion-2.0.xsd"/>
     <import namespace="http://www.w3.org/XML/1998/namespace"
         schemaLocation="xml.xsd"/>
+    <import namespace="http://docs.oasis-open.org/wsfed/authorization/200706"
+        schemaLocation="ws-federation.xsd"/>
     <annotation>
         <documentation>
             Document identifier: saml-schema-metadata-2.0
@@ -333,4 +339,5 @@ export const xsdSamlSchemaMetadata20 = `<?xml version="1.0" encoding="UTF-8"?>
         <anyAttribute namespace="##other" processContents="lax"/>
     </complexType>
     <element name="AffiliateMember" type="md:entityIDType"/>
-</schema>`;
+</schema>`,
+};

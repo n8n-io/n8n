@@ -6,8 +6,9 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { IProduct } from './GenericFunctions';
 import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
@@ -56,7 +57,7 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			key === 'customProperties' &&
 			(additionalFields.customProperties as IDataObject).property !== undefined
 		) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!
+			for (const customProperty of (additionalFields.customProperties as IDataObject)
 				.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
@@ -80,8 +81,7 @@ export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
 		name: 'activeCampaign',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:activeCampaign.png',
+		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -89,8 +89,8 @@ export class ActiveCampaign implements INodeType {
 		defaults: {
 			name: 'ActiveCampaign',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'activeCampaignApi',
@@ -239,7 +239,7 @@ export class ActiveCampaign implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getContactCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -260,7 +260,7 @@ export class ActiveCampaign implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getAccountCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -281,17 +281,19 @@ export class ActiveCampaign implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { tags } = await activeCampaignApiRequest.call(
+				const tags = await activeCampaignApiRequestAllItems.call(
 					this,
 					'GET',
 					'/api/3/tags',
 					{},
 					{ limit: 100 },
+					'tags',
 				);
+
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.tag,
@@ -315,7 +317,7 @@ export class ActiveCampaign implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 		let dataKey: string | undefined;
@@ -1199,6 +1201,6 @@ export class ActiveCampaign implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

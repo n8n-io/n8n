@@ -7,7 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 
 import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
@@ -30,13 +32,11 @@ import { userFields, userOperations } from './UserDescription';
 
 import { workspaceFields, workspaceOperations } from './WorkspaceDescription';
 
-import moment from 'moment-timezone';
-
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify',
 		name: 'clockify',
-		icon: 'file:clockify.svg',
+		icon: { light: 'file:clockify.svg', dark: 'file:clockify.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -44,8 +44,8 @@ export class Clockify implements INodeType {
 		defaults: {
 			name: 'Clockify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',
@@ -103,7 +103,7 @@ export class Clockify implements INodeType {
 				name: 'workspaceId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
@@ -764,7 +764,7 @@ export class Clockify implements INodeType {
 							body.start = moment.tz(body.start, timezone).utc().format();
 						} else {
 							// even if you do not want to update the start time, it always has to be set
-							// to make it more simple to the user, if he did not set a start time look for the current start time
+							// to make it more simple to the user, if they did not set a start time look for the current start time
 							// and set it
 							const {
 								timeInterval: { start },
@@ -848,6 +848,6 @@ export class Clockify implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
