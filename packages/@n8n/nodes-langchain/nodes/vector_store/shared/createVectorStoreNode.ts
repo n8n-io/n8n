@@ -477,68 +477,41 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			description.name += 'Tool';
 			description.outputs = [NodeConnectionType.AiTool];
 			description.displayName += ' Tool';
+			if (description.defaults.name) {
+				description.defaults.name += ' Tool';
+			}
 
-			// const hasResource = description.properties.some((prop) => prop.name === 'resource');
-			// const hasOperation = description.properties.some((prop) => prop.name === 'operation');
+			const operationParameter = description.properties.find((prop) => prop.name === 'mode');
+			if (operationParameter?.options) {
+				operationParameter.options = operationParameter.options.filter(
+					(operation) => 'value' in operation && operation.value === 'retrieve',
+				);
+			}
 
-			// const descriptionType: INodeProperties = {
-			// 	displayName: 'Tool Description',
-			// 	name: 'descriptionType',
-			// 	type: 'options',
-			// 	noDataExpression: true,
-			// 	options: [
-			// 		{
-			// 			name: 'Set Automatically',
-			// 			value: 'auto',
-			// 			description: 'Automatically set based on resource and operation',
-			// 		},
-			// 		{
-			// 			name: 'Set Manually',
-			// 			value: 'manual',
-			// 			description: 'Manually set the description',
-			// 		},
-			// 	],
-			// 	default: 'auto',
-			// };
+			const propertiesToAdd: INodeProperties[] = [
+				{
+					displayName: 'Name',
+					name: 'toolName',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'Name of the vector store',
+					placeholder: 'e.g. company_knowledge_base',
+					validateType: 'string-alphanumeric',
+				},
+				{
+					displayName: 'Description',
+					name: 'toolDescription',
+					type: 'string',
+					default: '',
+					required: true,
+					typeOptions: { rows: 2 },
+					description:
+						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+					placeholder: `e.g. ${description.description}`,
+				},
+			];
 
-			const descProp: INodeProperties = {
-				displayName: 'Description',
-				name: 'toolDescription',
-				type: 'string',
-				default: '',
-				required: true,
-				typeOptions: { rows: 2 },
-				description:
-					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-				placeholder: `e.g. ${description.description}`,
-			};
-
-			description.properties.unshift(descProp);
-
-			const nameProp: INodeProperties = {
-				displayName: 'Name',
-				name: 'toolName',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Name of the vector store',
-				placeholder: 'e.g. company_knowledge_base',
-				validateType: 'string-alphanumeric',
-			};
-
-			description.properties.unshift(nameProp);
-
-			// // todo is this needed?
-			// // If node has resource or operation we can determine pre-populate tool description based on it
-			// // so we add the descriptionType property as the first property
-			// if (hasResource || hasOperation) {
-			// 	description.properties.unshift(descriptionType);
-
-			// 	descProp.displayOptions = {
-			// 		show: {
-			// 			descriptionType: ['manual'],
-			// 		},
-			// 	};
-			// }
+			description.properties.unshift(...propertiesToAdd);
 		}
 	};
