@@ -404,7 +404,7 @@ export class ToolHttpRequest implements INodeType {
 
 		// If the node version is 1.1 or higher, we use the N8nTool wrapper:
 		// it allows to use tool as a DynamicStructuredTool and have a fallback to DynamicTool
-		if (this.getNode().typeVersion >= 1.1) {
+		if (this.getNode().typeVersion >= 1.1 && toolParameters.length > 0) {
 			const schema = makeToolInputSchema(toolParameters);
 
 			tool = new N8nTool(this, {
