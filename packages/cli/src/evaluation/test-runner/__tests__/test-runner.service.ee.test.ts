@@ -347,6 +347,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [{ name: 'When clicking ‘Test workflow’' }],
 			}),
 		);
 
