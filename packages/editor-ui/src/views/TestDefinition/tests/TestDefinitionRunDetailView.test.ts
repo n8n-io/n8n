@@ -13,7 +13,7 @@ import { nextTick, ref } from 'vue';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
-import { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('vue-router');
 vi.mock('@/composables/useToast');

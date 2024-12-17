@@ -12,7 +12,7 @@ import { ref, nextTick } from 'vue';
 import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { TestRunRecord } from '@/api/testDefinition.ee';
+import type { TestRunRecord } from '@/api/testDefinition.ee';
 
 vi.mock('vue-router');
 vi.mock('@/composables/useToast');
