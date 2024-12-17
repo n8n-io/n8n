@@ -4,11 +4,9 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import { getWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	ExecuteWorkflowData,
 	ExecutionError,
-	FieldValueOption,
 	IDataObject,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
@@ -17,7 +15,6 @@ import type {
 	ISupplyDataFunctions,
 	ITaskMetadata,
 	IWorkflowBase,
-	ResourceMapperField,
 	ResourceMapperValue,
 	SupplyData,
 	INodeType,
@@ -28,47 +25,8 @@ import { z } from 'zod';
 
 import type { FromAIArgument } from './FromAIParser';
 import { AIParametersParser } from './FromAIParser';
-import { loadWorkflowInputMappings } from './methods/resourceMapping';
-import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
-
-function getWorkflowInputValues(this: ISupplyDataFunctions) {
-	const inputData = this.getInputData();
-
-	return inputData.map((item, itemIndex) => {
-		const itemFieldValues = this.getNodeParameter(
-			'workflowInputs.value',
-			itemIndex,
-			{},
-		) as IDataObject;
-
-		return {
-			json: {
-				...item.json,
-				...itemFieldValues,
-			},
-			index: itemIndex,
-			pairedItem: {
-				item: itemIndex,
-			},
-		};
-	});
-}
-
-function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
-	const inputData = getWorkflowInputValues.call(this);
-
-	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
-
-	if (schema.length === 0) {
-		return inputData;
-	} else {
-		const newParams = schema
-			.filter((x) => !x.removed)
-			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
-
-		return getWorkflowInputData.call(this, inputData, newParams);
-	}
-}
+import { getCurrentWorkflowInputData, loadWorkflowInputMappings } from './methods/resourceMapping';
+import { versionDescription } from './versionDescription';
 
 export class ToolWorkflowV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -76,178 +34,7 @@ export class ToolWorkflowV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2],
-			defaults: {
-				name: 'Call n8n Workflow Tool',
-			},
-			inputs: [],
-			outputs: [NodeConnectionType.AiTool],
-			outputNames: ['Tool'],
-			properties: [
-				getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
-				{
-					displayName:
-						'See an example of a workflow to suggest meeting slots using AI <a href="/templates/1953" target="_blank">here</a>.',
-					name: 'noticeTemplateExample',
-					type: 'notice',
-					default: '',
-				},
-				{
-					displayName: 'Name',
-					name: 'name',
-					type: 'string',
-					default: '',
-					placeholder: 'My_Color_Tool',
-					displayOptions: {
-						show: {
-							'@version': [1],
-						},
-					},
-				},
-				{
-					displayName: 'Name',
-					name: 'name',
-					type: 'string',
-					default: '',
-					placeholder: 'e.g. My_Color_Tool',
-					validateType: 'string-alphanumeric',
-					description:
-						'The name of the function to be called, could contain letters, numbers, and underscores only',
-					displayOptions: {
-						show: {
-							'@version': [{ _cnd: { gte: 1.1 } }],
-						},
-					},
-				},
-				{
-					displayName: 'Description',
-					name: 'description',
-					type: 'string',
-					default: '',
-					placeholder:
-						'Call this tool to get a random color. The input should be a string with comma separated names of colors to exclude.',
-					typeOptions: {
-						rows: 3,
-					},
-				},
-
-				{
-					displayName:
-						'This tool will call the workflow you define below, and look in the last node for the response. The workflow needs to start with an Execute Workflow trigger',
-					name: 'executeNotice',
-					type: 'notice',
-					default: '',
-				},
-
-				{
-					displayName: 'Source',
-					name: 'source',
-					type: 'options',
-					options: [
-						{
-							name: 'Database',
-							value: 'database',
-							description: 'Load the workflow from the database by ID',
-						},
-						{
-							name: 'Define Below',
-							value: 'parameter',
-							description: 'Pass the JSON code of a workflow',
-						},
-					],
-					default: 'database',
-					description: 'Where to get the workflow to execute from',
-				},
-
-				// ----------------------------------
-				//         source:database
-				// ----------------------------------
-				{
-					displayName: 'Workflow ID',
-					name: 'workflowId',
-					type: 'string',
-					displayOptions: {
-						show: {
-							source: ['database'],
-							'@version': [{ _cnd: { lte: 1.1 } }],
-						},
-					},
-					default: '',
-					required: true,
-					description: 'The workflow to execute',
-					hint: 'Can be found in the URL of the workflow',
-				},
-
-				{
-					displayName: 'Workflow',
-					name: 'workflowId',
-					type: 'workflowSelector',
-					displayOptions: {
-						show: {
-							source: ['database'],
-							'@version': [{ _cnd: { gte: 1.2 } }],
-						},
-					},
-					default: '',
-					required: true,
-				},
-				// -----------------------------------------------
-				//         Resource mapper for workflow inputs
-				// -----------------------------------------------
-				{
-					displayName: 'Workflow Inputs',
-					name: 'workflowInputs',
-					type: 'resourceMapper',
-					noDataExpression: true,
-					default: {
-						mappingMode: 'defineBelow',
-						value: null,
-					},
-					required: true,
-					typeOptions: {
-						loadOptionsDependsOn: ['workflowId.value'],
-						resourceMapper: {
-							localResourceMapperMethod: 'loadWorkflowInputMappings',
-							valuesLabel: 'Workflow Inputs',
-							mode: 'map',
-							fieldWords: {
-								singular: 'workflow input',
-								plural: 'workflow inputs',
-							},
-							addAllFields: true,
-							multiKeyMatch: false,
-							supportAutoMap: false,
-						},
-					},
-					displayOptions: {
-						show: {
-							source: ['database'],
-						},
-						hide: {
-							workflowId: [''],
-						},
-					},
-				},
-				// ----------------------------------
-				//         source:parameter
-				// ----------------------------------
-				{
-					displayName: 'Workflow JSON',
-					name: 'workflowJson',
-					type: 'json',
-					typeOptions: {
-						rows: 10,
-					},
-					displayOptions: {
-						show: {
-							source: ['parameter'],
-						},
-					},
-					default: '\n\n\n\n\n\n\n\n\n',
-					required: true,
-					description: 'The workflow JSON code to execute',
-				},
-			],
+			...versionDescription,
 		};
 	}
 
