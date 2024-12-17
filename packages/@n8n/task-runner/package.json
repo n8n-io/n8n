@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -40,7 +40,7 @@
     "acorn-walk": "8.3.4",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "nanoid": "^3.3.6",
+    "nanoid": "catalog:",
     "typedi": "catalog:",
     "ws": "^8.18.0"
   },

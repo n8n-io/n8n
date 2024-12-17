@@ -38,6 +38,7 @@ import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vu
 import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
 import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
+import { clearPopupWindowState } from '../utils/executionUtils';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -202,6 +203,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 
 			if (receivedData.type === 'executionFinished') {
+				clearPopupWindowState();
 				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
 				if (workflow?.meta?.templateId) {
 					const isEasyAIWorkflow =

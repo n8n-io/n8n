@@ -79,7 +79,7 @@ describe('NodeExecutionContext', () => {
 
 			const result = testContext.getChildNodes('Test Node');
 
-			expect(result).toEqual([
+			expect(result).toMatchObject([
 				{ name: 'Child Node 1', type: 'testType1', typeVersion: 1 },
 				{ name: 'Child Node 2', type: 'testType2', typeVersion: 2 },
 			]);
@@ -98,7 +98,7 @@ describe('NodeExecutionContext', () => {
 
 			const result = testContext.getParentNodes('Test Node');
 
-			expect(result).toEqual([
+			expect(result).toMatchObject([
 				{ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
 				{ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
 			]);

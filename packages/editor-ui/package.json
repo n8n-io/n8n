@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.71.0",
+  "version": "1.72.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -103,6 +103,7 @@
     "unplugin-icons": "^0.19.0",
     "unplugin-vue-components": "^0.27.2",
     "vite": "catalog:frontend",
+    "vite-svg-loader": "5.1.0",
     "vitest": "catalog:frontend",
     "vitest-mock-extended": "catalog:frontend",
     "vue-tsc": "catalog:frontend"

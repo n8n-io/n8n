@@ -59,7 +59,7 @@ export class NodeTypes implements INodeTypes {
 		const clonedNode = Object.create(versionedNodeType, {
 			description: { value: clonedDescription },
 		}) as INodeType;
-		const tool = NodeHelpers.convertNodeToAiTool(clonedNode);
+		const tool = this.loadNodesAndCredentials.convertNodeToAiTool(clonedNode);
 		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
 		return tool;
 	}
