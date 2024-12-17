@@ -52,6 +52,10 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
+		ignoreTypeMismatchErrors: false,
+		attemptToConvertTypes: false,
+		// This will always be true if `showTypeConversionOptions` is provided
+		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
 	loading: false,
@@ -97,6 +101,10 @@ onMounted(async () => {
 			...state.parameterValues,
 			parameters: props.node.parameters,
 		};
+
+		if (showTypeConversionOptions.value) {
+			state.paramValue.convertFieldsToString = true;
+		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
@@ -159,6 +167,10 @@ const nodeType = computed<INodeTypeDescription | null>(() => {
 
 const showMappingModeSelect = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
+});
+
+const showTypeConversionOptions = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.showTypeConversionOptions === true;
 });
 
 const showMatchingColumnsSelector = computed<boolean>(() => {
@@ -568,5 +580,41 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
+		<ParameterInputFull
+			v-if="showTypeConversionOptions"
+			:parameter="{
+				name: 'attemptToConvertTypes',
+				type: 'boolean',
+				displayName: 'Attempt to convert types',
+				default: false,
+				description: 'Attempt to convert types when mapping fields',
+			}"
+			:path="props.path + '.attemptToConvertTypes'"
+			:value="state.paramValue.attemptToConvertTypes"
+			@update="
+				(x) => {
+					state.paramValue.attemptToConvertTypes = x.value as boolean;
+					emitValueChanged();
+				}
+			"
+		/>
+		<ParameterInputFull
+			v-if="showTypeConversionOptions"
+			:parameter="{
+				name: 'ignoreTypeMismatchErrors',
+				type: 'boolean',
+				displayName: 'To Do',
+				default: false,
+				description: 'To Do',
+			}"
+			:path="props.path + '.attemptToConvertTypes'"
+			:value="state.paramValue.ignoreTypeMismatchErrors"
+			@update="
+				(x) => {
+					state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
+					emitValueChanged();
+				}
+			"
+		/>
 	</div>
 </template>

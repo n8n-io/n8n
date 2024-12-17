@@ -14,8 +14,10 @@ import { getWorkflowInfo } from './GenericFunctions';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
 import { getWorkflowInputData } from '../GenericFunctions';
+import _ from 'lodash';
+import { FALLBACK_DEFAULT_VALUE } from '../constants';
 
-function getWorkflowInputValues(this: IExecuteFunctions) {
+function getWorkflowInputValues(this: IExecuteFunctions): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
 	return inputData.map((item, itemIndex) => {
@@ -39,18 +41,30 @@ function getWorkflowInputValues(this: IExecuteFunctions) {
 }
 
 function getCurrentWorkflowInputData(this: IExecuteFunctions) {
-	const inputData = getWorkflowInputValues.call(this);
+	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
 
 	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
 
 	if (schema.length === 0) {
 		return inputData;
 	} else {
-		const newParams = schema
-			.filter((x) => !x.removed)
-			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
+		const [removed, added] = _.partition(schema, (x) => x.removed);
 
-		return getWorkflowInputData.call(this, inputData, newParams);
+		const addedParams: FieldValueOption[] = added.map((x) => ({
+			name: x.displayName,
+			type: x.type ?? 'any',
+		}));
+
+		const removedKeys = new Set(removed.map((x) => x.displayName));
+		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
+			json: _.assign(
+				// itemIndex and the other thing
+				_.pickBy(item.json, (_v, k) => !removedKeys.has(k)),
+				_.fromPairs(addedParams.map((x) => [x, FALLBACK_DEFAULT_VALUE])),
+			),
+			index,
+		}));
+		return filteredInputData;
 	}
 }
 
@@ -83,6 +97,14 @@ export class ExecuteWorkflow implements INodeType {
 						value: 'call_workflow',
 					},
 				],
+			},
+			{
+				displayName: 'Outdated Version Warning',
+				name: 'outdatedVersionWarning',
+				type: 'notice',
+				description: 'Please update this node by removing it and adding a new one',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+				default: '',
 			},
 			{
 				displayName: 'Source',
@@ -254,6 +276,7 @@ export class ExecuteWorkflow implements INodeType {
 						addAllFields: true,
 						multiKeyMatch: false,
 						supportAutoMap: false,
+						showTypeConversionOptions: true,
 					},
 				},
 				displayOptions: {
@@ -301,6 +324,30 @@ export class ExecuteWorkflow implements INodeType {
 						default: true,
 						description:
 							'Whether the main workflow should wait for the sub-workflow to complete its execution before proceeding',
+					},
+					// Note that, while the defaults are true, the user has to add these in the first place
+					// We default to false if absent in the execute function
+					{
+						displayName: 'Attempt to Convert Types',
+						name: 'attemptToConvertTypes',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
+						displayOptions: {
+							show: { '@version': [{ _cnd: { gte: 1.2 } }] },
+						},
+					},
+					{
+						displayName: 'Ignore Type Mismatch Errors',
+						name: 'ignoreTypeErrors',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether type mismatches should be ignored, rather than returning an Error',
+						displayOptions: {
+							show: { '@version': [{ _cnd: { gte: 1.2 } }] },
+						},
 					},
 				],
 			},

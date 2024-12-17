@@ -1,4 +1,6 @@
+import _ from 'lodash';
 import {
+	type INodeExecutionData,
 	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
@@ -10,11 +12,10 @@ import {
 	WORKFLOW_INPUTS,
 	JSON_EXAMPLE,
 	VALUES,
-	INPUT_OPTIONS,
 	TYPE_OPTIONS,
 	PASSTHROUGH,
 } from '../constants';
-import { getFieldEntries, getWorkflowInputData } from '../GenericFunctions';
+import { getFieldEntries } from '../GenericFunctions';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -163,39 +164,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'Input Options',
-				name: INPUT_OPTIONS,
-				placeholder: 'Options',
-				type: 'collection',
-				description: 'Options controlling how input data is handled, converted and rejected',
-				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
-				},
-				default: {},
-				// Note that, while the defaults are true, the user has to add these in the first place
-				// We default to false if absent in the execute function below
-				options: [
-					{
-						displayName: 'Attempt to Convert Types',
-						name: 'attemptToConvertTypes',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
-						noDataExpression: true,
-					},
-					{
-						displayName: 'Ignore Type Mismatch Errors',
-						name: 'ignoreTypeErrors',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether type mismatches should be ignored, rather than returning an Error',
-						noDataExpression: true,
-					},
-				],
-			},
 		],
 	};
 
@@ -203,12 +171,30 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		const inputData = this.getInputData();
 		const inputSource = this.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH) as string;
 
+		// Note on the data we receive from ExecuteWorkflow caller:
+		//
+		// The caller typechecks all fields explicitly provided by the user via the resourceMapper
+		// and removes all fields that are in the schema, but `removed` in the resourceMapper.
+		//
+		// Then these fields - including removed fields - "shadow" inputData fields, hiding them from the trigger.
+		//
+		// In passthrough and legacy versions, inputData will line up since the resourceMapper is empty
+		// In other cases we will already have matching types, so we just need to be permissive on this end,
+		// while filtering out fields that are not in the schema.
+
 		if (inputSource === PASSTHROUGH) {
 			return [inputData];
 		} else {
 			const newParams = getFieldEntries(this);
+			const newKeys = new Set(newParams.map(({ name }) => name));
 
-			return [getWorkflowInputData.call(this, inputData, newParams)];
+			// todo: add keys in schema anyway so `Test step` provides at least columns
+			const itemsInSchema: INodeExecutionData[] = inputData.map((row, index) => ({
+				json: _.pickBy(row.json, (_v, key) => newKeys.has(key)),
+				index,
+			}));
+
+			return [itemsInSchema];
 		}
 	}
 }

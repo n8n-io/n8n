@@ -7,7 +7,7 @@ import type {
 	INodeExecutionData,
 	IExecuteFunctions,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, validateFieldType } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import {
 	JSON_EXAMPLE,
@@ -15,7 +15,6 @@ import {
 	WORKFLOW_INPUTS,
 	VALUES,
 	TYPE_OPTIONS,
-	INPUT_OPTIONS,
 	FALLBACK_DEFAULT_VALUE,
 	PASSTHROUGH,
 } from './constants';
@@ -98,18 +97,7 @@ export function getWorkflowInputData(
 ): INodeExecutionData[] {
 	const items: INodeExecutionData[] = [];
 
-	for (const [itemIndex, item] of inputData.entries()) {
-		const attemptToConvertTypes = this.getNodeParameter(
-			`${INPUT_OPTIONS}.attemptToConvertTypes`,
-			itemIndex,
-			false,
-		);
-		const ignoreTypeErrors = this.getNodeParameter(
-			`${INPUT_OPTIONS}.ignoreTypeErrors`,
-			itemIndex,
-			false,
-		);
-
+	for (const [itemIndex, row] of inputData.entries()) {
 		// Fields listed here will explicitly overwrite original fields
 		const newItem: INodeExecutionData = {
 			json: {},
@@ -124,37 +112,11 @@ export function getWorkflowInputData(
 			pairedItem: { item: itemIndex },
 		};
 		try {
-			for (const { name, type } of newParams) {
-				if (!item.json.hasOwnProperty(name)) {
+			for (const { name } of newParams) {
+				if (!row.json.hasOwnProperty(name)) {
 					newItem.json[name] = FALLBACK_DEFAULT_VALUE;
-					continue;
-				}
-
-				const result =
-					type === 'any'
-						? ({ valid: true, newValue: item.json[name] } as const)
-						: validateFieldType(name, item.json[name], type, {
-								strict: !attemptToConvertTypes,
-								parseStrings: true, // Default behavior is to accept anything as a string, this is a good opportunity for a stricter boundary
-							});
-
-				if (!result.valid) {
-					if (ignoreTypeErrors) {
-						newItem.json[name] = item.json[name];
-						continue;
-					}
-
-					throw new NodeOperationError(this.getNode(), result.errorMessage, {
-						itemIndex,
-					});
 				} else {
-					// If the value is `null` or `undefined`, then `newValue` is not in the returned object
-					if (result.hasOwnProperty('newValue')) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						newItem.json[name] = result.newValue;
-					} else {
-						newItem.json[name] = item.json[name];
-					}
+					newItem.json[name] = row.json[name];
 				}
 			}
 
@@ -170,5 +132,5 @@ export function getWorkflowInputData(
 		}
 	}
 
-	return items;
+	return inputData;
 }
