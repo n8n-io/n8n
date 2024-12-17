@@ -2,7 +2,6 @@ import _ from 'lodash';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
-	FieldValueOption,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -47,22 +46,14 @@ function getCurrentWorkflowInputData(this: IExecuteFunctions) {
 	if (schema.length === 0) {
 		return inputData;
 	} else {
-		const [removed, added] = _.partition(schema, (x) => x.removed);
+		const removedKeys = new Set(schema.filter((x) => x.removed).map((x) => x.displayName));
 
-		const addedParams: FieldValueOption[] = added.map((x) => ({
-			name: x.displayName,
-			type: x.type ?? 'any',
-		}));
-
-		const removedKeys = new Set(removed.map((x) => x.displayName));
 		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
 			index,
 			pairedItem: { item: index },
-			json: _.assign(
-				_.pickBy(item.json, (_v, k) => !removedKeys.has(k)),
-				_.fromPairs(addedParams.map((x) => [x, FALLBACK_DEFAULT_VALUE])),
-			),
+			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
 		}));
+
 		return filteredInputData;
 	}
 }

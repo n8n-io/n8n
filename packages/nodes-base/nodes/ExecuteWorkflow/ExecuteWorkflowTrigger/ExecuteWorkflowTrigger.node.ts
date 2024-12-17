@@ -174,26 +174,25 @@ export class ExecuteWorkflowTrigger implements INodeType {
 
 		// Note on the data we receive from ExecuteWorkflow caller:
 		//
-		// The caller typechecks all fields explicitly provided by the user via the resourceMapper
+		// The ExecuteWorkflow node typechecks all fields explicitly provided by the user here via the resourceMapper
 		// and removes all fields that are in the schema, but `removed` in the resourceMapper.
 		//
-		// Then these fields - including removed fields - "shadow" inputData fields, hiding them from the trigger.
-		//
-		// In passthrough and legacy versions, inputData will line up since the resourceMapper is empty
-		// In other cases we will already have matching types, so we just need to be permissive on this end,
-		// while filtering out fields that are not in the schema.
+		// In passthrough and legacy node versions, inputData will line up since the resourceMapper is empty,
+		// in which case all input is passed through.
+		// In other cases we will already have matching types and fields provided by the resource mapper,
+		// so we just need to be permissive on this end,
+		// while ensuring we provide default values for fields in our schema, which are removed in the resourceMapper.
 
 		if (inputSource === PASSTHROUGH) {
 			return [inputData];
 		} else {
 			const newParams = getFieldEntries(this);
-			const newKeys = new Set(newParams.map(({ name }) => name));
 
 			const itemsInSchema: INodeExecutionData[] = inputData.map((row, index) => ({
-				json: _.assign(
-					_.fromPairs(newParams.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
-					_.pickBy(row.json, (_v, key) => newKeys.has(key)),
-				),
+				json: {
+					...Object.fromEntries(newParams.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
+					...row.json,
+				},
 				index,
 			}));
 
