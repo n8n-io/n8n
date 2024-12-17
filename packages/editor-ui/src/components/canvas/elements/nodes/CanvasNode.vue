@@ -243,6 +243,12 @@ function onMove(position: XYPosition) {
 	emit('move', props.id, position);
 }
 
+function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
+	nodeClasses.value = add
+		? [...new Set([...nodeClasses.value, className])]
+		: nodeClasses.value.filter((c) => c !== className);
+}
+
 /**
  * Provide
  */
@@ -278,22 +284,14 @@ watch(
 	},
 );
 
-function updateEventBusClass({ className, add = true }: { className: string; add: boolean }) {
-	if (add && !nodeClasses.value.includes(className)) {
-		nodeClasses.value.push(className);
-	} else if (!add) {
-		nodeClasses.value = nodeClasses.value.filter((c) => c !== className);
-	}
-}
-
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
-	canvasNodeEventBus.value?.on('update:node:class', updateEventBusClass);
+	canvasNodeEventBus.value?.on('update:node:class', onUpdateClass);
 });
 
 onBeforeUnmount(() => {
 	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
-	canvasNodeEventBus.value?.off('update:node:class', updateEventBusClass);
+	canvasNodeEventBus.value?.off('update:node:class', onUpdateClass);
 });
 </script>
 
