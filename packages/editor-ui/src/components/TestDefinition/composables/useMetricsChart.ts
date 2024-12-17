@@ -1,5 +1,4 @@
 import type { ChartData, ChartOptions } from 'chart.js';
-import { convertToDisplayDate } from '@/utils/typesUtils';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import dateFormat from 'dateformat';
 
