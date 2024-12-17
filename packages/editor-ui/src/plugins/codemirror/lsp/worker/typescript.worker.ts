@@ -263,7 +263,6 @@ declare global {
 
 			const completionInfo = env.languageService.getCompletionsAtPosition(fileName, tsPos, {}, {});
 
-			console.log(completionInfo);
 			if (!completionInfo) return null;
 
 			const options = completionInfo.entries
@@ -321,8 +320,6 @@ declare global {
 			const typeDef =
 				env.languageService.getTypeDefinitionAtPosition(fileName, tsPos) ??
 				env.languageService.getDefinitionAtPosition(fileName, tsPos);
-
-			console.log(quickInfo, typeDef);
 
 			return {
 				start,

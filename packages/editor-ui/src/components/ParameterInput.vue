@@ -1684,13 +1684,13 @@ onUpdated(async () => {
 	height: calc(100% - var(--spacing-4xl));
 	margin-bottom: 0;
 
-	:global(.el-dialog__body) {
-		height: 100%;
-		padding: var(--spacing-s);
+	:global(.el-dialog__header) {
+		padding-bottom: 0;
 	}
 
-	:global(.el-dialog__header) {
-		display: none;
+	:global(.el-dialog__body) {
+		height: calc(100% - var(--spacing-3xl));
+		padding: var(--spacing-s);
 	}
 }
 

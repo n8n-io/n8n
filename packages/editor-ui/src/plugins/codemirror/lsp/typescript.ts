@@ -4,13 +4,10 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { forceParse } from '@/utils/forceParse';
+import { escapeMappingString } from '@/utils/mappingUtils';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import {
-	autocompletion,
-	snippetCompletion,
-	type Completion,
-	type CompletionSource,
-} from '@codemirror/autocomplete';
+import { autocompletion, snippetCompletion, type CompletionSource } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { LanguageSupport } from '@codemirror/language';
 import { linter, type LintSource } from '@codemirror/lint';
@@ -19,10 +16,8 @@ import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
 import { watch } from 'vue';
-import { forceParse } from '../../../utils/forceParse';
 import { autocompletableNodeNames } from '../completions/utils';
 import type { LanguageServiceWorker } from './types';
-import { ROOT_DOLLAR_COMPLETIONS } from '../completions/constants';
 
 export const tsFacet = Facet.define<
 	{ worker: Comlink.Remote<LanguageServiceWorker> },
@@ -92,7 +87,7 @@ const tsCompletions: CompletionSource = async (context) => {
 
 	let word = context.matchBefore(/[\$\w]+/);
 	if (!word?.text) {
-		word = context.matchBefore(/\./);
+		word = context.matchBefore(/[\.\(\'\"]/);
 	}
 
 	if (!word) return null;
@@ -104,14 +99,27 @@ const tsCompletions: CompletionSource = async (context) => {
 
 	const { result, isGlobal } = completionResult;
 
-	const options = [...result.options];
+	let options = [...result.options];
 
 	if (isGlobal) {
-		options.push(...snippets);
+		options = options
+			.flatMap((opt) => {
+				if (opt.label === '$') {
+					return [
+						opt,
+						...autocompletableNodeNames().map((name) => ({
+							...opt,
+							label: `$('${escapeMappingString(name)}')`,
+						})),
+					];
+				}
+				return opt;
+			})
+			.concat(snippets);
 	}
 
 	return {
-		from: word ? (word.text === '.' ? word.to : word.from) : pos,
+		from: word ? (['"', "'", '(', '.'].includes(word.text) ? word.to : word.from) : pos,
 		options,
 	};
 };

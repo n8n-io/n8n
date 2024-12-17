@@ -300,9 +300,11 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 			extensions: allExtensions,
 		};
 
-		const state = parsedStoredState
-			? EditorState.fromJSON(parsedStoredState, config, storedStateFields)
-			: EditorState.create(config);
+		const state =
+			// Only restore from localstorage when code did not change
+			parsedStoredState && parsedStoredState.doc === initialValue
+				? EditorState.fromJSON(parsedStoredState, config, storedStateFields)
+				: EditorState.create(config);
 
 		if (editor.value) {
 			editor.value.destroy();
