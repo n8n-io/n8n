@@ -49,6 +49,7 @@ import type {
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -1453,6 +1454,28 @@ function onClickPane(position: CanvasNode['position']) {
 }
 
 /**
+ * Drag and Drop events
+ */
+
+async function onDragAndDrop(position: VueFlowXYPosition, event: DragEvent) {
+	if (!event.dataTransfer) {
+		return;
+	}
+
+	const dropData = jsonParse<AddedNodesAndConnections>(
+		event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
+	);
+
+	if (dropData) {
+		const insertNodePosition: XYPosition = [position.x, position.y];
+
+		await onAddNodesAndConnections(dropData, true, insertNodePosition);
+
+		onToggleNodeCreator({ createNodeActive: false, hasAddedNodes: true });
+	}
+}
+
+/**
  * Custom Actions
  */
 
@@ -1627,6 +1650,7 @@ onBeforeUnmount(() => {
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
+		@drag-and-drop="onDragAndDrop"
 	>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
