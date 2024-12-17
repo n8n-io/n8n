@@ -87,7 +87,12 @@ function onMouseLeave() {
 </script>
 
 <template>
-	<div :class="classes" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
+	<div
+		data-test-id="canvas-node-toolbar"
+		:class="classes"
+		@mouseenter="onMouseEnter"
+		@mouseleave="onMouseLeave"
+	>
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
 				v-if="isExecuteNodeVisible"
