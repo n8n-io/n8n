@@ -7,7 +7,10 @@ import {
 	getWorkflowInputData,
 } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
-jest.mock('../GenericFunctions');
+jest.mock('../../../utils/workflowInputsResourceMapping/GenericFunctions', () => ({
+	getFieldEntries: jest.fn(),
+	getWorkflowInputData: jest.fn(),
+}));
 
 describe('ExecuteWorkflowTrigger', () => {
 	const mockInputData: INodeExecutionData[] = [
