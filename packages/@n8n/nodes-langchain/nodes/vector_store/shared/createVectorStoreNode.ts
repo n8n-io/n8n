@@ -223,6 +223,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					type: 'boolean',
 					default: true,
 					description: 'Whether or not to include document metadata',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve'],
+						},
+					},
 				},
 				// ID is always used for update operation
 				{
