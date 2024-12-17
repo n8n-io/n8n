@@ -60,6 +60,12 @@ get:
       schema:
         type: string
         example: VmwOO9HeTEj20kxM
+    - name: excludePinnedData
+      in: query
+      required: false
+      schema:
+        type: boolean
+        example: true
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
   responses:
