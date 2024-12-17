@@ -327,7 +327,6 @@ export class ToolWorkflowV2 implements INodeType {
 			let jsonData = typeof query === 'object' ? query : { query };
 			if (useSchema) {
 				const currentWorkflowInputs = getCurrentWorkflowInputData.call(this);
-				// TODO: Pull in master and not use 0 index here
 				jsonData = currentWorkflowInputs[0].json;
 			}
 

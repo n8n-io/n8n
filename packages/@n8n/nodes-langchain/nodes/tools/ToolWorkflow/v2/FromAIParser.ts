@@ -16,7 +16,7 @@ export interface FromAIArgument {
 	defaultValue?: string | number | boolean | Record<string, unknown>;
 }
 
-// TODO: We copied this class from the core package, we need to make it reusable and delete this file
+// TODO: We copied this class from the core package, once the new nodes context work is merged, this should be available in root node context and this file can be removed.
 
 /**
  * AIParametersParser
