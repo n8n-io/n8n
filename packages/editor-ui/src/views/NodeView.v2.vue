@@ -180,6 +180,8 @@ const {
 	revertCreateConnection,
 	deleteConnection,
 	revertDeleteConnection,
+	revalidateNodeInputConnections,
+	revalidateNodeOutputConnections,
 	setNodeActiveByName,
 	addConnections,
 	importWorkflowData,
@@ -721,6 +723,14 @@ async function onRevertRenameNode({
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	setNodeParameters(id, parameters);
+}
+
+function onUpdateNodeInputs(id: string) {
+	revalidateNodeInputConnections(id);
+}
+
+function onUpdateNodeOutputs(id: string) {
+	revalidateNodeOutputConnections(id);
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
@@ -1618,6 +1628,8 @@ onBeforeUnmount(() => {
 		@update:node:enabled="onToggleNodeDisabled"
 		@update:node:name="onOpenRenameNodeModal"
 		@update:node:parameters="onUpdateNodeParameters"
+		@update:node:inputs="onUpdateNodeInputs"
+		@update:node:outputs="onUpdateNodeOutputs"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
