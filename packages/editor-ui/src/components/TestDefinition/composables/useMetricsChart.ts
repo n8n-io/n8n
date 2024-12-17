@@ -1,8 +1,7 @@
 import type { ChartData, ChartOptions } from 'chart.js';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
-
-const formatDate = (date: string) => convertToDisplayDate(new Date(date).getTime());
+import dateFormat from 'dateformat';
 
 type ChartTheme = 'light' | 'dark';
 
@@ -40,7 +39,9 @@ export function useMetricsChart(mode: ChartTheme = 'light') {
 			.filter((run) => run.metrics?.[metric]);
 
 		return {
-			labels: sortedRuns.map((run) => formatDate(run.runAt)),
+			labels: sortedRuns.map((run) => {
+				return dateFormat(run.runAt, 'yyyy-mm-dd HH:MM');
+			}),
 			datasets: [
 				{
 					label: metric,
@@ -61,7 +62,7 @@ export function useMetricsChart(mode: ChartTheme = 'light') {
 		};
 	}
 
-	function generateChartOptions(metric: string): ChartOptions<'line'> {
+	function generateChartOptions(params: { metric: string; xTitle: string }): ChartOptions<'line'> {
 		return {
 			responsive: true,
 			maintainAspectRatio: false,
@@ -82,7 +83,7 @@ export function useMetricsChart(mode: ChartTheme = 'light') {
 					},
 					title: {
 						display: true,
-						text: metric,
+						text: params.metric,
 						padding: 16,
 						color: colors.text.primary,
 					},
@@ -98,7 +99,7 @@ export function useMetricsChart(mode: ChartTheme = 'light') {
 					},
 					title: {
 						display: true,
-						text: 'Run Date',
+						text: params.xTitle,
 						padding: 16,
 						color: colors.text.primary,
 					},
@@ -119,7 +120,7 @@ export function useMetricsChart(mode: ChartTheme = 'light') {
 					displayColors: true,
 					callbacks: {
 						title: (tooltipItems) => tooltipItems[0].label,
-						label: (context) => `${metric}: ${context.parsed.y.toFixed(2)}`,
+						label: (context) => `${params.metric}: ${context.parsed.y.toFixed(2)}`,
 					},
 				},
 				legend: {

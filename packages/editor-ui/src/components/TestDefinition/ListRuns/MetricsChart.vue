@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue';
 import { Line } from 'vue-chartjs';
-import { useMetricsChart } from './useMetricsChart';
+import { useMetricsChart } from '../composables/useMetricsChart';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { useI18n } from '@/composables/useI18n';
 import { getPreferredTheme } from '@/stores/ui.utils';
@@ -29,7 +29,12 @@ const availableMetrics = computed(() => {
 });
 
 const chartData = computed(() => generateChartData(props.runs, props.selectedMetric));
-const chartOptions = computed(() => generateChartOptions(props.selectedMetric));
+const chartOptions = computed(() =>
+	generateChartOptions({
+		metric: props.selectedMetric,
+		xTitle: locale.baseText('testDefinition.listRuns.runDate'),
+	}),
+);
 
 watchEffect(() => {
 	if (props.runs.length > 0 && !props.selectedMetric) {
@@ -73,7 +78,7 @@ watchEffect(() => {
 	margin: var(--spacing-m) 0;
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
-	box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+	box-shadow: var(--box-shadow-base);
 
 	.chartHeader {
 		display: flex;
@@ -88,11 +93,10 @@ watchEffect(() => {
 		font-size: var(--font-size-l);
 		font-weight: var(--font-weight-bold);
 		color: var(--color-text-base);
-		margin: 0;
 	}
 
 	.metricSelect {
-		width: 200px;
+		max-width: 15rem;
 	}
 
 	.chartWrapper {
