@@ -86,7 +86,7 @@ export class ToolWorkflowV1 implements INodeType {
 					type: 'string',
 					default: '',
 					placeholder:
-						'Call this tool to get a random color. The input should be a string with comma separted names of colors to exclude.',
+						'Call this tool to get a random color. The input should be a string with comma separated names of colors to exclude.',
 					typeOptions: {
 						rows: 3,
 					},
