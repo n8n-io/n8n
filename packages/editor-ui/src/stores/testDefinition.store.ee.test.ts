@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee'; // Adjust the import path as necessary
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
-import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
+import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
 
 const {
 	createTestDefinition,
@@ -78,7 +78,7 @@ const TEST_METRIC = {
 	testDefinitionId: '1',
 };
 
-const TEST_RUN = {
+const TEST_RUN: TestRunRecord = {
 	id: 'run1',
 	testDefinitionId: '1',
 	status: 'completed',
@@ -428,7 +428,6 @@ describe('testDefinition.store.ee', () => {
 		});
 
 		test('Deleting Test Run', async () => {
-			// @ts-expect-error - TODO: Fix this
 			store.testRunsById = { run1: TEST_RUN };
 			const params = { testDefinitionId: '1', runId: 'run1' };
 
@@ -441,9 +440,7 @@ describe('testDefinition.store.ee', () => {
 
 		test('Getting Test Runs by Test ID', () => {
 			store.testRunsById = {
-				// @ts-expect-error - TODO: Fix this
 				run1: TEST_RUN,
-				// @ts-expect-error - TODO: Fix this
 				run2: { ...TEST_RUN, id: 'run2', testDefinitionId: '2' },
 			};
 
