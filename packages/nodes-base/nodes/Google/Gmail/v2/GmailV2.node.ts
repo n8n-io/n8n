@@ -88,6 +88,15 @@ const versionDescription: INodeTypeDescription = {
 			restartWebhook: true,
 			isFullPath: true,
 		},
+		{
+			name: 'default',
+			httpMethod: 'POST',
+			responseMode: 'onReceived',
+			responseData: '',
+			path: '={{ $nodeId }}',
+			restartWebhook: true,
+			isFullPath: true,
+		},
 	],
 	properties: [
 		{
