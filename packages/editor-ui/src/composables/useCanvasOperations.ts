@@ -1231,13 +1231,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		});
 	}
 
-	function revalidateNodeInputConnections(id: string) {
-		const targetNode = workflowsStore.getNodeById(id);
-		if (!targetNode) {
+	function revalidateNodeConnections(id: string, connectionMode: CanvasConnectionMode) {
+		const node = workflowsStore.getNodeById(id);
+		const isInput = connectionMode === CanvasConnectionMode.Input;
+		if (!node) {
 			return;
 		}
 
-		const nodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) {
 			return;
 		}
@@ -1248,16 +1249,22 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 
 		connections.forEach((connection) => {
-			if (connection.target === id) {
-				const sourceNode = workflowsStore.getNodeById(connection.source);
-				if (!sourceNode || !connection.data) {
+			const isRelevantConnection = isInput ? connection.target === id : connection.source === id;
+
+			if (isRelevantConnection) {
+				const otherNodeId = isInput ? connection.source : connection.target;
+
+				const otherNode = workflowsStore.getNodeById(otherNodeId);
+				if (!otherNode || !connection.data) {
 					return;
 				}
 
+				const [firstNode, secondNode] = isInput ? [otherNode, node] : [node, otherNode];
+
 				if (
 					!isConnectionAllowed(
-						sourceNode,
-						targetNode,
+						firstNode,
+						secondNode,
 						connection.data.source,
 						connection.data.target,
 					)
@@ -1268,41 +1275,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		});
 	}
 
+	function revalidateNodeInputConnections(id: string) {
+		return revalidateNodeConnections(id, CanvasConnectionMode.Input);
+	}
+
 	function revalidateNodeOutputConnections(id: string) {
-		const sourceNode = workflowsStore.getNodeById(id);
-		if (!sourceNode) {
-			return;
-		}
-
-		const nodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
-		if (!nodeType) {
-			return;
-		}
-
-		const connections = mapLegacyConnectionsToCanvasConnections(
-			workflowsStore.workflow.connections,
-			workflowsStore.workflow.nodes,
-		);
-
-		connections.forEach((connection) => {
-			if (connection.source === id) {
-				const targetNode = workflowsStore.getNodeById(connection.target);
-				if (!targetNode || !connection.data) {
-					return;
-				}
-
-				if (
-					!isConnectionAllowed(
-						targetNode,
-						sourceNode,
-						connection.data.source,
-						connection.data.target,
-					)
-				) {
-					void nextTick(() => deleteConnection(connection));
-				}
-			}
-		});
+		return revalidateNodeConnections(id, CanvasConnectionMode.Output);
 	}
 
 	function isConnectionAllowed(
