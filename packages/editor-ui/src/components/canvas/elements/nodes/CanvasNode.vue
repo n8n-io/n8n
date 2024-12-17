@@ -31,7 +31,7 @@ import { useCanvas } from '@/composables/useCanvas';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
-import { deepCompare } from '@/utils/objectUtils';
+import { isEqual } from 'lodash-es';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -269,13 +269,13 @@ watch(
 );
 
 watch(inputs, (newValue, oldValue) => {
-	if (!deepCompare(newValue, oldValue)) {
+	if (!isEqual(newValue, oldValue)) {
 		emit('update:inputs', props.id);
 	}
 });
 
 watch(outputs, (newValue, oldValue) => {
-	if (!deepCompare(newValue, oldValue)) {
+	if (!isEqual(newValue, oldValue)) {
 		emit('update:outputs', props.id);
 	}
 });
