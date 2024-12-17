@@ -5,6 +5,7 @@ import { setActivePinia } from 'pinia';
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { createCanvasProvide } from '@/__tests__/data';
+import { waitFor } from '@testing-library/vue';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -62,5 +63,20 @@ describe('CanvasConnectionLine', () => {
 			'd',
 			'M-50 130L-90 130L -124,130Q -140,130 -140,114L -140,-84Q -140,-100 -124,-100L-100 -100',
 		);
+	});
+
+	it('should show the connection line after a short delay', async () => {
+		vi.useFakeTimers();
+		const { container } = renderComponent({
+			props: DEFAULT_PROPS,
+		});
+
+		const edge = container.querySelector('.vue-flow__edge-path');
+
+		expect(edge).not.toHaveClass('visible');
+
+		vi.advanceTimersByTime(300);
+
+		await waitFor(() => expect(edge).toHaveClass('visible'));
 	});
 });
