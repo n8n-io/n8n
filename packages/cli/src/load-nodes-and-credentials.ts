@@ -44,6 +44,10 @@ interface LoadedNodesAndCredentials {
 	credentials: ICredentialTypeData;
 }
 
+function isVersionedNodeType(type?: INodeType | IVersionedNodeType): type is IVersionedNodeType {
+	return Boolean(type && 'nodeVersions' in type);
+}
+
 @Service()
 export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -116,6 +120,15 @@ export class LoadNodesAndCredentials {
 
 	isKnownNode(type: string) {
 		return type in this.known.nodes;
+	}
+
+	getCurrentVersionNodeType(description: INodeTypeBaseDescription): INodeType | undefined {
+		const type = this.getNode(description.name)?.type;
+		if (isVersionedNodeType(type)) {
+			return type.getNodeType(type.currentVersion);
+		}
+
+		return type;
 	}
 
 	get loadedCredentials() {
@@ -294,7 +307,11 @@ export class LoadNodesAndCredentials {
 		for (const usableNode of usableNodes) {
 			const description: INodeTypeBaseDescription | INodeTypeDescription =
 				structuredClone(usableNode);
-			const wrapped = this.convertNodeToAiTool({ description }).description;
+			const nodeType = this.getCurrentVersionNodeType(usableNode);
+			const wrapped = this.convertNodeToAiTool({
+				description,
+				setupAsTool: nodeType?.setupAsTool,
+			}).description;
 
 			this.types.nodes.push(wrapped);
 			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
@@ -403,7 +420,10 @@ export class LoadNodesAndCredentials {
 	 * Returns the modified item (not copied)
 	 */
 	convertNodeToAiTool<
-		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
+		T extends object & {
+			description: INodeTypeDescription | INodeTypeBaseDescription;
+			setupAsTool?: INodeType['setupAsTool'];
+		},
 	>(item: T): T {
 		// quick helper function for type-guard down below
 		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
@@ -411,102 +431,13 @@ export class LoadNodesAndCredentials {
 		}
 
 		if (isFullDescription(item.description)) {
-			const isVectorStore = item.description.group.includes('vector-store');
-
-			item.description.name += 'Tool';
-			if (!isVectorStore) {
-				item.description.inputs = [];
-			}
-			item.description.outputs = [NodeConnectionType.AiTool];
-			item.description.displayName += ' Tool';
+			// ensures properties are only added it once to node, every time node type is fetched
 			delete item.description.usableAsTool;
 
-			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
-			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
-
-			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-				const descriptionType: INodeProperties = {
-					displayName: 'Tool Description',
-					name: 'descriptionType',
-					type: 'options',
-					noDataExpression: true,
-					options: [
-						{
-							name: 'Set Automatically',
-							value: 'auto',
-							description: 'Automatically set based on resource and operation',
-						},
-						{
-							name: 'Set Manually',
-							value: 'manual',
-							description: 'Manually set the description',
-						},
-					],
-					default: 'auto',
-				};
-
-				if (isVectorStore) {
-					const metadataProp: INodeProperties = {
-						displayName: 'Include metadata',
-						name: 'includeDocumentMetadata',
-						type: 'boolean',
-						default: false,
-						description: 'Whether or not to include document metadata',
-					};
-
-					item.description.properties.unshift(metadataProp);
-				}
-
-				const descProp: INodeProperties = {
-					displayName: 'Description',
-					name: 'toolDescription',
-					type: 'string',
-					default: item.description.description,
-					required: true,
-					typeOptions: { rows: 2 },
-					description:
-						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
-				};
-
-				const noticeProp: INodeProperties = {
-					displayName:
-						"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
-					name: 'notice',
-					type: 'notice',
-					default: '',
-				};
-
-				item.description.properties.unshift(descProp);
-
-				if (isVectorStore) {
-					const nameProp: INodeProperties = {
-						displayName: 'Name',
-						name: 'toolName',
-						type: 'string',
-						default: '',
-						required: true,
-						description: 'Name of the vector store',
-						placeholder: 'e.g. company_knowledge_base',
-						validateType: 'string-alphanumeric',
-					};
-
-					item.description.properties.unshift(nameProp);
-				}
-
-				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property
-				if (hasResource || hasOperation) {
-					item.description.properties.unshift(descriptionType);
-
-					descProp.displayOptions = {
-						show: {
-							descriptionType: ['manual'],
-						},
-					};
-				}
-
-				item.description.properties.unshift(noticeProp);
+			if (item.setupAsTool) {
+				item.setupAsTool(item.description);
+			} else {
+				this.addDefaultToolProperties(item.description);
 			}
 		}
 
@@ -521,6 +452,76 @@ export class LoadNodesAndCredentials {
 			resources,
 		};
 		return item;
+	}
+
+	private addDefaultToolProperties(description: INodeTypeDescription): void {
+		description.name += 'Tool';
+		description.inputs = [];
+		description.outputs = [NodeConnectionType.AiTool];
+		description.displayName += ' Tool';
+
+		const hasResource = description.properties.some((prop) => prop.name === 'resource');
+		const hasOperation = description.properties.some((prop) => prop.name === 'operation');
+
+		if (description.properties.map((prop) => prop.name).includes('toolDescription')) {
+			return;
+		}
+
+		const descriptionType: INodeProperties = {
+			displayName: 'Tool Description',
+			name: 'descriptionType',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Set Automatically',
+					value: 'auto',
+					description: 'Automatically set based on resource and operation',
+				},
+				{
+					name: 'Set Manually',
+					value: 'manual',
+					description: 'Manually set the description',
+				},
+			],
+			default: 'auto',
+		};
+
+		const descProp: INodeProperties = {
+			displayName: 'Description',
+			name: 'toolDescription',
+			type: 'string',
+			default: description.description,
+			required: true,
+			typeOptions: { rows: 2 },
+			description:
+				'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+			placeholder: `e.g. ${description.description}`,
+		};
+
+		const noticeProp: INodeProperties = {
+			displayName:
+				"Use the expression {{ $fromAI('placeholder_name') }} for any data to be filled by the model",
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		};
+
+		description.properties.unshift(descProp);
+
+		// If node has resource or operation we can determine pre-populate tool description based on it
+		// so we add the descriptionType property as the first property
+		if (hasResource || hasOperation) {
+			description.properties.unshift(descriptionType);
+
+			descProp.displayOptions = {
+				show: {
+					descriptionType: ['manual'],
+				},
+			};
+		}
+
+		description.properties.unshift(noticeProp);
 	}
 
 	async setupHotReload() {

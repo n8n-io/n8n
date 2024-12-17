@@ -455,4 +455,84 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				response: logWrapper(vectorStore, this),
 			};
 		}
+
+		setupAsTool(description: INodeTypeDescription): void {
+			description.name += 'Tool';
+			description.outputs = [NodeConnectionType.AiTool];
+			description.displayName += ' Tool';
+
+			// const hasResource = description.properties.some((prop) => prop.name === 'resource');
+			// const hasOperation = description.properties.some((prop) => prop.name === 'operation');
+
+			// const descriptionType: INodeProperties = {
+			// 	displayName: 'Tool Description',
+			// 	name: 'descriptionType',
+			// 	type: 'options',
+			// 	noDataExpression: true,
+			// 	options: [
+			// 		{
+			// 			name: 'Set Automatically',
+			// 			value: 'auto',
+			// 			description: 'Automatically set based on resource and operation',
+			// 		},
+			// 		{
+			// 			name: 'Set Manually',
+			// 			value: 'manual',
+			// 			description: 'Manually set the description',
+			// 		},
+			// 	],
+			// 	default: 'auto',
+			// };
+
+			// todo move out
+			const metadataProp: INodeProperties = {
+				displayName: 'Include Metadata',
+				name: 'includeDocumentMetadata',
+				type: 'boolean',
+				default: false,
+				description: 'Whether or not to include document metadata',
+			};
+
+			description.properties.unshift(metadataProp);
+
+			const descProp: INodeProperties = {
+				displayName: 'Description',
+				name: 'toolDescription',
+				type: 'string',
+				default: '',
+				required: true,
+				typeOptions: { rows: 2 },
+				description:
+					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+				placeholder: `e.g. ${description.description}`,
+			};
+
+			description.properties.unshift(descProp);
+
+			const nameProp: INodeProperties = {
+				displayName: 'Name',
+				name: 'toolName',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'Name of the vector store',
+				placeholder: 'e.g. company_knowledge_base',
+				validateType: 'string-alphanumeric',
+			};
+
+			description.properties.unshift(nameProp);
+
+			// // todo is this needed?
+			// // If node has resource or operation we can determine pre-populate tool description based on it
+			// // so we add the descriptionType property as the first property
+			// if (hasResource || hasOperation) {
+			// 	description.properties.unshift(descriptionType);
+
+			// 	descProp.displayOptions = {
+			// 		show: {
+			// 			descriptionType: ['manual'],
+			// 		},
+			// 	};
+			// }
+		}
 	};

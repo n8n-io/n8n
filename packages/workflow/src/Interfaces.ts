@@ -1593,6 +1593,7 @@ export interface INodeType {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
+	setupAsTool?: (description: INodeTypeDescription) => void;
 }
 
 /**
