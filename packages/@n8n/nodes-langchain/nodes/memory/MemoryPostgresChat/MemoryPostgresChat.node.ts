@@ -13,9 +13,10 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 import type pg from 'pg';
 
-import { getSessionId } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	sessionIdOption,
 	sessionKeyProperty,
