@@ -137,6 +137,11 @@ const showAddFirstProject = computed(
 	width: 100%;
 	overflow: hidden;
 	align-items: start;
+	&:hover {
+		.plusBtn {
+			display: block;
+		}
+	}
 }
 
 .projectItems {
@@ -168,6 +173,10 @@ const showAddFirstProject = computed(
 		padding: 0;
 		margin-left: 0;
 		justify-content: center;
+
+		.plusBtn {
+			display: block;
+		}
 	}
 }
 
@@ -175,6 +184,7 @@ const showAddFirstProject = computed(
 	margin: 0;
 	padding: 0;
 	color: var(--color-text-lighter);
+	display: none;
 }
 
 .addFirstProjectBtn {
