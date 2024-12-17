@@ -20,7 +20,6 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import TestDefinitionRunsListView from './views/TestDefinition/TestDefinitionRunsListView.vue';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
-import TestDefinitionRunsCompareView from './views/TestDefinition/TestDefinitionRunsCompareView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -320,19 +319,6 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
 				components: {
 					default: TestDefinitionRunDetailView,
-					header: MainHeader,
-					sidebar: MainSidebar,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
-			},
-			{
-				path: ':testId/runs/:runId/compare',
-				name: VIEWS.TEST_DEFINITION_RUNS_COMPARE,
-				components: {
-					default: TestDefinitionRunsCompareView,
 					header: MainHeader,
 					sidebar: MainSidebar,
 				},
