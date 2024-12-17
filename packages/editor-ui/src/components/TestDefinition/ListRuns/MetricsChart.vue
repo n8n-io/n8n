@@ -39,22 +39,22 @@ watchEffect(() => {
 </script>
 
 <template>
-	<div :class="$style.metricsChartContainer" v-if="availableMetrics.length > 0">
+	<div v-if="availableMetrics.length > 0" :class="$style.metricsChartContainer">
 		<div :class="$style.chartHeader">
 			<N8nText>{{ locale.baseText('testDefinition.listRuns.metricsOverTime') }}</N8nText>
-			<el-select
+			<N8nSelect
 				:model-value="selectedMetric"
 				:class="$style.metricSelect"
 				placeholder="Select metric"
 				@update:model-value="emit('update:selectedMetric', $event)"
 			>
-				<el-option
+				<N8nOption
 					v-for="metric in availableMetrics"
 					:key="metric"
 					:label="metric"
 					:value="metric"
 				/>
-			</el-select>
+			</N8nSelect>
 		</div>
 		<div :class="$style.chartWrapper">
 			<Line
