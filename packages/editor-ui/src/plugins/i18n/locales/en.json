@@ -2782,6 +2782,7 @@
 	"testDefinition.edit.runExecution": "Run execution",
 	"testDefinition.edit.pastRuns": "Past runs",
 	"testDefinition.edit.pastRuns.total": "No runs | {count} run | {count} runs",
+	"testDefinition.edit.nodesPinning.pinButtonTooltip": "Pin execution data of this node during test run",
 	"testDefinition.list.testDeleted": "Test deleted",
 	"testDefinition.list.tests": "Tests",
 	"testDefinition.list.createNew": "Create new test",

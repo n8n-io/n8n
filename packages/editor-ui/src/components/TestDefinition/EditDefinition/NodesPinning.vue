@@ -8,11 +8,14 @@ import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { createEventBus, N8nTooltip } from 'n8n-design-system';
 import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
+import { useI18n } from '@/composables/useI18n';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const route = useRoute();
 const router = useRouter();
+const locale = useI18n();
+
 const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
 const eventBus = createEventBus<CanvasEventBusEvents>();
@@ -55,86 +58,56 @@ async function loadData() {
 	await loadingPromise;
 	initializeWorkspace(workflow.value);
 	disableAllNodes();
-	setTimeout(() => {
-		isLoading.value = false;
-	}, 4000);
 }
 function getNodeNameById(id: string) {
 	return mappedNodes.value.find((node) => node.id === id)?.data?.name;
 }
+function updateNodeClasses(nodeIds: string[], isPinned: boolean) {
+	eventBus.emit('nodes:action', {
+		ids: nodeIds,
+		action: 'update:node:class',
+		payload: {
+			className: style.pinnedNode,
+			add: isPinned,
+		},
+	});
+	eventBus.emit('nodes:action', {
+		ids: nodeIds,
+		action: 'update:node:class',
+		payload: {
+			className: style.notPinnedNode,
+			add: !isPinned,
+		},
+	});
+}
 function disableAllNodes() {
 	const ids = mappedNodes.value.map((node) => node.id);
-	eventBus.emit('nodes:action', {
-		ids,
-		action: 'update:node:class',
-		// @ts-expect-error: TODO: fix this
-		payload: { className: style.notPinnedNode },
-	});
+	updateNodeClasses(ids, false);
 
 	const pinnedNodes = props.modelValue
 		.map((node) => {
 			const matchedNode = mappedNodes.value.find(
 				(mappedNode) => mappedNode?.data?.name === node.name,
 			);
-			if (matchedNode) {
-				return matchedNode.id;
-			}
-			return null;
+			return matchedNode?.id ?? null;
 		})
-		.filter(Boolean);
+		.filter((n) => n !== null);
 
 	if (pinnedNodes.length > 0) {
-		eventBus.emit('nodes:action', {
-			// @ts-expect-error: TODO: fix this
-			ids: pinnedNodes,
-			action: 'update:node:class',
-			// @ts-expect-error: TODO: fix this
-			payload: { className: style.pinnedNode },
-		});
-		eventBus.emit('nodes:action', {
-			// @ts-expect-error: TODO: fix this
-			ids: pinnedNodes,
-			action: 'update:node:class',
-			// @ts-expect-error: TODO: fix this
-			payload: { className: style.notPinnedNode, add: false },
-		});
+		updateNodeClasses(pinnedNodes, true);
 	}
 }
 function onPinButtonClick(data: CanvasNodeData) {
 	const nodeName = getNodeNameById(data.id);
 	if (!nodeName) return;
 
-	if (props.modelValue.some((node) => node.name === nodeName)) {
-		const updatedNodes = props.modelValue.filter((node) => node.name !== nodeName);
-		emit('update:modelValue', updatedNodes);
-		eventBus.emit('nodes:action', {
-			ids: [data.id],
-			action: 'update:node:class',
-			// @ts-expect-error: TODO: fix this
-			payload: { className: style.notPinnedNode },
-		});
-		eventBus.emit('nodes:action', {
-			ids: [data.id],
-			action: 'update:node:class',
-			// @ts-expect-error: TODO: fix this
-			payload: { className: style.pinnedNode, add: false },
-		});
-	} else {
-		const updatedNodes = [...props.modelValue, { name: nodeName }];
-		emit('update:modelValue', updatedNodes);
-		eventBus.emit('nodes:action', {
-			ids: [data.id],
-			action: 'update:node:class',
-			// @ts-expect-error: TODO: fix this
-			payload: { className: style.pinnedNode },
-		});
-		eventBus.emit('nodes:action', {
-			ids: [data.id],
-			// @ts-expect-error: TODO: fix this
-			payload: { className: style.notPinnedNode, add: false },
-			action: 'update:node:class',
-		});
-	}
+	const isPinned = props.modelValue.some((node) => node.name === nodeName);
+	const updatedNodes = isPinned
+		? props.modelValue.filter((node) => node.name !== nodeName)
+		: [...props.modelValue, { name: nodeName }];
+
+	emit('update:modelValue', updatedNodes);
+	updateNodeClasses([data.id], !isPinned);
 }
 function isPinButtonVisible(outputs: CanvasConnectionPort[]) {
 	return outputs.length === 1;
@@ -152,8 +125,8 @@ onMounted(loadData);
 	<div :class="$style.container">
 		<N8nSpinner v-if="isLoading" size="xlarge" type="dots" :class="$style.spinner" />
 		<Canvas
-			:style="{ opacity: isLoading ? 0 : 1 }"
 			:id="canvasId"
+			:style="{ opacity: isLoading ? 0 : 1 }"
 			:class="{ [$style.canvas]: true }"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"
@@ -164,7 +137,9 @@ onMounted(loadData);
 			<template #nodeToolbar="{ data, outputs }">
 				<div :class="$style.pinButtonContainer">
 					<N8nTooltip v-if="isPinButtonVisible(outputs)" placement="left">
-						<template #content> Pin execution data of this node during test run </template>
+						<template #content>
+							{{ locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip') }}
+						</template>
 						<n8n-icon-button
 							type="tertiary"
 							size="large"
