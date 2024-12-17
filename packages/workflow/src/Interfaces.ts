@@ -2617,7 +2617,6 @@ export interface ResourceMapperField {
 	removed?: boolean;
 	options?: INodePropertyOptions[];
 	readOnly?: boolean;
-	defaultValue?: any;
 }
 
 export type FormFieldsParameter = Array<{
