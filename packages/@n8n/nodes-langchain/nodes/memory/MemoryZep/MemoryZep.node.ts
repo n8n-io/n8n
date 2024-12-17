@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
+import { ZepMemory } from '@langchain/community/memory/zep';
+import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
+import type { InputValues, MemoryVariables } from '@langchain/core/memory';
+import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionType,
 	type ISupplyDataFunctions,
@@ -7,16 +12,12 @@ import {
 	type SupplyData,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { ZepMemory } from '@langchain/community/memory/zep';
-import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
-import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
-import type { InputValues, MemoryVariables } from '@langchain/core/memory';
-import type { BaseMessage } from '@langchain/core/messages';
 
 // Extend ZepCloudMemory to trim white space in messages.
 class WhiteSpaceTrimmedZepCloudMemory extends ZepCloudMemory {
