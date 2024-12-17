@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import {
 	type INodeExecutionData,
 	NodeConnectionType,
