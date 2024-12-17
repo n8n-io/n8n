@@ -30,10 +30,10 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { FromAIArgument } from './FromAIParser';
+import { AIParametersParser } from './FromAIParser';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
-import type { FromAIArgument } from '../FromAIParser';
-import { AIParametersParser } from '../FromAIParser';
 
 function getWorkflowInputValues(this: ISupplyDataFunctions) {
 	const inputData = this.getInputData();

@@ -298,25 +298,7 @@ async function loadFieldsToMap(): Promise<void> {
 			...state.paramValue,
 			schema: newSchema,
 		};
-
-		fetchedFields.fields.forEach((field) => {
-			if (field.defaultValue) {
-				if (!state.paramValue.value) {
-					state.paramValue.value = {};
-				}
-				populateDefaultFieldValue(field);
-			}
-		});
 		emitValueChanged();
-	}
-}
-
-function populateDefaultFieldValue(field: ResourceMapperField): void {
-	if (field.defaultValue) {
-		state.paramValue.value = {
-			...state.paramValue.value,
-			[field.id]: field.defaultValue,
-		};
 	}
 }
 
@@ -463,9 +445,6 @@ function addField(name: string): void {
 	if (field) {
 		field.removed = false;
 		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-		if (!state.paramValue.value[field.id]) {
-			state.paramValue.value[field.id] = field.defaultValue;
-		}
 	}
 	emitValueChanged();
 }
@@ -478,7 +457,6 @@ function addAllFields(): void {
 			field.removed = false;
 			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 		}
-		populateDefaultFieldValue(field);
 	});
 	state.paramValue.value = {
 		...state.paramValue.value,
