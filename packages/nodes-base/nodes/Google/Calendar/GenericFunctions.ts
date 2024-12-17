@@ -155,11 +155,17 @@ export function addNextOccurrence(items: RecurentEvent[]) {
 	for (const item of items) {
 		if (item.recurrence) {
 			let eventRecurrence;
+			let eventStartDateTime;
 			try {
 				eventRecurrence = item.recurrence.find((r) => r.toUpperCase().startsWith('RRULE'));
+				eventStartDateTime = item.start.dateTime;
 				if (!eventRecurrence) continue;
 
-				const rrule = RRule.fromString(eventRecurrence);
+				const rruleOptions = {
+					...RRule.parseString(eventRecurrence),
+					dtstart: new Date(eventStartDateTime),
+				};
+				const rrule = new RRule(rruleOptions);
 				const until = rrule.options?.until;
 
 				const now = new Date();
