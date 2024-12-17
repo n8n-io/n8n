@@ -28,27 +28,7 @@
 					"mappingMode": "defineBelow",
 					"value": {},
 					"matchingColumns": [],
-					"schema": [
-						{
-							"id": "email",
-							"displayName": "email",
-							"required": false,
-							"defaultMatch": false,
-							"display": true,
-							"canBeUsedToMatch": true,
-							"type": "string",
-							"removed": true
-						},
-						{
-							"id": "email2",
-							"displayName": "email2",
-							"required": false,
-							"defaultMatch": false,
-							"display": true,
-							"canBeUsedToMatch": true,
-							"type": "string"
-						}
-					],
+					"schema": [],
 					"ignoreTypeMismatchErrors": false,
 					"attemptToConvertTypes": false,
 					"convertFieldsToString": true
@@ -57,7 +37,7 @@
 			},
 			"type": "n8n-nodes-base.executeWorkflow",
 			"typeVersion": 1.2,
-			"position": [1240, 460],
+			"position": [500, 240],
 			"id": "6b6e2e34-c6ab-4083-b8e3-6b0d56be5453",
 			"name": "Execute Workflow"
 		}

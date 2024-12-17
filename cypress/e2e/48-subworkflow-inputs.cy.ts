@@ -150,7 +150,7 @@ describe('Sub-workflow creation', () => {
 		openNode('Execute Workflow Trigger');
 	});
 
-	it.only('works with Fields input source into JSON input source', () => {
+	it('works with Fields input source into JSON input source', () => {
 		ndv.getters.nodeOutputHint().should('exist');
 
 		const fields = [
@@ -195,14 +195,14 @@ describe('Sub-workflow creation', () => {
 			.type(`{selectAll}{backspace}${exampleJson}{enter}`);
 
 		// first one doesn't work for some reason, might need to wait for something?
-		// ndv.actions.execute();
-		// ndv.actions.execute();
+		ndv.actions.execute();
+		ndv.actions.execute();
 
-		// validateAndReturnToParent(
-		// 	DEFAULT_SUBWORKFLOW_NAME_2,
-		// 	2,
-		// 	fields.map((f) => f[0]),
-		// );
+		validateAndReturnToParent(
+			DEFAULT_SUBWORKFLOW_NAME_2,
+			2,
+			fields.map((f) => f[0]),
+		);
 
 		// populateJson(fields);
 

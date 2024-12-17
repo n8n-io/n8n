@@ -582,7 +582,10 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
-		<div v-if="showTypeConversionOptions && state.paramValue.schema.length > 0">
+		<div
+			v-if="showTypeConversionOptions && state.paramValue.schema.length > 0"
+			:class="$style.typeConversionOptions"
+		>
 			<ParameterInputFull
 				:parameter="{
 					name: 'attemptToConvertTypes',
@@ -608,7 +611,7 @@ defineExpose({
 					default: false,
 					description: 'Whether type mismatches should be ignored, rather than returning an Error',
 				}"
-				:path="props.path + '.attemptToConvertTypes'"
+				:path="props.path + '.ignoreTypeMismatchErrors'"
 				:value="state.paramValue.ignoreTypeMismatchErrors"
 				@update="
 					(x) => {
@@ -620,3 +623,9 @@ defineExpose({
 		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.typeConversionOptions {
+	margin-top: var(--spacing-m);
+}
+</style>

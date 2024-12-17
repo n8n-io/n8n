@@ -315,30 +315,6 @@ export class ExecuteWorkflow implements INodeType {
 						description:
 							'Whether the main workflow should wait for the sub-workflow to complete its execution before proceeding',
 					},
-					// Note that, while the defaults are true, the user has to add these in the first place
-					// We default to false if absent in the execute function
-					{
-						displayName: 'Attempt to Convert Types',
-						name: 'attemptToConvertTypes',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
-						displayOptions: {
-							show: { '@version': [{ _cnd: { gte: 1.2 } }] },
-						},
-					},
-					{
-						displayName: 'Ignore Type Mismatch Errors',
-						name: 'ignoreTypeErrors',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether type mismatches should be ignored, rather than returning an Error',
-						displayOptions: {
-							show: { '@version': [{ _cnd: { gte: 1.2 } }] },
-						},
-					},
 				],
 			},
 		],
