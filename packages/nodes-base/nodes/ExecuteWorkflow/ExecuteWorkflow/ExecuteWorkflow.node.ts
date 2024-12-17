@@ -56,12 +56,12 @@ function getCurrentWorkflowInputData(this: IExecuteFunctions) {
 
 		const removedKeys = new Set(removed.map((x) => x.displayName));
 		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
+			index,
+			pairedItem: { item: index },
 			json: _.assign(
-				// itemIndex and the other thing
 				_.pickBy(item.json, (_v, k) => !removedKeys.has(k)),
 				_.fromPairs(addedParams.map((x) => [x, FALLBACK_DEFAULT_VALUE])),
 			),
-			index,
 		}));
 		return filteredInputData;
 	}

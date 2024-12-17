@@ -14,6 +14,7 @@ import {
 	VALUES,
 	TYPE_OPTIONS,
 	PASSTHROUGH,
+	FALLBACK_DEFAULT_VALUE,
 } from '../constants';
 import { getFieldEntries } from '../GenericFunctions';
 
@@ -188,9 +189,11 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			const newParams = getFieldEntries(this);
 			const newKeys = new Set(newParams.map(({ name }) => name));
 
-			// todo: add keys in schema anyway so `Test step` provides at least columns
 			const itemsInSchema: INodeExecutionData[] = inputData.map((row, index) => ({
-				json: _.pickBy(row.json, (_v, key) => newKeys.has(key)),
+				json: _.assign(
+					_.fromPairs(newParams.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
+					_.pickBy(row.json, (_v, key) => newKeys.has(key)),
+				),
 				index,
 			}));
 

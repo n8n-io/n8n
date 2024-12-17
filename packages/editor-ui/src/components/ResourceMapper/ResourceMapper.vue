@@ -54,7 +54,9 @@ const state = reactive({
 		schema: [] as ResourceMapperField[],
 		ignoreTypeMismatchErrors: false,
 		attemptToConvertTypes: false,
-		// This will always be true if `showTypeConversionOptions` is provided
+		// This should always be true if `showTypeConversionOptions` is provided
+		// It's used to avoid accepting any value as string without casting it
+		// Which is the legacy behavior without these type options.
 		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
@@ -580,41 +582,41 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
-		<ParameterInputFull
-			v-if="showTypeConversionOptions"
-			:parameter="{
-				name: 'attemptToConvertTypes',
-				type: 'boolean',
-				displayName: 'Attempt to convert types',
-				default: false,
-				description: 'Attempt to convert types when mapping fields',
-			}"
-			:path="props.path + '.attemptToConvertTypes'"
-			:value="state.paramValue.attemptToConvertTypes"
-			@update="
-				(x) => {
-					state.paramValue.attemptToConvertTypes = x.value as boolean;
-					emitValueChanged();
-				}
-			"
-		/>
-		<ParameterInputFull
-			v-if="showTypeConversionOptions"
-			:parameter="{
-				name: 'ignoreTypeMismatchErrors',
-				type: 'boolean',
-				displayName: 'Ignore Type Mismatch Errors',
-				default: false,
-				description: 'Whether type mismatches should be ignored, rather than returning an Error',
-			}"
-			:path="props.path + '.attemptToConvertTypes'"
-			:value="state.paramValue.ignoreTypeMismatchErrors"
-			@update="
-				(x) => {
-					state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
-					emitValueChanged();
-				}
-			"
-		/>
+		<div v-if="showTypeConversionOptions && state.paramValue.schema.length > 0">
+			<ParameterInputFull
+				:parameter="{
+					name: 'attemptToConvertTypes',
+					type: 'boolean',
+					displayName: 'Attempt to convert types',
+					default: false,
+					description: 'Attempt to convert types when mapping fields',
+				}"
+				:path="props.path + '.attemptToConvertTypes'"
+				:value="state.paramValue.attemptToConvertTypes"
+				@update="
+					(x) => {
+						state.paramValue.attemptToConvertTypes = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+			<ParameterInputFull
+				:parameter="{
+					name: 'ignoreTypeMismatchErrors',
+					type: 'boolean',
+					displayName: 'Ignore Type Mismatch Errors',
+					default: false,
+					description: 'Whether type mismatches should be ignored, rather than returning an Error',
+				}"
+				:path="props.path + '.attemptToConvertTypes'"
+				:value="state.paramValue.ignoreTypeMismatchErrors"
+				@update="
+					(x) => {
+						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+		</div>
 	</div>
 </template>
