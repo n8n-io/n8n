@@ -72,6 +72,7 @@ describe('SupplyDataContext', () => {
 		runIndex,
 		connectionInputData,
 		inputData,
+		connectionType,
 		executeData,
 		[closeFn],
 		abortSignal,

@@ -6,6 +6,7 @@ import type {
 	ICredentialType,
 	ICredentialTypeData,
 	INodeCredentialDescription,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeData,
@@ -14,13 +15,18 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, LoggerProxy as Logger, NodeHelpers, jsonParse } from 'n8n-workflow';
+import {
+	ApplicationError,
+	LoggerProxy as Logger,
+	applyDeclarativeNodeOptionParameters,
+	jsonParse,
+} from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import * as path from 'path';
 
 import { loadClassInIsolation } from './ClassLoader';
-import { CUSTOM_NODES_CATEGORY } from './Constants';
+import { commonCORSParameters, commonPollingParameters, CUSTOM_NODES_CATEGORY } from './Constants';
 import { UnrecognizedCredentialTypeError } from './errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';
 import type { n8n } from './Interfaces';
@@ -135,7 +141,7 @@ export abstract class DirectoryLoader {
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
 				this.addLoadOptionsMethods(version);
-				NodeHelpers.applySpecialNodeParameters(version);
+				this.applySpecialNodeParameters(version);
 			}
 
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
@@ -150,7 +156,7 @@ export abstract class DirectoryLoader {
 			}
 		} else {
 			this.addLoadOptionsMethods(tempNode);
-			NodeHelpers.applySpecialNodeParameters(tempNode);
+			this.applySpecialNodeParameters(tempNode);
 
 			// Short renaming to avoid type issues
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -344,6 +350,24 @@ export abstract class DirectoryLoader {
 		if (node?.methods?.loadOptions) {
 			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
 		}
+	}
+
+	private applySpecialNodeParameters(nodeType: INodeType): void {
+		const { properties, polling, supportsCORS } = nodeType.description;
+		if (polling) {
+			properties.unshift(...commonPollingParameters);
+		}
+		if (nodeType.webhook && supportsCORS) {
+			const optionsProperty = properties.find(({ name }) => name === 'options');
+			if (optionsProperty)
+				optionsProperty.options = [
+					...commonCORSParameters,
+					...(optionsProperty.options as INodePropertyOptions[]),
+				];
+			else properties.push(...commonCORSParameters);
+		}
+
+		applyDeclarativeNodeOptionParameters(nodeType);
 	}
 
 	private getIconPath(icon: string, filePath: string) {

@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { Tool } from '@langchain/core/tools';
+import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -12,12 +17,7 @@ import type {
 
 // TODO: Add support for execute function. Got already started but got commented out
 
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import type { Tool } from '@langchain/core/tools';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;

@@ -51,7 +51,7 @@ export class PruningService {
 
 		if (this.instanceSettings.isLeader) this.startPruning();
 
-		if (this.orchestrationService.isMultiMainSetupEnabled) {
+		if (this.instanceSettings.isMultiMain) {
 			this.orchestrationService.multiMainSetup.on('leader-takeover', () => this.startPruning());
 			this.orchestrationService.multiMainSetup.on('leader-stepdown', () => this.stopPruning());
 		}
