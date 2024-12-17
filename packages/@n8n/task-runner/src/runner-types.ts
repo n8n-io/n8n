@@ -100,31 +100,74 @@ export interface PartialAdditionalData {
 	variables: IDataObject;
 }
 
-export const RPC_ALLOW_LIST = [
-	'helpers.httpRequestWithAuthentication',
-	'helpers.requestWithAuthenticationPaginated',
-	// "helpers.normalizeItems"
-	// "helpers.constructExecutionMetaData"
-	// "helpers.assertBinaryData"
+/** RPC methods that are exposed directly to the Code Node */
+export const EXPOSED_RPC_METHODS = [
+	// assertBinaryData(itemIndex: number, propertyName: string): Promise<IBinaryData>
+	'helpers.assertBinaryData',
+
+	// getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>
 	'helpers.getBinaryDataBuffer',
-	// "helpers.copyInputItems"
-	// "helpers.returnJsonArray"
-	'helpers.getSSHClient',
-	'helpers.createReadStream',
-	// "helpers.getStoragePath"
-	'helpers.writeContentToFile',
+
+	// prepareBinaryData(binaryData: Buffer, fileName?: string, mimeType?: string): Promise<IBinaryData>
 	'helpers.prepareBinaryData',
+
+	// setBinaryDataBuffer(metadata: IBinaryData, buffer: Buffer): Promise<IBinaryData>
 	'helpers.setBinaryDataBuffer',
-	'helpers.copyBinaryFile',
-	'helpers.binaryToBuffer',
-	// "helpers.binaryToString"
-	// "helpers.getBinaryPath"
-	'helpers.getBinaryStream',
-	'helpers.getBinaryMetadata',
-	'helpers.createDeferredPromise',
+
+	// binaryToString(body: Buffer, encoding?: string): string
+	'helpers.binaryToString',
+
+	// httpRequest(opts: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>
 	'helpers.httpRequest',
-	'logNodeOutput',
-] as const;
+
+	//#region Not exposed helper functions
+
+	// These rely on checking the credentials from the current node type (Code Node)
+	// and hence they can't even work (Code Node doesn't have credentials)
+	// 'helpers.httpRequestWithAuthentication',
+	// 'helpers.requestWithAuthenticationPaginated',
+
+	// This has been removed
+	// 'helpers.copyBinaryFile',
+
+	// We can't support streams over RPC without implementing it ourselves
+	// 'helpers.createReadStream',
+	// 'helpers.getBinaryStream',
+
+	// Makes no sense to support this, as it returns either a stream or a buffer
+	// and we can't support streams over RPC
+	// 'helpers.binaryToBuffer',
+
+	// These are pretty low-level, so we shouldn't expose them
+	// (require binary data id, which we don't expose)
+	// 'helpers.getBinaryMetadata',
+	// "helpers.getStoragePath"
+	// "helpers.getBinaryPath"
+
+	// We shouldn't allow arbitrary FS writes
+	// 'helpers.writeContentToFile',
+
+	// Not something we need to expose. Can be done in the node itself
+	// copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[]
+	// "helpers.copyInputItems"
+
+	// Code Node does these automatically already
+	// "helpers.returnJsonArray"
+	// "helpers.normalizeItems"
+
+	// The client is instantiated and lives on the n8n instance, so we can't
+	// expose it over RPC without implementing object marshalling
+	// 'helpers.getSSHClient',
+
+	// Doesn't make sense to expose
+	// 'helpers.createDeferredPromise',
+	// "helpers.constructExecutionMetaData"
+
+	//#endregion
+];
+
+/** List of RPC methods that are supported */
+export const RPC_ALLOW_LIST = [...EXPOSED_RPC_METHODS, 'logNodeOutput'] as const;
 
 /** Node types needed for the runner to execute a task. */
 export type NeededNodeType = { name: string; version: number };

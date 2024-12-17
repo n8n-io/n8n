@@ -1,3 +1,4 @@
+import { isSerializedBuffer, serializedBufferToBuffer } from 'n8n-core';
 import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
@@ -6,7 +7,8 @@ import { type MessageEvent, WebSocket } from 'ws';
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
-import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
+import { EXPOSED_RPC_METHODS, type TaskResultData } from '@/runner-types';
+import { set } from '@/utils/set';
 
 import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
 
@@ -464,7 +466,13 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 
 		try {
-			return await dataPromise;
+			const returnValue = await dataPromise;
+
+			if (isSerializedBuffer(returnValue)) {
+				return serializedBufferToBuffer(returnValue);
+			}
+
+			return returnValue;
 		} finally {
 			this.rpcCalls.delete(callId);
 		}
@@ -488,19 +496,15 @@ export abstract class TaskRunner extends EventEmitter {
 
 	buildRpcCallObject(taskId: string) {
 		const rpcObject: RPCCallObject = {};
-		for (const r of RPC_ALLOW_LIST) {
-			const splitPath = r.split('.');
-			let obj = rpcObject;
 
-			splitPath.forEach((s, index) => {
-				if (index !== splitPath.length - 1) {
-					obj[s] = {};
-					obj = obj[s];
-					return;
-				}
-				obj[s] = async (...args: unknown[]) => await this.makeRpcCall(taskId, r, args);
-			});
+		for (const rpcMethod of EXPOSED_RPC_METHODS) {
+			set(
+				rpcObject,
+				rpcMethod.split('.'),
+				async (...args: unknown[]) => await this.makeRpcCall(taskId, rpcMethod, args),
+			);
 		}
+
 		return rpcObject;
 	}
 
