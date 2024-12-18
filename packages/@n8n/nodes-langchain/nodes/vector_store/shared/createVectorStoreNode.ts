@@ -3,7 +3,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeConnectionType, NodeOperationError, ThemeIconColor } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeCredentialDescription,
@@ -17,6 +17,7 @@ import type {
 	INodeListSearchResult,
 	Icon,
 	INodePropertyOptions,
+	ThemeIconColor,
 } from 'n8n-workflow';
 
 import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
