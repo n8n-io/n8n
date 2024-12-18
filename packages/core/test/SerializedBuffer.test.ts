@@ -29,6 +29,7 @@ describe('isSerializedBuffer', () => {
 
 	test.each([
 		[{ data: [1, 2, 3] }],
+		[{ data: [1, 2, 256] }],
 		[{ type: 'Buffer', data: 'notAnArray' }],
 		[{ data: 42 }],
 		[{ data: 'test' }],
