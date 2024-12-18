@@ -66,6 +66,23 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				default: 'worklfow_call',
 			},
 			{
+				displayName:
+					"When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the 'execute workflow' node will be output by this node.",
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { eq: 1 } }] },
+				},
+			},
+			{
+				displayName: 'This node is out of date. Please upgrade by removing it and adding a new one',
+				name: 'outdatedVersionWarning',
+				type: 'notice',
+				displayOptions: { show: { '@version': [{ _cnd: { eq: 1 } }] } },
+				default: '',
+			},
+			{
 				displayName: 'Input Source',
 				name: INPUT_SOURCE,
 				type: 'options',

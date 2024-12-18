@@ -88,10 +88,9 @@ export class ExecuteWorkflow implements INodeType {
 				],
 			},
 			{
-				displayName: 'Outdated Version Warning',
+				displayName: 'This node is out of date. Please upgrade by removing it and adding a new one',
 				name: 'outdatedVersionWarning',
 				type: 'notice',
-				description: 'Please update this node by removing it and adding a new one',
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
 				default: '',
 			},
