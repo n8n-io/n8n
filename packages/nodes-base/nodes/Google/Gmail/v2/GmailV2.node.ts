@@ -822,6 +822,7 @@ export class GmailV2 implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;
+				console.log(error.description);
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
