@@ -1955,7 +1955,7 @@ describe('useCanvasOperations', () => {
 			const node = createTestNode({ id: nodeId, type: 'unknown-type' });
 
 			workflowsStore.getNodeById.mockReturnValue(node);
-			nodeTypesStore.getNodeType = () => null;
+			nodeTypesStore.getNodeType.mockReturnValue(null);
 
 			const { revalidateNodeInputConnections } = useCanvasOperations({ router });
 			revalidateNodeInputConnections(nodeId);
@@ -2104,7 +2104,7 @@ describe('useCanvasOperations', () => {
 			const node = createTestNode({ id: nodeId, type: 'unknown-type' });
 
 			workflowsStore.getNodeById.mockReturnValue(node);
-			nodeTypesStore.getNodeType = () => null;
+			nodeTypesStore.getNodeType.mockReturnValue(null);
 
 			const { revalidateNodeOutputConnections } = useCanvasOperations({ router });
 			revalidateNodeOutputConnections(nodeId);

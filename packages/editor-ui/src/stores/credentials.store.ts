@@ -84,114 +84,94 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		);
 	});
 
-	const allUsableCredentialsForNode = computed(() => {
-		return (node: INodeUi): ICredentialsResponse[] => {
-			let credentials: ICredentialsResponse[] = [];
-			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-			if (nodeType?.credentials) {
-				nodeType.credentials.forEach((cred) => {
-					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name]);
-				});
-			}
-			return credentials.sort((a, b) => {
-				const aDate = new Date(a.updatedAt);
-				const bDate = new Date(b.updatedAt);
-				return aDate.getTime() - bDate.getTime();
+	const allUsableCredentialsForNode = (node: INodeUi): ICredentialsResponse[] => {
+		let credentials: ICredentialsResponse[] = [];
+		const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+		if (nodeType?.credentials) {
+			nodeType.credentials.forEach((cred) => {
+				credentials = credentials.concat(allUsableCredentialsByType.value[cred.name]);
 			});
-		};
-	});
+		}
+		return credentials.sort((a, b) => {
+			const aDate = new Date(a.updatedAt);
+			const bDate = new Date(b.updatedAt);
+			return aDate.getTime() - bDate.getTime();
+		});
+	};
 
-	const getCredentialTypeByName = computed(() => {
-		return (type: string): ICredentialType | undefined => state.value.credentialTypes[type];
-	});
+	const getCredentialTypeByName = (type: string): ICredentialType | undefined =>
+		state.value.credentialTypes[type];
 
-	const getCredentialById = computed(() => {
-		return (id: string): ICredentialsResponse => state.value.credentials[id];
-	});
+	const getCredentialById = (id: string): ICredentialsResponse => state.value.credentials[id];
 
-	const getCredentialByIdAndType = computed(() => {
-		return (id: string, type: string): ICredentialsResponse | undefined => {
-			const credential = state.value.credentials[id];
-			return !credential || credential.type !== type ? undefined : credential;
-		};
-	});
+	const getCredentialByIdAndType = (id: string, type: string): ICredentialsResponse | undefined => {
+		const credential = state.value.credentials[id];
+		return !credential || credential.type !== type ? undefined : credential;
+	};
 
-	const getCredentialsByType = computed(() => {
-		return (credentialType: string): ICredentialsResponse[] => {
-			return allCredentialsByType.value[credentialType] || [];
-		};
-	});
+	const getCredentialsByType = (credentialType: string): ICredentialsResponse[] =>
+		allCredentialsByType.value[credentialType] || [];
 
-	const getUsableCredentialByType = computed(() => {
-		return (credentialType: string): ICredentialsResponse[] => {
-			return allUsableCredentialsByType.value[credentialType] || [];
-		};
-	});
+	const getUsableCredentialByType = (credentialType: string): ICredentialsResponse[] =>
+		allUsableCredentialsByType.value[credentialType] || [];
 
-	const getNodesWithAccess = computed(() => {
-		return (credentialTypeName: string) => {
-			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
-			const nodeTypesStore = useNodeTypesStore();
+	const getNodesWithAccess = (credentialTypeName: string) => {
+		const credentialType = getCredentialTypeByName(credentialTypeName);
+		if (!credentialType) {
+			return [];
+		}
+		const nodeTypesStore = useNodeTypesStore();
 
-			return (credentialType.supportedNodes ?? [])
-				.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
-				.filter(isPresent);
-		};
-	});
+		return (credentialType.supportedNodes ?? [])
+			.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
+			.filter(isPresent);
+	};
 
-	const getScopesByCredentialType = computed(() => {
-		return (credentialTypeName: string) => {
-			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
+	const getScopesByCredentialType = (credentialTypeName: string) => {
+		const credentialType = getCredentialTypeByName(credentialTypeName);
+		if (!credentialType) {
+			return [];
+		}
 
-			const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
+		const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
 
-			if (
-				!scopeProperty ||
-				!scopeProperty.default ||
-				typeof scopeProperty.default !== 'string' ||
-				scopeProperty.default === ''
-			) {
-				return [];
-			}
+		if (
+			!scopeProperty ||
+			!scopeProperty.default ||
+			typeof scopeProperty.default !== 'string' ||
+			scopeProperty.default === ''
+		) {
+			return [];
+		}
 
-			let { default: scopeDefault } = scopeProperty;
+		let { default: scopeDefault } = scopeProperty;
 
-			// disregard expressions for display
-			scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
+		// disregard expressions for display
+		scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
 
-			if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+		if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
 
-			if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+		if (/,/.test(scopeDefault)) return scopeDefault.split(',');
 
-			return [scopeDefault];
-		};
-	});
+		return [scopeDefault];
+	};
 
-	const getCredentialOwnerName = computed(() => {
-		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
-			const { name, email } = splitName(credential?.homeProject?.name ?? '');
+	const getCredentialOwnerName = (
+		credential: ICredentialsResponse | IUsedCredential | undefined,
+	): string => {
+		const { name, email } = splitName(credential?.homeProject?.name ?? '');
 
-			return name
-				? email
-					? `${name} (${email})`
-					: name
-				: (email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback'));
-		};
-	});
+		return name
+			? email
+				? `${name} (${email})`
+				: name
+			: (email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback'));
+	};
 
-	const getCredentialOwnerNameById = computed(() => {
-		return (credentialId: string): string => {
-			const credential = getCredentialById.value(credentialId);
-
-			return getCredentialOwnerName.value(credential);
-		};
-	});
+	const getCredentialOwnerNameById = (credentialId: string): string => {
+		const credential = getCredentialById(credentialId);
+		return getCredentialOwnerName(credential);
+	};
 
 	const httpOnlyCredentialTypes = computed(() => {
 		return allCredentialTypes.value.filter(
@@ -372,7 +352,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const { credentialTypeName } = params;
 			let newName = DEFAULT_CREDENTIAL_NAME;
 			if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
-				const cred = getCredentialTypeByName.value(credentialTypeName);
+				const cred = getCredentialTypeByName(credentialTypeName);
 				newName = cred ? getAppNameFromCredType(cred.displayName) : '';
 				newName =
 					newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
