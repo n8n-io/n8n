@@ -108,6 +108,5 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 				url: 'https://elastic.domain.com/test-endpoint',
 			}),
 		);
-
 	});
 });
