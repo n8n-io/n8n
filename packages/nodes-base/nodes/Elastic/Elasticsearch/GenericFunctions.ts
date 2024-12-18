@@ -20,7 +20,7 @@ export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body:
 		method: 'POST',
 		headers: { 'Content-Type': 'application/x-ndjson' },
 		body: bulkBody,
-		url: `${baseUrl}/_bulk`,
+		url: `${baseUrl.replace(/\/$/, '')}/_bulk`,
 		skipSslCertificateValidation: ignoreSSLIssues,
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true,
@@ -66,7 +66,7 @@ export async function elasticsearchApiRequest(
 		method,
 		body,
 		qs,
-		url: `${baseUrl}${endpoint}`,
+		url: `${baseUrl.replace(/\/$/, '')}${endpoint}`,
 		json: true,
 		skipSslCertificateValidation: ignoreSSLIssues,
 	};
