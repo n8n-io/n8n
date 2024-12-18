@@ -38,6 +38,7 @@
     "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
+    "lodash.set": "4.3.2",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
@@ -45,6 +46,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/lodash.set": "4.3.9",
     "luxon": "catalog:"
   }
 }

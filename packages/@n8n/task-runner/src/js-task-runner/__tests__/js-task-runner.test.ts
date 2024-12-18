@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import type { IBinaryData } from 'n8n-workflow';
 import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
@@ -8,10 +9,15 @@ import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
-import type { DataRequestResponse, InputDataChunkDefinition } from '@/runner-types';
+import {
+	UNSUPPORTED_HELPER_FUNCTIONS,
+	type DataRequestResponse,
+	type InputDataChunkDefinition,
+} from '@/runner-types';
 import type { Task } from '@/task-runner';
 
 import {
@@ -565,6 +571,120 @@ describe('JsTaskRunner', () => {
 					});
 				},
 			);
+		});
+
+		describe('helpers', () => {
+			const binaryDataFile: IBinaryData = {
+				data: 'data',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+			};
+
+			const groups = [
+				{
+					method: 'helpers.assertBinaryData',
+					invocation: "helpers.assertBinaryData(0, 'binaryFile')",
+					expectedParams: [0, 'binaryFile'],
+				},
+				{
+					method: 'helpers.getBinaryDataBuffer',
+					invocation: "helpers.getBinaryDataBuffer(0, 'binaryFile')",
+					expectedParams: [0, 'binaryFile'],
+				},
+				{
+					method: 'helpers.prepareBinaryData',
+					invocation: "helpers.prepareBinaryData(Buffer.from('123'), 'file.txt', 'text/plain')",
+					expectedParams: [Buffer.from('123'), 'file.txt', 'text/plain'],
+				},
+				{
+					method: 'helpers.setBinaryDataBuffer',
+					invocation:
+						"helpers.setBinaryDataBuffer({ data: '123', mimeType: 'text/plain' }, Buffer.from('321'))",
+					expectedParams: [{ data: '123', mimeType: 'text/plain' }, Buffer.from('321')],
+				},
+				{
+					method: 'helpers.binaryToString',
+					invocation: "helpers.binaryToString(Buffer.from('123'), 'utf8')",
+					expectedParams: [Buffer.from('123'), 'utf8'],
+				},
+				{
+					method: 'helpers.httpRequest',
+					invocation: "helpers.httpRequest({ method: 'GET', url: 'http://localhost' })",
+					expectedParams: [{ method: 'GET', url: 'http://localhost' }],
+				},
+			];
+
+			for (const group of groups) {
+				it(`${group.method} for runOnceForAllItems`, async () => {
+					// Arrange
+					const rpcCallSpy = jest
+						.spyOn(defaultTaskRunner, 'makeRpcCall')
+						.mockResolvedValue(undefined);
+
+					// Act
+					await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `await ${group.invocation}; return []`,
+							nodeMode: 'runOnceForAllItems',
+						}),
+						taskData: newDataRequestResponse(
+							[{ json: {}, binary: { binaryFile: binaryDataFile } }],
+							{},
+						),
+					});
+
+					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
+				});
+
+				it(`${group.method} for runOnceForEachItem`, async () => {
+					// Arrange
+					const rpcCallSpy = jest
+						.spyOn(defaultTaskRunner, 'makeRpcCall')
+						.mockResolvedValue(undefined);
+
+					// Act
+					await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `await ${group.invocation}; return {}`,
+							nodeMode: 'runOnceForEachItem',
+						}),
+						taskData: newDataRequestResponse(
+							[{ json: {}, binary: { binaryFile: binaryDataFile } }],
+							{},
+						),
+					});
+
+					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
+				});
+			}
+
+			describe('unsupported methods', () => {
+				for (const unsupportedFunction of UNSUPPORTED_HELPER_FUNCTIONS) {
+					it(`should throw an error if ${unsupportedFunction} is used in runOnceForAllItems`, async () => {
+						// Act
+
+						await expect(
+							async () =>
+								await executeForAllItems({
+									code: `${unsupportedFunction}()`,
+									inputItems,
+								}),
+						).rejects.toThrow(UnsupportedFunctionError);
+					});
+
+					it(`should throw an error if ${unsupportedFunction} is used in runOnceForEachItem`, async () => {
+						// Act
+
+						await expect(
+							async () =>
+								await executeForEachItem({
+									code: `${unsupportedFunction}()`,
+									inputItems,
+								}),
+						).rejects.toThrow(UnsupportedFunctionError);
+					});
+				}
+			});
 		});
 
 		it('should allow access to Node.js Buffers', async () => {
