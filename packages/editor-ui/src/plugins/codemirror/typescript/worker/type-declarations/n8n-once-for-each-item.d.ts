@@ -1,5 +1,4 @@
 export {};
-export type N8nReturn = Promise<Object> | Object;
 
 declare global {
 	interface NodeData<C, J extends N8nJson, B extends string, P> {
@@ -7,6 +6,9 @@ declare global {
 		item: N8nItem<J, B>;
 		params: P;
 	}
+
+	// @ts-expect-error N8nInputItem is populated dynamically
+	type N8nInput = NodeData<{}, N8nInputItem, {}, {}>;
 
 	const $itemIndex: number;
 	const $json: N8nInput['item']['json'];

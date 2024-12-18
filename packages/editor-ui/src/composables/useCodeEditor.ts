@@ -1,6 +1,6 @@
 import { codeEditorTheme } from '@/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/plugins/codemirror/keymap';
-import { useTypescript } from '@/plugins/codemirror/lsp/typescript';
+import { useTypescript } from '@/plugins/codemirror/typescript/client/useTypescript';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import { closeBrackets, closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import { history, historyField } from '@codemirror/commands';
@@ -45,7 +45,6 @@ import {
 } from 'vue';
 import { useCompleter } from '../components/CodeNodeEditor/completer';
 import { mappingDropCursor } from '../plugins/codemirror/dragAndDrop';
-import { forceParse } from '../utils/forceParse';
 import { languageFacet, type CodeEditorLanguage } from '../plugins/codemirror/format';
 
 export type CodeEditorLanguageParamsMap = {
@@ -93,10 +92,13 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	const themeExtensions = ref<Compartment>(new Compartment());
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
-	const onUpdateMode = ref<(mode: CodeExecutionMode) => void>(() => {});
 	const storedStateFields = { fold: foldState, history: historyField };
 
 	const storedStateId = computed(() => `${toValue(id)}.editorState`);
+	const mode = computed(() => {
+		const params = toValue(languageParams);
+		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
+	});
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
@@ -114,16 +116,10 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 
 		switch (lang) {
 			case 'javaScript': {
-				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
-				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
-				const { extension, updateMode } = await useTypescript(editor.value, mode, toValue(id));
-				onUpdateMode.value = updateMode;
-				langExtensions.push(extension);
+				langExtensions.push(await useTypescript(editor.value, mode, toValue(id)));
 				break;
 			}
 			case 'python': {
-				const params = (toValue(languageParams) as CodeEditorLanguageParamsMap['javaScript']) ?? {};
-				const mode: CodeExecutionMode = 'mode' in params ? params.mode : 'runOnceForAllItems';
 				const pythonAutocomplete = useCompleter(mode, editor.value ?? null).autocompletionExtension(
 					'python',
 				);
@@ -329,19 +325,6 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	});
 
 	watch(toRef(language), setLanguageExtensions);
-
-	watch(toRef(languageParams), async (params) => {
-		if (!editor.value) return;
-
-		if ('mode' in params) {
-			onUpdateMode.value((params as CodeEditorLanguageParamsMap['javaScript']).mode);
-			forceParse(editor.value);
-		}
-
-		editor.value.dispatch({
-			effects: languageExtensions.value.reconfigure(await getFullLanguageExtensions()),
-		});
-	});
 
 	watch(toRef(isReadOnly), setReadOnlyExtensions);
 

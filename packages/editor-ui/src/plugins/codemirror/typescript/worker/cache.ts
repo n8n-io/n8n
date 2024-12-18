@@ -1,3 +1,5 @@
+export type IndexedDbCache = Awaited<ReturnType<typeof indexedDbCache>>;
+
 export async function indexedDbCache(dbName: string, storeName: string) {
 	let cache: Record<string, string> = {};
 

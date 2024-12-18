@@ -182,7 +182,11 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 			backgroundColor: 'var(--color-infobox-background)',
 		},
 		'.cm-diagnosticText': {
+			fontSize: 'var(--font-size-xs)',
 			color: 'var(--color-text-base)',
+		},
+		'.cm-diagnosticDocs': {
+			fontSize: 'var(--font-size-2xs)',
 		},
 		'.cm-foldPlaceholder': {
 			color: 'var(--color-text-base)',

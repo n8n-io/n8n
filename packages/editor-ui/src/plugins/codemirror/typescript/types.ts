@@ -1,8 +1,9 @@
+import type { Schema } from '@/Interface';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import type { Diagnostic } from '@codemirror/lint';
-import type ts from 'typescript';
-import type { Schema } from '@/Interface';
 import type { CodeExecutionMode } from 'n8n-workflow';
+import type ts from 'typescript';
+import type * as Comlink from 'comlink';
 
 export interface HoverInfo {
 	start: number;
@@ -20,19 +21,28 @@ export type WorkerInitOptions = {
 	mode: CodeExecutionMode;
 };
 
-export type NodeDataFetcher = (
-	nodeName: string,
-) => Promise<{ json: Schema | undefined; binary: string[] } | undefined>;
+export type NodeData = { json: Schema | undefined; binary: string[]; params: Schema };
+export type NodeDataFetcher = (nodeName: string) => Promise<NodeData | undefined>;
 
 export type LanguageServiceWorker = {
-	init(options: WorkerInitOptions, nodeDataFetcher: NodeDataFetcher): Promise<void>;
 	updateFile(content: string): void;
 	updateMode(mode: CodeExecutionMode): void;
 	updateNodeTypes(): void;
-	getCompletionsAtPos(
-		pos: number,
-		wordBefore: string,
-	): Promise<{ result: CompletionResult; isGlobal: boolean } | null>;
+	getCompletionsAtPos(pos: number): Promise<{ result: CompletionResult; isGlobal: boolean } | null>;
 	getDiagnostics(): Diagnostic[];
 	getHoverTooltip(pos: number): HoverInfo | null;
+};
+
+export type LanguageServiceWorkerInit = {
+	init(
+		options: WorkerInitOptions,
+		nodeDataFetcher: NodeDataFetcher,
+	): Promise<LanguageServiceWorker>;
+};
+
+export type RemoteLanguageServiceWorkerInit = {
+	init(
+		options: WorkerInitOptions,
+		nodeDataFetcher: NodeDataFetcher,
+	): Comlink.Remote<LanguageServiceWorker>;
 };
