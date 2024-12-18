@@ -1,5 +1,5 @@
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
-import { RPC_ALLOW_LIST } from '@n8n/task-runner';
+import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import type {
@@ -289,7 +289,7 @@ export abstract class TaskManager {
 		}
 
 		try {
-			if (!RPC_ALLOW_LIST.includes(name)) {
+			if (!AVAILABLE_RPC_METHODS.includes(name)) {
 				this.sendMessage({
 					type: 'requester:rpcresponse',
 					taskId,
