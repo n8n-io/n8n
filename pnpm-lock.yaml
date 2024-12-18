@@ -1131,7 +1131,7 @@ importers:
         specifier: 'catalog:'
         version: 1.7.4
       chardet:
-        specifier: ^2.0.0
+        specifier: 2.0.0
         version: 2.0.0
       concat-stream:
         specifier: 2.0.0
