@@ -64,7 +64,10 @@ ${Array.from(loadedNodes.values())
 
 interface NodeDataMap {
     ${Array.from(loadedNodes.entries())
-			.map(([nodeName, { typeName }]) => `'${nodeName}': NodeData<{}, ${typeName}, {}, {}>`)
+			.map(
+				([nodeName, { typeName }]) =>
+					`'${nodeName}': NodeData<${typeName}Context, ${typeName}Json, ${typeName}BinaryKeys, ${typeName}Params>`,
+			)
 			.join(';\n')}
 }
 `);
@@ -73,5 +76,17 @@ interface NodeDataMap {
 export async function getDynamicInputNodeTypes(inputNodeNames: string[]) {
 	const typeNames = inputNodeNames.map((nodeName) => pascalCase(nodeName));
 
-	return globalTypeDefinition(`type N8nInputItem = ${typeNames.join(' | ')}`);
+	return globalTypeDefinition(`
+type N8nInputJson = ${typeNames.map((typeName) => `${typeName}Json`).join(' | ')};
+type N8nInputBinaryKeys = ${typeNames.map((typeName) => `${typeName}BinaryKeys`).join(' | ')};
+type N8nInputContext = ${typeNames.map((typeName) => `${typeName}Context`).join(' | ')};
+type N8nInputParams = ${typeNames.map((typeName) => `${typeName}Params`).join(' | ')};
+`);
+}
+
+export async function getDynamicVariableTypes(variables: string[]) {
+	return globalTypeDefinition(`
+	interface N8nVars {
+	${variables.map((key) => `${key}: string;`).join('\n')}
+}`);
 }

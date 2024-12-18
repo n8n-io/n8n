@@ -8,10 +8,11 @@ import type { CodeExecutionMode } from 'n8n-workflow';
 import { pascalCase } from 'change-case';
 import { computed, reactive, ref, watch } from 'vue';
 import { getCompletionsAtPos } from './completions';
-import { TYPESCRIPT_FILES } from './constants';
+import { LUXON_VERSION, TYPESCRIPT_FILES } from './constants';
 import {
 	getDynamicInputNodeTypes,
 	getDynamicNodeTypes,
+	getDynamicVariableTypes,
 	schemaToTypescriptTypes,
 } from './dynamicTypes';
 import { setupTypescriptEnv } from './env';
@@ -21,6 +22,7 @@ import { getUsedNodeNames } from './typescriptAst';
 
 import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
 import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
+import { loadTypes } from './npmTypesLoader';
 
 self.process = { env: {} } as NodeJS.Process;
 
@@ -53,12 +55,20 @@ const worker: LanguageServiceWorkerInit = {
 		async function loadNodeTypes(nodeName: string) {
 			const data = await nodeDataFetcher(nodeName);
 
-			if (data?.json) {
-				const schema = data.json;
-				const typeName = pascalCase(nodeName);
-				const type = schemaToTypescriptTypes(schema, typeName);
-				loadedNodeTypesMap.set(nodeName, { type, typeName });
-			}
+			const typeName = pascalCase(nodeName);
+			const jsonType = data?.json
+				? schemaToTypescriptTypes(data.json, `${typeName}Json`)
+				: `type ${typeName}Json = N8nJson`;
+			const paramsType = data?.params
+				? schemaToTypescriptTypes(data.params, `${typeName}Params`)
+				: `type ${typeName}Params = {}`;
+
+			// Using || on purpose to handle empty string
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			const binaryType = `type ${typeName}BinaryKeys = ${data?.binary.map((key) => `'${key}'`).join(' | ') || 'string'}`;
+			const contextType = `type ${typeName}Context = {}`;
+			const type = [jsonType, binaryType, paramsType, contextType].join('\n');
+			loadedNodeTypesMap.set(nodeName, { type, typeName });
 		}
 
 		async function loadTypesIfNeeded() {
@@ -75,10 +85,27 @@ const worker: LanguageServiceWorkerInit = {
 			}
 		}
 
-		await loadTypesIfNeeded();
-		await Promise.all(
-			options.inputNodeNames.map(async (nodeName) => await loadNodeTypes(nodeName)),
-		);
+		async function loadLuxonTypes() {
+			if (cache.getItem('/node_modules/@types/luxon/package.json')) {
+				const fileMap = await cache.getAllWithPrefix('/node_modules/@types/luxon');
+
+				for (const [path, content] of Object.entries(fileMap)) {
+					updateFile(path, content);
+				}
+			} else {
+				await loadTypes('luxon', LUXON_VERSION, (path, types) => {
+					cache.setItem(path, types);
+					updateFile(path, types);
+				});
+			}
+		}
+
+		async function setVariableTypes() {
+			updateFile(
+				TYPESCRIPT_FILES.DYNAMIC_VARIABLES_TYPES,
+				await getDynamicVariableTypes(options.variables),
+			);
+		}
 
 		function updateFile(fileName: string, content: string) {
 			const exists = env.getSourceFile(fileName);
@@ -88,6 +115,13 @@ const worker: LanguageServiceWorkerInit = {
 				env.createFile(fileName, content);
 			}
 		}
+
+		const loadInputNodes = options.inputNodeNames.map(
+			async (nodeName) => await loadNodeTypes(nodeName),
+		);
+		await Promise.all(
+			loadInputNodes.concat(loadTypesIfNeeded(), loadLuxonTypes(), setVariableTypes()),
+		);
 
 		watch(
 			loadedNodeTypesMap,

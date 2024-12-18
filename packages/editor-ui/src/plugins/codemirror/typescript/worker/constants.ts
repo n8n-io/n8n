@@ -18,7 +18,9 @@ export const TYPESCRIPT_AUTOCOMPLETE_THRESHOLD = '15';
 export const TYPESCRIPT_FILES = {
 	DYNAMIC_TYPES: 'n8n-dynamic.d.ts',
 	DYNAMIC_INPUT_TYPES: 'n8n-dynamic-input.d.ts',
+	DYNAMIC_VARIABLES_TYPES: 'n8n-variables.d.ts',
 	MODE_TYPES: 'n8n-mode-specific.d.ts',
 	N8N_TYPES: 'n8n.d.ts',
 	GLOBAL_TYPES: 'globals.d.ts',
 };
+export const LUXON_VERSION = '3.2.0';

@@ -10,6 +10,6 @@ declare global {
 		itemMatching(itemIndex: number): N8nItem<J, B>;
 	}
 
-	// @ts-expect-error N8nInputItem is populated dynamically
-	type N8nInput = NodeData<{}, N8nInputItem, {}, {}>;
+	// @ts-expect-error N8nInputJson is populated dynamically
+	type N8nInput = NodeData<N8nInputContext, N8nInputJson, N8nInputBinaryKeys, N8nInputParams>;
 }

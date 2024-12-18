@@ -16,7 +16,6 @@ declare global {
 		mimeType: string;
 	}
 
-	// TODO: populate dynamically
 	interface N8nVars {}
 
 	// TODO: populate dynamically
@@ -63,7 +62,7 @@ declare global {
 	const $now: DateTime;
 	const $today: DateTime;
 
-	const $parameter: N8nParameter;
+	const $parameter: N8nInput['params'];
 	const $vars: N8nVars;
 	const $nodeVersion: number;
 

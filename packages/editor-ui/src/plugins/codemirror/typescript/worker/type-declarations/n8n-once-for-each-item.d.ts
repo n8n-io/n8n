@@ -7,8 +7,8 @@ declare global {
 		params: P;
 	}
 
-	// @ts-expect-error N8nInputItem is populated dynamically
-	type N8nInput = NodeData<{}, N8nInputItem, {}, {}>;
+	// @ts-expect-error N8nInputJson is populated dynamically
+	type N8nInput = NodeData<{}, N8nInputJson, {}, {}>;
 
 	const $itemIndex: number;
 	const $json: N8nInput['item']['json'];

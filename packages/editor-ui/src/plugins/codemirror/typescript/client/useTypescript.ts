@@ -82,7 +82,7 @@ export async function useTypescript(
 
 				return {
 					json: schema,
-					binary: Object.keys(binaryData),
+					binary: Object.keys(binaryData.reduce((acc, obj) => ({ ...acc, ...obj }), {})),
 					params: getSchemaForExecutionData([node.parameters]),
 				};
 			}
