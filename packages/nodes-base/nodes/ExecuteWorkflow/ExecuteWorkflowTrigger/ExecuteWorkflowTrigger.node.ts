@@ -64,22 +64,26 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				default: 'worklfow_call',
 			},
 			{
-				displayName: 'Input Source',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Input data mode',
 				name: INPUT_SOURCE,
 				type: 'options',
 				options: [
 					{
-						name: 'Using Fields Below',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Define using fields below',
 						value: WORKFLOW_INPUTS,
 						description: 'Provide input fields via UI',
 					},
 					{
-						name: 'Using JSON Example',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Define using JSON example',
 						value: JSON_EXAMPLE,
 						description: 'Generate a schema from an example JSON object',
 					},
 					{
-						name: 'Using Parent Workflow Data',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Accept all data',
 						value: PASSTHROUGH,
 						description: 'Use all incoming data from the parent workflow',
 					},
@@ -122,7 +126,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			{
 				displayName: 'Workflow Inputs',
 				name: WORKFLOW_INPUTS,
-				placeholder: 'Add Field',
+				placeholder: 'Add field',
 				type: 'fixedCollection',
 				description:
 					'Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.',

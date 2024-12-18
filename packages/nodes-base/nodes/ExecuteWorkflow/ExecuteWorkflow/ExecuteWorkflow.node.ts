@@ -248,8 +248,8 @@ export class ExecuteWorkflow implements INodeType {
 						valuesLabel: 'Workflow Inputs',
 						mode: 'map',
 						fieldWords: {
-							singular: 'workflow input',
-							plural: 'workflow inputs',
+							singular: 'input',
+							plural: 'inputs',
 						},
 						addAllFields: true,
 						multiKeyMatch: false,
