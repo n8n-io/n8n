@@ -19,7 +19,7 @@ import { OrchestrationService } from '../orchestration.service';
  * By default:
  *
  * - Soft deletion (every 60m) identifies all prunable executions based on max
- *   age or max count, exempting annotated executions.
+ *   age and/or max count, exempting annotated executions.
  * - Hard deletion (every 15m) processes prunable executions in batches of 100,
  *   switching to 1s intervals until the total to prune is back down low enough,
  *   or in case the hard deletion fails.
