@@ -42,6 +42,7 @@
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",
+    "chardet": "2.0.0",
     "concat-stream": "2.0.0",
     "cron": "3.1.7",
     "fast-glob": "catalog:",
