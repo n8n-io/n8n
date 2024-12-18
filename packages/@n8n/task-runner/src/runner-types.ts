@@ -166,8 +166,8 @@ export const EXPOSED_RPC_METHODS = [
 	//#endregion
 ];
 
-/** List of RPC methods that are supported */
-export const RPC_ALLOW_LIST = [...EXPOSED_RPC_METHODS, 'logNodeOutput'] as const;
+/** List of all RPC methods that task runner supports */
+export const AVAILABLE_RPC_METHODS = [...EXPOSED_RPC_METHODS, 'logNodeOutput'] as const;
 
 /** Node types needed for the runner to execute a task. */
 export type NeededNodeType = { name: string; version: number };
