@@ -68,10 +68,10 @@ export class CredentialsService {
 			includeScopes = false,
 			includeData = false,
 		}: {
-			listQueryOptions: ListQuery.Options & { includeData?: boolean };
-			includeScopes: boolean;
-			includeData: boolean;
-		},
+			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			includeScopes?: boolean;
+			includeData?: boolean;
+		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
