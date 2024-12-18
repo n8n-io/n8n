@@ -1,3 +1,4 @@
+import { captureException } from '@sentry/node';
 import { parse } from 'flatted';
 import type {
 	IDataObject,
@@ -231,6 +232,9 @@ export class TestRunnerService {
 			} catch (e) {
 				// In case of an unexpected error, increment the failed count and continue with the next test case
 				await this.testRunRepository.incrementFailed(testRun.id);
+
+				// Report error to Sentry
+				captureException(e);
 			}
 		}
 
