@@ -321,6 +321,7 @@ export class SourceControlService {
 	}
 
 	async pullWorkfolder(
+		user: User,
 		options: SourceControllPullOptions,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
@@ -331,33 +332,23 @@ export class SourceControlService {
 			preferLocalVersion: false,
 		})) as SourceControlledFile[];
 
-		// filter out items that will not effect a local change and thus should not
-		// trigger a conflict warning in the frontend
-		const filteredResult = statusResult.filter((e) => {
-			// locally created credentials will not create a conflict on pull
-			if (e.status === 'created' && e.location === 'local') {
-				return false;
-			}
-			// remotely deleted credentials will not delete local credentials
-			if (e.type === 'credential' && e.status === 'deleted') {
-				return false;
-			}
-			return true;
-		});
-
 		if (options.force !== true) {
-			const possibleConflicts = filteredResult?.filter(
-				(file) => (file.conflict || file.status === 'modified') && file.type === 'workflow',
+			const possibleConflicts = statusResult.filter(
+				(file) => file.conflict || file.status === 'modified',
 			);
+			console.log('possibleConflicts', possibleConflicts);
 			if (possibleConflicts?.length > 0) {
 				await this.gitService.resetBranch();
 				return {
 					statusCode: 409,
-					statusResult: filteredResult,
+					statusResult,
 				};
 			}
 		}
 
+		console.log('statusResult', statusResult);
+
+		// update workflows
 		const workflowsToBeImported = statusResult.filter(
 			(e) => e.type === 'workflow' && e.status !== 'deleted',
 		);
@@ -365,7 +356,17 @@ export class SourceControlService {
 			workflowsToBeImported,
 			options.userId,
 		);
+		const workflowsToBeDeleted = statusResult.filter(
+			(e) => e.type === 'workflow' && e.status === 'deleted',
+		);
+		console.log('workflowsToBeDeleted', workflowsToBeDeleted);
+		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
+			user,
+			workflowsToBeDeleted,
+		);
+		console.log('deleted workflows');
 
+		// update credentials
 		const credentialsToBeImported = statusResult.filter(
 			(e) => e.type === 'credential' && e.status !== 'deleted',
 		);
@@ -373,16 +374,37 @@ export class SourceControlService {
 			credentialsToBeImported,
 			options.userId,
 		);
+		const credentialsToBeDeleted = statusResult.filter(
+			(e) => e.type === 'credential' && e.status === 'deleted',
+		);
+		console.log('credentialsToBeDeleted', credentialsToBeDeleted);
+		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
+			user,
+			credentialsToBeDeleted,
+		);
+		console.log('deleted credentials');
 
-		const tagsToBeImported = statusResult.find((e) => e.type === 'tags');
+		// update tags
+		const tagsToBeImported = statusResult.find((e) => e.type === 'tags' && e.status !== 'deleted');
 		if (tagsToBeImported) {
 			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
 		}
+		const tagsToBeDeleted = statusResult.filter((e) => e.type === 'tags' && e.status === 'deleted');
+		console.log('tagsToBeDeleted', tagsToBeDeleted);
+		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);
 
-		const variablesToBeImported = statusResult.find((e) => e.type === 'variables');
+		// update variables
+		const variablesToBeImported = statusResult.find(
+			(e) => e.type === 'variables' && e.status !== 'deleted',
+		);
 		if (variablesToBeImported) {
 			await this.sourceControlImportService.importVariablesFromWorkFolder(variablesToBeImported);
 		}
+		const variablesToBeDeleted = statusResult.filter(
+			(e) => e.type === 'variables' && e.status === 'deleted',
+		);
+		console.log('variablesToBeDeleted', variablesToBeDeleted);
+		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
 		// #region Tracking Information
 		this.eventService.emit(
@@ -393,7 +415,7 @@ export class SourceControlService {
 
 		return {
 			statusCode: 200,
-			statusResult: filteredResult,
+			statusResult,
 		};
 	}
 
@@ -614,7 +636,7 @@ export class SourceControlService {
 				type: 'credential',
 				status: options.direction === 'push' ? 'created' : 'deleted',
 				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
+				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
 			});
@@ -666,26 +688,47 @@ export class SourceControlService {
 			}
 		});
 
-		if (
-			varMissingInLocal.length > 0 ||
-			varMissingInRemote.length > 0 ||
-			varModifiedInEither.length > 0
-		) {
-			if (options.direction === 'pull' && varRemoteIds.length === 0) {
-				// if there's nothing to pull, don't show difference as modified
-			} else {
-				sourceControlledFiles.push({
-					id: 'variables',
-					name: 'variables',
-					type: 'variables',
-					status: 'modified',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: false,
-					file: getVariablesPath(this.gitFolder),
-					updatedAt: new Date().toISOString(),
-				});
-			}
-		}
+		varMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.key,
+				type: 'variables',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getVariablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		varMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.key,
+				type: 'variables',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				// if the we pull and the file is missing in the remote, we will delete
+				// it locally, which is communicated by marking this as a conflict
+				conflict: options.direction === 'push' ? false : true,
+				file: getVariablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		varModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.key,
+				type: 'variables',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getVariablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
 		return {
 			varMissingInLocal,
 			varMissingInRemote,
@@ -740,32 +783,51 @@ export class SourceControlService {
 				) === -1,
 		);
 
-		if (
-			tagsMissingInLocal.length > 0 ||
-			tagsMissingInRemote.length > 0 ||
-			tagsModifiedInEither.length > 0 ||
-			mappingsMissingInLocal.length > 0 ||
-			mappingsMissingInRemote.length > 0
-		) {
-			if (
-				options.direction === 'pull' &&
-				tagMappingsRemote.tags.length === 0 &&
-				tagMappingsRemote.mappings.length === 0
-			) {
-				// if there's nothing to pull, don't show difference as modified
-			} else {
-				sourceControlledFiles.push({
-					id: 'mappings',
-					name: 'tags',
-					type: 'tags',
-					status: 'modified',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: false,
-					file: getTagsPath(this.gitFolder),
-					updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
-				});
-			}
-		}
+		// TODO: rename local to db, it's not th working directory it's the db
+		tagsMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'tags',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getTagsPath(this.gitFolder),
+				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		// TODO: rename to git
+		tagsMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'tags',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: options.direction === 'push' ? false : true,
+				file: getTagsPath(this.gitFolder),
+				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		tagsModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'tags',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getTagsPath(this.gitFolder),
+				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		console.log('tagsMissingInLocal', tagsMissingInLocal);
+		console.log('tagsMissingInRemote', tagsMissingInRemote);
+		console.log('tagsModifiedInEither', tagsModifiedInEither);
+
 		return {
 			tagsMissingInLocal,
 			tagsMissingInRemote,
