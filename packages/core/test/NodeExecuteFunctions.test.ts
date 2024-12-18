@@ -675,7 +675,6 @@ describe('NodeExecuteFunctions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
-			nock.disableNetConnect();
 			jest.clearAllMocks();
 		});
 

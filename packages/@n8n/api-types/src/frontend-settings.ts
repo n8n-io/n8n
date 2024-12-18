@@ -172,6 +172,5 @@ export interface FrontendSettings {
 		blockFileAccessToN8nFiles: boolean;
 	};
 	betaFeatures: FrontendBetaFeatures[];
-	virtualSchemaView: boolean;
 	easyAIWorkflowOnboarded: boolean;
 }

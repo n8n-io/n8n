@@ -18,9 +18,10 @@ import {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { promptTypeOptions } from '../../../../../utils/descriptions';
-import { getConnectedTools } from '../../../../../utils/helpers';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { promptTypeOptions } from '@utils/descriptions';
+import { getConnectedTools } from '@utils/helpers';
+import { getTracingConfig } from '@utils/tracing';
+
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 
@@ -105,6 +106,11 @@ const properties: INodeProperties[] = [
 				default: 'https://api.openai.com/v1',
 				description: 'Override the default base URL for the API',
 				type: 'string',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.8 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Max Retries',
@@ -181,11 +187,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		preserveOriginalTools?: boolean;
 	};
 
+	const baseURL = (options.baseURL ?? credentials.url) as string;
+
 	const client = new OpenAIClient({
 		apiKey: credentials.apiKey as string,
 		maxRetries: options.maxRetries ?? 2,
 		timeout: options.timeout ?? 10000,
-		baseURL: options.baseURL,
+		baseURL,
 	});
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });

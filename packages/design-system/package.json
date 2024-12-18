@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.61.0",
+  "version": "1.62.0",
   "main": "src/main.ts",
   "import": "src/main.ts",
   "scripts": {

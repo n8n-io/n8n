@@ -1,12 +1,7 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import {
-	BINARY_ENCODING,
-	ApplicationError,
-	Workflow,
-	ErrorReporterProxy as ErrorReporter,
-} from 'n8n-workflow';
+import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 import { Service } from 'typedi';
 
@@ -35,6 +30,7 @@ export class JobProcessor {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -155,7 +151,7 @@ export class JobProcessor {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
-			ErrorReporter.info(`Worker found execution ${executionId} without data`);
+			this.errorReporter.info(`Worker found execution ${executionId} without data`);
 			// Execute all nodes
 			// Can execute without webhook so go on
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode);
