@@ -1,3 +1,4 @@
+import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
@@ -89,7 +90,7 @@ export class TestRunsController {
 	}
 
 	@Post('/:testDefinitionId/runs/:id/cancel')
-	async cancel(req: TestRunsRequest.Cancel) {
+	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		if (this.instanceSettings.isMultiMain) {
 			throw new NotImplementedError('Cancelling test runs is not yet supported in multi-main mode');
 		}
@@ -107,5 +108,7 @@ export class TestRunsController {
 		}
 
 		await this.testRunnerService.cancelTestRun(testRunId);
+
+		res.status(202).json({ success: true });
 	}
 }
