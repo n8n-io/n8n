@@ -308,10 +308,7 @@ export class LoadNodesAndCredentials {
 			const description: INodeTypeBaseDescription | INodeTypeDescription =
 				structuredClone(usableNode);
 
-			// avoid spiking memory during startup, loading all node classes into memory
-			const nodeType = usableNode.usableAsTool
-				? this.getCurrentVersionNodeType(usableNode)
-				: undefined;
+			const nodeType = this.getCurrentVersionNodeType(usableNode);
 			const wrapped = this.convertNodeToAiTool({
 				description,
 				setupAsTool: nodeType?.setupAsTool,

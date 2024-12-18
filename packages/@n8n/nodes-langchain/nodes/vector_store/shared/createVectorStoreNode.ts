@@ -126,7 +126,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			name: args.meta.name,
 			description: args.meta.description,
 			icon: args.meta.icon,
-			group: ['transform', 'vector-store'],
+			group: ['transform'],
 			version: 1,
 			defaults: {
 				name: args.meta.displayName,
