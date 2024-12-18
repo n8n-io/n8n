@@ -591,9 +591,9 @@ defineExpose({
 				:parameter="{
 					name: 'attemptToConvertTypes',
 					type: 'boolean',
-					displayName: 'Attempt to convert types',
+					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
 					default: false,
-					description: 'Attempt to convert types when mapping fields',
+					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
 				}"
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"
@@ -608,9 +608,9 @@ defineExpose({
 				:parameter="{
 					name: 'ignoreTypeMismatchErrors',
 					type: 'boolean',
-					displayName: 'Ignore Type Mismatch Errors',
+					displayName: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.displayName'),
 					default: false,
-					description: 'Whether type mismatches should be ignored, rather than returning an Error',
+					description: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.description'),
 				}"
 				:path="props.path + '.ignoreTypeMismatchErrors'"
 				:value="state.paramValue.ignoreTypeMismatchErrors"
@@ -627,6 +627,8 @@ defineExpose({
 
 <style module lang="scss">
 .typeConversionOptions {
-	margin-top: var(--spacing-m);
+	display: grid;
+	padding: var(--spacing-m);
+	gap: var(--spacing-2xs);
 }
 </style>
