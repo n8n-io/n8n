@@ -1,11 +1,5 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import type {
-	IExecuteFunctions,
-	INodeParameters,
-	INodeType,
-	ISupplyDataFunctions,
-} from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 type AllowedTypes = 'string' | 'number' | 'boolean' | 'json';
