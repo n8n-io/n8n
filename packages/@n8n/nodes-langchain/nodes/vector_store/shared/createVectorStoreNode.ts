@@ -3,7 +3,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, ThemeIconColor } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeCredentialDescription,
@@ -37,6 +37,7 @@ interface NodeMeta {
 	description: string;
 	docsUrl: string;
 	icon: Icon;
+	iconColor?: ThemeIconColor;
 	credentials?: INodeCredentialDescription[];
 	operationModes?: NodeOperationMode[];
 }
@@ -125,6 +126,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			name: args.meta.name,
 			description: args.meta.description,
 			icon: args.meta.icon,
+			iconColor: args.meta.iconColor,
 			group: ['transform'],
 			version: 1,
 			defaults: {
