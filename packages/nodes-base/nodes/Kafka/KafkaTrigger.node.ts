@@ -11,7 +11,7 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -297,9 +297,14 @@ export class KafkaTrigger implements INodeType {
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
-			await consumer.disconnect();
-		}
+		const closeFunction = async () => {
+			try {
+				await consumer.disconnect();
+			} catch (error) {
+				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
