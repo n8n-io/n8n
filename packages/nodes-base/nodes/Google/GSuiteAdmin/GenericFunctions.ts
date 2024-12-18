@@ -5,6 +5,8 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	INodeListSearchResult,
+	INodeListSearchItems,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -63,4 +65,44 @@ export async function googleApiRequestAllItems(
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
+}
+
+export async function searchGroups(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const qs: IDataObject = {
+		customer: 'my_customer',
+	};
+
+	// Add filtering if a filter is provided
+	if (filter) {
+		qs.query = `name:${filter}* OR email:${filter}*`;
+	}
+
+	// Perform the API request to list all groups
+	const responseData = await googleApiRequestAllItems.call(
+		this,
+		'groups',
+		'GET',
+		'/directory/v1/groups',
+		{},
+		qs, // Query string
+	);
+
+	// Handle cases where no groups are found
+	if (!responseData || responseData.length === 0) {
+		console.warn('No groups found in the response');
+		return { results: [] };
+	}
+
+	// Map the API response to the desired format
+	const results: INodeListSearchItems[] = responseData.map(
+		(group: { name?: string; email?: string; id?: string }) => ({
+			name: group.name || group.email || 'Unnamed Group',
+			value: group.id || group.email,
+		}),
+	);
+
+	return { results };
 }
