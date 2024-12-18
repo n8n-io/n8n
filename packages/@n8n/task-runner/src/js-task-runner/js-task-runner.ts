@@ -1,3 +1,4 @@
+import set from 'lodash.set';
 import { getAdditionalKeys } from 'n8n-core';
 import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
@@ -29,7 +30,6 @@ import {
 	type TaskResultData,
 } from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
-import { set } from '@/utils/set';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
