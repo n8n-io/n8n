@@ -1,3 +1,4 @@
+import { AddColumns } from '@/databases/dsl/table';
 import type { ApiKey } from '@/databases/entities/api-key';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { generateNanoId } from '@/databases/utils/generators';
