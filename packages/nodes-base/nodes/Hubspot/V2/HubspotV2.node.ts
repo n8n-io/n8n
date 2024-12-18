@@ -1672,7 +1672,6 @@ export class HubspotV2 implements INodeType {
 											delete filter.type;
 											// Hacky way to get the filter value as we concat the values with a | and the type
 											filter.propertyName = filter.propertyName?.toString().split('|')[0];
-											//@ts-ignore
 										}
 										(body.filterGroups as IDataObject[]).push({ filters: filterValues });
 									}
