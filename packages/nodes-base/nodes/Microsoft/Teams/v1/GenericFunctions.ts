@@ -32,7 +32,6 @@ export async function microsoftApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

@@ -909,7 +909,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			},
 		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
-			connectionType: NodeConnectionType,
+			connectionType: AINodeConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
@@ -1074,7 +1074,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -1805,29 +1805,20 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 
 export const enum NodeConnectionType {
 	AiAgent = 'ai_agent',
-
 	AiChain = 'ai_chain',
-
 	AiDocument = 'ai_document',
-
 	AiEmbedding = 'ai_embedding',
-
 	AiLanguageModel = 'ai_languageModel',
-
 	AiMemory = 'ai_memory',
-
 	AiOutputParser = 'ai_outputParser',
-
 	AiRetriever = 'ai_retriever',
-
 	AiTextSplitter = 'ai_textSplitter',
-
 	AiTool = 'ai_tool',
-
 	AiVectorStore = 'ai_vectorStore',
-
 	Main = 'main',
 }
+
+export type AINodeConnectionType = Exclude<NodeConnectionType, NodeConnectionType.Main>;
 
 export const nodeConnectionTypes: NodeConnectionType[] = [
 	NodeConnectionType.AiAgent,
