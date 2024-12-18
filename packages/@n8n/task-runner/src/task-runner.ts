@@ -1,4 +1,4 @@
-import { isSerializedBuffer, serializedBufferToBuffer } from 'n8n-core';
+import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
@@ -463,7 +463,7 @@ export abstract class TaskRunner extends EventEmitter {
 		try {
 			const returnValue = await dataPromise;
 
-			return isSerializedBuffer(returnValue) ? serializedBufferToBuffer(returnValue) : returnValue;
+			return isSerializedBuffer(returnValue) ? toBuffer(returnValue) : returnValue;
 		} finally {
 			this.rpcCalls.delete(callId);
 		}
