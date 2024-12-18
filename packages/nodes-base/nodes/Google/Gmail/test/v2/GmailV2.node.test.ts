@@ -187,16 +187,6 @@ describe('Test Gmail Node v2', () => {
 							'utf-8',
 						).toString('base64');
 
-						console.log(
-							Buffer.from(
-								mail
-									.replace(/boundary=".*"/g, 'boundary="--test-boundary"')
-									.replace(/----.*/g, '----test-boundary')
-									.replace(/Message-ID:.*/g, 'Message-ID: test-message-id'),
-								'utf-8',
-							).toString('base64'),
-						);
-
 						return JSON.stringify(parsedBody);
 					} catch (error) {
 						return body;
