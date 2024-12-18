@@ -68,7 +68,8 @@ export class WorkflowToolService {
 				const response = await this.runFunction(query, itemIndex, runManager);
 				const processedResponse = this.handleToolResponse(response);
 
-				// const metadata = await this.createMetadata(workflowProxy);
+				// Once the sub-workflow is executed, add the output data to the context
+				// This will be used to link the sub-workflow execution in the parent workflow
 				let metadata: ITaskMetadata | undefined;
 				if (this.subExecutionId && this.subWorkflowId) {
 					metadata = {

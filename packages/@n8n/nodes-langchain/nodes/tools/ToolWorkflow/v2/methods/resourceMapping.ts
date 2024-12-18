@@ -2,13 +2,15 @@ import {
 	getFieldEntries,
 	getWorkflowInputData,
 } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
-import type { ISupplyDataFunctions, IDataObject, FieldValueOption } from 'n8n-workflow';
-import {
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	type ResourceMapperField,
-	type ILocalLoadOptionsFunctions,
-	type ResourceMapperFields,
+import type {
+	ISupplyDataFunctions,
+	IDataObject,
+	FieldValueOption,
+	ResourceMapperField,
+	ILocalLoadOptionsFunctions,
+	ResourceMapperFields,
 } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
