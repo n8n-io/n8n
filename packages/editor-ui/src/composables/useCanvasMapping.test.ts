@@ -1161,13 +1161,14 @@ describe('useCanvasMapping', () => {
 			expect(mappedConnections.value).toEqual([
 				{
 					data: {
-						fromNodeName: manualTriggerNode.name,
 						source: {
+							node: manualTriggerNode.name,
 							index: 0,
 							type: NodeConnectionType.Main,
 						},
 						status: undefined,
 						target: {
+							node: setNode.name,
 							index: 0,
 							type: NodeConnectionType.Main,
 						},
@@ -1249,13 +1250,14 @@ describe('useCanvasMapping', () => {
 			expect(mappedConnections.value).toEqual([
 				{
 					data: {
-						fromNodeName: manualTriggerNode.name,
 						source: {
+							node: manualTriggerNode.name,
 							index: 0,
 							type: NodeConnectionType.AiTool,
 						},
 						status: undefined,
 						target: {
+							node: setNode.name,
 							index: 0,
 							type: NodeConnectionType.AiTool,
 						},
@@ -1271,13 +1273,14 @@ describe('useCanvasMapping', () => {
 				},
 				{
 					data: {
-						fromNodeName: manualTriggerNode.name,
 						source: {
+							node: manualTriggerNode.name,
 							index: 0,
 							type: NodeConnectionType.AiDocument,
 						},
 						status: undefined,
 						target: {
+							node: setNode.name,
 							index: 1,
 							type: NodeConnectionType.AiDocument,
 						},
