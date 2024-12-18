@@ -43,8 +43,8 @@ describe('DirectedGraph', () => {
 	});
 
 	//    ┌─────┐    ┌─────┐──► null
-	//    │node1├───►│node2|   ┌─────┐
-	//    └─────┘    └─────┘──►│node3|
+	//    │node1├───►│node2│   ┌─────┐
+	//    └─────┘    └─────┘──►│node3│
 	//                         └─────┘
 	//
 	test('linear workflow with null connections', () => {
@@ -470,6 +470,26 @@ describe('DirectedGraph', () => {
 			expect(newConnections).toHaveLength(4);
 			expect(newConnections).toEqual(expectedGraph.getConnections());
 			expect(graph).toEqual(expectedGraph);
+		});
+	});
+
+	describe('hasNode', () => {
+		test("returns node if it's part of the graph", () => {
+			// ARRANGE
+			const node = createNodeData({ name: 'node' });
+			const graph = new DirectedGraph().addNodes(node);
+
+			// ACT & ASSERT
+			expect(graph.hasNode(node.name)).toBe(true);
+		});
+
+		test('returns undefined if there is no node with that name in the graph', () => {
+			// ARRANGE
+			const node = createNodeData({ name: 'node' });
+			const graph = new DirectedGraph().addNodes(node);
+
+			// ACT & ASSERT
+			expect(graph.hasNode(node.name + 'foo')).toBe(false);
 		});
 	});
 });

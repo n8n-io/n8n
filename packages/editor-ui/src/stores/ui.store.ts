@@ -188,14 +188,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
 	});
 
-	const logo = computed(() => {
-		const { releaseChannel } = settingsStore.settings;
-		const suffix = appliedTheme.value === 'dark' ? '-dark.svg' : '.svg';
-		return `static/logo/${
-			releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
-		}${suffix}`;
-	});
-
 	const contextBasedTranslationKeys = computed(() => {
 		const deploymentType = settingsStore.deploymentType;
 
@@ -563,7 +555,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	return {
 		appGridWidth,
 		appliedTheme,
-		logo,
 		contextBasedTranslationKeys,
 		getLastSelectedNode,
 		isVersionsOpen,

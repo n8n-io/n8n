@@ -4,7 +4,12 @@ import { tmpdir } from 'os';
 import nock from 'nock';
 import { isEmpty } from 'lodash';
 import { get } from 'lodash';
-import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
+import {
+	BinaryDataService,
+	Credentials,
+	UnrecognizedNodeTypeError,
+	constructExecutionMetaData,
+} from 'n8n-core';
 import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -251,12 +256,9 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 
 	const nodeNames = nodes.map((n) => n.type);
 	for (const nodeName of nodeNames) {
-		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
-		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
@@ -330,7 +332,7 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
-	expect(result.finished).toEqual(true);
+	expect(result.finished || result.status === 'waiting').toEqual(true);
 };
 
 const preparePinData = (pinData: IDataObject) => {

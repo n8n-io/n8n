@@ -25,6 +25,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { N8nNavigationDropdown } from 'n8n-design-system';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
+import Logo from './Logo/Logo.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -165,10 +166,6 @@ const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
-const logoPath = computed(
-	() => basePath.value + (isCollapsed.value ? 'static/logo/collapsed.svg' : uiStore.logo),
-);
-
 const hasVersionUpdates = computed(
 	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
 );
@@ -296,6 +293,7 @@ const {
 	handleSelect: handleMenuSelect,
 	createProjectAppendSlotName,
 	projectsLimitReachedMessage,
+	upgradeLabel,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
@@ -320,7 +318,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<div :class="$style.logo">
-			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<Logo
+				location="sidebar"
+				:collapsed="isCollapsed"
+				:release-channel="settingsStore.settings.releaseChannel"
+			/>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -336,7 +338,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							type="tertiary"
 							@click="handleMenuSelect(item.id)"
 						>
-							{{ i18n.baseText('generic.upgrade') }}
+							{{ upgradeLabel }}
 						</N8nButton>
 					</N8nTooltip>
 				</template>
@@ -450,15 +452,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
-		padding-top: 90px;
+		padding-top: 100px;
 
 		.logo {
 			flex-direction: column;
-			gap: 16px;
-		}
-
-		.logo img {
-			left: 0;
+			gap: 12px;
 		}
 	}
 }

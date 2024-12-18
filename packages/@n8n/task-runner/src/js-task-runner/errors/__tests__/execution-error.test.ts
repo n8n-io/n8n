@@ -36,7 +36,11 @@ describe('ExecutionError', () => {
 
 	it('should serialize correctly', () => {
 		const error = new Error('a.unknown is not a function');
-		error.stack = defaultStack;
+		Object.defineProperty(error, 'stack', {
+			value: defaultStack,
+			enumerable: true,
+		});
+		// error.stack = defaultStack;
 
 		const executionError = new ExecutionError(error, 1);
 

@@ -605,7 +605,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
-		if (projectsStore.currentProject) {
+
+		if (
+			projectsStore.currentProject &&
+			projectsStore.currentProject.id !== projectsStore.personalProject?.id
+		) {
 			toastTitle = locale.baseText('workflows.create.project.toast.title', {
 				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
 			});

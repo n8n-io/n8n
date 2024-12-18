@@ -6,12 +6,13 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -19,11 +20,12 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { NodeTypes } from '@/node-types';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { createPinData, getPastExecutionStartNode } from './utils.ee';
+import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
 
 /**
  * This service orchestrates the running of test cases.
@@ -31,9 +33,7 @@ import { createPinData, getPastExecutionStartNode } from './utils.ee';
  * past executions, creates pin data from them,
  * and runs the workflow-under-test with the pin data.
  * After the workflow-under-test finishes, it runs the evaluation workflow
- * with the original and new run data.
- * TODO: Node pinning
- * TODO: Collect metrics
+ * with the original and new run data, and collects the metrics.
  */
 @Service()
 export class TestRunnerService {
@@ -46,7 +46,49 @@ export class TestRunnerService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testMetricRepository: TestMetricRepository,
+		private readonly nodeTypes: NodeTypes,
 	) {}
+
+	/**
+	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
+	 */
+	private getStartNodesData(
+		workflow: WorkflowEntity,
+		pastExecutionData: IRunExecutionData,
+	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
+		// Create a new workflow instance to use the helper functions (getChildNodes)
+		const workflowInstance = new Workflow({
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+
+		// Determine the trigger node of the past execution
+		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
+		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
+
+		const triggerNodeData = pastExecutionData.resultData.runData[pastExecutionTriggerNode][0];
+		assert(triggerNodeData, 'Trigger node data not found');
+
+		const triggerToStartFrom = {
+			name: pastExecutionTriggerNode,
+			data: triggerNodeData,
+		};
+
+		// Start nodes are the nodes that are connected to the trigger node
+		const startNodes = workflowInstance
+			.getChildNodes(pastExecutionTriggerNode, NodeConnectionType.Main, 1)
+			.map((nodeName) => ({
+				name: nodeName,
+				sourceData: { previousNode: pastExecutionTriggerNode },
+			}));
+
+		return {
+			startNodes,
+			triggerToStartFrom,
+		};
+	}
 
 	/**
 	 * Runs a test case with the given pin data.
@@ -55,6 +97,7 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		mockedNodes: MockedNodeItem[],
 		userId: string,
 		abortSignal: AbortSignal,
 	): Promise<IRun | undefined> {
@@ -64,22 +107,15 @@ export class TestRunnerService {
 		}
 
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, pastExecutionData);
-
-		// Determine the start node of the past execution
-		const pastExecutionStartNode = getPastExecutionStartNode(pastExecutionData);
+		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
 
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
-			destinationNode: pastExecutionData.startData?.destinationNode,
-			startNodes: pastExecutionStartNode
-				? [{ name: pastExecutionStartNode, sourceData: null }]
-				: undefined,
+			...this.getStartNodesData(workflow, pastExecutionData),
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
 			workflowData: workflow,
-			partialExecutionVersion: '-1',
 			userId,
 		};
 
@@ -234,6 +270,7 @@ export class TestRunnerService {
 			const testCaseExecution = await this.runTestCase(
 				workflow,
 				executionData,
+				test.mockedNodes,
 				user.id,
 				abortSignal,
 			);

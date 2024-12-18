@@ -1,3 +1,4 @@
+import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
@@ -26,7 +27,12 @@ export declare namespace TestDefinitionsRequest {
 	type Patch = AuthenticatedRequest<
 		RouteParams.TestId,
 		{},
-		{ name?: string; evaluationWorkflowId?: string; annotationTagId?: string }
+		{
+			name?: string;
+			evaluationWorkflowId?: string;
+			annotationTagId?: string;
+			mockedNodes?: MockedNodeItem[];
+		}
 	>;
 
 	type Delete = AuthenticatedRequest<RouteParams.TestId>;

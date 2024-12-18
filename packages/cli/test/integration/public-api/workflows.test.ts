@@ -528,8 +528,28 @@ describe('POST /workflows/:id/activate', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should fail due to trying to activate a workflow without any nodes', async () => {
+		const workflow = await createWorkflow({ nodes: [] }, owner);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should fail due to trying to activate a workflow without a trigger', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+					},
+				],
+			},
+			owner,
+		);
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
 		expect(response.statusCode).toBe(400);
 	});
