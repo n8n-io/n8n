@@ -463,11 +463,7 @@ export abstract class TaskRunner extends EventEmitter {
 		try {
 			const returnValue = await dataPromise;
 
-			if (isSerializedBuffer(returnValue)) {
-				return serializedBufferToBuffer(returnValue);
-			}
-
-			return returnValue;
+			return isSerializedBuffer(returnValue) ? serializedBufferToBuffer(returnValue) : returnValue;
 		} finally {
 			this.rpcCalls.delete(callId);
 		}
