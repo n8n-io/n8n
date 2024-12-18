@@ -35,11 +35,7 @@ describe('ActiveWorkflows', () => {
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const errorReporter = mock<ErrorReporter>();
-	const activeWorkflows = new ActiveWorkflows(
-		scheduledTaskManager,
-		triggersAndPollers,
-		errorReporter,
-	);
+	let activeWorkflows: ActiveWorkflows;
 
 	const triggerNode = mock<INode>();
 	const pollNode = mock<INode>();
@@ -50,6 +46,8 @@ describe('ActiveWorkflows', () => {
 		getPollFunctions.mockReturnValue(pollFunctions);
 		pollFunctions.getNodeParameter.mockReturnValue(pollTimes);
 		triggersAndPollers.runTrigger.mockResolvedValue(triggerResponse);
+
+		activeWorkflows = new ActiveWorkflows(scheduledTaskManager, triggersAndPollers, errorReporter);
 	});
 
 	describe('add()', () => {
@@ -119,6 +117,7 @@ describe('ActiveWorkflows', () => {
 						getPollFunctions,
 					),
 				).rejects.toThrow(WorkflowActivationError);
+				expect(activeWorkflows.isActive(workflowId)).toBe(false);
 			});
 
 			it('if polling activation fails', async () => {
@@ -141,6 +140,7 @@ describe('ActiveWorkflows', () => {
 						getPollFunctions,
 					),
 				).rejects.toThrow(WorkflowActivationError);
+				expect(activeWorkflows.isActive(workflowId)).toBe(false);
 			});
 
 			it('if the polling interval is too short (contains * in first position)', async () => {
