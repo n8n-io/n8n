@@ -4,6 +4,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodePropertyOptions,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -22,11 +23,19 @@ import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function isJSON(str: string) {
 	try {
-		JSON.parse(str);
+		JSON.parse(str.trim());
 		return true;
 	} catch {
 		return false;
 	}
+}
+
+export function stringToArray(str: NodeParameterValueType | undefined) {
+	if (str === undefined) return [];
+	return String(str)
+		.split(',')
+		.filter((entry) => entry)
+		.map((entry) => entry.trim());
 }
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {

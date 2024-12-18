@@ -3,7 +3,6 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
-	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -15,7 +14,9 @@ import type {
 	QueriesRunner,
 	QueryWithValues,
 } from '../../helpers/interfaces';
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
+
+import { isJSON, replaceEmptyStringsByNulls, stringToArray } from '../../helpers/utils';
+
 import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -76,14 +77,6 @@ export async function execute(
 			const node = this.getNode();
 
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
-
-			const stringToArray = (str: NodeParameterValueType | undefined) => {
-				if (str === undefined) return [];
-				return String(str)
-					.split(',')
-					.filter((entry) => entry)
-					.map((entry) => entry.trim());
-			};
 
 			if (rawReplacements) {
 				const nodeVersion = nodeOptions.nodeVersion as number;

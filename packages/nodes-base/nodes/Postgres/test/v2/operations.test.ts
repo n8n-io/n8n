@@ -388,7 +388,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			operation: 'executeQuery',
 			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
 			options: {
-				queryReplacement: '={{ JSON.stringify({id: "7"}) }}',
+				queryReplacement: '={{ {"id": "7"} }}',
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -403,19 +403,21 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		}).not.toThrow();
 	});
 
-	it('should call isJSON if there are queries which need to be resolved', async () => {
+	it('should not parse out expressions if there are valid JSON query replacements', async () => {
 		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
 			query,
 			options: {
-				queryReplacement: '={{ JSON.stringify({id: "7"}) }}',
+				queryReplacement: '={{ {"id": "7"} }}',
 				nodeVersion: 2.6,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
 		jest.spyOn(utils, 'isJSON');
+		jest.spyOn(utils, 'stringToArray');
+
 		await executeQuery.execute.call(
 			createMockExecuteFunction(nodeParameters),
 			runQueries,
@@ -424,6 +426,33 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 
 		expect(utils.isJSON).toHaveBeenCalledTimes(1);
+		expect(utils.stringToArray).toHaveBeenCalledTimes(0);
+	});
+
+	it('should parse out expressions if is invalid JSON in query replacements', async () => {
+		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query,
+			options: {
+				queryReplacement: '={{ JSON.stringify({"id": "7"}}) }}',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		jest.spyOn(utils, 'isJSON');
+		jest.spyOn(utils, 'stringToArray');
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(utils.isJSON).toHaveBeenCalledTimes(1);
+		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
 	});
 });
 
