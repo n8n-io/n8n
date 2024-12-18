@@ -235,11 +235,11 @@ export class TestRunnerService {
 
 				// Run the test case and wait for it to finish
 				const testCaseExecution = await this.runTestCase(
-				workflow,
-				executionData,
-				test.mockedNodes,
-				user.id,
-			);
+					workflow,
+					executionData,
+					test.mockedNodes,
+					user.id,
+				);
 
 				// In case of a permission check issue, the test case execution will be undefined.
 				// Skip them, increment the failed count and continue with the next test case
