@@ -92,4 +92,22 @@ describe('Elasticsearch -> elasticsearchApiRequest', () => {
 			}),
 		);
 	});
+
+	it('should ignore trailing slashes in the base URL', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValue(response);
+
+		mockExecuteFunctions.getCredentials = jest.fn().mockResolvedValue({
+			baseUrl: 'https://elastic.domain.com/',
+			ignoreSSLIssues: false,
+		});
+		await elasticsearchApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint');
+
+		expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'elasticsearchApi',
+			expect.objectContaining({
+				url: 'https://elastic.domain.com/test-endpoint',
+			}),
+		);
+
+	});
 });
