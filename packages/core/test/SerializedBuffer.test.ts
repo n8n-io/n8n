@@ -1,5 +1,5 @@
 import type { SerializedBuffer } from '@/SerializedBuffer';
-import { serializedBufferToBuffer, isSerializedBuffer } from '@/SerializedBuffer';
+import { toBuffer, isSerializedBuffer } from '@/SerializedBuffer';
 
 // Mock data for tests
 const validSerializedBuffer: SerializedBuffer = {
@@ -9,14 +9,14 @@ const validSerializedBuffer: SerializedBuffer = {
 
 describe('serializedBufferToBuffer', () => {
 	it('should convert a SerializedBuffer to a Buffer', () => {
-		const buffer = serializedBufferToBuffer(validSerializedBuffer);
+		const buffer = toBuffer(validSerializedBuffer);
 		expect(buffer).toBeInstanceOf(Buffer);
 		expect(buffer.toString()).toBe('ABC');
 	});
 
 	it('should serialize stringified buffer to the same buffer', () => {
 		const serializedBuffer = JSON.stringify(Buffer.from('n8n on the rocks'));
-		const buffer = serializedBufferToBuffer(JSON.parse(serializedBuffer));
+		const buffer = toBuffer(JSON.parse(serializedBuffer));
 		expect(buffer).toBeInstanceOf(Buffer);
 		expect(buffer.toString()).toBe('n8n on the rocks');
 	});
@@ -45,7 +45,7 @@ describe('isSerializedBuffer', () => {
 describe('Integration: serializedBufferToBuffer and isSerializedBuffer', () => {
 	it('should correctly validate and convert a SerializedBuffer', () => {
 		if (isSerializedBuffer(validSerializedBuffer)) {
-			const buffer = serializedBufferToBuffer(validSerializedBuffer);
+			const buffer = toBuffer(validSerializedBuffer);
 			expect(buffer.toString()).toBe('ABC');
 		} else {
 			fail('Expected validSerializedBuffer to be a SerializedBuffer');

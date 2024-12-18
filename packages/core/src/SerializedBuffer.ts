@@ -4,7 +4,8 @@ export type SerializedBuffer = {
 	data: number[]; // Uint8Array
 };
 
-export function serializedBufferToBuffer(serializedBuffer: SerializedBuffer): Buffer {
+/** Converts the given SerializedBuffer to nodejs Buffer */
+export function toBuffer(serializedBuffer: SerializedBuffer): Buffer {
 	return Buffer.from(serializedBuffer.data);
 }
 
