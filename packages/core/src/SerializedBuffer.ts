@@ -13,12 +13,12 @@ function isObjectLiteral(item: unknown): item is { [key: string]: unknown } {
 	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
 
-export function isSerializedBuffer(maybeBuffer: unknown): maybeBuffer is SerializedBuffer {
+export function isSerializedBuffer(candidate: unknown): candidate is SerializedBuffer {
 	return (
-		isObjectLiteral(maybeBuffer) &&
-		'type' in maybeBuffer &&
-		'data' in maybeBuffer &&
-		maybeBuffer.type === 'Buffer' &&
-		Array.isArray(maybeBuffer.data)
+		isObjectLiteral(candidate) &&
+		'type' in candidate &&
+		'data' in candidate &&
+		candidate.type === 'Buffer' &&
+		Array.isArray(candidate.data)
 	);
 }
