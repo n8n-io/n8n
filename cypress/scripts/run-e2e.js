@@ -57,6 +57,17 @@ switch (scenario) {
 			},
 		});
 		break;
+	case 'dev:v2':
+		runTests({
+			startCommand: 'develop',
+			url: 'http://localhost:8080/favicon.ico',
+			testCommand: 'cypress open',
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+				CYPRESS_BASE_URL: 'http://localhost:8080',
+			},
+		});
+		break;
 	case 'all':
 		const specSuiteFilter = process.argv[3];
 		const specParam = specSuiteFilter ? ` --spec **/*${specSuiteFilter}*` : '';

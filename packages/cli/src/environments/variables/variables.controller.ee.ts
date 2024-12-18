@@ -1,4 +1,7 @@
+import { VariableListRequestDto } from '@n8n/api-types';
+
 import { Delete, Get, GlobalScope, Licensed, Patch, Post, RestController } from '@/decorators';
+import { Query } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
@@ -13,8 +16,8 @@ export class VariablesController {
 
 	@Get('/')
 	@GlobalScope('variable:list')
-	async getVariables() {
-		return await this.variablesService.getAllCached();
+	async getVariables(_req: unknown, _res: unknown, @Query query: VariableListRequestDto) {
+		return await this.variablesService.getAllCached(query.state);
 	}
 
 	@Post('/')

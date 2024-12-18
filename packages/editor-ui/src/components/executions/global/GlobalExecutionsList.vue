@@ -16,6 +16,7 @@ import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +41,7 @@ const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -317,6 +319,10 @@ async function onAutoRefreshToggle(value: boolean) {
 		executionsStore.stopAutoRefreshInterval();
 	}
 }
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
+};
 </script>
 
 <template>
@@ -330,6 +336,8 @@ async function onAutoRefreshToggle(value: boolean) {
 						class="mr-xl"
 						:running-executions-count="runningExecutionsCount"
 						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
+						@go-to-upgrade="goToUpgrade"
 					/>
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
@@ -400,12 +408,14 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
 						:concurrency-cap="settingsStore.concurrency"
+						:is-cloud-deployment="settingsStore.isCloudDeployment"
 						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"
 						@retry-saved="retrySavedExecution"
 						@retry-original="retryOriginalExecution"
+						@go-to-upgrade="goToUpgrade"
 					/>
 				</TransitionGroup>
 			</table>
