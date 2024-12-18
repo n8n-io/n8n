@@ -1,4 +1,5 @@
-import config from '@/config';
+import { InstanceSettings } from 'n8n-core';
+
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { Delete, Get, Post, RestController } from '@/decorators';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -17,6 +18,7 @@ export class TestRunsController {
 		private readonly testDefinitionService: TestDefinitionService,
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testRunnerService: TestRunnerService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/**
@@ -88,8 +90,8 @@ export class TestRunsController {
 
 	@Post('/:testDefinitionId/runs/:id/cancel')
 	async cancel(req: TestRunsRequest.Cancel) {
-		if (config.getEnv('executions.mode') === 'queue') {
-			throw new NotImplementedError('Cancelling test runs is not yet supported in queue mode');
+		if (this.instanceSettings.isMultiMain) {
+			throw new NotImplementedError('Cancelling test runs is not yet supported in multi-main mode');
 		}
 
 		const { id: testRunId } = req.params;
