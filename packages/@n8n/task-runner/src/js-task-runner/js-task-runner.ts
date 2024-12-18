@@ -1,3 +1,4 @@
+import set from 'lodash.set';
 import { getAdditionalKeys } from 'n8n-core';
 import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
@@ -19,11 +20,14 @@ import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
-import type {
-	DataRequestResponse,
-	InputDataChunkDefinition,
-	PartialAdditionalData,
-	TaskResultData,
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import {
+	EXPOSED_RPC_METHODS,
+	UNSUPPORTED_HELPER_FUNCTIONS,
+	type DataRequestResponse,
+	type InputDataChunkDefinition,
+	type PartialAdditionalData,
+	type TaskResultData,
 } from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
@@ -37,6 +41,10 @@ import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
+
+export interface RPCCallObject {
+	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RPCCallObject;
+}
 
 export interface JSExecSettings {
 	code: string;
@@ -438,5 +446,25 @@ export class JsTaskRunner extends TaskRunner {
 
 			this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
 		}
+	}
+
+	private buildRpcCallObject(taskId: string) {
+		const rpcObject: RPCCallObject = {};
+
+		for (const rpcMethod of EXPOSED_RPC_METHODS) {
+			set(
+				rpcObject,
+				rpcMethod.split('.'),
+				async (...args: unknown[]) => await this.makeRpcCall(taskId, rpcMethod, args),
+			);
+		}
+
+		for (const rpcMethod of UNSUPPORTED_HELPER_FUNCTIONS) {
+			set(rpcObject, rpcMethod.split('.'), () => {
+				throw new UnsupportedFunctionError(rpcMethod);
+			});
+		}
+
+		return rpcObject;
 	}
 }
