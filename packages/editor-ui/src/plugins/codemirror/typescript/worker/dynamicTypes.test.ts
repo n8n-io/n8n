@@ -1,14 +1,8 @@
-import { generateExtensionTypes, schemaToTypescriptTypes } from './utils';
+import { schemaToTypescriptTypes } from './dynamicTypes';
 
-describe('typescript worker utils', () => {
-	describe('generateExtensionTypes', () => {
-		it('should work', async () => {
-			expect(await generateExtensionTypes()).toMatchSnapshot();
-		});
-	});
-
+describe('typescript worker dynamicTypes', () => {
 	describe('schemaToTypescriptTypes', () => {
-		it('should work', () => {
+		it('should convert a schema to a typescript type', () => {
 			expect(
 				schemaToTypescriptTypes(
 					{
@@ -56,7 +50,7 @@ describe('typescript worker utils', () => {
 						],
 						path: '',
 					},
-					'Node name 1',
+					'NodeName_1',
 				),
 			).toEqual(`interface NodeName_1 {
   test: string;

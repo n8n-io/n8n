@@ -15,7 +15,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 
 	if (!word) return null;
 
-	const completionResult = await worker.getCompletionsAtPos(context.pos, word?.text ?? '');
+	const completionResult = await worker.getCompletionsAtPos(context.pos);
 
 	if (!completionResult || context.aborted) return null;
 
