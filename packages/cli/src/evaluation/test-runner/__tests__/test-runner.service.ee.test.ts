@@ -324,6 +324,7 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testMetricRepository,
+			mockNodeTypes,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -364,6 +365,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
 			}),
 		);
 
@@ -379,6 +381,7 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testMetricRepository,
+			mockNodeTypes,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -415,6 +418,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
 			}),
 		);
 
@@ -430,6 +434,7 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testMetricRepository,
+			mockNodeTypes,
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -470,6 +475,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
 			}),
 		);
 
