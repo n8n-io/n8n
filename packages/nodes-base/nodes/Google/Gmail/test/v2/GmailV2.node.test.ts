@@ -11,6 +11,10 @@ import { getGmailAliases, getLabels, getThreadMessages } from '../../v2/loadOpti
 
 describe('Test Gmail Node v2', () => {
 	beforeAll(() => {
+		jest
+			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
+			.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
+
 		nock.disableNetConnect();
 	});
 
@@ -31,7 +35,7 @@ describe('Test Gmail Node v2', () => {
 				.query({
 					includeSpamTrash: 'true',
 					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734390000 before:1735167600',
+					q: 'test from:Test Sender after:1734393600 before:1735171200',
 					readStatus: 'both',
 					dataPropertyAttachmentsPrefixName: 'attachment_',
 					downloadAttachments: 'true',
@@ -51,7 +55,7 @@ describe('Test Gmail Node v2', () => {
 				.query({
 					includeSpamTrash: 'true',
 					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734390000 before:1735167600',
+					q: 'test from:Test Sender after:1734393600 before:1735171200',
 					readStatus: 'both',
 					dataPropertyAttachmentsPrefixName: 'attachment_',
 					downloadAttachments: 'true',
@@ -67,7 +71,7 @@ describe('Test Gmail Node v2', () => {
 				.query({
 					includeSpamTrash: 'true',
 					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734390000 before:1735167600',
+					q: 'test from:Test Sender after:1734393600 before:1735171200',
 					readStatus: 'both',
 					dataPropertyAttachmentsPrefixName: 'attachment_',
 					downloadAttachments: 'true',
@@ -168,10 +172,6 @@ describe('Test Gmail Node v2', () => {
 		const gmailNock = nock('https://www.googleapis.com/gmail');
 
 		beforeAll(() => {
-			jest
-				.useFakeTimers({ advanceTimers: true })
-				.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
-
 			gmailNock
 				.filteringRequestBody((body) => {
 					try {
@@ -186,6 +186,16 @@ describe('Test Gmail Node v2', () => {
 								.replace(/Message-ID:.*/g, 'Message-ID: test-message-id'),
 							'utf-8',
 						).toString('base64');
+
+						console.log(
+							Buffer.from(
+								mail
+									.replace(/boundary=".*"/g, 'boundary="--test-boundary"')
+									.replace(/----.*/g, '----test-boundary')
+									.replace(/Message-ID:.*/g, 'Message-ID: test-message-id'),
+								'utf-8',
+							).toString('base64'),
+						);
 
 						return JSON.stringify(parsedBody);
 					} catch (error) {
