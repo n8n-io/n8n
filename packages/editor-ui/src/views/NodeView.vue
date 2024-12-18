@@ -825,7 +825,7 @@ export default defineComponent({
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
-					dangerouslyUseHTMLString: true,
+
 					onClose: () => {
 						this.readOnlyNotification = null;
 					},
@@ -934,7 +934,6 @@ export default defineComponent({
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
-				dangerouslyUseHTMLString: true,
 			});
 		},
 		async clearExecutionData() {
@@ -1827,7 +1826,6 @@ export default defineComponent({
 							cancelButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
-							dangerouslyUseHTMLString: true,
 						},
 					);
 
@@ -2058,10 +2056,7 @@ export default defineComponent({
 			);
 			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
-				const insertNodePosition = [
-					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
-					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-				] as XYPosition;
+				const insertNodePosition: XYPosition = [mousePosition[0], mousePosition[1]];
 
 				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;

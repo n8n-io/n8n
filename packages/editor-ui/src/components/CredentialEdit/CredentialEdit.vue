@@ -759,7 +759,10 @@ const createToastMessagingForNewCredentials = (
 		toastText = i18n.baseText('credentials.create.personal.toast.text');
 	}
 
-	if (projectsStore.currentProject) {
+	if (
+		projectsStore.currentProject &&
+		projectsStore.currentProject.id !== projectsStore.personalProject?.id
+	) {
 		toastTitle = i18n.baseText('credentials.create.project.toast.title', {
 			interpolate: { projectName: project?.name ?? '' },
 		});

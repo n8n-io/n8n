@@ -28,6 +28,7 @@ import { getResolvables } from '../../utils/utilities';
 export function prepareFormData({
 	formTitle,
 	formDescription,
+	formSubmittedHeader,
 	formSubmittedText,
 	redirectUrl,
 	formFields,
@@ -49,6 +50,7 @@ export function prepareFormData({
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
+	formSubmittedHeader?: string;
 }) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -63,6 +65,7 @@ export function prepareFormData({
 		validForm,
 		formTitle,
 		formDescription,
+		formSubmittedHeader,
 		formSubmittedText,
 		n8nWebsiteLink,
 		formFields: [],

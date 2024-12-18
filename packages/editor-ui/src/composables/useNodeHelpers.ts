@@ -35,6 +35,7 @@ import type {
 	INodeTypeNameVersion,
 	IConnection,
 	IPinData,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import type {
@@ -1268,6 +1269,50 @@ export function useNodeHelpers() {
 		return id;
 	}
 
+	/** nodes that would execute only once with such parameters add 'undefined' to parameters values if it is parameter's default value */
+	const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
+		'n8n-nodes-base.code': {
+			mode: [undefined, 'runOnceForAllItems'],
+		},
+		'n8n-nodes-base.executeWorkflow': {
+			mode: [undefined, 'once'],
+		},
+		'n8n-nodes-base.crateDb': {
+			operation: [undefined, 'update'], // default insert
+		},
+		'n8n-nodes-base.timescaleDb': {
+			operation: [undefined, 'update'], // default insert
+		},
+		'n8n-nodes-base.microsoftSql': {
+			operation: [undefined, 'update', 'delete'], // default insert
+		},
+		'n8n-nodes-base.questDb': {
+			operation: [undefined], // default insert
+		},
+		'n8n-nodes-base.mongoDb': {
+			operation: ['insert', 'update'],
+		},
+		'n8n-nodes-base.redis': {
+			operation: [undefined], // default info
+		},
+	};
+
+	function isSingleExecution(type: string, parameters: INodeParameters): boolean {
+		const singleExecutionCase = SINGLE_EXECUTION_NODES[type];
+
+		if (singleExecutionCase) {
+			for (const parameter of Object.keys(singleExecutionCase)) {
+				if (!singleExecutionCase[parameter].includes(parameters[parameter] as NodeParameterValue)) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -1305,5 +1350,6 @@ export function useNodeHelpers() {
 		getNodeTaskData,
 		assignNodeId,
 		assignWebhookId,
+		isSingleExecution,
 	};
 }

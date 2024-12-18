@@ -518,7 +518,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 		const nodes: INode[] = [];
 		for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-			// @ts-ignore
 			nodeData = getNodeDataToSave(workflowNodes[nodeIndex]);
 
 			nodes.push(nodeData);
@@ -882,7 +881,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					}),
 					i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
 					{
-						dangerouslyUseHTMLString: true,
 						confirmButtonText: i18n.baseText(
 							'workflows.concurrentChanges.confirmMessage.confirmButtonText',
 						),

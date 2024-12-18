@@ -40,12 +40,11 @@ export class WaitTracker {
 	 * @important Requires `OrchestrationService` to be initialized.
 	 */
 	init() {
-		const { isLeader } = this.instanceSettings;
-		const { isMultiMainSetupEnabled } = this.orchestrationService;
+		const { isLeader, isMultiMain } = this.instanceSettings;
 
 		if (isLeader) this.startTracking();
 
-		if (isMultiMainSetupEnabled) {
+		if (isMultiMain) {
 			this.orchestrationService.multiMainSetup
 				.on('leader-takeover', () => this.startTracking())
 				.on('leader-stepdown', () => this.stopTracking());

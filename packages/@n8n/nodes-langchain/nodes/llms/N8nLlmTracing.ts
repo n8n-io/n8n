@@ -9,11 +9,11 @@ import type {
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import { encodingForModel } from '@langchain/core/utils/tiktoken';
-import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { pick } from 'lodash';
+import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionType, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '../../utils/helpers';
+import { logAiEvent } from '@utils/helpers';
 
 type TokensUsageParser = (llmOutput: LLMResult['llmOutput']) => {
 	completionTokens: number;

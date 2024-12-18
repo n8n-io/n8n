@@ -405,11 +405,4 @@ export const schema = {
 			doc: 'Set this to 1 to enable the new partial execution logic by default.',
 		},
 	},
-
-	virtualSchemaView: {
-		doc: 'Whether to display the virtualized schema view',
-		format: Boolean,
-		default: false,
-		env: 'N8N_VIRTUAL_SCHEMA_VIEW',
-	},
 };

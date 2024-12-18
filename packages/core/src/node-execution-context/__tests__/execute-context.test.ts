@@ -14,7 +14,7 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError } from 'n8n-workflow';
+import { ApplicationError, ExpressionError, NodeConnectionType } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
@@ -92,33 +92,39 @@ describe('ExecuteContext', () => {
 
 	describe('getInputData', () => {
 		const inputIndex = 0;
-		const inputName = 'main';
+		const connectionType = NodeConnectionType.Main;
 
 		afterEach(() => {
-			inputData[inputName] = [[{ json: { test: 'data' } }]];
+			inputData[connectionType] = [[{ json: { test: 'data' } }]];
 		});
 
 		it('should return the input data correctly', () => {
 			const expectedData = [{ json: { test: 'data' } }];
 
-			expect(executeContext.getInputData(inputIndex, inputName)).toEqual(expectedData);
+			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
 		});
 
 		it('should return an empty array if the input name does not exist', () => {
-			const inputName = 'nonExistent';
-			expect(executeContext.getInputData(inputIndex, inputName)).toEqual([]);
+			const connectionType = 'nonExistent';
+			expect(executeContext.getInputData(inputIndex, connectionType as NodeConnectionType)).toEqual(
+				[],
+			);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
 			const inputIndex = 2;
 
-			expect(() => executeContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
+			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
+				ApplicationError,
+			);
 		});
 
 		it('should throw an error if the input index was not set', () => {
 			inputData.main[inputIndex] = null;
 
-			expect(() => executeContext.getInputData(inputIndex, inputName)).toThrow(ApplicationError);
+			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
+				ApplicationError,
+			);
 		});
 	});
 
