@@ -1,5 +1,5 @@
 import type express from 'express';
-import * as NodeExecuteFunctions from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -17,13 +17,14 @@ import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { removeTrailingSlash } from '@/utils';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
+import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
@@ -41,8 +42,9 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
-		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -154,7 +156,7 @@ export class TestWebhooks implements IWebhookManager {
 			 * the handler process commands the creator process to clear its test webhooks.
 			 */
 			if (
-				this.orchestrationService.isMultiMainSetupEnabled &&
+				this.instanceSettings.isMultiMain &&
 				pushRef &&
 				!this.push.getBackend().hasPushRef(pushRef)
 			) {
@@ -218,24 +220,47 @@ export class TestWebhooks implements IWebhookManager {
 	 * Return whether activating a workflow requires listening for webhook calls.
 	 * For every webhook call to listen for, also activate the webhook.
 	 */
-	async needsWebhook(
-		userId: string,
-		workflowEntity: IWorkflowDb,
-		additionalData: IWorkflowExecuteAdditionalData,
-		runData?: IRunData,
-		pushRef?: string,
-		destinationNode?: string,
-	) {
+	async needsWebhook(options: {
+		userId: string;
+		workflowEntity: IWorkflowDb;
+		additionalData: IWorkflowExecuteAdditionalData;
+		runData?: IRunData;
+		pushRef?: string;
+		destinationNode?: string;
+		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
+	}) {
+		const {
+			userId,
+			workflowEntity,
+			additionalData,
+			runData,
+			pushRef,
+			destinationNode,
+			triggerToStartFrom,
+		} = options;
+
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(
+		let webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
 			destinationNode,
 			true,
 		);
+
+		// If we have a preferred trigger with data, we don't have to listen for a
+		// webhook.
+		if (triggerToStartFrom?.data) {
+			return false;
+		}
+
+		// If we have a preferred trigger without data we only want to listen for
+		// that trigger, not the other ones.
+		if (triggerToStartFrom) {
+			webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
+		}
 
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
@@ -290,7 +315,7 @@ export class TestWebhooks implements IWebhookManager {
 				 */
 				await this.registrations.register(registration);
 
-				await workflow.createWebhookIfNotExists(webhook, NodeExecuteFunctions, 'manual', 'manual');
+				await this.webhookService.createWebhookIfNotExists(workflow, webhook, 'manual', 'manual');
 
 				cacheableWebhook.staticData = workflow.staticData;
 
@@ -407,7 +432,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (staticData) workflow.staticData = staticData;
 
-			await workflow.deleteWebhook(webhook, NodeExecuteFunctions, 'internal', 'update');
+			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
 		}
 
 		await this.registrations.deregisterAll();

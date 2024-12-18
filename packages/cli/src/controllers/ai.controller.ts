@@ -1,6 +1,5 @@
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import type { Response } from 'express';
-import { ErrorReporterProxy } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
@@ -33,8 +32,7 @@ export class AiController {
 			}
 		} catch (e) {
 			assert(e instanceof Error);
-			ErrorReporterProxy.error(e);
-			throw new InternalServerError(`Something went wrong: ${e.message}`);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 
@@ -46,8 +44,7 @@ export class AiController {
 			return await this.aiService.applySuggestion(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
-			ErrorReporterProxy.error(e);
-			throw new InternalServerError(`Something went wrong: ${e.message}`);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 
@@ -57,8 +54,7 @@ export class AiController {
 			return await this.aiService.askAi(req.body, req.user);
 		} catch (e) {
 			assert(e instanceof Error);
-			ErrorReporterProxy.error(e);
-			throw new InternalServerError(`Something went wrong: ${e.message}`);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 }

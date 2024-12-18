@@ -255,7 +255,6 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/workflow/:name/evaluation',
-		name: VIEWS.TEST_DEFINITION,
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -480,8 +479,16 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/settings',
+		name: VIEWS.SETTINGS,
 		component: SettingsView,
 		props: true,
+		redirect: () => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.settings.hideUsagePage) {
+				return { name: VIEWS.PERSONAL_SETTINGS };
+			}
+			return { name: VIEWS.USAGE };
+		},
 		children: [
 			{
 				path: 'usage',

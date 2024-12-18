@@ -1,10 +1,12 @@
-import { computed, toValue, type ComputedRef, type Ref } from 'vue';
+import { computed } from 'vue';
 import { VIEWS } from '@/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { sortByProperty } from '@/utils/sortUtils';
 import { useToast } from '@/composables/useToast';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -23,11 +25,11 @@ type Item = BaseItem & {
 	submenu?: BaseItem[];
 };
 
-export const useGlobalEntityCreation = (
-	multipleProjects: Ref<boolean> | ComputedRef<boolean> | boolean = true,
-) => {
+export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 
+	const settingsStore = useSettingsStore();
+	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
 	const router = useRouter();
@@ -50,7 +52,7 @@ export const useGlobalEntityCreation = (
 
 	const menu = computed<Item[]>(() => {
 		// Community
-		if (!projectsStore.canCreateProjects) {
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return [
 				{
 					id: 'workflow',
@@ -73,34 +75,10 @@ export const useGlobalEntityCreation = (
 						},
 					},
 				},
-			];
-		}
-
-		// single project
-		if (!toValue(multipleProjects)) {
-			return [
 				{
-					id: 'workflow',
-					title: 'Workflow',
-					disabled: disabledWorkflow(projectsStore.currentProject?.scopes),
-					route: {
-						name: VIEWS.NEW_WORKFLOW,
-						query: {
-							projectId: projectsStore.currentProject?.id,
-						},
-					},
-				},
-				{
-					id: 'credential',
-					title: 'Credential',
-					disabled: disabledCredential(projectsStore.currentProject?.scopes),
-					route: {
-						name: VIEWS.PROJECTS_CREDENTIALS,
-						params: {
-							projectId: projectsStore.currentProject?.id,
-							credentialId: 'create',
-						},
-					},
+					id: CREATE_PROJECT_ID,
+					title: 'Project',
+					disabled: true,
 				},
 			];
 		}
@@ -172,6 +150,7 @@ export const useGlobalEntityCreation = (
 			{
 				id: CREATE_PROJECT_ID,
 				title: 'Project',
+				disabled: !projectsStore.canCreateProjects,
 			},
 		];
 	});
@@ -204,5 +183,48 @@ export const useGlobalEntityCreation = (
 		void usePageRedirectionHelper().goToUpgrade('rbac', 'upgrade-rbac');
 	};
 
-	return { menu, handleSelect };
+	const projectsLimitReachedMessage = computed(() => {
+		if (settingsStore.isCloudDeployment) {
+			return i18n.baseText('projects.create.limitReached.cloud', {
+				adjustToNumber: projectsStore.teamProjectsLimit,
+				interpolate: {
+					planName: cloudPlanStore.currentPlanData?.displayName ?? '',
+					limit: projectsStore.teamProjectsLimit,
+				},
+			});
+		}
+
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
+			return i18n.baseText('projects.create.limitReached.self');
+		}
+
+		return i18n.baseText('projects.create.limitReached', {
+			adjustToNumber: projectsStore.teamProjectsLimit,
+			interpolate: {
+				limit: projectsStore.teamProjectsLimit,
+			},
+		});
+	});
+
+	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
+
+	const upgradeLabel = computed(() => {
+		if (settingsStore.isCloudDeployment) {
+			return i18n.baseText('generic.upgrade');
+		}
+
+		if (!projectsStore.isTeamProjectFeatureEnabled) {
+			return i18n.baseText('generic.enterprise');
+		}
+
+		return i18n.baseText('generic.upgrade');
+	});
+
+	return {
+		menu,
+		handleSelect,
+		createProjectAppendSlotName,
+		projectsLimitReachedMessage,
+		upgradeLabel,
+	};
 };

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import Modal from './Modal.vue';
 import {
-	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-	MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED,
+	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
+	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
 	MFA_SETUP_MODAL_KEY,
 } from '../constants';
 import { ref, onMounted } from 'vue';
@@ -53,12 +53,12 @@ const closeDialog = () => {
 };
 
 const onInput = (value: string) => {
-	if (value.length !== MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH) {
+	if (value.length !== MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH) {
 		infoTextErrorMessage.value = '';
 		return;
 	}
 	userStore
-		.verifyMfaToken({ token: value })
+		.verifyMfaCode({ mfaCode: value })
 		.then(() => {
 			showRecoveryCodes.value = true;
 			authenticatorCode.value = value;
@@ -98,14 +98,14 @@ const onDownloadClick = () => {
 
 const onSetupClick = async () => {
 	try {
-		await userStore.enableMfa({ token: authenticatorCode.value });
+		await userStore.enableMfa({ mfaCode: authenticatorCode.value });
 		closeDialog();
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('mfa.setup.step2.toast.setupFinished.message'),
 		});
 	} catch (e) {
-		if (e.errorCode === MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED) {
+		if (e.errorCode === MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED) {
 			toast.showMessage({
 				type: 'error',
 				title: i18n.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),

@@ -15,10 +15,12 @@ import { useRootStore } from '@/stores/root.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
+	const settingsStore = useSettingsStore();
 
 	const loading = ref(false);
 	const itemsPerPage = ref(10);
@@ -67,12 +69,29 @@ export const useExecutionsStore = defineStore('executions', () => {
 	);
 
 	const currentExecutionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
+	const startedAtSortFn = (a: ExecutionSummary, b: ExecutionSummary) =>
+		new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+
+	/**
+	 * Prioritize `running` over `new` executions, then sort by start timestamp.
+	 */
+	const statusThenStartedAtSortFn = (a: ExecutionSummary, b: ExecutionSummary) => {
+		if (a.status && b.status) {
+			const statusPriority: { [key: string]: number } = { running: 1, new: 2 };
+			const statusComparison = statusPriority[a.status] - statusPriority[b.status];
+
+			if (statusComparison !== 0) return statusComparison;
+		}
+
+		return startedAtSortFn(a, b);
+	};
+
+	const sortFn = settingsStore.isConcurrencyEnabled ? statusThenStartedAtSortFn : startedAtSortFn;
+
 	const currentExecutions = computed(() => {
 		const data = Object.values(currentExecutionsById.value);
 
-		data.sort((a, b) => {
-			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-		});
+		data.sort(sortFn);
 
 		return data;
 	});

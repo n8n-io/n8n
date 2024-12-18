@@ -159,7 +159,7 @@ const properties: INodeProperties[] = [
 						name: 'canShare',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the current user can rename this shared drive',
+						description: 'Whether the current user can share files or folders in this shared drive',
 					},
 					{
 						displayName: 'Can Trash Children',

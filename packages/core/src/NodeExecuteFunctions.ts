@@ -13,13 +13,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import type {
-	AxiosError,
-	AxiosHeaders,
-	AxiosPromise,
-	AxiosRequestConfig,
-	AxiosResponse,
-} from 'axios';
+import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FileType from 'file-type';
@@ -28,6 +22,7 @@ import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import { Agent, type AgentOptions } from 'https';
+import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
@@ -46,8 +41,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -59,13 +52,9 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	IRunExecutionData,
-	ITaskData,
 	ITaskDataConnections,
-	ITaskMetadata,
 	ITriggerFunctions,
-	IWebhookData,
 	IWebhookDescription,
-	IWebhookFunctions,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionWithMetadata,
@@ -84,9 +73,10 @@ import type {
 	DeduplicationScope,
 	DeduplicationItemTypes,
 	ICheckProcessedContextData,
-	ISupplyDataFunctions,
 	WebhookType,
 	SchedulingFunctions,
+	SupplyData,
+	AINodeConnectionType,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -128,15 +118,7 @@ import { DataDeduplicationService } from './data-deduplication-service';
 import { InstanceSettings } from './InstanceSettings';
 import type { IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
-import {
-	ExecuteContext,
-	ExecuteSingleContext,
-	HookContext,
-	PollContext,
-	SupplyDataContext,
-	TriggerContext,
-	WebhookContext,
-} from './node-execution-context';
+import { PollContext, SupplyDataContext, TriggerContext } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -674,14 +656,18 @@ function parseHeaderParameters(parameters: string[]): Record<string, string> {
 	return parameters.reduce(
 		(acc, param) => {
 			const [key, value] = param.split('=');
-			acc[key.toLowerCase().trim()] = decodeURIComponent(value);
+			let decodedValue = decodeURIComponent(value).trim();
+			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
+				decodedValue = decodedValue.slice(1, -1);
+			}
+			acc[key.toLowerCase().trim()] = decodedValue;
 			return acc;
 		},
 		{} as Record<string, string>,
 	);
 }
 
-function parseContentType(contentType?: string): IContentType | null {
+export function parseContentType(contentType?: string): IContentType | null {
 	if (!contentType) {
 		return null;
 	}
@@ -694,22 +680,7 @@ function parseContentType(contentType?: string): IContentType | null {
 	};
 }
 
-function parseFileName(filename?: string): string | undefined {
-	if (filename?.startsWith('"') && filename?.endsWith('"')) {
-		return filename.slice(1, -1);
-	}
-
-	return filename;
-}
-
-// https://datatracker.ietf.org/doc/html/rfc5987
-function parseFileNameStar(filename?: string): string | undefined {
-	const [_encoding, _locale, content] = parseFileName(filename)?.split("'") ?? [];
-
-	return content;
-}
-
-function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
+export function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
 	if (!contentDisposition) {
 		return null;
 	}
@@ -724,11 +695,15 @@ function parseContentDisposition(contentDisposition?: string): IContentDispositi
 
 	const parsedParameters = parseHeaderParameters(parameters);
 
-	return {
-		type,
-		filename:
-			parseFileNameStar(parsedParameters['filename*']) ?? parseFileName(parsedParameters.filename),
-	};
+	let { filename } = parsedParameters;
+	const wildcard = parsedParameters['filename*'];
+	if (wildcard) {
+		// https://datatracker.ietf.org/doc/html/rfc5987
+		const [_encoding, _locale, content] = wildcard?.split("'") ?? [];
+		filename = content;
+	}
+
+	return { type, filename };
 }
 
 export function parseIncomingMessage(message: IncomingMessage) {
@@ -745,13 +720,33 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-export async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
-	const buffer = await binaryToBuffer(body);
+export async function binaryToString(body: Buffer | Readable, encoding?: string) {
 	if (!encoding && body instanceof IncomingMessage) {
 		parseIncomingMessage(body);
 		encoding = body.encoding;
 	}
-	return buffer.toString(encoding);
+	const buffer = await binaryToBuffer(body);
+	return iconv.decode(buffer, encoding ?? 'utf-8');
+}
+
+export async function invokeAxios(
+	axiosConfig: AxiosRequestConfig,
+	authOptions: IRequestOptions['auth'] = {},
+) {
+	try {
+		return await axios(axiosConfig);
+	} catch (error) {
+		if (authOptions.sendImmediately !== false || !(error instanceof axios.AxiosError)) throw error;
+		// for digest-auth
+		const { response } = error;
+		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+			throw error;
+		}
+		const { auth } = axiosConfig;
+		delete axiosConfig.auth;
+		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
+		return await axios(axiosConfig);
+	}
 }
 
 export async function proxyRequestToAxios(
@@ -774,29 +769,8 @@ export async function proxyRequestToAxios(
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
-	let requestFn: () => AxiosPromise;
-	if (configObject.auth?.sendImmediately === false) {
-		// for digest-auth
-		requestFn = async () => {
-			try {
-				return await axios(axiosConfig);
-			} catch (error) {
-				const { response } = error;
-				if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-					throw error;
-				}
-				const { auth } = axiosConfig;
-				delete axiosConfig.auth;
-				axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
-				return await axios(axiosConfig);
-			}
-		};
-	} else {
-		requestFn = async () => await axios(axiosConfig);
-	}
-
 	try {
-		const response = await requestFn();
+		const response = await invokeAxios(axiosConfig, configObject.auth);
 		let body = response.data;
 		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
 			parseIncomingMessage(body);
@@ -988,7 +962,7 @@ export async function httpRequest(
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	let axiosRequest = convertN8nRequestToAxios(requestOptions);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
@@ -996,23 +970,7 @@ export async function httpRequest(
 		delete axiosRequest.data;
 	}
 
-	let result: AxiosResponse<any>;
-	try {
-		result = await axios(axiosRequest);
-	} catch (error) {
-		if (requestOptions.auth?.sendImmediately === false) {
-			const { response } = error;
-			if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
-				throw error;
-			}
-
-			const { auth } = axiosRequest;
-			delete axiosRequest.auth;
-			axiosRequest = digestAuthAxiosConfig(axiosRequest, response, auth);
-			result = await axios(axiosRequest);
-		}
-		throw error;
-	}
+	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
 	if (requestOptions.returnFullResponse) {
 		return {
@@ -2050,143 +2008,39 @@ export function getWebhookDescription(
 	return undefined;
 }
 
-// TODO: Change options to an object
-export const addExecutionDataFunctions = async (
-	type: 'input' | 'output',
-	nodeName: string,
-	data: INodeExecutionData[][] | ExecutionBaseError,
-	runExecutionData: IRunExecutionData,
-	connectionType: NodeConnectionType,
-	additionalData: IWorkflowExecuteAdditionalData,
-	sourceNodeName: string,
-	sourceNodeRunIndex: number,
-	currentNodeRunIndex: number,
-	metadata?: ITaskMetadata,
-): Promise<void> => {
-	if (connectionType === NodeConnectionType.Main) {
-		throw new ApplicationError('Setting type is not supported for main connection', {
-			extra: { type },
-		});
-	}
-
-	let taskData: ITaskData | undefined;
-	if (type === 'input') {
-		taskData = {
-			startTime: new Date().getTime(),
-			executionTime: 0,
-			executionStatus: 'running',
-			source: [null],
-		};
-	} else {
-		// At the moment we expect that there is always an input sent before the output
-		taskData = get(
-			runExecutionData,
-			['resultData', 'runData', nodeName, currentNodeRunIndex],
-			undefined,
-		);
-		if (taskData === undefined) {
-			return;
-		}
-		taskData.metadata = metadata;
-	}
-	taskData = taskData!;
-
-	if (data instanceof Error) {
-		taskData.executionStatus = 'error';
-		taskData.error = data;
-	} else {
-		if (type === 'output') {
-			taskData.executionStatus = 'success';
-		}
-		taskData.data = {
-			[connectionType]: data,
-		} as ITaskDataConnections;
-	}
-
-	if (type === 'input') {
-		if (!(data instanceof Error)) {
-			taskData.inputOverride = {
-				[connectionType]: data,
-			} as ITaskDataConnections;
-		}
-
-		if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-			runExecutionData.resultData.runData[nodeName] = [];
-		}
-
-		runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-		if (additionalData.sendDataToUI) {
-			additionalData.sendDataToUI('nodeExecuteBefore', {
-				executionId: additionalData.executionId,
-				nodeName,
-			});
-		}
-	} else {
-		// Outputs
-		taskData.executionTime = new Date().getTime() - taskData.startTime;
-
-		if (additionalData.sendDataToUI) {
-			additionalData.sendDataToUI('nodeExecuteAfter', {
-				executionId: additionalData.executionId,
-				nodeName,
-				data: taskData,
-			});
-		}
-
-		if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
-			runExecutionData.executionData!.metadata = {};
-		}
-
-		let sourceTaskData = get(runExecutionData, ['executionData', 'metadata', sourceNodeName]);
-
-		if (!sourceTaskData) {
-			runExecutionData.executionData!.metadata[sourceNodeName] = [];
-			sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
-		}
-
-		if (!sourceTaskData[sourceNodeRunIndex]) {
-			sourceTaskData[sourceNodeRunIndex] = {
-				subRun: [],
-			};
-		}
-
-		sourceTaskData[sourceNodeRunIndex]!.subRun!.push({
-			node: nodeName,
-			runIndex: currentNodeRunIndex,
-		});
-	}
-};
-
 export async function getInputConnectionData(
 	this: IAllExecuteFunctions,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
-	runIndex: number,
+	parentRunIndex: number,
 	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
+	parentInputData: ITaskDataConnections,
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	inputName: NodeConnectionType,
+	connectionType: AINodeConnectionType,
 	itemIndex: number,
 	abortSignal?: AbortSignal,
 ): Promise<unknown> {
-	const node = this.getNode();
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	const parentNode = this.getNode();
+	const parentNodeType = workflow.nodeTypes.getByNameAndVersion(
+		parentNode.type,
+		parentNode.typeVersion,
+	);
 
-	const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+	const inputs = NodeHelpers.getNodeInputs(workflow, parentNode, parentNodeType.description);
 
 	let inputConfiguration = inputs.find((input) => {
 		if (typeof input === 'string') {
-			return input === inputName;
+			return input === connectionType;
 		}
-		return input.type === inputName;
+		return input.type === connectionType;
 	});
 
 	if (inputConfiguration === undefined) {
 		throw new ApplicationError('Node does not have input of type', {
-			extra: { nodeName: node.name, inputName },
+			extra: { nodeName: parentNode.name, connectionType },
 		});
 	}
 
@@ -2196,28 +2050,39 @@ export async function getInputConnectionData(
 		} as INodeInputConfiguration;
 	}
 
-	const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
-	if (parentNodes.length === 0) {
+	const connectedNodes = workflow
+		.getParentNodes(parentNode.name, connectionType, 1)
+		.map((nodeName) => workflow.getNode(nodeName) as INode)
+		.filter((connectedNode) => connectedNode.disabled !== true);
+
+	if (connectedNodes.length === 0) {
 		if (inputConfiguration.required) {
 			throw new NodeOperationError(
-				node,
-				`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
+				parentNode,
+				`A ${inputConfiguration?.displayName ?? connectionType} sub-node must be connected and enabled`,
 			);
 		}
 		return inputConfiguration.maxConnections === 1 ? undefined : [];
 	}
 
-	const constParentNodes = parentNodes
-		.map((nodeName) => {
-			return workflow.getNode(nodeName) as INode;
-		})
-		.filter((connectedNode) => connectedNode.disabled !== true)
-		.map(async (connectedNode) => {
-			const nodeType = workflow.nodeTypes.getByNameAndVersion(
-				connectedNode.type,
-				connectedNode.typeVersion,
-			);
-			const context = new SupplyDataContext(
+	if (
+		inputConfiguration.maxConnections !== undefined &&
+		connectedNodes.length > inputConfiguration.maxConnections
+	) {
+		throw new NodeOperationError(
+			parentNode,
+			`Only ${inputConfiguration.maxConnections} ${connectionType} sub-nodes are/is allowed to be connected`,
+		);
+	}
+
+	const nodes: SupplyData[] = [];
+	for (const connectedNode of connectedNodes) {
+		const connectedNodeType = workflow.nodeTypes.getByNameAndVersion(
+			connectedNode.type,
+			connectedNode.typeVersion,
+		);
+		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
+			new SupplyDataContext(
 				workflow,
 				connectedNode,
 				additionalData,
@@ -2226,29 +2091,64 @@ export async function getInputConnectionData(
 				runIndex,
 				connectionInputData,
 				inputData,
+				connectionType,
 				executeData,
 				closeFunctions,
 				abortSignal,
 			);
 
-			if (!nodeType.supplyData) {
-				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
-					nodeType.supplyData = async function (this: ISupplyDataFunctions) {
-						return createNodeAsTool(this, nodeType, this.getNode().parameters);
-					};
-				} else {
-					throw new ApplicationError('Node does not have a `supplyData` method defined', {
-						extra: { nodeName: connectedNode.name },
-					});
-				}
-			}
+		if (!connectedNodeType.supplyData) {
+			if (connectedNodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+				/**
+				 * This keeps track of how many times this specific AI tool node has been invoked.
+				 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
+				 */
+				let toolRunIndex = 0;
+				const supplyData = createNodeAsTool({
+					node: connectedNode,
+					nodeType: connectedNodeType,
+					handleToolInvocation: async (toolArgs) => {
+						const runIndex = toolRunIndex++;
+						const context = contextFactory(runIndex, {});
+						context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
 
+						try {
+							// Execute the sub-node with the proxied context
+							const result = await connectedNodeType.execute?.call(
+								context as unknown as IExecuteFunctions,
+							);
+
+							// Process and map the results
+							const mappedResults = result?.[0]?.flatMap((item) => item.json);
+
+							// Add output data to the context
+							context.addOutputData(NodeConnectionType.AiTool, runIndex, [
+								[{ json: { response: mappedResults } }],
+							]);
+
+							// Return the stringified results
+							return JSON.stringify(mappedResults);
+						} catch (error) {
+							const nodeError = new NodeOperationError(connectedNode, error as Error);
+							context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
+							return 'Error during node execution: ' + nodeError.description;
+						}
+					},
+				});
+				nodes.push(supplyData);
+			} else {
+				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+					extra: { nodeName: connectedNode.name },
+				});
+			}
+		} else {
+			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
-				const response = await nodeType.supplyData.call(context, itemIndex);
-				if (response.closeFunction) {
-					closeFunctions.push(response.closeFunction);
+				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
+				if (supplyData.closeFunction) {
+					closeFunctions.push(supplyData.closeFunction);
 				}
-				return response;
+				nodes.push(supplyData);
 			} catch (error) {
 				// Propagate errors from sub-nodes
 				if (error.functionality === 'configuration-node') throw error;
@@ -2259,20 +2159,16 @@ export async function getInputConnectionData(
 				}
 
 				let currentNodeRunIndex = 0;
-				if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
-					currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
+				if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
+					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
 				}
 
 				// Display the error on the node which is causing it
-				await addExecutionDataFunctions(
+				await context.addExecutionDataFunctions(
 					'input',
-					connectedNode.name,
 					error,
-					runExecutionData,
-					inputName,
-					additionalData,
-					node.name,
-					runIndex,
+					connectionType,
+					parentNode.name,
 					currentNodeRunIndex,
 				);
 
@@ -2283,25 +2179,7 @@ export async function getInputConnectionData(
 					description: error.message,
 				});
 			}
-		});
-
-	// Validate the inputs
-	const nodes = await Promise.all(constParentNodes);
-
-	if (inputConfiguration.required && nodes.length === 0) {
-		throw new NodeOperationError(
-			node,
-			`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
-		);
-	}
-	if (
-		inputConfiguration.maxConnections !== undefined &&
-		nodes.length > inputConfiguration.maxConnections
-	) {
-		throw new NodeOperationError(
-			node,
-			`Only ${inputConfiguration.maxConnections} ${inputName} sub-nodes are/is allowed to be connected`,
-		);
+		}
 	}
 
 	return inputConfiguration.maxConnections === 1
@@ -2862,68 +2740,6 @@ export function getExecuteTriggerFunctions(
 	return new TriggerContext(workflow, node, additionalData, mode, activation);
 }
 
-/**
- * Returns the execute functions regular nodes have access to.
- */
-export function getExecuteFunctions(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData,
-	runIndex: number,
-	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	executeData: IExecuteData,
-	mode: WorkflowExecuteMode,
-	closeFunctions: CloseFunction[],
-	abortSignal?: AbortSignal,
-): IExecuteFunctions {
-	return new ExecuteContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		runExecutionData,
-		runIndex,
-		connectionInputData,
-		inputData,
-		executeData,
-		closeFunctions,
-		abortSignal,
-	);
-}
-
-/**
- * Returns the execute functions regular nodes have access to when single-function is defined.
- */
-export function getExecuteSingleFunctions(
-	workflow: Workflow,
-	runExecutionData: IRunExecutionData,
-	runIndex: number,
-	connectionInputData: INodeExecutionData[],
-	inputData: ITaskDataConnections,
-	node: INode,
-	itemIndex: number,
-	additionalData: IWorkflowExecuteAdditionalData,
-	executeData: IExecuteData,
-	mode: WorkflowExecuteMode,
-	abortSignal?: AbortSignal,
-): IExecuteSingleFunctions {
-	return new ExecuteSingleContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		runExecutionData,
-		runIndex,
-		connectionInputData,
-		inputData,
-		itemIndex,
-		executeData,
-		abortSignal,
-	);
-}
-
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
 		helpers: {
@@ -2933,42 +2749,4 @@ export function getCredentialTestFunctions(): ICredentialTestFunctions {
 			},
 		},
 	};
-}
-
-/**
- * Returns the execute functions regular nodes have access to in hook-function.
- */
-export function getExecuteHookFunctions(
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	activation: WorkflowActivateMode,
-	webhookData?: IWebhookData,
-): IHookFunctions {
-	return new HookContext(workflow, node, additionalData, mode, activation, webhookData);
-}
-
-/**
- * Returns the execute functions regular nodes have access to when webhook-function is defined.
- */
-// TODO: check where it is used and make sure close functions are called
-export function getExecuteWebhookFunctions(
-	workflow: Workflow,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	mode: WorkflowExecuteMode,
-	webhookData: IWebhookData,
-	closeFunctions: CloseFunction[],
-	runExecutionData: IRunExecutionData | null,
-): IWebhookFunctions {
-	return new WebhookContext(
-		workflow,
-		node,
-		additionalData,
-		mode,
-		webhookData,
-		closeFunctions,
-		runExecutionData,
-	);
 }

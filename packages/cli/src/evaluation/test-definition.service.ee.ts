@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -31,6 +31,7 @@ export class TestDefinitionService {
 		evaluationWorkflowId?: string;
 		annotationTagId?: string;
 		id?: string;
+		mockedNodes?: MockedNodeItem[];
 	}) {
 		const entity: TestDefinitionLike = {};
 
@@ -62,6 +63,10 @@ export class TestDefinitionService {
 			entity.annotationTag = {
 				id: attrs.annotationTagId,
 			};
+		}
+
+		if (attrs.mockedNodes) {
+			entity.mockedNodes = attrs.mockedNodes;
 		}
 
 		return entity;
@@ -105,6 +110,24 @@ export class TestDefinitionService {
 			if (!annotationTagExists) {
 				throw new BadRequestError('Annotation tag not found');
 			}
+		}
+
+		// If there are mocked nodes, validate them
+		if (attrs.mockedNodes && attrs.mockedNodes.length > 0) {
+			const existingTestDefinition = await this.testDefinitionRepository.findOneOrFail({
+				where: {
+					id,
+				},
+				relations: ['workflow'],
+			});
+
+			const existingNodeNames = new Set(existingTestDefinition.workflow.nodes.map((n) => n.name));
+
+			attrs.mockedNodes.forEach((node) => {
+				if (!existingNodeNames.has(node.name)) {
+					throw new BadRequestError(`Pinned node not found in the workflow: ${node.name}`);
+				}
+			});
 		}
 
 		// Update the test definition

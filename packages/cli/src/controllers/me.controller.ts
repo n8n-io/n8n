@@ -68,8 +68,8 @@ export class MeController {
 				throw new BadRequestError('Two-factor code is required to change email');
 			}
 
-			const isMfaTokenValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaTokenValid) {
+			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
+			if (!isMfaCodeValid) {
 				throw new InvalidMfaCodeError();
 			}
 		}
@@ -142,8 +142,8 @@ export class MeController {
 				throw new BadRequestError('Two-factor code is required to change password.');
 			}
 
-			const isMfaTokenValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
-			if (!isMfaTokenValid) {
+			const isMfaCodeValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
+			if (!isMfaCodeValid) {
 				throw new InvalidMfaCodeError();
 			}
 		}

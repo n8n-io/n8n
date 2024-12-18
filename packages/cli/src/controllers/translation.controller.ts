@@ -54,7 +54,7 @@ export class TranslationController {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return require(NODE_HEADERS_PATH);
 		} catch (error) {
-			throw new InternalServerError('Failed to load headers file');
+			throw new InternalServerError('Failed to load headers file', error);
 		}
 	}
 }

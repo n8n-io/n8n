@@ -200,13 +200,18 @@ describe('Canvas', () => {
 	describe('background', () => {
 		it('should render default background', () => {
 			const { container } = renderComponent();
-			expect(container.querySelector('#pattern-canvas')).toBeInTheDocument();
+			const patternCanvas = container.querySelector('#pattern-canvas');
+			expect(patternCanvas).toBeInTheDocument();
+			expect(patternCanvas?.innerHTML).toContain('<circle');
+			expect(patternCanvas?.innerHTML).not.toContain('<path');
 		});
 
 		it('should render striped background', () => {
 			const { container } = renderComponent({ props: { readOnly: true } });
-			expect(container.querySelector('#pattern-canvas')).not.toBeInTheDocument();
-			expect(container.querySelector('#diagonalHatch')).toBeInTheDocument();
+			const patternCanvas = container.querySelector('#pattern-canvas');
+			expect(patternCanvas).toBeInTheDocument();
+			expect(patternCanvas?.innerHTML).toContain('<path');
+			expect(patternCanvas?.innerHTML).not.toContain('<circle');
 		});
 	});
 });

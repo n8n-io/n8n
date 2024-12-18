@@ -1,3 +1,4 @@
+import { useLocalStorage } from '@vueuse/core';
 import type {
 	Draggable,
 	InputPanel,
@@ -13,6 +14,8 @@ import { useStorage } from '@/composables/useStorage';
 import {
 	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
 	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,
+	LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
+	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
 	STORES,
 } from '@/constants';
@@ -44,7 +47,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	});
 	const pushRef = ref('');
 	const input = ref<InputPanel>({
-		displayMode: 'schema',
 		nodeName: undefined,
 		run: undefined,
 		branch: undefined,
@@ -52,8 +54,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 			isEmpty: true,
 		},
 	});
+	const inputPanelDisplayMode = useLocalStorage<IRunDataDisplayMode>(
+		LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
+		'schema',
+	);
 	const output = ref<OutputPanel>({
-		displayMode: 'table',
 		branch: undefined,
 		data: {
 			isEmpty: true,
@@ -63,6 +68,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 			value: '',
 		},
 	});
+	const outputPanelDisplayMode = useLocalStorage<IRunDataDisplayMode>(
+		LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
+		'table',
+	);
 	const focusedMappableInput = ref('');
 	const focusedInputPath = ref('');
 	const mappingTelemetry = ref<Record<string, string | number | boolean>>({});
@@ -125,10 +134,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		return ndvInputDataWithPinnedData.value.length > 0;
 	});
 
-	const inputPanelDisplayMode = computed(() => input.value.displayMode);
-
-	const outputPanelDisplayMode = computed(() => output.value.displayMode);
-
 	const isDraggableDragging = computed(() => draggable.value.isDragging);
 
 	const draggableType = computed(() => draggable.value.type);
@@ -151,7 +156,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
 
 		for (const [index, connection] of activeNodeConections.entries()) {
-			for (const node of connection) {
+			for (const node of connection ?? []) {
 				if (!returnData[node.node]) {
 					returnData[node.node] = [];
 				}
@@ -242,9 +247,9 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		mode: IRunDataDisplayMode;
 	}): void => {
 		if (params.pane === 'input') {
-			input.value.displayMode = params.mode;
+			inputPanelDisplayMode.value = params.mode;
 		} else {
-			output.value.displayMode = params.mode;
+			outputPanelDisplayMode.value = params.mode;
 		}
 	};
 

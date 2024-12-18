@@ -77,7 +77,7 @@ export function updateDynamicConnections(
 				}
 			} else if (parameterData.name === 'parameters.rules.values') {
 				const curentRulesvalues = (node.parameters?.rules as { values: IDataObject[] })?.values;
-				let lastConnection: IConnection[] | undefined = undefined;
+				let lastConnection: IConnection[] | null | undefined = undefined;
 				if (
 					fallbackOutput === 'extra' &&
 					connections[node.name].main.length === curentRulesvalues.length + 1

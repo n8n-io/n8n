@@ -46,6 +46,7 @@ import type {
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
+	ITaskData,
 } from 'n8n-workflow';
 
 import type {
@@ -58,7 +59,7 @@ import type {
 	ROLE,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 
@@ -200,6 +201,11 @@ export interface IStartRunData {
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
+	dirtyNodeNames?: string[];
+	triggerToStartFrom?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ITableData {
@@ -243,13 +249,22 @@ export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
 }
 
+/**
+ * Workflow data with mandatory `templateId`
+ * This is used to identify sample workflows that we create for onboarding
+ */
+export interface WorkflowDataWithTemplateId extends Omit<IWorkflowDataCreate, 'meta'> {
+	meta: WorkflowMetadata & {
+		templateId: Required<WorkflowMetadata>['templateId'];
+	};
+}
+
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
 
 export interface NewWorkflowResponse {
 	name: string;
-	onboardingFlowEnabled?: boolean;
 	defaultSettings: IWorkflowSettings;
 }
 
@@ -276,7 +291,6 @@ export interface IWorkflowTemplate {
 
 export interface INewWorkflowData {
 	name: string;
-	onboardingFlowEnabled: boolean;
 }
 
 export interface WorkflowMetadata {
@@ -1357,51 +1371,6 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
-export type SshKeyTypes = ['ed25519', 'rsa'];
-
-export type SourceControlPreferences = {
-	connected: boolean;
-	repositoryUrl: string;
-	branchName: string;
-	branches: string[];
-	branchReadOnly: boolean;
-	branchColor: string;
-	publicKey?: string;
-	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
-	currentBranch?: string;
-};
-
-export interface SourceControlStatus {
-	ahead: number;
-	behind: number;
-	conflicted: string[];
-	created: string[];
-	current: string;
-	deleted: string[];
-	detached: boolean;
-	files: Array<{
-		path: string;
-		index: string;
-		working_dir: string;
-	}>;
-	modified: string[];
-	not_added: string[];
-	renamed: string[];
-	staged: string[];
-	tracking: null;
-}
-
-export interface SourceControlAggregatedFile {
-	conflict: boolean;
-	file: string;
-	id: string;
-	location: string;
-	name: string;
-	status: string;
-	type: string;
-	updatedAt?: string;
-}
-
 export declare namespace Cloud {
 	export interface PlanData {
 		planId: number;
@@ -1474,6 +1443,7 @@ export interface ExternalSecretsProvider {
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'
 	| 'canvas-nav'
+	| 'concurrency'
 	| 'custom-data-filter'
 	| 'workflow_sharing'
 	| 'credential_sharing'
@@ -1496,6 +1466,7 @@ export type CloudUpdateLinkSourceType =
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
+	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
 	| 'upgrade-api'
@@ -1588,7 +1559,6 @@ export type ApiKey = {
 };
 
 export type InputPanel = {
-	displayMode: IRunDataDisplayMode;
 	nodeName?: string;
 	run?: number;
 	branch?: number;
@@ -1599,7 +1569,6 @@ export type InputPanel = {
 
 export type OutputPanel = {
 	branch?: number;
-	displayMode: IRunDataDisplayMode;
 	data: {
 		isEmpty: boolean;
 	};

@@ -76,6 +76,7 @@ describe('TaskRunnerProcess', () => {
 			'N8N_VERSION',
 			'ENVIRONMENT',
 			'DEPLOYMENT_NAME',
+			'GENERIC_TIMEZONE',
 		])('should propagate %s from env as is', async (envVar) => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			process.env[envVar] = 'custom value';

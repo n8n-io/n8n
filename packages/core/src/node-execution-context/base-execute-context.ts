@@ -22,7 +22,13 @@ import type {
 	ISourceData,
 	AiEvent,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WorkflowDataProxy } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeHelpers,
+	NodeConnectionType,
+	WAIT_INDEFINITELY,
+	WorkflowDataProxy,
+} from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
@@ -97,6 +103,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
+	async putExecutionToWait(waitTill: Date): Promise<void> {
+		this.runExecutionData.waitTill = waitTill;
+		if (this.additionalData.setExecutionStatus) {
+			this.additionalData.setExecutionStatus('waiting');
+		}
+	}
+
 	async executeWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
 		inputData?: INodeExecutionData[],
@@ -106,23 +119,46 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentExecution?: RelatedExecution;
 		},
 	): Promise<ExecuteWorkflowData> {
-		return await this.additionalData
-			.executeWorkflow(workflowInfo, this.additionalData, {
-				...options,
-				parentWorkflowId: this.workflow.id?.toString(),
-				inputData,
-				parentWorkflowSettings: this.workflow.settings,
-				node: this.node,
-				parentCallbackManager,
-			})
-			.then(async (result) => {
-				const data = await this.binaryDataService.duplicateBinaryData(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					result.data,
-				);
-				return { ...result, data };
+		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
+			...options,
+			parentWorkflowId: this.workflow.id,
+			inputData,
+			parentWorkflowSettings: this.workflow.settings,
+			node: this.node,
+			parentCallbackManager,
+		});
+
+		// If a sub-workflow execution goes into the waiting state
+		if (result.waitTill) {
+			// then put the parent workflow execution also into the waiting state,
+			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
+		}
+
+		const data = await this.binaryDataService.duplicateBinaryData(
+			this.workflow.id,
+			this.additionalData.executionId!,
+			result.data,
+		);
+		return { ...result, data };
+	}
+
+	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
+		const inputData = this.inputData[connectionType];
+		if (inputData.length < inputIndex) {
+			throw new ApplicationError('Could not get input with given index', {
+				extra: { inputIndex, connectionType },
 			});
+		}
+
+		const allItems = inputData[inputIndex] as INodeExecutionData[] | null | undefined;
+		if (allItems === null) {
+			throw new ApplicationError('Input index was not set', {
+				extra: { inputIndex, connectionType },
+			});
+		}
+
+		return allItems;
 	}
 
 	getNodeInputs(): INodeInputConfiguration[] {
@@ -145,12 +181,12 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	getInputSourceData(inputIndex = 0, inputName = 'main'): ISourceData {
+	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionType.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
 			throw new ApplicationError('Source data is missing');
 		}
-		return this.executeData.source[inputName][inputIndex]!;
+		return this.executeData.source[connectionType][inputIndex]!;
 	}
 
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {

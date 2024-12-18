@@ -35,7 +35,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
 	const clashHandling = this.getNodeParameter(
@@ -59,7 +59,7 @@ export async function execute(
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 	if (!input1 || !input2) {
-		return returnData;
+		return [returnData];
 	}
 
 	let entry1: INodeExecutionData;
@@ -79,5 +79,5 @@ export async function execute(
 		}
 	}
 
-	return returnData;
+	return [returnData];
 }

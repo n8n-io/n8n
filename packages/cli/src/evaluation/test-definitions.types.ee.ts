@@ -1,3 +1,4 @@
+import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
@@ -13,7 +14,7 @@ export declare namespace TestDefinitionsRequest {
 
 	type GetOne = AuthenticatedRequest<RouteParams.TestId>;
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params> & {
 		listQueryOptions: ListQuery.Options;
 	};
 
@@ -26,7 +27,12 @@ export declare namespace TestDefinitionsRequest {
 	type Patch = AuthenticatedRequest<
 		RouteParams.TestId,
 		{},
-		{ name?: string; evaluationWorkflowId?: string; annotationTagId?: string }
+		{
+			name?: string;
+			evaluationWorkflowId?: string;
+			annotationTagId?: string;
+			mockedNodes?: MockedNodeItem[];
+		}
 	>;
 
 	type Delete = AuthenticatedRequest<RouteParams.TestId>;
@@ -62,4 +68,28 @@ export declare namespace TestMetricsRequest {
 	>;
 
 	type Delete = AuthenticatedRequest<RouteParams.TestDefinitionId & RouteParams.TestMetricId>;
+}
+
+// ----------------------------------
+// 					 /test-definitions/:testDefinitionId/runs
+// ----------------------------------
+
+export declare namespace TestRunsRequest {
+	namespace RouteParams {
+		type TestId = {
+			testDefinitionId: string;
+		};
+
+		type TestRunId = {
+			id: string;
+		};
+	}
+
+	type GetMany = AuthenticatedRequest<RouteParams.TestId, {}, {}, ListQuery.Params> & {
+		listQueryOptions: ListQuery.Options;
+	};
+
+	type GetOne = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
+
+	type Delete = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
 }

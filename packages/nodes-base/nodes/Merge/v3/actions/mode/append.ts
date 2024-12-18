@@ -20,12 +20,12 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < inputsData.length; i++) {
 		returnData.push.apply(returnData, inputsData[i]);
 	}
 
-	return returnData;
+	return [returnData];
 }

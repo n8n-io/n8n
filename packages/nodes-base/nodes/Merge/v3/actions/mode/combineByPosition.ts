@@ -50,7 +50,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
 	const clashHandling = this.getNodeParameter(
@@ -120,5 +120,5 @@ export async function execute(
 		returnData.push({ json, binary, pairedItem });
 	}
 
-	return returnData;
+	return [returnData];
 }

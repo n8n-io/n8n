@@ -89,7 +89,7 @@ describe('POST /login', () => {
 		const response = await testServer.authlessAgent.post('/login').send({
 			email: owner.email,
 			password: ownerPassword,
-			mfaToken: mfaService.totp.generateTOTP(secret),
+			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
 
 		expect(response.statusCode).toBe(200);

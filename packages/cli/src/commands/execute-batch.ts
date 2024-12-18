@@ -822,6 +822,11 @@ export class ExecuteBatch extends BaseCommand {
 					}
 				}
 			} catch (e) {
+				this.errorReporter.error(e, {
+					extra: {
+						workflowId: workflowData.id,
+					},
+				});
 				executionResult.error = `Workflow failed to execute: ${(e as Error).message}`;
 				executionResult.executionStatus = 'error';
 			}

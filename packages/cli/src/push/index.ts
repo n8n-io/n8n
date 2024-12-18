@@ -2,6 +2,7 @@ import type { PushPayload, PushType } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
+import { InstanceSettings } from 'n8n-core';
 import type { Socket } from 'net';
 import { Container, Service } from 'typedi';
 import { parse as parseUrl } from 'url';
@@ -13,7 +14,6 @@ import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { SSEPush } from './sse.push';
@@ -41,7 +41,7 @@ export class Push extends TypedEmitter<PushEvents> {
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(
-		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 	) {
 		super();
@@ -92,7 +92,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		 * the webhook. If so, the handler process commands the creator process to
 		 * relay the former's execution lifecycle events to the creator's frontend.
 		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.backend.hasPushRef(pushRef)) {
+		if (this.instanceSettings.isMultiMain && !this.backend.hasPushRef(pushRef)) {
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
 				payload: { type, args: data, pushRef },

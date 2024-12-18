@@ -121,4 +121,27 @@ BQIDAQAB
 		secret: 'baz',
 		algorithm: 'HS256',
 	},
+	telegramApi: {
+		accessToken: 'testToken',
+		baseUrl: 'https://api.telegram.org',
+	},
+	notionApi: {
+		apiKey: 'key123',
+	},
+	philipsHueOAuth2Api: {
+		grantType: 'authorizationCode',
+		appId: 'APPID',
+		authUrl: 'https://api.meethue.com/v2/oauth2/authorize',
+		accessTokenUrl: 'https://api.meethue.com/v2/oauth2/token',
+		authQueryParameters: 'appid=APPID',
+		scope: '',
+		authentication: 'header',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope: '',
+			token_type: 'bearer',
+			expires_in: 86400,
+		},
+	},
 } as const;

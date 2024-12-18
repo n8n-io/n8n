@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import { computed, type Ref, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { N8nNavigationDropdown } from 'n8n-design-system';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { N8nButton } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { VIEWS } from '@/constants';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 
 const route = useRoute();
+const router = useRouter();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
-
-const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
+const sourceControlStore = useSourceControlStore();
 
 const headerIcon = computed(() => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
@@ -47,23 +48,58 @@ const showSettings = computed(
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
-const { menu, handleSelect } = useGlobalEntityCreation(
-	computed(() => !Boolean(projectsStore.currentProject)),
-);
+const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
-const createLabel = computed(() => {
-	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.create');
-	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.create.personal');
-	} else {
-		return i18n.baseText('projects.create.team');
+const ACTION_TYPES = {
+	WORKFLOW: 'workflow',
+	CREDENTIAL: 'credential',
+} as const;
+type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
+
+const createWorkflowButton = computed(() => ({
+	value: ACTION_TYPES.WORKFLOW,
+	label: 'Create Workflow',
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
+}));
+const menu = computed(() => [
+	{
+		value: ACTION_TYPES.CREDENTIAL,
+		label: 'Create credential',
+		disabled:
+			sourceControlStore.preferences.branchReadOnly ||
+			!getResourcePermissions(homeProject.value?.scopes).credential.create,
+	},
+]);
+
+const actions: Record<ActionTypes, (projectId: string) => void> = {
+	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
+		void router.push({
+			name: VIEWS.NEW_WORKFLOW,
+			query: {
+				projectId,
+			},
+		});
+	},
+	[ACTION_TYPES.CREDENTIAL]: (projectId: string) => {
+		void router.push({
+			name: VIEWS.PROJECTS_CREDENTIALS,
+			params: {
+				projectId,
+				credentialId: 'create',
+			},
+		});
+	},
+} as const;
+
+const onSelect = (action: string) => {
+	const executableAction = actions[action as ActionTypes];
+	if (!homeProject.value) {
+		return;
 	}
-});
-
-onClickOutside(createBtn as Ref<VueInstance>, () => {
-	createBtn.value?.close();
-});
+	executableAction(homeProject.value.id);
+};
 </script>
 
 <template>
@@ -82,17 +118,22 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</slot>
 				</N8nText>
 			</div>
+			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
+				<ProjectCreateResource
+					data-test-id="add-resource-buttons"
+					:actions="menu"
+					@action="onSelect"
+				>
+					<N8nButton
+						data-test-id="add-resource-workflow"
+						v-bind="createWorkflowButton"
+						@click="onSelect(ACTION_TYPES.WORKFLOW)"
+					/>
+				</ProjectCreateResource>
+			</div>
 		</div>
 		<div :class="$style.actions">
 			<ProjectTabs :show-settings="showSettings" />
-			<N8nNavigationDropdown
-				ref="createBtn"
-				data-test-id="resource-add"
-				:menu="menu"
-				@select="handleSelect"
-			>
-				<N8nIconButton :label="createLabel" icon="plus" style="width: auto" />
-			</N8nNavigationDropdown>
 		</div>
 	</div>
 </template>
@@ -104,6 +145,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	gap: 8px;
 	padding-bottom: var(--spacing-m);
 	min-height: 64px;
+}
+
+.headerActions {
+	margin-left: auto;
 }
 
 .icon {
