@@ -190,6 +190,10 @@ const matchingColumns = computed<string[]>(() => {
 });
 
 const hasAvailableMatchingColumns = computed<boolean>(() => {
+	// 'map' mode doesn't require matching columns
+	if (resourceMapperMode.value === 'map') {
+		return true;
+	}
 	if (resourceMapperMode.value !== 'add' && resourceMapperMode.value !== 'upsert') {
 		return (
 			state.paramValue.schema.filter(
