@@ -40,18 +40,18 @@ export class TestRun extends WithTimestampsAndStringId {
 	 * Total number of the test cases, matching the filter condition of the test definition (specified annotationTag)
 	 */
 	@Column('integer', { nullable: true })
-	total: number;
+	totalCases: number;
 
 	/**
 	 * Number of test cases that passed (evaluation workflow was executed successfully)
 	 */
 	@Column('integer', { nullable: true })
-	passed: number;
+	passedCases: number;
 
 	/**
 	 * Number of failed test cases
 	 * (any unexpected exception happened during the execution or evaluation workflow ended with an error)
 	 */
 	@Column('integer', { nullable: true })
-	failed: number;
+	failedCases: number;
 }

@@ -25,9 +25,9 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, {
 			status: 'running',
 			runAt: new Date(),
-			total: totalCases,
-			passed: 0,
-			failed: 0,
+			totalCases,
+			passedCases: 0,
+			failedCases: 0,
 		});
 	}
 
@@ -36,11 +36,11 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	public async incrementPassed(id: string) {
-		return await this.increment({ id }, 'passed', 1);
+		return await this.increment({ id }, 'passedCases', 1);
 	}
 
 	public async incrementFailed(id: string) {
-		return await this.increment({ id }, 'failed', 1);
+		return await this.increment({ id }, 'failedCases', 1);
 	}
 
 	public async getMany(testDefinitionId: string, options: ListQuery.Options) {
