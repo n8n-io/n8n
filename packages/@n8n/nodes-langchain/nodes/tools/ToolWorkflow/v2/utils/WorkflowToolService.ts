@@ -20,8 +20,8 @@ import type {
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { FromAIArgument } from '../FromAIParser';
-import { AIParametersParser } from '../FromAIParser';
+import type { FromAIArgument } from './FromAIParser';
+import { AIParametersParser } from './FromAIParser';
 import { getCurrentWorkflowInputData } from '../methods/resourceMapping';
 
 /**
@@ -252,7 +252,7 @@ export class WorkflowToolService {
 
 		if (this.useSchema) {
 			const currentWorkflowInputs = getCurrentWorkflowInputData.call(this.context);
-			jsonData = currentWorkflowInputs[0].json;
+			jsonData = currentWorkflowInputs[itemIndex].json;
 		}
 
 		const newItem = await manual.execute.call(
