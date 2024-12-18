@@ -9,10 +9,15 @@ import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
-import type { DataRequestResponse, InputDataChunkDefinition } from '@/runner-types';
+import {
+	UNSUPPORTED_HELPER_FUNCTIONS,
+	type DataRequestResponse,
+	type InputDataChunkDefinition,
+} from '@/runner-types';
 import type { Task } from '@/task-runner';
 
 import {
@@ -652,6 +657,34 @@ describe('JsTaskRunner', () => {
 					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
 				});
 			}
+
+			describe('unsupported methods', () => {
+				for (const unsupportedFunction of UNSUPPORTED_HELPER_FUNCTIONS) {
+					it(`should throw an error if ${unsupportedFunction} is used in runOnceForAllItems`, async () => {
+						// Act
+
+						await expect(
+							async () =>
+								await executeForAllItems({
+									code: `${unsupportedFunction}()`,
+									inputItems,
+								}),
+						).rejects.toThrow(UnsupportedFunctionError);
+					});
+
+					it(`should throw an error if ${unsupportedFunction} is used in runOnceForEachItem`, async () => {
+						// Act
+
+						await expect(
+							async () =>
+								await executeForEachItem({
+									code: `${unsupportedFunction}()`,
+									inputItems,
+								}),
+						).rejects.toThrow(UnsupportedFunctionError);
+					});
+				}
+			});
 		});
 
 		it('should allow access to Node.js Buffers', async () => {

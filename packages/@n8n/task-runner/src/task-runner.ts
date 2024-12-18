@@ -7,8 +7,7 @@ import { type MessageEvent, WebSocket } from 'ws';
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
-import { EXPOSED_RPC_METHODS, type TaskResultData } from '@/runner-types';
-import { set } from '@/utils/set';
+import type { TaskResultData } from '@/runner-types';
 
 import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
 
@@ -42,10 +41,6 @@ interface RPCCall {
 	callId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
-}
-
-export interface RPCCallObject {
-	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RPCCallObject;
 }
 
 const OFFER_VALID_TIME_MS = 5000;
@@ -492,20 +487,6 @@ export abstract class TaskRunner extends EventEmitter {
 		} else {
 			call.reject(typeof data === 'string' ? new Error(data) : data);
 		}
-	}
-
-	buildRpcCallObject(taskId: string) {
-		const rpcObject: RPCCallObject = {};
-
-		for (const rpcMethod of EXPOSED_RPC_METHODS) {
-			set(
-				rpcObject,
-				rpcMethod.split('.'),
-				async (...args: unknown[]) => await this.makeRpcCall(taskId, rpcMethod, args),
-			);
-		}
-
-		return rpcObject;
 	}
 
 	/** Close the connection gracefully and wait until has been closed */

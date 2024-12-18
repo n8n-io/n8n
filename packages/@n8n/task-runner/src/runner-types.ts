@@ -119,51 +119,50 @@ export const EXPOSED_RPC_METHODS = [
 
 	// httpRequest(opts: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>
 	'helpers.httpRequest',
+];
 
-	//#region Not exposed helper functions
-
+/** Helpers that exist but that we are not exposing to the Code Node */
+export const UNSUPPORTED_HELPER_FUNCTIONS = [
 	// These rely on checking the credentials from the current node type (Code Node)
 	// and hence they can't even work (Code Node doesn't have credentials)
-	// 'helpers.httpRequestWithAuthentication',
-	// 'helpers.requestWithAuthenticationPaginated',
+	'helpers.httpRequestWithAuthentication',
+	'helpers.requestWithAuthenticationPaginated',
 
 	// This has been removed
-	// 'helpers.copyBinaryFile',
+	'helpers.copyBinaryFile',
 
 	// We can't support streams over RPC without implementing it ourselves
-	// 'helpers.createReadStream',
-	// 'helpers.getBinaryStream',
+	'helpers.createReadStream',
+	'helpers.getBinaryStream',
 
 	// Makes no sense to support this, as it returns either a stream or a buffer
 	// and we can't support streams over RPC
-	// 'helpers.binaryToBuffer',
+	'helpers.binaryToBuffer',
 
 	// These are pretty low-level, so we shouldn't expose them
 	// (require binary data id, which we don't expose)
-	// 'helpers.getBinaryMetadata',
-	// "helpers.getStoragePath"
-	// "helpers.getBinaryPath"
+	'helpers.getBinaryMetadata',
+	'helpers.getStoragePath',
+	'helpers.getBinaryPath',
 
 	// We shouldn't allow arbitrary FS writes
-	// 'helpers.writeContentToFile',
+	'helpers.writeContentToFile',
 
 	// Not something we need to expose. Can be done in the node itself
 	// copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[]
-	// "helpers.copyInputItems"
+	'helpers.copyInputItems',
 
 	// Code Node does these automatically already
-	// "helpers.returnJsonArray"
-	// "helpers.normalizeItems"
+	'helpers.returnJsonArray',
+	'helpers.normalizeItems',
 
 	// The client is instantiated and lives on the n8n instance, so we can't
 	// expose it over RPC without implementing object marshalling
-	// 'helpers.getSSHClient',
+	'helpers.getSSHClient',
 
 	// Doesn't make sense to expose
-	// 'helpers.createDeferredPromise',
-	// "helpers.constructExecutionMetaData"
-
-	//#endregion
+	'helpers.createDeferredPromise',
+	'helpers.constructExecutionMetaData',
 ];
 
 /** List of all RPC methods that task runner supports */
