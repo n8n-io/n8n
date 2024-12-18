@@ -8,6 +8,7 @@ import {
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { RetrievalQAChain } from 'langchain/chains';
 import {
+	IDataObject,
 	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -136,6 +137,13 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
+				displayName: 'Return Source Documents',
+				name: 'returnSourceDocuments',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include source documents in the output',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -175,7 +183,6 @@ export class ChainRetrievalQa implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
-		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				let query;
@@ -198,6 +205,12 @@ export class ChainRetrievalQa implements INodeType {
 				const options = this.getNodeParameter('options', itemIndex, {}) as {
 					systemPromptTemplate?: string;
 				};
+
+				const returnSourceDocuments = this.getNodeParameter(
+					'returnSourceDocuments',
+					itemIndex,
+					false,
+				) as boolean;
 
 				const chainParameters = {} as {
 					prompt?: PromptTemplate | ChatPromptTemplate;
@@ -222,13 +235,25 @@ export class ChainRetrievalQa implements INodeType {
 					}
 				}
 
-				const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
+				const chain = RetrievalQAChain.fromLLM(model, retriever, {
+					...chainParameters,
+					returnSourceDocuments,
+				});
 
 				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
-				returnData.push({ json: { response } });
-			} catch (error) {
+
+				const result: Record<string, unknown> = { response };
+				if (returnSourceDocuments) {
+					result.documents = response.sourceDocuments || [];
+				}
+
+				returnData.push({ json: result as IDataObject });
+			} catch (error: unknown) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					returnData.push({
+						json: { error: (error as Error).message } as IDataObject,
+						pairedItem: { item: itemIndex },
+					});
 					continue;
 				}
 
