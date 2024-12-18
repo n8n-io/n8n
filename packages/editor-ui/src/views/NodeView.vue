@@ -2056,10 +2056,7 @@ export default defineComponent({
 			);
 			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
-				const insertNodePosition = [
-					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
-					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-				] as XYPosition;
+				const insertNodePosition: XYPosition = [mousePosition[0], mousePosition[1]];
 
 				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;

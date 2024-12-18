@@ -1,10 +1,11 @@
 import { createHash, randomBytes } from 'crypto';
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'path';
 import { Service } from 'typedi';
 
+import { Memoized } from './decorators';
 import { InstanceSettingsConfig } from './InstanceSettingsConfig';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -131,6 +132,22 @@ export class InstanceSettings {
 
 	get tunnelSubdomain() {
 		return this.settings.tunnelSubdomain;
+	}
+
+	/**
+	 * Whether this instance is running inside a Docker container.
+	 *
+	 * Based on: https://github.com/sindresorhus/is-docker
+	 */
+	@Memoized
+	get isDocker() {
+		try {
+			return (
+				existsSync('/.dockerenv') || readFileSync('/proc/self/cgroup', 'utf8').includes('docker')
+			);
+		} catch {
+			return false;
+		}
 	}
 
 	update(newSettings: WritableSettings) {
