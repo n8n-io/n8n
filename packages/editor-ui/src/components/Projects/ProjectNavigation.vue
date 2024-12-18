@@ -71,10 +71,13 @@ const showAddFirstProject = computed(
 			/>
 		</ElMenu>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
-		<N8nText :class="[$style.projectsLabel, { [$style.collapsed]: props.collapsed }]" tag="h3" bold>
-			<span v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled">{{
-				locale.baseText('projects.menu.title')
-			}}</span>
+		<N8nText
+			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
+			:class="[$style.projectsLabel]"
+			tag="h3"
+			bold
+		>
+			<span>{{ locale.baseText('projects.menu.title') }}</span>
 			<N8nButton
 				v-if="projectsStore.canCreateProjects"
 				icon="plus"
@@ -173,10 +176,6 @@ const showAddFirstProject = computed(
 		padding: 0;
 		margin-left: 0;
 		justify-content: center;
-
-		.plusBtn {
-			display: block;
-		}
 	}
 }
 
