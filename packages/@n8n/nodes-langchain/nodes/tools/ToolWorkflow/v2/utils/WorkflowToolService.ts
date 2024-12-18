@@ -123,8 +123,8 @@ export class WorkflowToolService {
 	private async executeSubWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
 		items: INodeExecutionData[],
-		runManager: any,
-		workflowProxy: any,
+		workflowProxy: IWorkflowDataProxyData,
+		runManager?: CallbackManagerForToolRun,
 	): Promise<{ response: string; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
@@ -177,8 +177,8 @@ export class WorkflowToolService {
 		const { response } = await this.executeSubWorkflow(
 			workflowInfo,
 			items,
-			runManager,
 			workflowProxy,
+			runManager,
 		);
 		return response;
 	}
