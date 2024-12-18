@@ -14,16 +14,13 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { SYSTEM_MESSAGE } from './prompt';
-import {
-	isChatInstance,
-	getPromptInputByType,
-	getConnectedTools,
-} from '../../../../../utils/helpers';
+import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
 	getOptionalOutputParsers,
 	type N8nOutputParser,
-} from '../../../../../utils/output_parsers/N8nOutputParser';
+} from '@utils/output_parsers/N8nOutputParser';
+
+import { SYSTEM_MESSAGE } from './prompt';
 
 function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
 	const schema =
@@ -33,7 +30,7 @@ function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, an
 }
 
 async function extractBinaryMessages(ctx: IExecuteFunctions) {
-	const binaryData = ctx.getInputData(0, 'main')?.[0]?.binary ?? {};
+	const binaryData = ctx.getInputData()?.[0]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
 			.filter((data) => data.mimeType.startsWith('image/'))
@@ -260,7 +257,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		['human', '{input}'],
 	];
 
-	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
+	const hasBinaryData = this.getInputData()?.[0]?.binary !== undefined;
 	if (hasBinaryData && passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(this);
 		messages.push(binaryMessage);

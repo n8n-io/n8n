@@ -82,27 +82,22 @@ export const executionFilterToQueryFilter = (
 	return queryFilter;
 };
 
-let formPopupWindow: Window | null = null;
+let formPopupWindow: boolean = false;
 
 export const openFormPopupWindow = (url: string) => {
-	if (!formPopupWindow || formPopupWindow.closed) {
+	if (!formPopupWindow) {
 		const height = 700;
 		const width = window.innerHeight - 50;
 		const left = (window.innerWidth - height) / 2;
 		const top = 50;
 		const features = `width=${height},height=${width},left=${left},top=${top},resizable=yes,scrollbars=yes`;
 		const windowName = `form-waiting-since-${Date.now()}`;
-		formPopupWindow = window.open(url, windowName, features);
-	} else {
-		formPopupWindow.location = url;
-		formPopupWindow.focus();
+		window.open(url, windowName, features);
+		formPopupWindow = true;
 	}
 };
 
-export const closeFormPopupWindow = () => {
-	formPopupWindow?.close();
-	formPopupWindow = null;
-};
+export const clearPopupWindowState = () => (formPopupWindow = false);
 
 export function displayForm({
 	nodes,

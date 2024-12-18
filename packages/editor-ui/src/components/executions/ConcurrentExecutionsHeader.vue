@@ -1,15 +1,18 @@
 <script lang="ts" setup>
-import { computed, defineProps } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const props = defineProps<{
 	runningExecutionsCount: number;
 	concurrencyCap: number;
+	isCloudDeployment?: boolean;
+}>();
+
+const emit = defineEmits<{
+	goToUpgrade: [];
 }>();
 
 const i18n = useI18n();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const tooltipText = computed(() =>
 	i18n.baseText('executionsList.activeExecutions.tooltip', {
@@ -31,10 +34,6 @@ const headerText = computed(() => {
 		},
 	});
 });
-
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
-};
 </script>
 
 <template>
@@ -43,9 +42,22 @@ const goToUpgrade = () => {
 			<template #content>
 				<div :class="$style.tooltip">
 					{{ tooltipText }}
-					<n8n-link bold size="small" :class="$style.upgrade" @click="goToUpgrade">
+					<N8nLink
+						v-if="props.isCloudDeployment"
+						bold
+						size="small"
+						:class="$style.link"
+						@click="emit('goToUpgrade')"
+					>
 						{{ i18n.baseText('generic.upgradeNow') }}
-					</n8n-link>
+					</N8nLink>
+					<N8nLink
+						v-else
+						:class="$style.link"
+						:href="i18n.baseText('executions.concurrency.docsLink')"
+						target="_blank"
+						>{{ i18n.baseText('generic.viewDocs') }}</N8nLink
+					>
 				</div>
 			</template>
 			<font-awesome-icon icon="info-circle" class="mr-2xs" />
@@ -54,12 +66,12 @@ const goToUpgrade = () => {
 	</div>
 </template>
 
-<style module scoped>
+<style lang="scss" module>
 .tooltip {
 	display: flex;
 	flex-direction: column;
 }
-.upgrade {
+.link {
 	margin-top: var(--spacing-xs);
 }
 </style>

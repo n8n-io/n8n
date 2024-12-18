@@ -32,6 +32,7 @@ import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import {
+	AGENT_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -41,6 +42,7 @@ import {
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import { nextTick } from 'vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -1931,6 +1933,304 @@ describe('useCanvasOperations', () => {
 			revertDeleteConnection(connection);
 
 			expect(workflowsStore.addConnection).toHaveBeenCalledWith({ connection });
+		});
+	});
+
+	describe('revalidateNodeInputConnections', () => {
+		it('should not delete connections when target node does not exist', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nonexistentId = 'nonexistent';
+			workflowsStore.getNodeById.mockReturnValue(undefined);
+
+			const { revalidateNodeInputConnections } = useCanvasOperations({ router });
+			revalidateNodeInputConnections(nonexistentId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
+
+		it('should not delete connections when node type description is not found', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const nodeId = 'test-node';
+			const node = createTestNode({ id: nodeId, type: 'unknown-type' });
+
+			workflowsStore.getNodeById.mockReturnValue(node);
+			nodeTypesStore.getNodeType = () => null;
+
+			const { revalidateNodeInputConnections } = useCanvasOperations({ router });
+			revalidateNodeInputConnections(nodeId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
+
+		it('should remove invalid connections that do not match input type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: SET_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionType.Main],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				outputs: [NodeConnectionType.AiTool],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionType.AiTool]: [
+						[{ node: targetNode.name, type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode)
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode);
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			const { revalidateNodeInputConnections } = useCanvasOperations({ router });
+			revalidateNodeInputConnections(targetNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionType.AiTool, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionType.Main, index: 0 },
+				],
+			});
+		});
+
+		it('should keep valid connections that match input type', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: SET_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionType.Main],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				outputs: [NodeConnectionType.Main],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionType.Main]: [
+						[{ node: targetNode.name, type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode)
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode);
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			const { revalidateNodeInputConnections } = useCanvasOperations({ router });
+			revalidateNodeInputConnections(targetNodeId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('revalidateNodeOutputConnections', () => {
+		it('should not delete connections when source node does not exist', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nonexistentId = 'nonexistent';
+			workflowsStore.getNodeById.mockReturnValue(undefined);
+
+			const { revalidateNodeOutputConnections } = useCanvasOperations({ router });
+			revalidateNodeOutputConnections(nonexistentId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
+
+		it('should not delete connections when node type description is not found', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const nodeId = 'test-node';
+			const node = createTestNode({ id: nodeId, type: 'unknown-type' });
+
+			workflowsStore.getNodeById.mockReturnValue(node);
+			nodeTypesStore.getNodeType = () => null;
+
+			const { revalidateNodeOutputConnections } = useCanvasOperations({ router });
+			revalidateNodeOutputConnections(nodeId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
+		});
+
+		it('should remove invalid connections that do not match output type', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: SET_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionType.Main],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				outputs: [NodeConnectionType.AiTool],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionType.AiTool]: [
+						[{ node: targetNode.name, type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode)
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode);
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			const { revalidateNodeOutputConnections } = useCanvasOperations({ router });
+			revalidateNodeOutputConnections(sourceNodeId);
+
+			await nextTick();
+
+			expect(workflowsStore.removeConnection).toHaveBeenCalledWith({
+				connection: [
+					{ node: sourceNode.name, type: NodeConnectionType.AiTool, index: 0 },
+					{ node: targetNode.name, type: NodeConnectionType.Main, index: 0 },
+				],
+			});
+		});
+
+		it('should keep valid connections that match output type', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			workflowsStore.removeConnection = vi.fn();
+
+			const targetNodeId = 'target';
+			const targetNode = createTestNode({
+				id: targetNodeId,
+				name: 'Target Node',
+				type: SET_NODE_TYPE,
+			});
+			const targetNodeType = mockNodeTypeDescription({
+				name: SET_NODE_TYPE,
+				inputs: [NodeConnectionType.Main],
+			});
+
+			const sourceNodeId = 'source';
+			const sourceNode = createTestNode({
+				id: sourceNodeId,
+				name: 'Source Node',
+				type: AGENT_NODE_TYPE,
+			});
+			const sourceNodeType = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				outputs: [NodeConnectionType.Main],
+			});
+
+			workflowsStore.workflow.nodes = [sourceNode, targetNode];
+			workflowsStore.workflow.connections = {
+				[sourceNode.name]: {
+					[NodeConnectionType.AiTool]: [
+						[{ node: targetNode.name, type: NodeConnectionType.Main, index: 0 }],
+					],
+				},
+			};
+
+			workflowsStore.getNodeById
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode)
+				.mockReturnValueOnce(sourceNode)
+				.mockReturnValueOnce(targetNode);
+
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValueOnce(targetNodeType)
+				.mockReturnValueOnce(sourceNodeType);
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.getCurrentWorkflow.mockReturnValue(workflowObject);
+
+			const { revalidateNodeOutputConnections } = useCanvasOperations({ router });
+			revalidateNodeOutputConnections(sourceNodeId);
+
+			expect(workflowsStore.removeConnection).not.toHaveBeenCalled();
 		});
 	});
 

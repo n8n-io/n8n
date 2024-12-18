@@ -278,7 +278,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				message: i18n.baseText('startupError.message'),
 				type: 'error',
 				duration: 0,
-				dangerouslyUseHTMLString: true,
 			});
 
 			throw e;

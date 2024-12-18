@@ -8,6 +8,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { PermissionsRecord } from '@/permissions';
+import GlobalExecutionsListItemQueuedTooltip from '@/components/executions/global/GlobalExecutionsListItemQueuedTooltip.vue';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 	retrySaved: [data: ExecutionSummary];
 	retryOriginal: [data: ExecutionSummary];
 	delete: [data: ExecutionSummary];
+	goToUpgrade: [];
 }>();
 
 const props = withDefaults(
@@ -26,6 +28,7 @@ const props = withDefaults(
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
 		concurrencyCap: number;
+		isCloudDeployment?: boolean;
 	}>(),
 	{
 		selected: false,
@@ -82,19 +85,6 @@ const formattedStoppedAtDate = computed(() => {
 				true,
 			)
 		: '';
-});
-
-const statusTooltipText = computed(() => {
-	if (isQueued.value) {
-		return i18n.baseText('executionsList.statusTooltipText.waitingForConcurrencyCapacity', {
-			interpolate: { concurrencyCap: props.concurrencyCap },
-		});
-	}
-
-	if (props.execution.status === 'waiting' && isWaitTillIndefinite.value) {
-		return i18n.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
-	}
-	return '';
 });
 
 const statusText = computed(() => {
@@ -208,12 +198,15 @@ async function handleActionItemClick(commandData: Command) {
 						/>
 					</template>
 				</i18n-t>
-				<N8nTooltip v-else placement="top">
-					<template #content>
-						<span>{{ statusTooltipText }}</span>
-					</template>
+				<GlobalExecutionsListItemQueuedTooltip
+					v-else
+					:status="props.execution.status"
+					:concurrency-cap="props.concurrencyCap"
+					:is-cloud-deployment="props.isCloudDeployment"
+					@go-to-upgrade="emit('goToUpgrade')"
+				>
 					<span :class="$style.status">{{ statusText }}</span>
-				</N8nTooltip>
+				</GlobalExecutionsListItemQueuedTooltip>
 			</div>
 		</td>
 		<td>

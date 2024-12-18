@@ -24,7 +24,7 @@ RUN set -eux; \
 
 # Setup the Task Runner Launcher
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=0.7.0-rc
+ARG LAUNCHER_VERSION=1.0.0
 COPY n8n-task-runners.json /etc/n8n-task-runners.json
 # Download, verify, then extract the launcher binary
 RUN \

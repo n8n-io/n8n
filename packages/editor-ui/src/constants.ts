@@ -1,8 +1,6 @@
 import type {
 	EnterpriseEditionFeatureKey,
 	EnterpriseEditionFeatureValue,
-	INodeUi,
-	IWorkflowDataCreate,
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -696,23 +694,24 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
-	name: '022_more_onboarding_options',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',
 	variant: 'variant',
 };
+
+export const EASY_AI_WORKFLOW_EXPERIMENT = {
+	name: '026_easy_ai_workflow',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
-	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
+	EASY_AI_WORKFLOW_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
@@ -893,43 +892,6 @@ export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW_ID = '0';
-
 export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
 
-export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
-	name: 'My Sub-Workflow',
-	nodes: [
-		{
-			parameters: {},
-			id: 'c055762a-8fe7-4141-a639-df2372f30060',
-			name: 'Execute Workflow Trigger',
-			type: 'n8n-nodes-base.executeWorkflowTrigger',
-			position: [260, 340],
-		},
-		{
-			parameters: {},
-			id: 'b5942df6-0160-4ef7-965d-57583acdc8aa',
-			name: 'Replace me with your logic',
-			type: 'n8n-nodes-base.noOp',
-			position: [520, 340],
-		},
-	] as INodeUi[],
-	connections: {
-		'Execute Workflow Trigger': {
-			main: [
-				[
-					{
-						node: 'Replace me with your logic',
-						type: NodeConnectionType.Main,
-						index: 0,
-					},
-				],
-			],
-		},
-	},
-	settings: {
-		executionOrder: 'v1',
-	},
-	pinData: {},
-};
+export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';

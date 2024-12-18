@@ -249,6 +249,16 @@ export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
 }
 
+/**
+ * Workflow data with mandatory `templateId`
+ * This is used to identify sample workflows that we create for onboarding
+ */
+export interface WorkflowDataWithTemplateId extends Omit<IWorkflowDataCreate, 'meta'> {
+	meta: WorkflowMetadata & {
+		templateId: Required<WorkflowMetadata>['templateId'];
+	};
+}
+
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }

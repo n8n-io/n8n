@@ -95,7 +95,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
+	async getMany(sharedWorkflowIds: string[], originalOptions: ListQuery.Options = {}) {
+		const options = structuredClone(originalOptions);
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {

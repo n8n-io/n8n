@@ -6,7 +6,7 @@ import ResourcesListLayout, {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
+import { EASY_AI_WORKFLOW_EXPERIMENT, EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -15,7 +15,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 import { usePostHog } from '@/stores/posthog.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -33,6 +32,7 @@ import {
 } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -44,7 +44,6 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const posthogStore = usePostHog();
 const projectsStore = useProjectsStore();
-const templatesStore = useTemplatesStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
@@ -68,6 +67,7 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	tags: [],
 });
+const easyAICalloutVisible = ref(true);
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -91,27 +91,12 @@ const statusFilterOptions = computed(() => [
 	},
 ]);
 
-const userRole = computed(() => {
-	const role = usersStore.currentUserCloudInfo?.role;
-	if (role) return role;
-
-	const answers = usersStore.currentUser?.personalizationAnswers;
-	if (answers && 'role' in answers) {
-		return answers.role;
-	}
-
-	return undefined;
-});
-
-const isOnboardingExperimentEnabled = computed(() => {
-	return (
-		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-		MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
-	);
-});
-
-const isSalesUser = computed(() => {
-	return ['Sales', 'sales-and-marketing'].includes(userRole.value || '');
+const showEasyAIWorkflowCallout = computed(() => {
+	const isEasyAIWorkflowExperimentEnabled =
+		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
+		EASY_AI_WORKFLOW_EXPERIMENT.variant;
+	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
+	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
 });
 
 const projectPermissions = computed(() => {
@@ -169,21 +154,9 @@ const addWorkflow = () => {
 	trackEmptyCardClick('blank');
 };
 
-const getTemplateRepositoryURL = () => templatesStore.websiteTemplateRepositoryURL;
-
 const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 	telemetry.track('User clicked empty page option', {
 		option,
-	});
-	if (option === 'templates' && isSalesUser.value) {
-		trackCategoryLinkClick('Sales');
-	}
-};
-
-const trackCategoryLinkClick = (category: string) => {
-	telemetry.track(`User clicked Browse ${category} Templates`, {
-		role: usersStore.currentUserCloudInfo?.role,
-		active_workflow_count: workflowsStore.activeWorkflows.length,
 	});
 };
 
@@ -286,6 +259,25 @@ onMounted(async () => {
 	await setFiltersFromQueryString();
 	void usersStore.showPersonalizationSurvey();
 });
+
+const openAIWorkflow = async (source: string) => {
+	dismissEasyAICallout();
+	telemetry.track(
+		'User clicked test AI workflow',
+		{
+			source,
+		},
+		{ withPostHog: true },
+	);
+	await router.push({
+		name: VIEWS.WORKFLOW_ONBOARDING,
+		params: { id: EASY_AI_WORKFLOW_JSON.meta.templateId },
+	});
+};
+
+const dismissEasyAICallout = () => {
+	easyAICalloutVisible.value = false;
+};
 </script>
 
 <template>
@@ -304,6 +296,35 @@ onMounted(async () => {
 	>
 		<template #header>
 			<ProjectHeader />
+		</template>
+		<template #callout>
+			<N8nCallout
+				v-if="showEasyAIWorkflowCallout && easyAICalloutVisible"
+				theme="secondary"
+				icon="robot"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				{{ i18n.baseText('workflows.list.easyAI') }}
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<n8n-button
+							data-test-id="easy-ai-button"
+							size="small"
+							type="secondary"
+							@click="openAIWorkflow('callout')"
+						>
+							{{ i18n.baseText('generic.tryNow') }}
+						</n8n-button>
+						<N8nIcon
+							size="small"
+							icon="times"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="dismissEasyAICallout"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<WorkflowCard
@@ -326,7 +347,7 @@ onMounted(async () => {
 							: i18n.baseText('workflows.empty.heading.userNotSetup')
 					}}
 				</N8nHeading>
-				<N8nText v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
+				<N8nText size="large" color="text-base">
 					{{ emptyListDescription }}
 				</N8nText>
 			</div>
@@ -345,40 +366,18 @@ onMounted(async () => {
 						{{ i18n.baseText('workflows.empty.startFromScratch') }}
 					</N8nText>
 				</N8nCard>
-				<a
-					v-if="isSalesUser || isOnboardingExperimentEnabled"
-					href="https://docs.n8n.io/courses/#available-courses"
+				<N8nCard
+					v-if="showEasyAIWorkflowCallout"
 					:class="$style.emptyStateCard"
-					target="_blank"
+					hoverable
+					data-test-id="easy-ai-workflow-card"
+					@click="openAIWorkflow('empty')"
 				>
-					<N8nCard
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="trackEmptyCardClick('courses')"
-					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
-						<N8nText size="large" class="mt-xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.learnN8n') }}
-						</N8nText>
-					</N8nCard>
-				</a>
-				<a
-					v-if="isSalesUser || isOnboardingExperimentEnabled"
-					:href="getTemplateRepositoryURL()"
-					:class="$style.emptyStateCard"
-					target="_blank"
-				>
-					<N8nCard
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="trackEmptyCardClick('templates')"
-					>
-						<N8nIcon :class="$style.emptyStateCardIcon" icon="box-open" />
-						<N8nText size="large" class="mt-xs" color="text-dark">
-							{{ i18n.baseText('workflows.empty.browseTemplates') }}
-						</N8nText>
-					</N8nCard>
-				</a>
+					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
+					<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
+						{{ i18n.baseText('workflows.empty.easyAI') }}
+					</N8nText>
+				</N8nCard>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -428,6 +427,19 @@ onMounted(async () => {
 .actionsContainer {
 	display: flex;
 	justify-content: center;
+}
+
+.easy-ai-workflow-callout {
+	// Make the callout padding in line with workflow cards
+	margin-top: var(--spacing-xs);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-m);
+
+	.callout-trailing-content {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-m);
+	}
 }
 
 .emptyStateCard {

@@ -1,4 +1,5 @@
 import type { PushPayload, PushType } from '@n8n/api-types';
+import { ErrorReporter } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -27,7 +28,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	protected abstract sendToOneConnection(connection: Connection, data: string): void;
 	protected abstract ping(connection: Connection): void;
 
-	constructor(protected readonly logger: Logger) {
+	constructor(
+		protected readonly logger: Logger,
+		protected readonly errorReporter: ErrorReporter,
+	) {
 		super();
 		// Ping all connected clients every 60 seconds
 		setInterval(() => this.pingAll(), 60 * 1000);
@@ -66,7 +70,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	}
 
 	private sendTo<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRefs: string[]) {
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
+		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
 		});
