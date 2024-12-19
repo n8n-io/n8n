@@ -215,6 +215,18 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						},
 					},
 				},
+				{
+					displayName: 'Include Metadata',
+					name: 'includeDocumentMetadata',
+					type: 'boolean',
+					default: true,
+					description: 'Whether or not to include document metadata',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve'],
+						},
+					},
+				},
 				// ID is always used for update operation
 				{
 					displayName: 'ID',
@@ -268,10 +280,16 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						filter,
 					);
 
+					const includeDocumentMetadata = this.getNodeParameter(
+						'includeDocumentMetadata',
+						itemIndex,
+						true,
+					) as boolean;
+
 					const serializedDocs = docs.map(([doc, score]) => {
 						const document = {
-							metadata: doc.metadata,
 							pageContent: doc.pageContent,
+							...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
 						};
 
 						return {
@@ -378,7 +396,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load" and "insert" operation modes are supported with execute',
+				'Only the "load", "update" and "insert" operation modes are supported with execute',
 			);
 		}
 
