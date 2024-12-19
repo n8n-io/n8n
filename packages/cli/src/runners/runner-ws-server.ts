@@ -1,6 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, jsonStringify } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
@@ -83,7 +83,7 @@ export class TaskRunnerWsServer {
 	}
 
 	sendMessage(id: TaskRunner['id'], message: BrokerMessage.ToRunner.All) {
-		this.runnerConnections.get(id)?.send(JSON.stringify(message));
+		this.runnerConnections.get(id)?.send(jsonStringify(message, { replaceCircularRefs: true }));
 	}
 
 	add(id: TaskRunner['id'], connection: WebSocket) {
