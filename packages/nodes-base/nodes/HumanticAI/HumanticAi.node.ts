@@ -8,7 +8,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { humanticAiApiRequest } from './GenericFunctions';
-
 import { profileFields, profileOperations } from './ProfileDescription';
 
 export class HumanticAi implements INodeType {

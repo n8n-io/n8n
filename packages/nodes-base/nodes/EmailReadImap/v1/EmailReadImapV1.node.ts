@@ -1,3 +1,10 @@
+import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
+import { connect as imapConnect, getParts } from '@n8n/imap';
+import find from 'lodash/find';
+import isEmpty from 'lodash/isEmpty';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
@@ -13,15 +20,6 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
-import { connect as imapConnect, getParts } from '@n8n/imap';
-import type { Source as ParserSource } from 'mailparser';
-import { simpleParser } from 'mailparser';
-
-import isEmpty from 'lodash/isEmpty';
-import find from 'lodash/find';
 
 export async function parseRawEmail(
 	this: ITriggerFunctions,

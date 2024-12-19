@@ -21,7 +21,6 @@ import {
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { rowFields, rowOperations } from './RowDescription';
 
 export type FieldsUiValues = Array<{

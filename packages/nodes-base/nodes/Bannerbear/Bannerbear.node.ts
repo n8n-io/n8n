@@ -10,9 +10,7 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { bannerbearApiRequest, keysToSnakeCase } from './GenericFunctions';
-
 import { imageFields, imageOperations } from './ImageDescription';
-
 import { templateFields, templateOperations } from './TemplateDescription';
 
 export class Bannerbear implements INodeType {
