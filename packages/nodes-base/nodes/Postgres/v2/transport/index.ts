@@ -1,11 +1,14 @@
-import { createServer, type AddressInfo } from 'node:net';
-import pgPromise from 'pg-promise';
 import type {
 	IExecuteFunctions,
 	ICredentialTestFunctions,
 	ILoadOptionsFunctions,
 	ITriggerFunctions,
 } from 'n8n-workflow';
+import { createServer, type AddressInfo } from 'node:net';
+import pgPromise from 'pg-promise';
+
+import { LOCALHOST } from '@utils/constants';
+import { formatPrivateKey } from '@utils/utilities';
 
 import type {
 	ConnectionsData,
@@ -13,8 +16,6 @@ import type {
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 } from '../helpers/interfaces';
-import { formatPrivateKey } from '@utils/utilities';
-import { LOCALHOST } from '@utils/constants';
 
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,

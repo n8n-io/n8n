@@ -1,12 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { tableRLC } from '../common.descriptions';
 import * as deleteTable from './deleteTable.operation';
 import * as executeQuery from './executeQuery.operation';
 import * as insert from './insert.operation';
 import * as select from './select.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
+import { tableRLC } from '../common.descriptions';
 
 export { deleteTable, executeQuery, insert, select, update, upsert };
 

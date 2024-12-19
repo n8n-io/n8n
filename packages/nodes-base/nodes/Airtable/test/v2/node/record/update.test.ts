@@ -1,7 +1,6 @@
 import nock from 'nock';
 
 import * as update from '../../../../v2/actions/record/update.operation';
-
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
 

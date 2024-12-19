@@ -1,11 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { TheHiveType } from './node.type';
 
 import * as alert from './alert';
 import * as case_ from './case';
 import * as comment from './comment';
 import * as log from './log';
+import type { TheHiveType } from './node.type';
 import * as observable from './observable';
 import * as page from './page';
 import * as query from './query';

@@ -1,3 +1,6 @@
+import { snakeCase } from 'change-case';
+import set from 'lodash/set';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -15,11 +18,14 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
-import set from 'lodash/set';
-import { generatePairedItemData } from '../../../utils/utilities';
+import { companyFields, companyOperations } from './CompanyDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactListFields, contactListOperations } from './ContactListDescription';
+import { dealFields, dealOperations } from './DealDescription';
+import type { IAssociation, IDeal } from './DealInterface';
+import { engagementFields, engagementOperations } from './EngagementDescription';
+import type { IForm } from './FormInterface';
 import {
 	clean,
 	getAssociations,
@@ -31,22 +37,8 @@ import {
 	hubspotApiRequestAllItems,
 	validateCredentials,
 } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
-import { engagementFields, engagementOperations } from './EngagementDescription';
-
 import { ticketFields, ticketOperations } from './TicketDescription';
-
-import type { IForm } from './FormInterface';
-
-import type { IAssociation, IDeal } from './DealInterface';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;

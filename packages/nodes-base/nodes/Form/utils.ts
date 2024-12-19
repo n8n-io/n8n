@@ -1,3 +1,6 @@
+import type { Response } from 'express';
+import isbot from 'isbot';
+import { DateTime } from 'luxon';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -16,14 +19,9 @@ import {
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
-
+import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
-
-import { DateTime } from 'luxon';
-import isbot from 'isbot';
-import type { Response } from 'express';
-import { getResolvables } from '../../utils/utilities';
 
 export function prepareFormData({
 	formTitle,
