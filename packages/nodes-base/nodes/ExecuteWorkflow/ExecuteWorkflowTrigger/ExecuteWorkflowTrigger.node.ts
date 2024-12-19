@@ -83,7 +83,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				default: '',
 			},
 			{
-        // eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				displayName: 'Input data mode',
 				name: INPUT_SOURCE,
 				type: 'options',
