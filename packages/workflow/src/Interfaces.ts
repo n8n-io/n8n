@@ -1992,7 +1992,28 @@ export interface IWorkflowDataProxyData {
 	constructor: any;
 }
 
-export type IWorkflowDataProxyAdditionalKeys = IDataObject;
+export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
+	$execution?: {
+		id: string;
+		mode: 'test' | 'production';
+		resumeUrl: string;
+		resumeFormUrl: string;
+		customData?: {
+			set(key: string, value: string): void;
+			setAll(obj: Record<string, string>): void;
+			get(key: string): string;
+			getAll(): Record<string, string>;
+		};
+	};
+	$vars?: IDataObject;
+	$secrets?: IDataObject;
+	$pageCount?: number;
+
+	/** @deprecated */
+	$executionId?: string;
+	/** @deprecated */
+	$resumeWebhookUrl?: string;
+};
 
 export interface IWorkflowMetadata {
 	id?: string;

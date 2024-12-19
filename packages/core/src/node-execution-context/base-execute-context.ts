@@ -16,8 +16,6 @@ import type {
 	ITaskMetadata,
 	ContextType,
 	IContextObject,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
@@ -159,26 +157,6 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		return allItems;
-	}
-
-	getNodeInputs(): INodeInputConfiguration[] {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
-			this.node.type,
-			this.node.typeVersion,
-		);
-		return NodeHelpers.getNodeInputs(this.workflow, this.node, nodeType.description).map((input) =>
-			typeof input === 'string' ? { type: input } : input,
-		);
-	}
-
-	getNodeOutputs(): INodeOutputConfiguration[] {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(
-			this.node.type,
-			this.node.typeVersion,
-		);
-		return NodeHelpers.getNodeOutputs(this.workflow, this.node, nodeType.description).map(
-			(output) => (typeof output === 'string' ? { type: output } : output),
-		);
 	}
 
 	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionType.Main): ISourceData {

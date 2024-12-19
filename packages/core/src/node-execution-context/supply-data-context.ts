@@ -33,10 +33,10 @@ import {
 	getSSHTunnelFunctions,
 	normalizeItems,
 	returnJsonArray,
-	getInputConnectionData,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];
