@@ -1,3 +1,4 @@
+import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
@@ -6,7 +7,7 @@ import { type MessageEvent, WebSocket } from 'ws';
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
-import { RPC_ALLOW_LIST, type TaskResultData } from '@/runner-types';
+import type { TaskResultData } from '@/runner-types';
 
 import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
 
@@ -40,10 +41,6 @@ interface RPCCall {
 	callId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
-}
-
-export interface RPCCallObject {
-	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RPCCallObject;
 }
 
 const OFFER_VALID_TIME_MS = 5000;
@@ -464,7 +461,9 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 
 		try {
-			return await dataPromise;
+			const returnValue = await dataPromise;
+
+			return isSerializedBuffer(returnValue) ? toBuffer(returnValue) : returnValue;
 		} finally {
 			this.rpcCalls.delete(callId);
 		}
@@ -484,24 +483,6 @@ export abstract class TaskRunner extends EventEmitter {
 		} else {
 			call.reject(typeof data === 'string' ? new Error(data) : data);
 		}
-	}
-
-	buildRpcCallObject(taskId: string) {
-		const rpcObject: RPCCallObject = {};
-		for (const r of RPC_ALLOW_LIST) {
-			const splitPath = r.split('.');
-			let obj = rpcObject;
-
-			splitPath.forEach((s, index) => {
-				if (index !== splitPath.length - 1) {
-					obj[s] = {};
-					obj = obj[s];
-					return;
-				}
-				obj[s] = async (...args: unknown[]) => await this.makeRpcCall(taskId, r, args);
-			});
-		}
-		return rpcObject;
 	}
 
 	/** Close the connection gracefully and wait until has been closed */

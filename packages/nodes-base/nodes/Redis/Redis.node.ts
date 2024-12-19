@@ -15,6 +15,7 @@ import {
 	getValue,
 	setValue,
 } from './utils';
+import type { RedisCredential } from './types';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -512,7 +513,7 @@ export class Redis implements INodeType {
 		//       have a parameter field for a path. Because it is not possible to set
 		//       array, object via parameter directly (should maybe be possible?!?!)
 		//       Should maybe have a parameter which is JSON.
-		const credentials = await this.getCredentials('redis');
+		const credentials = await this.getCredentials<RedisCredential>('redis');
 
 		const client = setupRedisClient(credentials);
 		await client.connect();

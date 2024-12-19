@@ -152,6 +152,14 @@ const onBlur = (): void => {
 		}"
 		data-test-id="assignment"
 	>
+		<N8nIconButton
+			v-if="!isReadOnly"
+			type="tertiary"
+			text
+			size="mini"
+			icon="grip-vertical"
+			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
+		></N8nIconButton>
 		<n8n-icon-button
 			v-if="!isReadOnly"
 			type="tertiary"
@@ -159,7 +167,7 @@ const onBlur = (): void => {
 			size="mini"
 			icon="trash"
 			data-test-id="assignment-remove"
-			:class="$style.remove"
+			:class="[$style.iconButton, $style.extraTopPadding]"
 			@click="onRemove"
 		></n8n-icon-button>
 
@@ -241,7 +249,7 @@ const onBlur = (): void => {
 	}
 
 	&:hover {
-		.remove {
+		.iconButton {
 			opacity: 1;
 		}
 	}
@@ -269,12 +277,19 @@ const onBlur = (): void => {
 	}
 }
 
-.remove {
+.iconButton {
 	position: absolute;
 	left: 0;
-	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
+	color: var(--icon-base-color);
+}
+.extraTopPadding {
+	top: calc(20px + var(--spacing-l));
+}
+
+.defaultTopPadding {
+	top: var(--spacing-l);
 }
 
 .status {

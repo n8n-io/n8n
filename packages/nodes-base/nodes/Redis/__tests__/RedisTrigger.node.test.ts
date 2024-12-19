@@ -3,10 +3,11 @@ import { captor, mock } from 'jest-mock-extended';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
 import { RedisTrigger } from '../RedisTrigger.node';
-import { type RedisClientType, setupRedisClient } from '../utils';
+import { setupRedisClient } from '../utils';
+import type { RedisClient } from '../types';
 
 jest.mock('../utils', () => {
-	const mockRedisClient = mock<RedisClientType>();
+	const mockRedisClient = mock<RedisClient>();
 	return {
 		setupRedisClient: jest.fn().mockReturnValue(mockRedisClient),
 	};

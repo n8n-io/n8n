@@ -13,9 +13,17 @@ import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '../orchestration.service';
 
 /**
- * Responsible for pruning executions from the database and their associated binary data
- * from the filesystem, on a rolling basis. By default we soft-delete execution rows
- * every cycle and hard-delete them and their binary data every 4th cycle.
+ * Responsible for deleting old executions from the database and deleting their
+ * associated binary data from the filesystem, on a rolling basis.
+ *
+ * By default:
+ *
+ * - Soft deletion (every 60m) identifies all prunable executions based on max
+ *   age and/or max count, exempting annotated executions.
+ * - Hard deletion (every 15m) processes prunable executions in batches of 100,
+ *   switching to 1s intervals until the total to prune is back down low enough,
+ *   or in case the hard deletion fails.
+ * - Once mostly caught up, hard deletion goes back to the 15m schedule.
  */
 @Service()
 export class PruningService {
