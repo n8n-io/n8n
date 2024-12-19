@@ -1,5 +1,5 @@
-import { captureException } from '@sentry/node';
 import { parse } from 'flatted';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	IDataObject,
 	IRun,
@@ -45,6 +45,7 @@ export class TestRunnerService {
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testMetricRepository: TestMetricRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -274,8 +275,7 @@ export class TestRunnerService {
 				// In case of an unexpected error, increment the failed count and continue with the next test case
 				await this.testRunRepository.incrementFailed(testRun.id);
 
-				// Report error to Sentry
-				captureException(e);
+				this.errorReporter.error(e);
 			}
 		}
 

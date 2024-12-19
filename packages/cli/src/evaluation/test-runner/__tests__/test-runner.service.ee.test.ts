@@ -22,6 +22,7 @@ import { mockInstance } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import { ErrorReporter } from 'n8n-core';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -174,6 +175,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
@@ -188,6 +190,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -225,6 +228,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -325,6 +329,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -382,6 +387,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -435,6 +441,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -492,6 +499,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -565,6 +573,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		const startNodesData = (testRunnerService as any).getStartNodesData(
@@ -589,6 +598,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		const startNodesData = (testRunnerService as any).getStartNodesData(
