@@ -1,3 +1,4 @@
+import { loadWorkflowInputMappings } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	INodeTypeBaseDescription,
 	ISupplyDataFunctions,
@@ -6,7 +7,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import { versionDescription } from './versionDescription';
 

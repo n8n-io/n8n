@@ -4,6 +4,7 @@ import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import { getCurrentWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	ExecuteWorkflowData,
 	ExecutionError,
@@ -22,7 +23,6 @@ import { z } from 'zod';
 
 import type { FromAIArgument } from './FromAIParser';
 import { AIParametersParser } from './FromAIParser';
-import { getCurrentWorkflowInputData } from '../methods/resourceMapping';
 
 /**
 	Main class for creating the Workflow tool
