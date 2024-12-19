@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import type { Application } from 'express';
 import express from 'express';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
@@ -13,7 +13,6 @@ import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overw
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';

@@ -2,14 +2,13 @@ import { GlobalConfig } from '@n8n/config';
 import type { ObjectLiteral } from '@n8n/typeorm';
 import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { readFileSync, rmSync } from 'fs';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { inTest } from '@/constants';
 import { createSchemaBuilder } from '@/databases/dsl';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@/databases/types';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';

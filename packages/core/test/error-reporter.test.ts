@@ -1,6 +1,7 @@
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/types';
 import { AxiosError } from 'axios';
+import { mock } from 'jest-mock-extended';
 import { ApplicationError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/error-reporter';
@@ -15,7 +16,7 @@ jest.mock('@sentry/node', () => ({
 jest.spyOn(process, 'on');
 
 describe('ErrorReporter', () => {
-	const errorReporter = new ErrorReporter();
+	const errorReporter = new ErrorReporter(mock());
 	const event = {} as ErrorEvent;
 
 	describe('beforeSend', () => {

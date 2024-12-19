@@ -1,12 +1,12 @@
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import path from 'path';
 import { Container } from 'typedi';
 
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 
 import {
