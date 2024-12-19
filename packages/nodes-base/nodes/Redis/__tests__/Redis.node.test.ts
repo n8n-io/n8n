@@ -1,18 +1,24 @@
-import type { RedisClientType } from '@redis/client';
 import { mock } from 'jest-mock-extended';
-import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
+import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IExecuteFunctions,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-const mockClient = mock<RedisClientType>();
+const mockClient = mock<RedisClient>();
 const createClient = jest.fn().mockReturnValue(mockClient);
 jest.mock('redis', () => ({ createClient }));
 
 import { Redis } from '../Redis.node';
-import { setupRedisClient } from '../utils';
+import { redisConnectionTest, setupRedisClient } from '../utils';
+import type { RedisClient } from '../types';
 
 describe('Redis Node', () => {
 	const node = new Redis();
 
 	beforeEach(() => {
+		jest.clearAllMocks();
 		createClient.mockReturnValue(mockClient);
 	});
 
@@ -27,7 +33,6 @@ describe('Redis Node', () => {
 			});
 			expect(createClient).toHaveBeenCalledWith({
 				database: 0,
-				password: undefined,
 				socket: {
 					host: 'redis.domain',
 					port: 1234,
@@ -45,13 +50,81 @@ describe('Redis Node', () => {
 			});
 			expect(createClient).toHaveBeenCalledWith({
 				database: 0,
-				password: undefined,
 				socket: {
 					host: 'redis.domain',
 					port: 1234,
 					tls: true,
 				},
 			});
+		});
+
+		it('should set user on auth', () => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				user: 'test_user',
+				password: 'test_password',
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				database: 0,
+				username: 'test_user',
+				password: 'test_password',
+				socket: {
+					host: 'redis.domain',
+					port: 1234,
+					tls: false,
+				},
+			});
+		});
+	});
+
+	describe('redisConnectionTest', () => {
+		const thisArg = mock<ICredentialTestFunctions>({});
+		const credentials = mock<ICredentialsDecrypted>({
+			data: {
+				host: 'localhost',
+				port: 6379,
+				user: 'username',
+				password: 'password',
+				database: 0,
+			},
+		});
+		const redisOptions = {
+			socket: {
+				host: 'localhost',
+				port: 6379,
+				tls: false,
+			},
+			database: 0,
+			username: 'username',
+			password: 'password',
+		};
+
+		it('should return success when connection is established', async () => {
+			const result = await redisConnectionTest.call(thisArg, credentials);
+
+			expect(result).toEqual({
+				status: 'OK',
+				message: 'Connection successful!',
+			});
+			expect(createClient).toHaveBeenCalledWith(redisOptions);
+			expect(mockClient.connect).toHaveBeenCalled();
+			expect(mockClient.ping).toHaveBeenCalled();
+		});
+
+		it('should return error when connection fails', async () => {
+			mockClient.connect.mockRejectedValue(new Error('Connection failed'));
+
+			const result = await redisConnectionTest.call(thisArg, credentials);
+
+			expect(result).toEqual({
+				status: 'Error',
+				message: 'Connection failed',
+			});
+			expect(createClient).toHaveBeenCalledWith(redisOptions);
+			expect(mockClient.connect).toHaveBeenCalled();
+			expect(mockClient.ping).not.toHaveBeenCalled();
 		});
 	});
 
