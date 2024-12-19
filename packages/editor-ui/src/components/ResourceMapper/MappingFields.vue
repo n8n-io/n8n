@@ -312,20 +312,23 @@ defineExpose({
 					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
 				/>
-				<N8nIconButton
-					v-if="props.isDataStale && !props.refreshInProgress"
-					icon="refresh"
-					type="tertiary"
-					size="small"
-					:text="true"
-					:disabled="props.refreshInProgress"
-					:title="
-						locale.baseText('resourceMapper.staleDataWarning', {
-							interpolate: { fieldWord: pluralFieldWordCapitalized },
-						})
-					"
-					@click="onParameterActionSelected('refreshFieldList')"
-				/>
+				<N8nTooltip v-if="props.isDataStale && !props.refreshInProgress">
+					<template #content>
+						<span>{{
+							locale.baseText('resourceMapper.staleDataWarning', {
+								interpolate: { fieldWord: pluralFieldWordCapitalized },
+							})
+						}}</span>
+					</template>
+					<N8nIconButton
+						icon="refresh"
+						type="tertiary"
+						size="small"
+						:text="true"
+						:disabled="props.refreshInProgress"
+						@click="onParameterActionSelected('refreshFieldList')"
+					/>
+				</N8nTooltip>
 			</template>
 		</N8nInputLabel>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">

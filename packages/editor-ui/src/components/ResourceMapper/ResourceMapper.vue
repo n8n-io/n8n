@@ -16,7 +16,11 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import {
+	fieldCannotBeDeleted,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -82,53 +86,18 @@ watch(
 );
 
 onDocumentVisible(async () => {
-	// Check for stale fields
 	await checkStaleFields();
 });
 
 async function checkStaleFields(): Promise<void> {
 	const fetchedFields = await fetchFields();
 	if (fetchedFields) {
-		const isSchemaStale = isFieldListStale(state.paramValue.schema, fetchedFields.fields);
+		const isSchemaStale = isResourceMapperFieldListStale(
+			state.paramValue.schema,
+			fetchedFields.fields,
+		);
 		state.hasStaleFields = isSchemaStale;
 	}
-}
-
-function isFieldListStale(
-	oldFields: ResourceMapperField[],
-	newFields: ResourceMapperField[],
-): boolean {
-	if (oldFields.length !== newFields.length) {
-		return true;
-	}
-
-	// Create maps for O(1) lookup
-	const oldFieldsMap = new Map(oldFields.map((field) => [field.id, field]));
-	const newFieldsMap = new Map(newFields.map((field) => [field.id, field]));
-
-	// Check if any fields were removed or modified
-	for (const [id, oldField] of oldFieldsMap) {
-		const newField = newFieldsMap.get(id);
-
-		// Field was removed
-		if (!newField) {
-			return true;
-		}
-
-		// Check if any properties changed
-		if (
-			oldField.displayName !== newField.displayName ||
-			oldField.required !== newField.required ||
-			oldField.defaultMatch !== newField.defaultMatch ||
-			oldField.display !== newField.display ||
-			oldField.canBeUsedToMatch !== newField.canBeUsedToMatch ||
-			oldField.type !== newField.type
-		) {
-			return true;
-		}
-	}
-
-	return false;
 }
 
 // Reload fields to map when node is executed
