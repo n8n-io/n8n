@@ -360,7 +360,7 @@ defineExpose({
 					:title="
 						locale.baseText('resourceMapper.removeField', {
 							interpolate: {
-								fieldWord: singularFieldWordCapitalized,
+								fieldWord: singularFieldWord,
 							},
 						})
 					"
@@ -391,7 +391,7 @@ defineExpose({
 			<N8nSelect
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
-						interpolate: { fieldWord: singularFieldWordCapitalized },
+						interpolate: { fieldWord: singularFieldWord },
 					})
 				"
 				size="small"
