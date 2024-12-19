@@ -37,11 +37,13 @@ interface Props {
 	refreshInProgress: boolean;
 	teleported?: boolean;
 	isReadOnly?: boolean;
+	isDataStale?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	isReadOnly: false,
+	isDataStale: false,
 });
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
@@ -310,6 +312,24 @@ defineExpose({
 					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
 				/>
+				<N8nTooltip v-if="props.isDataStale && !props.refreshInProgress">
+					<template #content>
+						<span>{{
+							locale.baseText('resourceMapper.staleDataWarning.tooltip', {
+								interpolate: { fieldWord: pluralFieldWordCapitalized },
+							})
+						}}</span>
+					</template>
+					<N8nIconButton
+						icon="refresh"
+						type="tertiary"
+						size="small"
+						:text="true"
+						:class="$style.staleDataRefreshButton"
+						:disabled="props.refreshInProgress"
+						@click="onParameterActionSelected('refreshFieldList')"
+					/>
+				</N8nTooltip>
 			</template>
 		</N8nInputLabel>
 		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">
@@ -441,5 +461,9 @@ defineExpose({
 .addOption {
 	margin-top: var(--spacing-l);
 	padding: 0 0 0 var(--spacing-s);
+}
+
+.staleDataRefreshButton {
+	padding-bottom: var(--spacing-2xs);
 }
 </style>

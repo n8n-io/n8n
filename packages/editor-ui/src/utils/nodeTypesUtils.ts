@@ -440,6 +440,43 @@ export const fieldCannotBeDeleted = (
 	);
 };
 
+export const isResourceMapperFieldListStale = (
+	oldFields: ResourceMapperField[],
+	newFields: ResourceMapperField[],
+): boolean => {
+	if (oldFields.length !== newFields.length) {
+		return true;
+	}
+
+	// Create maps for O(1) lookup
+	const oldFieldsMap = new Map(oldFields.map((field) => [field.id, field]));
+	const newFieldsMap = new Map(newFields.map((field) => [field.id, field]));
+
+	// Check if any fields were removed or modified
+	for (const [id, oldField] of oldFieldsMap) {
+		const newField = newFieldsMap.get(id);
+
+		// Field was removed
+		if (!newField) {
+			return true;
+		}
+
+		// Check if any properties changed
+		if (
+			oldField.displayName !== newField.displayName ||
+			oldField.required !== newField.required ||
+			oldField.defaultMatch !== newField.defaultMatch ||
+			oldField.display !== newField.display ||
+			oldField.canBeUsedToMatch !== newField.canBeUsedToMatch ||
+			oldField.type !== newField.type
+		) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
 export const isMatchingField = (
 	field: string,
 	matchingFields: string[],
