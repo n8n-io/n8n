@@ -136,17 +136,8 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'GroupId',
 				type: 'string',
-				hint: 'Enter the group name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
+				hint: 'Enter the group id',
+				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
 		required: true,
@@ -351,17 +342,9 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'By ID',
 				name: 'groupId',
 				type: 'string',
-				hint: 'Enter the group name',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The group name must follow the allowed pattern.',
-						},
-					},
-				],
-				placeholder: 'e.g. Admins',
+				hint: 'Enter the group id',
+
+				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
 		required: true,
