@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
+
 import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class Function implements INodeType {

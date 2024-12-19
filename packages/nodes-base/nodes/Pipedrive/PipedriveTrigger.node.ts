@@ -1,3 +1,5 @@
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -9,9 +11,6 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-
-import type { Response } from 'express';
 import { pipedriveApiRequest } from './GenericFunctions';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
