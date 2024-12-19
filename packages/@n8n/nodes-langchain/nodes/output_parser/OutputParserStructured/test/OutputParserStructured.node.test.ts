@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import {
 	jsonParse,
-	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	type INode,
 	type IWorkflowDataProxyData,
 } from 'n8n-workflow';
@@ -13,7 +13,7 @@ import { OutputParserStructured } from '../OutputParserStructured.node';
 
 describe('OutputParserStructured', () => {
 	let outputParser: OutputParserStructured;
-	const thisArg = mock<IExecuteFunctions>({
+	const thisArg = mock<ISupplyDataFunctions>({
 		helpers: { normalizeItems },
 	});
 	const workflowDataProxy = mock<IWorkflowDataProxyData>({ $input: mock() });

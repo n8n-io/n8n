@@ -14,6 +14,7 @@ import type {
 	ExecutionError,
 	NodeApiError,
 	ISupplyDataFunctions,
+	ZodObjectAny,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -26,7 +27,6 @@ import type {
 	SendIn,
 	ToolParameter,
 } from './interfaces';
-import type { DynamicZodObject } from '../../../types/zod.types';
 
 const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
@@ -814,7 +814,7 @@ function makeParameterZodSchema(parameter: ToolParameter) {
 	return schema;
 }
 
-export function makeToolInputSchema(parameters: ToolParameter[]): DynamicZodObject {
+export function makeToolInputSchema(parameters: ToolParameter[]): ZodObjectAny {
 	const schemaEntries = parameters.map((parameter) => [
 		parameter.name,
 		makeParameterZodSchema(parameter),

@@ -1,9 +1,7 @@
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
-import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
-import type { z } from 'zod';
-
-type ZodObjectAny = z.ZodObject<any, any, any, any>;
+import type { IExecuteFunctions, INode, ZodObjectAny } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export async function extractParsedOutput(
 	ctx: IExecuteFunctions,

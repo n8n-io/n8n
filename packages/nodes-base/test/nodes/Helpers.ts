@@ -411,6 +411,7 @@ export const createMockExecuteFunction = (
 	continueBool = false,
 ) => {
 	const fakeExecuteFunction = {
+		aiRootNodeContext: {},
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,

@@ -1,7 +1,8 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { FakeLLM, FakeListChatModel } from '@langchain/core/utils/testing';
+import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow/src';
+import type { AiRootNodeFunctions, IDataObject, IExecuteFunctions } from 'n8n-workflow/src';
 
 import { makeZodSchemaFromAttributes } from '../helpers';
 import { InformationExtractor } from '../InformationExtractor.node';
@@ -43,16 +44,15 @@ function formatFakeLlmResponse(object: Record<string, any>) {
 
 const createExecuteFunctionsMock = (parameters: IDataObject, fakeLlm: BaseLanguageModel) => {
 	const nodeParameters = parameters;
-
+	const aiRootNodeContext = mock<AiRootNodeFunctions>();
+	aiRootNodeContext.getModel.mockResolvedValue(fakeLlm);
 	return {
+		aiRootNodeContext,
 		getNodeParameter(parameter: string) {
 			return get(nodeParameters, parameter);
 		},
 		getNode() {
 			return {};
-		},
-		getInputConnectionData() {
-			return fakeLlm;
 		},
 		getInputData() {
 			return [{ json: {} }];

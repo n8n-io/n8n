@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import type {
 	AINodeConnectionType,
+	AiRootNodeFunctions,
 	CloseFunction,
 	ExecutionBaseError,
 	IExecuteData,
@@ -44,6 +45,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
 
 	constructor(
+		readonly aiRootNodeContext: AiRootNodeFunctions,
 		workflow: Workflow,
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,

@@ -64,6 +64,7 @@ describe('SupplyDataContext', () => {
 	const abortSignal = mock<AbortSignal>();
 
 	const supplyDataContext = new SupplyDataContext(
+		mock(),
 		workflow,
 		node,
 		additionalData,

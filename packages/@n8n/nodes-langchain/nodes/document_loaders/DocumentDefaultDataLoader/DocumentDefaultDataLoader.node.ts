@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { TextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -10,6 +9,7 @@ import {
 
 import { logWrapper } from '@utils/logWrapper';
 import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
@@ -18,7 +18,6 @@ import { metadataFilterField } from '@utils/sharedFields';
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -285,10 +284,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
-		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
-			0,
-		)) as TextSplitter | undefined;
+		const textSplitter = await this.aiRootNodeContext.getTextSplitter();
 		const binaryDataKey = this.getNodeParameter('binaryDataKey', itemIndex, '') as string;
 
 		const processor =
