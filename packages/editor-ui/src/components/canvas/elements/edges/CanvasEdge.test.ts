@@ -81,18 +81,6 @@ describe('CanvasEdge', () => {
 		});
 	});
 
-	it('should correctly style a running connection', () => {
-		const { container } = renderComponent({
-			props: { ...DEFAULT_PROPS, data: { ...DEFAULT_PROPS.data, status: 'running' } },
-		});
-
-		const edge = container.querySelector('.vue-flow__edge-path');
-
-		expect(edge).toHaveStyle({
-			stroke: 'var(--color-primary)',
-		});
-	});
-
 	it('should correctly style a pinned connection', () => {
 		const { container } = renderComponent({
 			props: { ...DEFAULT_PROPS, data: { ...DEFAULT_PROPS.data, status: 'pinned' } },

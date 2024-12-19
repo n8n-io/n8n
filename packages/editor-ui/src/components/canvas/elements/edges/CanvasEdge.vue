@@ -44,8 +44,6 @@ const edgeColor = computed(() => {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
-	} else if (status.value === 'running') {
-		return 'var(--color-primary)';
 	} else if (!isMainConnection.value) {
 		return 'var(--node-type-supplemental-color)';
 	} else if (props.selected) {
