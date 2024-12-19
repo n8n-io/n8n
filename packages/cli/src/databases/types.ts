@@ -1,7 +1,6 @@
 import type { QueryRunner, ObjectLiteral } from '@n8n/typeorm';
+import type { Logger } from 'n8n-core';
 import type { INodeTypes } from 'n8n-workflow';
-
-import type { Logger } from '@/logging/logger.service';
 
 import type { createSchemaBuilder } from './dsl';
 

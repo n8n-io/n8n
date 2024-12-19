@@ -1,11 +1,10 @@
 import { TaskRunnersConfig } from '@n8n/config';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 import type { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart-loop-error';
 import type { TaskRunnerProcess } from '@/runners/task-runner-process';
 import { TaskRunnerProcessRestartLoopDetector } from '@/runners/task-runner-process-restart-loop-detector';

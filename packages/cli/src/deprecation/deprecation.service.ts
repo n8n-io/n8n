@@ -1,7 +1,6 @@
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
-
-import { Logger } from '@/logging/logger.service';
 
 type EnvVarName = string;
 

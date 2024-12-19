@@ -1,10 +1,10 @@
 import type { PushMessage } from '@n8n/api-types';
 import { EventEmitter } from 'events';
+import { Logger } from 'n8n-core';
 import { Container } from 'typedi';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 

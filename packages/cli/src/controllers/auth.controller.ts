@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import validator from 'validator';
 
@@ -14,7 +15,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { PublicUser } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
 import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
