@@ -1,5 +1,6 @@
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
-import { RPC_ALLOW_LIST } from '@n8n/task-runner';
+import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
+import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import type {
 	EnvProviderState,
@@ -288,7 +289,7 @@ export abstract class TaskManager {
 		}
 
 		try {
-			if (!RPC_ALLOW_LIST.includes(name)) {
+			if (!AVAILABLE_RPC_METHODS.includes(name)) {
 				this.sendMessage({
 					type: 'requester:rpcresponse',
 					taskId,
@@ -322,6 +323,15 @@ export abstract class TaskManager {
 				});
 				return;
 			}
+
+			// Convert any serialized buffers back to buffers
+			for (let i = 0; i < params.length; i++) {
+				const paramValue = params[i];
+				if (isSerializedBuffer(paramValue)) {
+					params[i] = toBuffer(paramValue);
+				}
+			}
+
 			const data = (await func.call(funcs, ...params)) as unknown;
 
 			this.sendMessage({
