@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import nock from 'nock';
+
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {

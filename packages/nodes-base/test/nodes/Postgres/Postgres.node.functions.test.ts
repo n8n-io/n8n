@@ -1,4 +1,5 @@
 const pgPromise = require('pg-promise');
+
 const PostgresFun = require('../../../nodes/Postgres/v1/genericFunctions');
 
 type NodeParams = Record<string, string | {}>;

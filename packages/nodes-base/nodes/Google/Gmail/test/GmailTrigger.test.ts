@@ -1,5 +1,5 @@
-import nock from 'nock';
 import * as mailparser from 'mailparser';
+import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 

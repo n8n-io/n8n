@@ -4,9 +4,8 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { configurePostgres } from '../transport';
-
 import type { PgpClient, PostgresNodeCredentials } from '../helpers/interfaces';
+import { configurePostgres } from '../transport';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,

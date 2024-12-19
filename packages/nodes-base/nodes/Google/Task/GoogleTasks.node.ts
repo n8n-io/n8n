@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-
 import { taskFields, taskOperations } from './TaskDescription';
 
 export class GoogleTasks implements INodeType {
