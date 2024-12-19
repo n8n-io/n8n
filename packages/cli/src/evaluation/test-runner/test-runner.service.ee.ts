@@ -313,6 +313,13 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Checks if the test run in a cancellable state.
+	 */
+	public canBeCancelled(testRun: TestRun) {
+		return testRun.status !== 'running' && testRun.status !== 'new';
+	}
+
+	/**
 	 * Cancels the test run with the given ID.
 	 * TODO: Implement the cancellation of the test run in a multi-main scenario
 	 */

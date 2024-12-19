@@ -101,9 +101,8 @@ export class TestRunsController {
 		await this.getTestDefinition(req);
 		const testRun = await this.getTestRun(req);
 
-		// Check the state of the test run
-		if (testRun.status !== 'running' && testRun.status !== 'new') {
-			const message = `The test run "${testRunId}" is not running and cannot be cancelled`;
+		if (this.testRunnerService.canBeCancelled(testRun)) {
+			const message = `The test run "${testRunId}" cannot be cancelled`;
 			throw new ConflictError(message);
 		}
 
