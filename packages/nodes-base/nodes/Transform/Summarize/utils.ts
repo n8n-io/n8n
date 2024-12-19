@@ -231,20 +231,20 @@ export function splitData(
 	const [firstSplitKey, ...restSplitKeys] = splitKeys;
 
 	const groupedData = data.reduce((acc, item) => {
-		let keyValuee = getValue(item, firstSplitKey) as string;
+		let keyValue = getValue(item, firstSplitKey) as string;
 
-		if (typeof keyValuee === 'object') {
-			keyValuee = JSON.stringify(keyValuee);
+		if (typeof keyValue === 'object') {
+			keyValue = JSON.stringify(keyValue);
 		}
 
-		if (options.skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
+		if (options.skipEmptySplitFields && typeof keyValue !== 'number' && !keyValue) {
 			return acc;
 		}
 
-		if (acc[keyValuee] === undefined) {
-			acc[keyValuee] = [item];
+		if (acc[keyValue] === undefined) {
+			acc[keyValue] = [item];
 		} else {
-			(acc[keyValuee] as IDataObject[]).push(item);
+			(acc[keyValue] as IDataObject[]).push(item);
 		}
 		return acc;
 	}, {} as IDataObject);
