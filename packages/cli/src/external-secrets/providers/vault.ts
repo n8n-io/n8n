@@ -215,7 +215,7 @@ export class VaultProvider extends SecretsProvider {
 		},
 	];
 
-	displayName = 'HashCorp Vault';
+	displayName = 'HashiCorp Vault';
 
 	name = 'vault';
 

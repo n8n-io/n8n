@@ -189,7 +189,7 @@ module.exports = {
 		create(context) {
 			const TESTING_FUNCTIONS = new Set(['test', 'it', 'describe']);
 			const SKIPPING_METHODS = new Set(['skip', 'only']);
-			const PREFIXED_TESTING_FUNCTIONS = new Set(['xtest', 'xit', 'describe']);
+			const PREFIXED_TESTING_FUNCTIONS = new Set(['xtest', 'xit', 'xdescribe']);
 			const toMessageId = (s) => 'remove' + s.charAt(0).toUpperCase() + s.slice(1);
 
 			return {

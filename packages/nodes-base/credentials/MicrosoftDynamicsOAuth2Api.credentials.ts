@@ -68,7 +68,7 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 					value: 'crm.microsoftdynamics.de',
 				},
 				{
-					name: 'North America (NAME)',
+					name: 'North America (NAM)',
 					value: 'crm.dynamics.com',
 				},
 				{

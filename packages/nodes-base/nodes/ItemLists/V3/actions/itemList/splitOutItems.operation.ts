@@ -131,7 +131,7 @@ export async function execute(
 		const multiSplit = fieldsToSplitOut.length > 1;
 
 		const item = { ...items[i].json };
-		const split: INodeExecutionData[] = [];
+		const splited: INodeExecutionData[] = [];
 		for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 			const destinationFieldName = destinationFields[entryIndex] || '';
 
@@ -162,17 +162,17 @@ export async function execute(
 			}
 
 			for (const [elementIndex, element] of entityToSplit.entries()) {
-				if (split[elementIndex] === undefined) {
-					split[elementIndex] = { json: {}, pairedItem: { item: i } };
+				if (splited[elementIndex] === undefined) {
+					splited[elementIndex] = { json: {}, pairedItem: { item: i } };
 				}
 
 				const fieldName = destinationFieldName || fieldToSplitOut;
 
 				if (fieldToSplitOut === '$binary') {
-					if (split[elementIndex].binary === undefined) {
-						split[elementIndex].binary = {};
+					if (splited[elementIndex].binary === undefined) {
+						splited[elementIndex].binary = {};
 					}
-					split[elementIndex].binary[Object.keys(element)[0]] = Object.values(
+					splited[elementIndex].binary[Object.keys(element)[0]] = Object.values(
 						element,
 					)[0] as IBinaryData;
 
@@ -181,20 +181,20 @@ export async function execute(
 
 				if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
 					if (destinationFieldName === '' && !multiSplit) {
-						split[elementIndex] = {
-							json: { ...split[elementIndex].json, ...element },
+						splited[elementIndex] = {
+							json: { ...splited[elementIndex].json, ...element },
 							pairedItem: { item: i },
 						};
 					} else {
-						split[elementIndex].json[fieldName] = element;
+						splited[elementIndex].json[fieldName] = element;
 					}
 				} else {
-					split[elementIndex].json[fieldName] = element;
+					splited[elementIndex].json[fieldName] = element;
 				}
 			}
 		}
 
-		for (const splitEntry of split) {
+		for (const splitEntry of splited) {
 			let newItem: INodeExecutionData = splitEntry;
 
 			if (include === 'allOtherFields') {

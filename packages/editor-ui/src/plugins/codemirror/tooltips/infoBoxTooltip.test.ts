@@ -103,9 +103,9 @@ describe('Infobox tooltips', () => {
 			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('$jmespath(obj, expression)');
 		});
 
-		test('should show a tooltip for: {{ $json.str.include|es() }}', () => {
+		test('should show a tooltip for: {{ $json.str.includ|es() }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('foo');
-			const tooltip = hoverTooltip('{{ $json.str.include|es() }}');
+			const tooltip = hoverTooltip('{{ $json.str.includ|es() }}');
 			expect(tooltip).not.toBeNull();
 			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('includes(searchString, start?)');
 		});
@@ -113,7 +113,7 @@ describe('Infobox tooltips', () => {
 		test('should not show a tooltip when autocomplete is open', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('foo');
 			vi.mocked(completionStatus).mockReturnValue('active');
-			const tooltip = hoverTooltip('{{ $json.str.include|es() }}');
+			const tooltip = hoverTooltip('{{ $json.str.includ|es() }}');
 			expect(tooltip).toBeNull();
 		});
 	});

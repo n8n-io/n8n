@@ -799,7 +799,7 @@ return 0;`,
 					const multiSplit = fieldsToSplitOut.length > 1;
 
 					const item = { ...items[i].json };
-					const split: IDataObject[] = [];
+					const splited: IDataObject[] = [];
 					for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 						const destinationFieldName = destinationFields[entryIndex] || '';
 
@@ -850,25 +850,25 @@ return 0;`,
 						}
 
 						for (const [elementIndex, element] of arrayToSplit.entries()) {
-							if (split[elementIndex] === undefined) {
-								split[elementIndex] = {};
+							if (splited[elementIndex] === undefined) {
+								splited[elementIndex] = {};
 							}
 
 							const fieldName = destinationFieldName || fieldToSplitOut;
 
 							if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
 								if (destinationFieldName === '' && !multiSplit) {
-									split[elementIndex] = { ...split[elementIndex], ...element };
+									splited[elementIndex] = { ...splited[elementIndex], ...element };
 								} else {
-									split[elementIndex][fieldName] = element;
+									splited[elementIndex][fieldName] = element;
 								}
 							} else {
-								split[elementIndex][fieldName] = element;
+								splited[elementIndex][fieldName] = element;
 							}
 						}
 					}
 
-					for (const splitEntry of split) {
+					for (const splitEntry of splited) {
 						let newItem: IDataObject = {};
 
 						if (include === 'noOtherFields') {

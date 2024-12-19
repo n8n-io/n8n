@@ -9,7 +9,7 @@ import { createInfoBoxRenderer } from './infoBoxRenderer';
 export function nonDollarCompletions(context: CompletionContext): CompletionResult | null {
 	const dateTime = /(\s+)D[ateTim]*/;
 	const math = /(\s+)M[ath]*/;
-	const object = /(\s+)O[object]*/;
+	const object = /(\s+)O[bject]*/;
 
 	const combinedRegex = new RegExp([dateTime.source, math.source, object.source].join('|'));
 

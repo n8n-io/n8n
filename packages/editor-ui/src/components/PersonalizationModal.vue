@@ -226,7 +226,7 @@ const survey = computed<IFormInputs>(() => [
 	{
 		name: OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
 		properties: {
-			placeholder: i18n.baseText('personalizationModal.specifyYourCompaniesIndustry'),
+			placeholder: i18n.baseText('personalizationModal.specifyYourCompanysIndustry'),
 		},
 		shouldDisplay(values): boolean {
 			const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
