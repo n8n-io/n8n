@@ -116,9 +116,9 @@ const nonMainInputsWithSpacer = computed(() =>
 
 const mappedInputs = computed(() => {
 	return [
-		...mainInputs.value.map(mainInputsMappingFn).filter(Boolean),
-		...nonMainInputsWithSpacer.value.map(nonMainInputsMappingFn).filter(Boolean),
-	];
+		...mainInputs.value.map(mainInputsMappingFn),
+		...nonMainInputsWithSpacer.value.map(nonMainInputsMappingFn),
+	].filter((endpoint) => !!endpoint);
 });
 
 /**
@@ -127,9 +127,9 @@ const mappedInputs = computed(() => {
 
 const mappedOutputs = computed(() => {
 	return [
-		...mainOutputs.value.map(mainOutputsMappingFn).filter(Boolean),
-		...nonMainOutputs.value.map(nonMainOutputsMappingFn).filter(Boolean),
-	];
+		...mainOutputs.value.map(mainOutputsMappingFn),
+		...nonMainOutputs.value.map(nonMainOutputsMappingFn),
+	].filter((endpoint) => !!endpoint);
 });
 
 /**
@@ -310,7 +310,7 @@ onBeforeUnmount(() => {
 	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
 		<template
 			v-for="source in mappedOutputs"
-			:key="source ? `${source.handleId}(${source.index + 1}/${mappedOutputs.length})` : ''"
+			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
 		>
 			<CanvasHandleRenderer
 				v-if="source"
@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
 
 		<template
 			v-for="target in mappedInputs"
-			:key="target ? `${target.handleId}(${target.index + 1}/${mappedInputs.length})` : ''"
+			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
 		>
 			<CanvasHandleRenderer
 				v-if="target"
