@@ -8,6 +8,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ResourceMapperField,
+	ResourceMapperFields,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -20,6 +21,7 @@ import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuar
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 
 type Props = {
 	parameter: INodeProperties;
@@ -42,6 +44,8 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 });
 
+const { onDocumentVisible } = useDocumentVisibility();
+
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
@@ -57,6 +61,7 @@ const state = reactive({
 	loading: false,
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
+	hasStaleFields: false,
 });
 
 // Reload fields to map when dependent parameters change
@@ -75,6 +80,56 @@ watch(
 		}
 	},
 );
+
+onDocumentVisible(async () => {
+	// Check for stale fields
+	await checkStaleFields();
+});
+
+async function checkStaleFields(): Promise<void> {
+	const fetchedFields = await fetchFields();
+	if (fetchedFields) {
+		const isSchemaStale = isFieldListStale(state.paramValue.schema, fetchedFields.fields);
+		state.hasStaleFields = isSchemaStale;
+	}
+}
+
+function isFieldListStale(
+	oldFields: ResourceMapperField[],
+	newFields: ResourceMapperField[],
+): boolean {
+	if (oldFields.length !== newFields.length) {
+		return true;
+	}
+
+	// Create maps for O(1) lookup
+	const oldFieldsMap = new Map(oldFields.map((field) => [field.id, field]));
+	const newFieldsMap = new Map(newFields.map((field) => [field.id, field]));
+
+	// Check if any fields were removed or modified
+	for (const [id, oldField] of oldFieldsMap) {
+		const newField = newFieldsMap.get(id);
+
+		// Field was removed
+		if (!newField) {
+			return true;
+		}
+
+		// Check if any properties changed
+		if (
+			oldField.displayName !== newField.displayName ||
+			oldField.required !== newField.required ||
+			oldField.defaultMatch !== newField.defaultMatch ||
+			oldField.display !== newField.display ||
+			oldField.canBeUsedToMatch !== newField.canBeUsedToMatch ||
+			oldField.type !== newField.type
+		) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 // Reload fields to map when node is executed
 watch(
@@ -138,6 +193,8 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
+	} else {
+		await checkStaleFields();
 	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
@@ -231,10 +288,11 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		state.loading = true;
 	}
 	try {
-		await loadFieldsToMap();
+		await loadAndSetFieldsToMap();
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
+		state.hasStaleFields = false;
 	} catch (error) {
 		state.loadingError = true;
 	} finally {
@@ -264,11 +322,7 @@ const createRequestParams = (methodName: string) => {
 	return requestParams;
 };
 
-async function loadFieldsToMap(): Promise<void> {
-	if (!props.node) {
-		return;
-	}
-
+async function fetchFields(): Promise<ResourceMapperFields | null> {
 	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
@@ -286,6 +340,15 @@ async function loadFieldsToMap(): Promise<void> {
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
+	return fetchedFields;
+}
+
+async function loadAndSetFieldsToMap(): Promise<void> {
+	if (!props.node) {
+		return;
+	}
+
+	const fetchedFields = await fetchFields();
 
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
@@ -555,6 +618,7 @@ defineExpose({
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
 			:is-read-only="isReadOnly"
+			:is-data-stale="state.hasStaleFields"
 			@field-value-changed="fieldValueChanged"
 			@remove-field="removeField"
 			@add-field="addField"

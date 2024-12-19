@@ -1588,6 +1588,7 @@
 	"resourceMapper.addAllFields": "Add All {fieldWord}",
 	"resourceMapper.removeAllFields": "Remove All {fieldWord}",
 	"resourceMapper.refreshFieldList": "Refresh {fieldWord} List",
+	"resourceMapper.staleDataWarning": "{fieldWord} are outdated. Refresh to see the changes.",
 	"runData.openSubExecution": "Inspect Sub-Execution {id}",
 	"runData.openParentExecution": "Inspect Parent Execution {id}",
 	"runData.emptyItemHint": "This is an item, but it's empty.",

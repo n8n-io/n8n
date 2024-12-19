@@ -37,11 +37,13 @@ interface Props {
 	refreshInProgress: boolean;
 	teleported?: boolean;
 	isReadOnly?: boolean;
+	isDataStale?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	isReadOnly: false,
+	isDataStale: false,
 });
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
@@ -309,6 +311,20 @@ defineExpose({
 					:is-read-only="isReadOnly"
 					:value="props.paramValue"
 					@update:model-value="onParameterActionSelected"
+				/>
+				<N8nIconButton
+					v-if="props.isDataStale && !props.refreshInProgress"
+					icon="refresh"
+					type="tertiary"
+					size="small"
+					:text="true"
+					:disabled="props.refreshInProgress"
+					:title="
+						locale.baseText('resourceMapper.staleDataWarning', {
+							interpolate: { fieldWord: pluralFieldWordCapitalized },
+						})
+					"
+					@click="onParameterActionSelected('refreshFieldList')"
 				/>
 			</template>
 		</N8nInputLabel>
