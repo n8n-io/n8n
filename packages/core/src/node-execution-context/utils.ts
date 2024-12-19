@@ -83,7 +83,6 @@ const validateResourceMapperValue = (
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
 		const resolvedValue = paramValues[key];
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 		const schemaEntry = schema.find((s) => s.id === key);
 
 		if (
@@ -99,15 +98,19 @@ const validateResourceMapperValue = (
 			};
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (schemaEntry?.type) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				valueOptions: schemaEntry.options,
+				strict: !resourceMapperField.attemptToConvertTypes,
+				parseStrings: !!resourceMapperField.convertFieldsToString,
 			});
+
 			if (!validationResult.valid) {
-				return { ...validationResult, fieldName: key };
+				if (!resourceMapperField.ignoreTypeMismatchErrors) {
+					return { ...validationResult, fieldName: key };
+				} else {
+					paramValues[key] = resolvedValue;
+				}
 			} else {
 				// If it's valid, set the casted value
 				paramValues[key] = validationResult.newValue;

@@ -2,7 +2,6 @@ import type { FieldType } from 'n8n-workflow';
 
 export const INPUT_SOURCE = 'inputSource';
 export const WORKFLOW_INPUTS = 'workflowInputs';
-export const INPUT_OPTIONS = 'inputOptions';
 export const VALUES = 'values';
 export const JSON_EXAMPLE = 'jsonExample';
 export const PASSTHROUGH = 'passthrough';

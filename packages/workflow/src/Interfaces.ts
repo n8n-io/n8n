@@ -1328,6 +1328,7 @@ export interface ResourceMapperTypeOptionsBase {
 		description?: string;
 		hint?: string;
 	};
+	showTypeConversionOptions?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -2665,6 +2666,9 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
+	ignoreTypeMismatchErrors: boolean;
+	attemptToConvertTypes: boolean;
+	convertFieldsToString: boolean;
 };
 
 export type FilterOperatorType =
