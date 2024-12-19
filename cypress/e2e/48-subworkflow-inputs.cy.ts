@@ -175,7 +175,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		openNode('Execute Workflow Trigger');
 	});
 
-	it.only('works with type-checked values', () => {
+	it('works with type-checked values', () => {
 		populateFields(exampleFields);
 
 		validateAndReturnToParent(
@@ -191,6 +191,24 @@ describe('Sub-workflow creation and typed usage', () => {
 
 		// this matches with the pinned data provided in the fixture
 		populateMapperFields(values, 2);
+
+		ndv.actions.execute();
+
+		// todo:
+		// - validate output lines up
+		// - change input to need casts
+		// - run
+		// - confirm error
+		// - switch `attemptToConvertTypes` flag
+		// - confirm success and changed output
+		// - change input to be invalid despite cast
+		// - run
+		// - confirm error
+		// - switch type option flags
+		// - run
+		// - confirm success
+		// - turn off attempt to cast flag
+		// - confirm a value was not cast
 	});
 
 	it('works with Fields input source into JSON input source', () => {
@@ -238,8 +256,6 @@ describe('Sub-workflow creation and typed usage', () => {
 			exampleFields.map((f) => f[0]),
 		);
 
-		// populateJson(fields);
-
 		// test for either InputSource mode and options combinations:
 		// + we're showing the notice in the output panel
 		// + we start with no fields
@@ -251,7 +267,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// - verify fields appear [needs Ivan's PR]
 		// - link fields [needs Ivan's PR]
 		// + run parent
-		// - verify output is as expected (Unit test should cover concrete behavior of how all input combinations are handled though)
+		// - verify output with `null` defaults exists
 		//
 	});
 
