@@ -61,6 +61,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'ai-llm-errored': (event) => this.aiLlmErrored(event),
 			'ai-vector-store-populated': (event) => this.aiVectorStorePopulated(event),
 			'ai-vector-store-updated': (event) => this.aiVectorStoreUpdated(event),
+			'ai-vector-store-deleted': (event) => this.aiVectorStoreDeleted(event),
 		});
 	}
 
@@ -501,6 +502,13 @@ export class LogStreamingEventRelay extends EventRelay {
 	private aiVectorStoreUpdated(payload: RelayEventMap['ai-vector-store-updated']) {
 		void this.eventBus.sendAiNodeEvent({
 			eventName: 'n8n.ai.vector.store.updated',
+			payload,
+		});
+	}
+
+	private aiVectorStoreDeleted(payload: RelayEventMap['ai-vector-store-deleted']) {
+		void this.eventBus.sendAiNodeEvent({
+			eventName: 'n8n.ai.vector.store.deleted',
 			payload,
 		});
 	}
