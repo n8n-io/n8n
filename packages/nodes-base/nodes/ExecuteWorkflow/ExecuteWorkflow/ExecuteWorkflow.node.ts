@@ -13,7 +13,7 @@ import type {
 import { getWorkflowInfo } from './GenericFunctions';
 import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
-import { getWorkflowInputData } from '../GenericFunctions';
+import { getWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 function getWorkflowInputValues(this: IExecuteFunctions) {
 	const inputData = this.getInputData();
