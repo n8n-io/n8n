@@ -99,7 +99,7 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'Fields the response will contain. Multiple can be added separated by ,.',
 			},
 		],
 	},
@@ -224,7 +224,7 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		default: 0,
 		description:
-			'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+			'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 	},
 	{
 		displayName: 'Filters',
@@ -245,7 +245,7 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'Fields the response will contain. Multiple can be added separated by ,.',
 			},
 		],
 	},

@@ -317,7 +317,7 @@ export class HomeAssistant implements INodeType {
 						);
 					}
 				} else if (resource === 'log') {
-					if (operation === 'getErroLogs') {
+					if (operation === 'getErrorLogs') {
 						responseData = await homeAssistantApiRequest.call(this, 'GET', '/error_log');
 						if (responseData) {
 							responseData = {

@@ -100,7 +100,7 @@ export class ExtractFromFile implements INodeType {
 					},
 					{
 						name: 'Move File to Base64 String',
-						value: 'binaryToPropery',
+						value: 'binaryToProperty',
 						action: 'Move file to base64 string',
 						description: 'Convert a file into a base64-encoded string',
 					},
@@ -122,7 +122,7 @@ export class ExtractFromFile implements INodeType {
 			returnData = await spreadsheet.execute.call(this, items, 'operation');
 		}
 
-		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {
+		if (['binaryToProperty', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {
 			returnData = await moveTo.execute.call(this, items, operation);
 		}
 

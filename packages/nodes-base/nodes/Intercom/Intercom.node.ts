@@ -15,7 +15,7 @@ import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser, IUserCompany } from './UserInterface';
 import { companyFields, companyOperations } from './CompanyDescription';
-import type { ICompany } from './CompanyInteface';
+import type { ICompany } from './CompanyInterface';
 
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {

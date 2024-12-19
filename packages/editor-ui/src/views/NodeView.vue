@@ -1482,13 +1482,13 @@ export default defineComponent({
 				let siblingNode: INodeUi | null;
 				let lastCheckedNodePosition = e.key === 'ArrowUp' ? -99999999 : 99999999;
 				let nextSelectNode: string | null = null;
-				for (const ouputConnections of connectionsParent.main) {
-					for (const ouputConnection of ouputConnections ?? []) {
-						if (ouputConnection.node === lastSelectedNode.name) {
+				for (const outputConnections of connectionsParent.main) {
+					for (const outputConnection of outputConnections ?? []) {
+						if (outputConnection.node === lastSelectedNode.name) {
 							// Ignore current node
 							continue;
 						}
-						siblingNode = this.workflowsStore.getNodeByName(ouputConnection.node);
+						siblingNode = this.workflowsStore.getNodeByName(outputConnection.node);
 
 						if (siblingNode) {
 							if (e.key === 'ArrowUp') {
@@ -2415,7 +2415,7 @@ export default defineComponent({
 			sourceNodeName: string,
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
-			targetNodeOuputIndex: number,
+			targetNodeOutputIndex: number,
 			type: NodeConnectionType,
 		): IConnection | undefined {
 			const nodeConnections =
@@ -2426,7 +2426,7 @@ export default defineComponent({
 				if (connections) {
 					return connections.find(
 						(connection: IConnection) =>
-							connection.node === targetNodeName && connection.index === targetNodeOuputIndex,
+							connection.node === targetNodeName && connection.index === targetNodeOutputIndex,
 					);
 				}
 			}
@@ -3619,14 +3619,14 @@ export default defineComponent({
 						const sourceNodeName = conn1.__meta.sourceNodeName;
 						const sourceNodeOutputIndex = conn1.__meta.sourceOutputIndex;
 						const targetNodeName = conn2.__meta.targetNodeName;
-						const targetNodeOuputIndex = conn2.__meta.targetOutputIndex;
+						const targetNodeOutputIndex = conn2.__meta.targetOutputIndex;
 
 						setTimeout(() => {
 							this.connectTwoNodes(
 								sourceNodeName,
 								sourceNodeOutputIndex,
 								targetNodeName,
-								targetNodeOuputIndex,
+								targetNodeOutputIndex,
 								NodeConnectionType.Main,
 							);
 

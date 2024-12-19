@@ -27,9 +27,9 @@ import type { ITweet, ITweetCreate } from './TweetInterface';
 export class TwitterV1 implements INodeType {
 	description: INodeTypeDescription;
 
-	constructor(baseDecription: INodeTypeBaseDescription) {
+	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
-			...baseDecription,
+			...baseDescription,
 			version: 1,
 			description: 'Consume Twitter API',
 			subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',

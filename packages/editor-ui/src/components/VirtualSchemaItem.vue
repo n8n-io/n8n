@@ -11,7 +11,7 @@ type Props = {
 	value?: string;
 	id: string;
 	icon: string;
-	collapsable?: boolean;
+	collapsible?: boolean;
 	nodeType?: string;
 	highlight?: boolean;
 	draggable?: boolean;
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 <template>
 	<div class="schema-item" :class="{ draggable }" data-test-id="run-data-schema-item">
 		<div class="toggle-container">
-			<div v-if="collapsable" class="toggle" @click="emit('click')">
+			<div v-if="collapsible" class="toggle" @click="emit('click')">
 				<FontAwesomeIcon icon="angle-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 		</div>

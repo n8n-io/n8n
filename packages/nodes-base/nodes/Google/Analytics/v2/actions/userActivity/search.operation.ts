@@ -112,7 +112,7 @@ export const description: INodeProperties[] = [
 						value: 'SCREENVIEW',
 					},
 				],
-				description: 'Type of activites requested',
+				description: 'Type of activities requested',
 				default: [],
 			},
 		],

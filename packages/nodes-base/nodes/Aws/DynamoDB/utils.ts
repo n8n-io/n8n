@@ -64,7 +64,7 @@ export function simplify(item: IAttributeValue): IDataObject {
 
 	for (const [attribute, value] of Object.entries(item)) {
 		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
-		//nedded as simplify is used in decodeItem
+		//needed as simplify is used in decodeItem
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		output[attribute] = decodeAttribute(type, content);
 	}

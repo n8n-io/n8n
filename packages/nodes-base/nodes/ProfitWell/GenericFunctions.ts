@@ -58,7 +58,7 @@ export function simplifyDailyMetrics(responseData: Metrics) {
 	return data;
 }
 
-export function simplifyMontlyMetrics(responseData: Metrics) {
+export function simplifyMonthlyMetrics(responseData: Metrics) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(responseData)) {
 		for (const [index] of responseData[key].entries()) {

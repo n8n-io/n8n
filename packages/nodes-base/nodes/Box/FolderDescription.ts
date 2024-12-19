@@ -112,7 +112,7 @@ export const folderFields: INodeProperties[] = [
 					{
 						name: 'Open',
 						value: 'open',
-						description: 'It will accept emails from any email addres',
+						description: 'It will accept emails from any email address',
 					},
 				],
 				default: '',
@@ -238,7 +238,7 @@ export const folderFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Content Types',
-				name: 'contet_types',
+				name: 'content_types',
 				type: 'string',
 				default: '',
 				description:
@@ -748,7 +748,7 @@ export const folderFields: INodeProperties[] = [
 						displayName: 'Permissions',
 						name: 'permissions',
 						type: 'collection',
-						placeholder: 'Add Permition',
+						placeholder: 'Add Permission',
 						default: {},
 						options: [
 							{

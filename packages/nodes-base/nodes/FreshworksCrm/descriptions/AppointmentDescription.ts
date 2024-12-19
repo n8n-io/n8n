@@ -179,7 +179,7 @@ export const appointmentFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Creator Name or ID',
-				name: 'creater_id',
+				name: 'creator_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -351,7 +351,7 @@ export const appointmentFields: INodeProperties[] = [
 				displayName: 'Include',
 				name: 'include',
 				type: 'options',
-				default: 'creater',
+				default: 'creator',
 				options: [
 					{
 						name: 'Appointment Attendees',
@@ -359,7 +359,7 @@ export const appointmentFields: INodeProperties[] = [
 					},
 					{
 						name: 'Creator',
-						value: 'creater',
+						value: 'creator',
 					},
 					{
 						name: 'Target',
@@ -479,7 +479,7 @@ export const appointmentFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Creator Name or ID',
-				name: 'creater_id',
+				name: 'creator_id',
 				type: 'options',
 				default: [],
 				typeOptions: {

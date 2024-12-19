@@ -123,7 +123,7 @@ export const clientFields: INodeProperties[] = [
 	// 	name: 'reasign',
 	// 	type: 'boolean',
 	// 	default: false,
-	// 	description: 'Whether tickets assigned to client sould be reasigned',
+	// 	description: 'Whether tickets assigned to client should be reasigned',
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [

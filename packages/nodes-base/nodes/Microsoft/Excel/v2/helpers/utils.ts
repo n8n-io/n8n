@@ -76,7 +76,7 @@ export function updateByDefinedValues(
 	this: IExecuteFunctions,
 	itemslength: number,
 	sheetData: SheetData,
-	updateAllOccurences: boolean,
+	updateAllOccurrences: boolean,
 ): UpdateSummary {
 	const [columns, ...originalValues] = sheetData;
 	const updateValues: SheetData = originalValues.map((row) => row.map(() => null));
@@ -96,7 +96,7 @@ export function updateByDefinedValues(
 		const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
 
 		const rowIndexes: number[] = [];
-		if (updateAllOccurences) {
+		if (updateAllOccurrences) {
 			for (const [index, row] of originalValues.entries()) {
 				if (
 					row[columnToMatchOnIndex] === valueToMatchOn ||
@@ -148,11 +148,11 @@ export function updateByDefinedValues(
 }
 
 // update values of spreadsheet when update mode is 'autoMap'
-export function updateByAutoMaping(
+export function updateByAutoMapping(
 	items: INodeExecutionData[],
 	sheetData: SheetData,
 	columnToMatchOn: string,
-	updateAllOccurences = false,
+	updateAllOccurrences = false,
 ): UpdateSummary {
 	const [columns, ...values] = sheetData;
 	const matchColumnIndex = columns.indexOf(columnToMatchOn);
@@ -166,7 +166,7 @@ export function updateByAutoMaping(
 		if (columnValue === undefined) continue;
 
 		const rowIndexes: number[] = [];
-		if (updateAllOccurences) {
+		if (updateAllOccurrences) {
 			matchValuesMap.forEach((value, index) => {
 				if (value === columnValue || Number(value) === Number(columnValue)) {
 					rowIndexes.push(index);

@@ -77,7 +77,7 @@ export const imageFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
+					'Whether to wait for the image to be processed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
 			},
 			{
 				displayName: 'Wait Max Tries',

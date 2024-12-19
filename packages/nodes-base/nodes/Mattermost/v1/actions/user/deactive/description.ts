@@ -1,6 +1,6 @@
 import type { UserProperties } from '../../Interfaces';
 
-export const userDeactiveDescription: UserProperties = [
+export const userDeactivateDescription: UserProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -9,7 +9,7 @@ export const userDeactiveDescription: UserProperties = [
 		displayOptions: {
 			show: {
 				resource: ['user'],
-				operation: ['deactive'],
+				operation: ['deactivate'],
 			},
 		},
 		default: '',

@@ -15,7 +15,7 @@ export async function post(this: IExecuteFunctions, index: number): Promise<INod
 
 	const attachments = this.getNodeParameter('attachments', index, []) as unknown as IAttachment[];
 	// The node does save the fields data differently than the API
-	// expects so fix the data befre we send the request
+	// expects so fix the data before we send the request
 	for (const attachment of attachments) {
 		if (attachment.fields !== undefined) {
 			if (attachment.fields.item !== undefined) {

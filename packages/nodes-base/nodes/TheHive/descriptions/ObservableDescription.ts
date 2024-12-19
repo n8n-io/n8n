@@ -70,7 +70,7 @@ export const observableFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	// required attributs
+	// required attributes
 	{
 		displayName: 'Observable ID',
 		name: 'id',
@@ -419,8 +419,8 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Sort',
 				name: 'sort',
 				type: 'string',
-				placeholder: '±Attribut, exp +status',
-				description: 'Specify the sorting attribut, + for asc, - for desc',
+				placeholder: '±Attribute, exp +status',
+				description: 'Specify the sorting attribute, + for asc, - for desc',
 				default: '',
 			},
 		],

@@ -47,7 +47,7 @@ export class ErrorTrigger implements INodeType {
 			items[0].binary === undefined
 		) {
 			// If we are in manual mode and no input data got provided we return
-			// example data to allow to develope and test errorWorkflows easily
+			// example data to allow to develop and test errorWorkflows easily
 
 			const restApiUrl = this.getRestApiUrl();
 

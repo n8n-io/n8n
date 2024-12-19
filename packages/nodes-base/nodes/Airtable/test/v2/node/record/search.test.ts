@@ -67,7 +67,7 @@ describe('Test AirtableV2, search operation', () => {
 			options: {
 				fields: ['foo', 'bar'],
 				view: {
-					value: 'viwView',
+					value: 'viewView',
 					mode: 'list',
 				},
 			},
@@ -103,7 +103,7 @@ describe('Test AirtableV2, search operation', () => {
 				fields: ['foo', 'bar'],
 				filterByFormula: 'foo',
 				sort: [{ direction: 'desc', field: 'bar' }],
-				view: 'viwView',
+				view: 'viewView',
 			},
 		);
 

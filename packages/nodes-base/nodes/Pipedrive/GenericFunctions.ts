@@ -119,7 +119,7 @@ export async function pipedriveApiRequestAllItems(
 
 	do {
 		responseData = await pipedriveApiRequest.call(this, method, endpoint, body, query);
-		// the search path returns data diferently
+		// the search path returns data differently
 		if (responseData.data.items) {
 			returnData.push.apply(returnData, responseData.data.items as IDataObject[]);
 		} else {

@@ -102,7 +102,7 @@ export class CiscoWebexTrigger implements INodeType {
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
-					'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
+					'By default the response only contain a reference to the data the user inputted. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Filters',

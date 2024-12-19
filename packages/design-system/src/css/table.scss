@@ -27,7 +27,7 @@
 
 	@include mixins.e(empty-text) {
 		// min-height doesn't work in IE10 and IE11 https://github.com/philipwalton/flexbugs#3-min-height-on-a-flex-container-wont-apply-to-its-flex-items
-		// set empty text line height up to contrainer min-height as workaround.
+		// set empty text line height up to container min-height as workaround.
 		line-height: 60px;
 		width: 50%;
 		color: var(--color-text-light);

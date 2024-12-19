@@ -241,7 +241,7 @@ export const invoiceFields: INodeProperties[] = [
 					// 					name: 'name',
 					// 					type: 'options',
 					// 					typeOptions: {
-					// 						loadOptionsMethod: 'getTrakingCategories',
+					// 						loadOptionsMethod: 'getTrackingCategories',
 					// 						loadOptionsDependsOn: [
 					// 							'organizationId',
 					// 						],
@@ -254,7 +254,7 @@ export const invoiceFields: INodeProperties[] = [
 					// 					name: 'option',
 					// 					type: 'options',
 					// 					typeOptions: {
-					// 						loadOptionsMethod: 'getTrakingOptions',
+					// 						loadOptionsMethod: 'getTrackingOptions',
 					// 						loadOptionsDependsOn: [
 					// 							'/name',
 					// 						],
@@ -693,7 +693,7 @@ export const invoiceFields: INodeProperties[] = [
 							// 					name: 'name',
 							// 					type: 'options',
 							// 					typeOptions: {
-							// 						loadOptionsMethod: 'getTrakingCategories',
+							// 						loadOptionsMethod: 'getTrackingCategories',
 							// 						loadOptionsDependsOn: [
 							// 							'organizationId',
 							// 						],
@@ -706,7 +706,7 @@ export const invoiceFields: INodeProperties[] = [
 							// 					name: 'option',
 							// 					type: 'options',
 							// 					typeOptions: {
-							// 						loadOptionsMethod: 'getTrakingOptions',
+							// 						loadOptionsMethod: 'getTrackingOptions',
 							// 						loadOptionsDependsOn: [
 							// 							'/name',
 							// 						],

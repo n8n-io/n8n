@@ -365,7 +365,7 @@ export class JiraTrigger implements INodeType {
 								value: 'project.key',
 							},
 							{
-								name: 'Propery Key',
+								name: 'Property Key',
 								value: 'property.key',
 							},
 							{

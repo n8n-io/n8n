@@ -1,11 +1,11 @@
-export interface ICertficateRequest {
+export interface ICertificateRequest {
 	isVaaSGenerated?: boolean;
 	csrAttributes?: ICsrAttributes;
 	applicationServerTypeId?: string;
 	certificateSigningRequest?: string;
 	applicationId?: string;
 	certificateIssuingTemplateId?: string;
-	certficateOwnerUserId?: string;
+	certificateOwnerUserId?: string;
 	validityPeriod?: string;
 }
 
@@ -33,7 +33,7 @@ export interface ISubjectAltNamesByType {
 	uniformResourceIdentifiers?: string[];
 }
 
-export interface ICertficateKeystoreRequest {
+export interface ICertificateKeystoreRequest {
 	exportFormat?: string;
 	encryptedPrivateKeyPassphrase?: string;
 	encryptedKeystorePassphrase?: string;

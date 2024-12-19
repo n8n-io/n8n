@@ -386,8 +386,8 @@ export const description: INodeProperties[] = [
 						],
 					},
 					{
-						displayName: 'Dimmension Order By',
-						name: 'dimmensionOrderBy',
+						displayName: 'Dimension Order By',
+						name: 'dimensionOrderBy',
 						values: [
 							{
 								displayName: 'Descending',
@@ -397,7 +397,7 @@ export const description: INodeProperties[] = [
 								description: 'Whether true, sorts by descending order',
 							},
 							{
-								displayName: 'Dimmension Name or ID',
+								displayName: 'Dimension Name or ID',
 								name: 'dimensionName',
 								type: 'options',
 								typeOptions: {
@@ -567,8 +567,8 @@ export async function execute(
 		let orderBys: IDataObject[] = [];
 		const metricOrderBy = (additionalFields.orderByUI as IDataObject)
 			.metricOrderBy as IDataObject[];
-		const dimmensionOrderBy = (additionalFields.orderByUI as IDataObject)
-			.dimmensionOrderBy as IDataObject[];
+		const dimensionOrderBy = (additionalFields.orderByUI as IDataObject)
+			.dimensionOrderBy as IDataObject[];
 		if (metricOrderBy) {
 			orderBys = orderBys.concat(
 				metricOrderBy.map((order) => {
@@ -581,9 +581,9 @@ export async function execute(
 				}),
 			);
 		}
-		if (dimmensionOrderBy) {
+		if (dimensionOrderBy) {
 			orderBys = orderBys.concat(
-				dimmensionOrderBy.map((order) => {
+				dimensionOrderBy.map((order) => {
 					return {
 						desc: order.desc,
 						dimension: {

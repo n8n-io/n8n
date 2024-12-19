@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 const props = defineProps<{
 	title: string;
 	info?: string;
-	collapsable: boolean;
+	collapsible: boolean;
 	collapsed: boolean;
 	nodeType: INodeTypeDescription;
 	itemCount: number | null;

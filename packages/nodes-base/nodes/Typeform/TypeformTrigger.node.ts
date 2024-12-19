@@ -99,7 +99,7 @@ export class TypeformTrigger implements INodeType {
 				default: true,
 
 				description:
-					'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
+					'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSWER") to be easily processable',
 			},
 			{
 				displayName: 'Only Answers',

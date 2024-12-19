@@ -90,7 +90,7 @@ watch(containerWidth, (width) => {
 	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
 	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
 
-	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
+	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaining position
 	if (isBelowMinWidthMainPanel) {
 		setMainPanelWidth(minRelativeWidth);
 	}

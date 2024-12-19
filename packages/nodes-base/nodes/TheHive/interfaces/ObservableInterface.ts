@@ -46,5 +46,5 @@ export interface IObservable {
 	createdBy?: string;
 	createdAt?: Date;
 	updatedBy?: string;
-	upadtedAt?: Date;
+	updatedAt?: Date;
 }

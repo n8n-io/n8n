@@ -27,7 +27,7 @@ import {
 } from '../../../v2/helpers/GoogleSheets.utils';
 
 describe('Test Google Sheets, addRowNumber', () => {
-	it('should add row nomber', () => {
+	it('should add row number', () => {
 		const data = [
 			['id', 'col1', 'col2', 'col3'],
 			[0, 'A', 'B', 'C'],

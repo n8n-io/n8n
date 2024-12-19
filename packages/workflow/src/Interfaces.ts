@@ -1877,7 +1877,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: Array<NodeConnectionType | INodeInputConfiguration> | ExpressionString;
-	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
+	requiredInputs?: string | number[] | number; // Only available with executionOrder => "v1"
 	inputNames?: string[];
 	outputs: Array<NodeConnectionType | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];

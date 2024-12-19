@@ -164,8 +164,8 @@ export class PayPalTrigger implements INodeType {
 
 		const { env } = await this.getCredentials<{ env: string }>('payPalApi');
 
-		// if sanbox omit verification
-		if (env === 'sanbox') {
+		// if sandbox omit verification
+		if (env === 'sandbox') {
 			return {
 				workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 			};

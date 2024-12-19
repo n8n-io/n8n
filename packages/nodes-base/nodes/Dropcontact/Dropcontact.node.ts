@@ -215,7 +215,7 @@ export class Dropcontact implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies.',
+							'Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and information about the company leader. Only applies to french companies.',
 					},
 					{
 						displayName: 'Language',

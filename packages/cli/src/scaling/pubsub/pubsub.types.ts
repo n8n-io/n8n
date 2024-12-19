@@ -3,7 +3,7 @@ import type {
 	PubSubEventMap,
 	PubSubWorkerResponseMap,
 } from '@/events/maps/pub-sub.event-map';
-import type { Resolve } from '@/utlity.types';
+import type { Resolve } from '@/utility.types';
 
 import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
 

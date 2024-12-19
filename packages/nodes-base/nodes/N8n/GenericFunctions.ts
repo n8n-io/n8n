@@ -83,7 +83,7 @@ export async function apiRequestAllItems(
  * 'returnAll' set to true, will consecutively include it as the 'cursor' query
  * parameter for the next request, effectively getting everything in slices.
  *
- * Prequisites:
+ * Prerequisites:
  * - routing.send.paginate must be set to true, for all requests to go through here
  * - node is expected to have a boolean parameter 'returnAll'
  * - no postReceive action setting the rootProperty, to get the items mapped

@@ -159,7 +159,7 @@ export class HaloPSA implements INodeType {
 				return options
 					.filter((ticket) => {
 						if (
-							// folowing types throws error 400 - "CODE:APP03/2 Please select the CAB members to approve"
+							// following types throws error 400 - "CODE:APP03/2 Please select the CAB members to approve"
 							ticket.name.includes('Request') ||
 							ticket.name.includes('Offboarding') ||
 							ticket.name.includes('Onboarding') ||

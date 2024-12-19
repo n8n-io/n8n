@@ -120,7 +120,7 @@ export async function wiseApiRequest(
 
 export function getTriggerName(eventName: string) {
 	const events: IDataObject = {
-		tranferStateChange: 'transfers#state-change',
+		transferStateChange: 'transfers#state-change',
 		transferActiveCases: 'transfers#active-cases',
 		balanceCredit: 'balances#credit',
 		balanceUpdate: 'balances#update',

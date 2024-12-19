@@ -307,11 +307,11 @@ export class Autopilot implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
+					const executionErrorWithMetaData = this.helpers.constructExecutionMetaData(
 						[{ json: { error: error.message } }],
 						{ itemData: { item: i } },
 					);
-					responseData.push(...exectionErrorWithMetaData);
+					responseData.push(...executionErrorWithMetaData);
 					continue;
 				}
 

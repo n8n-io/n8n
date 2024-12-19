@@ -84,7 +84,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow sending message to a previously non exisiting topic',
+						description: 'Whether to allow sending message to a previously non existing topic',
 					},
 					{
 						displayName: 'Auto Commit Threshold',

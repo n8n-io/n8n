@@ -303,7 +303,7 @@ export class SwitchV3 implements INodeType {
 
 		const checkIndexRange = (returnDataLength: number, index: number, itemIndex = 0) => {
 			if (Number(index) === returnDataLength) {
-				throw new NodeOperationError(this.getNode(), `The ouput ${index} is not allowed. `, {
+				throw new NodeOperationError(this.getNode(), `The output ${index} is not allowed. `, {
 					itemIndex,
 					description: `Output indexes are zero based, if you want to use the extra output use ${
 						index - 1
@@ -311,7 +311,7 @@ export class SwitchV3 implements INodeType {
 				});
 			}
 			if (index < 0 || index > returnDataLength) {
-				throw new NodeOperationError(this.getNode(), `The ouput ${index} is not allowed`, {
+				throw new NodeOperationError(this.getNode(), `The output ${index} is not allowed`, {
 					itemIndex,
 					description: `It has to be between 0 and ${returnDataLength - 1}`,
 				});

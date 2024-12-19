@@ -55,7 +55,7 @@ export async function apiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		const description = error?.response?.headers['x-bamboohr-error-messsage'] || '';
+		const description = error?.response?.headers['x-bamboohr-error-message'] || '';
 		const message = error?.message || '';
 		throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
 	}

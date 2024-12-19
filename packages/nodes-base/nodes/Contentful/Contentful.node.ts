@@ -164,26 +164,26 @@ export class Contentful implements INodeType {
 						Object.assign(qs, additionalFields);
 
 						if (qs.equal) {
-							const [atribute, value] = (qs.equal as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.equal as string).split('=');
+							qs[attribute] = value;
 							delete qs.equal;
 						}
 
 						if (qs.notEqual) {
-							const [atribute, value] = (qs.notEqual as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.notEqual as string).split('=');
+							qs[attribute] = value;
 							delete qs.notEqual;
 						}
 
 						if (qs.include) {
-							const [atribute, value] = (qs.include as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.include as string).split('=');
+							qs[attribute] = value;
 							delete qs.include;
 						}
 
 						if (qs.exclude) {
-							const [atribute, value] = (qs.exclude as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.exclude as string).split('=');
+							qs[attribute] = value;
 							delete qs.exclude;
 						}
 
@@ -263,26 +263,26 @@ export class Contentful implements INodeType {
 						Object.assign(qs, additionalFields);
 
 						if (qs.equal) {
-							const [atribute, value] = (qs.equal as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.equal as string).split('=');
+							qs[attribute] = value;
 							delete qs.equal;
 						}
 
 						if (qs.notEqual) {
-							const [atribute, value] = (qs.notEqual as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.notEqual as string).split('=');
+							qs[attribute] = value;
 							delete qs.notEqual;
 						}
 
 						if (qs.include) {
-							const [atribute, value] = (qs.include as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.include as string).split('=');
+							qs[attribute] = value;
 							delete qs.include;
 						}
 
 						if (qs.exclude) {
-							const [atribute, value] = (qs.exclude as string).split('=');
-							qs[atribute] = value;
+							const [attribute, value] = (qs.exclude as string).split('=');
+							qs[attribute] = value;
 							delete qs.exclude;
 						}
 

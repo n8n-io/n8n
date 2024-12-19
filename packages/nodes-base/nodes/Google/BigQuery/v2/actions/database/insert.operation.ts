@@ -240,7 +240,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		if (responseData?.insertErrors && !options.skipInvalidRows) {
 			const errors: string[] = [];
 			const failedRows: number[] = [];
-			const stopedRows: number[] = [];
+			const stoppedRows: number[] = [];
 
 			(responseData.insertErrors as IDataObject[]).forEach((entry) => {
 				const invalidRows = (entry.errors as IDataObject[]).filter(
@@ -256,7 +256,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					failedRows.push(entryIndex);
 				} else {
 					const entryIndex = (entry.index as number) + i;
-					stopedRows.push(entryIndex);
+					stoppedRows.push(entryIndex);
 				}
 			});
 
@@ -270,8 +270,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			const failedMessage = `Problem inserting item(s) [${failedRows.join(', ')}]`;
-			const stoppedMessage = stopedRows.length
-				? `, nothing was inserted item(s) [${stopedRows.join(', ')}]`
+			const stoppedMessage = stoppedRows.length
+				? `, nothing was inserted item(s) [${stoppedRows.join(', ')}]`
 				: '';
 			throw new NodeOperationError(this.getNode(), `${failedMessage}${stoppedMessage}`, {
 				description: errors.join('\n, '),

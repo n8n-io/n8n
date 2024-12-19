@@ -249,11 +249,11 @@ export const projectFields: INodeProperties[] = [
 				description: 'Maximum interval to digest alerts',
 			},
 			{
-				displayName: 'Digests Minimun Delay',
+				displayName: 'Digests Minimum Delay',
 				name: 'digestsMinDelay',
 				type: 'number',
 				default: 60,
-				description: 'Minium interval to digest alerts',
+				description: 'Minimum interval to digest alerts',
 			},
 			{
 				displayName: 'Name',

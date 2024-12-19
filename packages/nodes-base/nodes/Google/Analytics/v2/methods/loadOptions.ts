@@ -82,13 +82,13 @@ export async function getProperties(this: ILoadOptionsFunctions): Promise<INodeP
 		'https://analyticsadmin.googleapis.com/v1alpha/accounts',
 	);
 
-	for (const acount of accounts || []) {
+	for (const account of accounts || []) {
 		const { properties } = await googleApiRequest.call(
 			this,
 			'GET',
 			'',
 			{},
-			{ filter: `parent:${acount.name}` },
+			{ filter: `parent:${account.name}` },
 			'https://analyticsadmin.googleapis.com/v1alpha/properties',
 		);
 

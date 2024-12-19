@@ -341,7 +341,7 @@ describe('OpenAi, Audio resource', () => {
 	});
 
 	it('transcribe => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ text: 'transcribtion' });
+		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ text: 'transcription' });
 
 		const returnData = await audio.transcribe.execute.call(
 			createExecuteFunctionsMock({
@@ -356,7 +356,7 @@ describe('OpenAi, Audio resource', () => {
 
 		expect(returnData.length).toEqual(1);
 		expect(returnData[0].pairedItem).toBeDefined();
-		expect(returnData[0].json).toEqual({ text: 'transcribtion' });
+		expect(returnData[0].json).toEqual({ text: 'transcription' });
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',

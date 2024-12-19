@@ -183,8 +183,8 @@ export class MessageEventBus extends EventEmitter {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
-						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
-						await this.recoveryService.recoverFromLogs(executionId, logMesssages ?? []);
+						const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
+						await this.recoveryService.recoverFromLogs(executionId, logMessages ?? []);
 					}
 				}
 				// remove the recovery process flag file

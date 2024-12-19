@@ -512,7 +512,7 @@ export const configureTableSchemaUpdater = (initialSchema: string, initialTable:
 };
 
 /**
- * If postgress column type is array we need to convert it to fornmat that postgres understands, original object data would be modified
+ * If postgresql column type is array we need to convert it to fornmat that postgres understands, original object data would be modified
  * @param data the object with keys representing column names and values
  * @param schema table schema
  * @param node INode

@@ -70,7 +70,7 @@ export const workbookFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.',
+					'The name of the worksheet to be added. If specified, name should be unique. If not specified, Excel determines the name of the new worksheet.',
 			},
 		],
 	},
@@ -126,7 +126,7 @@ export const workbookFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'Fields the response will contain. Multiple can be added separated by ,.',
 			},
 		],
 	},

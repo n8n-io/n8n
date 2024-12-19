@@ -889,7 +889,7 @@ export class Gitlab implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'The title of each milestone to associate with the release (provide a titles list spearated with comma)',
+							'The title of each milestone to associate with the release (provide a titles list separated with comma)',
 					},
 					{
 						displayName: 'Released At',
@@ -949,7 +949,7 @@ export class Gitlab implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Return only issues with the given labels. Multiple lables can be separated by comma.',
+							'Return only issues with the given labels. Multiple labels can be separated by comma.',
 					},
 					{
 						displayName: 'Updated After',

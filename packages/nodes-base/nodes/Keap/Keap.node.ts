@@ -19,7 +19,7 @@ import { contactNoteFields, contactNoteOperations } from './ContactNoteDescripti
 
 import { contactTagFields, contactTagOperations } from './ContactTagDescription';
 
-import { ecommerceOrderFields, ecommerceOrderOperations } from './EcommerceOrderDescripion';
+import { ecommerceOrderFields, ecommerceOrderOperations } from './EcommerceOrderDescription';
 
 import { ecommerceProductFields, ecommerceProductOperations } from './EcommerceProductDescription';
 
@@ -38,7 +38,7 @@ import type {
 	ISocialAccount,
 } from './ConctactInterface';
 
-import type { IAttachment, IEmail } from './EmaiIInterface';
+import type { IAttachment, IEmail } from './EmailIInterface';
 
 import type { INote } from './ContactNoteInterface';
 

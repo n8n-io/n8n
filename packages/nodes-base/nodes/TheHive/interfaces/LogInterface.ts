@@ -18,5 +18,5 @@ export interface ILog {
 	createdBy?: string;
 	createdAt?: Date;
 	updatedBy?: string;
-	upadtedAt?: Date;
+	updatedAt?: Date;
 }

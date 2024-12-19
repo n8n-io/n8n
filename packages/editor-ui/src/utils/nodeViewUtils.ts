@@ -1280,8 +1280,8 @@ export function getGenericHints({
 			});
 		} else {
 			for (const nodeInConnection of firstNodesInLoop || []) {
-				const nodeChilds = workflow.getChildNodes(nodeInConnection.node) || [];
-				if (!nodeChilds.includes(node.name)) {
+				const nodeChildren = workflow.getChildNodes(nodeInConnection.node) || [];
+				if (!nodeChildren.includes(node.name)) {
 					nodeHints.push({
 						message:
 							"The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly",

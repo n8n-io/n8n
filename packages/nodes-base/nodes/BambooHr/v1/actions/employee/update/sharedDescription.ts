@@ -209,8 +209,8 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'month',
 				},
 				{
-					name: 'Quater',
-					value: 'quater',
+					name: 'Quarter',
+					value: 'quarter',
 				},
 				{
 					name: 'Year',

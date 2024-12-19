@@ -353,7 +353,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
 					throw new ApplicationError(
-						`Error(s) ocurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
+						`Error(s) occurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
 							', ',
 						)}`,
 						{ level: 'warning' },

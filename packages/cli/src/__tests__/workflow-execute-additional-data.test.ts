@@ -182,7 +182,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	});
 
 	describe('getRunData', () => {
-		it('should throw error to add trigger ndoe', async () => {
+		it('should throw error to add trigger node', async () => {
 			const workflow = mock<IWorkflowBase>({
 				id: '1',
 				name: 'test',

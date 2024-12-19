@@ -264,7 +264,7 @@ MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
   <!-- <xs:element name='AutomaticPseudonyms' type='xs:boolean' /> -->
 
   <!-- Section 3.1.13 -->
-  <xs:element name='PassiveRequestorEnpoints' type='tns:EndpointType'/>
+  <xs:element name='PassiveRequestorEndpoints' type='tns:EndpointType'/>
   
   <!-- Section 3.1.14 -->
   <!-- Defined above -->

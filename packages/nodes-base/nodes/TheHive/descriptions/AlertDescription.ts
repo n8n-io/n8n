@@ -55,7 +55,7 @@ export const alertFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	// required attributs
+	// required attributes
 	{
 		displayName: 'Alert ID',
 		name: 'id',
@@ -403,7 +403,7 @@ export const alertFields: INodeProperties[] = [
 		},
 	},
 
-	// optional attributs (Create, Promote operations)
+	// optional attributes (Create, Promote operations)
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -479,7 +479,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		],
 	},
-	// optional attributs (Promote operation)
+	// optional attributes (Promote operation)
 
 	{
 		displayName: 'Additional Fields',
@@ -503,7 +503,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		],
 	},
-	// optional attributs (Update operation)
+	// optional attributes (Update operation)
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -741,7 +741,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		],
 	},
-	//Query attributs (Search operation)
+	//Query attributes (Search operation)
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -759,7 +759,7 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Sort',
 				name: 'sort',
 				type: 'string',
-				placeholder: '±Attribut, exp +status',
+				placeholder: '±Attribute, exp +status',
 				default: '',
 			},
 		],

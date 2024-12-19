@@ -752,8 +752,8 @@
 					const isWaitingForm = window.location.href.includes('form-waiting');
 					if(isWaitingForm) {
 						const interval = setInterval(function() {
-							const isSubmited = document.querySelector('#submitted-form').style.display;
-							if(isSubmited === 'block') {
+							const isSubmitted = document.querySelector('#submitted-form').style.display;
+							if(isSubmitted === 'block') {
 								clearInterval(interval);
 								return;
 							}

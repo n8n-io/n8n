@@ -90,7 +90,7 @@ export class Salesmate implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available contacs to display them to user so that they can
+			// Get all the available contacts to display them to user so that they can
 			// select them easily
 			async getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

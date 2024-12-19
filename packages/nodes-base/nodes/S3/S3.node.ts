@@ -142,7 +142,7 @@ export class S3 implements INodeType {
 							},
 						};
 						let data = '';
-						// if credentials has the S3 defaul region (us-east-1) the body (XML) does not have to be sent.
+						// if credentials has the S3 default region (us-east-1) the body (XML) does not have to be sent.
 						if (region !== 'us-east-1') {
 							// @ts-ignore
 							body.CreateBucketConfiguration.LocationConstraint = [region];
@@ -593,7 +593,7 @@ export class S3 implements INodeType {
 						if (fileKey.substring(fileKey.length - 1) === '/') {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Downloding a whole directory is not yet supported, please provide a file key',
+								'Downloading a whole directory is not yet supported, please provide a file key',
 							);
 						}
 

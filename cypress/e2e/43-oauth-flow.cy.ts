@@ -31,7 +31,7 @@ describe('Credentials', () => {
 				'https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&prompt=consent&client_id=test-key&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback&response_type=code',
 			),
 			'OAuth Authorization',
-			'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700',
+			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700',
 		);
 
 		// Emulate successful save using BroadcastChannel

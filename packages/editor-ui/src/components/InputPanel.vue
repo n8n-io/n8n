@@ -386,7 +386,7 @@ function activatePane() {
 		</template>
 		<template v-if="isMappingMode" #before-data>
 			<!--
-						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
+						Hide the run linking buttons for both input and output panels when in 'Mapping Mode' because the run indices wouldn't match.
 						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
 				-->
 			<component :is="'style'">button.linkRun { display: none }</component>

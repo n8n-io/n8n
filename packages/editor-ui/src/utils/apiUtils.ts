@@ -17,7 +17,7 @@ const getBrowserId = () => {
 };
 
 export const NO_NETWORK_ERROR_CODE = 999;
-export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
+export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
 export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
@@ -205,7 +205,7 @@ export async function streamRequest<T>(
 	onChunk?: (chunk: T) => void,
 	onDone?: () => void,
 	onError?: (e: Error) => void,
-	separator = STREAM_SEPERATOR,
+	separator = STREAM_SEPARATOR,
 ): Promise<void> {
 	const headers: Record<string, string> = {
 		'browser-id': getBrowserId(),

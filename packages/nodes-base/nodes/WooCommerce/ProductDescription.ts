@@ -1163,7 +1163,7 @@ export const productFields: INodeProperties[] = [
 				name: 'maxPrice',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to products based on a maximun price',
+				description: 'Limit result set to products based on a maximum price',
 			},
 			{
 				displayName: 'Min Price',
@@ -1306,7 +1306,7 @@ export const productFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standar',
+						name: 'Standard',
 						value: 'standard',
 					},
 					{

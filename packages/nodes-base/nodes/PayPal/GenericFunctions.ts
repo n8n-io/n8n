@@ -12,7 +12,7 @@ import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow'
 
 function getEnvironment(env: string) {
 	return {
-		sanbox: 'https://api-m.sandbox.paypal.com',
+		sandbox: 'https://api-m.sandbox.paypal.com',
 		live: 'https://api-m.paypal.com',
 	}[env];
 }

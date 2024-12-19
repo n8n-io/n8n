@@ -9,7 +9,7 @@ import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import {
 	checkRange,
 	prepareOutput,
-	updateByAutoMaping,
+	updateByAutoMapping,
 	updateByDefinedValues,
 } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
@@ -201,7 +201,7 @@ const properties: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'Fields the response will contain. Multiple can be added separated by ,.',
 				displayOptions: {
 					show: {
 						rawData: [true],
@@ -346,7 +346,7 @@ export async function execute(
 					);
 				}
 
-				updateSummary = updateByAutoMaping(
+				updateSummary = updateByAutoMapping(
 					items,
 					worksheetData.values as string[][],
 					columnToMatchOn,

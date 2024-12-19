@@ -293,7 +293,7 @@ export class GoogleCalendar implements INodeType {
 							};
 						}
 
-						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
+						//example: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 						//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 						body.recurrence = [];
 						if (additionalFields.rrule) {
@@ -306,9 +306,9 @@ export class GoogleCalendar implements INodeType {
 									{ itemIndex: i },
 								);
 							}
-							if (additionalFields.repeatFrecuency) {
+							if (additionalFields.repeatFrequency) {
 								body.recurrence?.push(
-									`FREQ=${(additionalFields.repeatFrecuency as string).toUpperCase()};`,
+									`FREQ=${(additionalFields.repeatFrequency as string).toUpperCase()};`,
 								);
 							}
 							if (additionalFields.repeatHowManyTimes) {
@@ -612,9 +612,9 @@ export class GoogleCalendar implements INodeType {
 									{ itemIndex: i },
 								);
 							}
-							if (updateFields.repeatFrecuency) {
+							if (updateFields.repeatFrequency) {
 								body.recurrence?.push(
-									`FREQ=${(updateFields.repeatFrecuency as string).toUpperCase()};`,
+									`FREQ=${(updateFields.repeatFrequency as string).toUpperCase()};`,
 								);
 							}
 							if (updateFields.repeatHowManyTimes) {

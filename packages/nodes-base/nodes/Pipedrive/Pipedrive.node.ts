@@ -1937,7 +1937,7 @@ export class Pipedrive implements INodeType {
 						name: 'activity_id',
 						type: 'number',
 						default: 0,
-						description: 'ID of the activite this file will be associated with',
+						description: 'ID of the activities this file will be associated with',
 					},
 					{
 						displayName: 'Deal ID',

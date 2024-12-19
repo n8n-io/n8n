@@ -949,7 +949,7 @@ async function oAuthCredentialAuthorize() {
 	}
 
 	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
 	credentialData.value = {

@@ -167,7 +167,7 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1', 'foo', 'select 2']);
 	});
 
-	it('should ignore incorect combine conition ad use AND', () => {
+	it('should ignore incorrect combine conition ad use AND', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const whereClauses = [
@@ -212,7 +212,7 @@ describe('Test PostgresV2, addSortRules', () => {
 		expect(updatedQuery).toEqual('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC');
 		expect(updatedValues).toEqual(['public', 'my_table', 'id']);
 	});
-	it('should ignore incorect direction', () => {
+	it('should ignore incorrect direction', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const sortRules = [{ column: 'id', direction: 'SELECT * FROM my_table' }];
@@ -306,7 +306,7 @@ describe('Test PostgresV2, replaceEmptyStringsByNulls', () => {
 });
 
 describe('Test PostgresV2, prepareItem', () => {
-	it('should convert fixedColections values to object', () => {
+	it('should convert fixedCollections values to object', () => {
 		const values = [
 			{
 				column: 'id',

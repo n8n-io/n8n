@@ -542,7 +542,7 @@ describe('NDV', () => {
 			});
 
 			// Since language model has no credentials set, it should show an error
-			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			// Since code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
 			cy.get('[class*=hasIssues]').should('have.length', 3);
 		});
 	});
@@ -633,7 +633,7 @@ describe('NDV', () => {
 		ndv.actions.typeIntoParameterInput('jsCode', 'testets');
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
-		// Manual tigger node should show success indicator
+		// Manual trigger node should show success indicator
 		workflowPage.actions.openNode('When clicking ‘Test workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		ndv.getters.nodeRunTooltipIndicator().should('exist');
@@ -818,7 +818,7 @@ describe('NDV', () => {
 			.should('have.value', 'US');
 	});
 
-	it('should not show items count when seaching in schema view', () => {
+	it('should not show items count when searching in schema view', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');
@@ -829,7 +829,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
 	});
 
-	it('should show additional tooltip when seaching in schema view if no matches', () => {
+	it('should show additional tooltip when searching in schema view if no matches', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');

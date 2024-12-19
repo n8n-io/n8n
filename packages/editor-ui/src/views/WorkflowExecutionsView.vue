@@ -105,8 +105,8 @@ async function fetchExecution() {
 	if (!currentExecution.value) {
 		toast.showMessage({
 			type: 'error',
-			title: i18n.baseText('openExecution.missingExeuctionId.title'),
-			message: i18n.baseText('openExecution.missingExeuctionId.message'),
+			title: i18n.baseText('openExecution.missingExecutionId.title'),
+			message: i18n.baseText('openExecution.missingExecutionId.message'),
 		});
 
 		return;

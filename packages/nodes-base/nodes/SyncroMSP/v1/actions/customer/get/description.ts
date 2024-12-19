@@ -2,7 +2,7 @@ import type { CustomerProperties } from '../../Interfaces';
 
 export const customerGetDescription: CustomerProperties = [
 	{
-		displayName: 'Cutomer ID',
+		displayName: 'Customer ID',
 		name: 'customerId',
 		type: 'string',
 		required: true,

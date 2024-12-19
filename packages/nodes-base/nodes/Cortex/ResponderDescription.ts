@@ -69,7 +69,7 @@ export const responderFields: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description: 'Choose between providing JSON object or seperated attributes',
+		description: 'Choose between providing JSON object or separated attributes',
 		displayOptions: {
 			show: {
 				resource: ['responder'],
@@ -499,7 +499,7 @@ export const responderFields: INodeProperties[] = [
 								dataType: ['file'],
 							},
 						},
-						hint: 'The name of the input binary field containing the attachement data',
+						hint: 'The name of the input binary field containing the attachment data',
 					},
 					{
 						displayName: 'Data',

@@ -632,7 +632,7 @@ export class SwitchV2 implements INodeType {
 			if (index < 0 || index >= returnData.length) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`,
+					`The output ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`,
 				);
 			}
 		};

@@ -177,7 +177,7 @@ export const boardColumnFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Defauls',
+				displayName: 'Defaults',
 				name: 'defaults',
 				type: 'json',
 				typeOptions: {

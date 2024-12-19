@@ -113,7 +113,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	let from = word.to - tail.length;
 
-	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
+	// When autocomplete is explicitly opened (by Ctrl+Space or programmatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
 		options = explicitDataTypeOptions(word.text);

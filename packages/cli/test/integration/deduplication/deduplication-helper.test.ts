@@ -121,7 +121,7 @@ describe('Deduplication.DeduplicationHelper', () => {
 			{ mode: 'entries' },
 		);
 
-		// No data exists yet for context 'worklow' so has to be new
+		// No data exists yet for context 'workflow' so has to be new
 		expect(processedData).toEqual({ new: ['a', 'b', 'c'], processed: [] });
 
 		await DataDeduplicationService.getInstance().removeProcessed(['a'], 'node', contextData, {

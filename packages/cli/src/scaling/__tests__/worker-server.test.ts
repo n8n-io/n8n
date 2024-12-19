@@ -61,7 +61,7 @@ describe('WorkerServer', () => {
 
 		it('should exit if port taken', async () => {
 			const server = mock<http.Server>();
-			const procesExitSpy = jest
+			const processExitSpy = jest
 				.spyOn(process, 'exit')
 				.mockImplementation(() => undefined as never);
 
@@ -82,9 +82,9 @@ describe('WorkerServer', () => {
 				mock(),
 			);
 
-			expect(procesExitSpy).toHaveBeenCalledWith(1);
+			expect(processExitSpy).toHaveBeenCalledWith(1);
 
-			procesExitSpy.mockRestore();
+			processExitSpy.mockRestore();
 		});
 	});
 

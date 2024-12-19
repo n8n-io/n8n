@@ -133,7 +133,7 @@ export class NetlifyTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				//TODO - implement missing events
-				// alL posible events can be found doing a GET /hooks/types
+				// alL possible events can be found doing a GET /hooks/types
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;

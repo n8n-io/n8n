@@ -122,17 +122,17 @@ function parseFilterConditionValues(
 		fromType = fromType.toLocaleLowerCase();
 		const expectedType = withIndefiniteArticle(type);
 
-		let convertionFunction = '';
+		let conversionFunction = '';
 		if (type === 'string') {
-			convertionFunction = '.toString()';
+			conversionFunction = '.toString()';
 		} else if (type === 'number') {
-			convertionFunction = '.toNumber()';
+			conversionFunction = '.toNumber()';
 		} else if (type === 'boolean') {
-			convertionFunction = '.toBoolean()';
+			conversionFunction = '.toBoolean()';
 		}
 
-		if (strict && convertionFunction) {
-			const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
+		if (strict && conversionFunction) {
+			const suggestFunction = ` by adding <code>${conversionFunction}</code>`;
 			return `
 <p>Try either:</p>
 <ol>

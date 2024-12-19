@@ -202,7 +202,7 @@ export const connectionFields: INodeProperties[] = [
 				description: 'The status of the connection (0 = error; 1 = connected)',
 			},
 			{
-				displayName: 'Syncronisation Status',
+				displayName: 'Synchronisation Status',
 				name: 'syncStatus',
 				type: 'number',
 				default: 1,

@@ -50,7 +50,7 @@ describe('Test AirtableV2, create operation', () => {
 			},
 		];
 
-		const responce = await get.execute.call(
+		const response = await get.execute.call(
 			createMockExecuteFunction(nodeParameters),
 			items,
 			'appYoLbase',
@@ -60,7 +60,7 @@ describe('Test AirtableV2, create operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'appYoLbase/tblltable/recXXX');
 
-		expect(responce).toEqual([
+		expect(response).toEqual([
 			{
 				json: {
 					id: 'recXXX',

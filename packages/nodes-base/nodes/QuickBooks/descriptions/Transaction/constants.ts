@@ -83,7 +83,7 @@ export const TRANSACTION_REPORT_COLUMNS = [
 	},
 	{
 		name: 'Payment Method',
-		value: 'pmt_mthod',
+		value: 'pmt_method',
 	},
 	{
 		name: 'Posting',

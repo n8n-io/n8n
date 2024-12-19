@@ -27,7 +27,7 @@ export const timeEntryOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get time entrie',
+				description: 'Get time entry',
 				action: 'Get a time entry',
 			},
 			{

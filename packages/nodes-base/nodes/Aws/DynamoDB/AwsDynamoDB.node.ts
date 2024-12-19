@@ -109,7 +109,7 @@ export class AwsDynamoDB implements INodeType {
 							i,
 							[],
 						) as IAttributeValueUi[];
-						const conditionExpession = this.getNodeParameter(
+						const conditionExpression = this.getNodeParameter(
 							'conditionExpression',
 							i,
 							'',
@@ -136,8 +136,8 @@ export class AwsDynamoDB implements INodeType {
 							body.expressionAttributeNames = expressionAttributeName;
 						}
 
-						if (conditionExpession) {
-							body.ConditionExpression = conditionExpession;
+						if (conditionExpression) {
+							body.ConditionExpression = conditionExpression;
 						}
 
 						const dataToSend = this.getNodeParameter('dataToSend', 0) as

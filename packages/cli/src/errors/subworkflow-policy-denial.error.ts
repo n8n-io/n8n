@@ -45,7 +45,7 @@ export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 				`You will need ${ownerName} to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
 			].join(' '),
-			inaccesibleTeamProject: [
+			inaccessibleTeamProject: [
 				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 				`You will need an admin from the ${subworkflowProject.name} project to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
 			].join(' '),
@@ -54,7 +54,7 @@ export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 		const description = () => {
 			if (hasReadAccess) return descriptions.accessible;
 			if (subworkflowProject.type === 'personal') return descriptions.inaccessiblePersonalProject;
-			if (subworkflowProject.type === 'team') return descriptions.inaccesibleTeamProject;
+			if (subworkflowProject.type === 'team') return descriptions.inaccessibleTeamProject;
 
 			return descriptions.default;
 		};

@@ -110,7 +110,7 @@ export class CredentialsTester {
 
 			// Check each of the node versions for credential tests
 			for (const nodeType of allNodeTypes) {
-				// Check each of teh credentials
+				// Check each of the credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
 					if (
 						name === credentialType &&

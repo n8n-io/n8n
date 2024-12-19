@@ -9,7 +9,7 @@ import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import {
 	checkRange,
 	prepareOutput,
-	updateByAutoMaping,
+	updateByAutoMapping,
 	updateByDefinedValues,
 } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
@@ -293,7 +293,7 @@ export async function execute(
 				);
 			}
 
-			updateSummary = updateByAutoMaping(
+			updateSummary = updateByAutoMapping(
 				items,
 				worksheetData.values as string[][],
 				columnToMatchOn,

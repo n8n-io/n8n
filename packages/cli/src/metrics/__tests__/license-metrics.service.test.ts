@@ -6,9 +6,9 @@ import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 describe('LicenseMetricsService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
-	const licenseMetricsRespository = mock<LicenseMetricsRepository>();
+	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	const licenseMetricsService = new LicenseMetricsService(
-		licenseMetricsRespository,
+		licenseMetricsRepository,
 		workflowRepository,
 	);
 
@@ -49,7 +49,7 @@ describe('LicenseMetricsService', () => {
 				manualExecutions: 700,
 			};
 
-			licenseMetricsRespository.getLicenseRenewalMetrics.mockResolvedValue(mockRenewalMetrics);
+			licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(mockRenewalMetrics);
 
 			const result = await licenseMetricsService.collectUsageMetrics();
 

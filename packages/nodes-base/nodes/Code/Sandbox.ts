@@ -90,7 +90,7 @@ export abstract class Sandbox extends EventEmitter {
 		this.validateItem(returnData, itemIndex);
 
 		// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
-		// and another top-level key is unrecognized, then the user mis-added a property
+		// and another top-level key is unrecognized, then the user added a property incorrectly
 		// directly on the item, when they intended to add it on the `json` property
 		this.validateTopLevelKeys(returnData, itemIndex);
 

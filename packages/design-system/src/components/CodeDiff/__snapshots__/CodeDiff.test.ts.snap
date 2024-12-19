@@ -110,7 +110,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
            
         </div>
         <div
-          class="seperator diffContent"
+          class="separator diffContent"
         >
           <span>
                

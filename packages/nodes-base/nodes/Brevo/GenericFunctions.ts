@@ -197,7 +197,7 @@ export namespace BrevoNode {
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
 			const ccData = this.getNodeParameter(
-				'additionalFields.receipientsCC.receipientCc',
+				'additionalFields.recipientsCC.recipientCc',
 			) as JsonObject;
 			const { cc } = ccData;
 			const { body } = requestOptions;
@@ -212,7 +212,7 @@ export namespace BrevoNode {
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
 			const bccData = this.getNodeParameter(
-				'additionalFields.receipientsBCC.receipientBcc',
+				'additionalFields.recipientsBCC.recipientBcc',
 			) as JsonObject;
 			const { bcc } = bccData;
 			const { body } = requestOptions;
@@ -222,11 +222,11 @@ export namespace BrevoNode {
 			return requestOptions;
 		}
 
-		export async function validateAndCompileReceipientEmails(
+		export async function validateAndCompileRecipientEmails(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const to = this.getNodeParameter('receipients') as string;
+			const to = this.getNodeParameter('recipients') as string;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ to });
 			Object.assign(body!, data);

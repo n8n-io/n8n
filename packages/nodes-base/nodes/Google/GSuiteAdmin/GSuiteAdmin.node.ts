@@ -13,7 +13,7 @@ import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { userFields, userOperations } from './UserDescription';
 
-import { groupFields, groupOperations } from './GroupDescripion';
+import { groupFields, groupOperations } from './GroupDescription';
 
 export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {

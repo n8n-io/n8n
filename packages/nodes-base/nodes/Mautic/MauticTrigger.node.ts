@@ -114,11 +114,11 @@ export class MauticTrigger implements INodeType {
 				for (const [key, value] of Object.entries(triggers as IDataObject)) {
 					const eventId = key;
 					const eventName = (value as IDataObject).label as string;
-					const eventDecription = (value as IDataObject).description as string;
+					const eventDescription = (value as IDataObject).description as string;
 					returnData.push({
 						name: eventName,
 						value: eventId,
-						description: eventDecription,
+						description: eventDescription,
 					});
 				}
 				return returnData;

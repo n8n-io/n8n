@@ -370,7 +370,7 @@
 	}
 }
 
-/** disalbe default clear on IE */
+/** disable default clear on IE */
 .el-input__inner::-ms-clear {
 	display: none;
 	width: 0;

@@ -118,7 +118,7 @@ export async function agileCrmApiRequestUpdate(
 	};
 
 	const successfulUpdates = [];
-	let lastSuccesfulUpdateReturn: any;
+	let lastSuccessfulUpdateReturn: any;
 	const payload: IContactUpdate = body;
 
 	try {
@@ -126,9 +126,9 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.properties) {
 			options.body.properties = payload.properties;
 			options.uri = baseUri + 'api/contacts/edit-properties';
-			lastSuccesfulUpdateReturn = await this.helpers.request(options);
+			lastSuccessfulUpdateReturn = await this.helpers.request(options);
 
-			// Iterate trough properties and show them as individial updates instead of only vague "properties"
+			// Iterate trough properties and show them as individual updates instead of only vague "properties"
 			payload.properties?.map((property: any) => {
 				successfulUpdates.push(`${property.name}`);
 			});
@@ -138,7 +138,7 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.lead_score) {
 			options.body.lead_score = payload.lead_score;
 			options.uri = baseUri + 'api/contacts/edit/lead-score';
-			lastSuccesfulUpdateReturn = await this.helpers.request(options);
+			lastSuccessfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('lead_score');
 
@@ -147,7 +147,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.tags) {
 			options.body.tags = payload.tags;
 			options.uri = baseUri + 'api/contacts/edit/tags';
-			lastSuccesfulUpdateReturn = await this.helpers.request(options);
+			lastSuccessfulUpdateReturn = await this.helpers.request(options);
 
 			payload.tags?.map((tag: string) => {
 				successfulUpdates.push(`(Tag) ${tag}`);
@@ -158,14 +158,14 @@ export async function agileCrmApiRequestUpdate(
 		if (body.star_value) {
 			options.body.star_value = payload.star_value;
 			options.uri = baseUri + 'api/contacts/edit/add-star';
-			lastSuccesfulUpdateReturn = await this.helpers.request(options);
+			lastSuccessfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('star_value');
 
 			delete options.body.star_value;
 		}
 
-		return lastSuccesfulUpdateReturn;
+		return lastSuccessfulUpdateReturn;
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
 			throw new NodeApiError(this.getNode(), error as JsonObject);

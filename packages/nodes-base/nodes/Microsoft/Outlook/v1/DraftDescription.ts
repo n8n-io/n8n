@@ -272,7 +272,7 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'Recipients',
 				name: 'recipients',
-				description: 'Email addresses of recipients. Mutiple can be set separated by comma.',
+				description: 'Email addresses of recipients. Multiple can be set separated by comma.',
 				type: 'string',
 				default: '',
 			},

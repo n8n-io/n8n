@@ -24,7 +24,7 @@ const differenceChecker = (diff: TmplDifference) => {
 		if (diff.has?.function || diff.has?.templateString) {
 			return;
 		}
-		if (diff.expression === 'UNPARSEABLE') {
+		if (diff.expression === 'UNPARSABLE') {
 			differenceHandler(diff.expression);
 		} else {
 			differenceHandler(diff.expression.value);

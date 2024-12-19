@@ -245,17 +245,17 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available campaings to display them to user so that they can
+			// Get all the available campaigns to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const campaings = await mauticApiRequestAllItems.call(
+				const campaigns = await mauticApiRequestAllItems.call(
 					this,
 					'campaigns',
 					'GET',
 					'/campaigns',
 				);
-				for (const campaign of campaings) {
+				for (const campaign of campaigns) {
 					returnData.push({
 						name: campaign.name,
 						value: campaign.id,

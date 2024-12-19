@@ -118,7 +118,7 @@ module.exports = {
 				recommended: 'error',
 			},
 			messages: {
-				noUneededBackticks: 'Use single or double quotes, not backticks',
+				noUnneededBackticks: 'Use single or double quotes, not backticks',
 			},
 			fixable: 'code',
 		},
@@ -132,7 +132,7 @@ module.exports = {
 						const escaped = q.value.raw.replace(/(?<!\\)'/g, "\\'");
 
 						context.report({
-							messageId: 'noUneededBackticks',
+							messageId: 'noUnneededBackticks',
 							node,
 							fix: (fixer) => fixer.replaceText(q, `'${escaped}'`),
 						});

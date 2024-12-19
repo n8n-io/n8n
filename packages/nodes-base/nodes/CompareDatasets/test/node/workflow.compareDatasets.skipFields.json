@@ -102,7 +102,7 @@
 				}
 			},
 			"id": "fca0048b-a493-4ca4-861b-2ca8216fbfba",
-			"name": "skipped contain contry",
+			"name": "skipped contain country",
 			"type": "n8n-nodes-base.compareDatasets",
 			"typeVersion": 2.1,
 			"position": [1040, 1060]
@@ -143,7 +143,7 @@
 				}
 			},
 			"id": "77ad3a73-8683-41ed-9040-cef1a2895704",
-			"name": "skip includes age and contry",
+			"name": "skip includes age and country",
 			"type": "n8n-nodes-base.compareDatasets",
 			"typeVersion": 2.1,
 			"position": [1040, 1260]
@@ -762,12 +762,12 @@
 						"index": 0
 					},
 					{
-						"node": "skipped contain contry",
+						"node": "skipped contain country",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "skip includes age and contry",
+						"node": "skip includes age and country",
 						"type": "main",
 						"index": 0
 					}
@@ -798,12 +798,12 @@
 						"index": 1
 					},
 					{
-						"node": "skipped contain contry",
+						"node": "skipped contain country",
 						"type": "main",
 						"index": 1
 					},
 					{
-						"node": "skip includes age and contry",
+						"node": "skip includes age and country",
 						"type": "main",
 						"index": 1
 					}
@@ -859,7 +859,7 @@
 				]
 			]
 		},
-		"skipped contain contry": {
+		"skipped contain country": {
 			"main": [
 				[],
 				[],
@@ -872,7 +872,7 @@
 				]
 			]
 		},
-		"skip includes age and contry": {
+		"skip includes age and country": {
 			"main": [
 				[],
 				[],

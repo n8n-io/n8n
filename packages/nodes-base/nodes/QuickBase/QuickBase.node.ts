@@ -102,7 +102,7 @@ export class QuickBase implements INodeType {
 				const tableId = this.getCurrentNodeParameter('tableId') as string;
 				const fields = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
 				for (const field of fields) {
-					//upsert can be achived just with fields that are set as unique and are no the primary key
+					//upsert can be achieved just with fields that are set as unique and are no the primary key
 					if (field.unique === true && field.properties.primaryKey === false) {
 						returnData.push({
 							name: field.label,

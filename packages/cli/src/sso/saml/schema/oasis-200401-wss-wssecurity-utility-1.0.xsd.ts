@@ -49,7 +49,7 @@ Convenience attribute group used to simplify this schema.
 	<xsd:complexType name="AttributedDateTime">
 		<xsd:annotation>
 			<xsd:documentation>
-This type is for elements whose [children] is a psuedo-dateTime and can have arbitrary attributes. 
+This type is for elements whose [children] is a pseudo-dateTime and can have arbitrary attributes. 
       </xsd:documentation>
 		</xsd:annotation>
 		<xsd:simpleContent>

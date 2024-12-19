@@ -417,7 +417,7 @@ export class Mailchimp implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'The tags that are associated with a member separeted by ,',
+						description: 'The tags that are associated with a member separated by ,',
 					},
 					{
 						displayName: 'Vip',
@@ -1860,7 +1860,7 @@ export class Mailchimp implements INodeType {
 						}
 						// TODO
 						//figure why for some reason when either fields or exclude_fields is set the endpoint returns nothing
-						// interestingly it works perfect when retriving just one member
+						// interestingly it works perfect when retrieving just one member
 
 						// if (options.fields) {
 						// 	qs.fields = options.fields as string;

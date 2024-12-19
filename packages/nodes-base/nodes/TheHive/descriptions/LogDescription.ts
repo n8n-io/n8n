@@ -88,7 +88,7 @@ export const logFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	// required attributs
+	// required attributes
 	{
 		displayName: 'Log ID',
 		name: 'id',
@@ -177,7 +177,7 @@ export const logFields: INodeProperties[] = [
 			},
 		},
 	},
-	// Optional attributs
+	// Optional attributes
 	{
 		displayName: 'Options',
 		name: 'options',

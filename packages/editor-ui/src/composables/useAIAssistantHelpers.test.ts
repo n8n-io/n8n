@@ -410,7 +410,7 @@ const testWorkflow: IWorkflowDb = {
 		{
 			parameters: {
 				notice: '',
-				events: 'worklfow_call',
+				events: 'workflow_call',
 			},
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
 			name: 'Execute Workflow Trigger',

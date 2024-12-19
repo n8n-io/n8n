@@ -34,7 +34,7 @@ import type { ExportableCredential } from './types/exportable-credential';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
-import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
+import type { SourceControlPullOptions } from './types/source-control-pull-work-folder';
 import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { SourceControlledFile } from './types/source-controlled-file';
@@ -321,7 +321,7 @@ export class SourceControlService {
 	}
 
 	async pullWorkfolder(
-		options: SourceControllPullOptions,
+		options: SourceControlPullOptions,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 

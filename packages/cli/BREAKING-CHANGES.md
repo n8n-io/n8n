@@ -135,7 +135,7 @@ If you are using the flag `N8N_CACHE_ENABLED`, remove it from your settings.
 
 In regards to credentials, if you use expression in credentials, you might want to revisit them. Previously, n8n would stick to the first item only, but now it will try to match the proper paired item.
 
-If you are using the Monday.com node and refering to `column_values` property, check in table below if you are using any of the affected properties of its entries.
+If you are using the Monday.com node and referring to `column_values` property, check in table below if you are using any of the affected properties of its entries.
 
 | Resource   | Operation           | Previous        | New                 |
 | ---------- | ------------------- | --------------- | ------------------- |
@@ -483,7 +483,7 @@ In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` oper
 
 ### When is action necessary?
 
-If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results acccording all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
+If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results according all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
 
 ## 0.117.0
 
@@ -636,7 +636,7 @@ In workflows using the Typeform Trigger node, nodes that reference such key name
 
 ### What changed?
 
-In the Harvest Node, we moved the account field from the credentials to the node parameters. This will allow you to work witn multiples accounts without having to create multiples credentials.
+In the Harvest Node, we moved the account field from the credentials to the node parameters. This will allow you to work with multiples accounts without having to create multiples credentials.
 
 ### When is action necessary?
 
@@ -756,7 +756,7 @@ If the operations `close_match` or `delete_match` are used, recreate them using 
 
 ### What changed?
 
-We have simplified how attachments are handled by the Twitter node. Rather than clicking on `Add Attachments` and having to specify the `Catergory`, you can now add attachments by just clicking on `Add Field` and selecting `Attachments`. There's no longer an option to specify the type of attachment you are adding.
+We have simplified how attachments are handled by the Twitter node. Rather than clicking on `Add Attachments` and having to specify the `Category`, you can now add attachments by just clicking on `Add Field` and selecting `Attachments`. There's no longer an option to specify the type of attachment you are adding.
 
 ### When is action necessary?
 
@@ -950,7 +950,7 @@ After upgrading open all workflows which contain the concerning Nodes and set
 
 ### What changed?
 
-Because of a typo very often `reponse` instead of `response` got used in code. So also on the Webhook-Node. Its parameter `reponseMode` had to be renamed to correct spelling `responseMode`.
+Because of a typo very often `response` instead of `response` got used in code. So also on the Webhook-Node. Its parameter `responseMode` had to be renamed to correct spelling `responseMode`.
 
 ### When is action necessary?
 

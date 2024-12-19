@@ -231,7 +231,7 @@ export const expenseFields: INodeProperties[] = [
 						value: 22,
 					},
 					{
-						name: 'Swich',
+						name: 'Switch',
 						value: 23,
 					},
 					{

@@ -100,7 +100,7 @@ const properties: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'Fields the response will contain. Multiple can be added separated by ,.',
 				displayOptions: {
 					show: {
 						rawData: [true],

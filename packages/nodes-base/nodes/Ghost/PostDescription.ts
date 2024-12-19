@@ -196,7 +196,7 @@ export const postFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Cannonical URL',
+				displayName: 'Canonical URL',
 				name: 'canonical_url',
 				type: 'string',
 				default: '',
@@ -702,7 +702,7 @@ export const postFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Cannonical URL',
+				displayName: 'Canonical URL',
 				name: 'canonical_url',
 				type: 'string',
 				default: '',

@@ -141,7 +141,7 @@ const syncDataMapper = (sync: ILdapSyncData): ILdapSyncTable => {
 };
 
 const onSubmit = async () => {
-	// We want to save all form values (incl. the hidden onces), so we are using
+	// We want to save all form values (incl. the hidden ones), so we are using
 	// `values` data prop of the `FormInputs` child component since they are all preserved there
 	if (!hasAnyChanges.value || !ldapConfigFormRef.value) {
 		return;

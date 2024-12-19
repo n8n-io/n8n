@@ -18,7 +18,7 @@ export class SourceControlPullWorkFolder {
 	variables?: { [key: string]: string };
 }
 
-export class SourceControllPullOptions {
+export class SourceControlPullOptions {
 	/** ID of user performing a source control pull. */
 	userId: string;
 

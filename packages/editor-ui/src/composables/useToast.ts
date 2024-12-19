@@ -111,7 +111,7 @@ export function useToast() {
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
+	function collapsibleDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
 		if (!description) return '';
 
 		const errorDescription =
@@ -140,7 +140,7 @@ export function useToast() {
 				message: `
 					${messageLine}
 					<i>${error.message}</i>
-					${collapsableDetails(error)}`,
+					${collapsibleDetails(error)}`,
 				type: 'error',
 				duration: 0,
 			},
