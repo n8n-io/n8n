@@ -74,11 +74,12 @@ export declare namespace WorkflowRequest {
 			active: boolean;
 			name?: string;
 			projectId?: string;
+			excludePinnedData?: boolean;
 		}
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;

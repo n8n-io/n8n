@@ -947,6 +947,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				): NodeExecutionWithMetadata[];
 				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				detectBinaryEncoding(buffer: Buffer): string;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
 
@@ -973,6 +974,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		BinaryHelperFunctions & {
 			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
+			detectBinaryEncoding(buffer: Buffer): string;
 		};
 }
 
