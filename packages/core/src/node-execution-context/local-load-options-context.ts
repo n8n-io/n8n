@@ -7,7 +7,6 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IWorkflowLoader,
 	IWorkflowNodeContext,
-	INode,
 	INodeTypes,
 } from 'n8n-workflow';
 
@@ -31,7 +30,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType) as INode;
+		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType);
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({
