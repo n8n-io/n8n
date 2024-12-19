@@ -1,4 +1,3 @@
-import { AgentExecutor } from 'langchain/agents';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
@@ -14,6 +13,7 @@ import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { AgentExecutor } from '../Agent/AgentExecutor';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
