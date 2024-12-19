@@ -65,12 +65,18 @@ const { connectingHandle } = useCanvas();
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
-	useNodeConnections({
-		inputs,
-		outputs,
-		connections,
-	});
+const {
+	mainInputs,
+	nonMainInputs,
+	requiredNonMainInputs,
+	mainOutputs,
+	nonMainOutputs,
+	isValidConnection,
+} = useNodeConnections({
+	inputs,
+	outputs,
+	connections,
+});
 
 const isDisabled = computed(() => props.data.disabled);
 
@@ -101,24 +107,36 @@ function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
  * Inputs
  */
 
+const nonMainInputsWithSpacer = computed(() =>
+	insertSpacersBetweenEndpoints(nonMainInputs.value, requiredNonMainInputs.value.length),
+);
+
 const mappedInputs = computed(() => {
 	return [
-		...mainInputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Input,
-				position: Position.Left,
-				offsetAxis: 'top',
-			}),
-		),
-		...nonMainInputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Input,
-				position: Position.Bottom,
-				offsetAxis: 'left',
-			}),
-		),
+		...mainInputs.value.map(mainInputsMappingFn).filter(Boolean),
+		...nonMainInputsWithSpacer.value.map(nonMainInputsMappingFn).filter(Boolean),
 	];
 });
+
+function insertSpacersBetweenEndpoints(
+	endpoints: CanvasConnectionPort[],
+	requiredEndpointsCount = 0,
+	minEndpointsCount = 4,
+) {
+	const endpointsWithSpacers: Array<CanvasConnectionPort | null> = [...endpoints];
+	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
+	const spacerCount = minEndpointsCount - requiredEndpointsCount - optionalNonMainInputsCount;
+
+	// Insert `null` in between required non-main inputs and non-required non-main inputs
+	// to separate them visually if there are less than 4 inputs in total
+	if (endpointsWithSpacers.length < minEndpointsCount && requiredEndpointsCount > 0) {
+		for (let i = 0; i < spacerCount; i++) {
+			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
+		}
+	}
+
+	return endpointsWithSpacers;
+}
 
 /**
  * Outputs
@@ -126,20 +144,8 @@ const mappedInputs = computed(() => {
 
 const mappedOutputs = computed(() => {
 	return [
-		...mainOutputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Output,
-				position: Position.Right,
-				offsetAxis: 'top',
-			}),
-		),
-		...nonMainOutputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Output,
-				position: Position.Top,
-				offsetAxis: 'left',
-			}),
-		),
+		...mainOutputs.value.map(mainOutputsMappingFn).filter(Boolean),
+		...nonMainOutputs.value.map(nonMainOutputsMappingFn).filter(Boolean),
 	];
 });
 
@@ -166,10 +172,14 @@ const createEndpointMappingFn =
 		offsetAxis: 'top' | 'left';
 	}) =>
 	(
-		endpoint: CanvasConnectionPort,
+		endpoint: CanvasConnectionPort | null,
 		index: number,
-		endpoints: CanvasConnectionPort[],
-	): CanvasElementPortWithRenderData => {
+		endpoints: Array<CanvasConnectionPort | null>,
+	): CanvasElementPortWithRenderData | undefined => {
+		if (!endpoint) {
+			return;
+		}
+
 		const handleId = createCanvasConnectionHandleString({
 			mode,
 			type: endpoint.type,
@@ -193,6 +203,30 @@ const createEndpointMappingFn =
 			},
 		};
 	};
+
+const mainInputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Input,
+	position: Position.Left,
+	offsetAxis: 'top',
+});
+
+const nonMainInputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Input,
+	position: Position.Bottom,
+	offsetAxis: 'left',
+});
+
+const mainOutputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Output,
+	position: Position.Right,
+	offsetAxis: 'top',
+});
+
+const nonMainOutputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Output,
+	position: Position.Top,
+	offsetAxis: 'left',
+});
 
 /**
  * Events
@@ -293,9 +327,10 @@ onBeforeUnmount(() => {
 	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
 		<template
 			v-for="source in mappedOutputs"
-			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+			:key="source ? `${source.handleId}(${source.index + 1}/${mappedOutputs.length})` : ''"
 		>
 			<CanvasHandleRenderer
+				v-if="source"
 				v-bind="source"
 				:mode="CanvasConnectionMode.Output"
 				:is-read-only="readOnly"
@@ -309,9 +344,10 @@ onBeforeUnmount(() => {
 
 		<template
 			v-for="target in mappedInputs"
-			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+			:key="target ? `${target.handleId}(${target.index + 1}/${mappedInputs.length})` : ''"
 		>
 			<CanvasHandleRenderer
+				v-if="target"
 				v-bind="target"
 				:mode="CanvasConnectionMode.Input"
 				:is-read-only="readOnly"
