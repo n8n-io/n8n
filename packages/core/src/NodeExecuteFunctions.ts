@@ -47,7 +47,6 @@ import type {
 	IN8nHttpResponse,
 	INode,
 	INodeExecutionData,
-	INodeInputConfiguration,
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions,
@@ -120,6 +119,7 @@ import { InstanceSettings } from './InstanceSettings';
 import type { IResponseError } from './Interfaces';
 // eslint-disable-next-line import/no-cycle
 import { PollContext, SupplyDataContext, TriggerContext } from './node-execution-context';
+import type { ExecuteContext, WebhookContext } from './node-execution-context';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 
@@ -2014,7 +2014,7 @@ export function getWebhookDescription(
 }
 
 export async function getInputConnectionData(
-	this: IAllExecuteFunctions,
+	this: ExecuteContext | WebhookContext | SupplyDataContext,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
 	parentRunIndex: number,
@@ -2029,37 +2029,15 @@ export async function getInputConnectionData(
 	abortSignal?: AbortSignal,
 ): Promise<unknown> {
 	const parentNode = this.getNode();
-	const parentNodeType = workflow.nodeTypes.getByNameAndVersion(
-		parentNode.type,
-		parentNode.typeVersion,
-	);
 
-	const inputs = NodeHelpers.getNodeInputs(workflow, parentNode, parentNodeType.description);
-
-	let inputConfiguration = inputs.find((input) => {
-		if (typeof input === 'string') {
-			return input === connectionType;
-		}
-		return input.type === connectionType;
-	});
-
+	const inputConfiguration = this.nodeInputs.find((input) => input.type === connectionType);
 	if (inputConfiguration === undefined) {
 		throw new ApplicationError('Node does not have input of type', {
 			extra: { nodeName: parentNode.name, connectionType },
 		});
 	}
 
-	if (typeof inputConfiguration === 'string') {
-		inputConfiguration = {
-			type: inputConfiguration,
-		} as INodeInputConfiguration;
-	}
-
-	const connectedNodes = workflow
-		.getParentNodes(parentNode.name, connectionType, 1)
-		.map((nodeName) => workflow.getNode(nodeName) as INode)
-		.filter((connectedNode) => connectedNode.disabled !== true);
-
+	const connectedNodes = this.getConnectedNodes(connectionType);
 	if (connectedNodes.length === 0) {
 		if (inputConfiguration.required) {
 			throw new NodeOperationError(
