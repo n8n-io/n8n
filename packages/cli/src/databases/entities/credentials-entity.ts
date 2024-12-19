@@ -29,6 +29,14 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
 
+	/**
+	 * Whether the credential is managed by n8n. We currently use this flag
+	 * to provide OpenAI free credits on cloud. Managed credentials cannot be
+	 * edited by the user.
+	 */
+	@Column({ default: false })
+	isManaged: boolean;
+
 	toJSON() {
 		const { shared, ...rest } = this;
 		return rest;
