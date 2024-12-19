@@ -114,27 +114,14 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		ref="root"
-		title=""
-		:class="$style.editor"
-		data-test-id="inline-expression-editor-input"
-	></div>
+	<div ref="root" title="" data-test-id="inline-expression-editor-input"></div>
 </template>
-
-<style lang="scss" module>
-.editor div[contenteditable='false'] {
-	background-color: var(--disabled-fill, var(--color-background-light));
-	cursor: not-allowed;
-}
-</style>
 
 <style lang="scss" scoped>
 :deep(.cm-editor) {
 	padding-left: 0;
 }
 :deep(.cm-content) {
-	--disabled-fill: var(--color-background-base);
 	padding-left: var(--spacing-2xs);
 
 	&[aria-readonly='true'] {
