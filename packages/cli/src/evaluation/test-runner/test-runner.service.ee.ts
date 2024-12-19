@@ -6,7 +6,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
+import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
@@ -305,6 +305,12 @@ export class TestRunnerService {
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+			}
+		} catch (e) {
+			if (e instanceof ExecutionCancelledError) {
+				await this.testRunRepository.markAsCancelled(testRun.id);
+			} else {
+				throw e;
 			}
 		} finally {
 			// Clean up abort controller
