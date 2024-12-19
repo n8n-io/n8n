@@ -34,7 +34,6 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 * to provide OpenAI free credits on cloud. Managed credentials cannot be
 	 * edited by the user.
 	 */
-
 	@Column({ default: false })
 	isManaged: boolean;
 
