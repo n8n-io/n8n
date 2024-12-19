@@ -26,6 +26,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { N8nButton, N8nCallout } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -593,6 +594,20 @@ defineExpose({
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
+		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
+			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
+			<template #trailingContent>
+				<N8nButton
+					size="mini"
+					icon="refresh"
+					type="secondary"
+					:loading="state.refreshInProgress"
+					@click="initFetching(true)"
+				>
+					{{ locale.baseText('generic.refresh') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
 		<N8nNotice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
 		>

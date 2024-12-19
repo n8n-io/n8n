@@ -315,7 +315,7 @@ defineExpose({
 				<N8nTooltip v-if="props.isDataStale && !props.refreshInProgress">
 					<template #content>
 						<span>{{
-							locale.baseText('resourceMapper.staleDataWarning', {
+							locale.baseText('resourceMapper.staleDataWarning.tooltip', {
 								interpolate: { fieldWord: pluralFieldWordCapitalized },
 							})
 						}}</span>
@@ -325,6 +325,7 @@ defineExpose({
 						type="tertiary"
 						size="small"
 						:text="true"
+						:class="$style.staleDataRefreshButton"
 						:disabled="props.refreshInProgress"
 						@click="onParameterActionSelected('refreshFieldList')"
 					/>
@@ -460,5 +461,9 @@ defineExpose({
 .addOption {
 	margin-top: var(--spacing-l);
 	padding: 0 0 0 var(--spacing-s);
+}
+
+.staleDataRefreshButton {
+	padding-bottom: var(--spacing-2xs);
 }
 </style>
