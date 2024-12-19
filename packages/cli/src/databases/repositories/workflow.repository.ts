@@ -45,10 +45,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async getActiveIds() {
+	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
 		const activeWorkflows = await this.find({
 			select: ['id'],
 			where: { active: true },
+			...(maxResults ? { take: maxResults } : {}),
 		});
 		return activeWorkflows.map((workflow) => workflow.id);
 	}
