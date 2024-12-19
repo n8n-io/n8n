@@ -7,6 +7,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeParameterValueType,
 	ResourceMapperField,
 	ResourceMapperFields,
 	ResourceMapperValue,
@@ -61,6 +62,12 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
+		ignoreTypeMismatchErrors: false,
+		attemptToConvertTypes: false,
+		// This should always be true if `showTypeConversionOptions` is provided
+		// It's used to avoid accepting any value as string without casting it
+		// Which is the legacy behavior without these type options.
+		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
 	loading: false,
@@ -122,6 +129,10 @@ onMounted(async () => {
 			...state.parameterValues,
 			parameters: props.node.parameters,
 		};
+
+		if (showTypeConversionOptions.value) {
+			state.paramValue.convertFieldsToString = true;
+		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
@@ -186,6 +197,10 @@ const nodeType = computed<INodeTypeDescription | null>(() => {
 
 const showMappingModeSelect = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
+});
+
+const showTypeConversionOptions = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.showTypeConversionOptions === true;
 });
 
 const showMatchingColumnsSelector = computed<boolean>(() => {
@@ -620,5 +635,52 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
+		<div
+			v-if="showTypeConversionOptions && state.paramValue.schema.length > 0"
+			:class="$style.typeConversionOptions"
+		>
+			<ParameterInputFull
+				:parameter="{
+					name: 'attemptToConvertTypes',
+					type: 'boolean',
+					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
+					default: false,
+					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+				}"
+				:path="props.path + '.attemptToConvertTypes'"
+				:value="state.paramValue.attemptToConvertTypes"
+				@update="
+					(x: IUpdateInformation<NodeParameterValueType>) => {
+						state.paramValue.attemptToConvertTypes = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+			<ParameterInputFull
+				:parameter="{
+					name: 'ignoreTypeMismatchErrors',
+					type: 'boolean',
+					displayName: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.displayName'),
+					default: false,
+					description: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.description'),
+				}"
+				:path="props.path + '.ignoreTypeMismatchErrors'"
+				:value="state.paramValue.ignoreTypeMismatchErrors"
+				@update="
+					(x: IUpdateInformation<NodeParameterValueType>) => {
+						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.typeConversionOptions {
+	display: grid;
+	padding: var(--spacing-m);
+	gap: var(--spacing-2xs);
+}
+</style>

@@ -1,14 +1,20 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import type {
-	FieldValueOption,
-	FieldType,
-	IWorkflowNodeContext,
-	INodeExecutionData,
-	IExecuteFunctions,
-	ISupplyDataFunctions,
+import _ from 'lodash';
+import {
+	type FieldValueOption,
+	type FieldType,
+	type IWorkflowNodeContext,
+	jsonParse,
+	NodeOperationError,
+	type INodeExecutionData,
+	type IDataObject,
+	type ResourceMapperField,
+	type ILocalLoadOptionsFunctions,
+	type ResourceMapperFields,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, validateFieldType } from 'n8n-workflow';
 
 import {
 	JSON_EXAMPLE,
@@ -16,8 +22,6 @@ import {
 	WORKFLOW_INPUTS,
 	VALUES,
 	TYPE_OPTIONS,
-	INPUT_OPTIONS,
-	FALLBACK_DEFAULT_VALUE,
 	PASSTHROUGH,
 } from './constants';
 
@@ -92,84 +96,74 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 	throw new NodeOperationError(context.getNode(), result);
 }
 
-export function getWorkflowInputData(
-	this: IExecuteFunctions | ISupplyDataFunctions,
-	inputData: INodeExecutionData[],
-	newParams: FieldValueOption[],
-): INodeExecutionData[] {
-	const items: INodeExecutionData[] = [];
+export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
+	const inputData = this.getInputData();
 
-	for (const [itemIndex, item] of inputData.entries()) {
-		const attemptToConvertTypes = this.getNodeParameter(
-			`${INPUT_OPTIONS}.attemptToConvertTypes`,
+	return inputData.map((item, itemIndex) => {
+		const itemFieldValues = this.getNodeParameter(
+			'workflowInputs.value',
 			itemIndex,
-			false,
-		);
-		const ignoreTypeErrors = this.getNodeParameter(
-			`${INPUT_OPTIONS}.ignoreTypeErrors`,
-			itemIndex,
-			false,
-		);
+			{},
+		) as IDataObject;
 
-		// Fields listed here will explicitly overwrite original fields
-		const newItem: INodeExecutionData = {
-			json: {},
+		return {
+			json: {
+				...item.json,
+				...itemFieldValues,
+			},
 			index: itemIndex,
-			// TODO: Ensure we handle sub-execution jumps correctly.
-			// metadata: {
-			// 	subExecution: {
-			// 		executionId: 'uhh',
-			// 		workflowId: 'maybe?',
-			// 	},
-			// },
-			pairedItem: { item: itemIndex },
+			pairedItem: {
+				item: itemIndex,
+			},
 		};
-		try {
-			for (const { name, type } of newParams) {
-				if (!item.json.hasOwnProperty(name)) {
-					newItem.json[name] = FALLBACK_DEFAULT_VALUE;
-					continue;
-				}
+	});
+}
 
-				const result =
-					type === 'any'
-						? ({ valid: true, newValue: item.json[name] } as const)
-						: validateFieldType(name, item.json[name], type, {
-								strict: !attemptToConvertTypes,
-								parseStrings: true, // Default behavior is to accept anything as a string, this is a good opportunity for a stricter boundary
-							});
+export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
 
-				if (!result.valid) {
-					if (ignoreTypeErrors) {
-						newItem.json[name] = item.json[name];
-						continue;
-					}
+	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
 
-					throw new NodeOperationError(this.getNode(), result.errorMessage, {
-						itemIndex,
-					});
-				} else {
-					// If the value is `null` or `undefined`, then `newValue` is not in the returned object
-					if (result.hasOwnProperty('newValue')) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						newItem.json[name] = result.newValue;
-					} else {
-						newItem.json[name] = item.json[name];
-					}
-				}
-			}
+	if (schema.length === 0) {
+		return inputData;
+	} else {
+		const removedKeys = new Set(schema.filter((x) => x.removed).map((x) => x.displayName));
 
-			items.push(newItem);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				/** todo error case? */
-			} else {
-				throw new NodeOperationError(this.getNode(), error, {
-					itemIndex,
-				});
-			}
-		}
+		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
+			index,
+			pairedItem: { item: index },
+			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
+		}));
+
+		return filteredInputData;
 	}
+}
 
-	return items;
+export async function loadWorkflowInputMappings(
+	this: ILocalLoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
+	let fields: ResourceMapperField[] = [];
+
+	if (nodeLoadContext) {
+		const fieldValues = getFieldEntries(nodeLoadContext);
+
+		fields = fieldValues.map((currentWorkflowInput) => {
+			const field: ResourceMapperField = {
+				id: currentWorkflowInput.name,
+				displayName: currentWorkflowInput.name,
+				required: false,
+				defaultMatch: false,
+				display: true,
+				canBeUsedToMatch: true,
+			};
+
+			if (currentWorkflowInput.type !== 'any') {
+				field.type = currentWorkflowInput.type;
+			}
+
+			return field;
+		});
+	}
+	return { fields };
 }

@@ -14,13 +14,30 @@ export const versionDescription: INodeTypeDescription = {
 	displayName: 'Call n8n Workflow Tool',
 	name: 'toolWorkflow',
 	icon: 'fa:network-wired',
+	iconColor: 'black',
 	group: ['transform'],
-	description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 	version: [1, 1.1, 1.2, 1.3],
+	description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 	defaults: {
 		name: 'Call n8n Workflow Tool',
 	},
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+			Tools: ['Recommended Tools'],
+		},
+		resources: {
+			primaryDocumentation: [
+				{
+					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/',
+				},
+			],
+		},
+	},
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 	outputs: [NodeConnectionType.AiTool],
 	outputNames: ['Tool'],
 	properties: [
@@ -65,7 +82,7 @@ export const versionDescription: INodeTypeDescription = {
 			type: 'string',
 			default: '',
 			placeholder:
-				'Call this tool to get a random color. The input should be a string with comma separated names of colors to exclude.',
+				'Call this tool to get a random color. The input should be a string with comma separted names of colors to exclude.',
 			typeOptions: {
 				rows: 3,
 			},

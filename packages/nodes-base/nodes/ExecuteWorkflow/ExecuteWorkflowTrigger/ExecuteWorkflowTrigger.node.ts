@@ -1,4 +1,6 @@
+import _ from 'lodash';
 import {
+	type INodeExecutionData,
 	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
@@ -10,14 +12,11 @@ import {
 	WORKFLOW_INPUTS,
 	JSON_EXAMPLE,
 	VALUES,
-	INPUT_OPTIONS,
 	TYPE_OPTIONS,
 	PASSTHROUGH,
+	FALLBACK_DEFAULT_VALUE,
 } from '../../../utils/workflowInputsResourceMapping/constants';
-import {
-	getFieldEntries,
-	getWorkflowInputData,
-} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
+import { getFieldEntries } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,6 +64,23 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					},
 				],
 				default: 'worklfow_call',
+			},
+			{
+				displayName:
+					"When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the 'execute workflow' node will be output by this node.",
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: { '@version': [{ _cnd: { eq: 1 } }] },
+				},
+			},
+			{
+				displayName: 'This node is out of date. Please upgrade by removing it and adding a new one',
+				name: 'outdatedVersionWarning',
+				type: 'notice',
+				displayOptions: { show: { '@version': [{ _cnd: { eq: 1 } }] } },
+				default: '',
 			},
 			{
 				displayName: 'Input Source',
@@ -166,39 +182,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'Input Options',
-				name: INPUT_OPTIONS,
-				placeholder: 'Options',
-				type: 'collection',
-				description: 'Options controlling how input data is handled, converted and rejected',
-				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
-				},
-				default: {},
-				// Note that, while the defaults are true, the user has to add these in the first place
-				// We default to false if absent in the execute function below
-				options: [
-					{
-						displayName: 'Attempt to Convert Types',
-						name: 'attemptToConvertTypes',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to attempt conversion on type mismatch, rather than directly returning an Error',
-						noDataExpression: true,
-					},
-					{
-						displayName: 'Ignore Type Mismatch Errors',
-						name: 'ignoreTypeErrors',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether type mismatches should be ignored, rather than returning an Error',
-						noDataExpression: true,
-					},
-				],
-			},
 		],
 	};
 
@@ -206,12 +189,33 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		const inputData = this.getInputData();
 		const inputSource = this.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH) as string;
 
+		// Note on the data we receive from ExecuteWorkflow caller:
+		//
+		// The ExecuteWorkflow node typechecks all fields explicitly provided by the user here via the resourceMapper
+		// and removes all fields that are in the schema, but `removed` in the resourceMapper.
+		//
+		// In passthrough and legacy node versions, inputData will line up since the resourceMapper is empty,
+		// in which case all input is passed through.
+		// In other cases we will already have matching types and fields provided by the resource mapper,
+		// so we just need to be permissive on this end,
+		// while ensuring we provide default values for fields in our schema, which are removed in the resourceMapper.
+
 		if (inputSource === PASSTHROUGH) {
 			return [inputData];
 		} else {
 			const newParams = getFieldEntries(this);
+			const newKeys = new Set(newParams.map((x) => x.name));
+			const itemsInSchema: INodeExecutionData[] = inputData.map((row, index) => ({
+				json: {
+					...Object.fromEntries(newParams.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
+					// Need to trim to the expected schema to support legacy Execute Workflow callers passing through all their data
+					// which we do not want to expose past this node.
+					..._.pickBy(row.json, (_value, key) => newKeys.has(key)),
+				},
+				index,
+			}));
 
-			return [getWorkflowInputData.call(this, inputData, newParams)];
+			return [itemsInSchema];
 		}
 	}
 }
