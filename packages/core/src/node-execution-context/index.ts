@@ -8,4 +8,4 @@ export { SupplyDataContext } from './supply-data-context';
 export { TriggerContext } from './trigger-context';
 export { WebhookContext } from './webhook-context';
 
-export { getAdditionalKeys } from './utils';
+export { getAdditionalKeys } from './utils/getAdditionalKeys';

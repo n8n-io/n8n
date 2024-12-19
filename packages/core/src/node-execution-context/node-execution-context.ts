@@ -34,12 +34,10 @@ import { Memoized } from '@/decorators';
 import { extractValue } from '@/ExtractValue';
 import { InstanceSettings } from '@/InstanceSettings';
 
-import {
-	cleanupParameterData,
-	ensureType,
-	getAdditionalKeys,
-	validateValueAgainstSchema,
-} from './utils';
+import { cleanupParameterData } from './utils/cleanupParameterData';
+import { ensureType } from './utils/ensureType';
+import { getAdditionalKeys } from './utils/getAdditionalKeys';
+import { validateValueAgainstSchema } from './utils/validateValueAgainstSchema';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);

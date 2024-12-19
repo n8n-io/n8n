@@ -2232,7 +2232,7 @@ export const getRequestHelperFunctions = (
 
 			const runIndex = 0;
 
-			const additionalKeys = {
+			const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 				$request: requestOptions,
 				$response: {} as IN8nHttpFullResponse,
 				$version: node.typeVersion,
@@ -2357,7 +2357,7 @@ export const getRequestHelperFunctions = (
 				responseData.push(tempResponseData);
 
 				additionalKeys.$response = newResponse;
-				additionalKeys.$pageCount = additionalKeys.$pageCount + 1;
+				additionalKeys.$pageCount = (additionalKeys.$pageCount ?? 0) + 1;
 
 				const maxRequests = getResolvedValue(
 					paginationOptions.maxRequests,
