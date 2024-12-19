@@ -393,7 +393,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: [],
 						description:
-							'List of databases that belong to another database. Multiples can be defined separated by comma.',
+							'List of database page IDs that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checked',
