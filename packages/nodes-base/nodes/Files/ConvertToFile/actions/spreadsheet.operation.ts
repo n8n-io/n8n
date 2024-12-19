@@ -5,7 +5,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 import type { JsonToSpreadsheetBinaryOptions, JsonToSpreadsheetBinaryFormat } from '@utils/binary';
 
 import { convertJsonToSpreadsheetBinary } from '@utils/binary';
@@ -99,7 +99,6 @@ export async function execute(
 ) {
 	let returnData: INodeExecutionData[] = [];
 
-	const pairedItem = generatePairedItemData(items.length);
 	try {
 		const options = this.getNodeParameter('options', 0, {}) as JsonToSpreadsheetBinaryOptions;
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
@@ -117,7 +116,6 @@ export async function execute(
 			binary: {
 				[binaryPropertyName]: binaryData,
 			},
-			pairedItem,
 		};
 
 		returnData = [newItem];
@@ -127,7 +125,6 @@ export async function execute(
 				json: {
 					error: error.message,
 				},
-				pairedItem,
 			});
 		} else {
 			throw new NodeOperationError(this.getNode(), error);

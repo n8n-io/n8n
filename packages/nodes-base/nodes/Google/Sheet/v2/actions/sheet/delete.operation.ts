@@ -2,7 +2,7 @@ import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-wor
 import type { SheetProperties } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { getColumnNumber, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { generatePairedItemData, wrapData } from '../../../../../../utils/utilities';
+import { wrapData } from '../../../../../../utils/utilities';
 
 export const description: SheetProperties = [
 	{
@@ -165,10 +165,7 @@ export async function execute(
 		await sheet.spreadsheetBatchUpdate(requests);
 	}
 
-	const itemData = generatePairedItemData(this.getInputData().length);
-	const returnData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
-		itemData,
-	});
+	const returnData = wrapData({ success: true });
 
 	return returnData;
 }
