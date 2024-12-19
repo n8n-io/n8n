@@ -1,3 +1,5 @@
+import jwt from 'jsonwebtoken';
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -13,10 +15,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import jwt from 'jsonwebtoken';
-import type { IMessage, IMessageUi } from './MessageInterface';
-
 import {
 	// attachmentFields,
 	// attachmentOperations,
@@ -31,8 +29,8 @@ import {
 	spaceFields,
 	spaceOperations,
 } from './descriptions';
-
 import { googleApiRequest, googleApiRequestAllItems, validateJSON } from './GenericFunctions';
+import type { IMessage, IMessageUi } from './MessageInterface';
 
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {

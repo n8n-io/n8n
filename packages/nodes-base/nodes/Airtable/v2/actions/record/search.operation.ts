@@ -4,10 +4,11 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+
 import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput } from '../../helpers/utils';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import { viewRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [

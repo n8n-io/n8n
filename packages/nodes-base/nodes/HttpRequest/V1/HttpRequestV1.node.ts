@@ -1,5 +1,3 @@
-import type { Readable } from 'stream';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -18,6 +16,7 @@ import {
 	removeCircularRefs,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
