@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class VerticaApi implements ICredentialType {
 	name = 'verticaApi';
@@ -7,7 +12,21 @@ export class VerticaApi implements ICredentialType {
 
 	documentationUrl = 'https://docs.vertica.com/24.4.x/en/';
 
+	httpRequestNode = {
+		name: 'Vertica',
+		docsUrl: 'https://docs.vertica.com/24.4.x/en/',
+		apiBaseUrlPlaceholder: 'http://<server>:<port>/v1/',
+	};
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'URL',
+			name: 'url',
+			required: true,
+			type: 'string',
+			default: 'https://localhost:8443',
+			placeholder: 'https://<server>:<port>',
+		},
 		{
 			displayName: 'Username',
 			name: 'username',
@@ -33,5 +52,23 @@ export class VerticaApi implements ICredentialType {
 				password: '={{$credentials.password}}',
 			},
 		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url}}'.replace(/\/$/, ''),
+			url: '/v1/nodes',
+			method: 'GET',
+			skipSslCertificateValidation: true,
+		},
+		rules: [
+			{
+				type: 'responseCode',
+				properties: {
+					value: 403,
+					message: 'Connection failed: Invalid credentials or unreachable server',
+				},
+			},
+		],
 	};
 }
