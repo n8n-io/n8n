@@ -56,70 +56,61 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		);
 	});
 
-	const getNodeType = computed(() => {
-		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-			if (utils.isCredentialOnlyNodeType(nodeTypeName)) {
-				return getCredentialOnlyNodeType.value(nodeTypeName, version);
-			}
+	const getNodeType = (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+		if (utils.isCredentialOnlyNodeType(nodeTypeName)) {
+			return getCredentialOnlyNodeType(nodeTypeName, version);
+		}
 
-			const nodeVersions = nodeTypes.value[nodeTypeName];
+		const nodeVersions = nodeTypes.value[nodeTypeName];
 
-			if (!nodeVersions) return null;
+		if (!nodeVersions) return null;
 
-			const versionNumbers = Object.keys(nodeVersions).map(Number);
-			const nodeType = nodeVersions[version ?? Math.max(...versionNumbers)];
-			return nodeType ?? null;
-		};
-	});
+		const versionNumbers = Object.keys(nodeVersions).map(Number);
+		const nodeType = nodeVersions[version ?? Math.max(...versionNumbers)];
+		return nodeType ?? null;
+	};
 
-	const getNodeVersions = computed(() => {
-		return (nodeTypeName: string): number[] => {
-			return Object.keys(nodeTypes.value[nodeTypeName] ?? {}).map(Number);
-		};
-	});
+	const getNodeVersions = (nodeTypeName: string): number[] => {
+		return Object.keys(nodeTypes.value[nodeTypeName] ?? {}).map(Number);
+	};
 
-	const getCredentialOnlyNodeType = computed(() => {
-		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-			const credentialName = utils.getCredentialTypeName(nodeTypeName);
-			const httpNode = getNodeType.value(
-				HTTP_REQUEST_NODE_TYPE,
-				version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
-			);
-			const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
-			return utils.getCredentialOnlyNodeType(httpNode, credential) ?? null;
-		};
-	});
+	const getCredentialOnlyNodeType = (
+		nodeTypeName: string,
+		version?: number,
+	): INodeTypeDescription | null => {
+		const credentialName = utils.getCredentialTypeName(nodeTypeName);
+		const httpNode = getNodeType(
+			HTTP_REQUEST_NODE_TYPE,
+			version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+		);
+		const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
+		return utils.getCredentialOnlyNodeType(httpNode, credential) ?? null;
+	};
 
-	const isConfigNode = computed(() => {
-		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
-			if (!workflow.nodes[node.name]) {
-				return false;
-			}
-			const nodeType = getNodeType.value(nodeTypeName);
-			if (!nodeType) {
-				return false;
-			}
-			const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
-			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+	const isConfigNode = (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+		if (!workflow.nodes[node.name]) {
+			return false;
+		}
+		const nodeType = getNodeType(nodeTypeName);
+		if (!nodeType) {
+			return false;
+		}
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+		const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-			return outputTypes
-				? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
-				: false;
-		};
-	});
+		return outputTypes
+			? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+			: false;
+	};
 
-	const isTriggerNode = computed(() => {
-		return (nodeTypeName: string) => {
-			const nodeType = getNodeType.value(nodeTypeName);
-			return !!(nodeType && nodeType.group.includes('trigger'));
-		};
-	});
+	const isTriggerNode = (nodeTypeName: string) => {
+		const nodeType = getNodeType(nodeTypeName);
+		return !!(nodeType && nodeType.group.includes('trigger'));
+	};
 
-	const isCoreNodeType = computed(() => {
-		return (nodeType: INodeTypeDescription) => {
-			return nodeType.codex?.categories?.includes('Core Nodes');
-		};
-	});
+	const isCoreNodeType = (nodeType: INodeTypeDescription) => {
+		return nodeType.codex?.categories?.includes('Core Nodes');
+	};
 
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
@@ -198,20 +189,18 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesByOutputType;
 	});
 
-	const isConfigurableNode = computed(() => {
-		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
-			const nodeType = getNodeType.value(nodeTypeName);
-			if (nodeType === null) {
-				return false;
-			}
-			const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
-			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+	const isConfigurableNode = (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+		const nodeType = getNodeType(nodeTypeName);
+		if (nodeType === null) {
+			return false;
+		}
+		const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+		const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-			return inputTypes
-				? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
-				: false;
-		};
-	});
+		return inputTypes
+			? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+			: false;
+	};
 
 	// #endregion
 

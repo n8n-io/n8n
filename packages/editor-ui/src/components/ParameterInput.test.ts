@@ -196,7 +196,6 @@ describe('ParameterInput.vue', () => {
 			throw new Error('Node does not have any credentials set');
 		});
 
-		// @ts-expect-error Readonly property
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			displayName: 'Test',
 			credentials: [
