@@ -227,89 +227,89 @@ export class TestRunnerService {
 		this.abortControllers.set(testRun.id, abortController);
 
 		const abortSignal = abortController.signal;
+		try {
+			// 1. Make test cases from previous executions
 
-		// 1. Make test cases from previous executions
+			// Select executions with the annotation tag and workflow ID of the test.
+			// Fetch only ids to reduce the data transfer.
+			const pastExecutions: ReadonlyArray<Pick<ExecutionEntity, 'id'>> =
+				await this.executionRepository
+					.createQueryBuilder('execution')
+					.select('execution.id')
+					.leftJoin('execution.annotation', 'annotation')
+					.leftJoin('annotation.tags', 'annotationTag')
+					.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
+					.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
+					.getMany();
 
-		// Select executions with the annotation tag and workflow ID of the test.
-		// Fetch only ids to reduce the data transfer.
-		const pastExecutions: ReadonlyArray<Pick<ExecutionEntity, 'id'>> =
-			await this.executionRepository
-				.createQueryBuilder('execution')
-				.select('execution.id')
-				.leftJoin('execution.annotation', 'annotation')
-				.leftJoin('annotation.tags', 'annotationTag')
-				.where('annotationTag.id = :tagId', { tagId: test.annotationTagId })
-				.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
-				.getMany();
+			// Get the metrics to collect from the evaluation workflow
+			const testMetricNames = await this.getTestMetricNames(test.id);
 
-		// Get the metrics to collect from the evaluation workflow
-		const testMetricNames = await this.getTestMetricNames(test.id);
+			// 2. Run over all the test cases
+			await this.testRunRepository.markAsRunning(testRun.id);
 
-		// 2. Run over all the test cases
+			// Object to collect the results of the evaluation workflow executions
+			const metrics = new EvaluationMetrics(testMetricNames);
 
-		await this.testRunRepository.markAsRunning(testRun.id);
+			for (const { id: pastExecutionId } of pastExecutions) {
+				if (abortSignal.aborted) {
+					break;
+				}
 
-		// Object to collect the results of the evaluation workflow executions
-		const metrics = new EvaluationMetrics(testMetricNames);
+				// Fetch past execution with data
+				const pastExecution = await this.executionRepository.findOne({
+					where: { id: pastExecutionId },
+					relations: ['executionData', 'metadata'],
+				});
+				assert(pastExecution, 'Execution not found');
 
-		for (const { id: pastExecutionId } of pastExecutions) {
+				const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
+
+				// Run the test case and wait for it to finish
+				const testCaseExecution = await this.runTestCase(
+					workflow,
+					executionData,
+					test.mockedNodes,
+					user.id,
+					abortSignal,
+				);
+
+				// In case of a permission check issue, the test case execution will be undefined.
+				// Skip them and continue with the next test case
+				if (!testCaseExecution) {
+					continue;
+				}
+
+				// Collect the results of the test case execution
+				const testCaseRunData = testCaseExecution.data.resultData.runData;
+
+				// Get the original runData from the test case execution data
+				const originalRunData = executionData.resultData.runData;
+
+				// Run the evaluation workflow with the original and new run data
+				const evalExecution = await this.runTestCaseEvaluation(
+					evaluationWorkflow,
+					originalRunData,
+					testCaseRunData,
+					abortSignal,
+				);
+				assert(evalExecution);
+
+				// Extract the output of the last node executed in the evaluation workflow
+				metrics.addResults(this.extractEvaluationResult(evalExecution));
+			}
+
+			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
-				break;
+				await this.testRunRepository.markAsCancelled(testRun.id);
+			} else {
+				const aggregatedMetrics = metrics.getAggregatedMetrics();
+				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 			}
-
-			// Fetch past execution with data
-			const pastExecution = await this.executionRepository.findOne({
-				where: { id: pastExecutionId },
-				relations: ['executionData', 'metadata'],
-			});
-			assert(pastExecution, 'Execution not found');
-
-			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
-
-			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(
-				workflow,
-				executionData,
-				test.mockedNodes,
-				user.id,
-				abortSignal,
-			);
-
-			// In case of a permission check issue, the test case execution will be undefined.
-			// Skip them and continue with the next test case
-			if (!testCaseExecution) {
-				continue;
-			}
-
-			// Collect the results of the test case execution
-			const testCaseRunData = testCaseExecution.data.resultData.runData;
-
-			// Get the original runData from the test case execution data
-			const originalRunData = executionData.resultData.runData;
-
-			// Run the evaluation workflow with the original and new run data
-			const evalExecution = await this.runTestCaseEvaluation(
-				evaluationWorkflow,
-				originalRunData,
-				testCaseRunData,
-				abortSignal,
-			);
-			assert(evalExecution);
-
-			// Extract the output of the last node executed in the evaluation workflow
-			metrics.addResults(this.extractEvaluationResult(evalExecution));
+		} finally {
+			// Clean up abort controller
+			this.abortControllers.delete(testRun.id);
 		}
-
-		// Mark the test run as completed or cancelled
-		if (abortSignal.aborted) {
-			await this.testRunRepository.markAsCancelled(testRun.id);
-		} else {
-			const aggregatedMetrics = metrics.getAggregatedMetrics();
-			await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
-		}
-
-		// Clean up abort controller
-		this.abortControllers.delete(testRun.id);
 	}
 
 	/**
