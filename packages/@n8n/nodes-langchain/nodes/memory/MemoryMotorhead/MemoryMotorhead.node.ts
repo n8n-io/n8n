@@ -19,6 +19,7 @@ export class MemoryMotorhead implements INodeType {
 		displayName: 'Motorhead',
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Motorhead Memory',
