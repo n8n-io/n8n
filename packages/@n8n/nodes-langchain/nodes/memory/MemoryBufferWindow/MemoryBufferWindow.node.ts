@@ -78,6 +78,7 @@ export class MemoryBufferWindow implements INodeType {
 		displayName: 'Window Buffer Memory (easiest)',
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores in n8n memory, so no credentials required',
