@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionType,
@@ -38,7 +37,6 @@ export class MemoryChatRetriever implements INodeType {
 		displayName: 'Chat Messages Retriever',
 		name: 'memoryChatRetriever',
 		icon: 'fa:database',
-		iconColor: 'black',
 		group: ['transform'],
 		hidden: true,
 		version: 1,
@@ -91,9 +89,7 @@ export class MemoryChatRetriever implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Chat Memory Retriever');
 
-		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-			| BaseChatMemory
-			| undefined;
+		const memory = await this.aiRootContext.getMemory();
 		const simplifyOutput = this.getNodeParameter('simplifyOutput', 0) as boolean;
 
 		const messages = await memory?.chatHistory.getMessages();

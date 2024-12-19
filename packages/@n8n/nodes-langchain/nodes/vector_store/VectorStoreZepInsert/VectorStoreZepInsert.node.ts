@@ -1,6 +1,5 @@
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import type { Document } from '@langchain/core/documents';
-import type { Embeddings } from '@langchain/core/embeddings';
 import {
 	type IExecuteFunctions,
 	type INodeType,
@@ -117,14 +116,11 @@ export class VectorStoreZepInsert implements INodeType {
 			apiUrl: string;
 		}>('zepApi');
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
-			| N8nJsonLoader
-			| Array<Document<Record<string, unknown>>>;
+		const documentInput = await this.aiRootContext.getDocument<
+			N8nJsonLoader | Array<Document<Record<string, unknown>>>
+		>();
 
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = await this.aiRootContext.getEmbeddings();
 
 		const { processedDocuments, serializedDocuments } = await processDocuments(
 			documentInput,

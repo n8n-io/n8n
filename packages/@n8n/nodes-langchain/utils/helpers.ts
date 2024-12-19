@@ -4,7 +4,7 @@ import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import type { BaseChatMemory } from 'langchain/memory';
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
 	IDataObject,
@@ -189,8 +189,7 @@ export const getConnectedTools = async (
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
 ) => {
-	const connectedTools =
-		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const connectedTools = (await ctx.aiRootContext.getTools()) ?? [];
 
 	if (!enforceUniqueNames) return connectedTools;
 

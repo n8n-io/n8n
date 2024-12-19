@@ -17,7 +17,6 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 		displayName: 'Character Text Splitter',
 		name: 'textSplitterCharacterTextSplitter',
 		icon: 'fa:grip-lines-vertical',
-		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters',

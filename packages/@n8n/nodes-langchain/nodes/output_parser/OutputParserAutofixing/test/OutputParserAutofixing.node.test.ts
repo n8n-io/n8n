@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { OutputParserException } from '@langchain/core/output_parsers';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { AiNodeFunctions, ISupplyDataFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	N8nOutputFixingParser,
@@ -18,13 +16,15 @@ import { NAIVE_FIX_PROMPT } from '../prompt';
 
 describe('OutputParserAutofixing', () => {
 	let outputParser: OutputParserAutofixing;
-	let thisArg: MockProxy<IExecuteFunctions>;
+	let thisArg: MockProxy<ISupplyDataFunctions>;
 	let mockModel: MockProxy<BaseLanguageModel>;
 	let mockStructuredOutputParser: MockProxy<N8nStructuredOutputParser>;
+	const parentContext = mock<AiNodeFunctions>();
 
 	beforeEach(() => {
 		outputParser = new OutputParserAutofixing();
-		thisArg = mock<IExecuteFunctions>({
+		thisArg = mock<ISupplyDataFunctions>({
+			parentContext,
 			helpers: { normalizeItems },
 		});
 		mockModel = mock<BaseLanguageModel>();
@@ -33,12 +33,9 @@ describe('OutputParserAutofixing', () => {
 		thisArg.getWorkflowDataProxy.mockReturnValue(mock<IWorkflowDataProxyData>({ $input: mock() }));
 		thisArg.addInputData.mockReturnValue({ index: 0 });
 		thisArg.addOutputData.mockReturnValue();
-		thisArg.getInputConnectionData.mockImplementation(async (type: NodeConnectionType) => {
-			if (type === NodeConnectionType.AiLanguageModel) return mockModel;
-			if (type === NodeConnectionType.AiOutputParser) return mockStructuredOutputParser;
+		parentContext.getModel.mockResolvedValue(mockModel);
+		parentContext.getStructuredOutputParser.mockResolvedValue(mockStructuredOutputParser);
 
-			throw new ApplicationError('Unexpected connection type');
-		});
 		thisArg.getNodeParameter.mockReset();
 		thisArg.getNodeParameter.mockImplementation((parameterName) => {
 			if (parameterName === 'options.prompt') {

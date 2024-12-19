@@ -84,10 +84,8 @@ async function getImageMessage(
 	}
 
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-	const model = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+
+	const model = await context.aiRootContext.getModel();
 	const dataURI = `data:image/jpeg;base64,${bufferData.toString('base64')}`;
 
 	const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
@@ -108,7 +106,7 @@ async function getImageMessage(
 async function getChainPromptTemplate(
 	context: IExecuteFunctions,
 	itemIndex: number,
-	llm: BaseLanguageModel | BaseChatModel,
+	model: BaseLanguageModel | BaseChatModel,
 	messages?: MessagesTemplate[],
 	formatInstructions?: string,
 	query?: string,
@@ -119,7 +117,7 @@ async function getChainPromptTemplate(
 		partialVariables: formatInstructions ? { formatInstructions } : undefined,
 	});
 
-	if (isChatInstance(llm)) {
+	if (isChatInstance(model)) {
 		const parsedMessages = await Promise.all(
 			(messages ?? []).map(async (message) => {
 				const messageClass = [
@@ -166,12 +164,12 @@ async function getChainPromptTemplate(
 
 async function createSimpleLLMChain(
 	context: IExecuteFunctions,
-	llm: BaseLanguageModel,
+	model: BaseLanguageModel,
 	query: string,
 	prompt: ChatPromptTemplate | PromptTemplate,
 ): Promise<string[]> {
 	const chain = new LLMChain({
-		llm,
+		llm: model,
 		prompt,
 	}).withConfig(getTracingConfig(context));
 
@@ -187,14 +185,14 @@ async function getChain(
 	context: IExecuteFunctions,
 	itemIndex: number,
 	query: string,
-	llm: BaseLanguageModel,
+	model: BaseLanguageModel,
 	outputParsers: N8nOutputParser[],
 	messages?: MessagesTemplate[],
 ): Promise<unknown[]> {
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = await getChainPromptTemplate(
 		context,
 		itemIndex,
-		llm,
+		model,
 		messages,
 		undefined,
 		query,
@@ -202,7 +200,7 @@ async function getChain(
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
-		return await createSimpleLLMChain(context, llm, query, chatTemplate);
+		return await createSimpleLLMChain(context, model, query, chatTemplate);
 	}
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser
@@ -215,13 +213,13 @@ async function getChain(
 	const prompt = await getChainPromptTemplate(
 		context,
 		itemIndex,
-		llm,
+		model,
 		messages,
 		formatInstructions,
 		query,
 	);
 
-	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
+	const chain = prompt.pipe(model).pipe(combinedOutputParser);
 	const response = (await chain.withConfig(getTracingConfig(context)).invoke({ query })) as
 		| string
 		| string[];
@@ -254,7 +252,6 @@ export class ChainLlm implements INodeType {
 		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
 		icon: 'fa:link',
-		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'A simple chain to prompt a large language model',
@@ -516,10 +513,8 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+
+		const model = await this.aiRootContext.getModel();
 
 		const outputParsers = await getOptionalOutputParsers(this);
 
@@ -546,7 +541,7 @@ export class ChainLlm implements INodeType {
 					throw new NodeOperationError(this.getNode(), "The 'prompt' parameter is empty.");
 				}
 
-				const responses = await getChain(this, itemIndex, prompt, llm, outputParsers, messages);
+				const responses = await getChain(this, itemIndex, prompt, model, outputParsers, messages);
 
 				responses.forEach((response) => {
 					let data: IDataObject;

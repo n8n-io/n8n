@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
@@ -166,10 +165,7 @@ export class TextClassifier implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = await this.aiRootContext.getModel();
 
 		const categories = this.getNodeParameter('categories.categories', 0, []) as Array<{
 			category: string;
@@ -207,7 +203,7 @@ export class TextClassifier implements INodeType {
 		const structuredParser = StructuredOutputParser.fromZodSchema(schema);
 
 		const parser = options.enableAutoFixing
-			? OutputFixingParser.fromLLM(llm, structuredParser)
+			? OutputFixingParser.fromLLM(model, structuredParser)
 			: structuredParser;
 
 		const multiClassPrompt = multiClass
@@ -249,7 +245,7 @@ ${fallbackPrompt}`,
 				inputPrompt,
 			];
 			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+			const chain = prompt.pipe(model).pipe(parser).withConfig(getTracingConfig(this));
 
 			try {
 				const output = await chain.invoke(messages);

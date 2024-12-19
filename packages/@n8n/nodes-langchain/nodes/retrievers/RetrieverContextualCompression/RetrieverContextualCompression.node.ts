@@ -1,7 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
 import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import {
@@ -19,7 +17,6 @@ export class RetrieverContextualCompression implements INodeType {
 		displayName: 'Contextual Compression Retriever',
 		name: 'retrieverContextualCompression',
 		icon: 'fa:box-open',
-		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Enhances document similarity search by contextual compression.',
@@ -67,15 +64,8 @@ export class RetrieverContextualCompression implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supplying data for Contextual Compression Retriever');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			itemIndex,
-		)) as BaseLanguageModel;
-
-		const baseRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			itemIndex,
-		)) as BaseRetriever;
+		const model = await this.parentContext.getModel(itemIndex);
+		const baseRetriever = await this.parentContext.getRetriever(itemIndex);
 
 		const baseCompressor = LLMChainExtractor.fromLLM(model);
 

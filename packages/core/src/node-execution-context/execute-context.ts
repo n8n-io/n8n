@@ -1,6 +1,6 @@
+import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import type {
 	AINodeConnectionType,
-	CallbackManager,
 	CloseFunction,
 	IExecuteData,
 	IExecuteFunctions,
@@ -16,12 +16,13 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	AiNodeFunctions,
 	createDeferredPromise,
 	createEnvProviderState,
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { Memoized } from '@/decorators';
 // eslint-disable-next-line import/no-cycle
 import {
 	returnJsonArray,
@@ -39,6 +40,7 @@ import {
 	detectBinaryEncoding,
 } from '@/NodeExecuteFunctions';
 
+import { AiNodeContext } from './ai-node-context';
 import { BaseExecuteContext } from './base-execute-context';
 import { getInputConnectionData } from './utils/getInputConnectionData';
 
@@ -195,17 +197,12 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		await this.additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 	}
 
-	/** @deprecated use ISupplyDataFunctions.addInputData */
-	addInputData(): { index: number } {
-		throw new ApplicationError('addInputData should not be called on IExecuteFunctions');
-	}
-
-	/** @deprecated use ISupplyDataFunctions.addOutputData */
-	addOutputData(): void {
-		throw new ApplicationError('addOutputData should not be called on IExecuteFunctions');
-	}
-
 	getParentCallbackManager(): CallbackManager | undefined {
 		return this.additionalData.parentCallbackManager;
+	}
+
+	@Memoized
+	get aiRootContext(): AiNodeFunctions {
+		return new AiNodeContext(this);
 	}
 }

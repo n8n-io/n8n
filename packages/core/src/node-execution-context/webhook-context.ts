@@ -16,8 +16,9 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { AiNodeFunctions, ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
+import { Memoized } from '@/decorators';
 // eslint-disable-next-line import/no-cycle
 import {
 	copyBinaryFile,
@@ -27,6 +28,7 @@ import {
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
+import { AiNodeContext } from './ai-node-context';
 import { NodeExecutionContext } from './node-execution-context';
 import { getInputConnectionData } from './utils/getInputConnectionData';
 
@@ -176,5 +178,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			connectionType,
 			itemIndex,
 		);
+	}
+
+	@Memoized
+	get aiRootContext(): AiNodeFunctions {
+		return new AiNodeContext(this);
 	}
 }

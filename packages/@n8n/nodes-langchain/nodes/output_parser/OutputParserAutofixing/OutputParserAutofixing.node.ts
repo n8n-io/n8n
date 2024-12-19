@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
@@ -21,7 +20,6 @@ export class OutputParserAutofixing implements INodeType {
 		displayName: 'Auto-fixing Output Parser',
 		name: 'outputParserAutofixing',
 		icon: 'fa:tools',
-		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Automatically fix the output if it is not in the correct format',
@@ -94,14 +92,9 @@ export class OutputParserAutofixing implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			itemIndex,
-		)) as BaseLanguageModel;
-		const outputParser = (await this.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
-			itemIndex,
-		)) as N8nStructuredOutputParser;
+		const model = await this.parentContext.getModel(itemIndex);
+		const outputParser =
+			(await this.parentContext.getStructuredOutputParser()) as N8nStructuredOutputParser;
 		const prompt = this.getNodeParameter('options.prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
 
 		if (prompt.length === 0 || !prompt.includes('{error}')) {

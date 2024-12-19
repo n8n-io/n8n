@@ -69,6 +69,8 @@ export async function getInputConnectionData(
 		);
 	}
 
+	const parentContext = this instanceof SupplyDataContext ? this.parentContext : this.aiRootContext;
+
 	const nodes: SupplyData[] = [];
 	for (const connectedNode of connectedNodes) {
 		const connectedNodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -77,6 +79,7 @@ export async function getInputConnectionData(
 		);
 		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
 			new SupplyDataContext(
+				parentContext,
 				workflow,
 				connectedNode,
 				additionalData,

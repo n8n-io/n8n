@@ -10,22 +10,17 @@ import type { Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	ISupplyDataFunctions,
-	ITaskMetadata,
-} from 'n8n-workflow';
+import type { INodeExecutionData, ISupplyDataFunctions, ITaskMetadata } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { N8nJsonLoader } from './N8nJsonLoader';
 
-export async function callMethodAsync<T>(
+async function callMethodAsync<T>(
 	this: T,
 	parameters: {
-		executeFunctions: IExecuteFunctions | ISupplyDataFunctions;
+		executeFunctions: ISupplyDataFunctions;
 		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
 		method: (...args: any[]) => Promise<unknown>;
@@ -62,35 +57,6 @@ export async function callMethodAsync<T>(
 	}
 }
 
-export function callMethodSync<T>(
-	this: T,
-	parameters: {
-		executeFunctions: IExecuteFunctions;
-		connectionType: NodeConnectionType;
-		currentNodeRunIndex: number;
-		method: (...args: any[]) => T;
-		arguments: unknown[];
-	},
-): unknown {
-	try {
-		return parameters.method.call(this, ...parameters.arguments);
-	} catch (e) {
-		const connectedNode = parameters.executeFunctions.getNode();
-		const error = new NodeOperationError(connectedNode, e);
-		parameters.executeFunctions.addOutputData(
-			parameters.connectionType,
-			parameters.currentNodeRunIndex,
-			error,
-		);
-
-		throw new NodeOperationError(
-			connectedNode,
-			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
-			{ functionality: 'configuration-node' },
-		);
-	}
-}
-
 export function logWrapper(
 	originalInstance:
 		| Tool
@@ -105,7 +71,7 @@ export function logWrapper(
 		| VectorStore
 		| N8nBinaryLoader
 		| N8nJsonLoader,
-	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
+	executeFunctions: ISupplyDataFunctions,
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
@@ -394,6 +360,7 @@ export function logWrapper(
 					return async (
 						query: string,
 						k?: number,
+						// @ts-ignore
 						filter?: BiquadFilterType | undefined,
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {

@@ -12,6 +12,7 @@ import type {
 	SupplyData,
 	ExecutionError,
 	IDataObject,
+	ZodObjectAny,
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
@@ -19,14 +20,11 @@ import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@util
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import type { DynamicZodObject } from '../../../types/zod.types';
-
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
-		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',
@@ -270,7 +268,7 @@ export class ToolCode implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+				const zodSchema = convertJsonSchemaToZod<ZodObjectAny>(jsonSchema);
 
 				tool = new DynamicStructuredTool({
 					schema: zodSchema,

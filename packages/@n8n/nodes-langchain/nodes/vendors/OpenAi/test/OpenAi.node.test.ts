@@ -11,6 +11,9 @@ import * as transport from '../transport';
 const createExecuteFunctionsMock = (parameters: IDataObject) => {
 	const nodeParameters = parameters;
 	return {
+		aiRootContext: {
+			getTools: () => undefined,
+		},
 		getExecutionCancelSignal() {
 			return new AbortController().signal;
 		},
@@ -19,9 +22,6 @@ const createExecuteFunctionsMock = (parameters: IDataObject) => {
 		},
 		getNode() {
 			return {};
-		},
-		getInputConnectionData() {
-			return undefined;
 		},
 		helpers: {
 			prepareBinaryData() {

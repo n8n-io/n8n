@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { Embeddings } from '@langchain/core/embeddings';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -62,10 +61,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			itemIndex,
-		)) as Embeddings;
+		const embeddings = await this.parentContext.getEmbeddings(itemIndex);
 
 		const workflowId = this.getWorkflow().id;
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;

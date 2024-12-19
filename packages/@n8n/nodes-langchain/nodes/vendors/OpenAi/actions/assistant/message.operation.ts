@@ -2,7 +2,6 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AgentExecutor } from 'langchain/agents';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import type { BufferWindowMemory } from 'langchain/memory';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
@@ -10,12 +9,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	NodeConnectionType,
-	NodeOperationError,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
@@ -234,11 +228,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const useMemoryConnector =
 		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
 	const memory =
-		useMemoryConnector || nodeVersion < 1.6
-			? ((await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-					| BufferWindowMemory
-					| undefined)
-			: undefined;
+		useMemoryConnector || nodeVersion < 1.6 ? await this.aiRootContext.getMemory() : undefined;
 
 	const threadId =
 		nodeVersion >= 1.6 && !useMemoryConnector

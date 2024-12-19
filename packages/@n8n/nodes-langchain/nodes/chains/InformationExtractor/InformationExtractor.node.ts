@@ -1,4 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
@@ -221,10 +220,7 @@ export class InformationExtractor implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = await this.aiRootContext.getModel();
 
 		const schemaType = this.getNodeParameter('schemaType', 0, '') as
 			| 'fromAttributes'
@@ -245,7 +241,7 @@ export class InformationExtractor implements INodeType {
 			}
 
 			parser = OutputFixingParser.fromLLM(
-				llm,
+				model,
 				StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes)),
 			);
 		} else {
@@ -261,7 +257,7 @@ export class InformationExtractor implements INodeType {
 
 			const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 
-			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
+			parser = OutputFixingParser.fromLLM(model, StructuredOutputParser.fromZodSchema(zodSchema));
 		}
 
 		const resultData: INodeExecutionData[] = [];
@@ -285,7 +281,7 @@ export class InformationExtractor implements INodeType {
 				inputPrompt,
 			];
 			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+			const chain = prompt.pipe(model).pipe(parser).withConfig(getTracingConfig(this));
 
 			try {
 				const output = await chain.invoke(messages);

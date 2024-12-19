@@ -17,7 +17,6 @@ import type {
 	INodeListSearchResult,
 	Icon,
 	INodePropertyOptions,
-	ThemeIconColor,
 } from 'n8n-workflow';
 
 import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
@@ -38,7 +37,6 @@ interface NodeMeta {
 	description: string;
 	docsUrl: string;
 	icon: Icon;
-	iconColor?: ThemeIconColor;
 	credentials?: INodeCredentialDescription[];
 	operationModes?: NodeOperationMode[];
 }
@@ -61,13 +59,13 @@ interface VectorStoreNodeConstructorArgs {
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
 	populateVectorStore: (
-		context: ISupplyDataFunctions,
+		context: IExecuteFunctions | ISupplyDataFunctions,
 		embeddings: Embeddings,
 		documents: Array<Document<Record<string, unknown>>>,
 		itemIndex: number,
 	) => Promise<void>;
 	getVectorStoreClient: (
-		context: ISupplyDataFunctions,
+		context: IExecuteFunctions | ISupplyDataFunctions,
 		filter: Record<string, never> | undefined,
 		embeddings: Embeddings,
 		itemIndex: number,
@@ -127,7 +125,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			name: args.meta.name,
 			description: args.meta.description,
 			icon: args.meta.icon,
-			iconColor: args.meta.iconColor,
 			group: ['transform'],
 			version: 1,
 			defaults: {
@@ -243,10 +240,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
-				0,
-			)) as Embeddings;
+			const embeddings = await this.aiRootContext.getEmbeddings();
 
 			if (mode === 'load') {
 				const items = this.getInputData(0);
@@ -295,10 +289,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			if (mode === 'insert') {
 				const items = this.getInputData();
 
-				const documentInput = (await this.getInputConnectionData(
-					NodeConnectionType.AiDocument,
-					0,
-				)) as N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>;
+				const documentInput = await this.aiRootContext.getDocument<
+					N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>
+				>();
 
 				const resultData = [];
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -388,10 +381,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 			const filter = getMetadataFiltersValues(this, itemIndex);
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
-				0,
-			)) as Embeddings;
+			const embeddings = await this.parentContext.getEmbeddings();
 
 			if (mode === 'retrieve') {
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);

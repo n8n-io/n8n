@@ -1,4 +1,3 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
@@ -9,9 +8,8 @@ import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import type { ZodObject } from 'zod';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ZodObjectAny } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
@@ -22,9 +20,8 @@ import {
 
 import { SYSTEM_MESSAGE } from './prompt';
 
-function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
-	const schema =
-		(outputParser.getSchema() as ZodObject<any, any, any, any>) ?? z.object({ text: z.string() });
+function getOutputParserSchema(outputParser: N8nOutputParser): ZodObjectAny {
+	const schema = (outputParser.getSchema() as ZodObjectAny) ?? z.object({ text: z.string() });
 
 	return schema;
 }
@@ -98,7 +95,7 @@ function fixEmptyContentMessage(steps: AgentFinish | AgentAction[]) {
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Tools Agent');
-	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await this.aiRootContext.getModel();
 
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
@@ -107,9 +104,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		);
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = await this.aiRootContext.getMemory();
 
 	const tools = (await getConnectedTools(this, true, false)) as Array<DynamicStructuredTool | Tool>;
 	const outputParser = (await getOptionalOutputParsers(this))?.[0];

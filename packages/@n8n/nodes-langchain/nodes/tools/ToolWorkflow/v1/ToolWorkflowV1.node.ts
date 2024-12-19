@@ -19,11 +19,11 @@ import type {
 	INodeParameterResourceLocator,
 	ITaskMetadata,
 	INodeTypeBaseDescription,
+	ZodObjectAny,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { versionDescription } from './versionDescription';
-import type { DynamicZodObject } from '../../../../types/zod.types';
 import { convertJsonSchemaToZod, generateSchema } from '../../../../utils/schemaParsing';
 
 export class ToolWorkflowV1 implements INodeType {
@@ -218,7 +218,7 @@ export class ToolWorkflowV1 implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+				const zodSchema = convertJsonSchemaToZod<ZodObjectAny>(jsonSchema);
 
 				tool = new DynamicStructuredTool({
 					schema: zodSchema,

@@ -1,14 +1,8 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
@@ -22,11 +16,7 @@ export async function planAndExecuteAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing PlanAndExecute Agent');
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseChatModel;
-
+	const model = await this.aiRootContext.getModel();
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
 	await checkForStructuredTools(tools, this.getNode(), 'Plan & Execute Agent');

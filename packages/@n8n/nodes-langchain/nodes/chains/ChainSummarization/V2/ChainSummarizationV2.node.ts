@@ -1,5 +1,4 @@
 import type { Document } from '@langchain/core/documents';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { loadSummarizationChain } from 'langchain/chains';
@@ -321,10 +320,7 @@ export class ChainSummarizationV2 implements INodeType {
 			| 'simple'
 			| 'advanced';
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = await this.aiRootContext.getModel();
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -355,10 +351,9 @@ export class ChainSummarizationV2 implements INodeType {
 
 				// Use dedicated document loader input to load documents
 				if (operationMode === 'documentLoader') {
-					const documentInput = (await this.getInputConnectionData(
-						NodeConnectionType.AiDocument,
-						0,
-					)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
+					const documentInput = await this.aiRootContext.getDocument<
+						N8nJsonLoader | Array<Document<Record<string, unknown>>>
+					>();
 
 					const isN8nLoader =
 						documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader;
@@ -389,10 +384,7 @@ export class ChainSummarizationV2 implements INodeType {
 
 						// In advanced mode user can connect text splitter node so we just retrieve it
 						case 'advanced':
-							textSplitter = (await this.getInputConnectionData(
-								NodeConnectionType.AiTextSplitter,
-								0,
-							)) as TextSplitter | undefined;
+							textSplitter = await this.aiRootContext.getTextSplitter();
 							break;
 						default:
 							break;

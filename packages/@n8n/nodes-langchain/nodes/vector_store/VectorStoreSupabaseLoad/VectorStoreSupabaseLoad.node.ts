@@ -1,6 +1,5 @@
 import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
-import type { Embeddings } from '@langchain/core/embeddings';
 import { createClient } from '@supabase/supabase-js';
 import {
 	type INodeType,
@@ -92,10 +91,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		const queryName = this.getNodeParameter('queryName', itemIndex) as string;
 
 		const credentials = await this.getCredentials('supabaseApi');
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = await this.parentContext.getEmbeddings();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);

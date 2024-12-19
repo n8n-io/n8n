@@ -1,5 +1,4 @@
 import type { Document } from '@langchain/core/documents';
-import type { Embeddings } from '@langchain/core/embeddings';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import {
@@ -106,14 +105,11 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const credentials = await this.getCredentials('pineconeApi');
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
-			| N8nJsonLoader
-			| Array<Document<Record<string, unknown>>>;
+		const documentInput = await this.aiRootContext.getDocument<
+			N8nJsonLoader | Array<Document<Record<string, unknown>>>
+		>();
 
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = await this.aiRootContext.getEmbeddings();
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,

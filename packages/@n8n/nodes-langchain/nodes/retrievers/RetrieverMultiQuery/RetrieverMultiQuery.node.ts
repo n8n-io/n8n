@@ -1,7 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
 import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
 import {
 	NodeConnectionType,
@@ -18,7 +16,6 @@ export class RetrieverMultiQuery implements INodeType {
 		displayName: 'MultiQuery Retriever',
 		name: 'retrieverMultiQuery',
 		icon: 'fa:box-open',
-		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description:
@@ -88,15 +85,8 @@ export class RetrieverMultiQuery implements INodeType {
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as { queryCount?: number };
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			itemIndex,
-		)) as BaseLanguageModel;
-
-		const baseRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			itemIndex,
-		)) as BaseRetriever;
+		const model = await this.parentContext.getModel(itemIndex);
+		const baseRetriever = await this.parentContext.getRetriever(itemIndex);
 
 		// TODO: Add support for parserKey
 

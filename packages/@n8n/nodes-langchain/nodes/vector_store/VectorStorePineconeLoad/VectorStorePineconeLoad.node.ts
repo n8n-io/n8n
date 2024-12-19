@@ -1,4 +1,3 @@
-import type { Embeddings } from '@langchain/core/embeddings';
 import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -94,10 +93,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		}) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			itemIndex,
-		)) as Embeddings;
+		const embeddings = await this.parentContext.getEmbeddings(itemIndex);
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,

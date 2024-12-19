@@ -1,7 +1,7 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import get from 'lodash/get';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions, OutputParserType } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -11,9 +11,7 @@ const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
 const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
 
-export class N8nStructuredOutputParser extends StructuredOutputParser<
-	z.ZodType<object, z.ZodTypeDef, object>
-> {
+export class N8nStructuredOutputParser extends StructuredOutputParser<OutputParserType> {
 	constructor(
 		private context: ISupplyDataFunctions,
 		zodSchema: z.ZodSchema<object>,

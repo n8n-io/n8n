@@ -1,6 +1,5 @@
 import type { IZepConfig } from '@langchain/community/vectorstores/zep';
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
-import type { Embeddings } from '@langchain/core/embeddings';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -98,10 +97,7 @@ export class VectorStoreZepLoad implements INodeType {
 			apiKey?: string;
 			apiUrl: string;
 		}>('zepApi');
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = await this.parentContext.getEmbeddings();
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,

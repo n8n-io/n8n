@@ -1,3 +1,4 @@
+import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import { get } from 'lodash';
 import type {
 	Workflow,
@@ -9,7 +10,6 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 	ICredentialDataDecryptedObject,
-	CallbackManager,
 	IExecuteWorkflowInfo,
 	RelatedExecution,
 	ExecuteWorkflowData,

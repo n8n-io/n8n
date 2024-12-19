@@ -1,15 +1,8 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
 import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
@@ -24,9 +17,7 @@ export async function reActAgentAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing ReAct Agent');
 
-	const model = (await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0)) as
-		| BaseLanguageModel
-		| BaseChatModel;
+	const model = await this.aiRootContext.getModel();
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 

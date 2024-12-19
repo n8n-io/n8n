@@ -296,10 +296,7 @@ export class MemoryManager implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
-		const memory = (await this.getInputConnectionData(
-			NodeConnectionType.AiMemory,
-			0,
-		)) as BaseChatMemory;
+		const memory = await this.aiRootContext.getMemory();
 
 		const prepareOutput = prepareOutputSetup(this, nodeVersion, memory);
 

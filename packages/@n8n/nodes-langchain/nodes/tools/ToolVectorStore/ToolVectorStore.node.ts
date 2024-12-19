@@ -1,5 +1,3 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { VectorStore } from '@langchain/core/vectorstores';
 import { VectorDBQAChain } from 'langchain/chains';
 import { VectorStoreQATool } from 'langchain/tools';
 import type {
@@ -18,7 +16,6 @@ export class ToolVectorStore implements INodeType {
 		displayName: 'Vector Store Tool',
 		name: 'toolVectorStore',
 		icon: 'fa:database',
-		iconColor: 'black',
 		group: ['transform'],
 		version: [1],
 		description: 'Retrieve context from vector store',
@@ -93,23 +90,16 @@ export class ToolVectorStore implements INodeType {
 		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
-		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
-			itemIndex,
-		)) as VectorStore;
-
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const vectorStore = await this.parentContext.getVectorStore(itemIndex);
+		const model = await this.parentContext.getModel(itemIndex);
 
 		const description = VectorStoreQATool.getDescription(name, toolDescription);
 		const vectorStoreTool = new VectorStoreQATool(name, description, {
-			llm,
+			llm: model,
 			vectorStore,
 		});
 
-		vectorStoreTool.chain = VectorDBQAChain.fromLLM(llm, vectorStore, {
+		vectorStoreTool.chain = VectorDBQAChain.fromLLM(model, vectorStore, {
 			k: topK,
 		});
 

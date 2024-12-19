@@ -1,7 +1,7 @@
-import { DynamicTool, type Tool } from '@langchain/core/tools';
-import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
+import type { DynamicTool, Tool } from '@langchain/core/tools';
+import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions, AiNodeFunctions } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { escapeSingleCurlyBrackets, getConnectedTools } from '../helpers';
@@ -155,36 +155,17 @@ describe('escapeSingleCurlyBrackets', () => {
 });
 
 describe('getConnectedTools', () => {
-	let mockExecuteFunctions: IExecuteFunctions;
-	let mockNode: INode;
-	let mockN8nTool: N8nTool;
+	const aiRootContext = mock<AiNodeFunctions>();
+	const context = mock<IExecuteFunctions>({ aiRootContext });
 
 	beforeEach(() => {
-		mockNode = {
-			id: 'test-node',
-			name: 'Test Node',
-			type: 'test',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
-
-		mockExecuteFunctions = createMockExecuteFunction({}, mockNode);
-
-		mockN8nTool = new N8nTool(mockExecuteFunctions, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func: jest.fn(),
-			schema: z.object({
-				foo: z.string(),
-			}),
-		});
+		jest.clearAllMocks();
 	});
 
 	it('should return empty array when no tools are connected', async () => {
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([]);
+		aiRootContext.getTools.mockResolvedValue([]);
 
-		const tools = await getConnectedTools(mockExecuteFunctions, true);
+		const tools = await getConnectedTools(context, true);
 		expect(tools).toEqual([]);
 	});
 
@@ -192,11 +173,11 @@ describe('getConnectedTools', () => {
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
 			{ name: 'tool1', description: 'desc2' }, // Duplicate name
-		];
+		] as Tool[];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		aiRootContext.getTools.mockResolvedValue(mockTools);
 
-		const tools = await getConnectedTools(mockExecuteFunctions, false);
+		const tools = await getConnectedTools(context, false);
 		expect(tools).toEqual(mockTools);
 	});
 
@@ -204,42 +185,51 @@ describe('getConnectedTools', () => {
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
 			{ name: 'tool1', description: 'desc2' },
-		];
+		] as Tool[];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		aiRootContext.getTools.mockResolvedValue(mockTools);
 
-		await expect(getConnectedTools(mockExecuteFunctions, true)).rejects.toThrow(NodeOperationError);
+		await expect(getConnectedTools(context, true)).rejects.toThrow(NodeOperationError);
 	});
 
 	it('should escape curly brackets in tool descriptions when escapeCurlyBrackets is true', async () => {
 		const mockTools = [{ name: 'tool1', description: 'Test {value}' }] as Tool[];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		aiRootContext.getTools.mockResolvedValue(mockTools);
 
-		const tools = await getConnectedTools(mockExecuteFunctions, true, false, true);
+		const tools = await getConnectedTools(context, true, false, true);
 		expect(tools[0].description).toBe('Test {{value}}');
 	});
 
-	it('should convert N8nTool to dynamic tool when convertStructuredTool is true', async () => {
-		const mockDynamicTool = new DynamicTool({
-			name: 'dynamicTool',
-			description: 'desc',
+	describe('with N8nTool', () => {
+		const n8nTool = new N8nTool({} as unknown as ISupplyDataFunctions, {
+			name: 'Dummy Tool',
+			description: 'A dummy tool for testing',
 			func: jest.fn(),
+			schema: z.object({
+				foo: z.string(),
+			}),
 		});
-		const asDynamicToolSpy = jest.fn().mockReturnValue(mockDynamicTool);
-		mockN8nTool.asDynamicTool = asDynamicToolSpy;
+		const dynamicTool = mock<DynamicTool>();
+		const asDynamicToolSpy = jest.fn().mockReturnValue(dynamicTool);
+		n8nTool.asDynamicTool = asDynamicToolSpy;
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([mockN8nTool]);
+		beforeEach(() => {
+			aiRootContext.getTools.mockResolvedValue([n8nTool as unknown as Tool]);
+		});
 
-		const tools = await getConnectedTools(mockExecuteFunctions, true, true);
-		expect(asDynamicToolSpy).toHaveBeenCalled();
-		expect(tools[0]).toEqual(mockDynamicTool);
-	});
+		it('should convert N8nTool to dynamic tool when convertStructuredTool is true', async () => {
+			const tools = await getConnectedTools(context, true, true);
 
-	it('should not convert N8nTool when convertStructuredTool is false', async () => {
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([mockN8nTool]);
+			expect(asDynamicToolSpy).toHaveBeenCalled();
+			expect(tools[0]).toEqual(dynamicTool);
+		});
 
-		const tools = await getConnectedTools(mockExecuteFunctions, true, false);
-		expect(tools[0]).toBe(mockN8nTool);
+		it('should not convert N8nTool when convertStructuredTool is false', async () => {
+			const tools = await getConnectedTools(context, true, false);
+
+			expect(asDynamicToolSpy).not.toHaveBeenCalled();
+			expect(tools[0]).toBe(n8nTool);
+		});
 	});
 });

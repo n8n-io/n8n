@@ -1,11 +1,9 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
 	ChatPromptTemplate,
 	SystemMessagePromptTemplate,
 	HumanMessagePromptTemplate,
 	PromptTemplate,
 } from '@langchain/core/prompts';
-import type { BaseRetriever } from '@langchain/core/retrievers';
 import { RetrievalQAChain } from 'langchain/chains';
 import {
 	NodeConnectionType,
@@ -31,7 +29,6 @@ export class ChainRetrievalQa implements INodeType {
 		displayName: 'Question and Answer Chain',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
-		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Answer questions about retrieved documents',
@@ -162,15 +159,8 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const retriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			0,
-		)) as BaseRetriever;
+		const model = await this.aiRootContext.getModel();
+		const retriever = await this.aiRootContext.getRetriever();
 
 		const items = this.getInputData();
 

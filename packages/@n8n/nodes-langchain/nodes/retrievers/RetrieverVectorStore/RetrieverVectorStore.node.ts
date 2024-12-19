@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { VectorStore } from '@langchain/core/vectorstores';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -15,7 +14,6 @@ export class RetrieverVectorStore implements INodeType {
 		displayName: 'Vector Store Retriever',
 		name: 'retrieverVectorStore',
 		icon: 'fa:box-open',
-		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Use a Vector Store as Retriever',
@@ -62,10 +60,7 @@ export class RetrieverVectorStore implements INodeType {
 		this.logger.debug('Supplying data for Vector Store Retriever');
 
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
-		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
-			itemIndex,
-		)) as VectorStore;
+		const vectorStore = await this.parentContext.getVectorStore(itemIndex);
 
 		const retriever = vectorStore.asRetriever(topK);
 

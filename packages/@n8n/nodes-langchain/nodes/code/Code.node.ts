@@ -4,7 +4,7 @@ import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, ApplicationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -13,6 +13,7 @@ import type {
 	INodeOutputConfiguration,
 	SupplyData,
 	ISupplyDataFunctions,
+	AINodeConnectionType,
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
@@ -41,12 +42,7 @@ const defaultCodeExecute = `const { PromptTemplate } = require('@langchain/core/
 const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);
 
-// If you are allowing more than one language model input connection (-1 or
-// anything greater than 1), getInputConnectionData returns an array, so you
-// will have to change the code below it to deal with that. For example, use
-// llm[0] in the chain definition
-
-const llm = await this.getInputConnectionData('ai_languageModel', 0);
+const llm = await this.aiRootContext.getModel();
 let chain = prompt.pipe(llm);
 const output = await chain.invoke();
 return [ {json: { output } } ];`;
@@ -81,9 +77,40 @@ function getSandbox(
 	const workflowMode = this.getMode();
 
 	const context = getSandboxContext.call(this, itemIndex);
-	context.addInputData = this.addInputData.bind(this);
-	context.addOutputData = this.addOutputData.bind(this);
-	context.getInputConnectionData = this.getInputConnectionData.bind(this);
+	if ('addInputData' in this) {
+		context.addInputData = this.addInputData.bind(this);
+		context.addOutputData = this.addOutputData.bind(this);
+	}
+
+	const parentContext = 'aiRootContext' in this ? this.aiRootContext : this.parentContext;
+	context.getInputConnectionData = async function (
+		connectionType: AINodeConnectionType,
+		inputIndex = 0,
+	): Promise<unknown> {
+		switch (connectionType) {
+			case NodeConnectionType.AiLanguageModel:
+				return await parentContext.getModel(itemIndex);
+			case NodeConnectionType.AiMemory:
+				return await parentContext.getMemory(itemIndex);
+			case NodeConnectionType.AiRetriever:
+				return await parentContext.getRetriever(itemIndex);
+			case NodeConnectionType.AiDocument:
+				return await parentContext.getDocument(itemIndex);
+			case NodeConnectionType.AiTextSplitter:
+				return await parentContext.getTextSplitter(itemIndex);
+			case NodeConnectionType.AiEmbedding:
+				return await parentContext.getEmbeddings(itemIndex);
+			case NodeConnectionType.AiOutputParser:
+				return await parentContext.getStructuredOutputParser(itemIndex);
+			case NodeConnectionType.AiVectorStore:
+				return await parentContext.getVectorStore(itemIndex);
+			case NodeConnectionType.AiTool:
+				return (await parentContext.getTools(itemIndex))[inputIndex];
+		}
+		throw new ApplicationError(
+			'getInputConnectionData does not support connection type' + connectionType,
+		);
+	};
 	context.getInputData = this.getInputData.bind(this);
 	context.getNode = this.getNode.bind(this);
 	context.getExecutionCancelSignal = this.getExecutionCancelSignal.bind(this);

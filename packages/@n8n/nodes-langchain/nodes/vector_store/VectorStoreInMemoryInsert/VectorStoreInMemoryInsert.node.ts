@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { Embeddings } from '@langchain/core/embeddings';
 import type { Document } from 'langchain/document';
 import {
 	NodeConnectionType,
@@ -85,16 +84,13 @@ export class VectorStoreInMemoryInsert implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData(0);
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = await this.aiRootContext.getEmbeddings();
 
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
 		const clearStore = this.getNodeParameter('clearStore', 0) as boolean;
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
-			| N8nJsonLoader
-			| Array<Document<Record<string, unknown>>>;
+		const documentInput = await this.aiRootContext.getDocument<
+			N8nJsonLoader | Array<Document<Record<string, unknown>>>
+		>();
 
 		const { processedDocuments, serializedDocuments } = await processDocuments(
 			documentInput,

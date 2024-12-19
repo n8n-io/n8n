@@ -1,6 +1,5 @@
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 import type { Document } from '@langchain/core/documents';
-import type { Embeddings } from '@langchain/core/embeddings';
 import { createClient } from '@supabase/supabase-js';
 import {
 	type IExecuteFunctions,
@@ -102,14 +101,11 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		const queryName = this.getNodeParameter('queryName', 0) as string;
 		const credentials = await this.getCredentials('supabaseApi');
 
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
-			| N8nJsonLoader
-			| Array<Document<Record<string, unknown>>>;
+		const documentInput = await this.aiRootContext.getDocument<
+			N8nJsonLoader | Array<Document<Record<string, unknown>>>
+		>();
 
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = await this.aiRootContext.getEmbeddings();
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
 		const { processedDocuments, serializedDocuments } = await processDocuments(

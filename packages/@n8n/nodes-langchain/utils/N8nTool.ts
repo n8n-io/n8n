@@ -1,7 +1,7 @@
 import type { DynamicStructuredToolInput } from '@langchain/core/tools';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import { StructuredOutputParser } from 'langchain/output_parsers';
-import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IDataObject, ZodObjectAny } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
@@ -28,7 +28,7 @@ const getParametersDescription = (parameters: Array<[string, ZodTypeAny]>) =>
 		)
 		.join(',\n ');
 
-export const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObject<any>) => {
+export const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObjectAny) => {
 	let description = `${toolDescription}`;
 
 	const toolParameters = Object.entries<ZodTypeAny>(schema.shape);

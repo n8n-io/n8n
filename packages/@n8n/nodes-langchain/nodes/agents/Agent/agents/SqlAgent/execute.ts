@@ -1,5 +1,3 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { DataSource } from '@n8n/typeorm';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
@@ -7,7 +5,6 @@ import { SqlDatabase } from 'langchain/sql_db';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
 	NodeOperationError,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -31,10 +28,8 @@ export async function sqlAgentAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing SQL Agent');
 
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+	const model = await this.aiRootContext.getModel();
+
 	const items = this.getInputData();
 
 	const returnData: INodeExecutionData[] = [];
@@ -113,9 +108,7 @@ export async function sqlAgentAgentExecute(
 			const toolkit = new SqlToolkit(dbInstance, model);
 			const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-			const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-				| BaseChatMemory
-				| undefined;
+			const memory = await this.aiRootContext.getMemory();
 
 			agentExecutor.memory = memory;
 

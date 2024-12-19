@@ -1,170 +1,140 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { N8nTool } from './N8nTool';
 
-const mockNode: INode = {
-	id: '1',
-	name: 'Mock node',
-	typeVersion: 2,
-	type: 'n8n-nodes-base.mock',
-	position: [60, 760],
-	parameters: {
-		operation: 'test',
-	},
-};
+describe('N8nTool', () => {
+	const func = jest.fn();
+	const ctx = mock<ISupplyDataFunctions>();
 
-describe('Test N8nTool wrapper as DynamicStructuredTool', () => {
-	it('should wrap a tool', () => {
-		const func = jest.fn();
+	beforeEach(() => jest.clearAllMocks());
 
-		const ctx = createMockExecuteFunction({}, mockNode);
+	describe('Test N8nTool wrapper as DynamicStructuredTool', () => {
+		it('should wrap a tool', () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({
+					foo: z.string(),
+				}),
+			});
 
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({
-				foo: z.string(),
-			}),
+			expect(tool).toBeInstanceOf(DynamicStructuredTool);
 		});
-
-		expect(tool).toBeInstanceOf(DynamicStructuredTool);
-	});
-});
-
-describe('Test N8nTool wrapper - DynamicTool fallback', () => {
-	it('should convert the tool to a dynamic tool', () => {
-		const func = jest.fn();
-
-		const ctx = createMockExecuteFunction({}, mockNode);
-
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({
-				foo: z.string(),
-			}),
-		});
-
-		const dynamicTool = tool.asDynamicTool();
-
-		expect(dynamicTool).toBeInstanceOf(DynamicTool);
 	});
 
-	it('should format fallback description correctly', () => {
-		const func = jest.fn();
+	describe('Test N8nTool wrapper - DynamicTool fallback', () => {
+		it('should convert the tool to a dynamic tool', () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({
+					foo: z.string(),
+				}),
+			});
 
-		const ctx = createMockExecuteFunction({}, mockNode);
+			const dynamicTool = tool.asDynamicTool();
 
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({
-				foo: z.string(),
-				bar: z.number().optional(),
-				qwe: z.boolean().describe('Boolean description'),
-			}),
+			expect(dynamicTool).toBeInstanceOf(DynamicTool);
 		});
 
-		const dynamicTool = tool.asDynamicTool();
+		it('should format fallback description correctly', () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({
+					foo: z.string(),
+					bar: z.number().optional(),
+					qwe: z.boolean().describe('Boolean description'),
+				}),
+			});
 
-		expect(dynamicTool.description).toContain('foo: (description: , type: string, required: true)');
-		expect(dynamicTool.description).toContain(
-			'bar: (description: , type: number, required: false)',
-		);
+			const dynamicTool = tool.asDynamicTool();
 
-		expect(dynamicTool.description).toContain(
-			'qwe: (description: Boolean description, type: boolean, required: true)',
-		);
-	});
+			expect(dynamicTool.description).toContain(
+				'foo: (description: , type: string, required: true)',
+			);
+			expect(dynamicTool.description).toContain(
+				'bar: (description: , type: number, required: false)',
+			);
 
-	it('should handle empty parameter list correctly', () => {
-		const func = jest.fn();
-
-		const ctx = createMockExecuteFunction({}, mockNode);
-
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({}),
+			expect(dynamicTool.description).toContain(
+				'qwe: (description: Boolean description, type: boolean, required: true)',
+			);
 		});
 
-		const dynamicTool = tool.asDynamicTool();
+		it('should handle empty parameter list correctly', () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({}),
+			});
 
-		expect(dynamicTool.description).toEqual('A dummy tool for testing');
-	});
+			const dynamicTool = tool.asDynamicTool();
 
-	it('should parse correct parameters', async () => {
-		const func = jest.fn();
-
-		const ctx = createMockExecuteFunction({}, mockNode);
-
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({
-				foo: z.string().describe('Foo description'),
-				bar: z.number().optional(),
-			}),
+			expect(dynamicTool.description).toEqual('A dummy tool for testing');
 		});
 
-		const dynamicTool = tool.asDynamicTool();
+		it('should parse correct parameters', async () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({
+					foo: z.string().describe('Foo description'),
+					bar: z.number().optional(),
+				}),
+			});
 
-		const testParameters = { foo: 'some value' };
+			const dynamicTool = tool.asDynamicTool();
 
-		await dynamicTool.func(JSON.stringify(testParameters));
+			const testParameters = { foo: 'some value' };
 
-		expect(func).toHaveBeenCalledWith(testParameters);
-	});
+			await dynamicTool.func(JSON.stringify(testParameters));
 
-	it('should recover when 1 parameter is passed directly', async () => {
-		const func = jest.fn();
-
-		const ctx = createMockExecuteFunction({}, mockNode);
-
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({
-				foo: z.string().describe('Foo description'),
-			}),
+			expect(func).toHaveBeenCalledWith(testParameters);
 		});
 
-		const dynamicTool = tool.asDynamicTool();
+		it('should recover when 1 parameter is passed directly', async () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({
+					foo: z.string().describe('Foo description'),
+				}),
+			});
 
-		const testParameter = 'some value';
+			const dynamicTool = tool.asDynamicTool();
 
-		await dynamicTool.func(testParameter);
+			const testParameter = 'some value';
 
-		expect(func).toHaveBeenCalledWith({ foo: testParameter });
-	});
+			await dynamicTool.func(testParameter);
 
-	it('should recover when JS object is passed instead of JSON', async () => {
-		const func = jest.fn();
-
-		const ctx = createMockExecuteFunction({}, mockNode);
-
-		const tool = new N8nTool(ctx, {
-			name: 'Dummy Tool',
-			description: 'A dummy tool for testing',
-			func,
-			schema: z.object({
-				foo: z.string().describe('Foo description'),
-			}),
+			expect(func).toHaveBeenCalledWith({ foo: testParameter });
 		});
 
-		const dynamicTool = tool.asDynamicTool();
+		it('should recover when JS object is passed instead of JSON', async () => {
+			const tool = new N8nTool(ctx, {
+				name: 'Dummy Tool',
+				description: 'A dummy tool for testing',
+				func,
+				schema: z.object({
+					foo: z.string().describe('Foo description'),
+				}),
+			});
 
-		await dynamicTool.func('{ foo: "some value" }');
+			const dynamicTool = tool.asDynamicTool();
 
-		expect(func).toHaveBeenCalledWith({ foo: 'some value' });
+			await dynamicTool.func('{ foo: "some value" }');
+
+			expect(func).toHaveBeenCalledWith({ foo: 'some value' });
+		});
 	});
 });

@@ -1,16 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { CallbackManager } from '@langchain/core/callbacks/manager';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import type { Tool } from '@langchain/core/tools';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import type { TextSplitter } from '@langchain/textsplitters';
 import type { LogScope } from '@n8n/config';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
+import type { StructuredOutputParser } from 'langchain/output_parsers';
 import type { RequestBodyMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
+import type { ZodObject, ZodType, ZodTypeDef } from 'zod';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -25,6 +34,8 @@ import type { Result } from './result';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import type { WorkflowHooks } from './WorkflowHooks';
+
+export type ZodObjectAny = ZodObject<any, any, any, any>;
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -884,6 +895,19 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 
 export type ContextType = 'flow' | 'node';
 
+export type OutputParserType = ZodType<object, ZodTypeDef, object>;
+export type AiNodeFunctions = {
+	getModel(itemIndex?: number): Promise<BaseLanguageModel>;
+	getMemory(itemIndex?: number): Promise<BaseChatMemory>;
+	getRetriever(itemIndex?: number): Promise<BaseRetriever>;
+	getDocument<T>(itemIndex?: number): Promise<T>;
+	getTextSplitter(itemIndex?: number): Promise<TextSplitter | undefined>;
+	getEmbeddings(itemIndex?: number): Promise<Embeddings>;
+	getStructuredOutputParser(itemIndex?: number): Promise<StructuredOutputParser<OutputParserType>>;
+	getVectorStore(itemIndex?: number): Promise<VectorStore>;
+	getTools(itemIndex?: number): Promise<Tool[]>;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -909,6 +933,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData>;
+		/** @deprecated */
 		getInputConnectionData(
 			connectionType: AINodeConnectionType,
 			itemIndex: number,
@@ -920,19 +945,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
-
-		// TODO: Make this one then only available in the new config one
-		addInputData(
-			connectionType: NodeConnectionType,
-			data: INodeExecutionData[][] | ExecutionError,
-			runIndex?: number,
-		): { index: number };
-		addOutputData(
-			connectionType: NodeConnectionType,
-			currentNodeRunIndex: number,
-			data: INodeExecutionData[][] | ExecutionError,
-			metadata?: ITaskMetadata,
-		): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -959,6 +971,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			settings: unknown,
 			itemIndex: number,
 		): Promise<Result<T, E>>;
+
+		aiRootContext: AiNodeFunctions;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -983,21 +997,31 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 	FunctionsBaseWithRequiredKeys<'getMode'> &
 	Pick<
 		IExecuteFunctions,
-		| 'addInputData'
-		| 'addOutputData'
+		| 'continueOnFail'
+		| 'evaluateExpression'
+		| 'executeWorkflow'
+		| 'getExecutionCancelSignal'
 		| 'getInputConnectionData'
 		| 'getInputData'
 		| 'getNodeOutputs'
-		| 'executeWorkflow'
+		| 'getWorkflowDataProxy'
+		| 'logAiEvent'
+		| 'onExecutionCancellation'
 		| 'sendMessageToUI'
 		| 'helpers'
 	> & {
-		continueOnFail(): boolean;
-		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
-		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
-		getExecutionCancelSignal(): AbortSignal | undefined;
-		onExecutionCancellation(handler: () => unknown): void;
-		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+		parentContext: AiNodeFunctions;
+		addInputData(
+			connectionType: NodeConnectionType,
+			data: INodeExecutionData[][] | ExecutionError,
+			runIndex?: number,
+		): { index: number };
+		addOutputData(
+			connectionType: NodeConnectionType,
+			currentNodeRunIndex: number,
+			data: INodeExecutionData[][] | ExecutionError,
+			metadata?: ITaskMetadata,
+		): void;
 	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
@@ -1090,6 +1114,7 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	/** @deprecated */
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -1109,6 +1134,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
+	aiRootContext: AiNodeFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -2848,8 +2874,6 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
-
-export type CallbackManager = CallbackManagerLC;
 
 export type IPersonalizationSurveyAnswersV4 = {
 	version: 'v4';
