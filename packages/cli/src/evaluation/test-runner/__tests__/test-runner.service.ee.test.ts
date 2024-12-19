@@ -2,6 +2,7 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
 import path from 'path';
 
@@ -22,7 +23,6 @@ import { mockInstance } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-import { ErrorReporter } from 'n8n-core';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
