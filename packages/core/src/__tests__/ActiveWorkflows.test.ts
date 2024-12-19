@@ -35,36 +35,63 @@ describe('ActiveWorkflows', () => {
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const errorReporter = mock<ErrorReporter>();
-	let activeWorkflows: ActiveWorkflows;
-
 	const triggerNode = mock<INode>();
 	const pollNode = mock<INode>();
-	const pollTimes = { item: [{ mode: 'everyMinute' } as TriggerTime] };
+
+	let activeWorkflows: ActiveWorkflows;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		getPollFunctions.mockReturnValue(pollFunctions);
-		pollFunctions.getNodeParameter.mockReturnValue(pollTimes);
-		triggersAndPollers.runTrigger.mockResolvedValue(triggerResponse);
-
 		activeWorkflows = new ActiveWorkflows(scheduledTaskManager, triggersAndPollers, errorReporter);
 	});
+
+	type PollTimes = { item: TriggerTime[] };
+	type TestOptions = {
+		triggerNodes?: INode[];
+		pollNodes?: INode[];
+		triggerError?: Error;
+		pollError?: Error;
+		pollTimes?: PollTimes;
+	};
+
+	const addWorkflow = async ({
+		triggerNodes = [],
+		pollNodes = [],
+		triggerError,
+		pollError,
+		pollTimes = { item: [{ mode: 'everyMinute' }] },
+	}: TestOptions) => {
+		workflow.getTriggerNodes.mockReturnValue(triggerNodes);
+		workflow.getPollNodes.mockReturnValue(pollNodes);
+		pollFunctions.getNodeParameter.calledWith('pollTimes').mockReturnValue(pollTimes);
+
+		if (triggerError) {
+			triggersAndPollers.runTrigger.mockRejectedValueOnce(triggerError);
+		} else {
+			triggersAndPollers.runTrigger.mockResolvedValue(triggerResponse);
+		}
+
+		if (pollError) {
+			triggersAndPollers.runPoll.mockRejectedValueOnce(pollError);
+		} else {
+			getPollFunctions.mockReturnValue(pollFunctions);
+		}
+
+		return await activeWorkflows.add(
+			workflowId,
+			workflow,
+			additionalData,
+			mode,
+			activation,
+			getTriggerFunctions,
+			getPollFunctions,
+		);
+	};
 
 	describe('add()', () => {
 		describe('should activate workflow', () => {
 			it('with trigger nodes', async () => {
-				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-				workflow.getPollNodes.mockReturnValue([]);
-
-				await activeWorkflows.add(
-					workflowId,
-					workflow,
-					additionalData,
-					mode,
-					activation,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				await addWorkflow({ triggerNodes: [triggerNode] });
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
 				expect(workflow.getTriggerNodes).toHaveBeenCalled();
@@ -79,18 +106,7 @@ describe('ActiveWorkflows', () => {
 			});
 
 			it('with polling nodes', async () => {
-				workflow.getTriggerNodes.mockReturnValue([]);
-				workflow.getPollNodes.mockReturnValue([pollNode]);
-
-				await activeWorkflows.add(
-					workflowId,
-					workflow,
-					additionalData,
-					mode,
-					activation,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				await addWorkflow({ pollNodes: [pollNode] });
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
 				expect(workflow.getPollNodes).toHaveBeenCalled();
@@ -98,18 +114,7 @@ describe('ActiveWorkflows', () => {
 			});
 
 			it('with both trigger and polling nodes', async () => {
-				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-				workflow.getPollNodes.mockReturnValue([pollNode]);
-
-				await activeWorkflows.add(
-					workflowId,
-					workflow,
-					additionalData,
-					mode,
-					activation,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				await addWorkflow({ triggerNodes: [triggerNode], pollNodes: [pollNode] });
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
 				expect(workflow.getTriggerNodes).toHaveBeenCalled();
@@ -129,51 +134,23 @@ describe('ActiveWorkflows', () => {
 
 		describe('should throw error', () => {
 			it('if trigger activation fails', async () => {
-				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-				workflow.getPollNodes.mockReturnValue([]);
-
 				const error = new Error('Trigger activation failed');
-				triggersAndPollers.runTrigger.mockRejectedValueOnce(error);
-
 				await expect(
-					activeWorkflows.add(
-						workflowId,
-						workflow,
-						additionalData,
-						mode,
-						activation,
-						getTriggerFunctions,
-						getPollFunctions,
-					),
+					addWorkflow({ triggerNodes: [triggerNode], triggerError: error }),
 				).rejects.toThrow(WorkflowActivationError);
 				expect(activeWorkflows.isActive(workflowId)).toBe(false);
 			});
 
 			it('if polling activation fails', async () => {
-				workflow.getTriggerNodes.mockReturnValue([]);
-				workflow.getPollNodes.mockReturnValue([pollNode]);
-
 				const error = new Error('Failed to activate polling');
-				getPollFunctions.mockImplementation(() => {
-					throw error;
-				});
-
-				await expect(
-					activeWorkflows.add(
-						workflowId,
-						workflow,
-						additionalData,
-						mode,
-						activation,
-						getTriggerFunctions,
-						getPollFunctions,
-					),
-				).rejects.toThrow(WorkflowActivationError);
+				await expect(addWorkflow({ pollNodes: [pollNode], pollError: error })).rejects.toThrow(
+					WorkflowActivationError,
+				);
 				expect(activeWorkflows.isActive(workflowId)).toBe(false);
 			});
 
-			it('if the polling interval is too short (contains * in first position)', async () => {
-				const pollTimes = {
+			it('if the polling interval is too short', async () => {
+				const pollTimes: PollTimes = {
 					item: [
 						{
 							mode: 'custom',
@@ -181,45 +158,22 @@ describe('ActiveWorkflows', () => {
 						},
 					],
 				};
-				pollFunctions.getNodeParameter.mockReturnValue(pollTimes);
 
-				await expect(
-					activeWorkflows.add(
-						workflowId,
-						workflow,
-						additionalData,
-						mode,
-						activation,
-						getTriggerFunctions,
-						getPollFunctions,
-					),
-				).rejects.toThrow('The polling interval is too short. It has to be at least a minute.');
+				await expect(addWorkflow({ pollNodes: [pollNode], pollTimes })).rejects.toThrow(
+					'The polling interval is too short. It has to be at least a minute.',
+				);
 
 				expect(scheduledTaskManager.registerCron).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('should handle polling errors', () => {
-			beforeEach(() => {
-				workflow.getTriggerNodes.mockReturnValue([]);
-				workflow.getPollNodes.mockReturnValue([pollNode]);
-			});
-
 			it('should throw error when poll fails during initial testing', async () => {
 				const error = new Error('Poll function failed');
-				triggersAndPollers.runPoll.mockRejectedValueOnce(error);
 
-				await expect(
-					activeWorkflows.add(
-						workflowId,
-						workflow,
-						additionalData,
-						mode,
-						activation,
-						getTriggerFunctions,
-						getPollFunctions,
-					),
-				).rejects.toThrow(WorkflowActivationError);
+				await expect(addWorkflow({ pollNodes: [pollNode], pollError: error })).rejects.toThrow(
+					WorkflowActivationError,
+				);
 
 				expect(triggersAndPollers.runPoll).toHaveBeenCalledWith(workflow, pollNode, pollFunctions);
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
@@ -232,15 +186,7 @@ describe('ActiveWorkflows', () => {
 					.mockResolvedValueOnce(null) // Succeed on first call (testing)
 					.mockRejectedValueOnce(error); // Fail on second call (regular polling)
 
-				await activeWorkflows.add(
-					workflowId,
-					workflow,
-					additionalData,
-					mode,
-					activation,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				await addWorkflow({ pollNodes: [pollNode] });
 
 				// Get the executeTrigger function that was registered
 				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
@@ -257,23 +203,13 @@ describe('ActiveWorkflows', () => {
 	});
 
 	describe('remove()', () => {
-		beforeEach(() => {
-			workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-			workflow.getPollNodes.mockReturnValue([]);
-		});
+		const setupForRemoval = async () => {
+			await addWorkflow({ triggerNodes: [triggerNode] });
+			return await activeWorkflows.remove(workflowId);
+		};
 
 		it('should remove an active workflow', async () => {
-			await activeWorkflows.add(
-				workflowId,
-				workflow,
-				additionalData,
-				mode,
-				activation,
-				getTriggerFunctions,
-				getPollFunctions,
-			);
-
-			const result = await activeWorkflows.remove(workflowId);
+			const result = await setupForRemoval();
 
 			expect(result).toBe(true);
 			expect(activeWorkflows.isActive(workflowId)).toBe(false);
@@ -292,17 +228,7 @@ describe('ActiveWorkflows', () => {
 			const triggerCloseError = new TriggerCloseError(triggerNode, { level: 'warning' });
 			(triggerResponse.closeFunction as jest.Mock).mockRejectedValueOnce(triggerCloseError);
 
-			await activeWorkflows.add(
-				workflowId,
-				workflow,
-				additionalData,
-				mode,
-				activation,
-				getTriggerFunctions,
-				getPollFunctions,
-			);
-
-			const result = await activeWorkflows.remove(workflowId);
+			const result = await setupForRemoval();
 
 			expect(result).toBe(true);
 			expect(activeWorkflows.isActive(workflowId)).toBe(false);
@@ -316,15 +242,7 @@ describe('ActiveWorkflows', () => {
 			const error = new Error('Close function failed');
 			(triggerResponse.closeFunction as jest.Mock).mockRejectedValueOnce(error);
 
-			await activeWorkflows.add(
-				workflowId,
-				workflow,
-				additionalData,
-				mode,
-				activation,
-				getTriggerFunctions,
-				getPollFunctions,
-			);
+			await addWorkflow({ triggerNodes: [triggerNode] });
 
 			await expect(activeWorkflows.remove(workflowId)).rejects.toThrow(
 				`Failed to deactivate trigger of workflow ID "${workflowId}": "Close function failed"`,
@@ -337,18 +255,7 @@ describe('ActiveWorkflows', () => {
 
 	describe('get() and isActive()', () => {
 		it('should return workflow data for active workflow', async () => {
-			workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-			workflow.getPollNodes.mockReturnValue([]);
-
-			await activeWorkflows.add(
-				workflowId,
-				workflow,
-				additionalData,
-				mode,
-				activation,
-				getTriggerFunctions,
-				getPollFunctions,
-			);
+			await addWorkflow({ triggerNodes: [triggerNode] });
 
 			expect(activeWorkflows.isActive(workflowId)).toBe(true);
 			expect(activeWorkflows.get(workflowId)).toBeDefined();
@@ -362,18 +269,7 @@ describe('ActiveWorkflows', () => {
 
 	describe('allActiveWorkflows()', () => {
 		it('should return all active workflow IDs', async () => {
-			workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-			workflow.getPollNodes.mockReturnValue([]);
-
-			await activeWorkflows.add(
-				workflowId,
-				workflow,
-				additionalData,
-				mode,
-				activation,
-				getTriggerFunctions,
-				getPollFunctions,
-			);
+			await addWorkflow({ triggerNodes: [triggerNode] });
 
 			const activeIds = activeWorkflows.allActiveWorkflows();
 
@@ -383,18 +279,7 @@ describe('ActiveWorkflows', () => {
 
 	describe('removeAllTriggerAndPollerBasedWorkflows()', () => {
 		it('should remove all active workflows', async () => {
-			workflow.getTriggerNodes.mockReturnValue([triggerNode]);
-			workflow.getPollNodes.mockReturnValue([]);
-
-			await activeWorkflows.add(
-				workflowId,
-				workflow,
-				additionalData,
-				mode,
-				activation,
-				getTriggerFunctions,
-				getPollFunctions,
-			);
+			await addWorkflow({ triggerNodes: [triggerNode] });
 
 			await activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 
