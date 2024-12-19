@@ -313,7 +313,6 @@ onBeforeUnmount(() => {
 			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
 		>
 			<CanvasHandleRenderer
-				v-if="source"
 				v-bind="source"
 				:mode="CanvasConnectionMode.Output"
 				:is-read-only="readOnly"
@@ -330,7 +329,6 @@ onBeforeUnmount(() => {
 			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
 		>
 			<CanvasHandleRenderer
-				v-if="target"
 				v-bind="target"
 				:mode="CanvasConnectionMode.Input"
 				:is-read-only="readOnly"
