@@ -218,7 +218,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
 - **Typos:**
   - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
 
-#### **3. PR Specific Rules**
+#### **3. PR Specific Requirements**
 
 - **Small PRs Only:**
   - Focus on a single feature or fix per PR.
