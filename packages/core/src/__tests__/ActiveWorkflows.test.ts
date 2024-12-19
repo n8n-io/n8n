@@ -96,6 +96,35 @@ describe('ActiveWorkflows', () => {
 				expect(workflow.getPollNodes).toHaveBeenCalled();
 				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
 			});
+
+			it('with both trigger and polling nodes', async () => {
+				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
+				workflow.getPollNodes.mockReturnValue([pollNode]);
+
+				await activeWorkflows.add(
+					workflowId,
+					workflow,
+					additionalData,
+					mode,
+					activation,
+					getTriggerFunctions,
+					getPollFunctions,
+				);
+
+				expect(activeWorkflows.isActive(workflowId)).toBe(true);
+				expect(workflow.getTriggerNodes).toHaveBeenCalled();
+				expect(workflow.getPollNodes).toHaveBeenCalled();
+				expect(triggersAndPollers.runTrigger).toHaveBeenCalledWith(
+					workflow,
+					triggerNode,
+					getTriggerFunctions,
+					additionalData,
+					mode,
+					activation,
+				);
+				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
+				expect(triggersAndPollers.runPoll).toHaveBeenCalledWith(workflow, pollNode, pollFunctions);
+			});
 		});
 
 		describe('should throw error', () => {
