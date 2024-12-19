@@ -8,7 +8,6 @@ mockChannel.connection = mockConnection;
 const connect = jest.fn().mockReturnValue(mockConnection);
 jest.mock('amqplib', () => ({ connect }));
 
-import type { TriggerOptions } from '../types';
 import {
 	parseMessage,
 	rabbitmqConnect,
@@ -17,6 +16,7 @@ import {
 	rabbitmqCreateChannel,
 	MessageTracker,
 } from '../GenericFunctions';
+import type { TriggerOptions } from '../types';
 
 describe('RabbitMQ GenericFunctions', () => {
 	const credentials = {

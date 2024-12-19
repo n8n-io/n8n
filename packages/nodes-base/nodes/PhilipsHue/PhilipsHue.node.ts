@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { getUser, philipsHueApiRequest } from './GenericFunctions';
-
 import { lightFields, lightOperations } from './LightDescription';
 
 export class PhilipsHue implements INodeType {

@@ -1,7 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
-import * as userActivity from './userActivity/UserActivity.resource';
+
 import * as report from './report/Report.resource';
+import * as userActivity from './userActivity/UserActivity.resource';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',

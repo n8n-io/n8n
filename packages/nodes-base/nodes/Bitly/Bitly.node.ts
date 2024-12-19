@@ -9,9 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { linkFields, linkOperations } from './LinkDescription';
-
 import { bitlyApiRequest, bitlyApiRequestAllItems } from './GenericFunctions';
+import { linkFields, linkOperations } from './LinkDescription';
 
 export class Bitly implements INodeType {
 	description: INodeTypeDescription = {

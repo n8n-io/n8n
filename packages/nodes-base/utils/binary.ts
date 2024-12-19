@@ -1,13 +1,12 @@
+import iconv from 'iconv-lite';
+import get from 'lodash/get';
 import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
+import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
+import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import type { WorkBook, WritingOptions } from 'xlsx';
 import { utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
-import get from 'lodash/get';
-import iconv from 'iconv-lite';
-
-import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
-import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import { flattenObject } from '@utils/utilities';
 
 export type JsonToSpreadsheetBinaryFormat = 'csv' | 'html' | 'rtf' | 'ods' | 'xls' | 'xlsx';

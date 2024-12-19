@@ -1,5 +1,6 @@
-import { parse as parseUrl } from 'url';
 import nock from 'nock';
+import { parse as parseUrl } from 'url';
+
 import {
 	initBinaryDataService,
 	setup,

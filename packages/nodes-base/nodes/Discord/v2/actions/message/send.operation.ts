@@ -5,15 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
-import {
-	embedsFixedCollection,
-	filesFixedCollection,
-	textChannelRLC,
-	userRLC,
-} from '../common.description';
 
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
 	checkAccessToChannel,
 	parseDiscordError,
@@ -22,6 +15,13 @@ import {
 	prepareMultiPartForm,
 	prepareOptions,
 } from '../../helpers/utils';
+import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
+import {
+	embedsFixedCollection,
+	filesFixedCollection,
+	textChannelRLC,
+	userRLC,
+} from '../common.description';
 
 const properties: INodeProperties[] = [
 	{

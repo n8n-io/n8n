@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
 import { workableApiRequest } from './GenericFunctions';
 
 export class WorkableTrigger implements INodeType {

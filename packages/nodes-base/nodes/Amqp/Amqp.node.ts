@@ -1,6 +1,3 @@
-import type { Connection, ContainerOptions, Dictionary, EventContext, Sender } from 'rhea';
-import { create_container } from 'rhea';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -13,6 +10,8 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { Connection, ContainerOptions, Dictionary, EventContext, Sender } from 'rhea';
+import { create_container } from 'rhea';
 
 async function checkIfCredentialsValid(
 	credentials: IDataObject,

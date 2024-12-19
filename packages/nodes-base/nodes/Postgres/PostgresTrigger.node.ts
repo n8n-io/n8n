@@ -7,6 +7,7 @@ import {
 	type ITriggerResponse,
 	NodeConnectionType,
 } from 'n8n-workflow';
+
 import {
 	pgTriggerFunction,
 	initDB,

@@ -10,6 +10,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+
 import { mailchimpApiRequest } from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {

@@ -6,10 +6,8 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-
 import { NodeOperationError } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	Mysql2Pool,
 	QueryMode,
@@ -18,8 +16,8 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
-
 import { BATCH_MODE } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function escapeSqlIdentifier(identifier: string): string {
 	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];

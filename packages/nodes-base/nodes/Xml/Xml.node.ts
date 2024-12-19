@@ -1,4 +1,3 @@
-import { Builder, Parser } from 'xml2js';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,6 +5,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { Builder, Parser } from 'xml2js';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {

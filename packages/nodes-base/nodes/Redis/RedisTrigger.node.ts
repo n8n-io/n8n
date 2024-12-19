@@ -6,8 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { redisConnectionTest, setupRedisClient } from './utils';
 import type { RedisCredential } from './types';
+import { redisConnectionTest, setupRedisClient } from './utils';
 
 interface Options {
 	jsonParseBody: boolean;

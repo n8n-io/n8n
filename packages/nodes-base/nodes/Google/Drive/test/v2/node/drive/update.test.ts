@@ -1,9 +1,7 @@
 import nock from 'nock';
 
 import * as update from '../../../../v2/actions/drive/update.operation';
-
 import * as transport from '../../../../v2/transport';
-
 import { createMockExecuteFunction, driveNode } from '../helpers';
 
 jest.mock('../../../../v2/transport', () => {

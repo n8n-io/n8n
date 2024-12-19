@@ -1,3 +1,6 @@
+import FormData from 'form-data';
+import { isEmpty } from 'lodash';
+import { extension } from 'mime-types';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -6,9 +9,7 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import { isEmpty } from 'lodash';
-import FormData from 'form-data';
-import { extension } from 'mime-types';
+
 import { capitalize } from '../../../../utils/utilities';
 import { discordApiRequest } from '../transport';
 

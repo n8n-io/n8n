@@ -1,7 +1,8 @@
-import nock from 'nock';
 import { WorkflowExecute } from 'n8n-core';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 import { createDeferredPromise, Workflow } from 'n8n-workflow';
+import nock from 'nock';
+
 import * as Helpers from './Helpers';
 import type { WorkflowTestData } from './types';
 

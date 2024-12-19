@@ -10,10 +10,8 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-
-import { userFields, userOperations } from './UserDescription';
-
 import { groupFields, groupOperations } from './GroupDescripion';
+import { userFields, userOperations } from './UserDescription';
 
 export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,11 +1,12 @@
 import { mock } from 'jest-mock-extended';
+import { DateTime } from 'luxon';
 import type {
 	FormFieldsParameter,
 	INode,
 	IWebhookFunctions,
 	MultiPartFormData,
 } from 'n8n-workflow';
-import { DateTime } from 'luxon';
+
 import { formWebhook, prepareFormData, prepareFormReturnItem, resolveRawData } from '../utils';
 
 describe('FormTrigger, formWebhook', () => {

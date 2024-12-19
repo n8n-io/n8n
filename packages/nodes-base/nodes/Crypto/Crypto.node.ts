@@ -1,7 +1,5 @@
 import type { BinaryToTextEncoding } from 'crypto';
 import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
-import { pipeline } from 'stream/promises';
-import { v4 as uuid } from 'uuid';
 import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
@@ -11,6 +9,8 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { deepCopy, BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { pipeline } from 'stream/promises';
+import { v4 as uuid } from 'uuid';
 
 const unsupportedAlgorithms = [
 	'RSA-MD4',

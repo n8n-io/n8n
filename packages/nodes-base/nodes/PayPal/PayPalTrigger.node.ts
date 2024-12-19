@@ -10,6 +10,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+
 import { payPalApiRequest, upperFist } from './GenericFunctions';
 
 export class PayPalTrigger implements INodeType {

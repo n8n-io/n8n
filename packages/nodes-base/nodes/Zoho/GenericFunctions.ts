@@ -1,3 +1,5 @@
+import flow from 'lodash/flow';
+import sortBy from 'lodash/sortBy';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -8,9 +10,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import flow from 'lodash/flow';
-import sortBy from 'lodash/sortBy';
 
 import type {
 	AllFields,
@@ -47,9 +46,7 @@ export async function zohoApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 ) {
-	const { oauthTokenData } = (await this.getCredentials(
-		'zohoOAuth2Api',
-	)) as ZohoOAuth2ApiCredentials;
+	const { oauthTokenData } = await this.getCredentials<ZohoOAuth2ApiCredentials>('zohoOAuth2Api');
 
 	const options: IRequestOptions = {
 		body: {

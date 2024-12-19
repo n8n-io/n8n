@@ -1,8 +1,8 @@
 import type { DynamicStructuredToolInput } from '@langchain/core/tools';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import { StructuredOutputParser } from 'langchain/output_parsers';
 import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
-import { StructuredOutputParser } from 'langchain/output_parsers';
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
 

@@ -1,6 +1,4 @@
-import type { Readable } from 'stream';
 import mergeWith from 'lodash/mergeWith';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,6 +11,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import {
 	filterSortSearchListItems,
@@ -22,13 +21,9 @@ import {
 	simplifyIssueOutput,
 	validateJSON,
 } from './GenericFunctions';
-
 import { issueAttachmentFields, issueAttachmentOperations } from './IssueAttachmentDescription';
-
 import { issueCommentFields, issueCommentOperations } from './IssueCommentDescription';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import type {
 	IFields,
 	IIssue,
@@ -36,7 +31,6 @@ import type {
 	INotify,
 	NotificationRecipientsRestrictions,
 } from './IssueInterface';
-
 import { userFields, userOperations } from './UserDescription';
 
 export class Jira implements INodeType {

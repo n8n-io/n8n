@@ -1,8 +1,10 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { calendarRLC, eventRLC } from '../../descriptions';
 import { decodeOutlookId, eventfields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { calendarRLC, eventRLC } from '../../descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	calendarRLC,

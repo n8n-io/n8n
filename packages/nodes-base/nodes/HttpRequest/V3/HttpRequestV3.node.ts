@@ -27,6 +27,7 @@ import type { Readable } from 'stream';
 
 import { keysToLowercase } from '@utils/utilities';
 
+import { mainProperties } from './Description';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
@@ -38,7 +39,6 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import { mainProperties } from './Description';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {

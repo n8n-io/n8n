@@ -1,7 +1,4 @@
 import nock from 'nock';
-import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
-
-import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
 
 import {
 	getChatResponse,
@@ -16,6 +13,8 @@ import {
 	sendAudioResponse,
 	getMemberResponse,
 } from './apiResponses';
+import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
+import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
 
 describe('Telegram', () => {
 	describe('Run Telegram workflow', () => {

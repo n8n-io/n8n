@@ -10,12 +10,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import pgPromise from 'pg-promise';
 
-import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
-
 import { oldVersionNotice } from '@utils/descriptions';
+
+import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',

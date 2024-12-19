@@ -1,7 +1,9 @@
-import nock from 'nock';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { returnId } from '../V2/GenericFunctions';
+import nock from 'nock';
+
 import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
+import { returnId } from '../V2/GenericFunctions';
 
 const searchResult = {
 	data: [

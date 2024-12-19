@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { ItemListsType } from './node.type';
 
 import * as itemList from './itemList';
+import type { ItemListsType } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];

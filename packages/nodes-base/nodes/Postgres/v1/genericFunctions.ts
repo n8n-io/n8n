@@ -2,6 +2,7 @@ import { ApplicationError } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
+
 import { getResolvables } from '@utils/utilities';
 
 /**

@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import glob from 'fast-glob';
 import { spawn } from 'child_process';
+import glob from 'fast-glob';
 import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
-import { join, dirname, resolve as resolvePath } from 'path';
-import { Container } from 'typedi';
-import { file as tmpFile } from 'tmp-promise';
-
-import { jsonParse } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+import { join, dirname, resolve as resolvePath } from 'path';
+import { file as tmpFile } from 'tmp-promise';
+import { Container } from 'typedi';
+
 import type { IBuildOptions } from './Interfaces';
 
 /**

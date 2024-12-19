@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	INodeExecutionData,
@@ -7,7 +8,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import moment from 'moment-timezone';
 
 interface PollData {
 	lastItemDate?: string;

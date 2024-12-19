@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { MicrosoftExcel } from './node.type';
 
+import type { MicrosoftExcel } from './node.type';
 import * as table from './table/Table.resource';
 import * as workbook from './workbook/Workbook.resource';
 import * as worksheet from './worksheet/Worksheet.resource';

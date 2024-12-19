@@ -10,7 +10,6 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import type { IContactUpdate } from './ContactInterface';
-
 import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(

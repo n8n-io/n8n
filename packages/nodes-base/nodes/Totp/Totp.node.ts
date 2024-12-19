@@ -4,9 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import OTPAuth from 'otpauth';
 
 export class Totp implements INodeType {

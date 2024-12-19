@@ -1,4 +1,3 @@
-import { URLSearchParams } from 'url';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -10,11 +9,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
+import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { wrapData } from '../../utils/utilities';
 import { nextCloudApiRequest } from './GenericFunctions';
+import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {

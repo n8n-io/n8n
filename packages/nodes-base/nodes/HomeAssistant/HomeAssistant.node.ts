@@ -12,27 +12,19 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { configOperations } from './ConfigDescription';
-
-import { serviceFields, serviceOperations } from './ServiceDescription';
-
-import { stateFields, stateOperations } from './StateDescription';
-
-import { eventFields, eventOperations } from './EventDescription';
-
-import { logFields, logOperations } from './LogDescription';
-
-import { templateFields, templateOperations } from './TemplateDescription';
-
-import { historyFields, historyOperations } from './HistoryDescription';
-
 import { cameraProxyFields, cameraProxyOperations } from './CameraProxyDescription';
-
+import { configOperations } from './ConfigDescription';
+import { eventFields, eventOperations } from './EventDescription';
 import {
 	getHomeAssistantEntities,
 	getHomeAssistantServices,
 	homeAssistantApiRequest,
 } from './GenericFunctions';
+import { historyFields, historyOperations } from './HistoryDescription';
+import { logFields, logOperations } from './LogDescription';
+import { serviceFields, serviceOperations } from './ServiceDescription';
+import { stateFields, stateOperations } from './StateDescription';
+import { templateFields, templateOperations } from './TemplateDescription';
 
 export class HomeAssistant implements INodeType {
 	description: INodeTypeDescription = {

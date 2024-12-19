@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export async function googleApiRequest(

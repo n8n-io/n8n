@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
+
 import {
 	executionDurationProperty,
 	iconSelector,

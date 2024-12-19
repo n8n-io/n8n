@@ -1,4 +1,5 @@
 import { NodeConnectionType, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+
 import { auditFields, auditOperations } from './AuditDescription';
 import { credentialFields, credentialOperations } from './CredentialDescription';
 import { executionFields, executionOperations } from './ExecutionDescription';

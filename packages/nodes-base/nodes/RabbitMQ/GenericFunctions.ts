@@ -1,3 +1,4 @@
+import * as amqplib from 'amqplib';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,8 +6,9 @@ import type {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 import { jsonParse, sleep } from 'n8n-workflow';
-import * as amqplib from 'amqplib';
+
 import { formatPrivateKey } from '@utils/utilities';
+
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
 
 const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'] as const;

@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
 import {
 	getFileSha,
 	githubApiRequest,

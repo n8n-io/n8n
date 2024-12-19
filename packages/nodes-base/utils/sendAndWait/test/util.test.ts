@@ -1,6 +1,7 @@
 import { type MockProxy, mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import {
 	getSendAndWaitProperties,
 	getSendAndWaitConfig,

@@ -24,7 +24,6 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
-
 import {
 	getAccessTokens,
 	haloPSAApiRequest,

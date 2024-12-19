@@ -1,3 +1,11 @@
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
+import lt from 'lodash/lt';
+import pick from 'lodash/pick';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,19 +15,11 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
 
-import get from 'lodash/get';
-import isEmpty from 'lodash/isEmpty';
-import isEqual from 'lodash/isEqual';
-import lt from 'lodash/lt';
-import pick from 'lodash/pick';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-
-import { sortByCode } from '../V3/helpers/utils';
-import * as summarize from './summarize.operation';
 import { flattenKeys, shuffleArray, compareItems } from '@utils/utilities';
+
+import * as summarize from './summarize.operation';
+import { sortByCode } from '../V3/helpers/utils';
 
 export class ItemListsV2 implements INodeType {
 	description: INodeTypeDescription;

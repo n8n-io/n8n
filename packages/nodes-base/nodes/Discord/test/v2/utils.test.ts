@@ -1,4 +1,6 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+
+import * as transport from '../../v2//transport/discord.api';
 import {
 	createSimplifyFunction,
 	prepareOptions,
@@ -6,8 +8,6 @@ import {
 	checkAccessToGuild,
 	setupChannelGetter,
 } from '../../v2/helpers/utils';
-
-import * as transport from '../../v2//transport/discord.api';
 
 const node: INode = {
 	id: '1',

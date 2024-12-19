@@ -1,3 +1,4 @@
+import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 import type {
 	IDataObject,
 	IDisplayOptions,
@@ -5,10 +6,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-
 import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
-
-import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 
 /**
  * Creates an array of elements split into groups the length of `size`.

@@ -13,7 +13,6 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
-
 import { MessageTracker, rabbitmqConnectQueue, parseMessage } from './GenericFunctions';
 import type { TriggerOptions } from './types';
 

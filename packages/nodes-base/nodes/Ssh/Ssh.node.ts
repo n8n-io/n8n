@@ -1,5 +1,4 @@
 import { writeFile } from 'fs/promises';
-import type { Readable } from 'stream';
 import type {
 	ICredentialTestFunctions,
 	ICredentialsDecrypted,
@@ -11,11 +10,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import { file as tmpFile } from 'tmp-promise';
-
 import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
+import type { Readable } from 'stream';
+import { file as tmpFile } from 'tmp-promise';
+
 import { formatPrivateKey } from '@utils/utilities';
 
 async function resolveHomeDir(

@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
-import * as message from './message';
 import * as channel from './channel';
 import * as member from './member';
+import * as message from './message';
 import * as webhook from './webhook';
 
 export const versionDescription: INodeTypeDescription = {

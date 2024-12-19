@@ -1,5 +1,6 @@
 import type { INodeExecutionData } from 'n8n-workflow';
 import { NodeExecutionOutput } from 'n8n-workflow';
+
 import { addPostExecutionWarning } from '../utils';
 
 describe('addPostExecutionWarning', () => {

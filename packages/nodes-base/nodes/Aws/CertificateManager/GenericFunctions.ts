@@ -1,5 +1,4 @@
 import get from 'lodash/get';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,

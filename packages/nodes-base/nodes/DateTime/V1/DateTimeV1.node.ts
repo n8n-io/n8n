@@ -1,3 +1,6 @@
+import set from 'lodash/set';
+import { DateTime as LuxonDateTime } from 'luxon';
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,14 +11,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 import { deepCopy, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import set from 'lodash/set';
-
-import moment from 'moment-timezone';
-
-import { DateTime as LuxonDateTime } from 'luxon';
 
 function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);

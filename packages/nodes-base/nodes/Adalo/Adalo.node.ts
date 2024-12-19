@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+
 import { collectionFields } from './CollectionDescription';
 import type { FieldsUiValues } from './types';
 

@@ -1,4 +1,5 @@
 import cheerio from 'cheerio';
+import get from 'lodash/get';
 import type {
 	INodeExecutionData,
 	IExecuteFunctions,
@@ -8,11 +9,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import get from 'lodash/get';
-import { placeholder } from './placeholder';
-import { getValue } from './utils';
-import type { IValueData } from './types';
+
 import { getResolvables, sanitizeDataPathKey } from '@utils/utilities';
+
+import { placeholder } from './placeholder';
+import type { IValueData } from './types';
+import { getValue } from './utils';
 
 export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 	if (!capitalize) return header;

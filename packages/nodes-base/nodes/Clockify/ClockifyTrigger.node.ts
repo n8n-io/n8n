@@ -1,5 +1,4 @@
 import moment from 'moment-timezone';
-
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -11,9 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { clockifyApiRequest } from './GenericFunctions';
-
 import { EntryTypeEnum } from './EntryTypeEnum';
+import { clockifyApiRequest } from './GenericFunctions';
 import type { IUserDto } from './UserDtos';
 import type { IWorkspaceDto } from './WorkpaceInterfaces';
 

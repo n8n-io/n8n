@@ -9,9 +9,8 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { phantombusterApiRequest, validateJSON } from './GenericFunctions';
-
 import { agentFields, agentOperations } from './AgentDescription';
+import { phantombusterApiRequest, validateJSON } from './GenericFunctions';
 
 // import {
 // 	sentenceCase,

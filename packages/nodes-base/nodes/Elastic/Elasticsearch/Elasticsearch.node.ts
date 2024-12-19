@@ -1,3 +1,4 @@
+import omit from 'lodash/omit';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,15 +9,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse, NodeApiError } from 'n8n-workflow';
 
-import omit from 'lodash/omit';
+import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 import {
 	elasticsearchApiRequest,
 	elasticsearchApiRequestAllItems,
 	elasticsearchBulkApiRequest,
 } from './GenericFunctions';
-
-import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
-
 import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
 export class Elasticsearch implements INodeType {

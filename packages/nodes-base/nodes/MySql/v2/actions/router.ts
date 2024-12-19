@@ -1,11 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { createPool } from '../transport';
-import type { MysqlNodeCredentials, QueryRunner } from '../helpers/interfaces';
-import { configureQueryRunner } from '../helpers/utils';
 import * as database from './database/Database.resource';
 import type { MySqlType } from './node.type';
+import type { MysqlNodeCredentials, QueryRunner } from '../helpers/interfaces';
+import { configureQueryRunner } from '../helpers/utils';
+import { createPool } from '../transport';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];

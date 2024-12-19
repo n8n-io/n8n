@@ -1,3 +1,5 @@
+import { DateTime } from 'luxon';
+import moment from 'moment-timezone';
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -8,8 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { DateTime } from 'luxon';
 import { togglApiRequest } from './GenericFunctions';
 
 export class TogglTrigger implements INodeType {

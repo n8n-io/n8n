@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';

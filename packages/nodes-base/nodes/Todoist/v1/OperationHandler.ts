@@ -1,9 +1,10 @@
 import type { IDataObject } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import type { Section, TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
 import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
-import type { Section, TodoistResponse } from './Service';
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;

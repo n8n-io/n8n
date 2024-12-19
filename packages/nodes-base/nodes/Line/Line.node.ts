@@ -8,7 +8,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
-
 import { notificationFields, notificationOperations } from './NotificationDescription';
 
 export class Line implements INodeType {

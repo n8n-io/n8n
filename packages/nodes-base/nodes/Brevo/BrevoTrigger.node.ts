@@ -7,6 +7,7 @@ import {
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 } from 'n8n-workflow';
+
 import { BrevoWebhookApi } from './GenericFunctions';
 
 export class BrevoTrigger implements INodeType {

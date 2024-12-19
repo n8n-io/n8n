@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -9,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import {
 	campaignFieldsMetadata,
 	mailchimpApiRequest,

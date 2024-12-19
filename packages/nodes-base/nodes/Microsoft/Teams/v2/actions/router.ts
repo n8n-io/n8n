@@ -5,11 +5,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { MicrosoftTeamsType } from './node.type';
-
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
 import * as chatMessage from './chatMessage';
+import type { MicrosoftTeamsType } from './node.type';
 import * as task from './task';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

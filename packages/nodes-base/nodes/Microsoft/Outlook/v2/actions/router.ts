@@ -1,7 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { MicrosoftOutlook } from './node.type';
 import * as calendar from './calendar';
 import * as contact from './contact';
 import * as draft from './draft';
@@ -10,6 +9,7 @@ import * as folder from './folder';
 import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
+import type { MicrosoftOutlook } from './node.type';
 
 export async function router(this: IExecuteFunctions) {
 	const items = this.getInputData();

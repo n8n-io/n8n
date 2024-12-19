@@ -11,16 +11,17 @@ import type {
 	IDataObject,
 	FormFieldsParameter,
 } from 'n8n-workflow';
-import type { IEmail } from './interfaces';
-import { escapeHtml } from '../utilities';
+
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
 	createEmailBody,
 } from './email-templates';
-import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
+import type { IEmail } from './interfaces';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
+import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
+import { escapeHtml } from '../utilities';
 
 type SendAndWaitConfig = {
 	title: string;
@@ -362,7 +363,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 		if (method === 'POST') {
 			const returnItem = await prepareFormReturnItem(this, fields, 'production', true);
-			const json = returnItem.json as IDataObject;
+			const json = returnItem.json;
 
 			delete json.submittedAt;
 			delete json.formMode;

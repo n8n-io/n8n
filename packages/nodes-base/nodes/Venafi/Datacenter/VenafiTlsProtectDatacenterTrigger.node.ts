@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IPollFunctions,
 	type IDataObject,
@@ -6,8 +7,6 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
 
 import { venafiApiRequest } from './GenericFunctions';
 

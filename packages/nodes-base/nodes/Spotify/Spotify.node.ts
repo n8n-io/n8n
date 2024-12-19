@@ -8,9 +8,9 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
-
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
+
+import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {

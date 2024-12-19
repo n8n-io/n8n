@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,11 +11,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import set from 'lodash/set';
+
+import { capitalize } from '@utils/utilities';
+
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
 import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
-import { capitalize } from '@utils/utilities';
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const mode = parameters.mode as string;

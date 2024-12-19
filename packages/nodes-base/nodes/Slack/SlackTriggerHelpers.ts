@@ -1,5 +1,6 @@
 import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import { slackApiRequest } from './V2/GenericFunctions';
 
 export async function getUserInfo(this: IWebhookFunctions, userId: string): Promise<any> {

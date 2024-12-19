@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { appendAttributionOption } from '../../utils/descriptions';
 
 export const webhookPath: INodeProperties = {
