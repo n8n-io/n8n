@@ -10,7 +10,13 @@
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["credentials/**/*.ts", "nodes/**/*.ts", "test/**/*.ts", "utils/**/*.ts"],
+	"include": [
+		"credentials/**/*.ts",
+		"nodes/**/*.ts",
+		"test/**/*.ts",
+		"utils/**/*.ts",
+		"types/**/*.ts"
+	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
 		{ "path": "../workflow/tsconfig.build.json" },

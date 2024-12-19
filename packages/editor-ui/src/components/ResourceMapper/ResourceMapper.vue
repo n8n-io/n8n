@@ -7,6 +7,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeParameterValueType,
 	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
@@ -52,6 +53,12 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
+		ignoreTypeMismatchErrors: false,
+		attemptToConvertTypes: false,
+		// This should always be true if `showTypeConversionOptions` is provided
+		// It's used to avoid accepting any value as string without casting it
+		// Which is the legacy behavior without these type options.
+		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
 	loading: false,
@@ -97,6 +104,10 @@ onMounted(async () => {
 			...state.parameterValues,
 			parameters: props.node.parameters,
 		};
+
+		if (showTypeConversionOptions.value) {
+			state.paramValue.convertFieldsToString = true;
+		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
@@ -161,10 +172,14 @@ const showMappingModeSelect = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
 });
 
+const showTypeConversionOptions = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.showTypeConversionOptions === true;
+});
+
 const showMatchingColumnsSelector = computed<boolean>(() => {
 	return (
 		!state.loading &&
-		props.parameter.typeOptions?.resourceMapper?.mode !== 'add' &&
+		['upsert', 'update'].includes(props.parameter.typeOptions?.resourceMapper?.mode ?? '') &&
 		state.paramValue.schema.length > 0
 	);
 });
@@ -190,6 +205,10 @@ const matchingColumns = computed<string[]>(() => {
 });
 
 const hasAvailableMatchingColumns = computed<boolean>(() => {
+	// 'map' mode doesn't require matching columns
+	if (resourceMapperMode.value === 'map') {
+		return true;
+	}
 	if (resourceMapperMode.value !== 'add' && resourceMapperMode.value !== 'upsert') {
 		return (
 			state.paramValue.schema.filter(
@@ -239,20 +258,14 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
-async function loadFieldsToMap(): Promise<void> {
+const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-
-	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
-	if (typeof methodName !== 'string') {
-		return;
-	}
-
 	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 		nodeTypeAndVersion: {
 			name: props.node?.type,
-			version: props.node.typeVersion,
+			version: props.node?.typeVersion,
 		},
 		currentNodeParameters: resolveRequiredParameters(
 			props.parameter,
@@ -262,7 +275,33 @@ async function loadFieldsToMap(): Promise<void> {
 		methodName,
 		credentials: props.node.credentials,
 	};
-	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+
+	return requestParams;
+};
+
+async function loadFieldsToMap(): Promise<void> {
+	if (!props.node) {
+		return;
+	}
+
+	const { resourceMapperMethod, localResourceMapperMethod } =
+		props.parameter.typeOptions?.resourceMapper ?? {};
+
+	let fetchedFields = null;
+
+	if (typeof resourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			resourceMapperMethod,
+		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+	} else if (typeof localResourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			localResourceMapperMethod,
+		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+
+		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
+	}
+
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
@@ -548,5 +587,52 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
+		<div
+			v-if="showTypeConversionOptions && state.paramValue.schema.length > 0"
+			:class="$style.typeConversionOptions"
+		>
+			<ParameterInputFull
+				:parameter="{
+					name: 'attemptToConvertTypes',
+					type: 'boolean',
+					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
+					default: false,
+					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+				}"
+				:path="props.path + '.attemptToConvertTypes'"
+				:value="state.paramValue.attemptToConvertTypes"
+				@update="
+					(x: IUpdateInformation<NodeParameterValueType>) => {
+						state.paramValue.attemptToConvertTypes = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+			<ParameterInputFull
+				:parameter="{
+					name: 'ignoreTypeMismatchErrors',
+					type: 'boolean',
+					displayName: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.displayName'),
+					default: false,
+					description: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.description'),
+				}"
+				:path="props.path + '.ignoreTypeMismatchErrors'"
+				:value="state.paramValue.ignoreTypeMismatchErrors"
+				@update="
+					(x: IUpdateInformation<NodeParameterValueType>) => {
+						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.typeConversionOptions {
+	display: grid;
+	padding: var(--spacing-m);
+	gap: var(--spacing-2xs);
+}
+</style>

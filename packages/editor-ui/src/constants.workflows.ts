@@ -175,6 +175,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
 	nodes: [
 		{
 			id: 'c055762a-8fe7-4141-a639-df2372f30060',
+			typeVersion: 1.1,
 			name: 'Execute Workflow Trigger',
 			type: 'n8n-nodes-base.executeWorkflowTrigger',
 			position: [260, 340],
