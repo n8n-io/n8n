@@ -1,7 +1,6 @@
 import nock from 'nock';
 
 import * as deleteRecord from '../../../../v2/actions/record/deleteRecord.operation';
-
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
 

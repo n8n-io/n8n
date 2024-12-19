@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+
 import { cockpitApiRequest } from './GenericFunctions';
 
 export async function getSingleton(
