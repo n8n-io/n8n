@@ -17,8 +17,7 @@ export class LoadWorkflowNodeContext extends NodeExecutionContext implements IWo
 			this.getNodeParameter = ((
 				parameterName: string,
 				itemIndex: number,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				fallbackValue?: any,
+				fallbackValue?: unknown,
 				options?: IGetNodeParameterOptions,
 			) =>
 				this._getNodeParameter(
