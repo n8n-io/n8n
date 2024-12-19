@@ -1,3 +1,12 @@
+## [1.73.1](https://github.com/n8n-io/n8n/compare/n8n@1.73.0...n8n@1.73.1) (2024-12-19)
+
+
+### Bug Fixes
+
+* **OpenAI Node:** Add quotes to default base URL ([#12312](https://github.com/n8n-io/n8n/issues/12312)) ([22ba3d2](https://github.com/n8n-io/n8n/commit/22ba3d21fceb1592ffc303caaf04c871eba509ff))
+
+
+
 # [1.73.0](https://github.com/n8n-io/n8n/compare/n8n@1.72.0...n8n@1.73.0) (2024-12-19)
 
 
