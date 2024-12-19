@@ -28,7 +28,10 @@ import { useContextMenu } from '@/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { useCanvas } from '@/composables/useCanvas';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import {
+	createCanvasConnectionHandleString,
+	insertSpacersBetweenEndpoints,
+} from '@/utils/canvasUtilsV2';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { isEqual } from 'lodash-es';
@@ -117,26 +120,6 @@ const mappedInputs = computed(() => {
 		...nonMainInputsWithSpacer.value.map(nonMainInputsMappingFn).filter(Boolean),
 	];
 });
-
-function insertSpacersBetweenEndpoints(
-	endpoints: CanvasConnectionPort[],
-	requiredEndpointsCount = 0,
-	minEndpointsCount = 4,
-) {
-	const endpointsWithSpacers: Array<CanvasConnectionPort | null> = [...endpoints];
-	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
-	const spacerCount = minEndpointsCount - requiredEndpointsCount - optionalNonMainInputsCount;
-
-	// Insert `null` in between required non-main inputs and non-required non-main inputs
-	// to separate them visually if there are less than 4 inputs in total
-	if (endpointsWithSpacers.length < minEndpointsCount && requiredEndpointsCount > 0) {
-		for (let i = 0; i < spacerCount; i++) {
-			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
-		}
-	}
-
-	return endpointsWithSpacers;
-}
 
 /**
  * Outputs
