@@ -15,6 +15,7 @@ import type {
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
+import chardet from 'chardet';
 import crypto, { createHmac } from 'crypto';
 import FileType from 'file-type';
 import FormData from 'form-data';
@@ -1048,6 +1049,10 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
+}
+
+export function detectBinaryEncoding(buffer: Buffer): string {
+	return chardet.detect(buffer) as string;
 }
 
 /**
