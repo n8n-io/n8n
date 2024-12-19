@@ -194,7 +194,8 @@ class ExtendedPGVectorStore extends PGVectorStore {
 		const { dimensions, ...rest } = args;
 		const postgresqlVectorStore = new this(embeddings, rest);
 
-		await postgresqlVectorStore._initializeClient();
+		// Workaround to fix https://github.com/langchain-ai/langchainjs/issues/5029#issuecomment-2468147921
+		// await postgresqlVectorStore._initializeClient();
 		await postgresqlVectorStore.ensureTableInDatabase(dimensions);
 		if (postgresqlVectorStore.collectionTableName) {
 			await postgresqlVectorStore.ensureCollectionTableInDatabase();
@@ -307,6 +308,7 @@ export class VectorStorePGVector extends createVectorStoreNode({
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
 
-		await PGVectorStore.fromDocuments(documents, embeddings, config);
+		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		await vectorStore.end();
 	},
 }) {}
