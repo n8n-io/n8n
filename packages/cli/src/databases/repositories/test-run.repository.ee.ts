@@ -21,12 +21,26 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	public async markAsRunning(id: string) {
-		return await this.update(id, { status: 'running', runAt: new Date() });
+	public async markAsRunning(id: string, totalCases: number) {
+		return await this.update(id, {
+			status: 'running',
+			runAt: new Date(),
+			totalCases,
+			passedCases: 0,
+			failedCases: 0,
+		});
 	}
 
 	public async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
+	}
+
+	public async incrementPassed(id: string) {
+		return await this.increment({ id }, 'passedCases', 1);
+	}
+
+	public async incrementFailed(id: string) {
+		return await this.increment({ id }, 'failedCases', 1);
 	}
 
 	public async getMany(testDefinitionId: string, options: ListQuery.Options) {
