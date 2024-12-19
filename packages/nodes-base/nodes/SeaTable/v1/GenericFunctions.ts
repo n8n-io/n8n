@@ -3,15 +3,11 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-	JsonObject,
-	IHttpRequestMethods,
 	IRequestOptions,
+	IHttpRequestMethods,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
-
-import { schema } from './Schema';
 
 import type {
 	ICredential,
@@ -22,6 +18,8 @@ import type {
 	IRow,
 	IRowObject,
 } from './Interfaces';
+import { schema } from './Schema';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) {
@@ -66,8 +64,8 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
 
 	return endpoint.replace(
-		/({{ *(access_token|dtable_uuid|server) *}})/g,
-		(match: string, _: string, name: TEndpointVariableName) => {
+		/{{ *(access_token|dtable_uuid|server) *}}/g,
+		(match: string, name: TEndpointVariableName) => {
 			return endpointVariables[name] || match;
 		},
 	);
@@ -78,7 +76,6 @@ export async function seaTableApiRequest(
 	ctx: ICtx,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	url: string | undefined = undefined,
