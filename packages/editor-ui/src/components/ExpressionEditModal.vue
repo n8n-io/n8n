@@ -245,7 +245,6 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	margin-bottom: 0;
 
 	:global(.el-dialog__body) {
-		background-color: var(--color-expression-editor-modal-background);
 		height: 100%;
 		padding: var(--spacing-s);
 	}
