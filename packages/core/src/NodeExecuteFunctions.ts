@@ -81,7 +81,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
-	LoggerProxy as Logger,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -101,6 +100,8 @@ import { stringify } from 'qs';
 import { Readable } from 'stream';
 import Container from 'typedi';
 import url, { URL, URLSearchParams } from 'url';
+
+import { Logger } from '@/logging/logger';
 
 import { BinaryDataService } from './BinaryData/BinaryData.service';
 import type { BinaryData } from './BinaryData/types';
@@ -207,7 +208,7 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 			'content-length': length,
 		};
 	} catch (error) {
-		Logger.error('Unable to calculate form data length', { error });
+		Container.get(Logger).error('Unable to calculate form data length', { error });
 	}
 }
 
@@ -798,7 +799,7 @@ export async function proxyRequestToAxios(
 			error.config = error.request = undefined;
 			error.options = pick(config ?? {}, ['url', 'method', 'data', 'headers']);
 			if (response) {
-				Logger.debug('Request proxied to Axios failed', { status: response.status });
+				Container.get(Logger).debug('Request proxied to Axios failed', { status: response.status });
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
@@ -1412,7 +1413,7 @@ export async function requestOAuth2(
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (error.response?.status === 401) {
-				Logger.debug(
+				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 				);
 				const tokenRefreshOptions: IDataObject = {};
@@ -1431,7 +1432,7 @@ export async function requestOAuth2(
 
 				let newToken;
 
-				Logger.debug(
+				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 				);
 				// if it's OAuth2 with client credentials grant type, get a new token
@@ -1442,7 +1443,7 @@ export async function requestOAuth2(
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
 
-				Logger.debug(
+				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 				);
 
@@ -1505,7 +1506,7 @@ export async function requestOAuth2(
 						Authorization: '',
 					};
 				}
-				Logger.debug(
+				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 				);
 
@@ -1518,7 +1519,7 @@ export async function requestOAuth2(
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
-				Logger.debug(
+				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 				);
 
@@ -1540,7 +1541,7 @@ export async function requestOAuth2(
 					credentials as unknown as ICredentialDataDecryptedObject,
 				);
 
-				Logger.debug(
+				this.logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
 				);
 
@@ -2747,6 +2748,7 @@ export function getExecuteTriggerFunctions(
 
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
+		logger: Container.get(Logger),
 		helpers: {
 			...getSSHTunnelFunctions(),
 			request: async (uriOrObject: string | object, options?: object) => {

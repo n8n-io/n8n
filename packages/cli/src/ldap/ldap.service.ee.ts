@@ -2,7 +2,7 @@
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
-import { Cipher } from 'n8n-core';
+import { Cipher, Logger } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 import { Service } from 'typedi';
@@ -14,7 +14,6 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logging/logger.service';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,

@@ -1,5 +1,5 @@
 import { rmSync } from 'fs';
-import { Credentials, InstanceSettings } from 'n8n-core';
+import { Credentials, InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
@@ -11,7 +11,6 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logging/logger.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,

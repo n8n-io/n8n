@@ -1,4 +1,5 @@
 import { writeFileSync } from 'fs';
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
@@ -10,7 +11,6 @@ import type { Variables } from '@/databases/entities/variables';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logging/logger.service';
 
 import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,

@@ -11,6 +11,7 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -36,7 +37,6 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 
 interface LoadedNodesAndCredentials {
