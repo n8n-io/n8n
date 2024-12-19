@@ -21,6 +21,16 @@ const DEFAULT_SUBWORKFLOW_NAME_2 = 'My Sub-Workflow 2';
 
 type FieldRow = readonly string[];
 
+const exampleFields = [
+	['aNumber', 'Number'],
+	['aString', 'String'],
+	['aArray', 'Array'],
+	['aObject', 'Object'],
+	['aAny', 'Allow Any Type'],
+	// bool last since it's not an inputField so we'll skip it for some cases
+	['aBool', 'Boolean'],
+] as const;
+
 /**
  * Populate multiValue fixedCollections. Only supports fixedCollections for which all fields can be defined via keyboard typing
  *
@@ -83,6 +93,21 @@ function navigateWorkflowSelectionDropdown(index: number, expectedText: string) 
 		.click();
 }
 
+function populateMapperFields(values: readonly string[], offset: number) {
+	for (const [i, value] of values.entries()) {
+		cy.getByTestId('parameter-input')
+			.eq(offset + i)
+			.type(value);
+
+		// Click on a parent to dismiss the pop up hiding the field below.
+		cy.getByTestId('parameter-input')
+			.eq(offset + i)
+			.parent()
+			.parent()
+			.click('topLeft');
+	}
+}
+
 // This function starts off in the Child Workflow Input Trigger, assuming we just defined the input fields
 // It then navigates back to the parent and validates output
 function validateAndReturnToParent(targetChild: string, offset: number, fields: string[]) {
@@ -127,7 +152,7 @@ function setWorkflowInputFieldValue(index: number, value: string) {
 	ndv.actions.typeIntoFixedCollectionItem('workflowInputs', index, value);
 }
 
-describe('Sub-workflow creation', () => {
+describe('Sub-workflow creation and typed usage', () => {
 	beforeEach(() => {
 		navigateToNewWorkflowPage();
 		pasteWorkflow(SUB_WORKFLOW_INPUTS);
@@ -150,23 +175,33 @@ describe('Sub-workflow creation', () => {
 		openNode('Execute Workflow Trigger');
 	});
 
-	it('works with Fields input source into JSON input source', () => {
-		ndv.getters.nodeOutputHint().should('exist');
-
-		const fields = [
-			['aString', 'String'],
-			['aNumber', 'Number'],
-			['aBool', 'Boolean'],
-			['aArray', 'Array'],
-			['aObject', 'Object'],
-			['aAny', 'Allow Any Type'],
-		] as const;
-		populateFields(fields);
+	it.only('works with type-checked values', () => {
+		populateFields(exampleFields);
 
 		validateAndReturnToParent(
 			DEFAULT_SUBWORKFLOW_NAME_1,
 			1,
-			fields.map((f) => f[0]),
+			exampleFields.map((f) => f[0]),
+		);
+
+		const values = [
+			'-1', // number fields don't support `=` switch to expression, so let's test the Fixed case with it
+			...exampleFields.slice(1).map((x) => `={{}{{} $json.a${x[0]}`), // }} are added automatically
+		];
+
+		// this matches with the pinned data provided in the fixture
+		populateMapperFields(values, 2);
+	});
+
+	it('works with Fields input source into JSON input source', () => {
+		ndv.getters.nodeOutputHint().should('exist');
+
+		populateFields(exampleFields);
+
+		validateAndReturnToParent(
+			DEFAULT_SUBWORKFLOW_NAME_1,
+			1,
+			exampleFields.map((f) => f[0]),
 		);
 
 		cy.window().then((win) => {
@@ -188,7 +223,7 @@ describe('Sub-workflow creation', () => {
 			.type('Using JSON Example{downArrow}{enter}');
 
 		const exampleJson =
-			'{{}' + fields.map((x) => `"${x[0]}": ${makeExample(x[1])}`).join(',') + '}';
+			'{{}' + exampleFields.map((x) => `"${x[0]}": ${makeExample(x[1])}`).join(',') + '}';
 		cy.getByTestId('parameter-input-jsonExample')
 			.find('.cm-line')
 			.eq(0)
@@ -196,12 +231,11 @@ describe('Sub-workflow creation', () => {
 
 		// first one doesn't work for some reason, might need to wait for something?
 		ndv.actions.execute();
-		ndv.actions.execute();
 
 		validateAndReturnToParent(
 			DEFAULT_SUBWORKFLOW_NAME_2,
 			2,
-			fields.map((f) => f[0]),
+			exampleFields.map((f) => f[0]),
 		);
 
 		// populateJson(fields);
