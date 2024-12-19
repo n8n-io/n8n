@@ -70,7 +70,7 @@ export const getConfigResponse = {
 		ffffffffe0341b1b376a2389376a2389: {
 			'last use date': '2014-07-17T07:21:38',
 			'create date': '2014-04-08T08:55:10',
-			name: 'PhilipsHueAndroidApp#TCT ALCATEL ONE YOU',
+			name: 'PhilipsHueAndroidApp#TCT ALCATEL ONE TOU',
 		},
 		pAtwdCV8NZId25Gk: {
 			'last use date': '2014-05-07T18:28:29',

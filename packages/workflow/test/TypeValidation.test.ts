@@ -118,7 +118,7 @@ describe('Type Validation', () => {
 	});
 
 	it('should not validate invalid boolean values', () => {
-		const INVALID_VALUES = ['tru', 'false', 1111, 2, -1, 'yes', 'no'];
+		const INVALID_VALUES = ['tru', 'fals', 1111, 2, -1, 'yes', 'no'];
 		INVALID_VALUES.forEach((value) =>
 			expect(validateFieldType('boolean', value, 'boolean').valid).toEqual(false),
 		);

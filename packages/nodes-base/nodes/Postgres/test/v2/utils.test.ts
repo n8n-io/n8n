@@ -112,15 +112,15 @@ describe('Test PostgresV2, parsePostgresError', () => {
 
 	it('should update message with syntax error', () => {
 		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
-		const errorMessage = String.raw`syntax error at or near "select"`;
+		const errorMessage = String.raw`syntax error at or near "seelect"`;
 		const error = new Error();
 		error.message = errorMessage;
 
 		const parsedError = parsePostgresError(node, error, [
-			{ query: 'select * from my_table', values: [] },
+			{ query: 'seelect * from my_table', values: [] },
 		]);
 		expect(parsedError).toBeDefined();
-		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
+		expect(parsedError.message).toEqual('Syntax error at line 1 near "seelect"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
 	});
 });
