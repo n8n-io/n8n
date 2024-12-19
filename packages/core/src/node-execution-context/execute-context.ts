@@ -1,4 +1,5 @@
 import type {
+	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
 	IExecuteData,
@@ -36,6 +37,7 @@ import {
 	getSSHTunnelFunctions,
 	getFileSystemHelperFunctions,
 	getCheckProcessedHelperFunctions,
+	detectBinaryEncoding,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -95,6 +97,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
 		this.nodeHelpers = {
@@ -149,7 +152,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	async getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(

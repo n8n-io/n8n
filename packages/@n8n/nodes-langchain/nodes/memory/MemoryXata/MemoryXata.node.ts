@@ -10,9 +10,10 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { getSessionId } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	sessionIdOption,
 	sessionKeyProperty,

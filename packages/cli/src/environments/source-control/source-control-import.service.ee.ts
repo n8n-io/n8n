@@ -1,13 +1,8 @@
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
-import { Credentials, InstanceSettings } from 'n8n-core';
-import {
-	ApplicationError,
-	jsonParse,
-	ErrorReporterProxy as ErrorReporter,
-	ensureError,
-} from 'n8n-workflow';
+import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ApplicationError, jsonParse, ensureError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 import { Container, Service } from 'typedi';
@@ -56,6 +51,7 @@ export class SourceControlImportService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly variablesService: VariablesService,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly tagRepository: TagRepository,
@@ -104,7 +100,7 @@ export class SourceControlImportService {
 			if (local.updatedAt instanceof Date) {
 				updatedAt = local.updatedAt;
 			} else {
-				ErrorReporter.warn('updatedAt is not a Date', {
+				this.errorReporter.warn('updatedAt is not a Date', {
 					extra: {
 						type: typeof local.updatedAt,
 						value: local.updatedAt,

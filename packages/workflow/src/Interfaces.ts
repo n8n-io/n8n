@@ -421,60 +421,6 @@ export interface IRunNodeResponse {
 	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
 }
-export interface IGetExecuteFunctions {
-	(
-		workflow: Workflow,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		inputData: ITaskDataConnections,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
-		closeFunctions: CloseFunction[],
-		abortSignal?: AbortSignal,
-	): IExecuteFunctions;
-}
-
-export interface IGetExecuteSingleFunctions {
-	(
-		workflow: Workflow,
-		runExecutionData: IRunExecutionData,
-		runIndex: number,
-		connectionInputData: INodeExecutionData[],
-		inputData: ITaskDataConnections,
-		node: INode,
-		itemIndex: number,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executeData: IExecuteData,
-		mode: WorkflowExecuteMode,
-		abortSignal?: AbortSignal,
-	): IExecuteSingleFunctions;
-}
-
-export interface IGetExecuteHookFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-		webhookData?: IWebhookData,
-	): IHookFunctions;
-}
-
-export interface IGetExecuteWebhookFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		webhookData: IWebhookData,
-		closeFunctions: CloseFunction[],
-		runExecutionData: IRunExecutionData | null,
-	): IWebhookFunctions;
-}
 
 export interface ISourceDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
@@ -903,6 +849,7 @@ export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
 	typeVersion: number;
+	disabled: boolean;
 };
 
 export interface FunctionsBase {
@@ -962,7 +909,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			},
 		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
-			connectionType: NodeConnectionType,
+			connectionType: AINodeConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
@@ -1000,6 +947,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				): NodeExecutionWithMetadata[];
 				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				detectBinaryEncoding(buffer: Buffer): string;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
 
@@ -1026,6 +974,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		BinaryHelperFunctions & {
 			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
+			detectBinaryEncoding(buffer: Buffer): string;
 		};
 }
 
@@ -1141,7 +1090,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -1239,10 +1188,6 @@ export interface INodeExecutionData {
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
 	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
-	getExecuteFunctions: IGetExecuteFunctions;
-	getExecuteSingleFunctions: IGetExecuteSingleFunctions;
-	getExecuteHookFunctions: IGetExecuteHookFunctions;
-	getExecuteWebhookFunctions: IGetExecuteWebhookFunctions;
 }
 
 export type NodeParameterValue = string | number | boolean | undefined | null;
@@ -1897,29 +1842,20 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 
 export const enum NodeConnectionType {
 	AiAgent = 'ai_agent',
-
 	AiChain = 'ai_chain',
-
 	AiDocument = 'ai_document',
-
 	AiEmbedding = 'ai_embedding',
-
 	AiLanguageModel = 'ai_languageModel',
-
 	AiMemory = 'ai_memory',
-
 	AiOutputParser = 'ai_outputParser',
-
 	AiRetriever = 'ai_retriever',
-
 	AiTextSplitter = 'ai_textSplitter',
-
 	AiTool = 'ai_tool',
-
 	AiVectorStore = 'ai_vectorStore',
-
 	Main = 'main',
 }
+
+export type AINodeConnectionType = Exclude<NodeConnectionType, NodeConnectionType.Main>;
 
 export const nodeConnectionTypes: NodeConnectionType[] = [
 	NodeConnectionType.AiAgent,

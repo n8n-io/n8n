@@ -1,4 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import type { ChatMistralAIInput } from '@langchain/mistralai';
+import { ChatMistralAI } from '@langchain/mistralai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,11 +10,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ChatMistralAIInput } from '@langchain/mistralai';
-import { ChatMistralAI } from '@langchain/mistralai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatMistralCloud implements INodeType {
 	description: INodeTypeDescription = {

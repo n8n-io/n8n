@@ -8,8 +8,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {

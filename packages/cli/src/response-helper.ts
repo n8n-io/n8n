@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response } from 'express';
-import {
-	ErrorReporterProxy as ErrorReporter,
-	FORM_TRIGGER_PATH_IDENTIFIER,
-	NodeApiError,
-} from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
+import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 import Container from 'typedi';
@@ -141,7 +138,7 @@ export const isUniqueConstraintError = (error: Error) =>
 
 export function reportError(error: Error) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
-		ErrorReporter.error(error);
+		Container.get(ErrorReporter).error(error);
 	}
 }
 

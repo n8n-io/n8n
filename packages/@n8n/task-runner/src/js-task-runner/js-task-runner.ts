@@ -1,5 +1,6 @@
+import set from 'lodash/set';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -19,11 +20,14 @@ import * as a from 'node:assert';
 import { runInNewContext, type Context } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
-import type {
-	DataRequestResponse,
-	InputDataChunkDefinition,
-	PartialAdditionalData,
-	TaskResultData,
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import {
+	EXPOSED_RPC_METHODS,
+	UNSUPPORTED_HELPER_FUNCTIONS,
+	type DataRequestResponse,
+	type InputDataChunkDefinition,
+	type PartialAdditionalData,
+	type TaskResultData,
 } from '@/runner-types';
 import { type Task, TaskRunner } from '@/task-runner';
 
@@ -37,6 +41,10 @@ import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
+
+export interface RPCCallObject {
+	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RPCCallObject;
+}
 
 export interface JSExecSettings {
 	code: string;
@@ -121,7 +129,13 @@ export class JsTaskRunner extends TaskRunner {
 			nodeTypes: this.nodeTypes,
 		});
 
+		const noOp = () => {};
 		const customConsole = {
+			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
+			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
+				acc[name] = noOp;
+				return acc;
+			}, {}),
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
@@ -132,6 +146,8 @@ export class JsTaskRunner extends TaskRunner {
 			},
 		};
 
+		workflow.staticData = ObservableObject.create(workflow.staticData);
+
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
 				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
@@ -140,6 +156,7 @@ export class JsTaskRunner extends TaskRunner {
 		return {
 			result,
 			customData: data.runExecutionData.resultData.metadata,
+			staticData: workflow.staticData.__dataChanged ? workflow.staticData : undefined,
 		};
 	}
 
@@ -194,7 +211,7 @@ export class JsTaskRunner extends TaskRunner {
 			module: {},
 			console: customConsole,
 			items: inputItems,
-
+			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
 			...this.getNativeVariables(),
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
@@ -267,7 +284,8 @@ export class JsTaskRunner extends TaskRunner {
 				module: {},
 				console: customConsole,
 				item,
-
+				$getWorkflowStaticData: (type: 'global' | 'node') =>
+					workflow.getStaticData(type, data.node),
 				...this.getNativeVariables(),
 				...dataProxy,
 				...this.buildRpcCallObject(taskId),
@@ -428,5 +446,25 @@ export class JsTaskRunner extends TaskRunner {
 
 			this.nodeTypes.addNodeTypeDescriptions(nodeTypes);
 		}
+	}
+
+	private buildRpcCallObject(taskId: string) {
+		const rpcObject: RPCCallObject = {};
+
+		for (const rpcMethod of EXPOSED_RPC_METHODS) {
+			set(
+				rpcObject,
+				rpcMethod.split('.'),
+				async (...args: unknown[]) => await this.makeRpcCall(taskId, rpcMethod, args),
+			);
+		}
+
+		for (const rpcMethod of UNSUPPORTED_HELPER_FUNCTIONS) {
+			set(rpcObject, rpcMethod.split('.'), () => {
+				throw new UnsupportedFunctionError(rpcMethod);
+			});
+		}
+
+		return rpcObject;
 	}
 }

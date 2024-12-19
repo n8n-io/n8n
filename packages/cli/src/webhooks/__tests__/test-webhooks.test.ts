@@ -18,6 +18,7 @@ import type {
 } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
@@ -38,13 +39,20 @@ const webhook = mock<IWebhookData>({
 	userId,
 });
 
-const registrations = mock<TestWebhookRegistrationsService>();
-
-let testWebhooks: TestWebhooks;
-
 describe('TestWebhooks', () => {
+	const registrations = mock<TestWebhookRegistrationsService>();
+	const webhookService = mock<WebhookService>();
+
+	const testWebhooks = new TestWebhooks(
+		mock(),
+		mock(),
+		registrations,
+		mock(),
+		mock(),
+		webhookService,
+	);
+
 	beforeAll(() => {
-		testWebhooks = new TestWebhooks(mock(), mock(), registrations, mock(), mock());
 		jest.useFakeTimers();
 	});
 
@@ -68,7 +76,7 @@ describe('TestWebhooks', () => {
 			const needsWebhook = await testWebhooks.needsWebhook(args);
 
 			const [registerOrder] = registrations.register.mock.invocationCallOrder;
-			const [createOrder] = workflow.createWebhookIfNotExists.mock.invocationCallOrder;
+			const [createOrder] = webhookService.createWebhookIfNotExists.mock.invocationCallOrder;
 
 			expect(registerOrder).toBeLessThan(createOrder);
 			expect(needsWebhook).toBe(true);
@@ -132,11 +140,11 @@ describe('TestWebhooks', () => {
 
 			// ASSERT
 			const [registerOrder] = registrations.register.mock.invocationCallOrder;
-			const [createOrder] = workflow.createWebhookIfNotExists.mock.invocationCallOrder;
+			const [createOrder] = webhookService.createWebhookIfNotExists.mock.invocationCallOrder;
 
 			expect(registerOrder).toBeLessThan(createOrder);
 			expect(registrations.register.mock.calls[0][0].webhook.node).toBe(webhook2.node);
-			expect(workflow.createWebhookIfNotExists.mock.calls[0][0].node).toBe(webhook2.node);
+			expect(webhookService.createWebhookIfNotExists.mock.calls[0][1].node).toBe(webhook2.node);
 			expect(needsWebhook).toBe(true);
 		});
 	});

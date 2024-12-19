@@ -1,5 +1,5 @@
+import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -85,7 +85,7 @@ export async function saveExecutionProgress(
 	} catch (e) {
 		const error = e instanceof Error ? e : new Error(`${e}`);
 
-		ErrorReporter.error(error);
+		Container.get(ErrorReporter).error(error);
 		// TODO: Improve in the future!
 		// Errors here might happen because of database access
 		// For busy machines, we may get "Database is locked" errors.
