@@ -13,8 +13,4 @@ export class SourceControlPushWorkFolder {
 	@IsString()
 	@IsOptional()
 	message?: string;
-
-	@IsBoolean()
-	@IsOptional()
-	skipDiff?: boolean;
 }
