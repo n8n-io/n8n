@@ -5,18 +5,9 @@ export class VerticaApi implements ICredentialType {
 
 	displayName = 'Vertica API';
 
-	documentationUrl = 'vertica';
+	documentationUrl = 'https://docs.vertica.com/24.4.x/en/';
 
 	properties: INodeProperties[] = [
-		{
-			displayName: 'Base URL',
-			name: 'url',
-			required: true,
-			type: 'string',
-			default: '',
-			placeholder: 'http://<vertica_host>:<http_port>/v1',
-			description: 'The base URL of your Vertica server.',
-		},
 		{
 			displayName: 'Username',
 			name: 'username',
