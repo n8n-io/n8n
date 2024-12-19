@@ -1,59 +1,18 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
-	FieldValueOption,
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	ResourceMapperField,
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
-import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
-import { getWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
-
-function getWorkflowInputValues(this: IExecuteFunctions) {
-	const inputData = this.getInputData();
-
-	return inputData.map((item, itemIndex) => {
-		const itemFieldValues = this.getNodeParameter(
-			'workflowInputs.value',
-			itemIndex,
-			{},
-		) as IDataObject;
-
-		return {
-			json: {
-				...item.json,
-				...itemFieldValues,
-			},
-			index: itemIndex,
-			pairedItem: {
-				item: itemIndex,
-			},
-		};
-	});
-}
-
-function getCurrentWorkflowInputData(this: IExecuteFunctions) {
-	const inputData = getWorkflowInputValues.call(this);
-
-	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
-
-	if (schema.length === 0) {
-		return inputData;
-	} else {
-		const newParams = schema
-			.filter((x) => !x.removed)
-			.map((x) => ({ name: x.displayName, type: x.type ?? 'any' })) as FieldValueOption[];
-
-		return getWorkflowInputData.call(this, inputData, newParams);
-	}
-}
-
+import {
+	getCurrentWorkflowInputData,
+	loadWorkflowInputMappings,
+} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
@@ -83,6 +42,13 @@ export class ExecuteWorkflow implements INodeType {
 						value: 'call_workflow',
 					},
 				],
+			},
+			{
+				displayName: 'This node is out of date. Please upgrade by removing it and adding a new one',
+				name: 'outdatedVersionWarning',
+				type: 'notice',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+				default: '',
 			},
 			{
 				displayName: 'Source',
@@ -254,6 +220,7 @@ export class ExecuteWorkflow implements INodeType {
 						addAllFields: true,
 						multiKeyMatch: false,
 						supportAutoMap: false,
+						showTypeConversionOptions: true,
 					},
 				},
 				displayOptions: {

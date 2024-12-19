@@ -107,6 +107,7 @@ function validateAndReturnToParent(targetChild: string, offset: number, fields: 
 	// Due to our workaround to remain in the same tab we need to select the correct tab manually
 	navigateWorkflowSelectionDropdown(offset, targetChild);
 
+	// This fails, pointing to `usePushConnection` `const triggerNode = subWorkflow?.nodes.find` being `undefined.find()`I <think>
 	ndv.actions.execute();
 
 	getOutputTableHeaders().should('have.length', fields.length + 1);
