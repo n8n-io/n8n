@@ -82,6 +82,8 @@ paths:
     $ref: './handlers/projects/spec/paths/projects.yml'
   /projects/{projectId}:
     $ref: './handlers/projects/spec/paths/projects.projectId.yml'
+  /projects/{projectId}/users/{id}:
+    $ref: './handlers/projects/spec/paths/projects.projectId.users.id.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

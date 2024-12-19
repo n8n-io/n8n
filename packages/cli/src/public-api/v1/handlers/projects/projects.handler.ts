@@ -14,6 +14,10 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
+type Create = ProjectRequest.Create;
+type Update = ProjectRequest.Update;
+type Delete = ProjectRequest.Delete;
+type DeleteUser = ProjectRequest.DeleteUser;
 type GetAll = PaginatedRequest;
 
 export = {
@@ -89,6 +93,28 @@ export = {
 					numberOfTotalRecords: count,
 				}),
 			});
+		},
+	],
+	deleteUserFromProject: [
+		isLicensed('feat:projectRole:admin'),
+		globalScope('project:update'),
+		async (req: DeleteUser, res: Response) => {
+			const { projectId, id: userId } = req.params;
+
+			const project = await Container.get(ProjectRepository).findOne({
+				where: { id: projectId },
+				relations: { projectRelations: true },
+			});
+
+			if (!project) {
+				return res.status(404).send({ message: 'Not found' });
+			}
+
+			const relations = project.projectRelations.filter((relation) => relation.userId !== userId);
+
+			await Container.get(ProjectController).syncProjectRelations(projectId, relations);
+
+			return res.status(204).send();
 		},
 	],
 };

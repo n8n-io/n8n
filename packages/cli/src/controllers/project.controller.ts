@@ -225,6 +225,20 @@ export class ProjectController {
 		}
 	}
 
+	async syncProjectRelations(
+		projectId: string,
+		relations: ProjectRequest.ProjectRelationPayload[],
+	) {
+		try {
+			await this.projectsService.syncProjectRelations(projectId, relations);
+		} catch (e) {
+			if (e instanceof UnlicensedProjectRoleError) {
+				throw new BadRequestError(e.message);
+			}
+			throw e;
+		}
+	}
+
 	@Delete('/:projectId')
 	@ProjectScope('project:delete')
 	async deleteProject(

@@ -297,6 +297,15 @@ export declare namespace ProjectRequest {
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
 	};
+
+	type Get = AuthenticatedRequest<{ projectId: string }, {}>;
+	type Update = AuthenticatedRequest<
+		{ projectId: string },
+		{},
+		{ name?: string; relations?: ProjectRelationPayload[] }
+	>;
+	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
+	type DeleteUser = AuthenticatedRequest<{ projectId: string; id: string }, {}, {}, {}>;
 }
 
 // ----------------------------------
