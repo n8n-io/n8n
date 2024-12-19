@@ -50,7 +50,7 @@ export class WaitingForms extends WaitingWebhooks {
 				res.send(`
 				<script>
 					setTimeout(function() {
-						window.location.reload();
+						window.location.reload(true);
 					}, 1);
 				</script>
 			`);
