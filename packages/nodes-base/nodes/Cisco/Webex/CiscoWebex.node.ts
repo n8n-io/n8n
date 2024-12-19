@@ -54,7 +54,7 @@ export class CiscoWebex implements INodeType {
 						value: 'meeting',
 					},
 					// {
-					// 	name: 'Meeeting Transcript',
+					// 	name: 'Meeting Transcript',
 					// 	value: 'meetingTranscript',
 					// },
 					{
@@ -368,9 +368,9 @@ export class CiscoWebex implements INodeType {
 							...options,
 						};
 
-						if (options.passsword) {
+						if (options.password) {
 							headers = {
-								passsword: options.passsword,
+								password: options.password,
 							};
 						}
 

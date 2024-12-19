@@ -229,16 +229,16 @@ export class Medium implements INodeType {
 								value: 'cc-40-by-nc',
 							},
 							{
-								name: 'cc-40-by-nc-nd',
-								value: 'cc-40-by-nc-nd',
+								name: 'cc-40-by-nc-and',
+								value: 'cc-40-by-nc-and',
 							},
 							{
 								name: 'cc-40-by-nc-sa',
 								value: 'cc-40-by-nc-sa',
 							},
 							{
-								name: 'cc-40-by-nd',
-								value: 'cc-40-by-nd',
+								name: 'cc-40-by-and',
+								value: 'cc-40-by-and',
 							},
 							{
 								name: 'cc-40-by-sa',
@@ -425,7 +425,7 @@ export class Medium implements INodeType {
 								if (returnValue.length > 25) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`,
+										`The tag "${returnValue}" is to long. Maximum length of a tag is 25 characters.`,
 										{ itemIndex: i },
 									);
 								}

@@ -30,7 +30,7 @@ const properties: INodeProperties[] = [
 				name: 'assignedTo',
 				description: 'Who the task should be assigned to',
 				typeOptions: {
-					loadOptionsDependsOn: ['groupId.balue'],
+					loadOptionsDependsOn: ['groupId.value'],
 				},
 			},
 			{

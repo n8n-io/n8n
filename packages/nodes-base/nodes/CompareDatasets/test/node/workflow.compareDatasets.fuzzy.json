@@ -21,7 +21,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: \"[1,2,3]\",\n  },\n  {\n    id: 2,\n    data: '25',\n  },\n  {\n    id: 3,\n    data: 'tRuE',\n  },\n  {\n    id: 4,\n    data: 'FalsE',\n  },\n  {\n    id: 5,\n    data: 1,\n  },\n  {\n    id: 6,\n    data: [],\n  },\n  {\n    id: 7,\n    data: null,\n  },\n  {\n    id: 8,\n    data: '',\n  },\n];"
+				"jsCode": "return [\n  {\n    id: 1,\n    data: \"[1,2,3]\",\n  },\n  {\n    id: 2,\n    data: '25',\n  },\n  {\n    id: 3,\n    data: 'tRuE',\n  },\n  {\n    id: 4,\n    data: 'FalseE',\n  },\n  {\n    id: 5,\n    data: 1,\n  },\n  {\n    id: 6,\n    data: [],\n  },\n  {\n    id: 7,\n    data: null,\n  },\n  {\n    id: 8,\n    data: '',\n  },\n];"
 			},
 			"id": "839119da-4372-442d-8ba6-7d57b53b7825",
 			"name": "Code1",
@@ -612,7 +612,7 @@
 			{
 				"json": {
 					"id": 4,
-					"data": "FalsE"
+					"data": "FalseE"
 				}
 			},
 			{

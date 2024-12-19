@@ -15,7 +15,7 @@ import { clockifyApiRequest } from './GenericFunctions';
 
 import { EntryTypeEnum } from './EntryTypeEnum';
 import type { IUserDto } from './UserDtos';
-import type { IWorkspaceDto } from './WorkpaceInterfaces';
+import type { IWorkspaceDto } from './WorkspaceInterfaces';
 
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {

@@ -408,11 +408,11 @@ export const contactFields: INodeProperties[] = [
 				description: "The contact's zip code. This might be set via import, form, or integration.",
 			},
 			{
-				displayName: 'Preffered Language Name or ID',
-				name: 'prefferedLanguage',
+				displayName: 'Preferred Language Name or ID',
+				name: 'preferredLanguage',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getContactPrefferedLanguages',
+					loadOptionsMethod: 'getContactPreferredLanguages',
 				},
 				default: '',
 				description:

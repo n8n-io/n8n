@@ -296,7 +296,7 @@ function onBackButton() {
 
 	&.hasBg {
 		border-bottom: $node-creator-border-color solid 1px;
-		background-color: $node-creator-subcategory-panel-header-bacground-color;
+		background-color: $node-creator-subcategory-panel-header-background-color;
 	}
 }
 .title {

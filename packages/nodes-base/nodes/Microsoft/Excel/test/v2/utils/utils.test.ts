@@ -5,7 +5,7 @@ import { constructExecutionMetaData } from 'n8n-core';
 import {
 	checkRange,
 	prepareOutput,
-	updateByAutoMaping,
+	updateByAutoMapping,
 	updateByDefinedValues,
 } from '../../../v2/helpers/utils';
 
@@ -121,7 +121,7 @@ describe('Test MicrosoftExcelV2, prepareOutput', () => {
 		expect(output[0].json.customKey).toEqual(responseData);
 	});
 
-	it('should return formated response', () => {
+	it('should return formatted response', () => {
 		const output = prepareOutput.call(thisArg, node, responseData, { rawData: false });
 		expect(output).toBeDefined();
 		expect(output.length).toEqual(3);
@@ -266,7 +266,7 @@ describe('Test MicrosoftExcelV2, updateByDefinedValues', () => {
 		expect(updateSummary.updatedData[4][1]).toEqual('Ismael'); // updated value
 	});
 
-	it('should update all occurances', () => {
+	it('should update all occurrences', () => {
 		const nodeParameters = [
 			{
 				columnToMatchOn: 'data',
@@ -372,7 +372,7 @@ describe('Test MicrosoftExcelV2, updateByDefinedValues', () => {
 	});
 });
 
-describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
+describe('Test MicrosoftExcelV2, updateByAutoMapping', () => {
 	it('should update single row', () => {
 		const items = [
 			{
@@ -390,7 +390,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 			[3, 'Ron', 55, 'data 3'],
 		];
 
-		const updateSummary = updateByAutoMaping(items, sheetData, 'id');
+		const updateSummary = updateByAutoMapping(items, sheetData, 'id');
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toHaveLength(2);
@@ -416,7 +416,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 			[3, 'Ron', 55, 'data 3'],
 		];
 
-		const updateSummary = updateByAutoMaping(items, sheetData, 'id');
+		const updateSummary = updateByAutoMapping(items, sheetData, 'id');
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toHaveLength(1);
@@ -441,7 +441,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 			[3, 'Ron', 55, 'data 3'],
 		];
 
-		const updateSummary = updateByAutoMaping(items, sheetData, 'idd');
+		const updateSummary = updateByAutoMapping(items, sheetData, 'idd');
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toHaveLength(1);
@@ -479,7 +479,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 			[4, 'Ron', 55, 'data 3'],
 		];
 
-		const updateSummary = updateByAutoMaping(items, sheetData, 'id');
+		const updateSummary = updateByAutoMapping(items, sheetData, 'id');
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toContain(0); //header row
@@ -510,7 +510,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 			[4, 'Ron', 33, 'data 3'],
 		];
 
-		const updateSummary = updateByAutoMaping(items, sheetData, 'data', true);
+		const updateSummary = updateByAutoMapping(items, sheetData, 'data', true);
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toContain(0); //header row
@@ -548,7 +548,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 			[3, 'Ron', 44, 'data 3'],
 		];
 
-		const updateSummary = updateByAutoMaping(items, sheetData, 'data', true);
+		const updateSummary = updateByAutoMapping(items, sheetData, 'data', true);
 
 		expect(updateSummary).toBeDefined();
 		expect(updateSummary.updatedRows).toContain(0);

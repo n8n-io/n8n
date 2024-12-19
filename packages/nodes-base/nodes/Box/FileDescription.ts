@@ -278,7 +278,7 @@ export const fileFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Content Types',
-				name: 'contet_types',
+				name: 'content_types',
 				type: 'string',
 				default: '',
 				description:

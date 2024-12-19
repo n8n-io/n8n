@@ -33,7 +33,7 @@ import {
 
 import { folderFields, folderOperations } from './FolderDescription';
 
-import { folderMessageFields, folderMessageOperations } from './FolderMessageDecription';
+import { folderMessageFields, folderMessageOperations } from './FolderMessageDescription';
 
 import { oldVersionNotice } from '@utils/descriptions';
 

@@ -136,7 +136,7 @@ export class AwsS3V1 implements INodeType {
 							},
 						};
 						let data = '';
-						// if credentials has the S3 defaul region (us-east-1) the body (XML) does not have to be sent.
+						// if credentials has the S3 default region (us-east-1) the body (XML) does not have to be sent.
 						if (region !== 'us-east-1') {
 							// @ts-ignore
 							body.CreateBucketConfiguration.LocationConstraint = [region];

@@ -525,10 +525,10 @@ export class GraphQL implements INodeType {
 				const errorData = this.helpers.returnJsonArray({
 					error: error.message,
 				});
-				const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
+				const executionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
 					itemData: { item: itemIndex },
 				});
-				returnItems.push(...exectionErrorWithMetaData);
+				returnItems.push(...executionErrorWithMetaData);
 			}
 		}
 		return [returnItems];

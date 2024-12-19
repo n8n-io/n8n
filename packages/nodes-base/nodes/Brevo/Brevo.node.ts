@@ -4,7 +4,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { attributeFields, attributeOperations } from './AttributeDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';
-import { senderFields, senderOperations } from './SenderDescrition';
+import { senderFields, senderOperations } from './SenderDescription';
 
 export class Brevo implements INodeType {
 	description: INodeTypeDescription = {

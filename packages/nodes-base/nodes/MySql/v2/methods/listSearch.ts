@@ -15,9 +15,9 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		const query = 'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ?';
 		const values = [credentials.database];
 
-		const formatedQuery = connection.format(query, values);
+		const formattedQuery = connection.format(query, values);
 
-		const response = (await connection.query(formatedQuery))[0];
+		const response = (await connection.query(formattedQuery))[0];
 
 		connection.release();
 

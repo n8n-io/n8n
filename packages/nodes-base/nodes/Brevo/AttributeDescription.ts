@@ -426,7 +426,7 @@ const updateAttributeOperations: INodeProperties[] = [
 	},
 ];
 
-const deleteAttribueOperations: INodeProperties[] = [
+const deleteAttributeOperations: INodeProperties[] = [
 	{
 		displayName: 'Category',
 		name: 'deleteAttributeCategory',
@@ -526,6 +526,6 @@ const getAllAttributeOperations: INodeProperties[] = [
 export const attributeFields: INodeProperties[] = [
 	...createAttributeOperations,
 	...updateAttributeOperations,
-	...deleteAttribueOperations,
+	...deleteAttributeOperations,
 	...getAllAttributeOperations,
 ];

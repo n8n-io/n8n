@@ -17,7 +17,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (operation === 'del') {
 			operation = 'delete';
 		} else if (operation === 'desactive') {
-			operation = 'deactive';
+			operation = 'deactivate';
 		}
 
 		const mattermost = {

@@ -18,7 +18,7 @@ interface Props {
 type Line =
 	| parseDiff.Change
 	| {
-			type: 'filler' | 'seperator';
+			type: 'filler' | 'separator';
 			content: string;
 	  };
 
@@ -60,7 +60,7 @@ const diffs = computed(() => {
 
 		if (i !== file.chunks.length - 1) {
 			changes.push({
-				type: 'seperator',
+				type: 'separator',
 				content: '...',
 			});
 		}

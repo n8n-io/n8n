@@ -102,7 +102,7 @@ const pullResult: SourceControlledFile[] = [
 	{
 		file: 'credential_stubs/abcdeWGIeey9K4aa.json',
 		id: 'abcdeWGIeey9K4aa',
-		name: 'modfied credential',
+		name: 'modified credential',
 		type: 'credential',
 		status: 'modified',
 		location: 'local',

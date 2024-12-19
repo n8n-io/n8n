@@ -188,7 +188,7 @@ export type RenderItem = {
 	value?: string;
 	id: string;
 	icon: string;
-	collapsable?: boolean;
+	collapsible?: boolean;
 	nodeType?: INodeUi['type'];
 	type: 'item';
 };
@@ -197,7 +197,7 @@ export type RenderHeader = {
 	id: string;
 	title: string;
 	info?: string;
-	collapsable: boolean;
+	collapsible: boolean;
 	nodeType: INodeTypeDescription;
 	itemCount: number | null;
 	type: 'header';
@@ -294,7 +294,7 @@ export const useFlattenSchema = () => {
 					level,
 					icon: getIconBySchemaType(schema.type),
 					id: expression,
-					collapsable: true,
+					collapsible: true,
 					nodeType: node.type,
 					type: 'item',
 				});
@@ -329,7 +329,7 @@ export const useFlattenSchema = () => {
 					value: shorten(schema.value, 600, 0),
 					id: expression,
 					icon: getIconBySchemaType(schema.type),
-					collapsable: false,
+					collapsible: false,
 					nodeType: node.type,
 					type: 'item',
 				},
@@ -349,7 +349,7 @@ export const useFlattenSchema = () => {
 			acc.push({
 				title: item.node.name,
 				id: item.node.name,
-				collapsable: true,
+				collapsible: true,
 				nodeType: item.nodeType,
 				itemCount: item.itemsCount,
 				info: additionalInfo(item.node),

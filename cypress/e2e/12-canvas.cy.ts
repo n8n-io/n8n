@@ -480,7 +480,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 	});
 
 	// FIXME: Canvas V2: Unknown nodes should still render connection endpoints
-	it('should render connections correctly if unkown nodes are present', () => {
+	it('should render connections correctly if unknown nodes are present', () => {
 		const unknownNodeName = 'Unknown node';
 		cy.createFixtureWorkflow('workflow-with-unknown-nodes.json', 'Unknown nodes');
 

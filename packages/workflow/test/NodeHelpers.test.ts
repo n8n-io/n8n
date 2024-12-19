@@ -3479,7 +3479,7 @@ describe('NodeHelpers', () => {
 				hints: [
 					{
 						message: 'TEST HINT',
-						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
+						displayCondition: 'FALSE DISPLAY CONDITION EXPRESSION',
 					},
 				],
 			} as INodeTypeDescription;
@@ -3511,7 +3511,7 @@ describe('NodeHelpers', () => {
 				hints: [
 					{
 						message: 'TEST HINT',
-						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
+						displayCondition: 'TRUE DISPLAY CONDITION EXPRESSION',
 					},
 				],
 			} as INodeTypeDescription;

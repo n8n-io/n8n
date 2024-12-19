@@ -291,9 +291,9 @@ export class HubspotV1 implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact preffered languages to display them to user so that they can
+			// Get all the contact preferred languages to display them to user so that they can
 			// select them easily
-			async getContactPrefferedLanguages(
+			async getContactPreferredLanguages(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -314,7 +314,7 @@ export class HubspotV1 implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact preffered languages to display them to user so that they can
+			// Get all the contact preferred languages to display them to user so that they can
 			// select them easily
 			async getContactStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1192,10 +1192,10 @@ export class HubspotV1 implements INodeType {
 									value: additionalFields.postalCode,
 								});
 							}
-							if (additionalFields.prefferedLanguage) {
+							if (additionalFields.preferredLanguage) {
 								body.push({
 									property: 'hs_language',
-									value: additionalFields.prefferedLanguage,
+									value: additionalFields.preferredLanguage,
 								});
 							}
 							if (additionalFields.relationshipStatus) {

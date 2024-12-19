@@ -33,7 +33,7 @@ export function isPhoneValid(phone: string): boolean {
 	return VALID_PHONE_REGEX.test(String(phone));
 }
 
-function dateToIsoSupressMillis(dateTime: string) {
+function dateToIsoSuppressMillis(dateTime: string) {
 	const options: ToISOTimeOptions = { suppressMilliseconds: true };
 	return DateTime.fromISO(dateTime).toISO(options);
 }
@@ -64,7 +64,7 @@ export async function dueDatePreSendAction(
 			{ message: 'dueDate is required', description: 'dueDate is required' },
 		);
 	}
-	const dueDate = dateToIsoSupressMillis(dueDateParam);
+	const dueDate = dateToIsoSuppressMillis(dueDateParam);
 	requestOptions.body = (requestOptions.body || {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
 	return requestOptions;
@@ -184,7 +184,7 @@ export async function taskUpdatePreSendAction(
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.title = body.title || responseData.title;
 		// the api response dueDate has to be formatted or it will error on update
-		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate as string);
+		body.dueDate = body.dueDate || dateToIsoSuppressMillis(responseData.dueDate as string);
 		requestOptions.body = body;
 	}
 	return requestOptions;

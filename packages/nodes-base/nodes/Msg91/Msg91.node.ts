@@ -93,7 +93,7 @@ export class Msg91 implements INodeType {
 						resource: ['sms'],
 					},
 				},
-				description: 'The number, with coutry code, to which to send the message',
+				description: 'The number, with country code, to which to send the message',
 			},
 			{
 				displayName: 'Message',

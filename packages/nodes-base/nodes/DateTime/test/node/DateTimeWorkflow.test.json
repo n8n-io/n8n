@@ -31,7 +31,7 @@
 				"options": {}
 			},
 			"id": "04d26b36-9a31-4fc8-bbf4-4b6d8b9304bb",
-			"name": "Calculate Date: Substract Quarter",
+			"name": "Calculate Date: Subtract Quarter",
 			"type": "n8n-nodes-base.dateTime",
 			"typeVersion": 1,
 			"position": [500, 2100]
@@ -45,7 +45,7 @@
 				"options": {}
 			},
 			"id": "617145da-26c5-491b-bc58-a10fbb5a1825",
-			"name": "Calculate Date: Substract Day",
+			"name": "Calculate Date: Subtract Day",
 			"type": "n8n-nodes-base.dateTime",
 			"typeVersion": 1,
 			"position": [500, 1920]
@@ -74,7 +74,7 @@
 				"options": {}
 			},
 			"id": "a22a536c-bf23-4ff0-a3ad-b3761dfb3add",
-			"name": "Calculate Date: Substract Months",
+			"name": "Calculate Date: Subtract Months",
 			"type": "n8n-nodes-base.dateTime",
 			"typeVersion": 1,
 			"position": [500, 2440]
@@ -240,14 +240,14 @@
 				}
 			}
 		],
-		"Calculate Date: Substract Day": [
+		"Calculate Date: Subtract Day": [
 			{
 				"json": {
 					"data": "2022-07-30T00:00:00.000Z"
 				}
 			}
 		],
-		"Calculate Date: Substract Quarter": [
+		"Calculate Date: Subtract Quarter": [
 			{
 				"json": {
 					"data": "2023-02-01T00:00:00.000Z"
@@ -261,7 +261,7 @@
 				}
 			}
 		],
-		"Calculate Date: Substract Months": [
+		"Calculate Date: Subtract Months": [
 			{
 				"json": {
 					"data": "2022-06-01T00:00:00.000Z"
@@ -452,12 +452,12 @@
 						"index": 0
 					},
 					{
-						"node": "Calculate Date: Substract Day",
+						"node": "Calculate Date: Subtract Day",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Calculate Date: Substract Quarter",
+						"node": "Calculate Date: Subtract Quarter",
 						"type": "main",
 						"index": 0
 					},
@@ -467,7 +467,7 @@
 						"index": 0
 					},
 					{
-						"node": "Calculate Date: Substract Months",
+						"node": "Calculate Date: Subtract Months",
 						"type": "main",
 						"index": 0
 					},

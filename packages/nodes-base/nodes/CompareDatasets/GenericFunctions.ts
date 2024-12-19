@@ -188,7 +188,7 @@ function findAllMatches(
 		if (entry2 === undefined) return acc;
 
 		for (const key of Object.keys(lookup)) {
-			const excpectedValue = lookup[key];
+			const expectedValue = lookup[key];
 			let entry2FieldValue;
 
 			if (disableDotNotation) {
@@ -197,7 +197,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(expectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -219,7 +219,7 @@ function findFirstMatch(
 		if (entry2 === undefined) return false;
 
 		for (const key of Object.keys(lookup)) {
-			const excpectedValue = lookup[key];
+			const expectedValue = lookup[key];
 			let entry2FieldValue;
 
 			if (disableDotNotation) {
@@ -228,7 +228,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(expectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}

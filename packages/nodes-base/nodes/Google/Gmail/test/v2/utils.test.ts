@@ -27,7 +27,7 @@ describe('Google Gmail v2, prepareTimestamp', () => {
 		expect(timestampAfter).toBe('after:1577836800');
 	});
 
-	it('should return a valid timestamp from integer in miliseconds', () => {
+	it('should return a valid timestamp from integer in milliseconds', () => {
 		const dateInput = 1577836800000;
 		const timestampBefore = prepareTimestamp(node, 0, '', dateInput, 'before');
 		const timestampAfter = prepareTimestamp(node, 0, '', dateInput, 'after');
@@ -51,7 +51,7 @@ describe('Google Gmail v2, prepareTimestamp', () => {
 		expect(timestampAfter).toBe('after:1577836800');
 	});
 
-	it('should return a valid timestamp from string in miliseconds', () => {
+	it('should return a valid timestamp from string in milliseconds', () => {
 		const dateInput = '1577836800000';
 		const timestampBefore = prepareTimestamp(node, 0, '', dateInput, 'before');
 		const timestampAfter = prepareTimestamp(node, 0, '', dateInput, 'after');

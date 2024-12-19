@@ -73,7 +73,7 @@ export class GooglePerspective implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Atrribute',
+				placeholder: 'Add Attribute',
 				required: true,
 				displayOptions: {
 					show: {

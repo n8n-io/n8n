@@ -39,12 +39,12 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				options: [
 					{
 						name: 'Workflow Call',
-						value: 'worklfow_call',
+						value: 'workflow_call',
 						description: 'When called by another workflow using Execute Workflow Trigger',
 						action: 'When Called by Another Workflow',
 					},
 				],
-				default: 'worklfow_call',
+				default: 'workflow_call',
 			},
 		],
 	};

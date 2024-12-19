@@ -905,7 +905,7 @@ export class Salesforce implements INodeType {
 			},
 			// Get all the attachment fields recurrence instances to display them to user so that they can
 			// select them easily
-			async getAtachmentFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getAttachmentFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(

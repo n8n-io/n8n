@@ -155,7 +155,7 @@ export const taskFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Creator Name or ID',
-				name: 'creater_id',
+				name: 'creator_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -350,7 +350,7 @@ export const taskFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Creator Name or ID',
-				name: 'creater_id',
+				name: 'creator_id',
 				type: 'options',
 				default: '',
 				typeOptions: {

@@ -23,7 +23,7 @@ import type {
 	ISenderBatchHeader,
 	RecipientType,
 	RecipientWallet,
-} from './PaymentInteface';
+} from './PaymentInterface';
 import { payPalApiRequest, payPalApiRequestAllItems, validateJSON } from './GenericFunctions';
 
 export class PayPal implements INodeType {

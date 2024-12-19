@@ -68,28 +68,28 @@ MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
     <xs:anyAttribute namespace="##any" processContents="lax" />
   </xs:complexType>
 
-  <xs:element name="SignedElements" type="tns:SerElementsType" >
+  <xs:element name="SignedElements" type="tns:SetElementsType" >
     <xs:annotation>
       <xs:documentation xml:lang="en" >
         4.1.2 SignedElements Assertion
       </xs:documentation>
     </xs:annotation>
   </xs:element>
-  <xs:element name="EncryptedElements" type="tns:SerElementsType" >
+  <xs:element name="EncryptedElements" type="tns:SetElementsType" >
     <xs:annotation>
       <xs:documentation xml:lang="en">
         4.2.2 EncryptedElements Assertion
       </xs:documentation>
     </xs:annotation>
   </xs:element>
-  <xs:element name="RequiredElements" type="tns:SerElementsType" >
+  <xs:element name="RequiredElements" type="tns:SetElementsType" >
     <xs:annotation>
       <xs:documentation xml:lang="en" >
         4.3.1 RequiredElements Assertion
       </xs:documentation>
     </xs:annotation>
   </xs:element>
-  <xs:complexType name="SerElementsType">
+  <xs:complexType name="SetElementsType">
     <xs:sequence>
       <xs:element name="XPath" type="xs:string" minOccurs="1" maxOccurs="unbounded" />
       <xs:any minOccurs="0" maxOccurs="unbounded" namespace="##other" processContents="lax"/>
@@ -1198,7 +1198,7 @@ MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
       </xs:documentation>
     </xs:annotation>
   </xs:element>
-  <xs:element name="RequireAppiesTo" type="tns:QNameAssertionType">
+  <xs:element name="RequireAppliesTo" type="tns:QNameAssertionType">
     <xs:annotation>
       <xs:documentation xml:lang="en">
         10.1 Trust13 Assertion

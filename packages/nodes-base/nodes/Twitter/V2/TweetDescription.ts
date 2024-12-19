@@ -163,7 +163,7 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attachements are not supported due to Twitter V2 API limitations',
+		displayName: 'Attachments are not supported due to Twitter V2 API limitations',
 		name: 'noticeAttachments',
 		type: 'notice',
 		displayOptions: {

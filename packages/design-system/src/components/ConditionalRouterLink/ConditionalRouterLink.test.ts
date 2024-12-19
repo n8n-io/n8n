@@ -2,7 +2,7 @@ import { render } from '@testing-library/vue';
 import { beforeAll, describe } from 'vitest';
 import { createRouter, createWebHistory } from 'vue-router';
 
-import CondtionalRouterLink from './CondtionalRouterLink.vue';
+import ConditionalRouterLink from './ConditionalRouterLink.vue';
 
 const slots = {
 	default: 'Button',
@@ -19,7 +19,7 @@ const router = createRouter({
 	],
 });
 
-describe('CondtionalRouterLink', () => {
+describe('ConditionalRouterLink', () => {
 	beforeAll(async () => {
 		await router.push('/');
 
@@ -27,7 +27,7 @@ describe('CondtionalRouterLink', () => {
 	});
 
 	it("renders router-link when 'to' prop is passed", () => {
-		const wrapper = render(CondtionalRouterLink, {
+		const wrapper = render(ConditionalRouterLink, {
 			props: {
 				to: { name: 'home' },
 			},
@@ -41,7 +41,7 @@ describe('CondtionalRouterLink', () => {
 	});
 
 	it("renders <a> when 'href' attr is passed", () => {
-		const wrapper = render(CondtionalRouterLink, {
+		const wrapper = render(ConditionalRouterLink, {
 			attrs: {
 				href: 'https://n8n.io',
 				target: '_blank',
@@ -56,7 +56,7 @@ describe('CondtionalRouterLink', () => {
 	});
 
 	it('renders only the slot when neither to nor href is given', () => {
-		const wrapper = render(CondtionalRouterLink, {
+		const wrapper = render(ConditionalRouterLink, {
 			slots,
 			global: {
 				plugins: [router],

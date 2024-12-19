@@ -39,7 +39,7 @@ export class Jenkins implements INodeType {
 			{
 				name: 'jenkinsApi',
 				required: true,
-				testedBy: 'jenkinApiCredentialTest',
+				testedBy: 'jenkinsApiCredentialTest',
 			},
 		],
 		properties: [
@@ -390,7 +390,7 @@ export class Jenkins implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async jenkinApiCredentialTest(
+			async jenkinsApiCredentialTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {

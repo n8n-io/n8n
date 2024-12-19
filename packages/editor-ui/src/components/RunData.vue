@@ -523,7 +523,7 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
 });
 
-const hasReleatedExectuion = computed((): boolean => {
+const hasRelatedExecution = computed((): boolean => {
 	return Boolean(
 		activeTaskMetadata.value?.subExecution || activeTaskMetadata.value?.parentExecution,
 	);
@@ -1428,7 +1428,7 @@ defineExpose({ enterEditMode });
 
 			<a
 				v-if="
-					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+					activeTaskMetadata && hasRelatedExecution && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.relatedExecutionInfo"
 				data-test-id="related-execution-link"
@@ -1518,7 +1518,7 @@ defineExpose({ enterEditMode });
 
 			<a
 				v-if="
-					activeTaskMetadata && hasReleatedExectuion && !(paneType === 'input' && hasInputOverwrite)
+					activeTaskMetadata && hasRelatedExecution && !(paneType === 'input' && hasInputOverwrite)
 				"
 				:class="$style.relatedExecutionInfo"
 				data-test-id="related-execution-link"

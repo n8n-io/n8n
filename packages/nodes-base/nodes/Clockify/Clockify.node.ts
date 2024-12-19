@@ -12,7 +12,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import moment from 'moment-timezone';
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 
-import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
+import type { IClientDto, IWorkspaceDto } from './WorkspaceInterfaces';
 
 import type { IUserDto } from './UserDtos';
 

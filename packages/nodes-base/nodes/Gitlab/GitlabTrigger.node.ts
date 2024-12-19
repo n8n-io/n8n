@@ -203,7 +203,7 @@ export class GitlabTrigger implements INodeType {
 						return false;
 					}
 
-					// Some error occured
+					// Some error occurred
 					throw error;
 				}
 

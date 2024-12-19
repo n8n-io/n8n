@@ -1079,7 +1079,7 @@ export const companyFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Only return companys created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
+					'Only return companies created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Company Properties to Include',

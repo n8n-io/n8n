@@ -317,10 +317,10 @@ export class ClickUp implements INodeType {
 				const { members } = await clickupApiRequest.call(this, 'GET', url);
 				for (const member of members) {
 					const memberName = member.username;
-					const menberId = member.id;
+					const memberId = member.id;
 					returnData.push({
 						name: memberName,
-						value: menberId,
+						value: memberId,
 					});
 				}
 				return returnData;

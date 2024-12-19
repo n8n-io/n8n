@@ -13,7 +13,7 @@ import type { Metrics } from './GenericFunctions';
 import {
 	profitWellApiRequest,
 	simplifyDailyMetrics,
-	simplifyMontlyMetrics,
+	simplifyMonthlyMetrics,
 } from './GenericFunctions';
 
 import { companyOperations } from './CompanyDescription';
@@ -128,7 +128,7 @@ export class ProfitWell implements INodeType {
 							if (type === 'daily') {
 								responseData = simplifyDailyMetrics(responseData);
 							} else {
-								responseData = simplifyMontlyMetrics(responseData);
+								responseData = simplifyMonthlyMetrics(responseData);
 							}
 						}
 					}

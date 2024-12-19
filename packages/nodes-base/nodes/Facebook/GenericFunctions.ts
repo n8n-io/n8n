@@ -64,7 +64,7 @@ export function getFields(object: string) {
 		page: [
 			{
 				value: 'affiliation',
-				description: "Describes changes to a page's Affliation profile field",
+				description: "Describes changes to a page's Affliction profile field",
 			},
 			{
 				value: 'attire',

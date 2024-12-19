@@ -156,7 +156,7 @@ export const agentFields: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description:
-			'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
+			'By default the output is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -190,7 +190,7 @@ export const agentFields: INodeProperties[] = [
 					},
 					{
 						name: 'Launch Error',
-						value: 'lauch error',
+						value: 'launch error',
 					},
 					{
 						name: 'Never Launched',

@@ -148,7 +148,7 @@ export const incidentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Hight',
+						name: 'High',
 						value: 'high',
 					},
 					{

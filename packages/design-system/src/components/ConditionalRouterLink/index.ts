@@ -1,3 +1,3 @@
-import CondtionalRouterLink from './CondtionalRouterLink.vue';
+import ConditionalRouterLink from './ConditionalRouterLink.vue';
 
-export default CondtionalRouterLink;
+export default ConditionalRouterLink;

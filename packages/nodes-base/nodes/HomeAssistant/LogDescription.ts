@@ -14,7 +14,7 @@ export const logOperations: INodeProperties[] = [
 		options: [
 			{
 				name: 'Get Error Logs',
-				value: 'getErroLogs',
+				value: 'getErrorLogs',
 				description: 'Get a log for a specific entity',
 				action: 'Get a log for an entity',
 			},
@@ -25,7 +25,7 @@ export const logOperations: INodeProperties[] = [
 				action: 'Get all logs for an entity',
 			},
 		],
-		default: 'getErroLogs',
+		default: 'getErrorLogs',
 	},
 ];
 

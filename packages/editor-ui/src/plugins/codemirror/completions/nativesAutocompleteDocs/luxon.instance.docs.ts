@@ -542,7 +542,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 				examples: [
 					{
 						example: "$now.setLocale('de-DE').toLocaleString({ dateStyle: 'long' })",
-						evaluated: "'5. Oktober 2024'",
+						evaluated: "'5. October 2024'",
 					},
 					{
 						example: "$now.setLocale('fr-FR').toLocaleString({ dateStyle: 'long' })",

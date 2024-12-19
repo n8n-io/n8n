@@ -27,7 +27,7 @@ afterEach(async () => {
 
 describe('ProjectService', () => {
 	describe('save', () => {
-		it('should deduplicate entries by exeuctionId and key, keeping the latest one', async () => {
+		it('should deduplicate entries by executionId and key, keeping the latest one', async () => {
 			//
 			// ARRANGE
 			//

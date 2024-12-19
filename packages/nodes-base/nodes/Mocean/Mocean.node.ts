@@ -96,7 +96,7 @@ export class Mocean implements INodeType {
 				name: 'to',
 				type: 'string',
 				default: '',
-				placeholder: 'Receipient number',
+				placeholder: 'Recipient number',
 				required: true,
 				displayOptions: {
 					show: {

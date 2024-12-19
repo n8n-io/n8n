@@ -142,7 +142,7 @@ export const xmlFileInfo: XMLFileInfo = {
             <element ref="md:Extensions" minOccurs="0"/>
             <element ref="md:Company" minOccurs="0"/>
             <element ref="md:GivenName" minOccurs="0"/>
-            <element ref="md:SurName" minOccurs="0"/>
+            <element ref="md:SureName" minOccurs="0"/>
             <element ref="md:EmailAddress" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="md:TelephoneNumber" minOccurs="0" maxOccurs="unbounded"/>
         </sequence>
@@ -151,7 +151,7 @@ export const xmlFileInfo: XMLFileInfo = {
     </complexType>
     <element name="Company" type="string"/>
     <element name="GivenName" type="string"/>
-    <element name="SurName" type="string"/>
+    <element name="SureName" type="string"/>
     <element name="EmailAddress" type="anyURI"/>
     <element name="TelephoneNumber" type="string"/>
     <simpleType name="ContactTypeType">

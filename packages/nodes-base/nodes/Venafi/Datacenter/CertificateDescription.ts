@@ -183,7 +183,7 @@ export const certificateFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						name: 'customFielsValues',
+						name: 'customFieldsValues',
 						displayName: 'Address',
 						values: [
 							{

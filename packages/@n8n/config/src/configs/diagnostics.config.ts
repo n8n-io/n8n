@@ -19,11 +19,11 @@ export class DiagnosticsConfig {
 
 	/** Diagnostics config for frontend. */
 	@Env('N8N_DIAGNOSTICS_CONFIG_FRONTEND')
-	frontendConfig: string = '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io';
+	frontendConfig: string = '1zOn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io';
 
 	/** Diagnostics config for backend. */
 	@Env('N8N_DIAGNOSTICS_CONFIG_BACKEND')
-	backendConfig: string = '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io';
+	backendConfig: string = '1zOn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io';
 
 	@Nested
 	posthogConfig: PostHogConfig;

@@ -14,7 +14,7 @@ export interface ITask {
 	createdBy?: string;
 	createdAt?: Date;
 	updatedBy?: string;
-	upadtedAt?: Date;
+	updatedAt?: Date;
 }
 
 export const enum TaskStatus {

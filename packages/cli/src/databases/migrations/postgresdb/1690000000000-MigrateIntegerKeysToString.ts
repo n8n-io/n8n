@@ -154,7 +154,7 @@ export class MigrateIntegerKeysToString1690000000000 implements IrreversibleMigr
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity RENAME COLUMN "workflowId" to "tmp_workflowId";`,
 		);
-		// -- Intentionally NOT setting colum to NOT NULL
+		// -- Intentionally NOT setting column to NOT NULL
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity ADD COLUMN "workflowId" varchar(36);`,
 		);

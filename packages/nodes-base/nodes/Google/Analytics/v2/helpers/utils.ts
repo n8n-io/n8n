@@ -160,21 +160,21 @@ export function prepareDateRange(
 			});
 			break;
 		case 'lastCalendarWeek':
-			const begginingOfLastWeek = DateTime.local().startOf('week').minus({ weeks: 1 }).toISODate();
+			const beginningOfLastWeek = DateTime.local().startOf('week').minus({ weeks: 1 }).toISODate();
 			const endOfLastWeek = DateTime.local().endOf('week').minus({ weeks: 1 }).toISODate();
 			dateRanges.push({
-				startDate: begginingOfLastWeek,
+				startDate: beginningOfLastWeek,
 				endDate: endOfLastWeek,
 			});
 			break;
 		case 'lastCalendarMonth':
-			const begginingOfLastMonth = DateTime.local()
+			const beginningOfLastMonth = DateTime.local()
 				.startOf('month')
 				.minus({ months: 1 })
 				.toISODate();
 			const endOfLastMonth = DateTime.local().endOf('month').minus({ months: 1 }).toISODate();
 			dateRanges.push({
-				startDate: begginingOfLastMonth,
+				startDate: beginningOfLastMonth,
 				endDate: endOfLastMonth,
 			});
 			break;

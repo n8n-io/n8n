@@ -357,7 +357,7 @@ export class MondayCom implements INodeType {
 							try {
 								JSON.parse(additionalFields.defaults as string);
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON', {
+								throw new NodeOperationError(this.getNode(), 'Defaults must be a valid JSON', {
 									itemIndex: i,
 								});
 							}

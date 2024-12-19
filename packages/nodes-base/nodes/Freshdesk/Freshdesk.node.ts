@@ -1148,7 +1148,7 @@ export class Freshdesk implements INodeType {
 						// 		});
 						// 		body.custom_fields = aux;
 						// } else {
-						// 	body.custom_fields = validateJSON(this.getNodeParameter('customFielsJson') as string);
+						// 	body.custom_fields = validateJSON(this.getNodeParameter('customFieldsJson') as string);
 						// }
 
 						if (options.name) {

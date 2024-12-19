@@ -967,7 +967,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return companys created after timestamp x',
+				description: 'Only return companies created after timestamp x',
 			},
 			{
 				displayName: 'Include Property Versions',

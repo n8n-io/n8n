@@ -736,7 +736,7 @@ export class Nasa implements INodeType {
 				],
 			},
 
-			/* latitude, longitude and additionaFields (date, degrees) for earthImagery and earthAssets*/
+			/* latitude, longitude and additionalFields (date, degrees) for earthImagery and earthAssets*/
 			{
 				displayName: 'Latitude',
 				name: 'lat',

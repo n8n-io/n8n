@@ -28,7 +28,7 @@ export interface ICase {
 	createdBy?: string;
 	createdAt?: Date;
 	updatedBy?: string;
-	upadtedAt?: Date;
+	updatedAt?: Date;
 }
 
 export const enum CaseStatus {

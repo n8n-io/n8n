@@ -142,7 +142,7 @@ export class RabbitMQTrigger implements INodeType {
 						displayName: 'Binding',
 						name: 'binding',
 						placeholder: 'Add Binding',
-						description: 'Add binding to queu',
+						description: 'Add binding to queue',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,

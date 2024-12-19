@@ -735,14 +735,14 @@ export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
 	REMOVE_DUPLICATES_NODE_TYPE,
 ];
 
-type ClearOutgoingConnectonsEvents = {
+type ClearOutgoingConnectionsEvents = {
 	[nodeName: string]: {
 		parameterPaths: string[];
 		eventTypes: string[];
 	};
 };
 
-export const SHOULD_CLEAR_NODE_OUTPUTS: ClearOutgoingConnectonsEvents = {
+export const SHOULD_CLEAR_NODE_OUTPUTS: ClearOutgoingConnectionsEvents = {
 	[SWITCH_NODE_TYPE]: {
 		parameterPaths: ['parameters.rules.values'],
 		eventTypes: ['optionsOrderChanged'],

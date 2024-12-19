@@ -1324,7 +1324,7 @@ export class WorkflowDataProxy {
 				return dataProxy.getDataProxy();
 			},
 			$fromAI: handleFromAi,
-			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
+			// Make sure miscapitalized $fromAI is handled correctly even though we don't auto-complete it
 			$fromai: handleFromAi,
 			$fromAi: handleFromAi,
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {

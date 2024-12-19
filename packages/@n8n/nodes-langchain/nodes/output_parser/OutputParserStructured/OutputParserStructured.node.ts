@@ -121,7 +121,7 @@ export class OutputParserStructured implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const schemaType = this.getNodeParameter('schemaType', itemIndex, '') as 'fromJson' | 'manual';
 		// We initialize these even though one of them will always be empty
-		// it makes it easer to navigate the ternary operator
+		// it makes it easier to navigate the ternary operator
 		const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
 		let inputSchema: string;
 

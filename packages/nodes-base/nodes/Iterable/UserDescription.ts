@@ -89,7 +89,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to create a new user if the idetifier does not exist',
+		description: 'Whether to create a new user if the identifier does not exist',
 	},
 	{
 		displayName: 'Additional Fields',

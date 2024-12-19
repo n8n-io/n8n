@@ -346,13 +346,13 @@ export class FilterV1 implements INodeType {
 						item.pairedItem = [{ item: itemIndex }];
 					}
 
-					// If the operation is "OR" it means the item did match one condition no ned to check further
+					// If the operation is "OR" it means the item did match one condition no need to check further
 					if (compareResult && combineConditions === 'OR') {
 						returnDataTrue.push(item);
 						continue itemLoop;
 					}
 
-					// If the operation is "AND" it means the item failed one condition no ned to check further
+					// If the operation is "AND" it means the item failed one condition no need to check further
 					if (!compareResult && combineConditions === 'AND') {
 						returnDataFalse.push(item);
 						continue itemLoop;

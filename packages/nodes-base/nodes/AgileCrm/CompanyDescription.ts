@@ -486,7 +486,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+					'Unique identifiers added to company, for easy management of companies. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Website',
@@ -784,7 +784,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+					'Unique identifiers added to company, for easy management of companies. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Name',
@@ -805,7 +805,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'websiteOptions',
 				type: 'fixedCollection',
 				default: {},
-				description: 'Companys websites',
+				description: 'Companies websites',
 				typeOptions: {
 					multipleValues: true,
 				},

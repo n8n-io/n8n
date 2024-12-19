@@ -873,7 +873,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".',
+			'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "name", etc., but not "oo n".',
 	},
 	{
 		displayName: 'RAW Data',
@@ -1084,7 +1084,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'The etag field in the person is nedded to make sure the contact has not changed since your last read',
+					'The etag field in the person is needed to make sure the contact has not changed since your last read',
 			},
 			{
 				displayName: 'Family Name',

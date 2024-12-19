@@ -19,8 +19,8 @@ import {
 } from './CertificateRequestDescription';
 
 import type {
-	ICertficateKeystoreRequest,
-	ICertficateRequest,
+	ICertificateKeystoreRequest,
+	ICertificateRequest,
 	ICsrAttributes,
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
@@ -135,7 +135,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						const generateCsr = this.getNodeParameter('generateCsr', i) as boolean;
 
-						const body: ICertficateRequest = {
+						const body: ICertificateRequest = {
 							applicationId,
 							certificateIssuingTemplateId,
 						};
@@ -307,7 +307,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						} else {
 							const exportFormat = this.getNodeParameter('keystoreType', i) as string;
 
-							const body: ICertficateKeystoreRequest = {
+							const body: ICertificateKeystoreRequest = {
 								exportFormat,
 							};
 

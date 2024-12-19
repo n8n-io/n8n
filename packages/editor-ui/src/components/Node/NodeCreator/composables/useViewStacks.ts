@@ -112,7 +112,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 			const groupedNodes = groupIfAiNodes(searchResults, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
-			// as the first item is collapsable
+			// as the first item is collapsible
 			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
 
 			return groupedNodes;

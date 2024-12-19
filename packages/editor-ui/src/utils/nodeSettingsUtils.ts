@@ -22,11 +22,11 @@ export function updateDynamicConnections(
 		if (parameterData.name.includes('conditions') || !connections[node.name]?.main) return null;
 
 		if (node.type === SWITCH_NODE_TYPE && parameterData.name === 'parameters.numberOutputs') {
-			const curentNumberOutputs = node.parameters?.numberOutputs as number;
+			const currentNumberOutputs = node.parameters?.numberOutputs as number;
 			const newNumberOutputs = parameterData.value as number;
 
 			// remove extra outputs
-			if (newNumberOutputs < curentNumberOutputs) {
+			if (newNumberOutputs < currentNumberOutputs) {
 				connections[node.name].main = connections[node.name].main.slice(0, newNumberOutputs);
 				return connections;
 			}
@@ -36,9 +36,9 @@ export function updateDynamicConnections(
 			node.type === SWITCH_NODE_TYPE &&
 			parameterData.name === 'parameters.options.fallbackOutput'
 		) {
-			const curentFallbackOutput = (node.parameters?.options as { fallbackOutput: string })
+			const currentFallbackOutput = (node.parameters?.options as { fallbackOutput: string })
 				?.fallbackOutput as string;
-			if (curentFallbackOutput === 'extra') {
+			if (currentFallbackOutput === 'extra') {
 				if (!parameterData.value || parameterData.value !== 'extra') {
 					connections[node.name].main = connections[node.name].main.slice(0, -1);
 					return connections;
@@ -76,11 +76,11 @@ export function updateDynamicConnections(
 					return connections;
 				}
 			} else if (parameterData.name === 'parameters.rules.values') {
-				const curentRulesvalues = (node.parameters?.rules as { values: IDataObject[] })?.values;
+				const currentRulesvalues = (node.parameters?.rules as { values: IDataObject[] })?.values;
 				let lastConnection: IConnection[] | null | undefined = undefined;
 				if (
 					fallbackOutput === 'extra' &&
-					connections[node.name].main.length === curentRulesvalues.length + 1
+					connections[node.name].main.length === currentRulesvalues.length + 1
 				) {
 					lastConnection = connections[node.name].main.pop();
 				}
@@ -103,7 +103,7 @@ export function updateDynamicConnections(
 					const newRulesvalues = parameterData.value as IDataObject[];
 					const updatedConnectionsIndex: number[] = [];
 
-					for (const rule of curentRulesvalues) {
+					for (const rule of currentRulesvalues) {
 						const index = newRulesvalues.findIndex((newRule) => isEqual(rule, newRule));
 						if (index !== -1) {
 							updatedConnectionsIndex.push(index);

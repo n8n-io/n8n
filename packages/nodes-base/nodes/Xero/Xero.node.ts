@@ -168,7 +168,7 @@ export class Xero implements INodeType {
 			},
 			// Get all the tracking categories to display them to user so that they can
 			// select them easily
-			async getTrakingCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getTrackingCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
 				const returnData: INodePropertyOptions[] = [];
 				const { TrackingCategories: categories } = await xeroApiRequest.call(
@@ -189,7 +189,7 @@ export class Xero implements INodeType {
 			},
 			// // Get all the tracking categories to display them to user so that they can
 			// // select them easily
-			// async getTrakingOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// async getTrackingOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	const organizationId = this.getCurrentNodeParameter('organizationId');
 			// 	const name = this.getCurrentNodeParameter('name');
 			// 	const returnData: INodePropertyOptions[] = [];

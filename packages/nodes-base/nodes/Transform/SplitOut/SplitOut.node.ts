@@ -147,7 +147,7 @@ export class SplitOut implements INodeType {
 			const multiSplit = fieldsToSplitOut.length > 1;
 
 			const item = { ...items[i].json };
-			const splited: INodeExecutionData[] = [];
+			const split: INodeExecutionData[] = [];
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
 
@@ -186,17 +186,17 @@ export class SplitOut implements INodeType {
 				}
 
 				for (const [elementIndex, element] of entityToSplit.entries()) {
-					if (splited[elementIndex] === undefined) {
-						splited[elementIndex] = { json: {}, pairedItem: { item: i } };
+					if (split[elementIndex] === undefined) {
+						split[elementIndex] = { json: {}, pairedItem: { item: i } };
 					}
 
 					const fieldName = destinationFieldName || fieldToSplitOut;
 
 					if (fieldToSplitOut === '$binary') {
-						if (splited[elementIndex].binary === undefined) {
-							splited[elementIndex].binary = {};
+						if (split[elementIndex].binary === undefined) {
+							split[elementIndex].binary = {};
 						}
-						splited[elementIndex].binary[Object.keys(element)[0]] = Object.values(
+						split[elementIndex].binary[Object.keys(element)[0]] = Object.values(
 							element,
 						)[0] as IBinaryData;
 
@@ -205,20 +205,20 @@ export class SplitOut implements INodeType {
 
 					if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
 						if (destinationFieldName === '' && !multiSplit) {
-							splited[elementIndex] = {
-								json: { ...splited[elementIndex].json, ...element },
+							split[elementIndex] = {
+								json: { ...split[elementIndex].json, ...element },
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							split[elementIndex].json[fieldName] = element;
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						split[elementIndex].json[fieldName] = element;
 					}
 				}
 			}
 
-			for (const splitEntry of splited) {
+			for (const splitEntry of split) {
 				let newItem: INodeExecutionData = splitEntry;
 
 				if (include === 'allOtherFields') {

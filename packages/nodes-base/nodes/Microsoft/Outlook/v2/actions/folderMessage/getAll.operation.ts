@@ -164,7 +164,7 @@ export const properties: INodeProperties[] = [
 								type: 'dateTime',
 								default: '',
 								description:
-									'Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+									'Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in milliseconds.',
 							},
 							{
 								displayName: 'Received Before',
@@ -172,7 +172,7 @@ export const properties: INodeProperties[] = [
 								type: 'dateTime',
 								default: '',
 								description:
-									'Get all messages received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+									'Get all messages received before the specified date. In an expression you can set date using string in ISO format or a timestamp in milliseconds.',
 							},
 							{
 								displayName: 'Sender',

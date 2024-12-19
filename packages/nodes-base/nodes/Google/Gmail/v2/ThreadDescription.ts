@@ -365,7 +365,7 @@ export const threadFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in milliseconds.',
 			},
 			{
 				displayName: 'Received Before',
@@ -373,7 +373,7 @@ export const threadFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in milliseconds.',
 			},
 		],
 	},

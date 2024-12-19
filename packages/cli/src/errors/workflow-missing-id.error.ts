@@ -5,6 +5,6 @@ import type { IWorkflowDb } from '@/interfaces';
 
 export class WorkflowMissingIdError extends ApplicationError {
 	constructor(workflow: Workflow | IWorkflowDb) {
-		super('Detected ID-less worklfow', { extra: { workflow } });
+		super('Detected ID-less workflow', { extra: { workflow } });
 	}
 }

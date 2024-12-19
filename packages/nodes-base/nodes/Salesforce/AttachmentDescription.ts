@@ -320,7 +320,7 @@ export const attachmentFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getAtachmentFields',
+									loadOptionsMethod: 'getAttachmentFields',
 								},
 								default: '',
 								description:

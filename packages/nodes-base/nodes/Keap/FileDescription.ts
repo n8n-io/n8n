@@ -294,8 +294,8 @@ export const fileFields: INodeProperties[] = [
 						value: 'import',
 					},
 					{
-						name: 'Logo Thumnail',
-						value: 'logoThumnail',
+						name: 'Logo Thumbnail',
+						value: 'logoThumbnail',
 					},
 					{
 						name: 'Re Sampled Image',
@@ -306,8 +306,8 @@ export const fileFields: INodeProperties[] = [
 						value: 'styleCart',
 					},
 					{
-						name: 'Template Thumnail',
-						value: 'templateThumnail',
+						name: 'Template Thumbnail',
+						value: 'templateThumbnail',
 					},
 					{
 						name: 'Ticket',

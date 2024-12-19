@@ -372,7 +372,7 @@ export const taskCommonFields = [
 	{
 		displayName: 'Status',
 		id: 'status',
-		type: 'stirng',
+		type: 'string',
 		removed: true,
 	},
 	{
