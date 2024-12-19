@@ -1,11 +1,3 @@
-.code-node-editor .cm-tooltip-autocomplete:after {
-	padding: var(--spacing-2xs) var(--spacing-s);
-	border: var(--border-base);
-	border-bottom-left-radius: var(--border-radius-base);
-	display: block;
-	content: 'n8n supports all JavaScript functions, including those not listed.';
-}
-
 .code-node-editor .cm-editor .cm-tooltip-autocomplete > ul[role='listbox'] {
 	border-bottom: none;
 	border-bottom-left-radius: 0;
@@ -24,8 +16,7 @@
 
 	> ul[role='listbox'] {
 		font-family: var(--font-family-monospace);
-		height: min(250px, 50vh);
-		max-height: none;
+		max-height: min(250px, 50vh);
 		max-width: 200px;
 
 		border: var(--border-base);
@@ -105,6 +96,10 @@
 	&:has(.cm-tooltip-lint) {
 		padding: 0;
 		overflow: hidden;
+
+		.cm-diagnostic {
+			border-left: none;
+		}
 	}
 
 	.autocomplete-info-container {
@@ -267,6 +262,30 @@
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-bold);
 	}
+
+	// Syntax highlighting
+	.ts-keyword,
+	.ts-punctuation {
+		color: var(--color-code-tags-keyword);
+	}
+
+	.ts-stringLiteral,
+	.ts-primitive {
+		color: var(--color-code-tags-primitive);
+	}
+
+	.ts-localName,
+	.ts-parameterName,
+	.ts-methodName {
+		color: var(--color-code-tags-variable);
+	}
+
+	.ts-typeName,
+	.ts-interfaceName,
+	.ts-className,
+	.ts-aliasName {
+		color: var(--color-code-tags-class);
+	}
 }
 
 .cm-editor .cm-tooltip.cm-completionInfo {
@@ -320,6 +339,10 @@
 	line-height: var(--font-line-height-loose);
 	padding: 0;
 	max-width: 320px;
+
+	.cm-tooltip-section:not(:first-child) {
+		border-top: var(--border-base);
+	}
 
 	.autocomplete-info-container {
 		height: auto;
