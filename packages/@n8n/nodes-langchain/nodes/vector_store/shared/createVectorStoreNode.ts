@@ -223,7 +223,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					description: 'Whether or not to include document metadata',
 					displayOptions: {
 						show: {
-							mode: ['load', 'retrieve'],
+							mode: ['load'],
 						},
 					},
 				},
