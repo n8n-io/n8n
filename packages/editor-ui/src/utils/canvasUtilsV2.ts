@@ -22,7 +22,8 @@ export function mapLegacyConnectionsToCanvasConnections(
 			const fromPorts = legacyConnections[fromNodeName][fromConnectionType];
 			fromPorts?.forEach((toPorts, fromIndex) => {
 				toPorts?.forEach((toPort) => {
-					const toId = nodes.find((node) => node.name === toPort.node)?.id ?? '';
+					const toNodeName = toPort.node;
+					const toId = nodes.find((node) => node.name === toNodeName)?.id ?? '';
 					const toConnectionType = toPort.type as NodeConnectionType;
 					const toIndex = toPort.index;
 
@@ -53,12 +54,13 @@ export function mapLegacyConnectionsToCanvasConnections(
 							sourceHandle,
 							targetHandle,
 							data: {
-								fromNodeName,
 								source: {
+									node: fromNodeName,
 									index: fromIndex,
 									type: fromConnectionType,
 								},
 								target: {
+									node: toNodeName,
 									index: toIndex,
 									type: toConnectionType,
 								},

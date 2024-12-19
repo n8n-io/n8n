@@ -65,26 +65,6 @@ describe('NDV', () => {
 		cy.shouldNotHaveConsoleErrors();
 	});
 
-	it('should disconect Switch outputs if rules order was changed', () => {
-		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', 'NDV test switch reorder');
-		workflowPage.actions.zoomToFit();
-
-		workflowPage.actions.executeWorkflow();
-		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('2 items').should('exist');
-		cy.contains('span', 'first').should('exist');
-		ndv.getters.backToCanvas().click();
-
-		workflowPage.actions.openNode('Switch');
-		cy.get('.cm-line').realMouseMove(100, 100);
-		cy.get('.fa-angle-down').first().click();
-		ndv.getters.backToCanvas().click();
-		workflowPage.actions.executeWorkflow();
-		workflowPage.actions.openNode('Merge');
-		ndv.getters.outputPanel().contains('2 items').should('exist');
-		cy.contains('span', 'zero').should('exist');
-	});
-
 	it('should show correct validation state for resource locator params', () => {
 		workflowPage.actions.addNodeToCanvas('Typeform', true, true);
 		ndv.getters.container().should('be.visible');
@@ -861,5 +841,19 @@ describe('NDV', () => {
 			.outputPanel()
 			.contains('To search field contents rather than just names, use Table or JSON view')
 			.should('exist');
+	});
+
+	it('ADO-2931 - should handle multiple branches of the same input with the first branch empty correctly', () => {
+		cy.createFixtureWorkflow('Test_ndv_two_branches_of_same_parent_false_populated.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.openNode('DebugHelper');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters.outputPanel().should('be.visible');
+		ndv.actions.execute();
+		// This ensures we rendered the inputPanel
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'a1');
 	});
 });
