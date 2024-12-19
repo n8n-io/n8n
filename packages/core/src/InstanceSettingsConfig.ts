@@ -15,9 +15,9 @@ export class InstanceSettingsConfig {
 	 * The home folder path of the user.
 	 * If none can be found it falls back to the current working directory
 	 */
-	public readonly userHome: string;
+	readonly userHome: string;
 
-	public readonly n8nFolder: string;
+	readonly n8nFolder: string;
 
 	constructor() {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';

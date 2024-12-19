@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
 import { Logger } from 'n8n-core';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import assert from 'node:assert';
 import colors from 'picocolors';
 import { Container } from 'typedi';
 
@@ -63,7 +64,8 @@ if (!inE2ETests && !inTest) {
 				}
 				logger.debug(`Loaded config overwrites from ${configFile}`);
 			} catch (error) {
-				logger.error(`Error loading config file ${configFile}`, { error: error as Error });
+				assert(error instanceof Error);
+				logger.error(`Error loading config file ${configFile}`, { error });
 			}
 		}
 	}
