@@ -2,61 +2,18 @@ import _ from 'lodash';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	ExecuteWorkflowData,
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	ResourceMapperField,
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
-import { loadWorkflowInputMappings } from './methods/resourceMapping';
 import { generatePairedItemData } from '../../../utils/utilities';
-
-function getWorkflowInputValues(this: IExecuteFunctions): INodeExecutionData[] {
-	const inputData = this.getInputData();
-
-	return inputData.map((item, itemIndex) => {
-		const itemFieldValues = this.getNodeParameter(
-			'workflowInputs.value',
-			itemIndex,
-			{},
-		) as IDataObject;
-
-		return {
-			json: {
-				...item.json,
-				...itemFieldValues,
-			},
-			index: itemIndex,
-			pairedItem: {
-				item: itemIndex,
-			},
-		};
-	});
-}
-
-function getCurrentWorkflowInputData(this: IExecuteFunctions) {
-	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
-
-	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
-
-	if (schema.length === 0) {
-		return inputData;
-	} else {
-		const removedKeys = new Set(schema.filter((x) => x.removed).map((x) => x.displayName));
-
-		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
-			index,
-			pairedItem: { item: index },
-			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
-		}));
-
-		return filteredInputData;
-	}
-}
-
+import {
+	getCurrentWorkflowInputData,
+	loadWorkflowInputMappings,
+} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
