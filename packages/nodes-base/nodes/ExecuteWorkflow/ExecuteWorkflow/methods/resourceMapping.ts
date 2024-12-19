@@ -5,7 +5,7 @@ import {
 	type ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { getFieldEntries } from '../../GenericFunctions';
+import { getFieldEntries } from '../../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,

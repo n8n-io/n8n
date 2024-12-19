@@ -2,11 +2,13 @@ import { mock } from 'jest-mock-extended';
 import type { FieldValueOption, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { ExecuteWorkflowTrigger } from './ExecuteWorkflowTrigger.node';
-import { getFieldEntries } from '../GenericFunctions';
-import { WORKFLOW_INPUTS } from '../constants';
-import { json } from 'generate-schema';
+import { WORKFLOW_INPUTS } from '../../../utils/workflowInputsResourceMapping/constants';
+import { getFieldEntries } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
-jest.mock('../GenericFunctions');
+jest.mock('../../../utils/workflowInputsResourceMapping/GenericFunctions', () => ({
+	getFieldEntries: jest.fn(),
+	getWorkflowInputData: jest.fn(),
+}));
 
 describe('ExecuteWorkflowTrigger', () => {
 	const mockInputData: INodeExecutionData[] = [

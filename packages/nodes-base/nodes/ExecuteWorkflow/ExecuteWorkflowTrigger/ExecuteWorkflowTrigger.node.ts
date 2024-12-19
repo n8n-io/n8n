@@ -15,8 +15,8 @@ import {
 	TYPE_OPTIONS,
 	PASSTHROUGH,
 	FALLBACK_DEFAULT_VALUE,
-} from '../constants';
-import { getFieldEntries } from '../GenericFunctions';
+} from '../../../utils/workflowInputsResourceMapping/constants';
+import { getFieldEntries } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {

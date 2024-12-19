@@ -24,3 +24,4 @@ export * from './ExecutionMetadata';
 export * from './node-execution-context';
 export * from './PartialExecutionUtils';
 export { ErrorReporter } from './error-reporter';
+export * from './SerializedBuffer';
