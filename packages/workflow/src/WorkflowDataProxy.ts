@@ -975,8 +975,8 @@ export class WorkflowDataProxy {
 				});
 			}
 			return (
-				// @ts-expect-error - TS does not know that the key exists, we need to address this in refactor
-				placeholdersDataInputData?.query?.[name] ??
+				// TS does not know that the key exists, we need to address this in refactor
+				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??
 				placeholdersDataInputData?.[name] ??
 				defaultValue
 			);
