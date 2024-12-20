@@ -6,7 +6,9 @@ export const DEFAULT_URL_BASE = 'https://example.org/';
  * Default headers for executing OAuth 2.0 flows.
  */
 export const DEFAULT_HEADERS: Headers = {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	Accept: 'application/json, application/x-www-form-urlencoded',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'Content-Type': 'application/x-www-form-urlencoded',
 };
 
