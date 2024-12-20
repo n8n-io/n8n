@@ -1,4 +1,4 @@
-type ObjectLiteral = { [key: string]: unknown };
+type ObjectLiteral = { [key: string | symbol]: unknown };
 
 /**
  * Checks if the provided value is a plain object literal (not null, not an array, not a class instance, and not a primitive).
