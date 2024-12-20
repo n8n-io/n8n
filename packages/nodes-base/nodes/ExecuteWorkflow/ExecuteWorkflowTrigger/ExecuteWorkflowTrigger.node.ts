@@ -170,6 +170,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								default: '',
 								placeholder: 'e.g. fieldName',
 								description: 'Name of the field',
+								required: true,
 								noDataExpression: true,
 							},
 							{
@@ -177,8 +178,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 								name: 'type',
 								type: 'options',
 								description: 'The field value type',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: TYPE_OPTIONS,
+								required: true,
 								default: 'string',
 								noDataExpression: true,
 							},
