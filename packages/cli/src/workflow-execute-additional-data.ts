@@ -5,7 +5,7 @@
 import type { PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
-import { ErrorReporter, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, WorkflowExecute, isObjectLiteral } from 'n8n-core';
 import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -45,7 +45,7 @@ import type { IWorkflowErrorData, UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { findSubworkflowStart, isObjectLiteral, isWorkflowIdValid } from '@/utils';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
