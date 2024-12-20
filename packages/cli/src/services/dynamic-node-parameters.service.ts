@@ -68,6 +68,8 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('loadOptions', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
+		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
+		// enabled in `tsconfig.json`
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return method.call(thisArgs);
 	}

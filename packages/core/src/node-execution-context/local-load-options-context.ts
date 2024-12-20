@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import lodash from 'lodash';
 import { ApplicationError, Workflow } from 'n8n-workflow';
 import type {
 	INodeParameterResourceLocator,
@@ -7,7 +7,6 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IWorkflowLoader,
 	IWorkflowNodeContext,
-	INode,
 	INodeTypes,
 } from 'n8n-workflow';
 
@@ -22,16 +21,17 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 	) {}
 
 	async getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null> {
-		const { value } = this.getCurrentNodeParameter('workflowId') as INodeParameterResourceLocator;
+		const { value: workflowId } = this.getCurrentNodeParameter(
+			'workflowId',
+		) as INodeParameterResourceLocator;
 
-		const workflowId = value as string;
-		if (!workflowId) {
+		if (typeof workflowId !== 'string' || !workflowId) {
 			throw new ApplicationError(`No workflowId parameter defined on node of type "${nodeType}"!`);
 		}
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType) as INode;
+		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType);
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({
@@ -41,8 +41,10 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 				nodeTypes: this.nodeTypes,
 			});
 
-			const workflowAdditionalData = { ...this.additionalData };
-			workflowAdditionalData.currentNodeParameters = selectedWorkflowNode.parameters;
+			const workflowAdditionalData = {
+				...this.additionalData,
+				currentNodeParameters: selectedWorkflowNode.parameters,
+			};
 
 			return new LoadWorkflowNodeContext(
 				selectedSingleNodeWorkflow,
@@ -61,7 +63,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 			parameterPath = `${this.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 		}
 
-		const returnData = get(nodeParameters, parameterPath);
+		const returnData = lodash.get(nodeParameters, parameterPath);
 
 		return returnData;
 	}

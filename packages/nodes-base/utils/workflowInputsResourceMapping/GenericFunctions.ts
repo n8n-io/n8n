@@ -1,20 +1,18 @@
 import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
 import _ from 'lodash';
-import {
-	type FieldValueOption,
-	type FieldType,
-	type IWorkflowNodeContext,
-	jsonParse,
-	NodeOperationError,
-	type INodeExecutionData,
-	type IDataObject,
-	type ResourceMapperField,
-	type ILocalLoadOptionsFunctions,
-	type ResourceMapperFields,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	type ISupplyDataFunctions,
+import type {
+	FieldValueOption,
+	FieldType,
+	IWorkflowNodeContext,
+	INodeExecutionData,
+	IDataObject,
+	ResourceMapperField,
+	ILocalLoadOptionsFunctions,
+	ResourceMapperFields,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	JSON_EXAMPLE,
