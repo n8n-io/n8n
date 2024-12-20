@@ -20,9 +20,7 @@ import {
 	sort,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;

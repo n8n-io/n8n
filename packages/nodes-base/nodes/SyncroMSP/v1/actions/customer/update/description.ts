@@ -1,6 +1,5 @@
-import type { CustomerProperties } from '../../Interfaces';
-
 import { addressFixedCollection } from '../../../methods/sharedFields';
+import type { CustomerProperties } from '../../Interfaces';
 
 export const customerUpdateDescription: CustomerProperties = [
 	{

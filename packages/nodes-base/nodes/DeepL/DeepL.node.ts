@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { deepLApiRequest } from './GenericFunctions';
-
 import { textOperations } from './TextDescription';
 
 export class DeepL implements INodeType {

@@ -15,6 +15,7 @@ import {
 
 import { draftFields, draftOperations } from './DraftDescription';
 import { labelFields, labelOperations } from './LabelDescription';
+import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
@@ -36,7 +37,6 @@ import {
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
-import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',

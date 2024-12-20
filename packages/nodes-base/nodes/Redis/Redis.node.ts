@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,8 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import set from 'lodash/set';
-
+import type { RedisCredential } from './types';
 import {
 	setupRedisClient,
 	redisConnectionTest,
@@ -15,7 +15,6 @@ import {
 	getValue,
 	setValue,
 } from './utils';
-import type { RedisCredential } from './types';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {

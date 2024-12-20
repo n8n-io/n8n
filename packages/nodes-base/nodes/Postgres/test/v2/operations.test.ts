@@ -1,3 +1,4 @@
+import { get } from 'lodash';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,15 +7,13 @@ import type {
 	INodeParameters,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
-import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
-
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
 import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
+import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 
 const runQueries: QueriesRunner = jest.fn();
 

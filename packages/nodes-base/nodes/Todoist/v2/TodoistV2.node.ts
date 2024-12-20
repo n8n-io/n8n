@@ -11,10 +11,9 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { todoistApiRequest } from '../GenericFunctions';
-
 import type { OperationType, TodoistProjectType } from './Service';
 import { TodoistService } from './Service';
+import { todoistApiRequest } from '../GenericFunctions';
 
 // interface IBodyCreateTask {
 // 	content?: string;

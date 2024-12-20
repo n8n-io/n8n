@@ -1,3 +1,4 @@
+import { Attribute, Change } from 'ldapts';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -12,9 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { Attribute, Change } from 'ldapts';
-import { ldapFields } from './LdapDescription';
 import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
+import { ldapFields } from './LdapDescription';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
