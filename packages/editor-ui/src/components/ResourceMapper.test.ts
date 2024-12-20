@@ -222,7 +222,7 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByText('Look for incoming data that matches the foos in the service'),
 		).toBeInTheDocument();
-		expect(getByText('Foos to Match On')).toBeInTheDocument();
+		expect(getByText('Foos to match on')).toBeInTheDocument();
 		expect(
 			getByText(
 				'The foos to use when matching rows in the service to the input items of this node. Usually an ID.',
