@@ -1,13 +1,19 @@
 <script lang="ts" setup>
-import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
+import type { ContextMenuOptions, ContextMenuAction } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { N8nActionDropdown } from 'n8n-design-system';
 import { watch, ref } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
-const contextMenu = useContextMenu();
+const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
+
+const props = defineProps<{
+	shortcuts?: ContextMenuOptions['shortcuts'];
+}>();
+
+const contextMenu = useContextMenu(() => {}, props);
 const { position, isOpen, actions, target } = contextMenu;
 const dropdown = ref<InstanceType<typeof N8nActionDropdown>>();
-const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
 const container = ref<HTMLDivElement>();
 
 watch(
