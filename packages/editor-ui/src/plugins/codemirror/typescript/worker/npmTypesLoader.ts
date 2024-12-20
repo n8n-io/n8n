@@ -5,6 +5,27 @@ type NPMTreeMeta = {
 	version: string;
 };
 
+const jsDelivrApi = {
+	async getFileTree(packageName: string, version = 'latest'): Promise<NPMTreeMeta> {
+		const url = `https://data.jsdelivr.com/v1/package/npm/${packageName}@${version}/flat`;
+		const res = await fetch(url);
+		return await res.json();
+	},
+	async getFileContent(packageName: string, fileName: string, version = 'latest'): Promise<string> {
+		const url = `https://cdn.jsdelivr.net/npm/${packageName}@${version}${fileName}`;
+		const res = await fetch(url);
+		return await res.text();
+	},
+};
+
+function isRequiredTypePackageFile(fileName: string) {
+	return fileName.endsWith('.d.ts') || fileName === '/package.json';
+}
+
+function toLocalFilePath(packageName: string, fileName: string) {
+	return `/node_modules/@types/${packageName}${fileName}`;
+}
+
 export const loadTypes = async (
 	packageName: string,
 	version: string,
@@ -13,11 +34,11 @@ export const loadTypes = async (
 	const { files } = await loadTypesFileTree(packageName, version);
 	await Promise.all(
 		files
-			.filter(({ name }) => name.endsWith('.d.ts') || name === '/package.json')
+			.filter((file) => isRequiredTypePackageFile(file.name))
 			.map(
-				async ({ name }) =>
-					await loadFileContent(name).then((content) =>
-						onFileReceived(`/node_modules/@types/luxon${name}`, content),
+				async (file) =>
+					await loadFileContent(packageName, file.name, version).then((content) =>
+						onFileReceived(toLocalFilePath(packageName, file.name), content),
 					),
 			),
 	);
@@ -27,12 +48,13 @@ export const loadTypesFileTree = async (
 	packageName: string,
 	version: string,
 ): Promise<NPMTreeMeta> => {
-	const url = `https://data.jsdelivr.com/v1/package/npm/@types/${packageName}@${version}/flat`;
-	const res = await fetch(url);
-	return await res.json();
+	return await jsDelivrApi.getFileTree(`@types/${packageName}`, version);
 };
 
-export const loadFileContent = async (file: string) => {
-	const url = `https://cdn.jsdelivr.net/npm/@types/luxon@3.2.0${file}`;
-	return await fetch(url).then(async (res) => await res.text());
+export const loadFileContent = async (
+	packageName: string,
+	fileName: string,
+	version = 'latest',
+) => {
+	return await jsDelivrApi.getFileContent(`@types/${packageName}`, fileName, version);
 };
