@@ -97,7 +97,7 @@ onMounted(() => {
 			extensions: [
 				EditorState.readOnly.of(true),
 				EditorView.lineWrapping,
-				EditorView.domEventHandlers({ scroll: forceParse }),
+				EditorView.domEventHandlers({ scroll: (_, view) => forceParse(view) }),
 				...props.extensions,
 			],
 		}),
