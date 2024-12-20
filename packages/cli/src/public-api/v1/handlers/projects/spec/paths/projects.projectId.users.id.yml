@@ -11,7 +11,7 @@ delete:
       description: The ID of the project.
       required: true
       schema:
-      type: string
+        type: string
     - $ref: '../../../users/spec/schemas/parameters/userIdentifier.yml'
   responses:
     '204':

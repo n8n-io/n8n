@@ -6,7 +6,12 @@ delete:
   summary: Delete a project
   description: Delete a project from your instance.
   parameters:
-    - $ref: '../schemas/parameters/projectId.yml'
+    - in: path
+      name: projectId
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
   responses:
     '204':
       description: Operation successful.
@@ -24,7 +29,12 @@ put:
   summary: Update a project
   description: Update a project.
   parameters:
-    - $ref: '../schemas/parameters/projectId.yml'
+    - in: path
+      name: projectId
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
   requestBody:
     description: Updated project object.
     content:
