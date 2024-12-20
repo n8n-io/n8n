@@ -1,3 +1,15 @@
-export function isObjectLiteral(item: unknown): item is { [key: string]: unknown } {
-	return typeof item === 'object' && item !== null && !Array.isArray(item);
+/**
+ * Checks if the provided value is a plain object literal (not null, not an array, not a class instance, and not a primitive).
+ * This function serves as a type guard.
+ *
+ * @param candidate - The value to check
+ * @returns {boolean} True if the value is an object literal, false otherwise
+ */
+export function isObjectLiteral(candidate: unknown): candidate is { [key: string]: unknown } {
+	return (
+		typeof candidate === 'object' &&
+		candidate !== null &&
+		!Array.isArray(candidate) &&
+		Object.getPrototypeOf(candidate) === Object.prototype
+	);
 }
