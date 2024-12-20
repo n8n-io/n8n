@@ -71,7 +71,7 @@ export class SourceControlExportService {
 		}
 	}
 
-	public rmFilesFromExportFolder(filesToBeDeleted: Set<string>): Set<string> {
+	rmFilesFromExportFolder(filesToBeDeleted: Set<string>): Set<string> {
 		try {
 			filesToBeDeleted.forEach((e) => rmSync(e));
 		} catch (error) {

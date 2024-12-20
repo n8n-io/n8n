@@ -6,7 +6,7 @@ import type { ChildProcess } from 'node:child_process';
  * memory (OOMs).
  */
 export class NodeProcessOomDetector {
-	public get didProcessOom() {
+	get didProcessOom() {
 		return this._didProcessOom;
 	}
 
