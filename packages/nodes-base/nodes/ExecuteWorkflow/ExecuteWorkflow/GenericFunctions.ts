@@ -3,11 +3,16 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
+	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	IRequestOptions,
 } from 'n8n-workflow';
 
-export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex = 0) {
+export async function getWorkflowInfo(
+	this: ILoadOptionsFunctions | IExecuteFunctions,
+	source: string,
+	itemIndex = 0,
+) {
 	const workflowInfo: IExecuteWorkflowInfo = {};
 	const nodeVersion = this.getNode().typeVersion;
 	if (source === 'database') {
