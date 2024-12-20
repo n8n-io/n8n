@@ -23,6 +23,8 @@ put:
     - Project
   summary: Update a project
   description: Update a project.
+  parameters:
+    - $ref: '../schemas/parameters/projectId.yml'
   requestBody:
     description: Updated project object.
     content:
