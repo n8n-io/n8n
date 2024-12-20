@@ -172,7 +172,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
 
-		openNode('Execute Workflow Trigger');
+		openNode('Workflow Input Trigger');
 	});
 
 	it('works with type-checked values', () => {
@@ -229,7 +229,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		});
 		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
 
-		openNode('Execute Workflow Trigger');
+		openNode('Workflow Input Trigger');
 
 		cy.getByTestId('parameter-input').eq(0).click();
 
@@ -277,7 +277,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// Executing the workflow should show an error toast
 		workflow.actions.executeWorkflow();
 		errorToast().should('contain', 'The workflow has issues');
-		openNode('Execute Workflow Trigger');
+		openNode('Workflow Input Trigger');
 		// Add a field to the workflowInputs fixedCollection
 		setWorkflowInputFieldValue(0, 'test');
 		// Executing the workflow should not show error now
