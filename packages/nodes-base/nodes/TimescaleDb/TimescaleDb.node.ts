@@ -5,8 +5,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import pgPromise from 'pg-promise';
+
 import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
 
 export class TimescaleDb implements INodeType {

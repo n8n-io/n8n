@@ -1,4 +1,6 @@
+import * as changeCase from 'change-case';
 import { createHash } from 'crypto';
+import upperFirst from 'lodash/upperFirst';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,17 +11,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-import upperFirst from 'lodash/upperFirst';
-import * as changeCase from 'change-case';
-import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
 
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
-
-import { responderFields, respondersOperations } from './ResponderDescription';
-
-import { jobFields, jobOperations } from './JobDescription';
-
 import type { IJob } from './AnalyzerInterface';
+import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
+import { jobFields, jobOperations } from './JobDescription';
+import { responderFields, respondersOperations } from './ResponderDescription';
 
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {

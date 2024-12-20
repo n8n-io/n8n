@@ -81,7 +81,7 @@ export class SourceControlService {
 		});
 	}
 
-	public async sanityCheck(): Promise<void> {
+	async sanityCheck(): Promise<void> {
 		try {
 			const foldersExisted = sourceControlFoldersExistCheck(
 				[this.gitFolder, this.sshFolder],

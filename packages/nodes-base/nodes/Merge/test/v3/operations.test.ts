@@ -1,4 +1,5 @@
 import type { IDataObject, INode } from 'n8n-workflow';
+
 import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
 import * as mode from '../../v3/actions/mode';
 

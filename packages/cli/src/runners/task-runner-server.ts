@@ -31,7 +31,7 @@ export class TaskRunnerServer {
 
 	readonly app: express.Application;
 
-	public get port() {
+	get port() {
 		return (this.server?.address() as AddressInfo)?.port;
 	}
 

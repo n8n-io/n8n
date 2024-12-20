@@ -19,7 +19,6 @@ import {
 	pipedriveResolveCustomProperties,
 	sortOptionParameters,
 } from './GenericFunctions';
-
 import { currencies } from './utils';
 
 interface CustomProperty {

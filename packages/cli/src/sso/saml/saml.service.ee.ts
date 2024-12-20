@@ -68,7 +68,7 @@ export class SamlService {
 		},
 	};
 
-	public get samlPreferences(): SamlPreferences {
+	get samlPreferences(): SamlPreferences {
 		return {
 			...this._samlPreferences,
 			loginEnabled: isSamlLoginEnabled(),

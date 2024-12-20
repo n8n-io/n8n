@@ -28,17 +28,17 @@ export type TaskRunnerProcessEventMap = {
  */
 @Service()
 export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
-	public get isRunning() {
+	get isRunning() {
 		return this.process !== null;
 	}
 
 	/** The process ID of the task runner process */
-	public get pid() {
+	get pid() {
 		return this.process?.pid;
 	}
 
 	/** Promise that resolves when the process has exited */
-	public get runPromise() {
+	get runPromise() {
 		return this._runPromise;
 	}
 
