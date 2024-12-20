@@ -8,8 +8,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	NodeExecutionHint,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	NodeApiError,
+	NodeOperationError,
+	NodeExecutionOutput,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
@@ -46,16 +52,6 @@ export class GoogleCalendar implements INodeType {
 			{
 				name: 'googleCalendarOAuth2Api',
 				required: true,
-			},
-		],
-		hints: [
-			{
-				displayCondition:
-					'={{ $parameter["resource"] === "event" && $parameter["operation"] === "getAll" && $nodeVersion >= 1.3 && !$parameter["timeMax"] && ( !$parameter["options"].recurringEventHandling || $parameter["options"].recurringEventHandling === "expand" ) }}',
-				message:
-					"Some events could repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",
-				location: 'outputPane',
-				whenToDisplay: 'beforeExecution',
 			},
 		],
 		properties: [
@@ -144,6 +140,7 @@ export class GoogleCalendar implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
+		const hints: NodeExecutionHint[] = [];
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0);
@@ -555,6 +552,29 @@ export class GoogleCalendar implements INodeType {
 							} else {
 								responseData = addNextOccurrence(responseData);
 							}
+
+							if (
+								!qs.timeMax &&
+								(!options.recurringEventHandling || options.recurringEventHandling === 'expand')
+							) {
+								const now = moment().tz(timezone);
+								// eslint-disable-next-line @typescript-eslint/no-loop-func
+								const extendsYearIntoFuture = (
+									responseData as Array<{ recurringEventId?: string; start: { dateTime: string } }>
+								).some((event) => {
+									if (!event.recurringEventId) return false;
+									const diffInYears = now.diff(event.start.dateTime || '', 'years', true);
+									return diffInYears;
+								});
+
+								if (extendsYearIntoFuture) {
+									hints.push({
+										message:
+											"Some events repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",
+										location: 'outputPane',
+									});
+								}
+							}
 						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch
@@ -767,6 +787,11 @@ export class GoogleCalendar implements INodeType {
 				}
 			}
 		}
+
+		if (hints.length) {
+			return new NodeExecutionOutput([returnData], hints);
+		}
+
 		return [returnData];
 	}
 }
