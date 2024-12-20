@@ -2,9 +2,8 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
-import { GoogleCalendar } from '../../GoogleCalendar.node';
-
 import * as genericFunctions from '../../GenericFunctions';
+import { GoogleCalendar } from '../../GoogleCalendar.node';
 
 jest.mock('../../GenericFunctions', () => ({
 	getTimezones: jest.fn(),

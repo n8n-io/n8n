@@ -3,38 +3,27 @@
 import type { CanvasConnectionData } from '@/types';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
-import { useVueFlow, BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
+import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
-import { computed, useCssModule, ref, toRef } from 'vue';
+import { computed, useCssModule, toRef } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { getCustomPath } from './utils/edgePath';
+import { getEdgeRenderData } from './utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
 	delete: [connection: Connection];
+	'update:label:hovered': [hovered: boolean];
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
 	readOnly?: boolean;
 	hovered?: boolean;
+	bringToFront?: boolean; // Determines if entire edges layer should be brought to front
 };
 
 const props = defineProps<CanvasEdgeProps>();
 
 const data = toRef(props, 'data');
-
-const { onEdgeMouseEnter, onEdgeMouseLeave } = useVueFlow();
-
-const isHovered = ref(false);
-
-onEdgeMouseEnter(({ edge }) => {
-	if (edge.id !== props.id) return;
-	isHovered.value = true;
-});
-onEdgeMouseLeave(({ edge }) => {
-	if (edge.id !== props.id) return;
-	isHovered.value = false;
-});
 
 const $style = useCssModule();
 
@@ -44,7 +33,7 @@ const connectionType = computed(() =>
 		: NodeConnectionType.Main,
 );
 
-const renderToolbar = computed(() => isHovered.value && !props.readOnly);
+const renderToolbar = computed(() => props.hovered && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
 
@@ -70,23 +59,41 @@ const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
 	strokeWidth: 2,
-	stroke: isHovered.value ? 'var(--color-primary)' : edgeColor.value,
+	stroke: props.hovered ? 'var(--color-primary)' : edgeColor.value,
 }));
 
-const edgeLabelStyle = computed(() => ({ color: edgeColor.value }));
+const edgeClasses = computed(() => ({
+	[$style.edge]: true,
+	hovered: props.hovered,
+	'bring-to-front': props.bringToFront,
+}));
+
+const edgeLabelStyle = computed(() => ({
+	color: edgeColor.value,
+}));
 
 const edgeToolbarStyle = computed(() => {
-	const [, labelX, labelY] = path.value;
 	return {
-		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+		transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px,${labelPosition.value[1]}px)`,
+		...(props.hovered ? { zIndex: 1 } : {}),
 	};
 });
 
-const path = computed(() =>
-	getCustomPath(props, {
+const edgeToolbarClasses = computed(() => ({
+	[$style.edgeLabelWrapper]: true,
+	'vue-flow__edge-label': true,
+	selected: props.selected,
+}));
+
+const renderData = computed(() =>
+	getEdgeRenderData(props, {
 		connectionType: connectionType.value,
 	}),
 );
+
+const segments = computed(() => renderData.value.segments);
+
+const labelPosition = computed(() => renderData.value.labelPosition);
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
@@ -102,14 +109,24 @@ function onAdd() {
 function onDelete() {
 	emit('delete', connection.value);
 }
+
+function onEdgeLabelMouseEnter() {
+	emit('update:label:hovered', true);
+}
+
+function onEdgeLabelMouseLeave() {
+	emit('update:label:hovered', false);
+}
 </script>
 
 <template>
 	<BaseEdge
-		:id="id"
-		:class="$style.edge"
+		v-for="(segment, index) in segments"
+		:id="`${id}-${index}`"
+		:key="segment[0]"
+		:class="edgeClasses"
 		:style="edgeStyle"
-		:path="path[0]"
+		:path="segment[0]"
 		:marker-end="markerEnd"
 		:interaction-width="40"
 	/>
@@ -117,10 +134,13 @@ function onDelete() {
 	<EdgeLabelRenderer>
 		<div
 			data-test-id="edge-label-wrapper"
+			:data-source-node-name="sourceNode?.label"
+			:data-target-node-name="targetNode?.label"
+			:data-edge-status="status"
 			:style="edgeToolbarStyle"
-			:class="$style.edgeLabelWrapper"
-			@mouseenter="isHovered = true"
-			@mouseleave="isHovered = false"
+			:class="edgeToolbarClasses"
+			@mouseenter="onEdgeLabelMouseEnter"
+			@mouseleave="onEdgeLabelMouseLeave"
 		>
 			<CanvasEdgeToolbar
 				v-if="renderToolbar"

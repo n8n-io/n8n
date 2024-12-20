@@ -1,4 +1,4 @@
-import { NodeExecuteFunctions } from 'n8n-core';
+import { LoadOptionsContext, RoutingNode } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -18,7 +18,7 @@ import type {
 	NodeParameterValueType,
 	IDataObject,
 } from 'n8n-workflow';
-import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
+import { Workflow, ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
@@ -54,7 +54,7 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType.description.requestDefaults?.baseURL) {
-			// This in in here for now for security reasons.
+			// This is in here for now for security reasons.
 			// Background: As the full data for the request to make does get send, and the auth data
 			// will then be applied, would it be possible to retrieve that data like that. By at least
 			// requiring a baseURL to be defined can at least not a random server be called.
@@ -105,13 +105,11 @@ export class DynamicNodeParametersService {
 			main: [[{ json: {} }]],
 		};
 
-		const optionsData = await routingNode.runNode(
-			inputData,
-			runIndex,
-			tempNode,
-			{ node, source: null, data: {} },
-			NodeExecuteFunctions,
-		);
+		const optionsData = await routingNode.runNode(inputData, runIndex, tempNode, {
+			node,
+			source: null,
+			data: {},
+		});
 
 		if (optionsData?.length === 0) {
 			return [];
@@ -253,6 +251,6 @@ export class DynamicNodeParametersService {
 		workflow: Workflow,
 	) {
 		const node = workflow.nodes['Temp-Node'];
-		return NodeExecuteFunctions.getLoadOptionsFunctions(workflow, node, path, additionalData);
+		return new LoadOptionsContext(workflow, node, additionalData, path);
 	}
 }

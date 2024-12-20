@@ -5,10 +5,10 @@ import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 /**
- * Only one authentication method can be active at a time. This function sets the current authentication method
- * and saves it to the database.
- * SSO methods should only switch to email and then to another method. Email can switch to any method.
- * @param authenticationMethod
+ * Only one authentication method can be active at a time. This function sets
+ * the current authentication method and saves it to the database.
+ * SSO methods should only switch to email and then to another method. Email
+ * can switch to any method.
  */
 export async function setCurrentAuthenticationMethod(
 	authenticationMethod: AuthProviderType,

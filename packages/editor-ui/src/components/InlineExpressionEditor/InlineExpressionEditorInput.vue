@@ -56,6 +56,7 @@ const extensions = computed(() => [
 	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+
 const {
 	editor: editorRef,
 	segments,
@@ -68,7 +69,7 @@ const {
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadOnly,
+	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
 });
@@ -113,20 +114,8 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		ref="root"
-		title=""
-		:class="$style.editor"
-		data-test-id="inline-expression-editor-input"
-	></div>
+	<div ref="root" title="" data-test-id="inline-expression-editor-input"></div>
 </template>
-
-<style lang="scss" module>
-.editor div[contenteditable='false'] {
-	background-color: var(--disabled-fill, var(--color-background-light));
-	cursor: not-allowed;
-}
-</style>
 
 <style lang="scss" scoped>
 :deep(.cm-editor) {
@@ -134,5 +123,15 @@ defineExpose({
 }
 :deep(.cm-content) {
 	padding-left: var(--spacing-2xs);
+
+	&[aria-readonly='true'] {
+		background-color: var(--disabled-fill, var(--color-background-light));
+		border-color: var(--disabled-border, var(--border-color-base));
+		color: var(--disabled-color, var(--color-text-base));
+		cursor: not-allowed;
+
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
 }
 </style>

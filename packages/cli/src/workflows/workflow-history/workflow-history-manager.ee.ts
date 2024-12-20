@@ -1,9 +1,9 @@
 import { DateTime } from 'luxon';
 import { Service } from 'typedi';
 
+import { Time } from '@/constants';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 
-import { WORKFLOW_HISTORY_PRUNE_INTERVAL } from './constants';
 import {
 	getWorkflowHistoryPruneTime,
 	isWorkflowHistoryEnabled,
@@ -20,7 +20,7 @@ export class WorkflowHistoryManager {
 			clearInterval(this.pruneTimer);
 		}
 
-		this.pruneTimer = setInterval(async () => await this.prune(), WORKFLOW_HISTORY_PRUNE_INTERVAL);
+		this.pruneTimer = setInterval(async () => await this.prune(), 1 * Time.hours.toMilliseconds);
 	}
 
 	shutdown() {

@@ -3,7 +3,6 @@ import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -49,7 +48,7 @@ export class PubSubHandler {
 					...this.commonHandlers,
 					'get-worker-status': async () =>
 						await this.publisher.publishWorkerResponse({
-							senderId: config.getEnv('redis.queueModeId'),
+							senderId: this.instanceSettings.hostId,
 							response: 'response-to-get-worker-status',
 							payload: this.workerStatusService.generateStatus(),
 						}),

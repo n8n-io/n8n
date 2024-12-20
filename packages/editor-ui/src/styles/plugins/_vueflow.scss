@@ -59,17 +59,6 @@
 }
 
 /**
- * Pane
- */
-
-.vue-flow__pane {
-	&,
-	&.draggable {
-		cursor: default;
-	}
-}
-
-/**
  * Nodes
  */
 
@@ -83,13 +72,13 @@
 		cursor: grabbing;
 	}
 
-	&.selected {
-		z-index: 1 !important;
-	}
-
 	&:has(.sticky--active) {
 		z-index: 1 !important;
 	}
+}
+
+.vue-flow__nodes:has(.bring-to-front) {
+	z-index: 2 !important;
 }
 
 /**
@@ -107,7 +96,7 @@
  * Edges
  */
 
-.vue-flow__edges,
-.vue-flow__edge-labels {
+.vue-flow__edges:has(.bring-to-front),
+.vue-flow__edge-label.selected {
 	z-index: 1 !important;
 }

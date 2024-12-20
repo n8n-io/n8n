@@ -32,7 +32,6 @@ import { setupPushServer, setupPushHandler, Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -63,6 +62,9 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets/external-secrets.controller.ee';
 import '@/license/license.controller';
+import '@/evaluation/test-definitions.controller.ee';
+import '@/evaluation/metrics.controller';
+import '@/evaluation/test-runs.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 
@@ -76,11 +78,11 @@ export class Server extends AbstractServer {
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		super('main');
+		super();
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
@@ -97,7 +99,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
-		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
@@ -107,7 +109,7 @@ export class Server extends AbstractServer {
 	}
 
 	private async registerAdditionalControllers() {
-		if (!inProduction && this.orchestrationService.isMultiMainSetupEnabled) {
+		if (!inProduction && this.instanceSettings.isMultiMain) {
 			await import('@/controllers/debug.controller');
 		}
 

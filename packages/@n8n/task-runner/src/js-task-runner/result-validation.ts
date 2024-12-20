@@ -9,7 +9,7 @@ export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', '
 function validateTopLevelKeys(item: INodeExecutionData, itemIndex: number) {
 	for (const key in item) {
 		if (Object.prototype.hasOwnProperty.call(item, key)) {
-			if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
+			if (REQUIRED_N8N_ITEM_KEYS.has(key)) continue;
 
 			throw new ValidationError({
 				message: `Unknown top-level item key: ${key}`,

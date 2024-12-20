@@ -6,7 +6,7 @@ import { SourceControlService } from '@/environments/source-control/source-contr
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
-		new InstanceSettings(),
+		new InstanceSettings(mock()),
 		mock(),
 		mock(),
 	);

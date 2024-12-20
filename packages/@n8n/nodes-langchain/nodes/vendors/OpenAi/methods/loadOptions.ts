@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+
 import { apiRequest } from '../transport';
 
 export async function getFiles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

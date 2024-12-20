@@ -7,7 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
@@ -19,6 +18,7 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {

@@ -28,6 +28,7 @@ export function useDeviceSupport() {
 	}
 
 	return {
+		userAgent: userAgent.value,
 		isTouchDevice: isTouchDevice.value,
 		isMacOs: isMacOs.value,
 		controlKeyCode: controlKeyCode.value,

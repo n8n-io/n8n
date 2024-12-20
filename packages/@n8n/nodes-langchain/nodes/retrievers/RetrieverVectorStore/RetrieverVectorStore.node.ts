@@ -1,19 +1,21 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { VectorStore } from '@langchain/core/vectorstores';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { VectorStore } from '@langchain/core/vectorstores';
-import { logWrapper } from '../../../utils/logWrapper';
+
+import { logWrapper } from '@utils/logWrapper';
 
 export class RetrieverVectorStore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vector Store Retriever',
 		name: 'retrieverVectorStore',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Use a Vector Store as Retriever',
@@ -56,7 +58,7 @@ export class RetrieverVectorStore implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supplying data for Vector Store Retriever');
 
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;

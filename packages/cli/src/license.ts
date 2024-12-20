@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService } from 'n8n-core';
@@ -8,7 +9,6 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import {
 	LICENSE_FEATURES,
@@ -34,11 +34,11 @@ export class License {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly licenseMetricsService: LicenseMetricsService,
+		private readonly globalConfig: GlobalConfig,
 	) {
-		this.logger = this.logger.withScope('license');
+		this.logger = this.logger.scoped('license');
 	}
 
 	/**
@@ -46,15 +46,14 @@ export class License {
 	 */
 	private renewalEnabled() {
 		if (this.instanceSettings.instanceType !== 'main') return false;
-
-		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
+		const autoRenewEnabled = this.globalConfig.license.autoRenewalEnabled;
 
 		/**
 		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
 		 * On becoming leader or follower, each will enable or disable renewal, respectively.
 		 * This ensures the mains do not cause a 429 (too many requests) on license init.
 		 */
-		if (config.getEnv('multiMainSetup.enabled')) {
+		if (this.globalConfig.multiMainSetup.enabled) {
 			return autoRenewEnabled && this.instanceSettings.isLeader;
 		}
 
@@ -73,9 +72,9 @@ export class License {
 
 		const { instanceType } = this.instanceSettings;
 		const isMainInstance = instanceType === 'main';
-		const server = config.getEnv('license.serverUrl');
+		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
+		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
@@ -94,7 +93,7 @@ export class License {
 		try {
 			this.manager = new LicenseManager({
 				server,
-				tenantId: config.getEnv('license.tenantId'),
+				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled: renewalEnabled,
 				renewOnInit: renewalEnabled,
@@ -120,7 +119,7 @@ export class License {
 
 	async loadCertStr(): Promise<TLicenseBlock> {
 		// if we have an ephemeral license, we don't want to load it from the database
-		const ephemeralLicense = config.get('license.cert');
+		const ephemeralLicense = this.globalConfig.license.cert;
 		if (ephemeralLicense) {
 			return ephemeralLicense;
 		}
@@ -136,27 +135,25 @@ export class License {
 	async onFeatureChange(_features: TFeatures): Promise<void> {
 		this.logger.debug('License feature change detected', _features);
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
-				| boolean
-				| undefined;
+		if (config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled) {
+			const isMultiMainLicensed =
+				(_features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as boolean | undefined) ?? false;
 
-			this.orchestrationService.setMultiMainSetupLicensed(isMultiMainLicensed ?? false);
+			this.instanceSettings.setMultiMainLicensed(isMultiMainLicensed);
 
-			if (
-				this.orchestrationService.isMultiMainSetupEnabled &&
-				this.orchestrationService.isFollower
-			) {
-				this.logger.debug(
-					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
-				);
+			if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+				this.logger
+					.scoped(['scaling', 'multi-main-setup', 'license'])
+					.debug('Instance is not leader, skipping sending of "reload-license" command...');
 				return;
 			}
 
-			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
-				this.logger.debug(
-					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
-				);
+			if (this.globalConfig.multiMainSetup.enabled && !isMultiMainLicensed) {
+				this.logger
+					.scoped(['scaling', 'multi-main-setup', 'license'])
+					.debug(
+						'License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
+					);
 			}
 		}
 
@@ -180,7 +177,7 @@ export class License {
 
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
 		// if we have an ephemeral license, we don't want to save it to the database
-		if (config.get('license.cert')) return;
+		if (this.globalConfig.license.cert) return;
 		await this.settingsRepository.upsert(
 			{
 				key: SETTINGS_LICENSE_CERT_KEY,

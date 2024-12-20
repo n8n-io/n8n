@@ -1,8 +1,10 @@
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
+import { InstanceSettings } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
 import { Logger } from '@/logging/logger.service';
+import type { LogMetadata } from '@/logging/types';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -20,9 +22,12 @@ export class Publisher {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisClientService: RedisClientService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
-		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
+		// @TODO: Once this class is only ever initialized in scaling mode, assert in the next line.
 		if (config.getEnv('executions.mode') !== 'queue') return;
+
+		this.logger = this.logger.scoped(['scaling', 'pubsub']);
 
 		this.client = this.redisClientService.createClient({ type: 'publisher(n8n)' });
 	}
@@ -41,25 +46,39 @@ export class Publisher {
 	// #region Publishing
 
 	/** Publish a command into the `n8n.commands` channel. */
-	async publishCommand(msg: Omit<PubSub.Command, 'senderId'>) {
+	async publishCommand(msg: PubSub.Command) {
+		// @TODO: Once this class is only ever used in scaling mode, remove next line.
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
 		await this.client.publish(
 			'n8n.commands',
 			JSON.stringify({
 				...msg,
-				senderId: config.getEnv('redis.queueModeId'),
+				senderId: this.instanceSettings.hostId,
 				selfSend: SELF_SEND_COMMANDS.has(msg.command),
 				debounce: !IMMEDIATE_COMMANDS.has(msg.command),
 			}),
 		);
 
-		this.logger.debug(`Published ${msg.command} to command channel`);
+		let msgName = msg.command;
+
+		const metadata: LogMetadata = { msg: msg.command, channel: 'n8n.commands' };
+
+		if (msg.command === 'relay-execution-lifecycle-event') {
+			const { args, type } = msg.payload;
+			msgName += ` (${type})`;
+			metadata.type = type;
+			metadata.executionId = args.executionId;
+		}
+
+		this.logger.debug(`Published pubsub msg: ${msgName}`, metadata);
 	}
 
-	/** Publish a response for a command into the `n8n.worker-response` channel. */
+	/** Publish a response to a command into the `n8n.worker-response` channel. */
 	async publishWorkerResponse(msg: PubSub.WorkerResponse) {
 		await this.client.publish('n8n.worker-response', JSON.stringify(msg));
 
-		this.logger.debug(`Published response ${msg.response} to worker response channel`);
+		this.logger.debug(`Published ${msg.response} to worker response channel`);
 	}
 
 	// #endregion

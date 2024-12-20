@@ -4,7 +4,7 @@ import { ApplicationError, jsonStringify } from 'n8n-workflow';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';
-import { TIME } from '@/constants';
+import { Time } from '@/constants';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
@@ -160,7 +160,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			});
 		}
 
-		await this.cache.store.expire(key, ttlMs / TIME.SECOND);
+		await this.cache.store.expire(key, ttlMs * Time.milliseconds.toSeconds);
 	}
 
 	// ----------------------------------

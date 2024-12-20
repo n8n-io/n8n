@@ -15,12 +15,5 @@
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }
-	],
-	"tsc-alias": {
-		"replacers": {
-			"base-url": {
-				"enabled": false
-			}
-		}
-	}
+	]
 }

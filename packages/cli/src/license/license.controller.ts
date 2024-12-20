@@ -4,7 +4,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthenticatedRequest, AuthlessRequest, LicenseRequest } from '@/requests';
+import { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
 import { LicenseService } from './license.service';
@@ -41,11 +41,12 @@ export class LicenseController {
 
 	@Post('/enterprise/community-registered')
 	async registerCommunityEdition(
-		_req: AuthlessRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: CommunityRegisteredRequestDto,
 	) {
 		return await this.licenseService.registerCommunityEdition({
+			userId: req.user.id,
 			email: payload.email,
 			instanceId: this.instanceSettings.instanceId,
 			instanceUrl: this.urlService.getInstanceBaseUrl(),

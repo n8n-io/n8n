@@ -8,7 +8,9 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 } from 'n8n-workflow';
-import { promptTypeOptions, textInput } from '../../../utils/descriptions';
+
+import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
@@ -250,7 +252,7 @@ export class Agent implements INodeType {
 		icon: 'fa:robot',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	toolsAgent: 'Tools Agent', conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
@@ -341,6 +343,17 @@ export class Agent implements INodeType {
 				},
 			},
 			{
+				...textFromPreviousNode,
+				displayOptions: {
+					show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.7 } }] },
+					// SQL Agent has data source and credentials parameters so we need to include this input there manually
+					// to preserve the order
+					hide: {
+						agent: ['sqlAgent'],
+					},
+				},
+			},
+			{
 				...textInput,
 				displayOptions: {
 					show: {
@@ -348,6 +361,23 @@ export class Agent implements INodeType {
 					},
 					hide: {
 						agent: ['sqlAgent'],
+					},
+				},
+			},
+			{
+				displayName: 'For more reliable structured output parsing, consider using the Tools agent',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+						agent: [
+							'conversationalAgent',
+							'reActAgent',
+							'planAndExecuteAgent',
+							'openAiFunctionsAgent',
+						],
 					},
 				},
 			},
@@ -372,6 +402,7 @@ export class Agent implements INodeType {
 				displayOptions: {
 					show: {
 						hasOutputParser: [true],
+						agent: ['toolsAgent'],
 					},
 				},
 			},

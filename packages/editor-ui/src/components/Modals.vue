@@ -18,7 +18,6 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
@@ -51,7 +50,6 @@ import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vu
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
@@ -69,6 +67,7 @@ import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceM
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
+import type { EventBus } from 'n8n-design-system';
 </script>
 
 <template>
@@ -122,10 +121,6 @@ import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentMo
 			<template #default="{ active }">
 				<NpsSurvey :is-active="active" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="WORKFLOW_LM_CHAT_MODAL_KEY">
-			<WorkflowLMChat />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
@@ -183,7 +178,15 @@ import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentMo
 		</ModalRoot>
 
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template #default="{ modalName, data }">
+			<template
+				#default="{
+					modalName,
+					data,
+				}: {
+					modalName: string;
+					data: { destination: Object; isNew: boolean; eventBus: EventBus };
+				}"
+			>
 				<EventDestinationSettingsModal
 					:modal-name="modalName"
 					:destination="data.destination"

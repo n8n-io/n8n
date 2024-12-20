@@ -4,11 +4,13 @@ import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useDeviceSupport } from 'n8n-design-system';
+import { useI18n } from '@/composables/useI18n';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
 const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
 const deviceSupport = useDeviceSupport();
+const i18n = useI18n();
 
 const keyDown = (e: KeyboardEvent) => {
 	const isCtrlKeyPressed = deviceSupport.isCtrlKeyPressed(e);
@@ -41,7 +43,7 @@ onBeforeUnmount(() => {
 		}"
 	>
 		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomToFit')"
+			:label="i18n.baseText('nodeView.zoomToFit')"
 			:shortcut="{ keys: ['1'] }"
 		>
 			<n8n-icon-button
@@ -52,10 +54,7 @@ onBeforeUnmount(() => {
 				@click="zoomToFit"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomIn')"
-			:shortcut="{ keys: ['+'] }"
-		>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomIn')" :shortcut="{ keys: ['+'] }">
 			<n8n-icon-button
 				type="tertiary"
 				size="large"
@@ -64,10 +63,7 @@ onBeforeUnmount(() => {
 				@click="zoomIn"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.zoomOut')"
-			:shortcut="{ keys: ['-'] }"
-		>
+		<KeyboardShortcutTooltip :label="i18n.baseText('nodeView.zoomOut')" :shortcut="{ keys: ['-'] }">
 			<n8n-icon-button
 				type="tertiary"
 				size="large"
@@ -77,7 +73,7 @@ onBeforeUnmount(() => {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			:label="$locale.baseText('nodeView.resetZoom')"
+			:label="i18n.baseText('nodeView.resetZoom')"
 			:shortcut="{ keys: ['0'] }"
 		>
 			<n8n-icon-button

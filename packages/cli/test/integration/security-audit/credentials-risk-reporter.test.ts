@@ -1,7 +1,8 @@
+import type { SecurityConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
-import config from '@/config';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -15,10 +16,15 @@ import * as testDb from '../shared/test-db';
 
 let securityAuditService: SecurityAuditService;
 
+const securityConfig = mock<SecurityConfig>({ daysAbandonedWorkflow: 90 });
+
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(
+		Container.get(WorkflowRepository),
+		securityConfig,
+	);
 });
 
 beforeEach(async () => {
@@ -154,7 +160,7 @@ test('should report credential in not recently executed workflow', async () => {
 	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	const date = new Date();
-	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') - 1);
+	date.setDate(date.getDate() - securityConfig.daysAbandonedWorkflow - 1);
 
 	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
@@ -223,7 +229,7 @@ test('should not report credentials in recently executed workflow', async () => 
 	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	const date = new Date();
-	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') + 1);
+	date.setDate(date.getDate() - securityConfig.daysAbandonedWorkflow + 1);
 
 	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,

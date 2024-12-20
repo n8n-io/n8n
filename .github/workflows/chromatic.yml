@@ -65,6 +65,7 @@ jobs:
         continue-on-error: true
         with:
           workingDir: packages/design-system
+          onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: false
 

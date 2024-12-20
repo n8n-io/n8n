@@ -22,7 +22,7 @@ import { setupMessages } from './utils';
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);
-	const instanceSettings = new InstanceSettings();
+	const instanceSettings = new InstanceSettings(mock());
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;

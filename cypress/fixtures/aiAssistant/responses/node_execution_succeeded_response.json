@@ -1,0 +1,22 @@
+{
+	"sessionId": "1",
+	"messages": [
+		{
+			"role": "assistant",
+			"type": "message",
+			"text": "**Code** node ran successfully, did my solution help resolve your issue?",
+			"quickReplies": [
+				{
+					"text": "Yes, thanks",
+					"type": "all-good",
+					"isFeedback": true
+				},
+				{
+					"text": "No, I am still stuck",
+					"type": "still-stuck",
+					"isFeedback": true
+				}
+			]
+		}
+	]
+}

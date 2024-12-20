@@ -1,29 +1,60 @@
+import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
+import type { BaseRunnerConfig } from '@/config/base-runner-config';
+import type { JsRunnerConfig } from '@/config/js-runner-config';
+import { MainConfig } from '@/config/main-config';
+import { ExecutionError } from '@/js-task-runner/errors/execution-error';
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { ValidationError } from '@/js-task-runner/errors/validation-error';
-import type { JsTaskRunnerOpts } from '@/js-task-runner/js-task-runner';
+import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
+import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
-	JsTaskRunner,
-	type AllCodeTaskData,
-	type JSExecSettings,
-} from '@/js-task-runner/js-task-runner';
+	UNSUPPORTED_HELPER_FUNCTIONS,
+	type DataRequestResponse,
+	type InputDataChunkDefinition,
+} from '@/runner-types';
 import type { Task } from '@/task-runner';
 
-import { newAllCodeTaskData, newTaskWithSettings, withPairedItem, wrapIntoJson } from './test-data';
-import { ExecutionError } from '../errors/execution-error';
+import {
+	newDataRequestResponse,
+	newTaskWithSettings,
+	withPairedItem,
+	wrapIntoJson,
+} from './test-data';
 
 jest.mock('ws');
 
+const defaultConfig = new MainConfig();
+
 describe('JsTaskRunner', () => {
-	const createRunnerWithOpts = (opts: Partial<JsTaskRunnerOpts> = {}) =>
+	const createRunnerWithOpts = (
+		jsRunnerOpts: Partial<JsRunnerConfig> = {},
+		baseRunnerOpts: Partial<BaseRunnerConfig> = {},
+	) =>
 		new JsTaskRunner({
-			wsUrl: 'ws://localhost',
-			grantToken: 'grantToken',
-			maxConcurrency: 1,
-			...opts,
+			baseRunnerConfig: {
+				...defaultConfig.baseRunnerConfig,
+				grantToken: 'grantToken',
+				maxConcurrency: 1,
+				taskBrokerUri: 'http://localhost',
+				taskTimeout: 60,
+				...baseRunnerOpts,
+			},
+			jsRunnerConfig: {
+				...defaultConfig.jsRunnerConfig,
+				...jsRunnerOpts,
+			},
+			sentryConfig: {
+				sentryDsn: '',
+				deploymentName: '',
+				environment: '',
+				n8nVersion: '',
+			},
 		});
 
 	const defaultTaskRunner = createRunnerWithOpts();
@@ -34,11 +65,11 @@ describe('JsTaskRunner', () => {
 		runner = defaultTaskRunner,
 	}: {
 		task: Task<JSExecSettings>;
-		taskData: AllCodeTaskData;
+		taskData: DataRequestResponse;
 		runner?: JsTaskRunner;
 	}) => {
 		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
-		return await runner.executeTask(task);
+		return await runner.executeTask(task, mock<AbortSignal>());
 	};
 
 	afterEach(() => {
@@ -62,7 +93,7 @@ describe('JsTaskRunner', () => {
 				nodeMode: 'runOnceForAllItems',
 				...settings,
 			}),
-			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+			taskData: newDataRequestResponse(inputItems.map(wrapIntoJson)),
 			runner,
 		});
 	};
@@ -72,20 +103,22 @@ describe('JsTaskRunner', () => {
 		inputItems,
 		settings,
 		runner,
+		chunk,
 	}: {
 		code: string;
 		inputItems: IDataObject[];
 		settings?: Partial<JSExecSettings>;
-
 		runner?: JsTaskRunner;
+		chunk?: InputDataChunkDefinition;
 	}) => {
 		return await execTaskWithParams({
 			task: newTaskWithSettings({
 				code,
 				nodeMode: 'runOnceForEachItem',
+				chunk,
 				...settings,
 			}),
-			taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson)),
+			taskData: newDataRequestResponse(inputItems.map(wrapIntoJson)),
 			runner,
 		});
 	};
@@ -102,7 +135,7 @@ describe('JsTaskRunner', () => {
 
 				await execTaskWithParams({
 					task,
-					taskData: newAllCodeTaskData([wrapIntoJson({})]),
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
 				});
 
 				expect(defaultTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
@@ -110,6 +143,36 @@ describe('JsTaskRunner', () => {
 				]);
 			},
 		);
+
+		it('should not throw when using unsupported console methods', async () => {
+			const task = newTaskWithSettings({
+				code: `
+					console.warn('test');
+					console.error('test');
+					console.info('test');
+					console.debug('test');
+					console.trace('test');
+					console.dir({});
+					console.time('test');
+					console.timeEnd('test');
+					console.timeLog('test');
+					console.assert(true);
+					console.clear();
+					console.group('test');
+					console.groupEnd();
+					console.table([]);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await expect(
+				execTaskWithParams({
+					task,
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
+				}),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('built-in methods and variables available in the context', () => {
@@ -188,6 +251,26 @@ describe('JsTaskRunner', () => {
 				['$runIndex', 0],
 				['{ wf: $workflow }', { wf: { active: true, id: '1', name: 'Test Workflow' } }],
 				['$vars', { var: 'value' }],
+				['$getWorkflowStaticData("global")', {}],
+			],
+			'Node.js internal functions': [
+				['typeof Function', 'function'],
+				['typeof eval', 'function'],
+				['typeof setTimeout', 'function'],
+				['typeof setInterval', 'function'],
+				['typeof setImmediate', 'function'],
+				['typeof clearTimeout', 'function'],
+				['typeof clearInterval', 'function'],
+				['typeof clearImmediate', 'function'],
+			],
+			'JS built-ins': [
+				['typeof btoa', 'function'],
+				['typeof atob', 'function'],
+				['typeof TextDecoder', 'function'],
+				['typeof TextDecoderStream', 'function'],
+				['typeof TextEncoder', 'function'],
+				['typeof TextEncoderStream', 'function'],
+				['typeof FormData', 'function'],
 			],
 		};
 
@@ -218,7 +301,7 @@ describe('JsTaskRunner', () => {
 						code: 'return { val: $env.VAR1 }',
 						nodeMode: 'runOnceForAllItems',
 					}),
-					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 						envProviderState: {
 							isEnvAccessBlocked: false,
 							isProcessAvailable: true,
@@ -237,7 +320,7 @@ describe('JsTaskRunner', () => {
 							code: 'return { val: $env.VAR1 }',
 							nodeMode: 'runOnceForAllItems',
 						}),
-						taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+						taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 							envProviderState: {
 								isEnvAccessBlocked: true,
 								isProcessAvailable: true,
@@ -254,7 +337,7 @@ describe('JsTaskRunner', () => {
 						code: 'return Object.values($env).concat(Object.keys($env))',
 						nodeMode: 'runOnceForAllItems',
 					}),
-					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 						envProviderState: {
 							isEnvAccessBlocked: false,
 							isProcessAvailable: true,
@@ -267,19 +350,369 @@ describe('JsTaskRunner', () => {
 			});
 
 			it("should not expose task runner's env variables even if no env state is received", async () => {
-				process.env.N8N_RUNNERS_N8N_URI = 'http://127.0.0.1:5679';
+				process.env.N8N_RUNNERS_TASK_BROKER_URI = 'http://127.0.0.1:5679';
 				const outcome = await execTaskWithParams({
 					task: newTaskWithSettings({
-						code: 'return { val: $env.N8N_RUNNERS_N8N_URI }',
+						code: 'return { val: $env.N8N_RUNNERS_TASK_BROKER_URI }',
 						nodeMode: 'runOnceForAllItems',
 					}),
-					taskData: newAllCodeTaskData(inputItems.map(wrapIntoJson), {
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
 						envProviderState: undefined,
 					}),
 				});
 
 				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
 			});
+		});
+
+		describe('timezone', () => {
+			it('should use the specified timezone in the workflow', async () => {
+				const taskData = newDataRequestResponse(inputItems.map(wrapIntoJson), {});
+				taskData.workflow.settings = {
+					timezone: 'Europe/Helsinki',
+				};
+
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $now.toSeconds() }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData,
+				});
+
+				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+			});
+
+			it('should use the default timezone', async () => {
+				setGlobalState({
+					defaultTimezone: 'Europe/Helsinki',
+				});
+
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $now.toSeconds() }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {}),
+				});
+
+				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
+				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+			});
+		});
+
+		describe("$getWorkflowStaticData('global')", () => {
+			it('should have the global workflow static data available in runOnceForAllItems', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("global") }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+						staticData: {
+							global: { key: 'value' },
+						},
+					}),
+				});
+
+				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+			});
+
+			it('should have the global workflow static data available in runOnceForEachItem', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("global") }',
+						nodeMode: 'runOnceForEachItem',
+					}),
+					taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+						staticData: {
+							global: { key: 'value' },
+						},
+					}),
+				});
+
+				expect(outcome.result).toEqual([
+					withPairedItem(0, wrapIntoJson({ val: { key: 'value' } })),
+				]);
+			});
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				"does not return static data if it hasn't been modified in %s",
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("global");
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+							staticData: {
+								global: { key: 'value' },
+							},
+						}),
+					});
+
+					expect(outcome.staticData).toBeUndefined();
+				},
+			);
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				'returns the updated static data in %s',
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("global");
+								staticData.newKey = 'newValue';
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+							staticData: {
+								global: { key: 'value' },
+								'node:OtherNode': { some: 'data' },
+							},
+						}),
+					});
+
+					expect(outcome.staticData).toEqual({
+						global: { key: 'value', newKey: 'newValue' },
+						'node:OtherNode': { some: 'data' },
+					});
+				},
+			);
+		});
+
+		describe("$getWorkflowStaticData('node')", () => {
+			const createTaskDataWithNodeStaticData = (nodeStaticData: IDataObject) => {
+				const taskData = newDataRequestResponse(inputItems.map(wrapIntoJson));
+				const taskDataKey = `node:${taskData.node.name}`;
+				taskData.workflow.staticData = {
+					global: { 'global-key': 'global-value' },
+					'node:OtherNode': { 'other-key': 'other-value' },
+					[taskDataKey]: nodeStaticData,
+				};
+
+				return taskData;
+			};
+
+			it('should have the node workflow static data available in runOnceForAllItems', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("node") }',
+						nodeMode: 'runOnceForAllItems',
+					}),
+					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+				});
+
+				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+			});
+
+			it('should have the node workflow static data available in runOnceForEachItem', async () => {
+				const outcome = await execTaskWithParams({
+					task: newTaskWithSettings({
+						code: 'return { val: $getWorkflowStaticData("node") }',
+						nodeMode: 'runOnceForEachItem',
+					}),
+					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+				});
+
+				expect(outcome.result).toEqual([
+					withPairedItem(0, wrapIntoJson({ val: { key: 'value' } })),
+				]);
+			});
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				"does not return static data if it hasn't been modified in %s",
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("node");
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+					});
+
+					expect(outcome.staticData).toBeUndefined();
+				},
+			);
+
+			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+				'returns the updated static data in %s',
+				async (mode) => {
+					const outcome = await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `
+								const staticData = $getWorkflowStaticData("node");
+								staticData.newKey = 'newValue';
+								return { val: staticData };
+							`,
+							nodeMode: mode,
+						}),
+						taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
+					});
+
+					expect(outcome.staticData).toEqual({
+						global: { 'global-key': 'global-value' },
+						'node:JsCode': {
+							key: 'value',
+							newKey: 'newValue',
+						},
+						'node:OtherNode': {
+							'other-key': 'other-value',
+						},
+					});
+				},
+			);
+		});
+
+		describe('helpers', () => {
+			const binaryDataFile: IBinaryData = {
+				data: 'data',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+			};
+
+			const groups = [
+				{
+					method: 'helpers.assertBinaryData',
+					invocation: "helpers.assertBinaryData(0, 'binaryFile')",
+					expectedParams: [0, 'binaryFile'],
+				},
+				{
+					method: 'helpers.getBinaryDataBuffer',
+					invocation: "helpers.getBinaryDataBuffer(0, 'binaryFile')",
+					expectedParams: [0, 'binaryFile'],
+				},
+				{
+					method: 'helpers.prepareBinaryData',
+					invocation: "helpers.prepareBinaryData(Buffer.from('123'), 'file.txt', 'text/plain')",
+					expectedParams: [Buffer.from('123'), 'file.txt', 'text/plain'],
+				},
+				{
+					method: 'helpers.setBinaryDataBuffer',
+					invocation:
+						"helpers.setBinaryDataBuffer({ data: '123', mimeType: 'text/plain' }, Buffer.from('321'))",
+					expectedParams: [{ data: '123', mimeType: 'text/plain' }, Buffer.from('321')],
+				},
+				{
+					method: 'helpers.binaryToString',
+					invocation: "helpers.binaryToString(Buffer.from('123'), 'utf8')",
+					expectedParams: [Buffer.from('123'), 'utf8'],
+				},
+				{
+					method: 'helpers.httpRequest',
+					invocation: "helpers.httpRequest({ method: 'GET', url: 'http://localhost' })",
+					expectedParams: [{ method: 'GET', url: 'http://localhost' }],
+				},
+			];
+
+			for (const group of groups) {
+				it(`${group.method} for runOnceForAllItems`, async () => {
+					// Arrange
+					const rpcCallSpy = jest
+						.spyOn(defaultTaskRunner, 'makeRpcCall')
+						.mockResolvedValue(undefined);
+
+					// Act
+					await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `await ${group.invocation}; return []`,
+							nodeMode: 'runOnceForAllItems',
+						}),
+						taskData: newDataRequestResponse(
+							[{ json: {}, binary: { binaryFile: binaryDataFile } }],
+							{},
+						),
+					});
+
+					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
+				});
+
+				it(`${group.method} for runOnceForEachItem`, async () => {
+					// Arrange
+					const rpcCallSpy = jest
+						.spyOn(defaultTaskRunner, 'makeRpcCall')
+						.mockResolvedValue(undefined);
+
+					// Act
+					await execTaskWithParams({
+						task: newTaskWithSettings({
+							code: `await ${group.invocation}; return {}`,
+							nodeMode: 'runOnceForEachItem',
+						}),
+						taskData: newDataRequestResponse(
+							[{ json: {}, binary: { binaryFile: binaryDataFile } }],
+							{},
+						),
+					});
+
+					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
+				});
+			}
+
+			describe('unsupported methods', () => {
+				for (const unsupportedFunction of UNSUPPORTED_HELPER_FUNCTIONS) {
+					it(`should throw an error if ${unsupportedFunction} is used in runOnceForAllItems`, async () => {
+						// Act
+
+						await expect(
+							async () =>
+								await executeForAllItems({
+									code: `${unsupportedFunction}()`,
+									inputItems,
+								}),
+						).rejects.toThrow(UnsupportedFunctionError);
+					});
+
+					it(`should throw an error if ${unsupportedFunction} is used in runOnceForEachItem`, async () => {
+						// Act
+
+						await expect(
+							async () =>
+								await executeForEachItem({
+									code: `${unsupportedFunction}()`,
+									inputItems,
+								}),
+						).rejects.toThrow(UnsupportedFunctionError);
+					});
+				}
+			});
+		});
+
+		it('should allow access to Node.js Buffers', async () => {
+			const outcomeAll = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForAllItems',
+				}),
+				taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcomeAll.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+
+			const outcomePer = await execTaskWithParams({
+				task: newTaskWithSettings({
+					code: 'return { val: Buffer.from("test-buffer").toString() }',
+					nodeMode: 'runOnceForEachItem',
+				}),
+				taskData: newDataRequestResponse(inputItems.map(wrapIntoJson), {
+					envProviderState: undefined,
+				}),
+			});
+
+			expect(outcomePer.result).toEqual([
+				{ ...wrapIntoJson({ val: 'test-buffer' }), pairedItem: { item: 0 } },
+			]);
 		});
 	});
 
@@ -437,6 +870,28 @@ describe('JsTaskRunner', () => {
 					).rejects.toThrow(ValidationError);
 				},
 			);
+		});
+
+		describe('chunked execution', () => {
+			it('should use correct index for each item', async () => {
+				const outcome = await executeForEachItem({
+					code: 'return { ...$json, idx: $itemIndex }',
+					inputItems: [{ a: 1 }, { b: 2 }, { c: 3 }],
+					chunk: {
+						startIndex: 100,
+						count: 3,
+					},
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						withPairedItem(100, wrapIntoJson({ a: 1, idx: 100 })),
+						withPairedItem(101, wrapIntoJson({ b: 2, idx: 101 })),
+						withPairedItem(102, wrapIntoJson({ c: 3, idx: 102 })),
+					],
+					customData: undefined,
+				});
+			});
 		});
 
 		it('should return static items', async () => {
@@ -718,7 +1173,7 @@ describe('JsTaskRunner', () => {
 							code: 'unknown',
 							nodeMode,
 						}),
-						taskData: newAllCodeTaskData([wrapIntoJson({ a: 1 })]),
+						taskData: newDataRequestResponse([wrapIntoJson({ a: 1 })]),
 					}),
 				).rejects.toThrow(ExecutionError);
 			},
@@ -731,7 +1186,6 @@ describe('JsTaskRunner', () => {
 				code: 'unknown; return []',
 				nodeMode: 'runOnceForAllItems',
 				continueOnFail: false,
-				mode: 'manual',
 				workflowMode: 'manual',
 			});
 			runner.runningTasks.set(taskId, task);
@@ -740,23 +1194,120 @@ describe('JsTaskRunner', () => {
 			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
 			jest
 				.spyOn(runner, 'requestData')
-				.mockResolvedValue(newAllCodeTaskData([wrapIntoJson({ a: 1 })]));
+				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
 
 			await runner.receivedSettings(taskId, task.settings);
 
-			expect(sendSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: 'runner:taskerror',
-					taskId,
-					error: {
-						message: 'unknown is not defined [line 1]',
-						description: 'ReferenceError',
-						lineNumber: 1,
-					},
-				}),
-			);
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					lineNumber: 1,
+				},
+			});
+		});
+	});
 
-			console.log('DONE');
-		}, 1000);
+	describe('idle timeout', () => {
+		beforeEach(() => {
+			jest.useFakeTimers();
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		it('should set idle timer when instantiated', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should reset idle timer when accepting a task', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const offerId = 'offer123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+
+			runner.openOffers.set(offerId, {
+				offerId,
+				validUntil: process.hrtime.bigint() + BigInt(idleTimeout * 1000 * 1_000_000),
+			});
+			runner.offerAccepted(offerId, taskId);
+
+			jest.advanceTimersByTime(200);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
+
+			runner.runningTasks.clear();
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should reset idle timer when finishing a task', async () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+			jest.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
+
+			runner.runningTasks.set(taskId, {
+				taskId,
+				active: true,
+				cancelled: false,
+			});
+
+			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+
+			await runner.receivedSettings(taskId, {});
+
+			jest.advanceTimersByTime(200);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should never reach idle timeout if idle timeout is set to 0', () => {
+			const runner = createRunnerWithOpts({}, { idleTimeout: 0 });
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			jest.advanceTimersByTime(999999);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
+
+		it('should not reach idle timeout if there are running tasks', () => {
+			const idleTimeout = 5;
+			const runner = createRunnerWithOpts({}, { idleTimeout });
+			const taskId = '123';
+			const emitSpy = jest.spyOn(runner, 'emit');
+
+			runner.runningTasks.set(taskId, {
+				taskId,
+				active: true,
+				cancelled: false,
+			});
+
+			jest.advanceTimersByTime(idleTimeout * 1000);
+			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
+		});
 	});
 });

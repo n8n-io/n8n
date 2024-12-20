@@ -1,8 +1,10 @@
-import { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
-import { jsonParse, type INodeProperties } from 'n8n-workflow';
+import type { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
+import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
+import Container from 'typedi';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
+import { Logger } from '@/logging/logger.service';
 
 import type {
 	GcpSecretsManagerContext,
@@ -38,6 +40,10 @@ export class GcpSecretsManager implements SecretsProvider {
 
 	private settings: GcpSecretAccountKey;
 
+	constructor(private readonly logger = Container.get(Logger)) {
+		this.logger = this.logger.scoped('external-secrets');
+	}
+
 	async init(context: GcpSecretsManagerContext) {
 		this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
 	}
@@ -45,14 +51,20 @@ export class GcpSecretsManager implements SecretsProvider {
 	async connect() {
 		const { projectId, privateKey, clientEmail } = this.settings;
 
+		const { SecretManagerServiceClient: GcpClient } = await import('@google-cloud/secret-manager');
+
 		try {
 			this.client = new GcpClient({
 				credentials: { client_email: clientEmail, private_key: privateKey },
 				projectId,
 			});
 			this.state = 'connected';
-		} catch {
+			this.logger.debug('GCP Secrets Manager provider connected');
+		} catch (error) {
 			this.state = 'error';
+			this.logger.debug('GCP Secrets Manager provider failed to connect', {
+				error: ensureError(error),
+			});
 		}
 	}
 
@@ -112,6 +124,8 @@ export class GcpSecretsManager implements SecretsProvider {
 			if (cur) acc[cur.name] = cur.value;
 			return acc;
 		}, {});
+
+		this.logger.debug('GCP Secrets Manager provider secrets updated');
 	}
 
 	getSecret(name: string) {

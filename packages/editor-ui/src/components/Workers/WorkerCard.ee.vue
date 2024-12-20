@@ -7,10 +7,14 @@ import { averageWorkerLoadFromLoadsAsString, memAsGb } from '../../utils/workerU
 import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
+import { sortByProperty } from '@/utils/sortUtils';
+import { useI18n } from '@/composables/useI18n';
 
 let interval: NodeJS.Timer;
 
 const orchestrationStore = useOrchestrationStore();
+
+const i18n = useI18n();
 
 const props = defineProps<{
 	workerId: string;
@@ -23,8 +27,8 @@ const worker = computed((): WorkerStatus | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
 
-const sortedWorkerInterfaces = computed(
-	() => worker.value?.interfaces.toSorted((a, b) => a.family.localeCompare(b.family)) ?? [],
+const sortedWorkerInterfaces = computed(() =>
+	sortByProperty('family', worker.value?.interfaces.slice() ?? []),
 );
 
 function upTime(seconds: number): string {
@@ -72,7 +76,7 @@ onBeforeUnmount(() => {
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small" :class="$style.container">
 				<span
-					>{{ $locale.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdateString }}s
+					>{{ i18n.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdateString }}s
 					ago | n8n-Version: {{ worker.version }} | Architecture: {{ worker.arch }} (
 					{{ worker.platform }}) | Uptime: {{ upTime(worker.uptime) }}</span
 				>

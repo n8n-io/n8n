@@ -1,9 +1,11 @@
+import { InstanceSettings } from 'n8n-core';
+import Container from 'typedi';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { generateNanoId } from '@/databases/utils/generators';
-import { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { createOwner } from './shared/db/users';
 import { randomName } from './shared/random';
@@ -14,6 +16,8 @@ import { mockInstance } from '../shared/mocking';
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+	const instanceSettings = Container.get(InstanceSettings);
+	instanceSettings.markAsLeader();
 
 	let testServer = setupTestServer({ endpointGroups: ['debug'] });
 	let ownerAgent: SuperAgentTest;
@@ -30,7 +34,7 @@ describe('DebugController', () => {
 			const webhooks = [{ id: workflowId, name: randomName() }] as WorkflowEntity[];
 			const triggersAndPollers = [{ id: workflowId, name: randomName() }] as WorkflowEntity[];
 			const activationErrors = { [workflowId]: 'Failed to activate' };
-			const instanceId = 'main-71JdWtq306epIFki';
+			const { instanceId } = instanceSettings;
 			const leaderKey = 'some-leader-key';
 
 			workflowRepository.findIn.mockResolvedValue(triggersAndPollers);
@@ -38,9 +42,7 @@ describe('DebugController', () => {
 			activeWorkflowManager.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowManager.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
-			jest.spyOn(OrchestrationService.prototype, 'instanceId', 'get').mockReturnValue(instanceId);
 			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
-			jest.spyOn(OrchestrationService.prototype, 'isLeader', 'get').mockReturnValue(true);
 
 			const response = await ownerAgent.get('/debug/multi-main-setup').expect(200);
 

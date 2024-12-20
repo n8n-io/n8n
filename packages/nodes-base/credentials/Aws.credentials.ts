@@ -1,6 +1,5 @@
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -330,7 +329,7 @@ export class Aws implements ICredentialType {
 						endpoint.searchParams.set('Version', '2011-06-15');
 					}
 				} catch (err) {
-					console.log(err);
+					console.error(err);
 				}
 			}
 			const parsed = parseAwsUrl(endpoint);
@@ -372,7 +371,7 @@ export class Aws implements ICredentialType {
 						customUrl.searchParams.set('Action', 'GetCallerIdentity');
 						customUrl.searchParams.set('Version', '2011-06-15');
 					} catch (err) {
-						console.log(err);
+						console.error(err);
 					}
 				}
 				endpoint = customUrl;
@@ -411,7 +410,7 @@ export class Aws implements ICredentialType {
 		try {
 			sign(signOpts, securityHeaders);
 		} catch (err) {
-			console.log(err);
+			console.error(err);
 		}
 		const options: IHttpRequestOptions = {
 			...requestOptions,

@@ -14,7 +14,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
 import { Logger } from '@/logging/logger.service';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -70,7 +70,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly orchestrationService: OrchestrationService,
+		private readonly publisher: Publisher,
 		private readonly recoveryService: ExecutionRecoveryService,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
@@ -210,7 +210,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restart-event-bus');
+			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
 		return destination;
 	}
@@ -236,7 +236,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restart-event-bus');
+			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
 		return result;
 	}

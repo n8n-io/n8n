@@ -3,61 +3,36 @@ import type { XMLFileInfo } from 'xmllint-wasm';
 
 import { Logger } from '@/logging/logger.service';
 
-let xml: XMLFileInfo;
-let xmldsigCore: XMLFileInfo;
-let xmlXenc: XMLFileInfo;
 let xmlMetadata: XMLFileInfo;
-let xmlAssertion: XMLFileInfo;
 let xmlProtocol: XMLFileInfo;
+
+let preload: XMLFileInfo[] = [];
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 let xmllintWasm: typeof import('xmllint-wasm') | undefined;
 
 // dynamically load schema files
 async function loadSchemas(): Promise<void> {
-	if (!xml || xml.contents === '') {
-		Container.get(Logger).debug('Loading XML schema files for SAML validation into memory');
-		const f = await import('./schema/xml.xsd');
-		xml = {
-			fileName: 'xml.xsd',
-			contents: f.xsdXml,
-		};
-	}
-	if (!xmldsigCore || xmldsigCore.contents === '') {
-		const f = await import('./schema/xmldsig-core-schema.xsd');
-		xmldsigCore = {
-			fileName: 'xmldsig-core-schema.xsd',
-			contents: f.xsdXmldsigCore,
-		};
-	}
-	if (!xmlXenc || xmlXenc.contents === '') {
-		const f = await import('./schema/xenc-schema.xsd');
-		xmlXenc = {
-			fileName: 'xenc-schema.xsd',
-			contents: f.xsdXenc,
-		};
-	}
-	if (!xmlMetadata || xmlMetadata.contents === '') {
-		const f = await import('./schema/saml-schema-metadata-2.0.xsd');
-		xmlMetadata = {
-			fileName: 'saml-schema-metadata-2.0.xsd',
-			contents: f.xsdSamlSchemaMetadata20,
-		};
-	}
-	if (!xmlAssertion || xmlAssertion.contents === '') {
-		const f = await import('./schema/saml-schema-assertion-2.0.xsd');
-		xmlAssertion = {
-			fileName: 'saml-schema-assertion-2.0.xsd',
-			contents: f.xsdSamlSchemaAssertion20,
-		};
-	}
-	if (!xmlProtocol || xmlProtocol.contents === '') {
-		const f = await import('./schema/saml-schema-protocol-2.0.xsd');
-		xmlProtocol = {
-			fileName: 'saml-schema-protocol-2.0.xsd',
-			contents: f.xsdSamlSchemaProtocol20,
-		};
-	}
+	xmlProtocol = (await import('./schema/saml-schema-protocol-2.0.xsd')).xmlFileInfo;
+	xmlMetadata = (await import('./schema/saml-schema-metadata-2.0.xsd')).xmlFileInfo;
+	preload = (
+		await Promise.all([
+			// SAML
+			import('./schema/saml-schema-assertion-2.0.xsd'),
+			import('./schema/xmldsig-core-schema.xsd'),
+			import('./schema/xenc-schema.xsd'),
+			import('./schema/xml.xsd'),
+
+			// WS-Federation
+			import('./schema/ws-federation.xsd'),
+			import('./schema/oasis-200401-wss-wssecurity-secext-1.0.xsd'),
+			import('./schema/oasis-200401-wss-wssecurity-utility-1.0.xsd'),
+			import('./schema/ws-addr.xsd'),
+			import('./schema/metadata-exchange.xsd'),
+			import('./schema/ws-securitypolicy-1.2.xsd'),
+			import('./schema/ws-authorization.xsd'),
+		])
+	).map((m) => m.xmlFileInfo);
 }
 
 // dynamically load xmllint-wasm
@@ -82,7 +57,7 @@ export async function validateMetadata(metadata: string): Promise<boolean> {
 			],
 			extension: 'schema',
 			schema: [xmlMetadata],
-			preload: [xmlProtocol, xmlAssertion, xmldsigCore, xmlXenc, xml],
+			preload: [xmlProtocol, ...preload],
 		});
 		if (validationResult?.valid) {
 			logger.debug('SAML Metadata is valid');
@@ -118,7 +93,7 @@ export async function validateResponse(response: string): Promise<boolean> {
 			],
 			extension: 'schema',
 			schema: [xmlProtocol],
-			preload: [xmlMetadata, xmlAssertion, xmldsigCore, xmlXenc, xml],
+			preload: [xmlMetadata, ...preload],
 		});
 		if (validationResult?.valid) {
 			logger.debug('SAML Response is valid');

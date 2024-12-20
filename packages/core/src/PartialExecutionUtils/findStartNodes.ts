@@ -1,7 +1,7 @@
-import type { INode, IPinData, IRunData } from 'n8n-workflow';
+import { NodeConnectionType, type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './DirectedGraph';
-import { getIncomingData } from './getIncomingData';
+import { getIncomingData, getIncomingDataFromAnyRun } from './getIncomingData';
 
 /**
  * A node is dirty if either of the following is true:
@@ -73,6 +73,25 @@ function findStartNodesRecursive(
 		return startNodes;
 	}
 
+	// If the current node is a loop node, check if the `done` output has data on
+	// the last run. If it doesn't the loop wasn't fully executed and needs to be
+	// re-run from the start. Thus the loop node become the start node.
+	if (current.type === 'n8n-nodes-base.splitInBatches') {
+		const nodeRunData = getIncomingData(
+			runData,
+			current.name,
+			// last run
+			-1,
+			NodeConnectionType.Main,
+			0,
+		);
+
+		if (nodeRunData === null || nodeRunData.length === 0) {
+			startNodes.add(current);
+			return startNodes;
+		}
+	}
+
 	// If we detect a cycle stop following the branch, there is no start node on
 	// this branch.
 	if (seen.has(current)) {
@@ -82,19 +101,16 @@ function findStartNodesRecursive(
 	// Recurse with every direct child that is part of the sub graph.
 	const outGoingConnections = graph.getDirectChildConnections(current);
 	for (const outGoingConnection of outGoingConnections) {
-		const nodeRunData = getIncomingData(
+		const nodeRunData = getIncomingDataFromAnyRun(
 			runData,
 			outGoingConnection.from.name,
-			// NOTE: It's always 0 until I fix the bug that removes the run data for
-			// old runs. The FE only sends data for one run for each node.
-			0,
 			outGoingConnection.type,
 			outGoingConnection.outputIndex,
 		);
 
 		// If the node has multiple outputs, only follow the outputs that have run data.
 		const hasNoRunData =
-			nodeRunData === null || nodeRunData === undefined || nodeRunData.length === 0;
+			nodeRunData === null || nodeRunData === undefined || nodeRunData.data.length === 0;
 		if (hasNoRunData) {
 			continue;
 		}
@@ -135,14 +151,14 @@ export function findStartNodes(options: {
 	graph: DirectedGraph;
 	trigger: INode;
 	destination: INode;
-	runData?: IRunData;
-	pinData?: IPinData;
-}): INode[] {
+	pinData: IPinData;
+	runData: IRunData;
+}): Set<INode> {
 	const graph = options.graph;
 	const trigger = options.trigger;
 	const destination = options.destination;
-	const runData = options.runData ?? {};
-	const pinData = options.pinData ?? {};
+	const runData = { ...options.runData };
+	const pinData = options.pinData;
 
 	const startNodes = findStartNodesRecursive(
 		graph,
@@ -156,5 +172,5 @@ export function findStartNodes(options: {
 		new Set(),
 	);
 
-	return [...startNodes];
+	return startNodes;
 }

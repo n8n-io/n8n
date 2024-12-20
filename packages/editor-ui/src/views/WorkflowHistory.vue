@@ -20,6 +20,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
 import { useRootStore } from '@/stores/root.store';
 import { getResourcePermissions } from '@/permissions';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -46,6 +47,8 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
+const pageRedirectionHelper = usePageRedirectionHelper();
+
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -296,7 +299,7 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 };
 
 const onUpgrade = () => {
-	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 };
 
 watchEffect(async () => {

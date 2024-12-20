@@ -12,11 +12,11 @@ import { useToast } from '@/composables/useToast';
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
-	createTag: (name: string) => Promise<ITag>;
 	eventBus: EventBus | null;
 	allTags: ITag[];
 	isLoading: boolean;
 	tagsById: Record<string, ITag>;
+	createTag?: (name: string) => Promise<ITag>;
 }
 
 const i18n = useI18n();
@@ -109,6 +109,8 @@ function filterOptions(value = '') {
 }
 
 async function onCreate() {
+	if (!props.createTag) return;
+
 	const name = filter.value;
 	try {
 		const newTag = await props.createTag(name);

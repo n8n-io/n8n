@@ -21,6 +21,10 @@ describe('Telemetry', () => {
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
+	const globalConfig = mock<GlobalConfig>({
+		diagnostics: { enabled: true },
+		logging: { level: 'info', outputs: ['console'] },
+	});
 
 	beforeAll(() => {
 		// @ts-expect-error Spying on private method
@@ -28,7 +32,6 @@ describe('Telemetry', () => {
 
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
-		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
 	});
 
@@ -45,14 +48,7 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(
-			mock(),
-			postHog,
-			mock(),
-			instanceSettings,
-			mock(),
-			mock<GlobalConfig>({ logging: { level: 'info', outputs: ['console'] } }),
-		);
+		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock(), globalConfig);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});

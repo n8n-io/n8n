@@ -5,7 +5,11 @@ export class CredentialsPage extends BasePage {
 
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
-		createCredentialButton: () => cy.getByTestId('resources-list-add'),
+		createCredentialButton: () => {
+			cy.getByTestId('add-resource').should('be.visible').click();
+			cy.getByTestId('add-resource').getByTestId('action-credential').should('be.visible');
+			return cy.getByTestId('add-resource').getByTestId('action-credential');
+		},
 		searchInput: () => cy.getByTestId('resources-list-search'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),
 		credentialCards: () => cy.getByTestId('resources-list-item'),

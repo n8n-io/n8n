@@ -689,15 +689,15 @@ function onInputBlur() {
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
 					<n8n-text color="text-dark" align="center" tag="div">
-						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
+						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
 					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
-						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
+						{{ i18n.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a v-if="credentialsNotSet" @click="createNewCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
+							i18n.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
 						}}</a>
 						<a v-else-if="hasCredential" @click="openCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
+							i18n.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
 						}}</a>
 					</n8n-text>
 				</div>
@@ -714,7 +714,7 @@ function onInputBlur() {
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
-						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSelected"
 					>
@@ -726,7 +726,7 @@ function onInputBlur() {
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
-									? $locale.baseText('resourceLocator.mode.list.disabled.title')
+									? i18n.baseText('resourceLocator.mode.list.disabled.title')
 									: ''
 							"
 						>

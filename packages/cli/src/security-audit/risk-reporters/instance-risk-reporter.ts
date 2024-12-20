@@ -103,7 +103,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		};
 
 		settings.telemetry = {
-			diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
+			diagnosticsEnabled: this.globalConfig.diagnostics.enabled,
 		};
 
 		return settings;
@@ -119,7 +119,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		node: WorkflowEntity['nodes'][number];
 		workflow: WorkflowEntity;
 	}) {
-		const childNodeNames = workflow.connections[node.name]?.main[0].map((i) => i.node);
+		const childNodeNames = workflow.connections[node.name]?.main[0]?.map((i) => i.node);
 
 		if (!childNodeNames) return false;
 

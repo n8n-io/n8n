@@ -17,7 +17,7 @@ import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
-import { standardizeOutput } from './utils';
+import { addPostExecutionWarning, standardizeOutput } from './utils';
 
 const { CODE_ENABLE_STDOUT } = process.env;
 
@@ -108,13 +108,14 @@ export class Code implements INodeType {
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
-		if (!runnersConfig.disabled && language === 'javaScript') {
+		if (runnersConfig.enabled && language === 'javaScript') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
 				? [await sandbox.runCodeAllItems()]
-				: [await sandbox.runCodeForEachItem()];
+				: [await sandbox.runCodeForEachItem(numInputItems)];
 		}
 
 		const getSandbox = (index = 0) => {
@@ -132,7 +133,7 @@ export class Code implements INodeType {
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
-					? this.sendMessageToUI
+					? this.sendMessageToUI.bind(this)
 					: CODE_ENABLE_STDOUT === 'true'
 						? (...args) =>
 								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
@@ -140,6 +141,8 @@ export class Code implements INodeType {
 			);
 			return sandbox;
 		};
+
+		const inputDataItems = this.getInputData();
 
 		// ----------------------------------
 		//        runOnceForAllItems
@@ -162,7 +165,7 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
-			return [items];
+			return addPostExecutionWarning(items, inputDataItems?.length);
 		}
 
 		// ----------------------------------
@@ -171,9 +174,7 @@ export class Code implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
-		const items = this.getInputData();
-
-		for (let index = 0; index < items.length; index++) {
+		for (let index = 0; index < inputDataItems.length; index++) {
 			const sandbox = getSandbox(index);
 			let result: INodeExecutionData | undefined;
 			try {
@@ -200,6 +201,6 @@ export class Code implements INodeType {
 			}
 		}
 
-		return [returnData];
+		return addPostExecutionWarning(returnData, inputDataItems?.length);
 	}
 }

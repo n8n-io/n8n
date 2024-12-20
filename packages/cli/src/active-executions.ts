@@ -154,6 +154,7 @@ export class ActiveExecutions {
 
 	/** Resolve the post-execution promise in an execution. */
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
+		if (!this.has(executionId)) return;
 		const execution = this.getExecution(executionId);
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });

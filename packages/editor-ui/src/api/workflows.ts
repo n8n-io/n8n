@@ -22,7 +22,6 @@ export async function getNewWorkflow(context: IRestApiContext, data?: IDataObjec
 	);
 	return {
 		name: response.name,
-		onboardingFlowEnabled: response.onboardingFlowEnabled === true,
 		settings: response.defaultSettings,
 	};
 }

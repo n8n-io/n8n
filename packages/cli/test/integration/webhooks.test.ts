@@ -5,9 +5,9 @@ import type SuperAgentTest from 'supertest/lib/agent';
 import Container from 'typedi';
 
 import { ExternalHooks } from '@/external-hooks';
-import { WaitingForms } from '@/waiting-forms';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { WebhookServer } from '@/webhooks/webhook-server';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';

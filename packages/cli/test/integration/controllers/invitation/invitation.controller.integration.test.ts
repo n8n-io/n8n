@@ -246,6 +246,7 @@ describe('InvitationController', () => {
 			const { user } = response.body.data[0];
 
 			expect(user.inviteAcceptUrl).toBeDefined();
+			expect(user).toHaveProperty('role', 'global:member');
 
 			const inviteUrl = new URL(user.inviteAcceptUrl);
 

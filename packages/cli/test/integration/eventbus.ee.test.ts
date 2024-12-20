@@ -22,6 +22,7 @@ import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-
 import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';
 import type { MessageEventBusDestinationWebhook } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-webhook.ee';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -33,6 +34,8 @@ jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
+
+mockInstance(Publisher);
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
