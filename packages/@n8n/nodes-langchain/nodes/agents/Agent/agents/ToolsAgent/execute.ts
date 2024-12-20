@@ -7,7 +7,7 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { AgentAction, AgentFinish } from 'langchain/agents';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
+import { createToolCallingAgent } from 'langchain/agents';
 import { omit } from 'lodash';
 import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
@@ -21,6 +21,7 @@ import {
 } from '@utils/output_parsers/N8nOutputParser';
 
 import { SYSTEM_MESSAGE } from './prompt';
+import { AgentExecutor } from '../../AgentExecutor';
 
 function getOutputParserSchema(outputParser: N8nOutputParser): ZodObject<any, any, any, any> {
 	const schema =
