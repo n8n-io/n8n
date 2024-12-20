@@ -15,6 +15,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { CallbackHandler } from 'langfuse-langchain';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,12 +62,27 @@ export class LmChatOllama implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
 
+		const { langfuse } = options as {
+			langfuse?: {
+				baseUrl: string;
+				publicKey: string;
+				secretKey: string;
+			};
+		};
+
+		const langfuseHandler = new CallbackHandler({
+			sessionId: this.getExecutionId(),
+			publicKey: langfuse?.publicKey ?? process.env.LANGFUSE_PUBLIC_KEY,
+			secretKey: langfuse?.secretKey ?? process.env.LANGFUSE_SECRET_KEY,
+			baseUrl: langfuse?.baseUrl ?? process.env.LANGFUSE_HOST,
+		});
+
 		const model = new ChatOllama({
 			...options,
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this), langfuseHandler],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
