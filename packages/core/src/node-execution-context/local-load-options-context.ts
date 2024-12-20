@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import lodash from 'lodash';
 import { ApplicationError, Workflow } from 'n8n-workflow';
 import type {
 	INodeParameterResourceLocator,
@@ -60,7 +60,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 			parameterPath = `${this.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 		}
 
-		const returnData = get(nodeParameters, parameterPath);
+		const returnData = lodash.get(nodeParameters, parameterPath);
 
 		return returnData;
 	}
