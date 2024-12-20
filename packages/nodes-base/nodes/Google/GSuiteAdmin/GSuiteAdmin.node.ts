@@ -10,7 +10,12 @@ import type {
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
-import { googleApiRequest, googleApiRequestAllItems, searchGroups } from './GenericFunctions';
+import {
+	googleApiRequest,
+	googleApiRequestAllItems,
+	searchGroups,
+	searchUsers,
+} from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescripion';
 import { userFields, userOperations } from './UserDescription';
 
@@ -127,6 +132,7 @@ export class GSuiteAdmin implements INodeType {
 		},
 		listSearch: {
 			searchGroups,
+			searchUsers,
 		},
 	};
 
@@ -145,7 +151,6 @@ export class GSuiteAdmin implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
@@ -161,14 +166,13 @@ export class GSuiteAdmin implements INodeType {
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/delete
 					if (operation === 'delete') {
 						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-
-						// Extract the 'value' field if the resourceLocator object is returned
 						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
 
 						if (!groupId) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Group ID is required but was not provided.',
+								{ itemIndex: i },
 							);
 						}
 						responseData = await googleApiRequest.call(
@@ -183,16 +187,14 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/get
 					if (operation === 'get') {
-						// Retrieve the selected group ID from the resource locator
 						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-
-						// Extract the 'value' field if the resourceLocator object is returned
 						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
 
 						if (!groupId) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Group ID is required but was not provided.',
+								{ itemIndex: i },
 							);
 						}
 						responseData = await googleApiRequest.call(
@@ -205,12 +207,10 @@ export class GSuiteAdmin implements INodeType {
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-
-						// Retrieve filter parameters
 						const filter = this.getNodeParameter('filter', i, {}) as IDataObject;
 						const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
 
-						//TODO Check how t osend correct query field
+						//TODO Check how to send correct query field
 						if (typeof filter.query === 'string') {
 							const query = filter.query.trim();
 
@@ -269,16 +269,14 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/update
 					if (operation === 'update') {
-						// Retrieve the selected group ID from the resource locator
 						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-
-						// Extract the 'value' field if the resourceLocator object is returned
 						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
 
 						if (!groupId) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Group ID is required but was not provided.',
+								{ itemIndex: i },
 							);
 						}
 
@@ -298,19 +296,57 @@ export class GSuiteAdmin implements INodeType {
 				}
 
 				if (resource === 'user') {
+					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/members/insert
+					if (operation === 'addToGroup') {
+						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
+						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
+
+						const userIdRaw = this.getNodeParameter('userId', i) as any;
+						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+
+						let userEmail: string | undefined;
+
+						// If the user ID is not already an email, fetch the user details
+						if (!userId.includes('@')) {
+							console.log('User ID is not an email; fetching user details...');
+							const userDetails = await googleApiRequest.call(
+								this,
+								'GET',
+								`/directory/v1/users/${userId}`,
+							);
+							userEmail = userDetails.primaryEmail;
+						} else {
+							userEmail = userId;
+						}
+
+						if (!userEmail) {
+							throw new ApplicationError(
+								'Unable to determine the user email for adding to the group.',
+							);
+						}
+
+						const body: IDataObject = {
+							email: userEmail,
+							role: 'MEMBER',
+						};
+
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/directory/v1/groups/${groupId}/members`,
+							body,
+						);
+
+						responseData = { added: true };
+					}
+
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/insert
 					if (operation === 'create') {
 						const domain = this.getNodeParameter('domain', i) as string;
-
 						const firstName = this.getNodeParameter('firstName', i) as string;
-
 						const lastName = this.getNodeParameter('lastName', i) as string;
-
 						const password = this.getNodeParameter('password', i) as string;
-
 						const username = this.getNodeParameter('username', i) as string;
-
-						const makeAdmin = this.getNodeParameter('makeAdmin', i) as boolean;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -327,18 +363,32 @@ export class GSuiteAdmin implements INodeType {
 
 						if (additionalFields.phoneUi) {
 							const phones = (additionalFields.phoneUi as IDataObject).phoneValues as IDataObject[];
-
 							body.phones = phones;
-
 							delete body.phoneUi;
 						}
 
 						if (additionalFields.emailUi) {
 							const emails = (additionalFields.emailUi as IDataObject).emailValues as IDataObject[];
-
 							body.emails = emails;
-
 							delete body.emailUi;
+						}
+
+						if (additionalFields.roles) {
+							const roles = (additionalFields.roles as IDataObject).rolesValues as IDataObject;
+
+							body.roles = {
+								superAdmin: Boolean(roles.superAdmin),
+								groupsAdmin: Boolean(roles.groupsAdmin),
+								groupsReader: Boolean(roles.groupsReader),
+								groupsEditor: Boolean(roles.groupsEditor),
+								userManagement: Boolean(roles.userManagement),
+								helpDeskAdmin: Boolean(roles.helpDeskAdmin),
+								servicesAdmin: Boolean(roles.servicesAdmin),
+								inventoryReportingAdmin: Boolean(roles.inventoryReportingAdmin),
+								storageAdmin: Boolean(roles.storageAdmin),
+								directorySyncAdmin: Boolean(roles.directorySyncAdmin),
+								mobileAdmin: Boolean(roles.mobileAdmin),
+							};
 						}
 
 						responseData = await googleApiRequest.call(
@@ -348,22 +398,20 @@ export class GSuiteAdmin implements INodeType {
 							body,
 							qs,
 						);
-
-						if (makeAdmin) {
-							await googleApiRequest.call(
-								this,
-								'POST',
-								`/directory/v1/users/${responseData.id}/makeAdmin`,
-								{ status: true },
-							);
-
-							responseData.isAdmin = true;
-						}
 					}
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/delete
 					if (operation === 'delete') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userIdRaw = this.getNodeParameter('userId', i) as any;
+						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+
+						if (!userId) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'User ID is required but was not provided.',
+								{ itemIndex: i },
+							);
+						}
 
 						responseData = await googleApiRequest.call(
 							this,
@@ -372,31 +420,36 @@ export class GSuiteAdmin implements INodeType {
 							{},
 						);
 
-						responseData = { success: true };
+						responseData = { deleted: true };
 					}
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/get
 					if (operation === 'get') {
-						const userId = this.getNodeParameter('userId', i) as string;
+						const userIdRaw = this.getNodeParameter('userId', i) as any;
+						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
 
-						const projection = this.getNodeParameter('projection', i) as string;
+						const output = this.getNodeParameter('output', i);
+						const projection = this.getNodeParameter('projection', i);
+						const fields = this.getNodeParameter('fields', i, []) as string[];
 
-						const options = this.getNodeParameter('options', i);
-
-						qs.projection = projection;
-
-						Object.assign(qs, options);
-
-						if (qs.customFieldMask) {
-							qs.customFieldMask = (qs.customFieldMask as string[]).join(' ');
-						}
-
-						if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
+						// Validate User ID
+						if (!userId) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'When projection is set to custom, the custom schemas field must be defined',
+								'User ID is required but was not provided.',
 								{ itemIndex: i },
 							);
+						}
+
+						if (projection) {
+							qs.projection = projection;
+						}
+
+						if (output === 'select') {
+							if (!fields.includes('id')) {
+								fields.push('id');
+							}
+							qs.fields = fields.join(',');
 						}
 
 						responseData = await googleApiRequest.call(
@@ -406,34 +459,71 @@ export class GSuiteAdmin implements INodeType {
 							{},
 							qs,
 						);
+
+						if (output === 'simplified') {
+							responseData = {
+								kind: responseData.kind,
+								id: responseData.id,
+								primaryEmail: responseData.primaryEmail,
+								name: responseData.name,
+								isAdmin: responseData.isAdmin,
+								lastLoginTime: responseData.lastLoginTime,
+								creationTime: responseData.creationTime,
+								suspended: responseData.suspended,
+							};
+						}
 					}
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-
+						const output = this.getNodeParameter('output', i);
+						const fields = this.getNodeParameter('fields', i, []) as string[];
 						const projection = this.getNodeParameter('projection', i) as string;
+						const filter = this.getNodeParameter('filter', i, {}) as IDataObject;
+						const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
 
-						const options = this.getNodeParameter('options', i);
+						if (typeof filter.query === 'string') {
+							const query = filter.query.trim();
+							if (query) {
+								qs.query = query;
+							}
+						}
+
+						if (sort.sortRules) {
+							const { orderBy, sortOrder } = sort.sortRules as {
+								orderBy?: string;
+								sortOrder?: string;
+							};
+							if (orderBy) {
+								qs.orderBy = orderBy;
+							}
+							if (sortOrder) {
+								qs.sortOrder = sortOrder;
+							}
+						}
 
 						qs.projection = projection;
-
-						Object.assign(qs, options);
-
-						if (qs.customer === undefined) {
-							qs.customer = 'my_customer';
-						}
-
-						if (qs.customFieldMask) {
-							qs.customFieldMask = (qs.customFieldMask as string[]).join(' ');
-						}
-
-						if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
+						if (projection === 'custom' && !qs.customFieldMask) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'When projection is set to custom, the custom schemas field must be defined',
 								{ itemIndex: i },
 							);
+						}
+						if (qs.customFieldMask) {
+							qs.customFieldMask = (qs.customFieldMask as string[]).join(',');
+						}
+
+						if (output === 'select') {
+							if (!fields.includes('id')) {
+								fields.push('id');
+							}
+							qs.fields = `users(${fields.join(',')})`;
+						}
+
+						if (!qs.customer) {
+							qs.customer = 'my_customer';
 						}
 
 						if (returnAll) {
@@ -447,7 +537,6 @@ export class GSuiteAdmin implements INodeType {
 							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i);
-
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -458,55 +547,104 @@ export class GSuiteAdmin implements INodeType {
 
 							responseData = responseData.users;
 						}
+
+						if (output === 'simplified') {
+							responseData = responseData.map((user: any) => ({
+								kind: user.kind,
+								id: user.id,
+								primaryEmail: user.primaryEmail,
+								name: user.name,
+								isAdmin: user.isAdmin,
+								lastLoginTime: user.lastLoginTime,
+								creationTime: user.creationTime,
+								suspended: user.suspended,
+							}));
+						}
+					}
+
+					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/members/delete
+					if (operation === 'removeFromGroup') {
+						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
+						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
+						const userIdRaw = this.getNodeParameter('userId', i) as any;
+						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+						const body: IDataObject = {
+							email: userId,
+							role: 'MEMBER',
+						};
+
+						await googleApiRequest.call(
+							this,
+							'DELETE',
+							`/directory/v1/groups/${groupId}/members/${userId}`,
+						);
+
+						responseData = { removed: true };
 					}
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/update
 					if (operation === 'update') {
-						const userId = this.getNodeParameter('userId', i) as string;
-
+						const userIdRaw = this.getNodeParameter('userId', i) as any;
+						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
 						const updateFields = this.getNodeParameter('updateFields', i);
 
+						// Validate User ID
+						if (!userId) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'User ID is required but was not provided.',
+								{ itemIndex: i },
+							);
+						}
+
 						const body: {
-							name: { givenName?: string; familyName?: string };
+							name?: { givenName?: string; familyName?: string };
 							emails?: IDataObject[];
 							phones?: IDataObject[];
-						} = { name: {} };
-
-						Object.assign(body, updateFields);
+							suspended?: boolean;
+							roles?: { [key: string]: boolean };
+						} = {};
 
 						if (updateFields.firstName) {
+							body.name = body.name || {};
 							body.name.givenName = updateFields.firstName as string;
-							//@ts-ignore
-							delete body.firstName;
 						}
 
 						if (updateFields.lastName) {
+							body.name = body.name || {};
 							body.name.familyName = updateFields.lastName as string;
-							//@ts-ignore
-							delete body.lastName;
-						}
-
-						if (Object.keys(body.name).length === 0) {
-							//@ts-ignore
-							delete body.name;
 						}
 
 						if (updateFields.phoneUi) {
 							const phones = (updateFields.phoneUi as IDataObject).phoneValues as IDataObject[];
-
 							body.phones = phones;
-
-							//@ts-ignore
-							delete body.phoneUi;
 						}
 
 						if (updateFields.emailUi) {
 							const emails = (updateFields.emailUi as IDataObject).emailValues as IDataObject[];
-
 							body.emails = emails;
+						}
 
-							//@ts-ignore
-							delete body.emailUi;
+						if (typeof updateFields.suspendUi === 'boolean') {
+							body.suspended = updateFields.suspendUi; // Map directly to suspended
+						}
+
+						if (updateFields.roles) {
+							const roles = (updateFields.roles as IDataObject).rolesValues as IDataObject;
+
+							body.roles = {
+								superAdmin: Boolean(roles.superAdmin),
+								groupsAdmin: Boolean(roles.groupsAdmin),
+								groupsReader: Boolean(roles.groupsReader),
+								groupsEditor: Boolean(roles.groupsEditor),
+								userManagement: Boolean(roles.userManagement),
+								helpDeskAdmin: Boolean(roles.helpDeskAdmin),
+								servicesAdmin: Boolean(roles.servicesAdmin),
+								inventoryReportingAdmin: Boolean(roles.inventoryReportingAdmin),
+								storageAdmin: Boolean(roles.storageAdmin),
+								directorySyncAdmin: Boolean(roles.directorySyncAdmin),
+								mobileAdmin: Boolean(roles.mobileAdmin),
+							};
 						}
 
 						responseData = await googleApiRequest.call(
@@ -524,6 +662,15 @@ export class GSuiteAdmin implements INodeType {
 					if (operation === 'get') {
 						const uuid = this.getNodeParameter('uuid', i) as string;
 						const projection = this.getNodeParameter('projection', 1);
+
+						// Validate uuid
+						if (!uuid) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'uuid is required but was not provided.',
+								{ itemIndex: i },
+							);
+						}
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
@@ -573,6 +720,14 @@ export class GSuiteAdmin implements INodeType {
 						const projection = this.getNodeParameter('projection', 1);
 						const updateOptions = this.getNodeParameter('updateOptions', 1);
 
+						// Validate uuid
+						if (!uuid) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'uuid is required but was not provided.',
+								{ itemIndex: i },
+							);
+						}
 						Object.assign(qs, updateOptions);
 						responseData = await googleApiRequest.call(
 							this,
@@ -605,13 +760,23 @@ export class GSuiteAdmin implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({
+							message: `Operation "${operation}" failed for resource "${resource}".`,
+							description: error.message,
+						}),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw error;
+				throw new NodeOperationError(
+					this.getNode(),
+					`Operation "${operation}" failed for resource "${resource}".`,
+					{
+						description: `Please check the input parameters and ensure the API request is correctly formatted. Details: ${error.message}`,
+						itemIndex: i,
+					},
+				);
 			}
 		}
 		return [returnData];
