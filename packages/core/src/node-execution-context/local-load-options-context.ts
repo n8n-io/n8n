@@ -21,10 +21,11 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 	) {}
 
 	async getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null> {
-		const { value } = this.getCurrentNodeParameter('workflowId') as INodeParameterResourceLocator;
+		const { value: workflowId } = this.getCurrentNodeParameter(
+			'workflowId',
+		) as INodeParameterResourceLocator;
 
-		const workflowId = value as string;
-		if (!workflowId) {
+		if (typeof workflowId !== 'string' || !workflowId) {
 			throw new ApplicationError(`No workflowId parameter defined on node of type "${nodeType}"!`);
 		}
 
