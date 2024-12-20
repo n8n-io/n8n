@@ -203,11 +203,15 @@ const showTypeConversionOptions = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.showTypeConversionOptions === true;
 });
 
+const hasFields = computed<boolean>(() => {
+	return state.paramValue.schema.length > 0;
+});
+
 const showMatchingColumnsSelector = computed<boolean>(() => {
 	return (
 		!state.loading &&
 		['upsert', 'update'].includes(props.parameter.typeOptions?.resourceMapper?.mode ?? '') &&
-		state.paramValue.schema.length > 0
+		hasFields.value
 	);
 });
 
@@ -216,7 +220,7 @@ const showMappingFields = computed<boolean>(() => {
 		state.paramValue.mappingMode === 'defineBelow' &&
 		!state.loading &&
 		!state.loadingError &&
-		state.paramValue.schema.length > 0 &&
+		hasFields.value &&
 		hasAvailableMatchingColumns.value
 	);
 });
@@ -635,10 +639,7 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
-		<div
-			v-if="showTypeConversionOptions && state.paramValue.schema.length > 0"
-			:class="$style.typeConversionOptions"
-		>
+		<div v-if="showTypeConversionOptions && hasFields" :class="$style.typeConversionOptions">
 			<ParameterInputFull
 				:parameter="{
 					name: 'attemptToConvertTypes',
