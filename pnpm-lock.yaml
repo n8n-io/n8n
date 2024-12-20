@@ -19439,6 +19439,7 @@ snapshots:
       is-retry-allowed: 2.2.0
 
   axios@1.7.4:
+
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
@@ -22305,7 +22306,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 18.16.16
       '@types/tough-cookie': 4.0.2
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
       camelcase: 6.3.0
       debug: 4.3.7
       dotenv: 16.4.5

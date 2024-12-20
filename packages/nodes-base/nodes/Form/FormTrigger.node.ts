@@ -1,5 +1,6 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
+
 import { FormTriggerV1 } from './v1/FormTriggerV1.node';
 import { FormTriggerV2 } from './v2/FormTriggerV2.node';
 

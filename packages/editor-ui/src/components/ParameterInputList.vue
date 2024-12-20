@@ -650,6 +650,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 
 <style lang="scss">
 .parameter-input-list-wrapper {
+	--disabled-fill: var(--color-background-base);
 	.icon-button {
 		position: absolute;
 		opacity: 0;

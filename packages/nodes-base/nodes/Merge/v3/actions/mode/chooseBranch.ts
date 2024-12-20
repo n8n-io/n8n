@@ -1,8 +1,9 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-import { numberInputsProperty } from '../../helpers/descriptions';
 import { preparePairedItemDataArray, updateDisplayOptions } from '@utils/utilities';
+
+import { numberInputsProperty } from '../../helpers/descriptions';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,

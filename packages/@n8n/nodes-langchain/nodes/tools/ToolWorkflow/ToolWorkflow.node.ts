@@ -7,7 +7,7 @@ import { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node';
 export class ToolWorkflow extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Call n8n Workflow Tool',
+			displayName: 'Call n8n Sub-Workflow Tool',
 			name: 'toolWorkflow',
 			icon: 'fa:network-wired',
 			group: ['transform'],

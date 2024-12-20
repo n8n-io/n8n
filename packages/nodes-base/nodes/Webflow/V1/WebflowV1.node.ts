@@ -8,6 +8,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { itemFields, itemOperations } from './ItemDescription';
 import {
 	webflowApiRequest,
 	webflowApiRequestAllItems,
@@ -15,8 +16,6 @@ import {
 	getCollections,
 	getFields,
 } from '../GenericFunctions';
-
-import { itemFields, itemOperations } from './ItemDescription';
 
 export class WebflowV1 implements INodeType {
 	description: INodeTypeDescription;

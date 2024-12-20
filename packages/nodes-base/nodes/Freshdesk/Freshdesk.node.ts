@@ -9,16 +9,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { contactFields, contactOperations } from './ContactDescription';
+import type { ICreateContactBody } from './ContactInterface';
 import {
 	capitalize,
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
 } from './GenericFunctions';
-
-import type { ICreateContactBody } from './ContactInterface';
-
-import { contactFields, contactOperations } from './ContactDescription';
 
 const enum Status {
 	Open = 2,
