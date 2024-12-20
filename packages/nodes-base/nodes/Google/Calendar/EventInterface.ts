@@ -34,3 +34,8 @@ export interface IEvent {
 	visibility?: string;
 	conferenceData?: IConferenceData;
 }
+
+export type ReccuringEventInstance = {
+	recurringEventId?: string;
+	start: { dateTime: string };
+};

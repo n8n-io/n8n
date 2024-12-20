@@ -20,11 +20,12 @@ import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
 import { eventFields, eventOperations } from './EventDescription';
-import type { IEvent } from './EventInterface';
+import type { IEvent, ReccuringEventInstance } from './EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
 	encodeURIComponentOnce,
+	eventExtendYearIntoFuture,
 	getCalendars,
 	getTimezones,
 	googleApiRequest,
@@ -557,17 +558,12 @@ export class GoogleCalendar implements INodeType {
 								!qs.timeMax &&
 								(!options.recurringEventHandling || options.recurringEventHandling === 'expand')
 							) {
-								const now = moment().tz(timezone);
-								// eslint-disable-next-line @typescript-eslint/no-loop-func
-								const extendsYearIntoFuture = (
-									responseData as Array<{ recurringEventId?: string; start: { dateTime: string } }>
-								).some((event) => {
-									if (!event.recurringEventId) return false;
-									const diffInYears = now.diff(event.start.dateTime || '', 'years', true);
-									return diffInYears;
-								});
+								const suggestTrim = eventExtendYearIntoFuture(
+									responseData as ReccuringEventInstance[],
+									timezone,
+								);
 
-								if (extendsYearIntoFuture) {
+								if (suggestTrim) {
 									hints.push({
 										message:
 											"Some events repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",

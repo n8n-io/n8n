@@ -14,6 +14,8 @@ import type {
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 import { RRule } from 'rrule';
 
+import type { ReccuringEventInstance } from './EventInterface';
+
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -267,3 +269,12 @@ export async function googleApiRequestWithRetries({
 
 	return await requestWithRetries(context.getNode(), requestFn, retryCount, maxRetries, itemIndex);
 }
+
+export const eventExtendYearIntoFuture = (data: ReccuringEventInstance[], timezone: string) => {
+	const now = moment().tz(timezone);
+	return data.some((event) => {
+		if (!event.recurringEventId) return false;
+		const diffInYears = now.diff(event.start.dateTime || '', 'years', true);
+		return diffInYears;
+	});
+};
