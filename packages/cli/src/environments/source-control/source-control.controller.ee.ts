@@ -193,7 +193,6 @@ export class SourceControlController {
 		try {
 			const result = await this.sourceControlService.pullWorkfolder({
 				force: req.body.force,
-				variables: req.body.variables,
 				userId: req.user.id,
 			});
 			res.statusCode = result.statusCode;
