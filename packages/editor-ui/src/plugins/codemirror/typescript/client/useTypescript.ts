@@ -16,7 +16,7 @@ import * as Comlink from 'comlink';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
 import { toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { RemoteLanguageServiceWorkerInit } from '../types';
-import { typescriptCompletionSource } from './completionSource';
+import { typescriptCompletionSource } from './completions';
 import { typescriptWorkerFacet } from './facet';
 import { typescriptHoverTooltips } from './hoverTooltip';
 import { typescriptLintSource } from './linter';
@@ -96,7 +96,6 @@ export async function useTypescript(
 		new LanguageSupport(javascriptLanguage, [
 			javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 		]),
-
 		autocompletion({ icons: false, aboveCursor: true }),
 		linter(typescriptLintSource),
 		hoverTooltip(typescriptHoverTooltips, {

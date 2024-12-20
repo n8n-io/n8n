@@ -18,7 +18,6 @@ function processSchema(schema: Schema): string {
 
 		case 'array':
 			if (Array.isArray(schema.value)) {
-				// Handle tuple type if array has different types
 				if (schema.value.length > 0) {
 					return `Array<${processSchema(schema.value[0])}>`;
 				}

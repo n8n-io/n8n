@@ -124,7 +124,7 @@ export function longestCommonPrefix(...strings: string[]) {
 }
 
 export const prefixMatch = (first: string, second: string) =>
-	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase()) && first !== second;
+	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase());
 
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed

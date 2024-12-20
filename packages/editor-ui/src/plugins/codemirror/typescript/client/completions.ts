@@ -1,5 +1,10 @@
 import { escapeMappingString } from '@/utils/mappingUtils';
-import type { Completion, CompletionSource } from '@codemirror/autocomplete';
+import {
+	insertCompletionText,
+	pickedCompletion,
+	type Completion,
+	type CompletionSource,
+} from '@codemirror/autocomplete';
 import {
 	autocompletableNodeNames,
 	longestCommonPrefix,
@@ -58,11 +63,25 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 			const lcp = longestCommonPrefix(completion.label, word.text);
 			return [0, lcp.length];
 		},
-		options: options.filter(
-			(option) =>
-				word.text === '' ||
-				START_CHARACTERS.includes(word.text) ||
-				prefixMatch(option.label, word.text),
-		),
+		options: options
+			.filter(
+				(option) =>
+					word.text === '' ||
+					START_CHARACTERS.includes(word.text) ||
+					prefixMatch(option.label, word.text),
+			)
+			.map((completion) => {
+				if (completion.label.endsWith('()')) {
+					completion.apply = (view, _, from, to) => {
+						const cursorPosition = from + completion.label.length - 1;
+						view.dispatch({
+							...insertCompletionText(view.state, completion.label, from, to),
+							annotations: pickedCompletion.of(completion),
+							selection: { anchor: cursorPosition, head: cursorPosition },
+						});
+					};
+				}
+				return completion;
+			}),
 	};
 };

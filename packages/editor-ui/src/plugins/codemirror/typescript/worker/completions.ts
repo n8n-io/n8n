@@ -1,21 +1,30 @@
 import type * as tsvfs from '@typescript/vfs';
 import type ts from 'typescript';
+
+import { type Completion } from '@codemirror/autocomplete';
 import { TS_COMPLETE_BLOCKLIST, TYPESCRIPT_AUTOCOMPLETE_THRESHOLD } from './constants';
-import type { Completion } from '@codemirror/autocomplete';
+
+function convertTsKindtoEditorCompletionType(kind: ts.ScriptElementKind) {
+	if (!kind) return undefined;
+
+	const type = String(kind);
+	if (type === 'member') return 'property';
+
+	return type;
+}
 
 function typescriptCompletionToEditor(
 	completionInfo: ts.WithMetadata<ts.CompletionInfo>,
 	entry: ts.CompletionEntry,
 ): Completion {
 	const boost = -Number(entry.sortText) || 0;
-	let type = entry.kind ? String(entry.kind) : undefined;
-
-	if (type === 'member') type = 'property';
+	const type = convertTsKindtoEditorCompletionType(entry.kind);
 
 	return {
-		label: entry.name,
-		type,
+		label: type && ['method', 'function'].includes(type) ? entry.name + '()' : entry.name,
+		type: convertTsKindtoEditorCompletionType(entry.kind),
 		commitCharacters: entry.commitCharacters ?? completionInfo.defaultCommitCharacters,
+		detail: entry.labelDetails?.detail,
 		boost,
 	};
 }
