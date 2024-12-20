@@ -495,14 +495,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowData;
 	}
 
-	async function getOrFetchWorkflow(id: string): Promise<IWorkflowDb> {
-		if (workflowsById.value[id]) {
-			return workflowsById.value[id];
-		}
-
-		return await fetchWorkflow(id);
-	}
-
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
@@ -1764,6 +1756,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
-		getOrFetchWorkflow,
 	};
 });
