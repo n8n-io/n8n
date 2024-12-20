@@ -12,7 +12,7 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	public async createTestRun(testDefinitionId: string) {
+	async createTestRun(testDefinitionId: string) {
 		const testRun = this.create({
 			status: 'new',
 			testDefinition: { id: testDefinitionId },
@@ -21,7 +21,7 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	public async markAsRunning(id: string, totalCases: number) {
+	async markAsRunning(id: string, totalCases: number) {
 		return await this.update(id, {
 			status: 'running',
 			runAt: new Date(),
@@ -31,19 +31,19 @@ export class TestRunRepository extends Repository<TestRun> {
 		});
 	}
 
-	public async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
+	async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
 	}
 
-	public async incrementPassed(id: string) {
+	async incrementPassed(id: string) {
 		return await this.increment({ id }, 'passedCases', 1);
 	}
 
-	public async incrementFailed(id: string) {
+	async incrementFailed(id: string) {
 		return await this.increment({ id }, 'failedCases', 1);
 	}
 
-	public async getMany(testDefinitionId: string, options: ListQuery.Options) {
+	async getMany(testDefinitionId: string, options: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<TestRun> = {
 			where: { testDefinition: { id: testDefinitionId } },
 			order: { createdAt: 'DESC' },

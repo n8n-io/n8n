@@ -1,5 +1,6 @@
-import nock from 'nock';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import nock from 'nock';
+
 import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {

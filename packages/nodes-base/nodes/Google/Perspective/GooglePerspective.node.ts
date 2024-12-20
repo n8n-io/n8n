@@ -1,3 +1,4 @@
+import ISO6391 from 'iso-639-1';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -9,15 +10,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import ISO6391 from 'iso-639-1';
+import { googleApiRequest } from './GenericFunctions';
 import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
 	Language,
 	RequestedAttributes,
 } from './types';
-
-import { googleApiRequest } from './GenericFunctions';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {

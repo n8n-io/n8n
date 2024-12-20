@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.72.0",
+  "version": "1.73.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -42,6 +42,7 @@
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",
+    "chardet": "2.0.0",
     "concat-stream": "2.0.0",
     "cron": "3.1.7",
     "fast-glob": "catalog:",

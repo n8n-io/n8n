@@ -36,7 +36,7 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends TypedEmitter<PushEvents> {
-	public isBidirectional = useWebSockets;
+	isBidirectional = useWebSockets;
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 

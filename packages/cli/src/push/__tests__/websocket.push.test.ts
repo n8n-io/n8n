@@ -11,15 +11,15 @@ import { mockInstance } from '@test/mocking';
 jest.useFakeTimers();
 
 class MockWebSocket extends EventEmitter {
-	public isAlive = true;
+	isAlive = true;
 
-	public ping = jest.fn();
+	ping = jest.fn();
 
-	public send = jest.fn();
+	send = jest.fn();
 
-	public terminate = jest.fn();
+	terminate = jest.fn();
 
-	public close = jest.fn();
+	close = jest.fn();
 }
 
 const createMockWebSocket = () => new MockWebSocket() as unknown as jest.Mocked<WebSocket>;

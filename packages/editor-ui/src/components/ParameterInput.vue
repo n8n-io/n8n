@@ -1059,6 +1059,7 @@ onUpdated(async () => {
 				:expression-edit-dialog-visible="expressionEditDialogVisible"
 				:path="path"
 				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"

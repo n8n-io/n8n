@@ -3,10 +3,10 @@ import { ApplicationError } from 'n8n-workflow';
 import type { TaskRunner } from '../task-broker.service';
 
 export class TaskRunnerOomError extends ApplicationError {
-	public description: string;
+	description: string;
 
 	constructor(
-		public readonly runnerId: TaskRunner['id'],
+		readonly runnerId: TaskRunner['id'],
 		isCloudDeployment: boolean,
 	) {
 		super('Node ran out of memory.', { level: 'error' });

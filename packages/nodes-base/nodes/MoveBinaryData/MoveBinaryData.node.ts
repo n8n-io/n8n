@@ -1,7 +1,7 @@
+import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -17,8 +17,6 @@ import {
 	NodeConnectionType,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import iconv from 'iconv-lite';
 
 iconv.encodingExists('utf8');
 

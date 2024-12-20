@@ -21,6 +21,7 @@ export class OutputParserAutofixing implements INodeType {
 		displayName: 'Auto-fixing Output Parser',
 		name: 'outputParserAutofixing',
 		icon: 'fa:tools',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Automatically fix the output if it is not in the correct format',
