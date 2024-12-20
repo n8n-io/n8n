@@ -7,7 +7,6 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
-
 import type {
 	PgpDatabase,
 	PostgresNodeOptions,

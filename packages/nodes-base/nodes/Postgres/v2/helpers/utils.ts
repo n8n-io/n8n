@@ -30,6 +30,7 @@ export function isJSON(str: string) {
 	}
 }
 
+// wip
 export function stringToArray(str: NodeParameterValueType | undefined) {
 	if (str === undefined) return [];
 	return String(str)
