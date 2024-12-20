@@ -16,8 +16,9 @@
 
 	> ul[role='listbox'] {
 		font-family: var(--font-family-monospace);
-		max-height: min(250px, 50vh);
-		max-width: 200px;
+		max-height: min(220px, 20vh);
+		max-width: 240px;
+		min-width: 200px;
 
 		border: var(--border-base);
 		border-top-left-radius: var(--border-radius-base);
@@ -30,6 +31,10 @@
 			border-bottom-left-radius: 0;
 			border-top-right-radius: var(--border-radius-base);
 			border-bottom-right-radius: var(--border-radius-base);
+		}
+
+		&:has(+ .cm-completionInfo) {
+			height: min(220px, 20vh);
 		}
 
 		li[role='option'] {
@@ -305,7 +310,7 @@
 	top: 0 !important;
 	left: 100% !important;
 	right: auto !important;
-	max-width: 320px !important;
+	max-width: 280px !important;
 	height: 100%;
 
 	&.cm-completionInfo-left-narrow,
@@ -338,7 +343,7 @@
 	border-radius: var(--border-radius-base);
 	line-height: var(--font-line-height-loose);
 	padding: 0;
-	max-width: 320px;
+	max-width: 280px;
 
 	.cm-tooltip-section:not(:first-child) {
 		border-top: var(--border-base);
@@ -346,6 +351,6 @@
 
 	.autocomplete-info-container {
 		height: auto;
-		max-height: min(250px, 50vh);
+		max-height: min(220px, 20vh);
 	}
 }
