@@ -65,7 +65,7 @@ export class SourceControlImportService {
 		);
 	}
 
-	public async getRemoteVersionIdsFromFiles(): Promise<SourceControlWorkflowVersionId[]> {
+	async getRemoteVersionIdsFromFiles(): Promise<SourceControlWorkflowVersionId[]> {
 		const remoteWorkflowFiles = await glob('*.json', {
 			cwd: this.workflowExportFolder,
 			absolute: true,
@@ -91,7 +91,7 @@ export class SourceControlImportService {
 		);
 	}
 
-	public async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
+	async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
 		const localWorkflows = await Container.get(WorkflowRepository).find({
 			select: ['id', 'name', 'versionId', 'updatedAt'],
 		});
@@ -119,7 +119,7 @@ export class SourceControlImportService {
 		}) as SourceControlWorkflowVersionId[];
 	}
 
-	public async getRemoteCredentialsFromFiles(): Promise<
+	async getRemoteCredentialsFromFiles(): Promise<
 		Array<ExportableCredential & { filename: string }>
 	> {
 		const remoteCredentialFiles = await glob('*.json', {
@@ -146,9 +146,7 @@ export class SourceControlImportService {
 		>;
 	}
 
-	public async getLocalCredentialsFromDb(): Promise<
-		Array<ExportableCredential & { filename: string }>
-	> {
+	async getLocalCredentialsFromDb(): Promise<Array<ExportableCredential & { filename: string }>> {
 		const localCredentials = await Container.get(CredentialsRepository).find({
 			select: ['id', 'name', 'type'],
 		});
@@ -160,7 +158,7 @@ export class SourceControlImportService {
 		})) as Array<ExportableCredential & { filename: string }>;
 	}
 
-	public async getRemoteVariablesFromFile(): Promise<Variables[]> {
+	async getRemoteVariablesFromFile(): Promise<Variables[]> {
 		const variablesFile = await glob(SOURCE_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
@@ -174,11 +172,11 @@ export class SourceControlImportService {
 		return [];
 	}
 
-	public async getLocalVariablesFromDb(): Promise<Variables[]> {
+	async getLocalVariablesFromDb(): Promise<Variables[]> {
 		return await this.variablesService.getAllCached();
 	}
 
-	public async getRemoteTagsAndMappingsFromFile(): Promise<{
+	async getRemoteTagsAndMappingsFromFile(): Promise<{
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
@@ -197,7 +195,7 @@ export class SourceControlImportService {
 		return { tags: [], mappings: [] };
 	}
 
-	public async getLocalTagsAndMappingsFromDb(): Promise<{
+	async getLocalTagsAndMappingsFromDb(): Promise<{
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
@@ -210,7 +208,7 @@ export class SourceControlImportService {
 		return { tags: localTags, mappings: localMappings };
 	}
 
-	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject =
 			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 		const workflowManager = this.activeWorkflowManager;
@@ -297,7 +295,7 @@ export class SourceControlImportService {
 		}>;
 	}
 
-	public async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+	async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const personalProject =
 			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
@@ -371,7 +369,7 @@ export class SourceControlImportService {
 		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 
-	public async importTagsFromWorkFolder(candidate: SourceControlledFile) {
+	async importTagsFromWorkFolder(candidate: SourceControlledFile) {
 		let mappedTags;
 		try {
 			this.logger.debug(`Importing tags from file ${candidate.file}`);
@@ -433,7 +431,7 @@ export class SourceControlImportService {
 		return mappedTags;
 	}
 
-	public async importVariablesFromWorkFolder(
+	async importVariablesFromWorkFolder(
 		candidate: SourceControlledFile,
 		valueOverrides?: {
 			[key: string]: string;

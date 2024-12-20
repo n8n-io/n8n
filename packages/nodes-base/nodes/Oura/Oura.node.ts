@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,11 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { ouraApiRequest } from './GenericFunctions';
-
 import { profileOperations } from './ProfileDescription';
-
 import { summaryFields, summaryOperations } from './SummaryDescription';
 
 export class Oura implements INodeType {

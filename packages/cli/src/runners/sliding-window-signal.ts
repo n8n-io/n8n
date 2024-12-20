@@ -36,7 +36,7 @@ export class SlidingWindowSignal<TEvents, TEventName extends keyof TEvents & str
 	 * milliseconds for the event to be emitted. `null` is returned
 	 * if no event is emitted within the window.
 	 */
-	public async getSignal(): Promise<TEvents[TEventName] | null> {
+	async getSignal(): Promise<TEvents[TEventName] | null> {
 		const timeSinceLastEvent = Date.now() - this.lastSignalTime;
 		if (timeSinceLastEvent <= this.windowSizeInMs) return this.lastSignal;
 

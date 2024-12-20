@@ -19,6 +19,7 @@ export class RetrieverContextualCompression implements INodeType {
 		displayName: 'Contextual Compression Retriever',
 		name: 'retrieverContextualCompression',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Enhances document similarity search by contextual compression.',

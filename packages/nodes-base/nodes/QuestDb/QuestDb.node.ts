@@ -5,7 +5,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import pgPromise from 'pg-promise';
 
 import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';

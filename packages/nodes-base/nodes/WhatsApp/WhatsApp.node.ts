@@ -1,8 +1,8 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { messageFields, messageTypeFields } from './MessagesDescription';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
+import { messageFields, messageTypeFields } from './MessagesDescription';
 
 export class WhatsApp implements INodeType {
 	description: INodeTypeDescription = {

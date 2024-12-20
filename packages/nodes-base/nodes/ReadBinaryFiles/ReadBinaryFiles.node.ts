@@ -1,3 +1,4 @@
+import glob from 'fast-glob';
 import {
 	NodeConnectionType,
 	type IExecuteFunctions,
@@ -6,7 +7,6 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import glob from 'fast-glob';
 import { generatePairedItemData } from '../../utils/utilities';
 
 export class ReadBinaryFiles implements INodeType {

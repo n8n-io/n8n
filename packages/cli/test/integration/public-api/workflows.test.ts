@@ -378,6 +378,47 @@ describe('GET /workflows', () => {
 			expect(updatedAt).toBeDefined();
 		}
 	});
+
+	test('should return all owned workflows without pinned data', async () => {
+		await Promise.all([
+			createWorkflow(
+				{
+					pinData: {
+						Webhook1: [{ json: { first: 'first' } }],
+					},
+				},
+				member,
+			),
+			createWorkflow(
+				{
+					pinData: {
+						Webhook2: [{ json: { second: 'second' } }],
+					},
+				},
+				member,
+			),
+			createWorkflow(
+				{
+					pinData: {
+						Webhook3: [{ json: { third: 'third' } }],
+					},
+				},
+				member,
+			),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?excludePinnedData=true');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+		expect(response.body.nextCursor).toBeNull();
+
+		for (const workflow of response.body.data) {
+			const { pinData } = workflow;
+
+			expect(pinData).not.toBeDefined();
+		}
+	});
 });
 
 describe('GET /workflows/:id', () => {
@@ -443,6 +484,26 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	});
+
+	test('should retrieve workflow without pinned data', async () => {
+		// create and assign workflow to owner
+		const workflow = await createWorkflow(
+			{
+				pinData: {
+					Webhook1: [{ json: { first: 'first' } }],
+				},
+			},
+			member,
+		);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}?excludePinnedData=true`);
+
+		expect(response.statusCode).toBe(200);
+
+		const { pinData } = response.body;
+
+		expect(pinData).not.toBeDefined();
 	});
 });
 

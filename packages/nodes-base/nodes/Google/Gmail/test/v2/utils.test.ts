@@ -1,6 +1,7 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { DateTime } from 'luxon';
 import { mock } from 'jest-mock-extended';
+import { DateTime } from 'luxon';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+
 import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
 
 const node: INode = {
