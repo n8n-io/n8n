@@ -814,7 +814,7 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
 
-				expect(push.send).toHaveBeenCalledWith(type, args, pushRef);
+				expect(push.send).toHaveBeenCalledWith({ type, data: args }, pushRef);
 			});
 
 			it('should handle `clear-test-webhooks` event', () => {
