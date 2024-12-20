@@ -661,6 +661,7 @@ provide(CanvasKey, {
 		:min-zoom="0"
 		:max-zoom="4"
 		:selection-key-code="selectionKeyCode"
+		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		data-test-id="canvas"
