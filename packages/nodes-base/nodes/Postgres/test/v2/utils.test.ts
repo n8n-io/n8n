@@ -13,6 +13,7 @@ import {
 	replaceEmptyStringsByNulls,
 	wrapData,
 	convertArraysToPostgresFormat,
+	isJSON,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -25,6 +26,15 @@ const node: INode = {
 		operation: 'executeQuery',
 	},
 };
+
+describe('Test PostgresV2, isJSON', () => {
+	it('should return true for valid JSON', () => {
+		expect(isJSON('{"key": "value"}')).toEqual(true);
+	});
+	it('should return false for invalid JSON', () => {
+		expect(isJSON('{"key": "value"')).toEqual(false);
+	});
+});
 
 describe('Test PostgresV2, wrapData', () => {
 	it('should wrap object in json', () => {
