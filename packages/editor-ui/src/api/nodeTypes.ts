@@ -59,6 +59,18 @@ export async function getResourceMapperFields(
 	);
 }
 
+export async function getLocalResourceMapperFields(
+	context: IRestApiContext,
+	sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
+): Promise<ResourceMapperFields> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/dynamic-node-parameters/local-resource-mapper-fields',
+		sendData,
+	);
+}
+
 export async function getNodeParameterActionResult(
 	context: IRestApiContext,
 	sendData: DynamicNodeParameters.ActionResultRequest,

@@ -1698,6 +1698,9 @@ importers:
       fflate:
         specifier: 0.7.4
         version: 0.7.4
+      generate-schema:
+        specifier: 2.6.0
+        version: 2.6.0
       get-system-fonts:
         specifier: 2.0.2
         version: 2.0.2
