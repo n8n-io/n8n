@@ -233,6 +233,10 @@ const config = (module.exports = {
 				format: ['camelCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 			},
+			{
+				selector: 'import',
+				format: ['camelCase', 'PascalCase'],
+			},
 		],
 
 		/**
@@ -299,17 +303,6 @@ const config = (module.exports = {
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
 		 */
 		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
-
-		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/naming-convention.md
-		 */
-		'@typescript-eslint/naming-convention': [
-			'error',
-			{
-				selector: 'import',
-				format: ['camelCase', 'PascalCase'],
-			},
-		],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
