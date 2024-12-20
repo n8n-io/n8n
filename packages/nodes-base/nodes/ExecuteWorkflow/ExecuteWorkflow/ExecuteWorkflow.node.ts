@@ -8,9 +8,6 @@ import type {
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
-import { generatePairedItemData } from '../../utils/utilities';
-
-import { getWorkflowInfo } from './GenericFunctions';
 import { generatePairedItemData } from '../../../utils/utilities';
 import {
 	getCurrentWorkflowInputData,
