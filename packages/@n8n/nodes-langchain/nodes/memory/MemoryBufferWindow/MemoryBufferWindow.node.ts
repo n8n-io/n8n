@@ -32,14 +32,14 @@ class MemoryChatBufferSingleton {
 		this.memoryBuffer = new Map();
 	}
 
-	public static getInstance(): MemoryChatBufferSingleton {
+	static getInstance(): MemoryChatBufferSingleton {
 		if (!MemoryChatBufferSingleton.instance) {
 			MemoryChatBufferSingleton.instance = new MemoryChatBufferSingleton();
 		}
 		return MemoryChatBufferSingleton.instance;
 	}
 
-	public async getMemory(
+	async getMemory(
 		sessionKey: string,
 		memoryParams: BufferWindowMemoryInput,
 	): Promise<BufferWindowMemory> {
