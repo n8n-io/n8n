@@ -41,8 +41,10 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 				nodeTypes: this.nodeTypes,
 			});
 
-			const workflowAdditionalData = { ...this.additionalData };
-			workflowAdditionalData.currentNodeParameters = selectedWorkflowNode.parameters;
+			const workflowAdditionalData = {
+				...this.additionalData,
+				currentNodeParameters: selectedWorkflowNode.parameters,
+			};
 
 			return new LoadWorkflowNodeContext(
 				selectedSingleNodeWorkflow,
