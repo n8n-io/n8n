@@ -2,7 +2,7 @@ import type { LogScope } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import callsites from 'callsites';
 import type { TransformableInfo } from 'logform';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, isObjectLiteral } from 'n8n-core';
 import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
 import path, { basename } from 'node:path';
 import pc from 'picocolors';
@@ -10,7 +10,6 @@ import { Service } from 'typedi';
 import winston from 'winston';
 
 import { inDevelopment, inProduction } from '@/constants';
-import { isObjectLiteral } from '@/utils';
 
 import { noOp } from './constants';
 import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';

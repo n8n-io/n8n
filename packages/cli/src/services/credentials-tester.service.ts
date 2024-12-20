@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import get from 'lodash/get';
-import { ErrorReporter, NodeExecuteFunctions, RoutingNode } from 'n8n-core';
+import { ErrorReporter, NodeExecuteFunctions, RoutingNode, isObjectLiteral } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -34,7 +34,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsHelper } from '../credentials-helper';
-import { isObjectLiteral } from '../utils';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 

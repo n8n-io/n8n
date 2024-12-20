@@ -1,3 +1,5 @@
+import { isObjectLiteral } from './utils';
+
 /** A nodejs Buffer gone through JSON.stringify */
 export type SerializedBuffer = {
 	type: 'Buffer';
@@ -7,10 +9,6 @@ export type SerializedBuffer = {
 /** Converts the given SerializedBuffer to nodejs Buffer */
 export function toBuffer(serializedBuffer: SerializedBuffer): Buffer {
 	return Buffer.from(serializedBuffer.data);
-}
-
-function isObjectLiteral(item: unknown): item is { [key: string]: unknown } {
-	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
 
 export function isSerializedBuffer(candidate: unknown): candidate is SerializedBuffer {
