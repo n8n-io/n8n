@@ -292,8 +292,8 @@ const createRequestParams = (methodName: string) => {
 	}
 	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 		nodeTypeAndVersion: {
-			name: props.node?.type,
-			version: props.node?.typeVersion,
+			name: props.node.type,
+			version: props.node.typeVersion,
 		},
 		currentNodeParameters: resolveRequiredParameters(
 			props.parameter,
