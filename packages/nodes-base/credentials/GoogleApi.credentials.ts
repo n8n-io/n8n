@@ -237,7 +237,8 @@ export class GoogleApi implements ICredentialType {
 				value: r.name,
 			})),
 			default: 'us-central1',
-			description: 'The region where the Google Cloud service is located',
+			description:
+				'The region where the Google Cloud service is located. This applies only to specific nodes, like the Google Vertex Chat Model',
 		},
 		{
 			displayName: 'Service Account Email',
