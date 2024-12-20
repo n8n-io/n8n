@@ -18,10 +18,5 @@ declare global {
 }
 
 export function returnTypeForMode(mode: CodeExecutionMode): string {
-	const returnItem = '{ json: { [key: string]: unknown } } | { [key: string]: unknown }';
-	if (mode === 'runOnceForAllItems') {
-		return `Promise<Array<${returnItem}>> | Array<${returnItem}>`;
-	}
-
-	return `Promise<${returnItem}> | ${returnItem}`;
+	return mode === 'runOnceForAllItems' ? 'N8nOutputItems' : 'N8nOutputItem';
 }

@@ -3,6 +3,24 @@ import type { DateTime } from 'luxon';
 export {};
 
 declare global {
+	type OutputItemWithoutJsonKey = {
+		[key: string]: unknown;
+	} & { json?: never };
+
+	type OutputItemWithJsonKey = {
+		json: {
+			[key: string]: unknown;
+		};
+	};
+
+	type MaybePromise<T> = Promise<T> | T;
+
+	type OneOutputItem = OutputItemWithJsonKey | OutputItemWithoutJsonKey;
+	type AllOutputItems = OneOutputItem | Array<OneOutputItem>;
+
+	type N8nOutputItem = MaybePromise<OneOutputItem>;
+	type N8nOutputItems = MaybePromise<AllOutputItems>;
+
 	interface N8nJson {
 		[key: string]: any;
 	}
