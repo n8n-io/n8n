@@ -35,7 +35,7 @@ export class AIParametersParser {
 	 * @param placeholder The FromAIArgument object containing key, type, description, and defaultValue.
 	 * @returns A Zod schema corresponding to the placeholder's type and constraints.
 	 */
-	public generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
+	generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 		let schema: z.ZodTypeAny;
 
 		switch (placeholder.type?.toLowerCase()) {
@@ -71,7 +71,7 @@ export class AIParametersParser {
 	 * @param payload The current object or value being traversed.
 	 * @param collectedArgs The array collecting FromAIArgument objects.
 	 */
-	public traverseNodeParameters(payload: unknown, collectedArgs: FromAIArgument[]) {
+	traverseNodeParameters(payload: unknown, collectedArgs: FromAIArgument[]) {
 		if (typeof payload === 'string') {
 			const fromAICalls = this.extractFromAICalls(payload);
 			fromAICalls.forEach((call) => collectedArgs.push(call));
@@ -100,7 +100,7 @@ export class AIParametersParser {
 	 * 6. Repeats the process for all $fromAI calls in the input string.
 	 *
 	 */
-	public extractFromAICalls(str: string): FromAIArgument[] {
+	extractFromAICalls(str: string): FromAIArgument[] {
 		const args: FromAIArgument[] = [];
 		// Regular expression to match the start of a $fromAI function call
 		const pattern = /\$fromAI\s*\(\s*/gi;
@@ -180,7 +180,7 @@ export class AIParametersParser {
 	 * @param argsString The string containing the function arguments.
 	 * @returns A FromAIArgument object.
 	 */
-	public parseArguments(argsString: string): FromAIArgument {
+	parseArguments(argsString: string): FromAIArgument {
 		// Split arguments by commas not inside quotes
 		const args: string[] = [];
 		let currentArg = '';
@@ -267,7 +267,7 @@ export class AIParametersParser {
 	 * @param value The default value as a string.
 	 * @returns The parsed default value in its appropriate type.
 	 */
-	public parseDefaultValue(
+	parseDefaultValue(
 		value: string | undefined,
 	): string | number | boolean | Record<string, unknown> | undefined {
 		if (value === undefined || value === '') return undefined;
