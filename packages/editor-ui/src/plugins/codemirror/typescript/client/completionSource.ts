@@ -1,16 +1,27 @@
 import { escapeMappingString } from '@/utils/mappingUtils';
-import type { CompletionSource } from '@codemirror/autocomplete';
-import { autocompletableNodeNames } from '../../completions/utils';
+import type { Completion, CompletionSource } from '@codemirror/autocomplete';
+import {
+	autocompletableNodeNames,
+	longestCommonPrefix,
+	prefixMatch,
+} from '../../completions/utils';
 import { typescriptWorkerFacet } from './facet';
-import { snippets } from './snippets';
+import { blockCommentSnippet, snippets } from './snippets';
+
+const START_CHARACTERS = ['"', "'", '(', '.', '@'];
 
 export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
-	const { pos } = context;
 
 	let word = context.matchBefore(/[\$\w]+/);
 	if (!word?.text) {
-		word = context.matchBefore(/[\.\(\'\"]/);
+		word = context.matchBefore(/[\.\(\'\"\@]/);
+	}
+
+	const blockComment = context.matchBefore(/\/\*?\*?/);
+	if (blockComment) {
+		// Autocomplete a block comment snippet
+		return { from: blockComment?.from, options: [blockCommentSnippet] };
 	}
 
 	if (!word) return null;
@@ -41,7 +52,17 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	}
 
 	return {
-		from: word ? (['"', "'", '(', '.'].includes(word.text) ? word.to : word.from) : pos,
-		options,
+		from: word ? (START_CHARACTERS.includes(word.text) ? word.to : word.from) : context.pos,
+		filter: false,
+		getMatch(completion: Completion) {
+			const lcp = longestCommonPrefix(completion.label, word.text);
+			return [0, lcp.length];
+		},
+		options: options.filter(
+			(option) =>
+				word.text === '' ||
+				START_CHARACTERS.includes(word.text) ||
+				prefixMatch(option.label, word.text),
+		),
 	};
 };

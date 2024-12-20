@@ -1,5 +1,10 @@
 import { snippetCompletion } from '@codemirror/autocomplete';
 
+export const blockCommentSnippet = snippetCompletion('/**\n * #{}\n */', {
+	label: '/**',
+	detail: 'Block Comment',
+});
+
 export const snippets = [
 	snippetCompletion('console.log(#{})', { label: 'log', detail: 'Log to console' }),
 	snippetCompletion('for (const #{1:element} of #{2:array}) {\n\t#{}\n}', {
@@ -51,4 +56,5 @@ export const snippets = [
 		label: 'while',
 		detail: 'While Statement',
 	}),
+	blockCommentSnippet,
 ];
