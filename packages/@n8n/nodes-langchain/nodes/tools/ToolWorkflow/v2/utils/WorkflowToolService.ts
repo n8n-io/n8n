@@ -45,7 +45,7 @@ export class WorkflowToolService {
 	}
 
 	// Creates the tool based on the provided parameters
-	public async createTool({
+	async createTool({
 		name,
 		description,
 		itemIndex,
