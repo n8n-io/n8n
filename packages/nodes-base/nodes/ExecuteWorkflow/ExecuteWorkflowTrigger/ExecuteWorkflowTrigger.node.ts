@@ -37,8 +37,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		hints: [
 			{
-				message:
-					'You need to define your input fields explicitly. Otherwise the parent cannot provide data and you will not receive input data.',
+				message: 'Please make sure to define your input fields.',
 				// This condition checks if we have no input fields, which gets a bit awkward:
 				// For WORKFLOW_INPUTS: keys() only contains `VALUES` if at least one value is provided
 				// For JSON_EXAMPLE: We remove all whitespace and check if we're left with an empty object. Note that we already error if the example is not valid JSON

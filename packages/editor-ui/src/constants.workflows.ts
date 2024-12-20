@@ -190,7 +190,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: WorkflowDataWithTemplateId = {
 		},
 	] as INodeUi[],
 	connections: {
-		'Execute Workflow Trigger': {
+		'Workflow Input Trigger': {
 			main: [
 				[
 					{
