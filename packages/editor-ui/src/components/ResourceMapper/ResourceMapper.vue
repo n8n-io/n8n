@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 	NodeParameterValueType,
 	ResourceMapperField,
+	ResourceMapperFields,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -16,11 +17,17 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import {
+	fieldCannotBeDeleted,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { N8nButton, N8nCallout } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -43,6 +50,8 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 });
 
+const { onDocumentVisible } = useDocumentVisibility();
+
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
@@ -64,6 +73,7 @@ const state = reactive({
 	loading: false,
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
+	hasStaleFields: false,
 });
 
 // Reload fields to map when dependent parameters change
@@ -82,6 +92,21 @@ watch(
 		}
 	},
 );
+
+onDocumentVisible(async () => {
+	await checkStaleFields();
+});
+
+async function checkStaleFields(): Promise<void> {
+	const fetchedFields = await fetchFields();
+	if (fetchedFields) {
+		const isSchemaStale = isResourceMapperFieldListStale(
+			state.paramValue.schema,
+			fetchedFields.fields,
+		);
+		state.hasStaleFields = isSchemaStale;
+	}
+}
 
 // Reload fields to map when node is executed
 watch(
@@ -149,6 +174,8 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
+	} else {
+		await checkStaleFields();
 	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
@@ -246,10 +273,11 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		state.loading = true;
 	}
 	try {
-		await loadFieldsToMap();
+		await loadAndSetFieldsToMap();
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
+		state.hasStaleFields = false;
 	} catch (error) {
 		state.loadingError = true;
 	} finally {
@@ -279,11 +307,7 @@ const createRequestParams = (methodName: string) => {
 	return requestParams;
 };
 
-async function loadFieldsToMap(): Promise<void> {
-	if (!props.node) {
-		return;
-	}
-
+async function fetchFields(): Promise<ResourceMapperFields | null> {
 	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
@@ -301,6 +325,15 @@ async function loadFieldsToMap(): Promise<void> {
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
+	return fetchedFields;
+}
+
+async function loadAndSetFieldsToMap(): Promise<void> {
+	if (!props.node) {
+		return;
+	}
+
+	const fetchedFields = await fetchFields();
 
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
@@ -570,11 +603,26 @@ defineExpose({
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
 			:is-read-only="isReadOnly"
+			:is-data-stale="state.hasStaleFields"
 			@field-value-changed="fieldValueChanged"
 			@remove-field="removeField"
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
+		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
+			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
+			<template #trailingContent>
+				<N8nButton
+					size="mini"
+					icon="refresh"
+					type="secondary"
+					:loading="state.refreshInProgress"
+					@click="initFetching(true)"
+				>
+					{{ locale.baseText('generic.refresh') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
 		<N8nNotice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
 		>
