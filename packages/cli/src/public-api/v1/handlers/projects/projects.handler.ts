@@ -19,6 +19,7 @@ type Update = ProjectRequest.Update;
 type Delete = ProjectRequest.Delete;
 type DeleteUser = ProjectRequest.DeleteUser;
 type GetAll = PaginatedRequest;
+type AddUsers = ProjectRequest.AddUsers;
 
 export = {
 	createProject: [
@@ -115,6 +116,45 @@ export = {
 			await Container.get(ProjectController).syncProjectRelations(projectId, relations);
 
 			return res.status(204).send();
+		},
+	],
+	addUsersToProject: [
+		isLicensed('feat:projectRole:admin'),
+		globalScope('project:update'),
+		async (req: AddUsers, res: Response) => {
+			const { projectId } = req.params;
+			const { users } = req.body;
+
+			const project = await Container.get(ProjectRepository).findOne({
+				where: { id: projectId },
+				relations: { projectRelations: true },
+			});
+
+			if (!project) {
+				return res.status(404).send({ message: 'Not found' });
+			}
+
+			const existingUsers = project.projectRelations.map((relation) => ({
+				userId: relation.userId,
+				role: relation.role,
+			}));
+
+			// TODO:
+			// - What happens when the user is already in the project?
+			// - What happens when the user is not found on the instance?
+
+			try {
+				await Container.get(ProjectController).syncProjectRelations(projectId, [
+					...existingUsers,
+					...users,
+				]);
+			} catch (error) {
+				return res
+					.status(400)
+					.send({ message: error instanceof Error ? error.message : 'Bad request' });
+			}
+
+			return res.status(201).send();
 		},
 	],
 };
