@@ -196,14 +196,7 @@ export class ProjectController {
 			await this.projectsService.updateProject(req.body.name, req.params.projectId);
 		}
 		if (req.body.relations) {
-			try {
-				await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
-			} catch (e) {
-				if (e instanceof UnlicensedProjectRoleError) {
-					throw new BadRequestError(e.message);
-				}
-				throw e;
-			}
+			await this.syncProjectRelations(req.params.projectId, req.body.relations);
 
 			this.eventService.emit('team-project-updated', {
 				userId: req.user.id,
@@ -211,6 +204,20 @@ export class ProjectController {
 				members: req.body.relations,
 				projectId: req.params.projectId,
 			});
+		}
+	}
+
+	async syncProjectRelations(
+		projectId: string,
+		relations: ProjectRequest.ProjectRelationPayload[],
+	) {
+		try {
+			await this.projectsService.syncProjectRelations(projectId, relations);
+		} catch (e) {
+			if (e instanceof UnlicensedProjectRoleError) {
+				throw new BadRequestError(e.message);
+			}
+			throw e;
 		}
 	}
 

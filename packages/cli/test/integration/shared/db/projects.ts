@@ -66,3 +66,11 @@ export const getProjectRelations = async ({
 		where: { projectId, userId, role },
 	});
 };
+
+export const getAllProjectRelations = async ({
+	projectId,
+}: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
+	return await Container.get(ProjectRelationRepository).find({
+		where: { projectId },
+	});
+};
