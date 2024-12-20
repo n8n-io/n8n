@@ -9,6 +9,8 @@ import type {
 	INodeType,
 	INodeTypes,
 	ITriggerFunctions,
+	WorkflowHooks,
+	IRun,
 } from 'n8n-workflow';
 
 import { TriggersAndPollers } from '@/TriggersAndPollers';
@@ -21,11 +23,13 @@ describe('TriggersAndPollers', () => {
 	});
 	const nodeTypes = mock<INodeTypes>();
 	const workflow = mock<Workflow>({ nodeTypes });
+	const hookFunctions = mock<WorkflowHooks['hookFunctions']>({
+		sendResponse: [],
+		workflowExecuteAfter: [],
+	});
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks: {
-			hookFunctions: {
-				sendResponse: [],
-			},
+			hookFunctions,
 		},
 	});
 	const triggersAndPollers = new TriggersAndPollers();
@@ -39,87 +43,80 @@ describe('TriggersAndPollers', () => {
 		const triggerFunctions = mock<ITriggerFunctions>();
 		const getTriggerFunctions = jest.fn().mockReturnValue(triggerFunctions);
 		const triggerFn = jest.fn();
+		const mockEmitData: INodeExecutionData[][] = [[{ json: { data: 'test' } }]];
+
+		const runTriggerHelper = async (mode: 'manual' | 'trigger' = 'trigger') =>
+			await triggersAndPollers.runTrigger(
+				workflow,
+				node,
+				getTriggerFunctions,
+				additionalData,
+				mode,
+				'init',
+			);
 
 		it('should throw error if node type does not have trigger function', async () => {
-			await expect(
-				triggersAndPollers.runTrigger(
-					workflow,
-					node,
-					getTriggerFunctions,
-					additionalData,
-					'trigger',
-					'init',
-				),
-			).rejects.toThrow(ApplicationError);
+			await expect(runTriggerHelper()).rejects.toThrow(ApplicationError);
 		});
 
 		it('should call trigger function in regular mode', async () => {
 			nodeType.trigger = triggerFn;
 			triggerFn.mockResolvedValue({ test: true });
 
-			const result = await triggersAndPollers.runTrigger(
-				workflow,
-				node,
-				getTriggerFunctions,
-				additionalData,
-				'trigger',
-				'init',
-			);
+			const result = await runTriggerHelper();
 
 			expect(triggerFn).toHaveBeenCalled();
 			expect(result).toEqual({ test: true });
 		});
 
-		it('should handle manual mode with promise resolution', async () => {
-			const mockEmitData: INodeExecutionData[][] = [[{ json: { data: 'test' } }]];
-			const mockTriggerResponse = { workflowId: '123' };
+		describe('manual mode', () => {
+			const getMockTriggerFunctions = () => getTriggerFunctions.mock.results[0]?.value;
 
-			nodeType.trigger = triggerFn;
-			triggerFn.mockResolvedValue(mockTriggerResponse);
+			beforeEach(() => {
+				nodeType.trigger = triggerFn;
+				triggerFn.mockResolvedValue({ workflowId: '123' });
+			});
 
-			const result = await triggersAndPollers.runTrigger(
-				workflow,
-				node,
-				getTriggerFunctions,
-				additionalData,
-				'manual',
-				'init',
-			);
+			it('should handle promise resolution', async () => {
+				const result = await runTriggerHelper('manual');
 
-			expect(result).toBeDefined();
-			expect(result?.manualTriggerResponse).toBeInstanceOf(Promise);
+				expect(result?.manualTriggerResponse).toBeInstanceOf(Promise);
+				getMockTriggerFunctions()?.emit?.(mockEmitData);
+			});
 
-			// Simulate emit
-			const mockTriggerFunctions = getTriggerFunctions.mock.results[0]?.value;
-			if (mockTriggerFunctions?.emit) {
-				mockTriggerFunctions.emit(mockEmitData);
-			}
-		});
+			it('should handle error emission', async () => {
+				const testError = new Error('Test error');
+				const result = await runTriggerHelper('manual');
 
-		it('should handle error emission in manual mode', async () => {
-			const testError = new Error('Test error');
+				getMockTriggerFunctions()?.emitError?.(testError);
+				await expect(result?.manualTriggerResponse).rejects.toThrow(testError);
+			});
 
-			nodeType.trigger = triggerFn;
-			triggerFn.mockResolvedValue({});
+			it('should handle response promise', async () => {
+				const responsePromise = { resolve: jest.fn(), reject: jest.fn() };
+				await runTriggerHelper('manual');
 
-			const result = await triggersAndPollers.runTrigger(
-				workflow,
-				node,
-				getTriggerFunctions,
-				additionalData,
-				'manual',
-				'init',
-			);
+				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise);
 
-			expect(result?.manualTriggerResponse).toBeInstanceOf(Promise);
+				expect(hookFunctions.sendResponse?.length).toBe(1);
+				await hookFunctions.sendResponse![0]?.({ testResponse: true });
+				expect(responsePromise.resolve).toHaveBeenCalledWith({ testResponse: true });
+			});
 
-			// Simulate error
-			const mockTriggerFunctions = getTriggerFunctions.mock.results[0]?.value;
-			if (mockTriggerFunctions?.emitError) {
-				mockTriggerFunctions.emitError(testError);
-			}
+			it('should handle both response and done promises', async () => {
+				const responsePromise = { resolve: jest.fn(), reject: jest.fn() };
+				const donePromise = { resolve: jest.fn(), reject: jest.fn() };
+				const mockRunData = mock<IRun>({ data: { resultData: { runData: {} } } });
 
-			await expect(result?.manualTriggerResponse).rejects.toThrow(testError);
+				await runTriggerHelper('manual');
+				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise, donePromise);
+
+				await hookFunctions.sendResponse![0]?.({ testResponse: true });
+				expect(responsePromise.resolve).toHaveBeenCalledWith({ testResponse: true });
+
+				await hookFunctions.workflowExecuteAfter?.[0]?.(mockRunData, {});
+				expect(donePromise.resolve).toHaveBeenCalledWith(mockRunData);
+			});
 		});
 	});
 
@@ -127,10 +124,11 @@ describe('TriggersAndPollers', () => {
 		const pollFunctions = mock<IPollFunctions>();
 		const pollFn = jest.fn();
 
+		const runPollHelper = async () =>
+			await triggersAndPollers.runPoll(workflow, node, pollFunctions);
+
 		it('should throw error if node type does not have poll function', async () => {
-			await expect(triggersAndPollers.runPoll(workflow, node, pollFunctions)).rejects.toThrow(
-				ApplicationError,
-			);
+			await expect(runPollHelper()).rejects.toThrow(ApplicationError);
 		});
 
 		it('should call poll function and return result', async () => {
@@ -138,7 +136,7 @@ describe('TriggersAndPollers', () => {
 			nodeType.poll = pollFn;
 			pollFn.mockResolvedValue(mockPollResult);
 
-			const result = await triggersAndPollers.runPoll(workflow, node, pollFunctions);
+			const result = await runPollHelper();
 
 			expect(pollFn).toHaveBeenCalled();
 			expect(result).toBe(mockPollResult);
@@ -148,10 +146,18 @@ describe('TriggersAndPollers', () => {
 			nodeType.poll = pollFn;
 			pollFn.mockResolvedValue(null);
 
-			const result = await triggersAndPollers.runPoll(workflow, node, pollFunctions);
+			const result = await runPollHelper();
 
 			expect(pollFn).toHaveBeenCalled();
 			expect(result).toBeNull();
+		});
+
+		it('should propagate errors from poll function', async () => {
+			nodeType.poll = pollFn;
+			pollFn.mockRejectedValue(new Error('Poll function failed'));
+
+			await expect(runPollHelper()).rejects.toThrow('Poll function failed');
+			expect(pollFn).toHaveBeenCalled();
 		});
 	});
 });
