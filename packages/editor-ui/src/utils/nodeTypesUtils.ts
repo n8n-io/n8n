@@ -448,13 +448,12 @@ export const isResourceMapperFieldListStale = (
 		return true;
 	}
 
-	// Create maps for O(1) lookup
-	const oldFieldsMap = new Map(oldFields.map((field) => [field.id, field]));
+	// Create map for O(1) lookup
 	const newFieldsMap = new Map(newFields.map((field) => [field.id, field]));
 
 	// Check if any fields were removed or modified
-	for (const [id, oldField] of oldFieldsMap) {
-		const newField = newFieldsMap.get(id);
+	for (const oldField of oldFields) {
+		const newField = newFieldsMap.get(oldField.id);
 
 		// Field was removed
 		if (!newField) {
