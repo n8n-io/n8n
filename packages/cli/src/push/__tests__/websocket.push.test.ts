@@ -73,7 +73,7 @@ describe('WebSocketPush', () => {
 	it('sends data to one connection', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToOne(pushMessage.type, pushMessage.data, pushRef1);
+		webSocketPush.sendToOne(pushMessage, pushRef1);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
@@ -82,7 +82,7 @@ describe('WebSocketPush', () => {
 	it('sends data to all connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToAll(pushMessage.type, pushMessage.data);
+		webSocketPush.sendToAll(pushMessage);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
@@ -101,7 +101,7 @@ describe('WebSocketPush', () => {
 	it('sends data to all users connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToUsers(pushMessage.type, pushMessage.data, [userId]);
+		webSocketPush.sendToUsers(pushMessage, [userId]);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);

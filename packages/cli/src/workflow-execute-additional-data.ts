@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { PushType } from '@n8n/api-types';
+import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
 import { ErrorReporter, WorkflowExecute, isObjectLiteral } from 'n8n-core';
@@ -262,7 +262,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, pushRef);
+				pushInstance.send({ type: 'nodeExecuteBefore', data: { executionId, nodeName } }, pushRef);
 			},
 		],
 		nodeExecuteAfter: [
@@ -279,7 +279,10 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, pushRef);
+				pushInstance.send(
+					{ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } },
+					pushRef,
+				);
 			},
 		],
 		workflowExecuteBefore: [
@@ -296,17 +299,19 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					return;
 				}
 				pushInstance.send(
-					'executionStarted',
 					{
-						executionId,
-						mode: this.mode,
-						startedAt: new Date(),
-						retryOf: this.retryOf,
-						workflowId,
-						workflowName,
-						flattedRunData: data?.resultData.runData
-							? stringify(data.resultData.runData)
-							: stringify({}),
+						type: 'executionStarted',
+						data: {
+							executionId,
+							mode: this.mode,
+							startedAt: new Date(),
+							retryOf: this.retryOf,
+							workflowId,
+							workflowName,
+							flattedRunData: data?.resultData.runData
+								? stringify(data.resultData.runData)
+								: stringify({}),
+						},
 					},
 					pushRef,
 				);
@@ -326,12 +331,11 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 
 				const { status } = fullRunData;
 				if (status === 'waiting') {
-					pushInstance.send('executionWaiting', { executionId }, pushRef);
+					pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
 				} else {
 					const rawData = stringify(fullRunData.data);
 					pushInstance.send(
-						'executionFinished',
-						{ executionId, workflowId, status, rawData },
+						{ type: 'executionFinished', data: { executionId, workflowId, status, rawData } },
 						pushRef,
 					);
 				}
@@ -974,7 +978,7 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type, data, pushRef);
+		pushInstance.send({ type, data } as PushMessage, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);

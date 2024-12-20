@@ -99,6 +99,6 @@ export class CollaborationService {
 			collaborators: activeCollaborators,
 		};
 
-		this.push.sendToUsers('collaboratorsChanged', msgData, userIds);
+		this.push.sendToUsers({ type: 'collaboratorsChanged', data: msgData }, userIds);
 	}
 }
