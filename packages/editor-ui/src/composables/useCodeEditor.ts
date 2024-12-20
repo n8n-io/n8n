@@ -22,6 +22,7 @@ import {
 	dropCursor,
 	EditorView,
 	highlightActiveLineGutter,
+	highlightActiveLine,
 	highlightSpecialChars,
 	keymap,
 	lineNumbers,
@@ -270,6 +271,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 			indentOnInput(),
 			bracketMatching(),
 			closeBrackets(),
+			highlightActiveLine(),
 			highlightActiveLineGutter(),
 			mappingDropCursor(),
 			indentationMarkers({
