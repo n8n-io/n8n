@@ -1,4 +1,4 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage, PushPayload, PushType } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -85,7 +85,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToAll(type, data);
 	}
 
-	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
+	send({ type, data }: PushMessage, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created

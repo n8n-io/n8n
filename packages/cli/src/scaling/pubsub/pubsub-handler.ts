@@ -1,3 +1,4 @@
+import type { PushMessage } from '@n8n/api-types';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -156,7 +157,7 @@ export class PubSubHandler {
 		'relay-execution-lifecycle-event': async ({ type, args, pushRef }) => {
 			if (!this.push.getBackend().hasPushRef(pushRef)) return;
 
-			this.push.send(type, args, pushRef);
+			this.push.send({ type, data: args } as PushMessage, pushRef);
 		},
 		'clear-test-webhooks': async ({ webhookKey, workflowEntity, pushRef }) => {
 			if (!this.push.getBackend().hasPushRef(pushRef)) return;
