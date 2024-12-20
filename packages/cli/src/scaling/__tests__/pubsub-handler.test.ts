@@ -806,15 +806,21 @@ describe('PubSubHandler', () => {
 
 				const pushRef = 'test-push-ref';
 				const type = 'executionStarted';
-				const args = { testArg: 'value' };
+				const data = {
+					executionId: '123',
+					mode: 'webhook' as const,
+					startedAt: new Date(),
+					workflowId: '456',
+					flattedRunData: '[]',
+				};
 
 				push.getBackend.mockReturnValue(
 					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
 				);
 
-				eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
+				eventService.emit('relay-execution-lifecycle-event', { type, data, pushRef });
 
-				expect(push.send).toHaveBeenCalledWith({ type, data: args }, pushRef);
+				expect(push.send).toHaveBeenCalledWith({ type, data }, pushRef);
 			});
 
 			it('should handle `clear-test-webhooks` event', () => {

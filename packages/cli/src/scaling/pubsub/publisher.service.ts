@@ -65,10 +65,10 @@ export class Publisher {
 		const metadata: LogMetadata = { msg: msg.command, channel: 'n8n.commands' };
 
 		if (msg.command === 'relay-execution-lifecycle-event') {
-			const { args, type } = msg.payload;
+			const { data, type } = msg.payload;
 			msgName += ` (${type})`;
 			metadata.type = type;
-			metadata.executionId = args.executionId;
+			if ('executionId' in data) metadata.executionId = data.executionId;
 		}
 
 		this.logger.debug(`Published pubsub msg: ${msgName}`, metadata);
