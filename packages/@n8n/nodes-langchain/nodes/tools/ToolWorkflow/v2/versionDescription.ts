@@ -80,21 +80,6 @@ export const versionDescription: INodeTypeDescription = {
 		//         source:database
 		// ----------------------------------
 		{
-			displayName: 'Workflow ID',
-			name: 'workflowId',
-			type: 'string',
-			displayOptions: {
-				show: {
-					source: ['database'],
-				},
-			},
-			default: '',
-			required: true,
-			description: 'The workflow to execute',
-			hint: 'Can be found in the URL of the workflow',
-		},
-
-		{
 			displayName: 'Workflow',
 			name: 'workflowId',
 			type: 'workflowSelector',
