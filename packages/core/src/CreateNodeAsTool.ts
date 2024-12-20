@@ -388,7 +388,7 @@ class AIParametersParser {
 	 * Creates a DynamicStructuredTool from a node.
 	 * @returns A DynamicStructuredTool instance.
 	 */
-	public createTool(): DynamicStructuredTool {
+	createTool(): DynamicStructuredTool {
 		const { node, nodeType } = this.options;
 		const schema = this.getSchema();
 		const description = this.getDescription();
