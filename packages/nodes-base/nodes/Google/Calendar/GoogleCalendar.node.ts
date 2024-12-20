@@ -48,6 +48,16 @@ export class GoogleCalendar implements INodeType {
 				required: true,
 			},
 		],
+		hints: [
+			{
+				displayCondition:
+					'={{ $parameter["resource"] === "event" && $parameter["operation"] === "getAll" && $nodeVersion >= 1.3 && !$parameter["timeMax"] && ( !$parameter["options"].recurringEventHandling || $parameter["options"].recurringEventHandling === "expand" ) }}',
+				message:
+					"Some events could repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",
+				location: 'outputPane',
+				whenToDisplay: 'beforeExecution',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -520,6 +530,28 @@ export class GoogleCalendar implements INodeType {
 									updatedEvents.push(event);
 								}
 								responseData = updatedEvents;
+							} else if (nodeVersion >= 1.3 && options.recurringEventHandling === 'first') {
+								responseData = responseData.filter((event: IDataObject) => {
+									if (
+										qs.timeMin &&
+										event.recurrence &&
+										event.created &&
+										event.created < qs.timeMin
+									) {
+										return false;
+									}
+
+									if (
+										qs.timeMax &&
+										event.recurrence &&
+										event.created &&
+										event.created > qs.timeMax
+									) {
+										return false;
+									}
+
+									return true;
+								});
 							} else {
 								responseData = addNextOccurrence(responseData);
 							}
