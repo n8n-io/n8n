@@ -362,7 +362,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 	});
 
-	it('should call queries with multiple json key/value pairs', async () => {
+	it('should execute queries with multiple json key/value pairs', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
 			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
@@ -383,7 +383,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		}).not.toThrow();
 	});
 
-	it('should call queries with single json key/value pair', async () => {
+	it('should execute queries with single json key/value pair', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
 			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
@@ -403,7 +403,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		}).not.toThrow();
 	});
 
-	it('should not parse out expressions if there are valid JSON query replacements', async () => {
+	it('should not parse out expressions if there are valid JSON query parameters', async () => {
 		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
@@ -429,7 +429,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.stringToArray).toHaveBeenCalledTimes(0);
 	});
 
-	it('should parse out expressions if is invalid JSON in query replacements', async () => {
+	it('should parse out expressions if is invalid JSON in query parameters', async () => {
 		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',

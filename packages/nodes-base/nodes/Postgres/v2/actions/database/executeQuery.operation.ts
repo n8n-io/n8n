@@ -86,7 +86,7 @@ export async function execute(
 					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							const evaluatedExpression = this.evaluateExpression(`${resolvable}`, index) as string;
+							const evaluatedExpression = this.evaluateExpression(`${resolvable}`, index)?.toString()??'';
 							const evaluatedValues = isJSON(evaluatedExpression)
 								? [evaluatedExpression]
 								: stringToArray(evaluatedExpression);
