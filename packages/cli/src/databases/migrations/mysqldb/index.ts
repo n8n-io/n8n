@@ -75,7 +75,7 @@ import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-Crea
 import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
 import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
 import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
-import { AddStatsColumnsToTestRun1733494526213 } from '../common/1733494526213-AddStatsColumnsToTestRun';
+import { AddStatsColumnsToTestRun1734694556986 } from '../common/1734694556986-AddStatsColumnsToTestRun';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -153,5 +153,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateTestRun1732549866705,
 	AddMockedNodesColumnToTestDefinition1733133775640,
 	AddManagedColumnToCredentialsTable1734479635324,
-	AddStatsColumnsToTestRun1733494526213,
+	AddStatsColumnsToTestRun1734694556986,
 ];

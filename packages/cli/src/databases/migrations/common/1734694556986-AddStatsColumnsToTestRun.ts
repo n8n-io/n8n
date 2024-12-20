@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 const columns = ['totalCases', 'passedCases', 'failedCases'] as const;
 
-export class AddStatsColumnsToTestRun1733494526213 implements ReversibleMigration {
+export class AddStatsColumnsToTestRun1734694556986 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('test_run');
 		const columnNames = columns.map((name) => escape.columnName(name));
