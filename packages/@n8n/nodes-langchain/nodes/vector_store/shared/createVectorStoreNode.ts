@@ -110,12 +110,14 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 			value: 'retrieve',
 			description: 'Retrieve documents from vector store to be used as vector store with AI nodes',
 			action: 'Retrieve documents for AI processing as Vector Store',
+			outputConnectionType: NodeConnectionType.AiVectorStore,
 		},
 		{
 			name: 'Retrieve Documents (As Tool for AI Agent)',
 			value: 'retrieve-as-tool',
 			description: 'Retrieve documents from vector store to be used as tool with AI nodes',
 			action: 'Retrieve documents for AI processing as Tool',
+			outputConnectionType: NodeConnectionType.AiTool,
 		},
 		{
 			name: 'Update Documents',

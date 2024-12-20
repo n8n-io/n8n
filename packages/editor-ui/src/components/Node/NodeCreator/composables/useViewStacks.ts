@@ -1,4 +1,5 @@
 import type {
+	ActionTypeDescription,
 	INodeCreateElement,
 	NodeCreateElement,
 	NodeFilterType,
@@ -38,8 +39,8 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	AI_TRANSFORM_NODE_TYPE,
+	NodeConnectionType,
 	type INodeInputFilter,
-	type NodeConnectionType,
 	type Themed,
 } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -71,6 +72,7 @@ interface ViewStack {
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
+	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
 }
@@ -345,6 +347,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					...item,
 					subcategory: connectionType,
 				};
+			},
+			actionsFilter: (items: ActionTypeDescription[]) => {
+				// Filter out actions that are not compatible with the connection type
+				if (items.some((item) => item.outputConnectionType)) {
+					return items.filter((item) => item.outputConnectionType === connectionType);
+				}
+				return items;
 			},
 			hideActions: true,
 			preventBack: true,

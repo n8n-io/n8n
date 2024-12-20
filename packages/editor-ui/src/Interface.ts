@@ -723,6 +723,7 @@ export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
 	actionKey: string;
+	outputConnectionType?: NodeConnectionType;
 	codex: {
 		label: string;
 		categories: string[];

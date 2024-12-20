@@ -87,6 +87,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
 		displayOptions: matchedProperty.displayOptions,
+		outputConnectionType: item.outputConnectionType,
 		values: {
 			[matchedProperty.name]: matchedProperty.type === 'multiOptions' ? [item.value] : item.value,
 		},
@@ -117,6 +118,7 @@ function modeCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDesc
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
 		displayOptions: matchedProperty.displayOptions,
+		outputConnectionType: item.outputConnectionType,
 		values: {
 			[matchedProperty.name]: item.value,
 		},
@@ -320,7 +322,6 @@ export function useActionsGenerator() {
 		const visibleNodeTypes = [...nodeTypes];
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
-
 		visibleNodeTypes
 			.filter((node) => !node.group.includes('trigger'))
 			.forEach((app) => {
