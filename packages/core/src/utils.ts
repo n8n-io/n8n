@@ -12,6 +12,7 @@ export function isObjectLiteral(candidate: unknown): candidate is ObjectLiteral 
 		typeof candidate === 'object' &&
 		candidate !== null &&
 		!Array.isArray(candidate) &&
-		Object.getPrototypeOf(candidate) === Object.prototype
+		// eslint-disable-next-line @typescript-eslint/ban-types
+		(Object.getPrototypeOf(candidate) as Object)?.constructor?.name === 'Object'
 	);
 }
