@@ -321,7 +321,7 @@ export class TestRunnerService {
 	/**
 	 * Checks if the test run in a cancellable state.
 	 */
-	public canBeCancelled(testRun: TestRun) {
+	canBeCancelled(testRun: TestRun) {
 		return testRun.status !== 'running' && testRun.status !== 'new';
 	}
 
@@ -329,7 +329,7 @@ export class TestRunnerService {
 	 * Cancels the test run with the given ID.
 	 * TODO: Implement the cancellation of the test run in a multi-main scenario
 	 */
-	public async cancelTestRun(testRunId: string) {
+	async cancelTestRun(testRunId: string) {
 		const abortController = this.abortControllers.get(testRunId);
 		if (abortController) {
 			abortController.abort();
