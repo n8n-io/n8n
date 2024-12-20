@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,9 +10,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
 import { v4 as uuid } from 'uuid';
+
+import { calendarFields, calendarOperations } from './CalendarDescription';
+import { eventFields, eventOperations } from './EventDescription';
+import type { IEvent } from './EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
@@ -21,12 +24,6 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
-
-import { eventFields, eventOperations } from './EventDescription';
-
-import { calendarFields, calendarOperations } from './CalendarDescription';
-
-import type { IEvent } from './EventInterface';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -536,7 +533,7 @@ export class GoogleCalendar implements INodeType {
 									body.attendees?.push(attendee);
 								});
 							}
-							(attendees as string[]).forEach((attendee) => {
+							attendees.forEach((attendee) => {
 								body.attendees!.push.apply(
 									body.attendees,
 									attendee

@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { GoogleBigQuery } from './node.type';
 
 import * as record from './database/Database.resource';
+import type { GoogleBigQuery } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const resource = this.getNodeParameter<GoogleBigQuery>('resource', 0);

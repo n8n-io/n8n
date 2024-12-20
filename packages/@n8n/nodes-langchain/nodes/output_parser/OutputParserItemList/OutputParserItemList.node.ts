@@ -15,6 +15,7 @@ export class OutputParserItemList implements INodeType {
 		displayName: 'Item List Output Parser',
 		name: 'outputParserItemList',
 		icon: 'fa:bars',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Return the results as separate items',

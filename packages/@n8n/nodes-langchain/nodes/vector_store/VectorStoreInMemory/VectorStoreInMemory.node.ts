@@ -26,6 +26,7 @@ export class VectorStoreInMemory extends createVectorStoreNode({
 		name: 'vectorStoreInMemory',
 		description: 'Work with your data in In-Memory Vector Store',
 		icon: 'fa:database',
+		iconColor: 'black',
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
 	},
