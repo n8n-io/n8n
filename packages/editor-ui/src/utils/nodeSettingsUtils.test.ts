@@ -1,10 +1,9 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { IConnections, NodeParameterValueType, ResourceMapperField } from 'n8n-workflow';
+import type { IConnections, NodeParameterValueType } from 'n8n-workflow';
 import { updateDynamicConnections } from './nodeSettingsUtils';
 import { SWITCH_NODE_TYPE } from '@/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
-import { isResourceMapperFieldListStale } from './nodeTypesUtils';
 
 describe('updateDynamicConnections', () => {
 	afterAll(() => {
@@ -159,101 +158,5 @@ describe('updateDynamicConnections', () => {
 		const result = updateDynamicConnections(node, connections, parameterData);
 
 		expect(result).toBeNull();
-	});
-});
-
-describe('isResourceMapperFieldListStale', () => {
-	const baseField: ResourceMapperField = {
-		id: 'test',
-		displayName: 'test',
-		required: false,
-		defaultMatch: false,
-		display: true,
-		canBeUsedToMatch: true,
-		type: 'string',
-	};
-
-	test('returns false for identical lists', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(false);
-	});
-
-	test('returns true for different lengths', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField }, { ...baseField, id: 'test2' }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when field is removed', () => {
-		const oldFields = [
-			{ ...baseField, id: 'test1' },
-			{ ...baseField, id: 'test2' },
-		];
-		const newFields = [
-			{ ...baseField, id: 'test1' },
-			{ ...baseField, id: 'test3' },
-		];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when displayName changes', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField, displayName: 'changed' }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when required changes', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField, required: true }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when defaultMatch changes', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField, defaultMatch: true }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when display changes', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField, display: false }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when canBeUsedToMatch changes', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields = [{ ...baseField, canBeUsedToMatch: false }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns true when type changes', () => {
-		const oldFields = [{ ...baseField }];
-		const newFields: ResourceMapperField[] = [{ ...baseField, type: 'number' }];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(true);
-	});
-
-	test('returns false for multiple identical fields', () => {
-		const oldFields = [
-			{ ...baseField, id: 'test1' },
-			{ ...baseField, id: 'test2' },
-			{ ...baseField, id: 'test3' },
-		];
-		const newFields = [
-			{ ...baseField, id: 'test1' },
-			{ ...baseField, id: 'test2' },
-			{ ...baseField, id: 'test3' },
-		];
-		expect(isResourceMapperFieldListStale(oldFields, newFields)).toBe(false);
-	});
-
-	test('handles empty arrays correctly', () => {
-		expect(isResourceMapperFieldListStale([], [])).toBe(false);
-	});
-
-	test('returns true when comparing empty array with non-empty array', () => {
-		const nonEmptyFields = [{ ...baseField }];
-		expect(isResourceMapperFieldListStale([], nonEmptyFields)).toBe(true);
-		expect(isResourceMapperFieldListStale(nonEmptyFields, [])).toBe(true);
 	});
 });

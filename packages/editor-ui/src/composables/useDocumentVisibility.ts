@@ -3,11 +3,11 @@ import { ref, onMounted, onUnmounted } from 'vue';
 
 type VisibilityHandler = () => void;
 
-interface DocumentVisibilityResult {
+type DocumentVisibilityResult = {
 	isVisible: Ref<boolean>;
 	onDocumentVisible: (handler: VisibilityHandler) => void;
 	onDocumentHidden: (handler: VisibilityHandler) => void;
-}
+};
 
 export function useDocumentVisibility(): DocumentVisibilityResult {
 	const isVisible = ref<boolean>(!document.hidden);
