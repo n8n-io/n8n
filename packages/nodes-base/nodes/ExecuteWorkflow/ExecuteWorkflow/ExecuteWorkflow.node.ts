@@ -8,8 +8,11 @@ import type {
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
-import { generatePairedItemData } from '../../utils/utilities';
-
+import { generatePairedItemData } from '../../../utils/utilities';
+import {
+	getCurrentWorkflowInputData,
+	loadWorkflowInputMappings,
+} from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
@@ -17,7 +20,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -39,6 +42,13 @@ export class ExecuteWorkflow implements INodeType {
 						value: 'call_workflow',
 					},
 				],
+			},
+			{
+				displayName: 'This node is out of date. Please upgrade by removing it and adding a new one',
+				name: 'outdatedVersionWarning',
+				type: 'notice',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+				default: '',
 			},
 			{
 				displayName: 'Source',
@@ -68,6 +78,27 @@ export class ExecuteWorkflow implements INodeType {
 				],
 				default: 'database',
 				description: 'Where to get the workflow to execute from',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+			},
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				options: [
+					{
+						name: 'Database',
+						value: 'database',
+						description: 'Load the workflow from the database by ID',
+					},
+					{
+						name: 'Define Below',
+						value: 'parameter',
+						description: 'Pass the JSON code of a workflow',
+					},
+				],
+				default: 'database',
+				description: 'Where to get the workflow to execute from',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
 			},
 
 			// ----------------------------------
@@ -164,6 +195,43 @@ export class ExecuteWorkflow implements INodeType {
 				name: 'executeWorkflowNotice',
 				type: 'notice',
 				default: '',
+				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+			},
+			{
+				displayName: 'Workflow Inputs',
+				name: 'workflowInputs',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: {
+					mappingMode: 'defineBelow',
+					value: null,
+				},
+				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['workflowId.value'],
+					resourceMapper: {
+						localResourceMapperMethod: 'loadWorkflowInputMappings',
+						valuesLabel: 'Workflow Inputs',
+						mode: 'map',
+						fieldWords: {
+							singular: 'input',
+							plural: 'inputs',
+						},
+						addAllFields: true,
+						multiKeyMatch: false,
+						supportAutoMap: false,
+						showTypeConversionOptions: true,
+					},
+				},
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+					hide: {
+						workflowId: [''],
+					},
+				},
 			},
 			{
 				displayName: 'Mode',
@@ -206,10 +274,16 @@ export class ExecuteWorkflow implements INodeType {
 		],
 	};
 
+	methods = {
+		localResourceMapping: {
+			loadWorkflowInputMappings,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
 		const mode = this.getNodeParameter('mode', 0, false) as string;
-		const items = this.getInputData();
+		const items = getCurrentWorkflowInputData.call(this);
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
 		const currentWorkflowId = workflowProxy.$workflow.id as string;
