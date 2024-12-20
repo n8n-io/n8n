@@ -1,7 +1,8 @@
-import { get } from 'lodash';
 import { mock } from 'jest-mock-extended';
-import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
+import { get } from 'lodash';
 import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
+
 import {
 	checkRange,
 	prepareOutput,

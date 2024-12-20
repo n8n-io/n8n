@@ -12,6 +12,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { oldVersionNotice } from '@utils/descriptions';
+
+import { draftFields, draftOperations } from './DraftDescription';
+import { draftMessageSharedFields } from './DraftMessageSharedDescription';
+import { folderFields, folderOperations } from './FolderDescription';
+import { folderMessageFields, folderMessageOperations } from './FolderMessageDecription';
 import {
 	createMessage,
 	downloadAttachments,
@@ -19,23 +25,11 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from './GenericFunctions';
-
-import { draftFields, draftOperations } from './DraftDescription';
-
-import { draftMessageSharedFields } from './DraftMessageSharedDescription';
-
-import { messageFields, messageOperations } from './MessageDescription';
-
 import {
 	messageAttachmentFields,
 	messageAttachmentOperations,
 } from './MessageAttachmentDescription';
-
-import { folderFields, folderOperations } from './FolderDescription';
-
-import { folderMessageFields, folderMessageOperations } from './FolderMessageDecription';
-
-import { oldVersionNotice } from '@utils/descriptions';
+import { messageFields, messageOperations } from './MessageDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',

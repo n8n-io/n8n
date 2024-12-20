@@ -5,13 +5,15 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { clashHandlingProperties, fuzzyCompareProperty } from '../../helpers/descriptions';
 import type {
 	ClashResolveOptions,
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
 } from '../../helpers/interfaces';
-import { clashHandlingProperties, fuzzyCompareProperty } from '../../helpers/descriptions';
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
@@ -20,7 +22,6 @@ import {
 	findMatches,
 	mergeMatched,
 } from '../../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const multipleMatchesProperty: INodeProperties = {
 	displayName: 'Multiple Matches',

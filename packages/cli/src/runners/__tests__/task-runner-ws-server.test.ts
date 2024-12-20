@@ -58,4 +58,28 @@ describe('TaskRunnerWsServer', () => {
 			expect(clearIntervalSpy).toHaveBeenCalled();
 		});
 	});
+
+	describe('sendMessage', () => {
+		it('should work with a message containing circular references', () => {
+			const server = new TaskRunnerWsServer(mock(), mock(), mock(), mock(), mock());
+			const ws = mock<WebSocket>();
+			server.runnerConnections.set('test-runner', ws);
+
+			const messageData: Record<string, unknown> = {};
+			messageData.circular = messageData;
+
+			expect(() =>
+				server.sendMessage('test-runner', {
+					type: 'broker:taskdataresponse',
+					taskId: 'taskId',
+					requestId: 'requestId',
+					data: messageData,
+				}),
+			).not.toThrow();
+
+			expect(ws.send).toHaveBeenCalledWith(
+				'{"type":"broker:taskdataresponse","taskId":"taskId","requestId":"requestId","data":{"circular":"[Circular Reference]"}}',
+			);
+		});
+	});
 });

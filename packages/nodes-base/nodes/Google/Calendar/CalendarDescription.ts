@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { TIMEZONE_VALIDATION_REGEX } from './GenericFunctions';
 
 export const calendarOperations: INodeProperties[] = [

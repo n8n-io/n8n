@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
 
 export class Pushbullet implements INodeType {

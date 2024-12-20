@@ -18,6 +18,7 @@ export class ToolVectorStore implements INodeType {
 		displayName: 'Vector Store Tool',
 		name: 'toolVectorStore',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1],
 		description: 'Retrieve context from vector store',

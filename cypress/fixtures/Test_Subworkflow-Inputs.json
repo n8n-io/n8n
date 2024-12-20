@@ -5,21 +5,11 @@
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "313c177e-724b-4063-8ae0-0968074fe815",
+			"id": "bb7f8bb3-840a-464c-a7de-d3a80538c2be",
 			"name": "When clicking ‘Test workflow’",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [60, 240]
-		},
-		{
-			"parameters": {
-				"category": "randomData"
-			},
-			"id": "7e5d5a99-4c88-4746-b097-6ee20b7b2102",
-			"name": "DebugHelper",
-			"type": "n8n-nodes-base.debugHelper",
-			"typeVersion": 1,
-			"position": [280, 240]
+			"position": [0, 0]
 		},
 		{
 			"parameters": {
@@ -47,17 +37,6 @@
 			"main": [
 				[
 					{
-						"node": "DebugHelper",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"DebugHelper": {
-			"main": [
-				[
-					{
 						"node": "Execute Workflow",
 						"type": "main",
 						"index": 0
@@ -66,5 +45,26 @@
 			]
 		}
 	},
-	"pinData": {}
+	"pinData": {
+		"When clicking ‘Test workflow’": [
+			{
+				"aaString": "A String",
+				"aaNumber": 1,
+				"aaArray": [1, true, "3"],
+				"aaObject": {
+					"aKey": -1
+				},
+				"aaAny": {}
+			},
+			{
+				"aaString": "Another String",
+				"aaNumber": 2,
+				"aaArray": [],
+				"aaObject": {
+					"aDifferentKey": -1
+				},
+				"aaAny": []
+			}
+		]
+	}
 }
