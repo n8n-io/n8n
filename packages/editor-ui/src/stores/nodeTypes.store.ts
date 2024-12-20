@@ -302,6 +302,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getLocalResourceMapperFields = async (
+		sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
+	) => {
+		try {
+			return await nodeTypesApi.getLocalResourceMapperFields(rootStore.restApiContext, sendData);
+		} catch (error) {
+			return null;
+		}
+	};
+
 	const getNodeParameterActionResult = async (
 		sendData: DynamicNodeParameters.ActionResultRequest,
 	) => {
@@ -326,6 +336,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		getResourceMapperFields,
+		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
