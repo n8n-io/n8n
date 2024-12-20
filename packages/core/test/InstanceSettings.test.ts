@@ -4,6 +4,9 @@ import * as fs from 'node:fs';
 
 import { InstanceSettings } from '@/InstanceSettings';
 import { InstanceSettingsConfig } from '@/InstanceSettingsConfig';
+import { Logger } from '@/logging/logger';
+
+import { mockInstance } from './utils';
 
 describe('InstanceSettings', () => {
 	const userFolder = '/test';
@@ -11,12 +14,16 @@ describe('InstanceSettings', () => {
 	const settingsFile = `${userFolder}/.n8n/config`;
 
 	const mockFs = mock(fs);
+	const logger = mockInstance(Logger);
 
 	const createInstanceSettings = (opts?: Partial<InstanceSettingsConfig>) =>
-		new InstanceSettings({
-			...new InstanceSettingsConfig(),
-			...opts,
-		});
+		new InstanceSettings(
+			{
+				...new InstanceSettingsConfig(),
+				...opts,
+			},
+			logger,
+		);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -203,7 +210,7 @@ describe('InstanceSettings', () => {
 			mockFs.readFileSync
 				.calledWith(settingsFile)
 				.mockReturnValue(JSON.stringify({ encryptionKey: 'test_key' }));
-			settings = new InstanceSettings(mock());
+			settings = createInstanceSettings();
 		});
 
 		it('should return true if /.dockerenv exists', () => {

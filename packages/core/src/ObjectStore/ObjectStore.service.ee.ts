@@ -2,10 +2,12 @@ import { sign } from 'aws4';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Method } from 'axios';
-import { ApplicationError, LoggerProxy as Logger } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import type { Readable } from 'stream';
 import { Service } from 'typedi';
+
+import { Logger } from '@/logging/logger';
 
 import type {
 	Bucket,
@@ -30,7 +32,7 @@ export class ObjectStoreService {
 
 	private isReadOnly = false;
 
-	private logger = Logger;
+	constructor(private readonly logger: Logger) {}
 
 	async init(host: string, bucket: Bucket, credentials: ConfigSchemaCredentials) {
 		this.host = host;

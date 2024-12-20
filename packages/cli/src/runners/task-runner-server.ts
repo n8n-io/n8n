@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import compression from 'compression';
 import express from 'express';
+import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';
@@ -10,7 +11,6 @@ import { Service } from 'typedi';
 import { Server as WSServer } from 'ws';
 
 import { inTest } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';

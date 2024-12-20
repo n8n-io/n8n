@@ -1,7 +1,6 @@
+import { Logger } from 'n8n-core';
 import { Container } from 'typedi';
 import type { XMLFileInfo } from 'xmllint-wasm';
-
-import { Logger } from '@/logging/logger.service';
 
 let xmlMetadata: XMLFileInfo;
 let xmlProtocol: XMLFileInfo;

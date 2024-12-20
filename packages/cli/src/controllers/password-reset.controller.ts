@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Logger } from 'n8n-core';
 import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
@@ -13,7 +14,6 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { PasswordResetRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';

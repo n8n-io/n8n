@@ -1,11 +1,11 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 import { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';

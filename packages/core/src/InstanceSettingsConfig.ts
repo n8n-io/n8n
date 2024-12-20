@@ -1,4 +1,5 @@
 import { Config, Env } from '@n8n/config';
+import path from 'node:path';
 
 @Config
 export class InstanceSettingsConfig {
@@ -9,4 +10,19 @@ export class InstanceSettingsConfig {
 	 */
 	@Env('N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS')
 	enforceSettingsFilePermissions: boolean = false;
+
+	/**
+	 * The home folder path of the user.
+	 * If none can be found it falls back to the current working directory
+	 */
+	readonly userHome: string;
+
+	readonly n8nFolder: string;
+
+	constructor() {
+		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
+		this.userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
+
+		this.n8nFolder = path.join(this.userHome, '.n8n');
+	}
 }

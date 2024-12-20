@@ -1,5 +1,6 @@
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { Container } from 'typedi';
@@ -11,7 +12,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';

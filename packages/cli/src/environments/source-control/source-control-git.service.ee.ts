@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
 import type {
@@ -14,7 +15,6 @@ import type {
 import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 import { OwnershipService } from '@/services/ownership.service';
 
 import {

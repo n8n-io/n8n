@@ -13,6 +13,7 @@ catalog:
   '@types/xml2js': ^0.4.14
   axios: 1.7.4
   basic-auth: 2.0.1
+  callsites: 3.1.0
   chokidar: 4.0.1
   fast-glob: 3.2.12
   flatted: 3.2.7
@@ -21,6 +22,7 @@ catalog:
   lodash: 4.17.21
   luxon: 3.4.4
   nanoid: 3.3.8
+  picocolors: 1.0.1
   typedi: 0.10.0
   uuid: 10.0.0
   xml2js: 0.6.2
