@@ -12,7 +12,7 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	public async createTestRun(testDefinitionId: string) {
+	async createTestRun(testDefinitionId: string) {
 		const testRun = this.create({
 			status: 'new',
 			testDefinition: { id: testDefinitionId },
@@ -21,15 +21,15 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	public async markAsRunning(id: string) {
+	async markAsRunning(id: string) {
 		return await this.update(id, { status: 'running', runAt: new Date() });
 	}
 
-	public async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
+	async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
 	}
 
-	public async getMany(testDefinitionId: string, options: ListQuery.Options) {
+	async getMany(testDefinitionId: string, options: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<TestRun> = {
 			where: { testDefinition: { id: testDefinitionId } },
 			order: { createdAt: 'DESC' },
