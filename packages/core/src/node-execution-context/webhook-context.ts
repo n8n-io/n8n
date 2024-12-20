@@ -22,13 +22,13 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 import {
 	copyBinaryFile,
 	getBinaryHelperFunctions,
-	getInputConnectionData,
 	getNodeWebhookUrl,
 	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
