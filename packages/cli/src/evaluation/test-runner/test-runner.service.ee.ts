@@ -186,7 +186,7 @@ export class TestRunnerService {
 	/**
 	 * Creates a new test run for the given test definition.
 	 */
-	public async runTest(user: User, test: TestDefinition): Promise<void> {
+	async runTest(user: User, test: TestDefinition): Promise<void> {
 		const workflow = await this.workflowRepository.findById(test.workflowId);
 		assert(workflow, 'Workflow not found');
 
