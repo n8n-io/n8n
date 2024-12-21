@@ -225,6 +225,161 @@ describe('GET /credentials', () => {
 		}
 	});
 
+	test('should return data when ?includeData=true', async () => {
+		// ARRANGE
+		const [actor, otherMember] = await createManyUsers(2, {
+			role: 'global:member',
+		});
+
+		const teamProjectViewer = await createTeamProject(undefined);
+		await linkUserToProject(actor, teamProjectViewer, 'project:viewer');
+		const teamProjectEditor = await createTeamProject(undefined);
+		await linkUserToProject(actor, teamProjectEditor, 'project:editor');
+
+		const [
+			// should have data
+			ownedCredential,
+			// should not have
+			sharedCredential,
+			// should not have data
+			teamCredentialAsViewer,
+			// should have data
+			teamCredentialAsEditor,
+		] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: actor, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: otherMember, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProjectViewer,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProjectEditor,
+				role: 'credential:owner',
+			}),
+		]);
+		await shareCredentialWithUsers(sharedCredential, [actor]);
+
+		// ACT
+		const response = await testServer
+			.authAgentFor(actor)
+			.get('/credentials')
+			.query({ includeData: true });
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(4);
+
+		const creds = response.body.data as Array<Credentials & { scopes: Scope[] }>;
+		const ownedCred = creds.find((c) => c.id === ownedCredential.id)!;
+		const sharedCred = creds.find((c) => c.id === sharedCredential.id)!;
+		const teamCredAsViewer = creds.find((c) => c.id === teamCredentialAsViewer.id)!;
+		const teamCredAsEditor = creds.find((c) => c.id === teamCredentialAsEditor.id)!;
+
+		expect(ownedCred.id).toBe(ownedCredential.id);
+		expect(ownedCred.data).toBeDefined();
+		expect(ownedCred.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+			].sort(),
+		);
+
+		expect(sharedCred.id).toBe(sharedCredential.id);
+		expect(sharedCred.data).not.toBeDefined();
+		expect(sharedCred.scopes).toEqual(['credential:read'].sort());
+
+		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
+		expect(teamCredAsViewer.data).not.toBeDefined();
+		expect(teamCredAsViewer.scopes).toEqual(['credential:read'].sort());
+
+		expect(teamCredAsEditor.id).toBe(teamCredentialAsEditor.id);
+		expect(teamCredAsEditor.data).toBeDefined();
+		expect(teamCredAsEditor.scopes).toEqual(
+			['credential:read', 'credential:update', 'credential:delete'].sort(),
+		);
+	});
+
+	test('should return data when ?includeData=true for owners', async () => {
+		// ARRANGE
+		const teamProjectViewer = await createTeamProject(undefined);
+
+		const [
+			// should have data
+			ownedCredential,
+			// should have data
+			sharedCredential,
+			// should have data
+			teamCredentialAsViewer,
+		] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: member, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProjectViewer,
+				role: 'credential:owner',
+			}),
+		]);
+
+		// ACT
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/credentials')
+			.query({ includeData: true });
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+
+		const creds = response.body.data as Array<Credentials & { scopes: Scope[] }>;
+		const ownedCred = creds.find((c) => c.id === ownedCredential.id)!;
+		const sharedCred = creds.find((c) => c.id === sharedCredential.id)!;
+		const teamCredAsViewer = creds.find((c) => c.id === teamCredentialAsViewer.id)!;
+
+		expect(ownedCred.id).toBe(ownedCredential.id);
+		expect(ownedCred.data).toBeDefined();
+		expect(ownedCred.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+				'credential:create',
+				'credential:list',
+			].sort(),
+		);
+
+		expect(sharedCred.id).toBe(sharedCredential.id);
+		expect(sharedCred.data).toBeDefined();
+		expect(sharedCred.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+				'credential:create',
+				'credential:list',
+			].sort(),
+		);
+
+		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
+		expect(teamCredAsViewer.data).toBeDefined();
+		expect(teamCredAsViewer.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+				'credential:create',
+				'credential:list',
+			].sort(),
+		);
+	});
+
 	describe('should return', () => {
 		test('all credentials for owner', async () => {
 			const { id: id1 } = await saveCredential(payload(), {
@@ -536,6 +691,7 @@ describe('GET /credentials', () => {
 				.authAgentFor(owner)
 				.get('/credentials')
 				.query('select=["type"]')
+				.query(JSON.stringify({ select: '' }))
 				.expect(200);
 
 			expect(response.body).toEqual({
