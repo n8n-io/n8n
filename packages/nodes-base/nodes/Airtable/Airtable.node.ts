@@ -4,6 +4,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 import { AirtableV1 } from './v1/AirtableV1.node';
 import { AirtableV2 } from './v2/AirtableV2.node';
 
+
 export class Airtable extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
