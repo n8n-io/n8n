@@ -138,6 +138,10 @@ export type AwsCredentialsType = {
 	sesEndpoint?: string;
 	sqsEndpoint?: string;
 	s3Endpoint?: string;
+	bedrockEndpoint?: string;
+	bedrockRuntimeEndpoint?: string;
+	bedrockAgentEndpoint?: string;
+	bedrockAgentRuntimeEndpoint?: string;
 };
 
 // Some AWS services are global and don't have a region
@@ -294,6 +298,62 @@ export class Aws implements ICredentialType {
 			default: '',
 			placeholder: 'https://s3.{region}.amazonaws.com',
 		},
+		{
+			displayName: 'Bedrock Endpoint',
+			name: 'bedrockEndpoint',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Bedrock using a VPC endpoint. Leave blank to use the default endpoint.',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customEndpoints: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://{id}.bedrock.{region}.amazonaws.com',
+		},
+		{
+			displayName: 'Bedrock Runtime Endpoint',
+			name: 'bedrockRuntimeEndpoint',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Bedrock Runtime using a VPC endpoint. Leave blank to use the default endpoint.',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customEndpoints: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://{id}.bedrock-runtime.{region}.amazonaws.com',
+		},
+		{
+			displayName: 'Bedrock Agent Endpoint',
+			name: 'bedrockAgentEndpoint',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Bedrock Agent using a VPC endpoint. Leave blank to use the default endpoint.',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customEndpoints: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://{id}.bedrock-agent.{region}.amazonaws.com',
+		},
+		{
+			displayName: 'Bedrock Agent Runtime Endpoint',
+			name: 's3Endpoint',
+			description:
+				'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Bedrock Agent Runtime using a VPC endpoint. Leave blank to use the default endpoint.',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customEndpoints: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://{id}.bedrock-agent-runtime.{region}.amazonaws.com',
+		},
 	];
 
 	async authenticate(
@@ -354,6 +414,14 @@ export class Aws implements ICredentialType {
 					endpointString = credentials.rekognitionEndpoint;
 				} else if (service === 'sqs' && credentials.sqsEndpoint) {
 					endpointString = credentials.sqsEndpoint;
+				} else if (service === 'bedrock' && credentials.bedrockEndpoint) {
+					endpointString = credentials.bedrockEndpoint;
+				} else if (service === 'bedrock-runtime' && credentials.bedrockRuntimeEndpoint) {
+					endpointString = credentials.sesEndpoint;
+				} else if (service === 'bedrock-agent' && credentials.bedrockAgentEndpoint) {
+					endpointString = credentials.bedrockAgentEndpoint;
+				} else if (service === 'bedrock-agent-runtime' && credentials.bedrockAgentRuntimeEndpoint) {
+					endpointString = credentials.bedrockAgentRuntimeEndpoint;
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
 				}
