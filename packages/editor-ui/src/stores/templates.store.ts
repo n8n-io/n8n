@@ -66,75 +66,60 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		);
 	});
 
-	const getTemplatesById = computed(() => {
-		return (id: string): null | ITemplatesWorkflow => workflows.value[id];
-	});
+	const getTemplatesById = (id: string): null | ITemplatesWorkflow => workflows.value[id];
 
-	const getFullTemplateById = computed(() => {
-		return (id: string): null | ITemplatesWorkflowFull => {
-			const template = workflows.value[id];
-			return template && 'full' in template && template.full ? template : null;
-		};
-	});
+	const getFullTemplateById = (id: string): null | ITemplatesWorkflowFull => {
+		const template = workflows.value[id];
+		return template && 'full' in template && template.full ? template : null;
+	};
 
 	const getCollectionById = computed(() => collections.value);
 
-	const getCategoryById = computed(() => {
-		return (id: string): null | ITemplatesCategory => categories.value[id as unknown as number];
-	});
+	const getCategoryById = (id: string): null | ITemplatesCategory =>
+		categories.value[id as unknown as number];
 
-	const getSearchedCollections = computed(() => {
-		return (query: ITemplatesQuery) => {
-			const searchKey = getSearchKey(query);
-			const search = collectionSearches.value[searchKey];
-			if (!search) {
-				return null;
-			}
+	const getSearchedCollections = (query: ITemplatesQuery) => {
+		const searchKey = getSearchKey(query);
+		const search = collectionSearches.value[searchKey];
+		if (!search) {
+			return null;
+		}
 
-			return search.collectionIds.map((collectionId: string) => collections.value[collectionId]);
-		};
-	});
+		return search.collectionIds.map((collectionId: string) => collections.value[collectionId]);
+	};
 
-	const getSearchedWorkflows = computed(() => {
-		return (query: ITemplatesQuery) => {
-			const searchKey = getSearchKey(query);
-			const search = workflowSearches.value[searchKey];
-			if (!search) {
-				return null;
-			}
+	const getSearchedWorkflows = (query: ITemplatesQuery) => {
+		const searchKey = getSearchKey(query);
+		const search = workflowSearches.value[searchKey];
+		if (!search) {
+			return null;
+		}
 
-			return search.workflowIds.map((workflowId: string) => workflows.value[workflowId]);
-		};
-	});
+		return search.workflowIds.map((workflowId: string) => workflows.value[workflowId]);
+	};
 
-	const getSearchedWorkflowsTotal = computed(() => {
-		return (query: ITemplatesQuery) => {
-			const searchKey = getSearchKey(query);
-			const search = workflowSearches.value[searchKey];
+	const getSearchedWorkflowsTotal = (query: ITemplatesQuery) => {
+		const searchKey = getSearchKey(query);
+		const search = workflowSearches.value[searchKey];
 
-			return search ? search.totalWorkflows : 0;
-		};
-	});
+		return search ? search.totalWorkflows : 0;
+	};
 
-	const isSearchLoadingMore = computed(() => {
-		return (query: ITemplatesQuery) => {
-			const searchKey = getSearchKey(query);
-			const search = workflowSearches.value[searchKey];
+	const isSearchLoadingMore = (query: ITemplatesQuery) => {
+		const searchKey = getSearchKey(query);
+		const search = workflowSearches.value[searchKey];
 
-			return Boolean(search && search.loadingMore);
-		};
-	});
+		return Boolean(search && search.loadingMore);
+	};
 
-	const isSearchFinished = computed(() => {
-		return (query: ITemplatesQuery) => {
-			const searchKey = getSearchKey(query);
-			const search = workflowSearches.value[searchKey];
+	const isSearchFinished = (query: ITemplatesQuery) => {
+		const searchKey = getSearchKey(query);
+		const search = workflowSearches.value[searchKey];
 
-			return Boolean(
-				search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length,
-			);
-		};
-	});
+		return Boolean(
+			search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length,
+		);
+	};
 
 	const hasCustomTemplatesHost = computed(() => {
 		return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
@@ -317,7 +302,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	};
 
 	const getCollections = async (query: ITemplatesQuery): Promise<ITemplatesCollection[]> => {
-		const cachedResults = getSearchedCollections.value(query);
+		const cachedResults = getSearchedCollections(query);
 		if (cachedResults) {
 			return cachedResults;
 		}
@@ -337,7 +322,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 	};
 
 	const getWorkflows = async (query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> => {
-		const cachedResults = getSearchedWorkflows.value(query);
+		const cachedResults = getSearchedWorkflows(query);
 		if (cachedResults) {
 			categories.value = workflowSearches.value[getSearchKey(query)].categories ?? [];
 			return cachedResults;
@@ -353,14 +338,14 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 
 		addWorkflows(payload.workflows);
 		addWorkflowsSearch({ ...payload, query });
-		return getSearchedWorkflows.value(query) || [];
+		return getSearchedWorkflows(query) || [];
 	};
 
 	const getMoreWorkflows = async (query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> => {
-		if (isSearchLoadingMore.value(query) && !isSearchFinished.value(query)) {
+		if (isSearchLoadingMore(query) && !isSearchFinished(query)) {
 			return [];
 		}
-		const cachedResults = getSearchedWorkflows.value(query) || [];
+		const cachedResults = getSearchedWorkflows(query) || [];
 		const apiEndpoint: string = settingsStore.templatesHost;
 
 		setWorkflowSearchLoading(query);
@@ -375,7 +360,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			addWorkflows(payload.workflows);
 			addWorkflowsSearch({ ...payload, query });
 
-			return getSearchedWorkflows.value(query) || [];
+			return getSearchedWorkflows(query) || [];
 		} catch (e) {
 			setWorkflowSearchLoaded(query);
 			throw e;
