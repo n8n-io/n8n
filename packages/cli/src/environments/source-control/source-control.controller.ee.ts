@@ -191,7 +191,7 @@ export class SourceControlController {
 		res: express.Response,
 	): Promise<SourceControlledFile[] | ImportResult | PullResult | undefined> {
 		try {
-			const result = await this.sourceControlService.pullWorkfolder({
+			const result = await this.sourceControlService.pullWorkfolder(req.user, {
 				force: req.body.force,
 				variables: req.body.variables,
 				userId: req.user.id,
