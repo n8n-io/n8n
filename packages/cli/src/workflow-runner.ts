@@ -78,7 +78,7 @@ export class WorkflowRunner {
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
-		if (isQueueMode && executionMode !== 'manual') {
+		if (isQueueMode) {
 			const executionWithoutData = await this.executionRepository.findSingleExecution(executionId, {
 				includeData: false,
 			});

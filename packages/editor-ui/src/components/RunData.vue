@@ -275,6 +275,10 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
+const isTrimmedManualExecutionDataItem = computed(
+	() => rawInputData.value?.[0]?.json?.isTrimmedManualExecutionDataItem,
+);
+
 const subworkflowExecutionError = computed(() => {
 	if (!node.value) return null;
 	return {
@@ -1310,7 +1314,7 @@ defineExpose({ enterEditMode });
 			<slot name="header"></slot>
 
 			<div
-				v-show="!hasRunError"
+				v-show="!hasRunError && !isTrimmedManualExecutionDataItem"
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
 				@click.stop
@@ -1589,6 +1593,20 @@ defineExpose({ enterEditMode });
 						{{ i18n.baseText('ndv.input.disabled.cta') }}
 					</N8nLink>
 				</N8nText>
+			</div>
+
+			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
+				<N8nText bold color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.title') }}
+				</N8nText>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.message') }}
+				</N8nText>
+				<N8nButton size="small">
+					<a :href="`/workflow/${workflowsStore.workflowId}/executions`">
+						{{ i18n.baseText('runData.trimmedData.button') }}
+					</a>
+				</N8nButton>
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
