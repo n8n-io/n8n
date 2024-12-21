@@ -5,7 +5,7 @@ import { includeInputFields } from './common.descriptions';
 export const CurrentDateDescription: INodeProperties[] = [
 	{
 		displayName:
-			'You can also refer to the current date in n8n expressions by using <code>{{$now}}</code> or <code>{{$today}}</code>. <a target="_blank" href="https://docs.n8n.io/code/expressions/luxon/">More info</a>',
+			'You can also refer to the current date in n8n expressions by using <code>{{$now}}</code> or <code>{{$today}}</code>. <a target="_blank" href="https://docs.n8n.io/code/cookbook/luxon/">More info</a>',
 		name: 'notice',
 		type: 'notice',
 		default: '',
