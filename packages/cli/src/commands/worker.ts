@@ -162,7 +162,7 @@ export class Worker extends BaseCommand {
 
 		await this.scalingService.setupQueue();
 
-		this.scalingService.setupWorker(this.concurrency);
+		await this.scalingService.setupWorker(this.concurrency);
 	}
 
 	async run() {
