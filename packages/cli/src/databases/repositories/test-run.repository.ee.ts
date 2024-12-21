@@ -29,6 +29,10 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, { status: 'completed', completedAt: new Date(), metrics });
 	}
 
+	async markAsCancelled(id: string) {
+		return await this.update(id, { status: 'cancelled' });
+	}
+
 	async getMany(testDefinitionId: string, options: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<TestRun> = {
 			where: { testDefinition: { id: testDefinitionId } },
