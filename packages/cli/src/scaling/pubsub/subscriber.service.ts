@@ -95,10 +95,10 @@ export class Subscriber {
 		const metadata: LogMetadata = { msg: msgName, channel };
 
 		if ('command' in msg && msg.command === 'relay-execution-lifecycle-event') {
-			const { args, type } = msg.payload;
+			const { data, type } = msg.payload;
 			msgName += ` (${type})`;
 			metadata.type = type;
-			metadata.executionId = args.executionId;
+			if ('executionId' in data) metadata.executionId = data.executionId;
 		}
 
 		this.logger.debug(`Received pubsub msg: ${msgName}`, metadata);

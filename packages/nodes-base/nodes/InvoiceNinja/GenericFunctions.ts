@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,8 +9,6 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import get from 'lodash/get';
 
 export const eventID: { [key: string]: string } = {
 	create_client: '1',

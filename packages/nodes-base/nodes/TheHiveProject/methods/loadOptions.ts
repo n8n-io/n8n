@@ -1,11 +1,12 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { theHiveApiRequest } from '../transport';
+
 import {
 	alertCommonFields,
 	caseCommonFields,
 	observableCommonFields,
 	taskCommonFields,
 } from '../helpers/constants';
+import { theHiveApiRequest } from '../transport';
 
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	let resource = this.getNodeParameter('resource') as string;

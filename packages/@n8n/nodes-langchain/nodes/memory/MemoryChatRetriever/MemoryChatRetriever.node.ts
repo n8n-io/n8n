@@ -38,6 +38,7 @@ export class MemoryChatRetriever implements INodeType {
 		displayName: 'Chat Messages Retriever',
 		name: 'memoryChatRetriever',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		hidden: true,
 		version: 1,

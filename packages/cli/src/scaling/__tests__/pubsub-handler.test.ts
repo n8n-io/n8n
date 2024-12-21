@@ -619,7 +619,10 @@ describe('PubSubHandler', () => {
 				expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflowId, 'activate', undefined, {
 					shouldPublish: false,
 				});
-				expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowActivated',
+					data: { workflowId },
+				});
 				expect(publisher.publishCommand).toHaveBeenCalledWith({
 					command: 'display-workflow-activation',
 					payload: { workflowId },
@@ -679,7 +682,10 @@ describe('PubSubHandler', () => {
 				expect(activeWorkflowManager.removeWorkflowTriggersAndPollers).toHaveBeenCalledWith(
 					workflowId,
 				);
-				expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowDeactivated',
+					data: { workflowId },
+				});
 				expect(publisher.publishCommand).toHaveBeenCalledWith({
 					command: 'display-workflow-deactivation',
 					payload: { workflowId },
@@ -734,7 +740,10 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('display-workflow-activation', { workflowId });
 
-				expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowActivated',
+					data: { workflowId },
+				});
 			});
 
 			it('should handle `display-workflow-deactivation` event', () => {
@@ -757,7 +766,10 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('display-workflow-deactivation', { workflowId });
 
-				expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowDeactivated',
+					data: { workflowId },
+				});
 			});
 
 			it('should handle `display-workflow-activation-error` event', () => {
@@ -781,9 +793,12 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('display-workflow-activation-error', { workflowId, errorMessage });
 
-				expect(push.broadcast).toHaveBeenCalledWith('workflowFailedToActivate', {
-					workflowId,
-					errorMessage,
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowFailedToActivate',
+					data: {
+						workflowId,
+						errorMessage,
+					},
 				});
 			});
 
@@ -805,13 +820,19 @@ describe('PubSubHandler', () => {
 
 				const pushRef = 'test-push-ref';
 				const type = 'executionStarted';
-				const args = { testArg: 'value' };
+				const data = {
+					executionId: '123',
+					mode: 'webhook' as const,
+					startedAt: new Date(),
+					workflowId: '456',
+					flattedRunData: '[]',
+				};
 
 				push.hasPushRef.mockReturnValue(true);
 
-				eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
+				eventService.emit('relay-execution-lifecycle-event', { type, data, pushRef });
 
-				expect(push.send).toHaveBeenCalledWith(type, args, pushRef);
+				expect(push.send).toHaveBeenCalledWith({ type, data }, pushRef);
 			});
 
 			it('should handle `clear-test-webhooks` event', () => {
@@ -863,9 +884,12 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('response-to-get-worker-status', workerStatus);
 
-				expect(push.broadcast).toHaveBeenCalledWith('sendWorkerStatusMessage', {
-					workerId: workerStatus.senderId,
-					status: workerStatus,
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'sendWorkerStatusMessage',
+					data: {
+						workerId: workerStatus.senderId,
+						status: workerStatus,
+					},
 				});
 			});
 		});

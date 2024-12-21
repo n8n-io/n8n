@@ -1,4 +1,4 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -36,7 +36,7 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends TypedEmitter<PushEvents> {
-	public isBidirectional = useWebSockets;
+	isBidirectional = useWebSockets;
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
@@ -81,8 +81,8 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast<Type extends PushType>(type: Type, data: PushPayload<Type>) {
-		this.backend.sendToAll(type, data);
+	broadcast(pushMsg: PushMessage) {
+		this.backend.sendToAll(pushMsg);
 	}
 
 	/** Returns whether a given push ref is registered. */
@@ -90,38 +90,34 @@ export class Push extends TypedEmitter<PushEvents> {
 		return this.backend.hasPushRef(pushRef);
 	}
 
-	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
+	send(pushMsg: PushMessage, pushRef: string) {
 		const { isWorker, isMultiMain } = this.instanceSettings;
 
+		/**
+		 * In scaling mode, in single- or multi-main setup, in a manual execution,
+		 * a worker relays execution lifecycle events to all mains. Only the main
+		 * who holds the session for the execution will push to the frontend who
+		 * commissioned the execution.
+		 *
+		 * In scaling mode, in multi-main setup, in a manual webhook execution, if
+		 * the main who handles a webhook is not the main who created the webhook,
+		 * the handler main relays execution lifecycle events to all mains. Only
+		 * the main who holds the session for the execution will push events to
+		 * the frontend who commissioned the execution.
+		 */
 		if (isWorker || (isMultiMain && !this.hasPushRef(pushRef))) {
-			/**
-			 * In scaling mode, in single- or multi-main setup, in a manual execution,
-			 * a worker relays execution lifecycle events to all mains. Only the main
-			 * who holds the session for the execution will push to the frontend who
-			 * commissioned the execution.
-			 *
-			 * In scaling mode, in multi-main setup, in a manual webhook execution, if
-			 * the main who handles a webhook is not the main who created the webhook,
-			 * the handler main relays execution lifecycle events to all mains. Only
-			 * the main who holds the session for the execution will push events to
-			 * the frontend who commissioned the execution.
-			 */
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
-				payload: { type, args: data, pushRef },
+				payload: { ...pushMsg, pushRef },
 			});
 			return;
 		}
 
-		this.backend.sendToOne(type, data, pushRef);
+		this.backend.sendToOne(pushMsg, pushRef);
 	}
 
-	sendToUsers<Type extends PushType>(
-		type: Type,
-		data: PushPayload<Type>,
-		userIds: Array<User['id']>,
-	) {
-		this.backend.sendToUsers(type, data, userIds);
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(pushMsg, userIds);
 	}
 
 	@OnShutdown()

@@ -1,8 +1,10 @@
-import nock from 'nock';
 import type { INodeTypes, WorkflowTestData } from 'n8n-workflow';
+import nock from 'nock';
+
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import * as genericFunctions from '../../../../V2/GenericFunctions';
+
 import { executeWorkflow } from '../../../../../../test/nodes/ExecuteWorkflow';
+import * as genericFunctions from '../../../../V2/GenericFunctions';
 
 const API_RESPONSE = { profile: { test: 'OK' } };
 

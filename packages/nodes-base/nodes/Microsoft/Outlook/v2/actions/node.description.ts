@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+
 import * as calendar from './calendar';
 import * as contact from './contact';
 import * as draft from './draft';
