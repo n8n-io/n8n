@@ -51,6 +51,7 @@ import {
 	sleep,
 	ExecutionCancelledError,
 	Node,
+	TriggerCloseError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import Container from 'typedi';
@@ -1606,8 +1607,14 @@ export class WorkflowExecute {
 
 								if (runNodeData.closeFunction) {
 									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-
-									closeFunction = runNodeData.closeFunction();
+									try {
+										closeFunction = runNodeData.closeFunction();
+									} catch (error) {
+										throw new TriggerCloseError(executionNode, {
+											cause: error as Error,
+											level: 'warning',
+										});
+									}
 								}
 							}
 
