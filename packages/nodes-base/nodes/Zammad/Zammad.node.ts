@@ -254,7 +254,7 @@ export class Zammad implements INodeType {
 			// by ID
 
 			async loadRoles(this: ILoadOptionsFunctions) {
-				const roles = (await zammadApiRequest.call(this, 'GET', '/Roles')) as ZammadTypes.Role[];
+				const roles = (await zammadApiRequest.call(this, 'GET', '/roles')) as ZammadTypes.Role[];
 
 				return roles.map((i) => ({ name: i.name, value: i.id }));
 			},
