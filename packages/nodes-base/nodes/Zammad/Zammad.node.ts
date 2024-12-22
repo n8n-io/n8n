@@ -19,7 +19,6 @@ import {
 	userDescription,
 	roleDescription,
 } from './descriptions';
-
 import {
 	doesNotBelongToZammad,
 	fieldToLoadOption,
@@ -40,7 +39,6 @@ import {
 	zammadApiRequest,
 	zammadApiRequestAllItems,
 } from './GenericFunctions';
-
 import type { Zammad as ZammadTypes } from './types';
 
 export class Zammad implements INodeType {

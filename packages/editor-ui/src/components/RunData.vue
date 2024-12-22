@@ -46,7 +46,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeType } from '@/composables/useNodeType';
-import { useSettingsStore } from '@/stores/settings.store';
 import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -88,10 +87,8 @@ const LazyRunDataJson = defineAsyncComponent(
 	async () => await import('@/components/RunDataJson.vue'),
 );
 
-const LazyRunDataSchema = defineAsyncComponent(async () =>
-	useSettingsStore().settings.virtualSchemaView
-		? await import('@/components/VirtualSchema.vue')
-		: await import('@/components/RunDataSchema.vue'),
+const LazyRunDataSchema = defineAsyncComponent(
+	async () => await import('@/components/VirtualSchema.vue'),
 );
 const LazyRunDataHtml = defineAsyncComponent(
 	async () => await import('@/components/RunDataHtml.vue'),
@@ -547,6 +544,10 @@ watch(node, (newNode, prevNode) => {
 
 watch(hasNodeRun, () => {
 	if (props.paneType === 'output') setDisplayMode();
+	else {
+		// InputPanel relies on the outputIndex to check if we have data
+		outputIndex.value = determineInitialOutputIndex();
+	}
 });
 
 watch(
@@ -1080,9 +1081,19 @@ function getDataCount(
 	return getFilteredData(pinOrLiveData).length;
 }
 
+function determineInitialOutputIndex() {
+	for (let i = 0; i <= maxOutputIndex.value; i++) {
+		if (getRawInputData(props.runIndex, i).length) {
+			return i;
+		}
+	}
+
+	return 0;
+}
+
 function init() {
 	// Reset the selected output index every time another node gets selected
-	outputIndex.value = 0;
+	outputIndex.value = determineInitialOutputIndex();
 	refreshDataSize();
 	closeBinaryDataDisplay();
 	let outputTypes: NodeConnectionType[] = [];

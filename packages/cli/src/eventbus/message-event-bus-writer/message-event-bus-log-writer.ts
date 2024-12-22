@@ -70,7 +70,7 @@ export class MessageEventBusLogWriter {
 		this.globalConfig = Container.get(GlobalConfig);
 	}
 
-	public get worker(): Worker | undefined {
+	get worker(): Worker | undefined {
 		return this._worker;
 	}
 

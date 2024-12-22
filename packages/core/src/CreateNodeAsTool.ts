@@ -1,11 +1,6 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type {
-	IExecuteFunctions,
-	INodeParameters,
-	INodeType,
-	ISupplyDataFunctions,
-} from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INode, INodeType } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 type AllowedTypes = 'string' | 'number' | 'boolean' | 'json';
@@ -16,6 +11,15 @@ interface FromAIArgument {
 	defaultValue?: string | number | boolean | Record<string, unknown>;
 }
 
+type ParserOptions = {
+	node: INode;
+	nodeType: INodeType;
+	handleToolInvocation: (toolArgs: IDataObject) => Promise<unknown>;
+};
+
+// This file is temporarily duplicated in `packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/utils/FromAIParser.ts`
+// Please apply any changes in both files
+
 /**
  * AIParametersParser
  *
@@ -23,15 +27,10 @@ interface FromAIArgument {
  * generating Zod schemas, and creating LangChain tools.
  */
 class AIParametersParser {
-	private ctx: ISupplyDataFunctions;
-
 	/**
 	 * Constructs an instance of AIParametersParser.
-	 * @param ctx The execution context.
 	 */
-	constructor(ctx: ISupplyDataFunctions) {
-		this.ctx = ctx;
-	}
+	constructor(private readonly options: ParserOptions) {}
 
 	/**
 	 * Generates a Zod schema based on the provided FromAIArgument placeholder.
@@ -162,14 +161,14 @@ class AIParametersParser {
 				} catch (error) {
 					// If parsing fails, throw an ApplicationError with details
 					throw new NodeOperationError(
-						this.ctx.getNode(),
+						this.options.node,
 						`Failed to parse $fromAI arguments: ${argsString}: ${error}`,
 					);
 				}
 			} else {
 				// Log an error if parentheses are unbalanced
 				throw new NodeOperationError(
-					this.ctx.getNode(),
+					this.options.node,
 					`Unbalanced parentheses while parsing $fromAI call: ${str.slice(startIndex)}`,
 				);
 			}
@@ -254,7 +253,7 @@ class AIParametersParser {
 		const type = cleanArgs?.[2] || 'string';
 
 		if (!['string', 'number', 'boolean', 'json'].includes(type.toLowerCase())) {
-			throw new NodeOperationError(this.ctx.getNode(), `Invalid type: ${type}`);
+			throw new NodeOperationError(this.options.node, `Invalid type: ${type}`);
 		}
 
 		return {
@@ -286,42 +285,21 @@ class AIParametersParser {
 	}
 
 	/**
-	 * Generates a description for a node based on the provided parameters.
-	 * @param node The node type.
-	 * @param nodeParameters The parameters of the node.
-	 * @returns A string description for the node.
+	 * Retrieves and validates the Zod schema for the tool.
+	 *
+	 * This method:
+	 * 1. Collects all $fromAI arguments from node parameters
+	 * 2. Validates parameter keys against naming rules
+	 * 3. Checks for duplicate keys and ensures consistency
+	 * 4. Generates a Zod schema from the validated arguments
+	 *
+	 * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
+	 * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
 	 */
-	private getDescription(node: INodeType, nodeParameters: INodeParameters): string {
-		const manualDescription = nodeParameters.toolDescription as string;
-
-		if (nodeParameters.descriptionType === 'auto') {
-			const resource = nodeParameters.resource as string;
-			const operation = nodeParameters.operation as string;
-			let description = node.description.description;
-			if (resource) {
-				description += `\n Resource: ${resource}`;
-			}
-			if (operation) {
-				description += `\n Operation: ${operation}`;
-			}
-			return description.trim();
-		}
-		if (nodeParameters.descriptionType === 'manual') {
-			return manualDescription ?? node.description.description;
-		}
-
-		return node.description.description;
-	}
-
-	/**
-	 * Creates a DynamicStructuredTool from a node.
-	 * @param node The node type.
-	 * @param nodeParameters The parameters of the node.
-	 * @returns A DynamicStructuredTool instance.
-	 */
-	public createTool(node: INodeType, nodeParameters: INodeParameters): DynamicStructuredTool {
+	private getSchema() {
+		const { node } = this.options;
 		const collectedArguments: FromAIArgument[] = [];
-		this.traverseNodeParameters(nodeParameters, collectedArguments);
+		this.traverseNodeParameters(node.parameters, collectedArguments);
 
 		// Validate each collected argument
 		const nameValidationRegex = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -331,7 +309,7 @@ class AIParametersParser {
 				const isEmptyError = 'You must specify a key when using $fromAI()';
 				const isInvalidError = `Parameter key \`${argument.key}\` is invalid`;
 				const error = new Error(argument.key.length === 0 ? isEmptyError : isInvalidError);
-				throw new NodeOperationError(this.ctx.getNode(), error, {
+				throw new NodeOperationError(node, error, {
 					description:
 						'Invalid parameter key, must be between 1 and 64 characters long and only contain letters, numbers, underscores, and hyphens',
 				});
@@ -348,7 +326,7 @@ class AIParametersParser {
 				) {
 					// If not, throw an error for inconsistent duplicate keys
 					throw new NodeOperationError(
-						this.ctx.getNode(),
+						node,
 						`Duplicate key '${argument.key}' found with different description or type`,
 						{
 							description:
@@ -377,43 +355,56 @@ class AIParametersParser {
 			return acc;
 		}, {});
 
-		const schema = z.object(schemaObj).required();
-		const description = this.getDescription(node, nodeParameters);
-		const nodeName = this.ctx.getNode().name.replace(/ /g, '_');
-		const name = nodeName || node.description.name;
+		return z.object(schemaObj).required();
+	}
 
-		const tool = new DynamicStructuredTool({
+	/**
+	 * Generates a description for a node based on the provided parameters.
+	 * @param node The node type.
+	 * @param nodeParameters The parameters of the node.
+	 * @returns A string description for the node.
+	 */
+	private getDescription(): string {
+		const { node, nodeType } = this.options;
+		const manualDescription = node.parameters.toolDescription as string;
+
+		if (node.parameters.descriptionType === 'auto') {
+			const resource = node.parameters.resource as string;
+			const operation = node.parameters.operation as string;
+			let description = nodeType.description.description;
+			if (resource) {
+				description += `\n Resource: ${resource}`;
+			}
+			if (operation) {
+				description += `\n Operation: ${operation}`;
+			}
+			return description.trim();
+		}
+		if (node.parameters.descriptionType === 'manual') {
+			return manualDescription ?? nodeType.description.description;
+		}
+
+		return nodeType.description.description;
+	}
+
+	/**
+	 * Creates a DynamicStructuredTool from a node.
+	 * @returns A DynamicStructuredTool instance.
+	 */
+	createTool(): DynamicStructuredTool {
+		const { node, nodeType } = this.options;
+		const schema = this.getSchema();
+		const description = this.getDescription();
+		const nodeName = node.name.replace(/ /g, '_');
+		const name = nodeName || nodeType.description.name;
+
+		return new DynamicStructuredTool({
 			name,
 			description,
 			schema,
-			func: async (functionArgs: z.infer<typeof schema>) => {
-				const { index } = this.ctx.addInputData(NodeConnectionType.AiTool, [
-					[{ json: functionArgs }],
-				]);
-
-				try {
-					// Execute the node with the proxied context
-					const result = await node.execute?.bind(this.ctx as IExecuteFunctions)();
-
-					// Process and map the results
-					const mappedResults = result?.[0]?.flatMap((item) => item.json);
-
-					// Add output data to the context
-					this.ctx.addOutputData(NodeConnectionType.AiTool, index, [
-						[{ json: { response: mappedResults } }],
-					]);
-
-					// Return the stringified results
-					return JSON.stringify(mappedResults);
-				} catch (error) {
-					const nodeError = new NodeOperationError(this.ctx.getNode(), error as Error);
-					this.ctx.addOutputData(NodeConnectionType.AiTool, index, nodeError);
-					return 'Error during node execution: ' + nodeError.description;
-				}
-			},
+			func: async (toolArgs: z.infer<typeof schema>) =>
+				await this.options.handleToolInvocation(toolArgs),
 		});
-
-		return tool;
 	}
 }
 
@@ -421,20 +412,8 @@ class AIParametersParser {
  * Converts node into LangChain tool by analyzing node parameters,
  * identifying placeholders using the $fromAI function, and generating a Zod schema. It then creates
  * a DynamicStructuredTool that can be used in LangChain workflows.
- *
- * @param ctx The execution context.
- * @param node The node type.
- * @param nodeParameters The parameters of the node.
- * @returns An object containing the DynamicStructuredTool instance.
  */
-export function createNodeAsTool(
-	ctx: ISupplyDataFunctions,
-	node: INodeType,
-	nodeParameters: INodeParameters,
-) {
-	const parser = new AIParametersParser(ctx);
-
-	return {
-		response: parser.createTool(node, nodeParameters),
-	};
+export function createNodeAsTool(options: ParserOptions) {
+	const parser = new AIParametersParser(options);
+	return { response: parser.createTool() };
 }

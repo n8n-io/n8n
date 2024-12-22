@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import { Ollama } from '@langchain/community/llms/ollama';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,11 +9,11 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { Ollama } from '@langchain/community/llms/ollama';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {

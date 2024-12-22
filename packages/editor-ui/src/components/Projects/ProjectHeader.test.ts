@@ -1,20 +1,27 @@
 import { createTestingPinia } from '@pinia/testing';
-import { within } from '@testing-library/dom';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestProject } from '@/__tests__/data/projects';
-import { useRoute } from 'vue-router';
+import * as router from 'vue-router';
+import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
+import { VIEWS } from '@/constants';
+import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 
+const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
 	const location = {};
 	return {
 		...actual,
+		useRouter: () => ({
+			push: mockPush,
+		}),
 		useRoute: () => ({
 			params,
 			location,
@@ -30,18 +37,17 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
-			N8nNavigationDropdown: true,
 		},
 	},
 });
 
-let route: ReturnType<typeof useRoute>;
+let route: ReturnType<typeof router.useRoute>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		route = useRoute();
+		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 
 		projectsStore.teamProjectsLimit = -1;
@@ -141,22 +147,53 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	test.each([
-		[null, 'Create'],
-		[createTestProject({ type: ProjectTypes.Personal }), 'Create in personal'],
-		[createTestProject({ type: ProjectTypes.Team }), 'Create in project'],
-	])('in project %s should render correct create button label %s', (project, label) => {
-		projectsStore.currentProject = project;
-		const { getByTestId } = renderComponent({
-			global: {
-				stubs: {
-					N8nNavigationDropdown: {
-						template: '<div><slot></slot></div>',
-					},
-				},
-			},
+	it('should create a workflow', async () => {
+		const project = createTestProject({
+			scopes: ['workflow:create'],
 		});
+		projectsStore.currentProject = project;
 
-		expect(within(getByTestId('resource-add')).getByRole('button', { name: label })).toBeVisible();
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('add-resource-workflow'));
+
+		expect(mockPush).toHaveBeenCalledWith({
+			name: VIEWS.NEW_WORKFLOW,
+			query: { projectId: project.id },
+		});
+	});
+
+	describe('dropdown', () => {
+		it('should create a credential', async () => {
+			const project = createTestProject({
+				scopes: ['credential:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+
+			await waitFor(() => expect(getByTestId('action-credential')).toBeVisible());
+
+			await userEvent.click(getByTestId('action-credential'));
+
+			expect(mockPush).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_CREDENTIALS,
+				params: {
+					projectId: project.id,
+					credentialId: 'create',
+				},
+			});
+		});
+	});
+
+	it('should not render creation button in setting page', async () => {
+		projectsStore.currentProject = createTestProject({ type: ProjectTypes.Personal });
+		vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+			name: VIEWS.PROJECT_SETTINGS,
+		} as RouteLocationNormalizedLoadedGeneric);
+		const { queryByTestId } = renderComponent();
+		expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
 	});
 });

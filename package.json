@@ -1,12 +1,12 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.70.0",
+  "version": "1.73.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
-    "pnpm": ">=9.5"
+    "pnpm": ">=9.15"
   },
-  "packageManager": "pnpm@9.6.0",
+  "packageManager": "pnpm@9.15.1",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -80,7 +80,7 @@
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.7.2",
-      "vue-tsc": "^2.1.6",
+      "vue-tsc": "^2.1.10",
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {
@@ -90,7 +90,7 @@
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
-      "vue-tsc@2.1.6": "patches/vue-tsc@2.1.6.patch"
+      "vue-tsc@2.1.10": "patches/vue-tsc@2.1.10.patch"
     }
   }
 }

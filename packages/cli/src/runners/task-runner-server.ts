@@ -31,7 +31,7 @@ export class TaskRunnerServer {
 
 	readonly app: express.Application;
 
-	public get port() {
+	get port() {
 		return (this.server?.address() as AddressInfo)?.port;
 	}
 
@@ -133,11 +133,8 @@ export class TaskRunnerServer {
 
 		// Augment errors sent to Sentry
 		if (this.globalConfig.sentry.backendDsn) {
-			const {
-				Handlers: { requestHandler, errorHandler },
-			} = await import('@sentry/node');
-			app.use(requestHandler());
-			app.use(errorHandler());
+			const { setupExpressErrorHandler } = await import('@sentry/node');
+			setupExpressErrorHandler(app);
 		}
 	}
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
+import { v4 as uuid } from 'uuid';
 import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
@@ -16,6 +17,11 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
+
+// Polyfill crypto.randomUUID
+if (!('randomUUID' in crypto)) {
+	Object.defineProperty(crypto, 'randomUUID', { value: uuid });
+}
 
 const route = useRoute();
 const rootStore = useRootStore();

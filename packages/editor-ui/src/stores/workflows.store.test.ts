@@ -468,7 +468,6 @@ describe('useWorkflowsStore', () => {
 			const expectedName = `${name}${DUPLICATE_POSTFFIX}`;
 			vi.mocked(workflowsApi).getNewWorkflow.mockResolvedValue({
 				name: expectedName,
-				onboardingFlowEnabled: false,
 				settings: {} as IWorkflowSettings,
 			});
 			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(name);

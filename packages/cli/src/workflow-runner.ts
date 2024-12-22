@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -13,11 +13,7 @@ import type {
 	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	ErrorReporterProxy as ErrorReporter,
-	ExecutionCancelledError,
-	Workflow,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { Container, Service } from 'typedi';
 
@@ -31,12 +27,12 @@ import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import { PermissionChecker } from '@/user-management/permission-checker';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import * as WorkflowHelpers from '@/workflow-helpers';
 import { generateFailedExecutionFromError } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { ExecutionNotFoundError } from './errors/execution-not-found-error';
 import { EventService } from './events/event.service';
+import { ManualExecutionService } from './manual-execution.service';
 
 @Service()
 export class WorkflowRunner {
@@ -46,6 +42,7 @@ export class WorkflowRunner {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly externalHooks: ExternalHooks,
@@ -54,6 +51,7 @@ export class WorkflowRunner {
 		private readonly permissionChecker: PermissionChecker,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly manualExecutionService: ManualExecutionService,
 	) {}
 
 	/** The process did error */
@@ -73,7 +71,7 @@ export class WorkflowRunner {
 			return;
 		}
 
-		ErrorReporter.error(error, { executionId });
+		this.errorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
 
@@ -184,14 +182,14 @@ export class WorkflowRunner {
 								executionId,
 							]);
 						} catch (error) {
-							ErrorReporter.error(error);
+							this.errorReporter.error(error);
 							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 						}
 					}
 				})
 				.catch((error) => {
 					if (error instanceof ExecutionCancelledError) return;
-					ErrorReporter.error(error);
+					this.errorReporter.error(error);
 					this.logger.error(
 						'There was a problem running internal hook "onWorkflowPostExecute"',
 						error,
@@ -203,6 +201,7 @@ export class WorkflowRunner {
 	}
 
 	/** Run the workflow in current process */
+	// eslint-disable-next-line complexity
 	private async runMainProcess(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
@@ -286,50 +285,14 @@ export class WorkflowRunner {
 					data.executionData,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
-			} else if (
-				data.runData === undefined ||
-				data.startNodes === undefined ||
-				data.startNodes.length === 0
-			) {
-				// Full Execution
-				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
-					executionId,
-				});
-				// Execute all nodes
-
-				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
-
-				// Can execute without webhook so go on
-				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-				workflowExecution = workflowExecute.run(
-					workflow,
-					startNode,
-					data.destinationNode,
-					data.pinData,
-				);
 			} else {
-				// Partial Execution
-				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
-				// Execute only the nodes between start and destination nodes
-				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-
-				if (data.partialExecutionVersion === '1') {
-					workflowExecution = workflowExecute.runPartialWorkflow2(
-						workflow,
-						data.runData,
-						data.pinData,
-						data.dirtyNodeNames,
-						data.destinationNode,
-					);
-				} else {
-					workflowExecution = workflowExecute.runPartialWorkflow(
-						workflow,
-						data.runData,
-						data.startNodes,
-						data.destinationNode,
-						data.pinData,
-					);
-				}
+				workflowExecution = this.manualExecutionService.runManually(
+					data,
+					workflow,
+					additionalData,
+					executionId,
+					pinData,
+				);
 			}
 
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);

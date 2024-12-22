@@ -1,4 +1,5 @@
 import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+
 import { getResponseCode, getResponseData } from './utils';
 
 export const defaultWebhookDescription: IWebhookDescription = {

@@ -2,7 +2,7 @@
 /* eslint-disable vue/no-multiple-template-root */
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { BaseEdge } from '@vue-flow/core';
-import { computed, useCssModule } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '@/composables/useCanvas';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -17,6 +17,13 @@ const { connectingHandle } = useCanvas();
 const connectionType = computed(
 	() => parseCanvasConnectionHandleString(connectingHandle.value?.handleId).type,
 );
+
+const classes = computed(() => {
+	return {
+		[$style.edge]: true,
+		[$style.visible]: isVisible.value,
+	};
+});
 
 const edgeColor = computed(() => {
 	if (connectionType.value !== NodeConnectionType.Main) {
@@ -37,13 +44,25 @@ const renderData = computed(() =>
 );
 
 const segments = computed(() => renderData.value.segments);
+
+/**
+ * Used to delay the visibility of the connection line to prevent flickering
+ * when the actual user intent is to click the plus button
+ */
+const isVisible = ref(false);
+
+onMounted(() => {
+	setTimeout(() => {
+		isVisible.value = true;
+	}, 300);
+});
 </script>
 
 <template>
 	<BaseEdge
 		v-for="segment in segments"
 		:key="segment[0]"
-		:class="$style.edge"
+		:class="classes"
 		:style="edgeStyle"
 		:path="segment[0]"
 		:marker-end="markerEnd"
@@ -52,6 +71,13 @@ const segments = computed(() => renderData.value.segments);
 
 <style lang="scss" module>
 .edge {
-	transition: stroke 0.3s ease;
+	transition-property: stroke, opacity;
+	transition-duration: 300ms;
+	transition-timing-function: ease;
+	opacity: 0;
+
+	&.visible {
+		opacity: 1;
+	}
 }
 </style>

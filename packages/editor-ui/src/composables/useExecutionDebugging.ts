@@ -76,7 +76,7 @@ export const useExecutionDebugging = () => {
 					type: 'warning',
 					confirmButtonText: i18n.baseText('nodeView.confirmMessage.debug.confirmButtonText'),
 					cancelButtonText: i18n.baseText('nodeView.confirmMessage.debug.cancelButtonText'),
-					dangerouslyUseHTMLString: true,
+
 					customClass: 'matching-pinned-nodes-confirmation',
 				},
 			);
@@ -108,7 +108,7 @@ export const useExecutionDebugging = () => {
 		let pinnings = 0;
 
 		pinnableNodes.forEach((node: INodeUi) => {
-			const nodeData = runData[node.name]?.[0].data?.main?.[0];
+			const nodeData = runData[node.name]?.[0]?.data?.main?.[0];
 			if (nodeData) {
 				pinnings++;
 				workflowsStore.pinData({

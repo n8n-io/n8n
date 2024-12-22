@@ -24,7 +24,6 @@ import {
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -826,7 +825,7 @@ export default defineComponent({
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
-					dangerouslyUseHTMLString: true,
+
 					onClose: () => {
 						this.readOnlyNotification = null;
 					},
@@ -935,7 +934,6 @@ export default defineComponent({
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
-				dangerouslyUseHTMLString: true,
 			});
 		},
 		async clearExecutionData() {
@@ -1395,7 +1393,11 @@ export default defineComponent({
 					lastSelectedNode.name,
 				);
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1429,7 +1431,11 @@ export default defineComponent({
 
 				const connections = workflow.connectionsByDestinationNode[lastSelectedNode.name];
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1461,7 +1467,11 @@ export default defineComponent({
 					return;
 				}
 
-				const parentNode = connections.main[0][0].node;
+				const parentNode = connections.main[0]?.[0].node;
+				if (!parentNode) {
+					return;
+				}
+
 				const connectionsParent = this.workflowsStore.outgoingConnectionsByNodeName(parentNode);
 
 				if (!Array.isArray(connectionsParent.main) || !connectionsParent.main.length) {
@@ -1473,7 +1483,7 @@ export default defineComponent({
 				let lastCheckedNodePosition = e.key === 'ArrowUp' ? -99999999 : 99999999;
 				let nextSelectNode: string | null = null;
 				for (const ouputConnections of connectionsParent.main) {
-					for (const ouputConnection of ouputConnections) {
+					for (const ouputConnection of ouputConnections ?? []) {
 						if (ouputConnection.node === lastSelectedNode.name) {
 							// Ignore current node
 							continue;
@@ -1816,7 +1826,6 @@ export default defineComponent({
 							cancelButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
-							dangerouslyUseHTMLString: true,
 						},
 					);
 
@@ -2047,10 +2056,7 @@ export default defineComponent({
 			);
 			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
-				const insertNodePosition = [
-					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
-					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-				] as XYPosition;
+				const insertNodePosition: XYPosition = [mousePosition[0], mousePosition[1]];
 
 				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;
@@ -3581,7 +3587,6 @@ export default defineComponent({
 			if (node.type === STICKY_NODE_TYPE) {
 				this.$telemetry.track('User deleted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
-					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
 				void this.externalHooks.run('node.deleteNode', { node });
@@ -3879,13 +3884,10 @@ export default defineComponent({
 						sourceIndex++
 					) {
 						const nodeSourceConnections = [];
-						if (currentConnections[sourceNode][type][sourceIndex]) {
-							for (
-								connectionIndex = 0;
-								connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
-								connectionIndex++
-							) {
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+						const connections = currentConnections[sourceNode][type][sourceIndex];
+						if (connections) {
+							for (connectionIndex = 0; connectionIndex < connections.length; connectionIndex++) {
+								connectionData = connections[connectionIndex];
 								if (!createNodeNames.includes(connectionData.node)) {
 									// Node does not get created so skip input connection
 									continue;
@@ -4015,14 +4017,17 @@ export default defineComponent({
 				for (type of Object.keys(connections)) {
 					for (sourceIndex = 0; sourceIndex < connections[type].length; sourceIndex++) {
 						connectionToKeep = [];
-						for (
-							connectionIndex = 0;
-							connectionIndex < connections[type][sourceIndex].length;
-							connectionIndex++
-						) {
-							connectionData = connections[type][sourceIndex][connectionIndex];
-							if (exportNodeNames.indexOf(connectionData.node) !== -1) {
-								connectionToKeep.push(connectionData);
+						const connectionsToCheck = connections[type][sourceIndex];
+						if (connectionsToCheck) {
+							for (
+								connectionIndex = 0;
+								connectionIndex < connectionsToCheck.length;
+								connectionIndex++
+							) {
+								connectionData = connectionsToCheck[connectionIndex];
+								if (exportNodeNames.indexOf(connectionData.node) !== -1) {
+									connectionToKeep.push(connectionData);
+								}
 							}
 						}
 

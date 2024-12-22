@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import type {
+	AINodeConnectionType,
 	CloseFunction,
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -11,7 +12,6 @@ import type {
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
@@ -22,13 +22,13 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 import {
 	copyBinaryFile,
 	getBinaryHelperFunctions,
-	getInputConnectionData,
 	getNodeWebhookUrl,
 	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
@@ -138,7 +138,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
+	async getInputConnectionData(
+		connectionType: AINodeConnectionType,
+		itemIndex: number,
+	): Promise<unknown> {
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data.
@@ -170,7 +173,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			executeData,
 			this.mode,
 			this.closeFunctions,
-			inputName,
+			connectionType,
 			itemIndex,
 		);
 	}

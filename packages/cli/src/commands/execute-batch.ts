@@ -4,7 +4,7 @@ import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 import type { IRun, ITaskData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ApplicationError, jsonParse, ErrorReporterProxy } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import os from 'os';
 import { sep } from 'path';
 import { Container } from 'typedi';
@@ -822,7 +822,7 @@ export class ExecuteBatch extends BaseCommand {
 					}
 				}
 			} catch (e) {
-				ErrorReporterProxy.error(e, {
+				this.errorReporter.error(e, {
 					extra: {
 						workflowId: workflowData.id,
 					},

@@ -1,19 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { PushType } from '@n8n/api-types';
+import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
-import { WorkflowExecute } from 'n8n-core';
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	NodeOperationError,
-	Workflow,
-	WorkflowHooks,
-} from 'n8n-workflow';
+import { ErrorReporter, WorkflowExecute, isObjectLiteral } from 'n8n-core';
+import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -80,11 +73,20 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	if (errorObject instanceof Error) {
 		// If it's already an Error instance, return it as is.
 		return errorObject;
-	} else if (errorObject && typeof errorObject === 'object' && 'message' in errorObject) {
+	} else if (
+		isObjectLiteral(errorObject) &&
+		'message' in errorObject &&
+		typeof errorObject.message === 'string'
+	) {
 		// If it's an object with a 'message' property, create a new Error instance.
 		let error: Error | undefined;
-		if ('node' in errorObject) {
-			const node = workflow.getNode((errorObject.node as { name: string }).name);
+		if (
+			'node' in errorObject &&
+			isObjectLiteral(errorObject.node) &&
+			typeof errorObject.node.name === 'string'
+		) {
+			const node = workflow.getNode(errorObject.node.name);
+
 			if (node) {
 				error = new NodeOperationError(
 					node,
@@ -95,7 +97,7 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 		}
 
 		if (error === undefined) {
-			error = new Error(errorObject.message as string);
+			error = new Error(errorObject.message);
 		}
 
 		if ('description' in errorObject) {
@@ -206,7 +208,7 @@ export function executeErrorWorkflow(
 					);
 				})
 				.catch((error: Error) => {
-					ErrorReporter.error(error);
+					Container.get(ErrorReporter).error(error);
 					logger.error(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
@@ -260,7 +262,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, pushRef);
+				pushInstance.send({ type: 'nodeExecuteBefore', data: { executionId, nodeName } }, pushRef);
 			},
 		],
 		nodeExecuteAfter: [
@@ -277,7 +279,10 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, pushRef);
+				pushInstance.send(
+					{ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } },
+					pushRef,
+				);
 			},
 		],
 		workflowExecuteBefore: [
@@ -294,17 +299,19 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					return;
 				}
 				pushInstance.send(
-					'executionStarted',
 					{
-						executionId,
-						mode: this.mode,
-						startedAt: new Date(),
-						retryOf: this.retryOf,
-						workflowId,
-						workflowName,
-						flattedRunData: data?.resultData.runData
-							? stringify(data.resultData.runData)
-							: stringify({}),
+						type: 'executionStarted',
+						data: {
+							executionId,
+							mode: this.mode,
+							startedAt: new Date(),
+							retryOf: this.retryOf,
+							workflowId,
+							workflowName,
+							flattedRunData: data?.resultData.runData
+								? stringify(data.resultData.runData)
+								: stringify({}),
+						},
 					},
 					pushRef,
 				);
@@ -324,12 +331,11 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 
 				const { status } = fullRunData;
 				if (status === 'waiting') {
-					pushInstance.send('executionWaiting', { executionId }, pushRef);
+					pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
 				} else {
 					const rawData = stringify(fullRunData.data);
 					pushInstance.send(
-						'executionFinished',
-						{ executionId, workflowId, status, rawData },
+						{ type: 'executionFinished', data: { executionId, workflowId, status, rawData } },
 						pushRef,
 					);
 				}
@@ -414,7 +420,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
-							ErrorReporter.error(e);
+							Container.get(ErrorReporter).error(e);
 							logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
@@ -493,7 +499,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						);
 					}
 				} catch (error) {
-					ErrorReporter.error(error);
+					Container.get(ErrorReporter).error(error);
 					logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -575,7 +581,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
-							ErrorReporter.error(e);
+							Container.get(ErrorReporter).error(e);
 							logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
 								{ pushRef: this.pushRef, workflowId: this.workflowData.id },
@@ -644,7 +650,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							this.executionId,
 						]);
 					} catch (error) {
-						ErrorReporter.error(error);
+						Container.get(ErrorReporter).error(error);
 						Container.get(Logger).error(
 							'There was a problem running hook "workflow.postExecute"',
 							error,
@@ -700,6 +706,7 @@ export async function getRunData(
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
+		parentExecution,
 	};
 
 	return {
@@ -935,6 +942,7 @@ async function startExecution(
 		return {
 			executionId,
 			data: returnData!.data!.main,
+			waitTill: data.waitTill,
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -970,7 +978,7 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type, data, pushRef);
+		pushInstance.send({ type, data } as PushMessage, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -1025,9 +1033,6 @@ export async function getBase(
 			mode: WorkflowExecuteMode,
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
-			defaultReturnRunIndex?: number,
-			selfData?: IDataObject,
-			contextNodeName?: string,
 		) {
 			return await Container.get(TaskManager).startTask(
 				additionalData,
@@ -1046,9 +1051,6 @@ export async function getBase(
 				mode,
 				envProviderState,
 				executeData,
-				defaultReturnRunIndex,
-				selfData,
-				contextNodeName,
 			);
 		},
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>

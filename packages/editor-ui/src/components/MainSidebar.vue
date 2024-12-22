@@ -25,6 +25,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { N8nNavigationDropdown } from 'n8n-design-system';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
+import Logo from './Logo/Logo.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -165,10 +166,6 @@ const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
-const logoPath = computed(
-	() => basePath.value + (isCollapsed.value ? 'static/logo/collapsed.svg' : uiStore.logo),
-);
-
 const hasVersionUpdates = computed(
 	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
 );
@@ -219,7 +216,7 @@ const onUserActionToggle = (action: string) => {
 			onLogout();
 			break;
 		case 'settings':
-			void router.push({ name: VIEWS.PERSONAL_SETTINGS });
+			void router.push({ name: VIEWS.SETTINGS });
 			break;
 		default:
 			break;
@@ -291,7 +288,13 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 	}
 };
 
-const { menu, handleSelect: handleMenuSelect } = useGlobalEntityCreation();
+const {
+	menu,
+	handleSelect: handleMenuSelect,
+	createProjectAppendSlotName,
+	projectsLimitReachedMessage,
+	upgradeLabel,
+} = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
 });
@@ -311,11 +314,15 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			:class="['clickable', $style.sideMenuCollapseButton]"
 			@click="toggleCollapse"
 		>
-			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<div :class="$style.logo">
-			<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+			<Logo
+				location="sidebar"
+				:collapsed="isCollapsed"
+				:release-channel="settingsStore.settings.releaseChannel"
+			/>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -323,9 +330,21 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				@select="handleMenuSelect"
 			>
 				<N8nIconButton icon="plus" type="secondary" outline />
+				<template #[createProjectAppendSlotName]="{ item }">
+					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
+						<N8nButton
+							:size="'mini'"
+							style="margin-left: auto"
+							type="tertiary"
+							@click="handleMenuSelect(item.id)"
+						>
+							{{ upgradeLabel }}
+						</N8nButton>
+					</N8nTooltip>
+				</template>
 			</N8nNavigationDropdown>
 		</div>
-		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<ProjectNavigation
 					:collapsed="isCollapsed"
@@ -347,14 +366,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
-						<n8n-text
+						<N8nText
 							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
 							color="text-base"
 						>
 							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
 								nextVersions.length > 1 ? 's' : ''
 							}}
-						</n8n-text>
+						</N8nText>
 					</div>
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
@@ -363,35 +382,35 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				<div ref="user" :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
+						<ElDropdown placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-								<n8n-avatar
+								<N8nAvatar
 									:first-name="usersStore.currentUser?.firstName"
 									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
 							<template v-if="isCollapsed" #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item command="settings">
+								<ElDropdownMenu>
+									<ElDropdownItem command="settings">
 										{{ i18n.baseText('settings') }}
-									</el-dropdown-item>
-									<el-dropdown-item command="logout">
+									</ElDropdownItem>
+									<ElDropdownItem command="logout">
 										{{ i18n.baseText('auth.signout') }}
-									</el-dropdown-item>
-								</el-dropdown-menu>
+									</ElDropdownItem>
+								</ElDropdownMenu>
 							</template>
-						</el-dropdown>
+						</ElDropdown>
 					</div>
 					<div
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
-						<n8n-text size="small" :bold="true" color="text-dark">{{
+						<N8nText size="small" :bold="true" color="text-dark">{{
 							usersStore.currentUser?.fullName
-						}}</n8n-text>
+						}}</N8nText>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-action-dropdown
+						<N8nActionDropdown
 							:items="userMenuItems"
 							placement="top-start"
 							data-test-id="user-menu"
@@ -400,7 +419,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</div>
 				</div>
 			</template>
-		</n8n-menu>
+		</N8nMenu>
 	</div>
 </template>
 
@@ -433,15 +452,11 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
-		padding-top: 90px;
+		padding-top: 100px;
 
 		.logo {
 			flex-direction: column;
-			gap: 16px;
-		}
-
-		.logo img {
-			left: 0;
+			gap: 12px;
 		}
 	}
 }

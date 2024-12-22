@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export async function googleApiRequest(
@@ -49,7 +49,6 @@ export async function googleApiRequest(
 			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
 		}
 
-		//@ts-ignore
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

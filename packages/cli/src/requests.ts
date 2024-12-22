@@ -228,7 +228,7 @@ export declare namespace PasswordResetRequest {
 	export type NewPassword = AuthlessRequest<
 		{},
 		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaToken?: string }
+		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaCode?: string }
 	>;
 }
 
@@ -306,7 +306,7 @@ export type LoginRequest = AuthlessRequest<
 	{
 		email: string;
 		password: string;
-		mfaToken?: string;
+		mfaCode?: string;
 		mfaRecoveryCode?: string;
 	}
 >;
@@ -316,9 +316,9 @@ export type LoginRequest = AuthlessRequest<
 // ----------------------------------
 
 export declare namespace MFA {
-	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
-	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
-	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},

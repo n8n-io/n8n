@@ -7,9 +7,10 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+
+import { eventFields, eventOperations } from './EventDescripion';
 import { validateJSON, veroApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
-import { eventFields, eventOperations } from './EventDescripion';
 
 export class Vero implements INodeType {
 	description: INodeTypeDescription = {

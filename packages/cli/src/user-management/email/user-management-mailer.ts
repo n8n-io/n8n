@@ -125,7 +125,7 @@ export class UserManagementMailer {
 
 			const error = toError(e);
 
-			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+			throw new InternalServerError(`Please contact your administrator: ${error.message}`, e);
 		}
 	}
 
@@ -180,7 +180,7 @@ export class UserManagementMailer {
 
 			const error = toError(e);
 
-			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+			throw new InternalServerError(`Please contact your administrator: ${error.message}`, e);
 		}
 	}
 

@@ -251,7 +251,7 @@ export class ExecutionService {
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
+				throw new InternalServerError('Parameter "filter" contained invalid JSON string.', error);
 			}
 		}
 
@@ -504,7 +504,7 @@ export class ExecutionService {
 		}
 	}
 
-	public async annotate(
+	async annotate(
 		executionId: string,
 		updateData: ExecutionRequest.ExecutionUpdatePayload,
 		sharedWorkflowIds: string[],

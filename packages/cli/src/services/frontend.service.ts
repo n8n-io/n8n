@@ -5,7 +5,6 @@ import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
-import fs from 'node:fs';
 import path from 'path';
 import { Container, Service } from 'typedi';
 
@@ -83,7 +82,7 @@ export class FrontendService {
 
 		this.settings = {
 			inE2ETests,
-			isDocker: this.isDocker(),
+			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: this.globalConfig.endpoints.form,
@@ -231,7 +230,7 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
 			betaFeatures: this.frontendConfig.betaFeatures,
-			virtualSchemaView: config.getEnv('virtualSchemaView'),
+			easyAIWorkflowOnboarded: false,
 		};
 	}
 
@@ -274,6 +273,11 @@ export class FrontendService {
 		}
 
 		this.settings.banners.dismissed = dismissedBanners;
+		try {
+			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
+		} catch {
+			this.settings.easyAIWorkflowOnboarded = false;
+		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
@@ -385,22 +389,6 @@ export class FrontendService {
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
 			}
-		}
-	}
-
-	/**
-	 * Whether this instance is running inside a Docker container.
-	 *
-	 * Based on: https://github.com/sindresorhus/is-docker
-	 */
-	private isDocker() {
-		try {
-			return (
-				fs.existsSync('/.dockerenv') ||
-				fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker')
-			);
-		} catch {
-			return false;
 		}
 	}
 }

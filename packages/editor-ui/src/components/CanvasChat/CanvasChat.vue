@@ -283,7 +283,7 @@ watchEffect(() => {
 		:style="rootStyles"
 		@resize="onResizeDebounced"
 	>
-		<div ref="container" :class="$style.container">
+		<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 			<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
 				<n8n-resize-wrapper
 					v-if="isChatOpen"

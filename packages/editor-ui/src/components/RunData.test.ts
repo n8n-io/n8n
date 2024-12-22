@@ -406,9 +406,7 @@ describe('RunData', () => {
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 				[STORES.NDV]: {
-					output: {
-						displayMode,
-					},
+					outputPanelDisplayMode: displayMode,
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {

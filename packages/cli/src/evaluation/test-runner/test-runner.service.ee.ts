@@ -1,25 +1,30 @@
 import { parse } from 'flatted';
 import type {
 	IDataObject,
-	IPinData,
 	IRun,
 	IRunData,
+	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IExecutionResponse } from '@/interfaces';
+import { NodeTypes } from '@/node-types';
 import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+
+import { EvaluationMetrics } from './evaluation-metrics.ee';
+import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
 
 /**
  * This service orchestrates the running of test cases.
@@ -27,9 +32,7 @@ import { WorkflowRunner } from '@/workflow-runner';
  * past executions, creates pin data from them,
  * and runs the workflow-under-test with the pin data.
  * After the workflow-under-test finishes, it runs the evaluation workflow
- * with the original and new run data.
- * TODO: Node pinning
- * TODO: Collect metrics
+ * with the original and new run data, and collects the metrics.
  */
 @Service()
 export class TestRunnerService {
@@ -39,29 +42,49 @@ export class TestRunnerService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
+		private readonly testMetricRepository: TestMetricRepository,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	/**
-	 * Extracts the execution data from the past execution.
-	 * Creates a pin data object from the past execution data
-	 * for the given workflow.
-	 * For now, it only pins trigger nodes.
+	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
 	 */
-	private createTestDataFromExecution(workflow: WorkflowEntity, execution: ExecutionEntity) {
-		const executionData = parse(execution.executionData.data) as IExecutionResponse['data'];
+	private getStartNodesData(
+		workflow: WorkflowEntity,
+		pastExecutionData: IRunExecutionData,
+	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
+		// Create a new workflow instance to use the helper functions (getChildNodes)
+		const workflowInstance = new Workflow({
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
 
-		const triggerNodes = workflow.nodes.filter((node) => /trigger$/i.test(node.type));
+		// Determine the trigger node of the past execution
+		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
+		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
 
-		const pinData = {} as IPinData;
+		const triggerNodeData = pastExecutionData.resultData.runData[pastExecutionTriggerNode][0];
+		assert(triggerNodeData, 'Trigger node data not found');
 
-		for (const triggerNode of triggerNodes) {
-			const triggerData = executionData.resultData.runData[triggerNode.name];
-			if (triggerData?.[0]?.data?.main?.[0]) {
-				pinData[triggerNode.name] = triggerData[0]?.data?.main?.[0];
-			}
-		}
+		const triggerToStartFrom = {
+			name: pastExecutionTriggerNode,
+			data: triggerNodeData,
+		};
 
-		return { pinData, executionData };
+		// Start nodes are the nodes that are connected to the trigger node
+		const startNodes = workflowInstance
+			.getChildNodes(pastExecutionTriggerNode, NodeConnectionType.Main, 1)
+			.map((nodeName) => ({
+				name: nodeName,
+				sourceData: { previousNode: pastExecutionTriggerNode },
+			}));
+
+		return {
+			startNodes,
+			triggerToStartFrom,
+		};
 	}
 
 	/**
@@ -70,16 +93,20 @@ export class TestRunnerService {
 	 */
 	private async runTestCase(
 		workflow: WorkflowEntity,
-		testCasePinData: IPinData,
+		pastExecutionData: IRunExecutionData,
+		mockedNodes: MockedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
+		// Create pin data from the past execution data
+		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
+
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
+			...this.getStartNodesData(workflow, pastExecutionData),
 			executionMode: 'evaluation',
 			runData: {},
-			pinData: testCasePinData,
+			pinData,
 			workflowData: workflow,
-			partialExecutionVersion: '-1',
 			userId,
 		};
 
@@ -125,6 +152,11 @@ export class TestRunnerService {
 		return await executePromise;
 	}
 
+	/**
+	 * Evaluation result is the first item in the output of the last node
+	 * executed in the evaluation workflow. Defaults to an empty object
+	 * in case the node doesn't produce any output items.
+	 */
 	private extractEvaluationResult(execution: IRun): IDataObject {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 		assert(lastNodeExecuted, 'Could not find the last node executed in evaluation workflow');
@@ -137,9 +169,24 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Get the metrics to collect from the evaluation workflow execution results.
+	 */
+	private async getTestMetricNames(testDefinitionId: string) {
+		const metrics = await this.testMetricRepository.find({
+			where: {
+				testDefinition: {
+					id: testDefinitionId,
+				},
+			},
+		});
+
+		return new Set(metrics.map((m) => m.name));
+	}
+
+	/**
 	 * Creates a new test run for the given test definition.
 	 */
-	public async runTest(user: User, test: TestDefinition): Promise<void> {
+	async runTest(user: User, test: TestDefinition): Promise<void> {
 		const workflow = await this.workflowRepository.findById(test.workflowId);
 		assert(workflow, 'Workflow not found');
 
@@ -164,11 +211,15 @@ export class TestRunnerService {
 				.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 				.getMany();
 
+		// Get the metrics to collect from the evaluation workflow
+		const testMetricNames = await this.getTestMetricNames(test.id);
+
 		// 2. Run over all the test cases
 
 		await this.testRunRepository.markAsRunning(testRun.id);
 
-		const metrics = [];
+		// Object to collect the results of the evaluation workflow executions
+		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
 			// Fetch past execution with data
@@ -178,11 +229,15 @@ export class TestRunnerService {
 			});
 			assert(pastExecution, 'Execution not found');
 
-			const testData = this.createTestDataFromExecution(workflow, pastExecution);
-			const { pinData, executionData } = testData;
+			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
 			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(workflow, pinData, user.id);
+			const testCaseExecution = await this.runTestCase(
+				workflow,
+				executionData,
+				test.mockedNodes,
+				user.id,
+			);
 
 			// In case of a permission check issue, the test case execution will be undefined.
 			// Skip them and continue with the next test case
@@ -205,12 +260,10 @@ export class TestRunnerService {
 			assert(evalExecution);
 
 			// Extract the output of the last node executed in the evaluation workflow
-			metrics.push(this.extractEvaluationResult(evalExecution));
+			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
-		// TODO: 3. Aggregate the results
-		// Now we just set success to true if all the test cases passed
-		const aggregatedMetrics = { success: metrics.every((metric) => metric.success) };
+		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
 		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 	}

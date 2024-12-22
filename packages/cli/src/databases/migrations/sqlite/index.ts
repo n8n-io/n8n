@@ -70,6 +70,8 @@ import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/172
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
 import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
 import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
+import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
+import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -142,6 +144,8 @@ const sqliteMigrations: Migration[] = [
 	MigrateTestDefinitionKeyToString1731582748663,
 	CreateTestMetricTable1732271325258,
 	CreateTestRun1732549866705,
+	AddMockedNodesColumnToTestDefinition1733133775640,
+	AddManagedColumnToCredentialsTable1734479635324,
 ];
 
 export { sqliteMigrations };

@@ -1,5 +1,3 @@
-import { parse as urlParse } from 'url';
-
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -11,6 +9,7 @@ import {
 	type IWebhookResponseData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import { parse as urlParse } from 'url';
 
 import { mauticApiRequest } from './GenericFunctions';
 

@@ -6,7 +6,8 @@ import {
 	type IWorkflowDataProxyData,
 } from 'n8n-workflow';
 
-import { N8nItemListOutputParser } from '../../../../utils/output_parsers/N8nItemListOutputParser';
+import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
+
 import { OutputParserItemList } from '../OutputParserItemList.node';
 
 describe('OutputParserItemList', () => {

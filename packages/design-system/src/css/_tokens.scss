@@ -533,6 +533,11 @@
 	--color-secondary-link: var(--color-secondary);
 	--color-secondary-link-hover: var(--color-secondary-shade-1);
 
+	// Menu
+	--color-menu-background: var(--prim-gray-0);
+	--color-menu-hover-background: var(--prim-gray-120);
+	--color-menu-active-background: var(--prim-gray-120);
+
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	@each $color in ('neutral', 'success', 'warning', 'danger') {
@@ -583,6 +588,7 @@
 	--border-width-base: 1px;
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 
+	--font-size-4xs: 0.5rem;
 	--font-size-3xs: 0.625rem;
 	--font-size-2xs: 0.75rem;
 	--font-size-xs: 0.8125rem;
@@ -615,6 +621,10 @@
 	--spacing-3xl: 4rem;
 	--spacing-4xl: 8rem;
 	--spacing-5xl: 16rem;
+
+	//Params
+	--color-icon-base: var(--color-text-light);
+	--color-icon-hover: var(--prim-color-primary);
 }
 
 :root {

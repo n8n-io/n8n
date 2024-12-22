@@ -1,7 +1,8 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
+import { InstanceSettings } from 'n8n-core';
 import type { Socket } from 'net';
 import { Container, Service } from 'typedi';
 import { parse as parseUrl } from 'url';
@@ -13,7 +14,6 @@ import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { SSEPush } from './sse.push';
@@ -36,12 +36,12 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends TypedEmitter<PushEvents> {
-	public isBidirectional = useWebSockets;
+	isBidirectional = useWebSockets;
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(
-		private readonly orchestrationService: OrchestrationService,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 	) {
 		super();
@@ -81,34 +81,30 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast<Type extends PushType>(type: Type, data: PushPayload<Type>) {
-		this.backend.sendToAll(type, data);
+	broadcast(pushMsg: PushMessage) {
+		this.backend.sendToAll(pushMsg);
 	}
 
-	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
+	send(pushMsg: PushMessage, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
 		 * the webhook. If so, the handler process commands the creator process to
 		 * relay the former's execution lifecycle events to the creator's frontend.
 		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.backend.hasPushRef(pushRef)) {
+		if (this.instanceSettings.isMultiMain && !this.backend.hasPushRef(pushRef)) {
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
-				payload: { type, args: data, pushRef },
+				payload: { ...pushMsg, pushRef },
 			});
 			return;
 		}
 
-		this.backend.sendToOne(type, data, pushRef);
+		this.backend.sendToOne(pushMsg, pushRef);
 	}
 
-	sendToUsers<Type extends PushType>(
-		type: Type,
-		data: PushPayload<Type>,
-		userIds: Array<User['id']>,
-	) {
-		this.backend.sendToUsers(type, data, userIds);
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(pushMsg, userIds);
 	}
 
 	@OnShutdown()

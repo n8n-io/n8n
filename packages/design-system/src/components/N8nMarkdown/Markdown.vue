@@ -251,17 +251,9 @@ const onCheckboxChange = (index: number) => {
 		}
 	}
 
-	pre {
-		margin-bottom: var(--spacing-s);
-		display: grid;
-	}
-
 	pre > code {
-		display: block;
-		padding: var(--spacing-s);
-		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
-		overflow-x: auto;
+		color: var(--color-text-dark);
 	}
 
 	li > code,
@@ -356,9 +348,8 @@ input[type='checkbox'] + label {
 		}
 	}
 
-	code {
+	pre > code {
 		background-color: var(--color-sticky-code-background);
-		padding: 0 var(--spacing-4xs);
 		color: var(--color-sticky-code-font);
 	}
 
@@ -382,6 +373,20 @@ input[type='checkbox'] + label {
 		&[src*='#full-width'] {
 			width: 100%;
 		}
+	}
+}
+
+.sticky,
+.markdown {
+	pre {
+		margin-bottom: var(--spacing-s);
+		display: grid;
+	}
+
+	pre > code {
+		display: block;
+		padding: var(--spacing-s);
+		overflow-x: auto;
 	}
 }
 

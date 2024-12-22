@@ -49,7 +49,7 @@ export class ExecutionRecoveryService {
 
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast('executionRecovered', { executionId });
+			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
 		return amendedExecution;

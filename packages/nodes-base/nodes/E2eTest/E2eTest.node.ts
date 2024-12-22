@@ -9,6 +9,7 @@ import {
 	type INodeTypeDescription,
 	type ResourceMapperFields,
 } from 'n8n-workflow';
+
 import { remoteOptions, resourceMapperFields, returnData, searchOptions } from './mock';
 
 export class E2eTest implements INodeType {

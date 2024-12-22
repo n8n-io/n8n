@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
 import {
 	getFileSha,
 	githubApiRequest,
@@ -2128,7 +2128,7 @@ export class Github implements INodeType {
 							}
 						}
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -2165,7 +2165,7 @@ export class Github implements INodeType {
 							body.branch as string | undefined,
 						);
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
@@ -2179,11 +2179,11 @@ export class Github implements INodeType {
 							qs.ref = additionalParameters.reference;
 						}
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
 						const filePath = this.getNodeParameter('filePath', i);
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					}
 				} else if (resource === 'issue') {
 					if (operation === 'create') {
