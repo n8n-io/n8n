@@ -20,33 +20,33 @@ echo -e "${GREEN}Starting release process...${NC}"
 GIT_SHA=$(git rev-parse --short HEAD)
 echo "Building with Git SHA: ${GIT_SHA}"
 
-# 1. Docker Publishing
-# echo -e "${GREEN}1. Building and publishing Docker images...${NC}"
-# if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-#     # Login to Docker registries
-#     echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+1. Docker Publishing
+echo -e "${GREEN}1. Building and publishing Docker images...${NC}"
+if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+    # Login to Docker registries
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-#     # Set image name and tag
-#     IMAGE_NAME="feeba/numeo-n8n-custom"
-#     IMAGE_TAG="${GIT_SHA}"
-#     FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
+    # Set image name and tag
+    IMAGE_NAME="feeba/numeo-n8n-custom"
+    IMAGE_TAG="${GIT_SHA}"
+    FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
 
-#     echo "Building image: ${FULL_IMAGE_NAME}"
+    echo "Building image: ${FULL_IMAGE_NAME}"
 
-#     # Build and push Docker images
-#     docker buildx create --use
-#     docker buildx build \
-#         --platform linux/amd64 \
-#         --build-arg N8N_VERSION=$GIT_SHA \
-#         --file ./docker/images/n8n-custom/Dockerfile \
-#         --tag ${FULL_IMAGE_NAME} \
-#         --push \
-#         .
+    # Build and push Docker images
+    docker buildx create --use
+    docker buildx build \
+        --platform linux/amd64 \
+        --build-arg N8N_VERSION=$GIT_SHA \
+        --file ./docker/images/n8n-custom/Dockerfile \
+        --tag ${FULL_IMAGE_NAME} \
+        --push \
+        .
 
-#     echo -e "${GREEN}Successfully built and pushed: ${FULL_IMAGE_NAME}${NC}"
-# else
-#     echo "Docker credentials not set, skipping Docker publish"
-# fi
+    echo -e "${GREEN}Successfully built and pushed: ${FULL_IMAGE_NAME}${NC}"
+else
+    echo "Docker credentials not set, skipping Docker publish"
+fi
 
 # 3. Gcloud deploy
 echo -e "${GREEN}3. Deploying to Gcloud...${NC}"
