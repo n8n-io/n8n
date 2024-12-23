@@ -123,7 +123,6 @@ describe('sublimeSearch', () => {
 		const results = sublimeSearch('code', data, weights);
 
 		expect(results[0].item.displayName).toBe('Code Base');
-		// Customer might or might not be included depending on fuzzy match threshold
 	});
 
 	it('should score exact word matches higher than partial word matches', () => {
