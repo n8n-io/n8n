@@ -23,6 +23,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const Default = Template.bind({});
 Default.args = {
+	defaultIcon: 'smile',
+	buttonTooltip: 'Select an icon',
 	availableIcons: allIcons,
 };
 
@@ -35,5 +37,7 @@ WithCustomIconAndTooltip.args = {
 
 export const OnlyEmojis = Template.bind({});
 OnlyEmojis.args = {
+	defaultIcon: 'smile',
+	buttonTooltip: 'Select an emoji',
 	availableIcons: [],
 };

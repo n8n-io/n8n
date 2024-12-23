@@ -1,22 +1,12 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
-// eslint-disable-next-line import/no-extraneous-dependencies
+// eslint-disable import/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
-import { ref, defineProps, onMounted, computed } from 'vue';
 import { isEmojiSupported } from 'is-emoji-supported';
+import { ref, defineProps, onMounted, computed } from 'vue';
 
+import { emojiRanges } from './constants';
 import { useI18n } from '../../composables/useI18n';
-
-const emojiRanges = [
-	[0x1f600, 0x1f64f], // Emoticons
-	[0x1f300, 0x1f5ff], // Symbols & Pictographs
-	[0x1f680, 0x1f6ff], // Transport & Map Symbols
-	[0x2600, 0x26ff], // Miscellaneous Symbols
-	[0x2700, 0x27bf], // Dingbats
-	[0x1f900, 0x1f9ff], // Supplemental Symbols
-	[0x1f1e6, 0x1f1ff], // Regional Indicator Symbols
-	[0x1f400, 0x1f4ff], // Additional pictographs
-];
 
 const { t } = useI18n();
 
@@ -94,7 +84,7 @@ onMounted(() => {
 			:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
 			:class="$style['icon-button']"
 			type="tertiary"
-			data-test-id="project-settings-back-button"
+			data-test-id="icon-picker-button"
 			@click="popupVisible = !popupVisible"
 		/>
 		<N8nButton
@@ -107,23 +97,25 @@ onMounted(() => {
 		</N8nButton>
 		<div v-if="popupVisible" :class="$style.popup">
 			<div :class="$style.tabs">
-				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="project-tabs" />
+				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
 			</div>
-			<div v-show="selectedTab === 'icons'" :class="$style.content">
+			<div v-if="selectedTab === 'icons'" :class="$style.content">
 				<N8nIcon
 					v-for="icon in availableIcons"
 					:key="icon"
 					:icon="icon"
 					:class="$style.icon"
 					size="large"
+					data-test-id="icon-picker-icon"
 					@click="selectIcon(icon)"
 				/>
 			</div>
-			<div v-show="selectedTab === 'emojis'" :class="$style.content">
+			<div v-if="selectedTab === 'emojis'" :class="$style.content">
 				<span
 					v-for="emoji in emojis"
 					:key="emoji"
 					:class="$style.emoji"
+					data-test-id="icon-picker-emoji"
 					@click="selectEmoji(emoji)"
 				>
 					{{ emoji }}
