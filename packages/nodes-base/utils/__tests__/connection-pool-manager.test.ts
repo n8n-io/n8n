@@ -3,8 +3,19 @@ import { ConnectionPoolManager } from '@utils/connection-pool-manager';
 const ttl = 5 * 60 * 1000;
 const cleanUpInterval = 60 * 1000;
 
+let cpm: ConnectionPoolManager;
+
 beforeAll(() => {
 	jest.useFakeTimers();
+	cpm = ConnectionPoolManager.getInstance();
+});
+
+beforeEach(async () => {
+	await cpm.purgeConnections();
+});
+
+afterAll(() => {
+	cpm.onShutdown();
 });
 
 test('getInstance returns a singleton', () => {
@@ -15,16 +26,6 @@ test('getInstance returns a singleton', () => {
 });
 
 describe('getConnection', () => {
-	let cpm: ConnectionPoolManager;
-
-	beforeAll(() => {
-		cpm = ConnectionPoolManager.getInstance();
-	});
-
-	beforeEach(async () => {
-		await cpm.purgeConnections();
-	});
-
 	test('calls fallBackHandler only once and returns the first value', async () => {
 		// ARRANGE
 		const connectionType = {};
@@ -105,16 +106,6 @@ describe('getConnection', () => {
 });
 
 describe('onShutdown', () => {
-	let cpm: ConnectionPoolManager;
-
-	beforeAll(() => {
-		cpm = ConnectionPoolManager.getInstance();
-	});
-
-	beforeEach(async () => {
-		await cpm.purgeConnections();
-	});
-
 	test('calls all clean up handlers', async () => {
 		// ARRANGE
 		const connectionType1 = {};
