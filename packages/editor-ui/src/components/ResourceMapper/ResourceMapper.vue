@@ -493,14 +493,20 @@ function addField(name: string): void {
 	if (name === 'removeAllFields') {
 		return removeAllFields();
 	}
+	const schema = state.paramValue.schema;
+	const field = schema.find((f) => f.id === name);
+
 	state.paramValue.value = {
 		...state.paramValue.value,
-		[name]: null,
+		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+		// mode you get when the field exists, but is empty in `Fixed` mode.
+		[name]: field?.type === 'boolean' ? false : null,
 	};
-	const field = state.paramValue.schema.find((f) => f.id === name);
+
 	if (field) {
 		field.removed = false;
-		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
+		schema.splice(schema.indexOf(field), 1, field);
 	}
 	emitValueChanged();
 }
