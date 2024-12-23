@@ -1,4 +1,4 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -81,11 +81,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast<Type extends PushType>(type: Type, data: PushPayload<Type>) {
-		this.backend.sendToAll(type, data);
+	broadcast(pushMsg: PushMessage) {
+		this.backend.sendToAll(pushMsg);
 	}
 
-	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
+	send(pushMsg: PushMessage, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
@@ -95,20 +95,16 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (this.instanceSettings.isMultiMain && !this.backend.hasPushRef(pushRef)) {
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
-				payload: { type, args: data, pushRef },
+				payload: { ...pushMsg, pushRef },
 			});
 			return;
 		}
 
-		this.backend.sendToOne(type, data, pushRef);
+		this.backend.sendToOne(pushMsg, pushRef);
 	}
 
-	sendToUsers<Type extends PushType>(
-		type: Type,
-		data: PushPayload<Type>,
-		userIds: Array<User['id']>,
-	) {
-		this.backend.sendToUsers(type, data, userIds);
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(pushMsg, userIds);
 	}
 
 	@OnShutdown()

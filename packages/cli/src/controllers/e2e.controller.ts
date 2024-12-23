@@ -1,4 +1,4 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
 import Container from 'typedi';
@@ -58,14 +58,12 @@ type ResetRequest = Request<
 	}
 >;
 
-type PushRequest<T extends PushType> = Request<
+type PushRequest = Request<
 	{},
 	{},
 	{
-		type: T;
 		pushRef: string;
-		data: PushPayload<T>;
-	}
+	} & PushMessage
 >;
 
 @RestController('/e2e')
@@ -144,8 +142,9 @@ export class E2EController {
 	}
 
 	@Post('/push', { skipAuth: true })
-	async pushSend(req: PushRequest<any>) {
-		this.push.broadcast(req.body.type, req.body.data);
+	async pushSend(req: PushRequest) {
+		const { pushRef: _, ...pushMsg } = req.body;
+		this.push.broadcast(pushMsg);
 	}
 
 	@Patch('/feature', { skipAuth: true })

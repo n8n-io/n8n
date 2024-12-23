@@ -142,8 +142,7 @@ export class TestWebhooks implements IWebhookManager {
 				// Inform editor-ui that webhook got received
 				if (pushRef !== undefined) {
 					this.push.send(
-						'testWebhookReceived',
-						{ workflowId: webhook?.workflowId, executionId },
+						{ type: 'testWebhookReceived', data: { workflowId: webhook?.workflowId, executionId } },
 						pushRef,
 					);
 				}
@@ -354,7 +353,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (pushRef !== undefined) {
 				try {
-					this.push.send('testWebhookDeleted', { workflowId }, pushRef);
+					this.push.send({ type: 'testWebhookDeleted', data: { workflowId } }, pushRef);
 				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}
