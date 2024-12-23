@@ -54,4 +54,4 @@ echo -e "${GREEN}2. Deploying to Gcloud...${NC}"
 gcloud run deploy n8n \
     --image feeba/numeo-n8n-custom:7cfe8142b7 \
     --region us-central1 \
-    --platform managed \
+    --platform managed
