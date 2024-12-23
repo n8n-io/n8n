@@ -4,7 +4,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import get from 'lodash/get';
-import { ErrorReporter, Logger, NodeExecuteFunctions, RoutingNode, isObjectLiteral } from 'n8n-core';
+import {
+	ErrorReporter,
+	Logger,
+	NodeExecuteFunctions,
+	RoutingNode,
+	isObjectLiteral,
+} from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
