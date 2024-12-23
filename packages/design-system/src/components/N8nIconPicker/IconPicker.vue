@@ -136,19 +136,19 @@ onMounted(() => {
 
 .popup {
 	position: absolute;
+	z-index: 1;
 	width: 400px;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	background-color: var(--color-background-xlight);
 	margin-top: var(--spacing-4xs);
-	z-index: 1;
+	background-color: var(--color-background-xlight);
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
 	border-color: var(--color-foreground-dark);
 
 	.tabs {
 		padding: var(--spacing-2xs);
+		padding-bottom: var(--spacing-5xs);
 	}
 
 	.content {
