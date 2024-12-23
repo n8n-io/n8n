@@ -19,8 +19,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { iconLibrary } from '@/plugins/icons';
 
 type FormDataDiff = {
 	name?: string;
@@ -55,7 +54,7 @@ const projectRoleTranslations = ref<{ [key: string]: string }>({
 });
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
-const availableProjectIcons: string[] = Object.keys(library.definitions.fas);
+const availableProjectIcons: string[] = Object.keys(iconLibrary.definitions.fas);
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
