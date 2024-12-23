@@ -33,6 +33,9 @@ catalogs:
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
+    callsites:
+      specifier: 3.1.0
+      version: 3.1.0
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -54,6 +57,9 @@ catalogs:
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
+    picocolors:
+      specifier: 1.0.1
+      version: 1.0.1
     typedi:
       specifier: 0.10.0
       version: 0.10.0
@@ -811,9 +817,6 @@ importers:
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
-      callsites:
-        specifier: 3.1.0
-        version: 3.1.0
       change-case:
         specifier: 4.1.2
         version: 4.1.2
@@ -947,7 +950,7 @@ importers:
         specifier: 8.12.0
         version: 8.12.0
       picocolors:
-        specifier: 1.0.1
+        specifier: 'catalog:'
         version: 1.0.1
       pkce-challenge:
         specifier: 3.0.0
@@ -1006,9 +1009,6 @@ importers:
       validator:
         specifier: 13.7.0
         version: 13.7.0
-      winston:
-        specifier: 3.14.2
-        version: 3.14.2
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
@@ -1136,6 +1136,9 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.7.4
+      callsites:
+        specifier: 'catalog:'
+        version: 3.1.0
       chardet:
         specifier: 2.0.0
         version: 2.0.0
@@ -1178,6 +1181,9 @@ importers:
       p-cancelable:
         specifier: 2.1.1
         version: 2.1.1
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
       pretty-bytes:
         specifier: 5.6.0
         version: 5.6.0
@@ -1193,6 +1199,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      winston:
+        specifier: 3.14.2
+        version: 3.14.2
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -1934,7 +1943,7 @@ importers:
         specifier: 'catalog:'
         version: 1.7.4
       callsites:
-        specifier: 3.1.0
+        specifier: 'catalog:'
         version: 3.1.0
       deep-equal:
         specifier: 2.2.0
@@ -1979,6 +1988,9 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -14448,13 +14460,13 @@ snapshots:
   '@babel/code-frame@7.24.6':
     dependencies:
       '@babel/highlight': 7.24.6
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/code-frame@7.26.2':
     dependencies:
       '@babel/helper-validator-identifier': 7.25.9
       js-tokens: 4.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/compat-data@7.23.5': {}
 
@@ -14701,7 +14713,7 @@ snapshots:
       '@babel/helper-validator-identifier': 7.24.7
       chalk: 2.4.2
       js-tokens: 4.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/parser@7.25.6':
     dependencies:
@@ -19415,7 +19427,7 @@ snapshots:
       caniuse-lite: 1.0.30001667
       fraction.js: 4.3.7
       normalize-range: 0.1.2
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       postcss: 8.4.38
       postcss-value-parser: 4.2.0
 
@@ -19603,7 +19615,7 @@ snapshots:
       '@types/readable-stream': 4.0.10
       buffer: 6.0.3
       inherits: 2.0.4
-      readable-stream: 4.4.2
+      readable-stream: 4.5.2
 
   blob-util@2.0.2: {}
 
@@ -25032,13 +25044,13 @@ snapshots:
   postcss@8.4.31:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.4.38:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       source-map-js: 1.2.0
 
   postcss@8.4.49:
@@ -26496,7 +26508,7 @@ snapshots:
       css-tree: 2.3.1
       css-what: 6.1.0
       csso: 5.0.5
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   swagger-ui-dist@5.11.0: {}
 
@@ -26542,7 +26554,7 @@ snapshots:
       micromatch: 4.0.8
       normalize-path: 3.0.0
       object-hash: 3.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       postcss: 8.4.38
       postcss-import: 15.1.0(postcss@8.4.38)
       postcss-js: 4.0.1(postcss@8.4.38)
@@ -27094,7 +27106,7 @@ snapshots:
     dependencies:
       browserslist: 4.23.0
       escalade: 3.1.1
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   update-browserslist-db@1.1.1(browserslist@4.24.2):
     dependencies:

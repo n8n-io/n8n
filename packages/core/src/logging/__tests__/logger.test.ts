@@ -5,10 +5,11 @@ jest.mock('n8n-workflow', () => ({
 
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
 import { LoggerProxy } from 'n8n-workflow';
 
-import { Logger } from '@/logging/logger.service';
+import type { InstanceSettingsConfig } from '@/InstanceSettingsConfig';
+
+import { Logger } from '../logger';
 
 describe('Logger', () => {
 	beforeEach(() => {
@@ -25,13 +26,13 @@ describe('Logger', () => {
 		});
 
 		test('if root, should initialize `LoggerProxy` with instance', () => {
-			const logger = new Logger(globalConfig, mock<InstanceSettings>(), { isRoot: true });
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>(), { isRoot: true });
 
 			expect(LoggerProxy.init).toHaveBeenCalledWith(logger);
 		});
 
 		test('if scoped, should not initialize `LoggerProxy`', () => {
-			new Logger(globalConfig, mock<InstanceSettings>(), { isRoot: false });
+			new Logger(globalConfig, mock<InstanceSettingsConfig>(), { isRoot: false });
 
 			expect(LoggerProxy.init).not.toHaveBeenCalled();
 		});
@@ -47,7 +48,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>());
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
 
 			const { transports } = logger.getInternalLogger();
 
@@ -72,7 +73,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>({ n8nFolder: '/tmp' }));
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>({ n8nFolder: '/tmp' }));
 
 			const { transports } = logger.getInternalLogger();
 
@@ -94,7 +95,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>());
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
 
 			const internalLogger = logger.getInternalLogger();
 
@@ -113,7 +114,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>());
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
 
 			const internalLogger = logger.getInternalLogger();
 
@@ -132,7 +133,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>());
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
 
 			const internalLogger = logger.getInternalLogger();
 
@@ -151,7 +152,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>());
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
 
 			const internalLogger = logger.getInternalLogger();
 
@@ -170,7 +171,7 @@ describe('Logger', () => {
 				},
 			});
 
-			const logger = new Logger(globalConfig, mock<InstanceSettings>());
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
 
 			const internalLogger = logger.getInternalLogger();
 

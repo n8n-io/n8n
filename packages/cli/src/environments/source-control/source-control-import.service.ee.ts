@@ -1,7 +1,7 @@
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
-import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
+import { Credentials, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, jsonParse, ensureError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
@@ -23,7 +23,6 @@ import { VariablesRepository } from '@/databases/repositories/variables.reposito
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { assertNever } from '@/utils';
 

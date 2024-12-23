@@ -1,7 +1,7 @@
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
-import { Cipher, InstanceSettings } from 'n8n-core';
+import { Cipher, InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import path from 'path';
@@ -9,7 +9,6 @@ import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { Logger } from '@/logging/logger.service';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,

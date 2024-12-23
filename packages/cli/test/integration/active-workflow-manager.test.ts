@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import { Logger } from 'n8n-core';
 import { NodeApiError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -9,7 +10,6 @@ import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { SecretsHelper } from '@/secrets-helpers';

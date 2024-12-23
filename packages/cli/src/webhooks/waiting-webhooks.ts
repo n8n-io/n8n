@@ -1,4 +1,5 @@
 import type express from 'express';
+import { Logger } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -13,7 +14,6 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse, IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
