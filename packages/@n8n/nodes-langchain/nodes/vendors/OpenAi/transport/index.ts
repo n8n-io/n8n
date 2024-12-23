@@ -28,8 +28,6 @@ export async function apiRequest(
 		uri = `${credentials?.url}${endpoint}`;
 	}
 
-	console.log(uri);
-
 	const options = {
 		headers,
 		method,
