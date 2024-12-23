@@ -11,6 +11,7 @@ export * from './Credentials';
 export * from './DirectoryLoader';
 export * from './Interfaces';
 export { InstanceSettings, InstanceType } from './InstanceSettings';
+export { Logger } from './logging/logger';
 export * from './NodeExecuteFunctions';
 export * from './RoutingNode';
 export * from './WorkflowExecute';

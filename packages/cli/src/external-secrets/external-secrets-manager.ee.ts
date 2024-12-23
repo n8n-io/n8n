@@ -1,4 +1,4 @@
-import { Cipher } from 'n8n-core';
+import { Cipher, Logger } from 'n8n-core';
 import { jsonParse, type IDataObject, ApplicationError, ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -10,7 +10,6 @@ import type {
 	SecretsProviderSettings,
 } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
