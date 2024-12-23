@@ -3,6 +3,7 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { ref, defineProps, onMounted, computed } from 'vue';
+import { isEmojiSupported } from 'is-emoji-supported';
 
 import { useI18n } from '../../composables/useI18n';
 
@@ -13,6 +14,8 @@ const emojiRanges = [
 	[0x2600, 0x26ff], // Miscellaneous Symbols
 	[0x2700, 0x27bf], // Dingbats
 	[0x1f900, 0x1f9ff], // Supplemental Symbols
+	[0x1f1e6, 0x1f1ff], // Regional Indicator Symbols
+	[0x1f400, 0x1f4ff], // Additional pictographs
 ];
 
 const { t } = useI18n();
@@ -55,7 +58,10 @@ const generateEmojis = () => {
 	const emojisArray: string[] = [];
 	emojiRanges.forEach(([start, end]) => {
 		for (let i = start; i <= end; i++) {
-			emojisArray.push(String.fromCodePoint(i));
+			const emoji = String.fromCodePoint(i);
+			if (isEmojiSupported(emoji)) {
+				emojisArray.push(emoji);
+			}
 		}
 	});
 	emojis.value = emojisArray;
@@ -160,12 +166,16 @@ onMounted(() => {
 		gap: var(--spacing-2xs);
 		padding: var(--spacing-2xs);
 		overflow-y: auto;
-		font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 	}
 
 	.icon,
 	.emoji {
 		cursor: pointer;
+	}
+
+	.emoji {
+		font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji',
+			'Twemoji Mozilla', 'Noto Color Emoji', 'Android Emoji', sans-serif;
 	}
 
 	.icon {
