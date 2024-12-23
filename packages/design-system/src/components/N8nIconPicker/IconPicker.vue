@@ -88,25 +88,28 @@ onMounted(() => {
 
 <template>
 	<div ref="container" :class="$style.container">
-		<N8nIconButton
-			v-if="selectedIcon.type === 'icon'"
-			:class="$style['icon-button']"
-			:icon="selectedIcon.value ?? 'smile'"
-			:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
-			type="tertiary"
-			data-test-id="icon-picker-button"
-			@click="popupVisible = !popupVisible"
-		/>
-		<N8nButton
-			v-else-if="selectedIcon.type === 'emoji'"
-			:class="$style['emoji-button']"
-			:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
-			type="tertiary"
-			data-test-id="icon-picker-button"
-			@click="popupVisible = !popupVisible"
-		>
-			{{ selectedIcon.value }}
-		</N8nButton>
+		<div class="icon-picker-button">
+			<N8nIconButton
+				v-if="selectedIcon.type === 'icon'"
+				:class="$style['icon-button']"
+				:icon="selectedIcon.value ?? 'smile'"
+				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
+				size="large"
+				type="tertiary"
+				data-test-id="icon-picker-button"
+				@click="popupVisible = !popupVisible"
+			/>
+			<N8nButton
+				v-else-if="selectedIcon.type === 'emoji'"
+				:class="$style['emoji-button']"
+				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
+				type="tertiary"
+				data-test-id="icon-picker-button"
+				@click="popupVisible = !popupVisible"
+			>
+				{{ selectedIcon.value }}
+			</N8nButton>
+		</div>
 		<div v-if="popupVisible" :class="$style.popup">
 			<div :class="$style.tabs">
 				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
@@ -143,7 +146,7 @@ onMounted(() => {
 }
 
 .emoji-button {
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-xs);
 }
 
 .popup {

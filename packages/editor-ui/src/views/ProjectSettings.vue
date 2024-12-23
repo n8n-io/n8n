@@ -269,26 +269,27 @@ onMounted(() => {
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
-				<div :class="$style['project-name-label']">
+				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
+				<div :class="$style['project-name']">
 					<N8nIconPicker
 						:default-icon="{ type: 'icon', value: 'layer-group' }"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
 						:available-icons="availableProjectIcons"
 					/>
-					<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
+					<N8nFormInput
+						id="projectName"
+						ref="nameInput"
+						v-model="formData.name"
+						label=""
+						type="text"
+						name="name"
+						required
+						data-test-id="project-settings-name-input"
+						:class="$style['project-name-input']"
+						@input="onNameInput"
+						@validate="isValid = $event"
+					/>
 				</div>
-				<N8nFormInput
-					id="projectName"
-					ref="nameInput"
-					v-model="formData.name"
-					label=""
-					type="text"
-					name="name"
-					required
-					data-test-id="project-settings-name-input"
-					@input="onNameInput"
-					@validate="isValid = $event"
-				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
@@ -441,13 +442,13 @@ onMounted(() => {
 	align-items: center;
 }
 
-.project-name-label {
+.project-name {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: center;
-	margin-bottom: var(--spacing-xs);
-	label {
-		margin-bottom: 0 !important;
+
+	.project-name-input {
+		flex: 1;
 	}
 }
 </style>

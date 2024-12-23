@@ -2551,7 +2551,7 @@
 	"projects.settings": "Project settings",
 	"projects.settings.newProjectName": "My project",
 	"projects.settings.iconPicker.button.tooltip": "Choose project icon",
-	"projects.settings.name": "Project name",
+	"projects.settings.name": "Project icon and name",
 	"projects.settings.projectMembers": "Project members",
 	"projects.settings.message.unsavedChanges": "You have unsaved changes",
 	"projects.settings.danger.message": "When deleting a project, you can also choose to move all workflows and credentials to another project.",
