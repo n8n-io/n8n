@@ -24,7 +24,7 @@ const testUser = Object.assign(new User(), {
 });
 let isWorkflowHistoryEnabled = true;
 
-jest.mock('@/workflows/workflow-history/workflow-history-helper.ee', () => {
+jest.mock('@/workflows/workflow-history.ee/workflow-history-helper.ee', () => {
 	return {
 		isWorkflowHistoryEnabled: jest.fn(() => isWorkflowHistoryEnabled),
 	};
