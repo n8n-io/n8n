@@ -42,7 +42,12 @@ describe('ActiveWorkflows', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		activeWorkflows = new ActiveWorkflows(scheduledTaskManager, triggersAndPollers, errorReporter);
+		activeWorkflows = new ActiveWorkflows(
+			mock(),
+			scheduledTaskManager,
+			triggersAndPollers,
+			errorReporter,
+		);
 	});
 
 	type PollTimes = { item: TriggerTime[] };

@@ -1,3 +1,4 @@
+import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -8,7 +9,6 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { Logger } from '@/logging/logger.service';
 
 import { isWorkflowHistoryEnabled } from './workflow-history-helper.ee';
 
