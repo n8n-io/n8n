@@ -117,7 +117,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentExecution?: RelatedExecution;
 		},
 	): Promise<ExecuteWorkflowData> {
-		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
+		const result = await this.additionalData.executeSubWorkflow(workflowInfo, this.additionalData, {
 			...options,
 			parentWorkflowId: this.workflow.id,
 			inputData,

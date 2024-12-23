@@ -10,6 +10,7 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
 import { mockInstance } from '@test/mocking';
@@ -26,10 +27,12 @@ describe('ExecutionRecoveryService', () => {
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
+	let executionHooksFactory: ExecutionHooksFactory;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		executionHooksFactory = Container.get(ExecutionHooksFactory);
 
 		executionRecoveryService = new ExecutionRecoveryService(
 			mock(),
@@ -37,6 +40,7 @@ describe('ExecutionRecoveryService', () => {
 			push,
 			executionRepository,
 			mock(),
+			executionHooksFactory,
 		);
 	});
 

@@ -46,6 +46,7 @@ export class TriggersAndPollers {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve, reject) => {
+				const hooks = additionalData.hooks!;
 				triggerFunctions.emit = (
 					(resolveEmit) =>
 					(
@@ -53,19 +54,12 @@ export class TriggersAndPollers {
 						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 						donePromise?: IDeferredPromise<IRun>,
 					) => {
-						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (response: IExecuteResponsePromiseData): Promise<void> => {
-								if (responsePromise) {
-									responsePromise.resolve(response);
-								}
-							},
-						];
-
+						if (responsePromise) {
+							hooks.addHook('sendResponse', async (response) => responsePromise.resolve(response));
+						}
 						if (donePromise) {
-							additionalData.hooks!.hookFunctions.workflowExecuteAfter?.unshift(
-								async (runData: IRun): Promise<void> => {
-									return donePromise.resolve(runData);
-								},
+							hooks.addHook('workflowExecuteAfter', async (runData) =>
+								donePromise.resolve(runData),
 							);
 						}
 
@@ -75,13 +69,9 @@ export class TriggersAndPollers {
 				triggerFunctions.emitError = (
 					(rejectEmit) =>
 					(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>) => {
-						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (): Promise<void> => {
-								if (responsePromise) {
-									responsePromise.reject(error);
-								}
-							},
-						];
+						if (responsePromise) {
+							hooks.addHook('sendResponse', async () => responsePromise.reject(error));
+						}
 
 						rejectEmit(error);
 					}

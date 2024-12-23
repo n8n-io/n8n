@@ -13,6 +13,7 @@ export async function saveExecutionProgress(
 	executionData: IRunExecutionData,
 	pushRef?: string,
 ) {
+	// TODO: calculate these only once for lifecycle hooks setup
 	const saveSettings = toSaveSettings(workflowData.settings);
 
 	if (!saveSettings.progress) return;

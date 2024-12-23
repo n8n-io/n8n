@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { ExecutionHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -10,8 +11,11 @@ import type {
 	IPinData,
 	IRun,
 	WorkflowExecuteMode,
-	WorkflowHooks,
 	IWorkflowExecutionDataProcess,
+	IWorkflowExecuteAdditionalData,
+	ExecuteWorkflowOptions,
+	IWorkflowBase,
+	ExecuteWorkflowData,
 } from 'n8n-workflow';
 import { ExecutionCancelledError, Workflow } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
@@ -20,18 +24,21 @@ import { Container, Service } from 'typedi';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { EventService } from '@/events/event.service';
+import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
 import { ExternalHooks } from '@/external-hooks';
+import type { UpdateExecutionPayload } from '@/interfaces';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
+import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { PermissionChecker } from '@/user-management/permission-checker';
+import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { generateFailedExecutionFromError } from '@/workflow-helpers';
+import { generateFailedExecutionFromError, getDataLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-import { ExecutionNotFoundError } from './errors/execution-not-found-error';
-import { EventService } from './events/event.service';
-import { ManualExecutionService } from './manual-execution.service';
 
 @Service()
 export class WorkflowRunner {
@@ -48,6 +55,7 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
@@ -59,7 +67,7 @@ export class WorkflowRunner {
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
-		hooks?: WorkflowHooks,
+		hooks?: ExecutionHooks,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -109,9 +117,7 @@ export class WorkflowRunner {
 		// set the execution to failed.
 		this.activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		if (hooks) {
-			await hooks.executeHookFunctions('workflowExecuteAfter', [fullRunData]);
-		}
+		await hooks?.executeHook('workflowExecuteAfter', [fullRunData]);
 	}
 
 	/** Run the workflow
@@ -131,14 +137,12 @@ export class WorkflowRunner {
 		try {
 			await this.permissionChecker.check(workflowId, nodes);
 		} catch (error) {
+			const executionHooksFactory = Container.get(ExecutionHooksFactory);
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
-			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-			await workflowHooks.executeHookFunctions('workflowExecuteBefore', [
-				undefined,
-				data.executionData,
-			]);
-			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+			const hooks = executionHooksFactory.forExecutionOnMain(data, executionId);
+			await hooks.executeHook('workflowExecuteBefore', [undefined, data.executionData]);
+			await hooks.executeHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
@@ -258,13 +262,12 @@ export class WorkflowRunner {
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			const executionHooksFactory = Container.get(ExecutionHooksFactory);
+			additionalData.hooks = executionHooksFactory.forExecutionOnMain(data, executionId);
 
-			additionalData.hooks.hookFunctions.sendResponse = [
-				async (response: IExecuteResponsePromiseData): Promise<void> => {
-					this.activeExecutions.resolveResponsePromise(executionId, response);
-				},
-			];
+			additionalData.hooks.addHook('sendResponse', async (response) => {
+				this.activeExecutions.resolveResponsePromise(executionId, response);
+			});
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 				executionId,
@@ -351,14 +354,15 @@ export class WorkflowRunner {
 			this.scalingService = Container.get(ScalingService);
 		}
 
+		const executionHooksFactory = Container.get(ExecutionHooksFactory);
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
-		let hooks: WorkflowHooks;
+		let lifecycleHooks: ExecutionHooks;
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
-			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
+			lifecycleHooks = executionHooksFactory.forExecutionOnWorker(
 				data.executionMode,
 				executionId,
 				data.workflowData,
@@ -367,11 +371,11 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await hooks.executeHookFunctions('workflowExecuteBefore', [undefined, data.executionData]);
+			await lifecycleHooks.executeHook('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
-			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+			// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
-			const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+			const hooks = executionHooksFactory.forExecutionOnWorker(
 				data.executionMode,
 				executionId,
 				data.workflowData,
@@ -387,9 +391,9 @@ export class WorkflowRunner {
 				onCancel(async () => {
 					await this.scalingService.stopJob(job);
 
-					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+					// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooksWorker = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const hooksWorker = executionHooksFactory.forExecutionOnWorker(
 						data.executionMode,
 						executionId,
 						data.workflowData,
@@ -405,9 +409,9 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
-					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
+					// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+					const hooks = executionHooksFactory.forExecutionOnWorker(
 						data.executionMode,
 						executionId,
 						data.workflowData,
@@ -440,7 +444,7 @@ export class WorkflowRunner {
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
-				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+				await lifecycleHooks.executeHook('workflowExecuteAfter', [runData]);
 
 				resolve(runData);
 			},
@@ -453,5 +457,173 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+	}
+
+	async runSubWorkflow(
+		additionalData: IWorkflowExecuteAdditionalData,
+		options: ExecuteWorkflowOptions,
+		executionId: string,
+		runData: IWorkflowExecutionDataProcess,
+		workflowData: IWorkflowBase,
+	): Promise<ExecuteWorkflowData> {
+		const { activeExecutions, externalHooks, eventService, executionRepository, nodeTypes } = this;
+
+		await externalHooks.init();
+
+		const workflowName = workflowData ? workflowData.name : undefined;
+		const workflow = new Workflow({
+			id: workflowData.id,
+			name: workflowName,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
+			nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
+
+		/**
+		 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
+		 * same worker process as the parent execution. Hence ensure the subworkflow
+		 * execution is marked as started as well.
+		 */
+		await executionRepository.setRunning(executionId);
+
+		eventService.emit('workflow-pre-execute', { executionId, data: runData });
+
+		let data;
+		try {
+			await this.permissionChecker.check(workflowData.id, workflowData.nodes);
+			await this.subworkflowPolicyChecker.check(
+				workflow,
+				options.parentWorkflowId,
+				options.node,
+				additionalData.userId,
+			);
+
+			const executionHooksFactory = Container.get(ExecutionHooksFactory);
+
+			// Create new additionalData to have different workflow loaded and to call
+			// different webhooks
+			const additionalDataIntegrated = await WorkflowExecuteAdditionalData.getBase();
+			additionalDataIntegrated.hooks = executionHooksFactory.forSubExecution(
+				runData.executionMode,
+				executionId,
+				workflowData,
+				{ pushRef: runData.pushRef, retryOf: runData.retryOf },
+			);
+			additionalDataIntegrated.executionId = executionId;
+			additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
+
+			// Make sure we pass on the original executeWorkflow function we received
+			// This one already contains changes to talk to parent process
+			// and get executionID from `activeExecutions` running on main process
+			additionalDataIntegrated.executeSubWorkflow = additionalData.executeSubWorkflow;
+
+			let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+			const workflowSettings = workflowData.settings;
+			if (
+				workflowSettings?.executionTimeout !== undefined &&
+				workflowSettings.executionTimeout > 0
+			) {
+				// We might have received a max timeout timestamp from the parent workflow
+				// If we did, then we get the minimum time between the two timeouts
+				// If no timeout was given from the parent, then we use our timeout.
+				subworkflowTimeout = Math.min(
+					additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
+					Date.now() + workflowSettings.executionTimeout * 1000,
+				);
+			}
+
+			additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+
+			// Execute the workflow
+			const workflowExecute = new WorkflowExecute(
+				additionalDataIntegrated,
+				runData.executionMode,
+				runData.executionData,
+			);
+			const execution = workflowExecute.processRunExecutionData(workflow);
+			activeExecutions.attachWorkflowExecution(executionId, execution);
+			data = await execution;
+		} catch (error) {
+			const executionError = error ? (error as ExecutionError) : undefined;
+			const fullRunData: IRun = {
+				data: {
+					resultData: {
+						error: executionError,
+						runData: {},
+					},
+				},
+				finished: false,
+				mode: 'integrated',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				status: 'error',
+			};
+			// When failing, we might not have finished the execution
+			// Therefore, database might not contain finished errors.
+			// Force an update to db as there should be no harm doing this
+
+			const fullExecutionData: UpdateExecutionPayload = {
+				data: fullRunData.data,
+				mode: fullRunData.mode,
+				finished: fullRunData.finished ? fullRunData.finished : false,
+				startedAt: fullRunData.startedAt,
+				stoppedAt: fullRunData.stoppedAt,
+				status: fullRunData.status,
+				workflowData,
+				workflowId: workflowData.id,
+			};
+			if (workflowData.id) {
+				fullExecutionData.workflowId = workflowData.id;
+			}
+
+			activeExecutions.finalizeExecution(executionId, fullRunData);
+
+			await executionRepository.updateExistingExecution(executionId, fullExecutionData);
+			throw objectToError(
+				{
+					...executionError,
+					stack: executionError?.stack,
+					message: executionError?.message,
+				},
+				workflow,
+			);
+		}
+
+		await this.externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
+
+		eventService.emit('workflow-post-execute', {
+			workflow: workflowData,
+			executionId,
+			userId: additionalData.userId,
+			runData: data,
+		});
+
+		// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+		if (data.finished === true || data.status === 'waiting') {
+			// Workflow did finish successfully
+
+			activeExecutions.finalizeExecution(executionId, data);
+			const returnData = getDataLastExecutedNodeData(data);
+			return {
+				executionId,
+				data: returnData!.data!.main,
+				waitTill: data.waitTill,
+			};
+		}
+		activeExecutions.finalizeExecution(executionId, data);
+
+		// Workflow did fail
+		const { error } = data.data.resultData;
+
+		throw objectToError(
+			{
+				...error,
+				stack: error?.stack,
+			},
+			workflow,
+		);
 	}
 }

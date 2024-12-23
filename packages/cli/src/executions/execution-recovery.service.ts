@@ -9,9 +9,9 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
 import type { IExecutionResponse } from '@/interfaces';
 import { Push } from '@/push';
-import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -26,6 +26,7 @@ export class ExecutionRecoveryService {
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
+		private readonly executionHooksFactory: ExecutionHooksFactory,
 	) {}
 
 	/**
@@ -182,7 +183,7 @@ export class ExecutionRecoveryService {
 			runData: execution,
 		});
 
-		const externalHooks = getWorkflowHooksMain(
+		const lifecycleHooks = this.executionHooksFactory.forExecutionOnMain(
 			{
 				userId: '',
 				workflowData: execution.workflowData,
@@ -204,6 +205,6 @@ export class ExecutionRecoveryService {
 			status: execution.status,
 		};
 
-		await externalHooks.executeHookFunctions('workflowExecuteAfter', [run]);
+		await lifecycleHooks.executeHook('workflowExecuteAfter', [run]);
 	}
 }
