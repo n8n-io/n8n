@@ -21,7 +21,7 @@
 			}
 		]
 	},
-	"alias": ["pause", "sleep", "delay", "timeout"],
+	"alias": ["pause", "sleep", "delay", "time", "timeout"],
 	"subcategories": {
 		"Core Nodes": ["Helpers", "Flow"]
 	}
