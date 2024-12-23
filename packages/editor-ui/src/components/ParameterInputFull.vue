@@ -53,6 +53,20 @@ const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 
+const hasContentOverride = ref(false);
+const overrideContent = computed(() =>
+	/*props.parameter.overrideField === 'fromAI'*/ true
+		? /*getOverride('fromAi')*/ {
+				overridePlaceholder: 'Defined automatically by the model',
+				icon: 'plus',
+				output: '$fromAI({key}, {value}, {description})',
+				extraProps: {
+					description: 'Description of how the model should define this value',
+				},
+			}
+		: null,
+);
+
 const ndvStore = useNDVStore();
 
 const node = computed(() => ndvStore.activeNode);
@@ -232,28 +246,53 @@ watch(
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
-				<ParameterInputWrapper
-					:parameter="parameter"
-					:model-value="value"
-					:path="path"
-					:is-read-only="isReadOnly"
-					:is-assignment="isAssignment"
-					:rows="rows"
-					:droppable="droppable"
-					:active-drop="activeDrop"
-					:force-show-expression="forceShowExpression"
-					:hint="hint"
-					:hide-hint="hideHint"
-					:hide-issues="hideIssues"
-					:label="label"
-					:event-bus="eventBus"
-					input-size="small"
-					@update="valueChanged"
-					@text-input="onTextInput"
-					@focus="onFocus"
-					@blur="onBlur"
-					@drop="onDrop"
-				/>
+				<div v-if="hasContentOverride && overrideContent" class="parameter-input">
+					{{ overrideContent.overridePlaceholder }}
+					<N8nIconButton
+						type="secondary"
+						icon="xmark"
+						@click="
+							() => {
+								hasContentOverride = false;
+							}
+						"
+					/>
+				</div>
+				<div v-else :class="$style.inputOverrideWrapper">
+					<ParameterInputWrapper
+						:parameter="parameter"
+						:model-value="value"
+						:path="path"
+						:is-read-only="isReadOnly"
+						:is-assignment="isAssignment"
+						:rows="rows"
+						:droppable="droppable"
+						:active-drop="activeDrop"
+						:force-show-expression="forceShowExpression"
+						:hint="hint"
+						:hide-hint="hideHint"
+						:hide-issues="hideIssues"
+						:label="label"
+						:event-bus="eventBus"
+						input-size="small"
+						@update="valueChanged"
+						@text-input="onTextInput"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+					/>
+					<N8nIconButton
+						v-if="overrideContent"
+						type="tertiary"
+						:icon="overrideContent.icon"
+						@click="
+							() => {
+								hasContentOverride = true;
+								/*valueChanged({ name: props.path, value: formatOverride() });*/
+							}
+						"
+					/>
+				</div>
 			</template>
 		</DraggableTarget>
 		<div
@@ -274,6 +313,7 @@ watch(
 			/>
 		</div>
 	</N8nInputLabel>
+	<!-- badges to add extra fields from overrides go here -->
 </template>
 
 <style lang="scss" module>
@@ -285,6 +325,10 @@ watch(
 			opacity: 1;
 		}
 	}
+}
+
+.inputOverrideWrapper {
+	display: flex;
 }
 
 .options {
