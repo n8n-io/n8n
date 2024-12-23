@@ -1,7 +1,7 @@
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
-import { allIcons } from './constants';
+import { TEST_ICONS } from './constants';
 import N8nIconPicker from './IconPicker.vue';
 
 export default {
@@ -25,13 +25,13 @@ export const Default = Template.bind({});
 Default.args = {
 	defaultIcon: { type: 'icon', value: 'smile' },
 	buttonTooltip: 'Select an icon',
-	availableIcons: allIcons,
+	availableIcons: TEST_ICONS,
 };
 
 export const WithCustomIconAndTooltip = Template.bind({});
 WithCustomIconAndTooltip.args = {
 	defaultIcon: { type: 'icon', value: 'layer-group' },
-	availableIcons: [...allIcons],
+	availableIcons: [...TEST_ICONS],
 	buttonTooltip: 'Select something...',
 };
 

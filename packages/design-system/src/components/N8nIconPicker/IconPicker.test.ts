@@ -2,7 +2,7 @@ import { fireEvent, render } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
-import { allIcons } from './constants';
+import { TEST_ICONS } from './constants';
 
 // Create a proxy handler that returns a mock icon object for any icon name
 // and mock the entire icon library with the proxy
@@ -54,7 +54,7 @@ describe('IconPicker', () => {
 			props: {
 				defaultIcon: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
-				availableIcons: allIcons,
+				availableIcons: TEST_ICONS,
 			},
 			global: {
 				plugins: [router],
@@ -76,7 +76,7 @@ describe('IconPicker', () => {
 		const { getByTestId } = render(IconPicker, {
 			props: {
 				defaultIcon: { type: 'icon', value: ICON },
-				availableIcons: [...allIcons],
+				availableIcons: [...TEST_ICONS],
 				buttonTooltip: TOOLTIP,
 			},
 			global: {
@@ -93,7 +93,7 @@ describe('IconPicker', () => {
 		const { getByTestId } = render(IconPicker, {
 			props: {
 				defaultIcon: { type: 'emoji', value: ICON },
-				availableIcons: [...allIcons],
+				availableIcons: [...TEST_ICONS],
 				buttonTooltip: TOOLTIP,
 			},
 			global: {
