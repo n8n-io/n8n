@@ -2,7 +2,12 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExecutionCancelledError,
+	LoggerProxy,
+	type ReportingOptions,
+} from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
 
@@ -142,6 +147,7 @@ export class ErrorReporter {
 	}
 
 	error(e: unknown, options?: ReportingOptions) {
+		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);
 	}
