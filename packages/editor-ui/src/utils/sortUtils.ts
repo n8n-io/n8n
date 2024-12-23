@@ -236,7 +236,14 @@ export function sublimeSearch<T extends object>(
 		keys.forEach(({ key, weight }) => {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {
-				values = values.concat(value.map((v) => ({ value: v, weight })));
+				// Reduce the weight by 10% for subsequent value in the array so we promote results based on the order of values
+				// e.g. if node has multiple aliases, we want to promote the first alias over the second
+				values = values.concat(
+					value.map((v, i) => ({
+						value: v,
+						weight: i <= 1 ? weight : weight * (1 - (i - 1) * 0.1),
+					})),
+				);
 			} else if (typeof value === 'string') {
 				values.push({
 					value,
