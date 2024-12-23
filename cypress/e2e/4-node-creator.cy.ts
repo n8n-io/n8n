@@ -357,7 +357,7 @@ describe('Node Creator', () => {
 		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
 	});
 
-	it('should have most relevenat nodes on top when searching', () => {
+	it.only('should have most relevant nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');

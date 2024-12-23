@@ -79,6 +79,18 @@ describe('sublimeSearch', () => {
 		expect(results[1].item.displayName).toBe('Transform');
 	});
 
+	it('should prioritize position when matching keys', () => {
+		const data = [
+			{ displayName: 'Item 1', alias: ['code', 'function'] },
+			{ displayName: 'Item 2', alias: ['function', 'code'] },
+		];
+
+		const results = sublimeSearch('function', data, weights);
+
+		expect(results[0].item.displayName).toBe('Item 1');
+		expect(results[1].item.displayName).toBe('Item 2');
+	});
+
 	it('should handle case-insensitive matches', () => {
 		const data = [
 			{ displayName: 'CODE', alias: 'programming' },
