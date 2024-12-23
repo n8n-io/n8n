@@ -104,7 +104,7 @@ export const roleDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Active123',
+				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
 				default: true,
