@@ -1,12 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
 import { getN8nPackageJson, inDevelopment } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { Logger } from '@/logging/logger.service';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,

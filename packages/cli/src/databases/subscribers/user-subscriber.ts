@@ -1,10 +1,8 @@
 import type { EntitySubscriberInterface, UpdateEvent } from '@n8n/typeorm';
 import { EventSubscriber } from '@n8n/typeorm';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { Container } from 'typedi';
-
-import { Logger } from '@/logging/logger.service';
 
 import { Project } from '../entities/project';
 import { User } from '../entities/user';

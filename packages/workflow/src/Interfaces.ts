@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type { LogScope } from '@n8n/config';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
@@ -675,6 +675,7 @@ export type ICredentialTestFunction = (
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
+	logger: Logger;
 	helpers: SSHTunnelFunctions & {
 		request: (uriOrObject: string | object, options?: object) => Promise<any>;
 	};
@@ -2447,7 +2448,17 @@ export interface WorkflowTestData {
 }
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
-export type Logger = Record<Exclude<LogLevel, 'silent'>, (message: string, meta?: object) => void>;
+export type LogMetadata = {
+	[key: string]: unknown;
+	scopes?: LogScope[];
+	file?: string;
+	function?: string;
+};
+export type Logger = Record<
+	Exclude<LogLevel, 'silent'>,
+	(message: string, metadata?: LogMetadata) => void
+>;
+export type LogLocationMetadata = Pick<LogMetadata, 'file' | 'function'>;
 
 export interface IStatusCodeMessages {
 	[key: string]: string;

@@ -1,4 +1,5 @@
-import { Logger } from '@/logging/logger.service';
+import { Logger } from 'n8n-core';
+
 import { mockInstance } from '@test/mocking';
 
 import { validateMetadata, validateResponse } from '../saml-validator';

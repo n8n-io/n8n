@@ -1,9 +1,9 @@
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
+import { Logger } from 'n8n-core';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 import * as samlHelpers from '@/sso/saml/saml-helpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';

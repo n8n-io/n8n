@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -7,7 +8,6 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
