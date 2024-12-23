@@ -2550,6 +2550,7 @@
 	"projects.menu.addFirstProject": "Add first project",
 	"projects.settings": "Project settings",
 	"projects.settings.newProjectName": "My project",
+	"projects.settings.iconPicker.button.tooltip": "Choose project icon",
 	"projects.settings.name": "Project name",
 	"projects.settings.projectMembers": "Project members",
 	"projects.settings.message.unsavedChanges": "You have unsaved changes",
