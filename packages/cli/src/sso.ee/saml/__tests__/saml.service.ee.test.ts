@@ -5,8 +5,8 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UrlService } from '@/services/url.service';
-import * as samlHelpers from '@/sso/saml/saml-helpers';
-import { SamlService } from '@/sso/saml/saml.service.ee';
+import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
+import { SamlService } from '@/sso.ee/saml/saml.service.ee';
 import { mockInstance } from '@test/mocking';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';

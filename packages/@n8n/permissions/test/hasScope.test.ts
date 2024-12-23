@@ -1,4 +1,4 @@
-import { hasScope } from '@/hasScope';
+import { hasScope } from '@/hasScope.ee';
 import type { Scope } from '@/types';
 
 const ownerPermissions: Scope[] = [

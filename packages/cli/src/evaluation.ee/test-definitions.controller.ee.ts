@@ -7,8 +7,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	testDefinitionCreateRequestBodySchema,
 	testDefinitionPatchRequestBodySchema,
-} from '@/evaluation/test-definition.schema';
-import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
+} from '@/evaluation.ee/test-definition.schema';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 

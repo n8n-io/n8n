@@ -18,7 +18,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { SecretsHelper } from '@/secrets-helpers';
+import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { Telemetry } from '@/telemetry';

@@ -1,7 +1,7 @@
 import type { SecretsHelpersBase } from 'n8n-workflow';
 import { Service } from 'typedi';
 
-import { ExternalSecretsManager } from './external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from './external-secrets.ee/external-secrets-manager.ee';
 
 @Service()
 export class SecretsHelper implements SecretsHelpersBase {

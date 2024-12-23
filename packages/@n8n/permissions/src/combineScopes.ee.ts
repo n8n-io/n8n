@@ -1,4 +1,4 @@
-import type { Scope, ScopeLevels, GlobalScopes, MaskLevels } from './types';
+import type { Scope, ScopeLevels, GlobalScopes, MaskLevels } from './types.ee';
 
 export function combineScopes(userScopes: GlobalScopes, masks?: MaskLevels): Set<Scope>;
 export function combineScopes(userScopes: ScopeLevels, masks?: MaskLevels): Set<Scope>;

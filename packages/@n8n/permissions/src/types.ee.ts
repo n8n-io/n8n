@@ -1,4 +1,4 @@
-import type { RESOURCES } from './constants';
+import type { RESOURCES } from './constants.ee';
 
 export type Resource = keyof typeof RESOURCES;
 

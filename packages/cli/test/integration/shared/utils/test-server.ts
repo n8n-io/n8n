@@ -171,7 +171,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						await import('@/environments/variables/variables.controller.ee');
+						await import('@/environments.ee/variables/variables.controller.ee');
 						break;
 
 					case 'license':
@@ -202,20 +202,20 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { LdapService } = await import('@/ldap/ldap.service.ee');
-						await import('@/ldap/ldap.controller.ee');
+						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+						await import('@/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
 
 					case 'saml':
-						const { setSamlLoginEnabled } = await import('@/sso/saml/saml-helpers');
-						await import('@/sso/saml/routes/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
+						await import('@/sso.ee/saml/routes/saml.controller.ee');
 						await setSamlLoginEnabled(true);
 						break;
 
 					case 'sourceControl':
-						await import('@/environments/source-control/source-control.controller.ee');
+						await import('@/environments.ee/source-control/source-control.controller.ee');
 						break;
 
 					case 'community-packages':
@@ -247,11 +247,11 @@ export const setupTestServer = ({
 						break;
 
 					case 'externalSecrets':
-						await import('@/external-secrets/external-secrets.controller.ee');
+						await import('@/external-secrets.ee/external-secrets.controller.ee');
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
 
 					case 'binaryData':
@@ -279,9 +279,9 @@ export const setupTestServer = ({
 						break;
 
 					case 'evaluation':
-						await import('@/evaluation/metrics.controller');
-						await import('@/evaluation/test-definitions.controller.ee');
-						await import('@/evaluation/test-runs.controller.ee');
+						await import('@/evaluation.ee/metrics.controller');
+						await import('@/evaluation.ee/test-definitions.controller.ee');
+						await import('@/evaluation.ee/test-runs.controller.ee');
 						break;
 				}
 			}

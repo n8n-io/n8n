@@ -6,7 +6,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	testMetricCreateRequestBodySchema,
 	testMetricPatchRequestBodySchema,
-} from '@/evaluation/metric.schema';
+} from '@/evaluation.ee/metric.schema';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 import { TestDefinitionService } from './test-definition.service.ee';

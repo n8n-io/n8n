@@ -17,7 +17,7 @@ import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
-import type { WorkerStatusService } from '../worker-status.service';
+import type { WorkerStatusService } from '../worker-status.service.ee';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 

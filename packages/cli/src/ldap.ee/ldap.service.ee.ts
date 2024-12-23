@@ -19,7 +19,7 @@ import {
 	isEmailCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso/sso-helpers';
+} from '@/sso.ee/sso-helpers';
 
 import {
 	BINARY_AD_ATTRIBUTES,

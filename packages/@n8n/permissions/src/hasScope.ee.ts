@@ -1,5 +1,5 @@
-import { combineScopes } from './combineScopes';
-import type { Scope, ScopeLevels, GlobalScopes, ScopeOptions, MaskLevels } from './types';
+import { combineScopes } from './combineScopes.ee';
+import type { Scope, ScopeLevels, GlobalScopes, ScopeOptions, MaskLevels } from './types.ee';
 
 export function hasScope(
 	scope: Scope | Scope[],

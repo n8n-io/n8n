@@ -1,7 +1,7 @@
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { Delete, Get, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TestRunsRequest } from '@/evaluation/test-definitions.types.ee';
+import { TestRunsRequest } from '@/evaluation.ee/test-definitions.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 
