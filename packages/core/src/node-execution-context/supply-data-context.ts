@@ -1,11 +1,15 @@
+import get from 'lodash/get';
 import type {
+	AINodeConnectionType,
 	CloseFunction,
+	ExecutionBaseError,
 	IExecuteData,
 	IGetNodeParameterOptions,
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
 	ISupplyDataFunctions,
+	ITaskData,
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
@@ -13,13 +17,14 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
 	assertBinaryData,
 	constructExecutionMetaData,
 	copyInputItems,
+	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 	getCheckProcessedHelperFunctions,
@@ -28,11 +33,10 @@ import {
 	getSSHTunnelFunctions,
 	normalizeItems,
 	returnJsonArray,
-	getInputConnectionData,
-	addExecutionDataFunctions,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];
@@ -48,6 +52,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		runIndex: number,
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
+		private readonly connectionType: NodeConnectionType,
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
@@ -83,6 +88,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
 			returnJsonArray,
 			normalizeItems,
@@ -104,7 +110,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			)) as ISupplyDataFunctions['getNodeParameter'];
 	}
 
-	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
+	async getInputConnectionData(
+		connectionType: AINodeConnectionType,
+		itemIndex: number,
+	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
 			this.workflow,
@@ -116,36 +125,23 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.executeData,
 			this.mode,
 			this.closeFunctions,
-			inputName,
+			connectionType,
 			itemIndex,
 			this.abortSignal,
 		);
 	}
 
-	getInputData(inputIndex = 0, inputName = 'main') {
-		if (!this.inputData.hasOwnProperty(inputName)) {
+	getInputData(inputIndex = 0, connectionType = this.connectionType) {
+		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
 		}
-
-		// TODO: Check if nodeType has input with that index defined
-		if (this.inputData[inputName].length < inputIndex) {
-			throw new ApplicationError('Could not get input with given index', {
-				extra: { inputIndex, inputName },
-			});
-		}
-
-		if (this.inputData[inputName][inputIndex] === null) {
-			throw new ApplicationError('Value of input was not set', {
-				extra: { inputIndex, inputName },
-			});
-		}
-
-		return this.inputData[inputName][inputIndex];
+		return super.getInputItems(inputIndex, connectionType) ?? [];
 	}
 
+	/** @deprecated create a context object with inputData for every runIndex */
 	addInputData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		data: INodeExecutionData[][],
 	): { index: number } {
 		const nodeName = this.node.name;
@@ -154,15 +150,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			currentNodeRunIndex = this.runExecutionData.resultData.runData[nodeName].length;
 		}
 
-		addExecutionDataFunctions(
+		this.addExecutionDataFunctions(
 			'input',
-			nodeName,
 			data,
-			this.runExecutionData,
 			connectionType,
-			this.additionalData,
 			nodeName,
-			this.runIndex,
 			currentNodeRunIndex,
 		).catch((error) => {
 			this.logger.warn(
@@ -176,22 +168,19 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		return { index: currentNodeRunIndex };
 	}
 
+	/** @deprecated Switch to WorkflowExecute to store output on runExecutionData.resultData.runData */
 	addOutputData(
-		connectionType: NodeConnectionType,
+		connectionType: AINodeConnectionType,
 		currentNodeRunIndex: number,
-		data: INodeExecutionData[][],
+		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
 	): void {
 		const nodeName = this.node.name;
-		addExecutionDataFunctions(
+		this.addExecutionDataFunctions(
 			'output',
-			nodeName,
 			data,
-			this.runExecutionData,
 			connectionType,
-			this.additionalData,
 			nodeName,
-			this.runIndex,
 			currentNodeRunIndex,
 			metadata,
 		).catch((error) => {
@@ -202,5 +191,103 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				}`,
 			);
 		});
+	}
+
+	async addExecutionDataFunctions(
+		type: 'input' | 'output',
+		data: INodeExecutionData[][] | ExecutionBaseError,
+		connectionType: AINodeConnectionType,
+		sourceNodeName: string,
+		currentNodeRunIndex: number,
+		metadata?: ITaskMetadata,
+	): Promise<void> {
+		const {
+			additionalData,
+			runExecutionData,
+			runIndex: sourceNodeRunIndex,
+			node: { name: nodeName },
+		} = this;
+
+		let taskData: ITaskData | undefined;
+		if (type === 'input') {
+			taskData = {
+				startTime: new Date().getTime(),
+				executionTime: 0,
+				executionStatus: 'running',
+				source: [null],
+			};
+		} else {
+			// At the moment we expect that there is always an input sent before the output
+			taskData = get(
+				runExecutionData,
+				['resultData', 'runData', nodeName, currentNodeRunIndex],
+				undefined,
+			);
+			if (taskData === undefined) {
+				return;
+			}
+			taskData.metadata = metadata;
+		}
+		taskData = taskData!;
+
+		if (data instanceof Error) {
+			taskData.executionStatus = 'error';
+			taskData.error = data;
+		} else {
+			if (type === 'output') {
+				taskData.executionStatus = 'success';
+			}
+			taskData.data = {
+				[connectionType]: data,
+			} as ITaskDataConnections;
+		}
+
+		if (type === 'input') {
+			if (!(data instanceof Error)) {
+				this.inputData[connectionType] = data;
+				// TODO: remove inputOverride
+				taskData.inputOverride = {
+					[connectionType]: data,
+				} as ITaskDataConnections;
+			}
+
+			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
+				runExecutionData.resultData.runData[nodeName] = [];
+			}
+
+			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
+			await additionalData.hooks?.executeHookFunctions('nodeExecuteBefore', [nodeName]);
+		} else {
+			// Outputs
+			taskData.executionTime = new Date().getTime() - taskData.startTime;
+
+			await additionalData.hooks?.executeHookFunctions('nodeExecuteAfter', [
+				nodeName,
+				taskData,
+				this.runExecutionData,
+			]);
+
+			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
+				runExecutionData.executionData!.metadata = {};
+			}
+
+			let sourceTaskData = runExecutionData.executionData?.metadata?.[sourceNodeName];
+
+			if (!sourceTaskData) {
+				runExecutionData.executionData!.metadata[sourceNodeName] = [];
+				sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
+			}
+
+			if (!sourceTaskData[sourceNodeRunIndex]) {
+				sourceTaskData[sourceNodeRunIndex] = {
+					subRun: [],
+				};
+			}
+
+			sourceTaskData[sourceNodeRunIndex].subRun!.push({
+				node: nodeName,
+				runIndex: currentNodeRunIndex,
+			});
+		}
 	}
 }

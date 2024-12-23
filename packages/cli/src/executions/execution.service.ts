@@ -504,7 +504,7 @@ export class ExecutionService {
 		}
 	}
 
-	public async annotate(
+	async annotate(
 		executionId: string,
 		updateData: ExecutionRequest.ExecutionUpdatePayload,
 		sharedWorkflowIds: string[],

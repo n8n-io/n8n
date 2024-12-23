@@ -23,7 +23,7 @@ describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
-	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
 	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
@@ -221,8 +221,6 @@ describe('WaitTracker', () => {
 
 	describe('multi-main setup', () => {
 		it('should start tracking if leader', () => {
-			jest.spyOn(orchestrationService, 'isSingleMainSetup', 'get').mockReturnValue(false);
-
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
 			waitTracker.init();
@@ -238,9 +236,8 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				orchestrationService,
-				mock<InstanceSettings>({ isLeader: false }),
+				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 			);
-			jest.spyOn(orchestrationService, 'isSingleMainSetup', 'get').mockReturnValue(false);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 

@@ -15,6 +15,7 @@ import { getResourcePermissions } from '@/permissions';
 import { useI18n } from '@/composables/useI18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
@@ -39,6 +40,7 @@ const i18n = useI18n();
 
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const mountedItems = ref<string[]>([]);
 const autoScrollDeps = ref<AutoScrollDeps>({
@@ -169,6 +171,10 @@ function scrollToActiveCard(): void {
 		}
 	}
 }
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('concurrency', 'upgrade-concurrency');
+};
 </script>
 
 <template>
@@ -186,6 +192,8 @@ function scrollToActiveCard(): void {
 				v-if="settingsStore.isConcurrencyEnabled"
 				:running-executions-count="runningExecutionsCount"
 				:concurrency-cap="settingsStore.concurrency"
+				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				@go-to-upgrade="goToUpgrade"
 			/>
 		</div>
 		<div :class="$style.controls">

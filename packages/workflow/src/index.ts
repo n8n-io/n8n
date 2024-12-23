@@ -1,5 +1,4 @@
 import * as LoggerProxy from './LoggerProxy';
-export * as ErrorReporterProxy from './ErrorReporterProxy';
 export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
@@ -15,7 +14,6 @@ export * from './MessageEventBus';
 export * from './ExecutionStatus';
 export * from './Expression';
 export * from './NodeHelpers';
-export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
 export * from './WorkflowDataProxyEnvProvider';

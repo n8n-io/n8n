@@ -19,9 +19,13 @@ export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
+	warnHtmlInMessage: 'off',
 });
 
-type BaseTextOptions = { adjustToNumber?: number; interpolate?: Record<string, string | number> };
+type BaseTextOptions = {
+	adjustToNumber?: number;
+	interpolate?: Record<string, string | number>;
+};
 
 export class I18nClass {
 	private baseTextCache = new Map<string, string>();
@@ -40,6 +44,10 @@ export class I18nClass {
 
 	shortNodeType(longNodeType: string) {
 		return longNodeType.replace('n8n-nodes-base.', '');
+	}
+
+	get locale() {
+		return i18nInstance.global.locale;
 	}
 
 	// ----------------------------------
