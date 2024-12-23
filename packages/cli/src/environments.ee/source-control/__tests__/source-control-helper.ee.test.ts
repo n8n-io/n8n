@@ -6,7 +6,7 @@ import Container from 'typedi';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
-} from '@/environments/source-control/constants';
+} from '@/environments.ee/source-control/constants';
 import {
 	generateSshKeyPair,
 	getRepoType,
@@ -14,10 +14,10 @@ import {
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	sourceControlFoldersExistCheck,
-} from '@/environments/source-control/source-control-helper.ee';
-import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/environments/source-control/types/source-control-preferences';
-import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
+} from '@/environments.ee/source-control/source-control-helper.ee';
+import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/environments.ee/source-control/types/source-control-preferences';
+import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 import { License } from '@/license';
 import { mockInstance } from '@test/mocking';
 

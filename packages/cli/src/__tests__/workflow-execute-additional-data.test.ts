@@ -15,7 +15,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { SecretsHelper } from '@/secrets-helpers.ee';

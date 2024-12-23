@@ -7,7 +7,7 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import type { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import type { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { Push } from '@/push';
