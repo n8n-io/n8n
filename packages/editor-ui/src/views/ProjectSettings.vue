@@ -272,7 +272,7 @@ onMounted(() => {
 			<fieldset>
 				<div :class="$style['project-name-label']">
 					<N8nIconPicker
-						default-icon="layer-group"
+						:default-icon="{ type: 'icon', value: 'layer-group' }"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
 						:available-icons="availableProjectIcons"
 					/>

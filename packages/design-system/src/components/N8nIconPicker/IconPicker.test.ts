@@ -52,7 +52,7 @@ describe('IconPicker', () => {
 	it('renders default icon picker and switches tabs', async () => {
 		const { getByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: 'smile',
+				defaultIcon: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
 				availableIcons: allIcons,
 			},
@@ -71,24 +71,43 @@ describe('IconPicker', () => {
 		expect(getByTestId('tab-emojis').className).toContain('activeTab');
 	});
 	it('renders icon picker with custom icon and tooltip', () => {
+		const ICON = 'layer-group';
+		const TOOLTIP = 'Select something...';
 		const { getByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: 'layer-group',
+				defaultIcon: { type: 'icon', value: ICON },
 				availableIcons: [...allIcons],
-				buttonTooltip: 'Select something...',
+				buttonTooltip: TOOLTIP,
 			},
 			global: {
 				plugins: [router],
 				components,
 			},
 		});
-		expect(getByTestId('icon-picker-button').title).toBe('Select something...');
-		expect(getByTestId('icon-picker-button').dataset.icon).toBe('layer-group');
+		expect(getByTestId('icon-picker-button').title).toBe(TOOLTIP);
+		expect(getByTestId('icon-picker-button').dataset.icon).toBe(ICON);
+	});
+	it('renders emoji as default icon correctly', () => {
+		const ICON = '🔥';
+		const TOOLTIP = 'Select something...';
+		const { getByTestId } = render(IconPicker, {
+			props: {
+				defaultIcon: { type: 'emoji', value: ICON },
+				availableIcons: [...allIcons],
+				buttonTooltip: TOOLTIP,
+			},
+			global: {
+				plugins: [router],
+				components,
+			},
+		});
+		expect(getByTestId('icon-picker-button').title).toBe(TOOLTIP);
+		expect(getByTestId('icon-picker-button')).toHaveTextContent(ICON);
 	});
 	it('renders icon picker with only emojis', () => {
 		const { queryByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: 'smile',
+				defaultIcon: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an emoji',
 				availableIcons: [],
 			},

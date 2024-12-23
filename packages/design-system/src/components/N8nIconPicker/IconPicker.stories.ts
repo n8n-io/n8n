@@ -23,21 +23,21 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const Default = Template.bind({});
 Default.args = {
-	defaultIcon: 'smile',
+	defaultIcon: { type: 'icon', value: 'smile' },
 	buttonTooltip: 'Select an icon',
 	availableIcons: allIcons,
 };
 
 export const WithCustomIconAndTooltip = Template.bind({});
 WithCustomIconAndTooltip.args = {
-	defaultIcon: 'layer-group',
+	defaultIcon: { type: 'icon', value: 'layer-group' },
 	availableIcons: [...allIcons],
 	buttonTooltip: 'Select something...',
 };
 
 export const OnlyEmojis = Template.bind({});
 OnlyEmojis.args = {
-	defaultIcon: 'smile',
+	defaultIcon: { type: 'emoji', value: '😁' },
 	buttonTooltip: 'Select an emoji',
 	availableIcons: [],
 };

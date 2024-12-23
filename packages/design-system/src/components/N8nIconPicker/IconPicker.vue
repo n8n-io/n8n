@@ -14,12 +14,12 @@ defineOptions({ name: 'N8nIconPicker' });
 
 const props = withDefaults(
 	defineProps<{
-		defaultIcon: string;
+		defaultIcon: { type: 'icon' | 'emoji'; value: string };
 		buttonTooltip: string;
 		availableIcons: string[];
 	}>(),
 	{
-		defaultIcon: 'smile',
+		defaultIcon: () => ({ type: 'icon', value: 'smile' }),
 		buttonTooltip: 'Select an icon',
 		availableIcons: () => [],
 	},
@@ -39,8 +39,8 @@ const tabs = ref<Array<{ value: string; label: string }>>(
 );
 const selectedTab = ref<string>(tabs.value[0].value);
 const selectedIcon = ref<{ type: 'icon' | 'emoji'; value: string }>({
-	type: 'icon',
-	value: props.defaultIcon,
+	type: props.defaultIcon.type,
+	value: props.defaultIcon.value,
 });
 const emojis = ref<string[]>([]);
 
@@ -80,17 +80,19 @@ onMounted(() => {
 	<div ref="container" :class="$style.container">
 		<N8nIconButton
 			v-if="selectedIcon.type === 'icon'"
+			:class="$style['icon-button']"
 			:icon="selectedIcon.value ?? 'smile'"
 			:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
-			:class="$style['icon-button']"
 			type="tertiary"
 			data-test-id="icon-picker-button"
 			@click="popupVisible = !popupVisible"
 		/>
 		<N8nButton
 			v-else-if="selectedIcon.type === 'emoji'"
-			type="tertiary"
 			:class="$style['emoji-button']"
+			:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
+			type="tertiary"
+			data-test-id="icon-picker-button"
 			@click="popupVisible = !popupVisible"
 		>
 			{{ selectedIcon.value }}
