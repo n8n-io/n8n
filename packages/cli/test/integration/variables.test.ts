@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import type { Variables } from '@/databases/entities/variables';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { generateNanoId } from '@/databases/utils/generators';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { createOwner, createUser } from './shared/db/users';
