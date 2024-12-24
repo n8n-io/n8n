@@ -33,11 +33,11 @@ type Entitlements = {
 export class License {
 	// eslint-disable-next-line @typescript-eslint/no-useless-constructor
 	constructor(
-		private logger: Logger,
-		private instanceSettings: InstanceSettings,
-		private licenseManager: any,
-		private eventBus: any,
-		private config: GlobalConfig,
+		_logger: Logger,
+		_instanceSettings: InstanceSettings,
+		_licenseManager: any,
+		_eventBus: any,
+		_config: GlobalConfig,
 	) {}
 
 	async init() {
