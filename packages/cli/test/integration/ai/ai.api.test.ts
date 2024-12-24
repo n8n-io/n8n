@@ -35,9 +35,6 @@ let ownerPersonalProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 
-let projectRepository: ProjectRepository;
-let sharedCredentialsRepository: SharedCredentialsRepository;
-
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
 
@@ -48,10 +45,6 @@ beforeEach(async () => {
 	);
 
 	authOwnerAgent = testServer.authAgentFor(owner);
-
-	projectRepository = Container.get(ProjectRepository);
-
-	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 });
 
 describe('POST /ai/free-credits', () => {
