@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
 // eslint-disable import/no-extraneous-dependencies
-import { onClickOutside } from '@vueuse/core';
+import { onClickOutside, useMemoize } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, defineProps, onMounted, computed } from 'vue';
 
@@ -71,7 +71,7 @@ onMounted(() => {
 	generateEmojis();
 });
 
-const generateEmojis = () => {
+const generateEmojis = useMemoize(() => {
 	const emojisArray: string[] = [];
 	emojiRanges.forEach(([start, end]) => {
 		for (let i = start; i <= end; i++) {
@@ -82,7 +82,7 @@ const generateEmojis = () => {
 		}
 	});
 	emojis.value = emojisArray;
-};
+});
 
 onClickOutside(container, () => {
 	popupVisible.value = false;
@@ -95,7 +95,13 @@ const selectIcon = (value: Icon) => {
 </script>
 
 <template>
-	<div ref="container" :class="$style.container">
+	<div
+		ref="container"
+		:class="$style.container"
+		role="button"
+		aria-haspopup="true"
+		:aria-expanded="popupVisible"
+	>
 		<div :class="$style['icon-picker-button']">
 			<N8nIconButton
 				v-if="selectedIcon.type === 'icon'"
