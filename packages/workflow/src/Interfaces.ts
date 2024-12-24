@@ -2783,6 +2783,7 @@ export interface IUserSettings {
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
+	userClaimedAiCredits?: boolean;
 }
 
 export interface IProcessedDataConfig {

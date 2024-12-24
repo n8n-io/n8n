@@ -42,7 +42,8 @@ type EndpointGroup =
 	| 'role'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
-	| 'evaluation';
+	| 'evaluation'
+	| 'ai';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
