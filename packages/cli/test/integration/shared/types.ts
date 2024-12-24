@@ -69,6 +69,7 @@ export type CredentialPayload = {
 	name: string;
 	type: string;
 	data: ICredentialDataDecryptedObject;
+	isManaged: boolean;
 };
 
 export type SaveCredentialFunction = (
