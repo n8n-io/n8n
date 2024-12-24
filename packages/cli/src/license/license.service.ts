@@ -1,3 +1,4 @@
+import { Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
 
 export const LicenseErrors = {
@@ -11,7 +12,23 @@ export const LicenseErrors = {
 
 @Service()
 export class LicenseService {
-	constructor() {}
+	constructor(
+		private logger: Logger,
+		_instanceSettings: any,
+		_config: any,
+		private eventBus: any,
+		_eventService: any,
+	) {
+		this.logger?.debug('Initializing LicenseService');
+		this.setupEventHandlers();
+	}
+
+	private setupEventHandlers() {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+		this.eventBus?.on('license.updated', () => {
+			this.logger?.debug('License updated');
+		});
+	}
 
 	async getLicenseData() {
 		return {
@@ -29,7 +46,7 @@ export class LicenseService {
 		};
 	}
 
-	async activate() {
+	async activate(_activationKey: string, _options?: { instanceType?: string; tenantId?: number }) {
 		// Always successful
 		return;
 	}
@@ -39,8 +56,31 @@ export class LicenseService {
 		return;
 	}
 
-	async requestEnterpriseTrial() {
+	async requestEnterpriseTrial(_user?: any) {
 		// Auto-approved
 		return;
+	}
+
+	async registerCommunityEdition(_data: any) {
+		// No registration needed
+		return;
+	}
+
+	async activateLicense(_activationKey: string) {
+		// No activation needed
+		return;
+	}
+
+	async renewLicense() {
+		// No renewal needed
+		return;
+	}
+
+	getManagementJwt(): string {
+		return '';
+	}
+
+	async loadCertStr(): Promise<string> {
+		return '';
 	}
 }

@@ -23,7 +23,7 @@ describe('LicenseService', () => {
 		eventService,
 	);
 
-	license.getMainPlan.mockReturnValue(entitlement);
+	license.getMainPlan.mockReturnValue(entitlement as any);
 	license.getTriggerLimit.mockReturnValue(400);
 	license.getPlanName.mockReturnValue('Test Plan');
 	workflowRepository.getActiveTriggerCount.mockResolvedValue(7);
