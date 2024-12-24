@@ -187,32 +187,39 @@ const sendTelemetry = (diff: FormDataDiff) => {
 	}
 };
 
-const onSubmit = async () => {
+const updateProject = async () => {
+	if (!projectsStore.currentProject) {
+		return;
+	}
 	try {
-		if (isDirty.value && projectsStore.currentProject) {
-			const diff = makeFormDataDiff();
-
-			await projectsStore.updateProject({
-				id: projectsStore.currentProject.id,
-				name: formData.value.name,
-				icon: projectIcon.value,
-				relations: formData.value.relations.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role,
-				})),
-			});
-			sendTelemetry(diff);
-			isDirty.value = false;
-			toast.showMessage({
-				title: i18n.baseText('projects.settings.save.successful.title', {
-					interpolate: { projectName: formData.value.name ?? '' },
-				}),
-				type: 'success',
-			});
-		}
+		await projectsStore.updateProject({
+			id: projectsStore.currentProject.id,
+			name: formData.value.name,
+			icon: projectIcon.value,
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
+		});
+		isDirty.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 	}
+};
+
+const onSubmit = async () => {
+	if (!isDirty.value) {
+		return;
+	}
+	await updateProject();
+	const diff = makeFormDataDiff();
+	sendTelemetry(diff);
+	toast.showMessage({
+		title: i18n.baseText('projects.settings.save.successful.title', {
+			interpolate: { projectName: formData.value.name ?? '' },
+		}),
+		type: 'success',
+	});
 };
 
 const onDelete = async () => {
@@ -246,9 +253,13 @@ const selectProjectNameIfMatchesDefault = () => {
 	}
 };
 
-const onIconUpdated = (icon: ProjectIcon) => {
+const onIconUpdated = async (icon: ProjectIcon) => {
 	projectIcon.value = icon;
-	isDirty.value = true;
+	await updateProject();
+	toast.showMessage({
+		title: i18n.baseText('projects.settings.icon.update.successful.title'),
+		type: 'success',
+	});
 };
 
 watch(

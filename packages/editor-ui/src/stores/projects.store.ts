@@ -8,6 +8,7 @@ import * as credentialsEEApi from '@/api/credentials.ee';
 import type {
 	Project,
 	ProjectCreateRequest,
+	ProjectIcon,
 	ProjectListItem,
 	ProjectUpdateRequest,
 	ProjectsCount,
