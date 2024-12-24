@@ -52,7 +52,7 @@ describe('IconPicker', () => {
 	it('renders default icon picker and switches tabs', async () => {
 		const { getByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: { type: 'icon', value: 'smile' },
+				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
 				availableIcons: TEST_ICONS,
 			},
@@ -75,7 +75,7 @@ describe('IconPicker', () => {
 		const TOOLTIP = 'Select something...';
 		const { getByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: { type: 'icon', value: ICON },
+				modelValue: { type: 'icon', value: ICON },
 				availableIcons: [...TEST_ICONS],
 				buttonTooltip: TOOLTIP,
 			},
@@ -92,7 +92,7 @@ describe('IconPicker', () => {
 		const TOOLTIP = 'Select something...';
 		const { getByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: { type: 'emoji', value: ICON },
+				modelValue: { type: 'emoji', value: ICON },
 				availableIcons: [...TEST_ICONS],
 				buttonTooltip: TOOLTIP,
 			},
@@ -107,7 +107,7 @@ describe('IconPicker', () => {
 	it('renders icon picker with only emojis', () => {
 		const { queryByTestId } = render(IconPicker, {
 			props: {
-				defaultIcon: { type: 'icon', value: 'smile' },
+				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an emoji',
 				availableIcons: [],
 			},
