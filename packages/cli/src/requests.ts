@@ -523,7 +523,7 @@ export declare namespace ProjectRequest {
 		Project,
 		{
 			name: string;
-			icon?: { type: 'icon' | 'emoji'; value: string };
+			icon?: ProjectIcon;
 		}
 	>;
 
