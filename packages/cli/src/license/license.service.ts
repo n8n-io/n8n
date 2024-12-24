@@ -39,8 +39,31 @@ export class LicenseService {
 		return;
 	}
 
-	async requestEnterpriseTrial() {
+	async requestEnterpriseTrial(_user?: any) {
 		// Auto-approved
 		return;
+	}
+
+	async registerCommunityEdition(_data: any) {
+		// No registration needed
+		return;
+	}
+
+	async activateLicense(_activationKey: string) {
+		// No activation needed
+		return;
+	}
+
+	async renewLicense() {
+		// No renewal needed
+		return;
+	}
+
+	getManagementJwt(): string {
+		return ''; // No JWT needed
+	}
+
+	async loadCertStr(): Promise<string> {
+		return ''; // No certificate needed
 	}
 }

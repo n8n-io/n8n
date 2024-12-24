@@ -212,8 +212,52 @@ export class License {
 		return UNLIMITED_LICENSE_QUOTA;
 	}
 
+	isWithinUsersLimit(): boolean {
+		return true; // No user limit in enterprise
+	}
+
+	async loadCertStr(): Promise<string> {
+		return ''; // No certificate needed
+	}
+
+	async activate(_activationKey: string): Promise<void> {
+		// No activation needed
+		return;
+	}
+
+	async shutdown(): Promise<void> {
+		// No shutdown needed
+		return;
+	}
+
+	getInfo(): string {
+		return 'Enterprise License';
+	}
+
+	async reload(): Promise<void> {
+		// No reload needed
+		return;
+	}
+
+	isCustomNpmRegistryEnabled(): boolean {
+		return true;
+	}
+
+	async reinit(): Promise<void> {
+		return this.init();
+	}
+
 	async refresh(): Promise<void> {
 		// No refresh needed
 		return;
+	}
+
+	isMultipleMainInstancesLicensed(): boolean {
+		return true;
+	}
+
+	getFeatureValue(feature: string): string | boolean | number | undefined {
+		const features = this.getFeatures();
+		return features[feature as keyof FeatureReturnType];
 	}
 }
