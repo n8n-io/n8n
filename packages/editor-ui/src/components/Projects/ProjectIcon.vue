@@ -9,10 +9,11 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
+	round: false,
 });
 </script>
 <template>
-	<div :class="[$style.container, $style[`size-${props.size}`], { [$style.round]: props.round }]">
+	<div :class="[$style.container, $style[props.size], { [$style.round]: props.round }]">
 		<N8nIcon
 			v-if="props.icon.type === 'icon'"
 			:icon="props.icon.value"
@@ -37,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	}
 }
 
-.size-small {
+.small {
 	width: var(--spacing-l);
 	height: var(--spacing-l);
 
@@ -46,7 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
 	}
 }
 
-.size-medium {
+.medium {
 	width: var(--spacing-xl);
 	height: var(--spacing-xl);
 
@@ -55,8 +56,8 @@ const props = withDefaults(defineProps<Props>(), {
 	}
 }
 
-.size-large {
-	// Make this inline with user avatar size
+.large {
+	// Making this inline with user avatar size
 	width: 40px;
 	height: 40px;
 
