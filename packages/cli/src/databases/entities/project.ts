@@ -6,6 +6,7 @@ import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 
 export type ProjectType = 'personal' | 'team';
+export type ProjectIcon = { type: 'emoji' | 'icon'; value: string } | null;
 
 @Entity()
 export class Project extends WithTimestampsAndStringId {
@@ -16,7 +17,7 @@ export class Project extends WithTimestampsAndStringId {
 	type: ProjectType;
 
 	@Column({ type: 'json', nullable: true })
-	icon: { type: string; value: string } | null;
+	icon: ProjectIcon;
 
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];

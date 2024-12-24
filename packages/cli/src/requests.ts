@@ -15,7 +15,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project, ProjectType } from '@/databases/entities/project';
+import type { Project, ProjectIcon, ProjectType } from '@/databases/entities/project';
 import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -552,7 +552,7 @@ export declare namespace ProjectRequest {
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
-		icon: { type: string; value: string } | null;
+		icon: ProjectIcon;
 		type: ProjectType;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];

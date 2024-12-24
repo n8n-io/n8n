@@ -7,7 +7,8 @@ import { ApplicationError } from 'n8n-workflow';
 import Container, { Service } from 'typedi';
 
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
-import { Project, type ProjectType } from '@/databases/entities/project';
+import type { ProjectIcon, ProjectType } from '@/databases/entities/project';
+import { Project } from '@/databases/entities/project';
 import { ProjectRelation } from '@/databases/entities/project-relation';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
@@ -171,7 +172,7 @@ export class ProjectService {
 		name: string,
 		adminUser: User,
 		id?: string,
-		icon?: { type: string; value: string },
+		icon?: ProjectIcon,
 	): Promise<Project> {
 		const limit = this.license.getTeamProjectLimit();
 		if (
