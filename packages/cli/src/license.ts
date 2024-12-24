@@ -38,6 +38,7 @@ export class License {
 		_licenseManager: any,
 		_eventBus: any,
 		_config: GlobalConfig,
+		// eslint-disable-next-line @typescript-eslint/no-empty-function
 	) {}
 
 	async init() {
