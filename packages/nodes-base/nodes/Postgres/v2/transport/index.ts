@@ -59,7 +59,7 @@ export async function configurePostgres(
 ): Promise<ConnectionsData> {
 	const poolManager = ConnectionPoolManager.getInstance();
 
-	return await poolManager.getConnection<ConnectionsData>(
+	return await poolManager.getConnection(
 		{
 			credentials,
 			nodeType: 'postgres',
@@ -184,7 +184,7 @@ export async function configurePostgres(
 				return { db, pgp };
 			}
 		},
-		async ({ db }: ConnectionsData) => {
+		async ({ db }) => {
 			await db.$pool.end();
 		},
 	);
