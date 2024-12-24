@@ -15,6 +15,9 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ length: 36 })
 	type: ProjectType;
 
+	@Column({ type: 'json', nullable: true })
+	icon: { type: string; value: string } | null;
+
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];
 

@@ -167,7 +167,12 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async createTeamProject(name: string, adminUser: User, id?: string): Promise<Project> {
+	async createTeamProject(
+		name: string,
+		adminUser: User,
+		id?: string,
+		icon?: { type: string; value: string },
+	): Promise<Project> {
 		const limit = this.license.getTeamProjectLimit();
 		if (
 			limit !== UNLIMITED_LICENSE_QUOTA &&
@@ -180,6 +185,7 @@ export class ProjectService {
 			this.projectRepository.create({
 				id,
 				name,
+				icon,
 				type: 'team',
 			}),
 		);
@@ -190,7 +196,11 @@ export class ProjectService {
 		return project;
 	}
 
-	async updateProject(name: string, projectId: string): Promise<Project> {
+	async updateProject(
+		name: string,
+		projectId: string,
+		icon?: { type: 'icon' | 'emoji'; value: string },
+	): Promise<Project> {
 		const result = await this.projectRepository.update(
 			{
 				id: projectId,
@@ -198,6 +208,7 @@ export class ProjectService {
 			},
 			{
 				name,
+				icon,
 			},
 		);
 

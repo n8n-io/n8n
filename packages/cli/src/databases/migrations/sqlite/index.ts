@@ -67,6 +67,7 @@ import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-Cre
 import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-CreateProcessedDataTable';
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
+import { AddProjectIcons1729607673469 } from '../common/1729607673469-AddProjectIcons';
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
 import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
 import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
@@ -146,6 +147,7 @@ const sqliteMigrations: Migration[] = [
 	CreateTestRun1732549866705,
 	AddMockedNodesColumnToTestDefinition1733133775640,
 	AddManagedColumnToCredentialsTable1734479635324,
+	AddProjectIcons1729607673469,
 ];
 
 export { sqliteMigrations };

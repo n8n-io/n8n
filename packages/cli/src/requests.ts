@@ -523,6 +523,7 @@ export declare namespace ProjectRequest {
 		Project,
 		{
 			name: string;
+			icon?: { type: 'icon' | 'emoji'; value: string };
 		}
 	>;
 
@@ -551,6 +552,7 @@ export declare namespace ProjectRequest {
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
+		icon: { type: string; value: string } | null;
 		type: ProjectType;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
@@ -560,7 +562,11 @@ export declare namespace ProjectRequest {
 	type Update = AuthenticatedRequest<
 		{ projectId: string },
 		{},
-		{ name?: string; relations?: ProjectRelationPayload[] }
+		{
+			name?: string;
+			relations?: ProjectRelationPayload[];
+			icon?: { type: 'icon' | 'emoji'; value: string };
+		}
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
 }
