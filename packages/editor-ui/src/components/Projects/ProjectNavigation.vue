@@ -33,7 +33,7 @@ const home = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: props.collapsed ? undefined : 'layer-group',
+	icon: props.collapsed ? undefined : project.icon,
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,

@@ -5,7 +5,7 @@ import { TEST_ICONS } from './constants';
 import N8nIconPicker from './IconPicker.vue';
 
 export default {
-	title: 'Atoms/IconPicker',
+	title: 'Atoms/Icon Picker',
 	component: N8nIconPicker,
 	argTypes: {},
 };

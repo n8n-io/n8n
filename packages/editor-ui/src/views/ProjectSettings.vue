@@ -7,7 +7,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import { type Project, type ProjectRelation } from '@/types/projects.types';
+import { ProjectIcon, type Project, type ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -55,6 +55,11 @@ const projectRoleTranslations = ref<{ [key: string]: string }>({
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const availableProjectIcons: string[] = Object.keys(iconLibrary.definitions.fas);
+
+const projectIcon = ref<ProjectIcon>({
+	type: 'icon',
+	value: 'layer-group',
+});
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -189,6 +194,7 @@ const onSubmit = async () => {
 			await projectsStore.updateProject({
 				id: projectsStore.currentProject.id,
 				name: formData.value.name,
+				icon: projectIcon.value,
 				relations: formData.value.relations.map((r: ProjectRelation) => ({
 					userId: r.id,
 					role: r.role,
@@ -239,6 +245,11 @@ const selectProjectNameIfMatchesDefault = () => {
 	}
 };
 
+const onIconUpdated = (icon: ProjectIcon) => {
+	projectIcon.value = icon;
+	isDirty.value = true;
+};
+
 watch(
 	() => projectsStore.currentProject,
 	async () => {
@@ -272,9 +283,10 @@ onMounted(() => {
 				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
 				<div :class="$style['project-name']">
 					<N8nIconPicker
-						:default-icon="{ type: 'icon', value: 'layer-group' }"
+						:default-icon="projectsStore.currentProject?.icon ?? projectIcon"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
 						:available-icons="availableProjectIcons"
+						@icon-selected="onIconUpdated"
 					/>
 					<N8nFormInput
 						id="projectName"

@@ -18,13 +18,18 @@ const emojiRanges = [
 	[0x1f400, 0x1f4ff], // Additional pictographs
 ];
 
+type Icon = {
+	type: 'icon' | 'emoji';
+	value: string;
+};
+
 const { t } = useI18n();
 
 defineOptions({ name: 'N8nIconPicker' });
 
 const props = withDefaults(
 	defineProps<{
-		defaultIcon: { type: 'icon' | 'emoji'; value: string };
+		defaultIcon: Icon;
 		buttonTooltip: string;
 		availableIcons: string[];
 	}>(),
@@ -34,6 +39,10 @@ const props = withDefaults(
 		availableIcons: () => [],
 	},
 );
+
+const emit = defineEmits<{
+	iconSelected: [value: Icon];
+}>();
 
 const hasAvailableIcons = computed(() => props.availableIcons.length > 0);
 
@@ -48,10 +57,7 @@ const tabs = ref<Array<{ value: string; label: string }>>(
 		: [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }],
 );
 const selectedTab = ref<string>(tabs.value[0].value);
-const selectedIcon = ref<{ type: 'icon' | 'emoji'; value: string }>({
-	type: props.defaultIcon.type,
-	value: props.defaultIcon.value,
-});
+const selectedIcon = ref<Icon>(props.defaultIcon);
 const emojis = ref<string[]>([]);
 
 const generateEmojis = () => {
@@ -74,11 +80,13 @@ onClickOutside(container, () => {
 const selectIcon = (value: string) => {
 	selectedIcon.value = { type: 'icon', value };
 	popupVisible.value = false;
+	emit('iconSelected', selectedIcon.value);
 };
 
 const selectEmoji = (value: string) => {
 	selectedIcon.value = { type: 'emoji', value };
 	popupVisible.value = false;
+	emit('iconSelected', selectedIcon.value);
 };
 
 onMounted(() => {
@@ -88,7 +96,7 @@ onMounted(() => {
 
 <template>
 	<div ref="container" :class="$style.container">
-		<div class="icon-picker-button">
+		<div :class="$style['icon-picker-button']">
 			<N8nIconButton
 				v-if="selectedIcon.type === 'icon'"
 				:class="$style['icon-button']"
@@ -148,7 +156,6 @@ onMounted(() => {
 .emoji-button {
 	padding: var(--spacing-xs);
 }
-
 .popup {
 	position: absolute;
 	z-index: 1;
