@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
-import { ProjectTypes } from '@/types/projects.types';
+import { ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
@@ -17,13 +17,13 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 
-const headerIcon = computed(() => {
+const headerIcon = computed((): ProjectIcon => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return 'user';
+		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return 'layer-group';
+		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
 	} else {
-		return 'home';
+		return { type: 'icon', value: 'home' };
 	}
 });
 
@@ -106,7 +106,14 @@ const onSelect = (action: string) => {
 	<div>
 		<div :class="[$style.projectHeader]">
 			<div :class="[$style.icon]">
-				<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
+				<N8nIcon
+					v-if="headerIcon.type === 'icon'"
+					:icon="headerIcon.value"
+					color="text-light"
+				></N8nIcon>
+				<N8nText v-else-if="headerIcon.type === 'emoji'" color="text-light" size="xsmall">
+					{{ headerIcon.value }}
+				</N8nText>
 			</div>
 			<div>
 				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
