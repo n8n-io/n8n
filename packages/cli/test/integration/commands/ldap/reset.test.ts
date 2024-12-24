@@ -7,8 +7,8 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { getLdapSynchronizations, saveLdapSynchronization } from '@/ldap/helpers.ee';
-import { LdapService } from '@/ldap/ldap.service.ee';
+import { getLdapSynchronizations, saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';

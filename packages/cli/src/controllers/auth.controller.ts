@@ -23,7 +23,7 @@ import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
-} from '@/sso/sso-helpers';
+} from '@/sso.ee/sso-helpers';
 
 @RestController()
 export class AuthController {

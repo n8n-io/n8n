@@ -21,7 +21,7 @@ import { MfaService } from '@/mfa/mfa.service';
 import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')

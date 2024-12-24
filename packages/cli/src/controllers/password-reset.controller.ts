@@ -18,7 +18,7 @@ import { MfaService } from '@/mfa/mfa.service';
 import { PasswordResetRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { isSamlCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
