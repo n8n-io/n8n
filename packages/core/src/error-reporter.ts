@@ -2,11 +2,12 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, LoggerProxy, type ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, type ReportingOptions } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
 
 import type { InstanceType } from './InstanceSettings';
+import { Logger } from './logging/logger';
 
 @Service()
 export class ErrorReporter {
@@ -15,7 +16,7 @@ export class ErrorReporter {
 
 	private report: (error: Error | string, options?: ReportingOptions) => void;
 
-	constructor() {
+	constructor(private readonly logger: Logger) {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.report = this.defaultReport;
 	}
@@ -30,7 +31,7 @@ export class ErrorReporter {
 			do {
 				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
-				LoggerProxy.error(msg, meta);
+				this.logger.error(msg, meta);
 				e = e.cause as Error;
 			} while (e);
 		}

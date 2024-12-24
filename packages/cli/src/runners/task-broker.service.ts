@@ -5,13 +5,13 @@ import type {
 	RunnerMessage,
 	TaskResultData,
 } from '@n8n/task-runner';
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { Service } from 'typedi';
 
 import config from '@/config';
 import { Time } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 
 import { TaskDeferredError, TaskRejectError } from './errors';
 import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';

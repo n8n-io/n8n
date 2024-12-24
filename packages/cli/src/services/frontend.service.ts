@@ -3,7 +3,7 @@ import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 import { Container, Service } from 'typedi';
@@ -16,7 +16,6 @@ import { getVariablesLimit } from '@/environments/variables/environment-helpers'
 import { getLdapLoginLabel } from '@/ldap/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { isApiEnabled } from '@/public-api';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';

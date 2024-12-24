@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type express from 'express';
 import https from 'https';
+import { Logger } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
@@ -12,7 +13,6 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
