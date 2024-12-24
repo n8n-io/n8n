@@ -125,7 +125,7 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-export type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],

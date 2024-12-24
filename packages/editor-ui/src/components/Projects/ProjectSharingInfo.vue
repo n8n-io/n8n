@@ -19,11 +19,28 @@ const processedName = computed(() => {
 		email,
 	};
 });
+
+const projectIcon = computed(() => {
+	if (props.project.icon) {
+		return props.project.icon;
+	}
+	return null;
+});
 </script>
 <template>
 	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
 		<div>
-			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
+			<div v-if="projectIcon" :class="[$style.icon]">
+				<N8nIcon
+					v-if="projectIcon.type === 'icon'"
+					:icon="projectIcon.value"
+					color="text-light"
+				></N8nIcon>
+				<N8nText v-else-if="projectIcon.type === 'emoji'" color="text-light" size="large">
+					{{ projectIcon.value }}
+				</N8nText>
+			</div>
+			<N8nAvatar v-else :first-name="processedName.firstName" :last-name="processedName.lastName" />
 			<div :class="$style.text">
 				<p v-if="processedName.firstName || processedName.lastName">
 					{{ processedName.firstName }} {{ processedName.lastName }}
