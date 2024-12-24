@@ -14,6 +14,13 @@ export type FeatureReturnType = Partial<
 type MainPlan = {
 	id: string;
 	name: string;
+	productId: string;
+	productMetadata: Record<string, any>;
+	features: Record<string, any>;
+	featureOverrides: Record<string, any>;
+	validFrom: Date;
+	validTo: Date;
+	isFloatable: boolean;
 };
 
 type Entitlements = {
@@ -24,9 +31,11 @@ type Entitlements = {
 @Service()
 export class License {
 	constructor(
-		private logger?: Logger,
-		private instanceSettings?: InstanceSettings,
-		private config?: GlobalConfig,
+		_logger: Logger,
+		_instanceSettings: InstanceSettings,
+		_licenseManager: any,
+		_eventBus: any,
+		_config: GlobalConfig,
 	) {}
 
 	async init() {
@@ -62,7 +71,7 @@ export class License {
 	}
 
 	isFeatureEnabled(feature: string): boolean {
-		return true;
+		return this.getFeatures()[feature as keyof FeatureReturnType] as boolean;
 	}
 
 	isAPIDisabled(): boolean {
@@ -70,6 +79,10 @@ export class License {
 	}
 
 	isBinaryDataS3Enabled(): boolean {
+		return true;
+	}
+
+	isBinaryDataS3Licensed(): boolean {
 		return true;
 	}
 
@@ -93,6 +106,10 @@ export class License {
 		return true;
 	}
 
+	isSourceControlLicensed(): boolean {
+		return true;
+	}
+
 	isExternalSecretsEnabled(): boolean {
 		return true;
 	}
@@ -101,7 +118,15 @@ export class License {
 		return true;
 	}
 
+	isWorkflowHistoryLicensed(): boolean {
+		return true;
+	}
+
 	isDebugInEditorEnabled(): boolean {
+		return true;
+	}
+
+	isDebugInEditorLicensed(): boolean {
 		return true;
 	}
 
@@ -133,7 +158,55 @@ export class License {
 		return true;
 	}
 
+	isAdvancedPermissionsLicensed(): boolean {
+		return true;
+	}
+
+	isWorkerViewEnabled(): boolean {
+		return true;
+	}
+
+	isWorkerViewLicensed(): boolean {
+		return true;
+	}
+
+	isAiAssistantEnabled(): boolean {
+		return true;
+	}
+
+	isAskAiEnabled(): boolean {
+		return true;
+	}
+
+	isSharingEnabled(): boolean {
+		return true;
+	}
+
+	isAdvancedExecutionFiltersEnabled(): boolean {
+		return true;
+	}
+
 	getQuota(): number {
+		return UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getTriggerLimit(): number {
+		return UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getVariablesLimit(): number {
+		return UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getUsersLimit(): number {
+		return UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getWorkflowHistoryPruneLimit(): number {
+		return UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getTeamProjectLimit(): number {
 		return UNLIMITED_LICENSE_QUOTA;
 	}
 
@@ -200,6 +273,25 @@ export class License {
 		return {
 			id: '1',
 			name: 'Enterprise',
+			productId: '',
+			productMetadata: {},
+			features: {},
+			featureOverrides: {},
+			validFrom: new Date(),
+			validTo: new Date(),
+			isFloatable: false,
 		};
+	}
+
+	getPlanName(): string {
+		return 'Enterprise';
+	}
+
+	getConsumerId(): string {
+		return 'enterprise-user';
+	}
+
+	getManagementJwt(): string {
+		return 'dummy-jwt-token';
 	}
 }
