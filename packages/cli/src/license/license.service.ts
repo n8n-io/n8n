@@ -1,4 +1,7 @@
 import { Service } from 'typedi';
+import type { Logger } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
+import type { GlobalConfig } from '@n8n/config';
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -11,7 +14,11 @@ export const LicenseErrors = {
 
 @Service()
 export class LicenseService {
-	constructor() {}
+	constructor(
+		private logger?: Logger,
+		private instanceSettings?: InstanceSettings,
+		private config?: GlobalConfig,
+	) {}
 
 	async getLicenseData() {
 		return {
@@ -29,7 +36,7 @@ export class LicenseService {
 		};
 	}
 
-	async activate() {
+	async activate(_activationKey: string, _options?: { instanceType?: string; tenantId?: number }) {
 		// Always successful
 		return;
 	}
@@ -60,10 +67,10 @@ export class LicenseService {
 	}
 
 	getManagementJwt(): string {
-		return ''; // No JWT needed
+		return '';
 	}
 
 	async loadCertStr(): Promise<string> {
-		return ''; // No certificate needed
+		return '';
 	}
 }

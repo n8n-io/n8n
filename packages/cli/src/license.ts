@@ -1,6 +1,9 @@
 import { Service } from 'typedi';
 import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
+import type { Logger } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
+import type { GlobalConfig } from '@n8n/config';
 
 export type FeatureReturnType = Partial<
 	{
@@ -8,9 +11,23 @@ export type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
+type MainPlan = {
+	id: string;
+	name: string;
+};
+
+type Entitlements = {
+	planId: string;
+	planName: string;
+};
+
 @Service()
 export class License {
-	constructor() {}
+	constructor(
+		private logger?: Logger,
+		private instanceSettings?: InstanceSettings,
+		private config?: GlobalConfig,
+	) {}
 
 	async init() {
 		// No initialization needed
@@ -49,7 +66,7 @@ export class License {
 	}
 
 	isAPIDisabled(): boolean {
-		return false; // API is always enabled
+		return false;
 	}
 
 	isBinaryDataS3Enabled(): boolean {
@@ -104,47 +121,11 @@ export class License {
 		return true;
 	}
 
-	isAdvancedPermissionsLicensed(): boolean {
-		return true;
-	}
-
-	isWorkerViewEnabled(): boolean {
-		return true;
-	}
-
 	isAiEnabled(): boolean {
 		return true;
 	}
 
-	isAiAssistantLicensed(): boolean {
-		return true;
-	}
-
-	isAskAiLicensed(): boolean {
-		return true;
-	}
-
-	isCustomCommunityNodesRegistryEnabled(): boolean {
-		return true;
-	}
-
-	isAdvancedExecutionFiltersEnabled(): boolean {
-		return true;
-	}
-
-	isNonProductionBannerEnabled(): boolean {
-		return false; // Disable non-production banner
-	}
-
-	isBinaryDataS3Licensed(): boolean {
-		return true;
-	}
-
-	isAiAssistantEnabled(): boolean {
-		return true;
-	}
-
-	isAskAiEnabled(): boolean {
+	isAiNodesEnabled(): boolean {
 		return true;
 	}
 
@@ -152,81 +133,26 @@ export class License {
 		return true;
 	}
 
-	isWorkerViewLicensed(): boolean {
-		return true;
-	}
-
-	isDebugInEditorLicensed(): boolean {
-		return true;
-	}
-
-	isWorkflowHistoryLicensed(): boolean {
-		return true;
-	}
-
-	isSourceControlLicensed(): boolean {
-		return true;
-	}
-
-	isWorkflowSharingEnabled(): boolean {
-		return true;
-	}
-
-	isSharingEnabled(): boolean {
-		return true;
-	}
-
-	isVersionControlLicensed(): boolean {
-		return true;
-	}
-
-	getPlanName(): string {
-		return 'Enterprise';
-	}
-
-	getConsumerId(): string {
-		return 'enterprise-user';
-	}
-
-	getManagementJwt(): string {
-		return 'dummy-jwt-token';
-	}
-
-	getTriggerLimit(): number {
-		return UNLIMITED_LICENSE_QUOTA;
-	}
-
-	getVariablesLimit(): number {
-		return UNLIMITED_LICENSE_QUOTA;
-	}
-
-	getUsersLimit(): number {
-		return UNLIMITED_LICENSE_QUOTA;
-	}
-
-	getWorkflowHistoryPruneLimit(): number {
-		return UNLIMITED_LICENSE_QUOTA;
-	}
-
-	getTeamProjectLimit(): number {
+	getQuota(): number {
 		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	isWithinUsersLimit(): boolean {
-		return true; // No user limit in enterprise
+		return true;
 	}
 
 	async loadCertStr(): Promise<string> {
-		return ''; // No certificate needed
+		return '';
 	}
 
-	async activate(_activationKey: string): Promise<void> {
-		// No activation needed
+	async activate(
+		_activationKey: string,
+		_options?: { instanceType?: string; tenantId?: number },
+	): Promise<void> {
 		return;
 	}
 
 	async shutdown(): Promise<void> {
-		// No shutdown needed
 		return;
 	}
 
@@ -235,7 +161,6 @@ export class License {
 	}
 
 	async reload(): Promise<void> {
-		// No reload needed
 		return;
 	}
 
@@ -248,7 +173,6 @@ export class License {
 	}
 
 	async refresh(): Promise<void> {
-		// No refresh needed
 		return;
 	}
 
@@ -259,5 +183,23 @@ export class License {
 	getFeatureValue(feature: string): string | boolean | number | undefined {
 		const features = this.getFeatures();
 		return features[feature as keyof FeatureReturnType];
+	}
+
+	async renew(): Promise<void> {
+		return;
+	}
+
+	getCurrentEntitlements(): Entitlements {
+		return {
+			planId: '1',
+			planName: 'Enterprise',
+		};
+	}
+
+	getMainPlan(): MainPlan {
+		return {
+			id: '1',
+			name: 'Enterprise',
+		};
 	}
 }
