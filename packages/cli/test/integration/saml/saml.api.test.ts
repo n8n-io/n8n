@@ -1,6 +1,9 @@
 import type { User } from '@/databases/entities/user';
-import { setSamlLoginEnabled } from '@/sso/saml/saml-helpers';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { setSamlLoginEnabled } from '@/sso.ee/saml/saml-helpers';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
