@@ -15,7 +15,11 @@ type Options = {
 };
 
 export class ConnectionPoolManager {
-	static getInstance() {
+	/**
+	 * Gets the singleton instance of the ConnectionPoolManager.
+	 * Creates a new instance if one doesn't exist.
+	 */
+	static getInstance(): ConnectionPoolManager {
 		if (instance) {
 			return instance;
 		}
@@ -25,6 +29,10 @@ export class ConnectionPoolManager {
 		return instance;
 	}
 
+	/**
+	 * Private constructor that initializes the connection pool manager.
+	 * Sets up cleanup handlers for process exit and stale connections.
+	 */
 	private constructor(
 		private map: Map<
 			string,
@@ -38,6 +46,10 @@ export class ConnectionPoolManager {
 		setInterval(() => this.cleanupStaleConnections(), cleanUpInterval);
 	}
 
+	/**
+	 * Generates a unique key for connection pool identification.
+	 * Hashes the credentials and node information for security.
+	 */
 	private makeKey({ credentials, nodeType, nodeVersion }: Options): string {
 		// The credential contains decrypted secrets, that's why we hash it.
 		return createHash('sha1')
@@ -51,11 +63,15 @@ export class ConnectionPoolManager {
 			.digest('base64');
 	}
 
+	/**
+	 * Gets or creates a connection pool for the given options.
+	 * Updates the last used timestamp for existing connections.
+	 */
 	async getConnection<T>(
 		options: Options,
 		fallBackHandler: () => Promise<T>,
 		cleanUpHandler: (pool: T) => Promise<void>,
-	) {
+	): Promise<T> {
 		const key = this.makeKey(options);
 
 		let value = this.map.get(key);
@@ -77,6 +93,10 @@ export class ConnectionPoolManager {
 		return value.pool as T;
 	}
 
+	/**
+	 * Removes and cleans up connection pools that haven't been used within the
+	 * TTL.
+	 */
 	private cleanupStaleConnections() {
 		const now = Date.now();
 		for (const [key, { cleanUpHandler, lastUsed, pool }] of this.map.entries()) {
@@ -87,8 +107,11 @@ export class ConnectionPoolManager {
 		}
 	}
 
-	async purgeConnections() {
-		return await Promise.all(
+	/**
+	 * Removes and cleans up all existing connection pools.
+	 */
+	async purgeConnections(): Promise<void> {
+		await Promise.all(
 			[...this.map.entries()].map(async ([key, value]) => {
 				this.map.delete(key);
 
@@ -97,6 +120,13 @@ export class ConnectionPoolManager {
 		);
 	}
 
+	/**
+	 * Cleans up all connection pools when the process is shutting down.
+	 * Does not wait for cleanup promises to resolve also does not remove the
+	 * references from the pool.
+	 *
+	 * Only call this on process shutdown.
+	 */
 	onShutdown() {
 		for (const { cleanUpHandler, pool } of this.map.values()) {
 			void cleanUpHandler(pool);
