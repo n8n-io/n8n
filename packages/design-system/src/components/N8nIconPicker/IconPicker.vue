@@ -27,21 +27,24 @@ const { t } = useI18n();
 
 defineOptions({ name: 'N8nIconPicker' });
 
+// TODO: Extract to type
+// TODO: Add comments about emoji library and search
 const props = withDefaults(
 	defineProps<{
-		defaultIcon: Icon;
+		modelValue: Icon;
 		buttonTooltip: string;
 		availableIcons: string[];
 	}>(),
 	{
-		defaultIcon: () => ({ type: 'icon', value: 'smile' }),
+		modelValue: () => ({ type: 'icon', value: 'smile' }),
 		buttonTooltip: 'Select an icon',
 		availableIcons: () => [],
 	},
 );
 
 const emit = defineEmits<{
-	iconSelected: [value: Icon];
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'update:modelValue': [value: Icon];
 }>();
 
 const hasAvailableIcons = computed(() => props.availableIcons.length > 0);
@@ -57,15 +60,12 @@ const tabs = ref<Array<{ value: string; label: string }>>(
 		: [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }],
 );
 const selectedTab = ref<string>(tabs.value[0].value);
-const selectedIcon = ref<Icon>(props.defaultIcon);
 const emojis = ref<string[]>([]);
 
-watch(
-	() => props.defaultIcon,
-	(newValue) => {
-		selectedIcon.value = newValue;
-	},
-);
+const selectedIcon = computed({
+	get: () => props.modelValue,
+	set: (value: Icon) => emit('update:modelValue', value),
+});
 
 onMounted(() => {
 	generateEmojis();
@@ -91,7 +91,6 @@ onClickOutside(container, () => {
 const selectIcon = (value: Icon) => {
 	selectedIcon.value = value;
 	popupVisible.value = false;
-	emit('iconSelected', selectedIcon.value);
 };
 </script>
 

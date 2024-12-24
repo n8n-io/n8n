@@ -253,8 +253,7 @@ const selectProjectNameIfMatchesDefault = () => {
 	}
 };
 
-const onIconUpdated = async (icon: ProjectIcon) => {
-	projectIcon.value = icon;
+const onIconUpdated = async () => {
 	await updateProject();
 	toast.showMessage({
 		title: i18n.baseText('projects.settings.icon.update.successful.title'),
@@ -298,10 +297,10 @@ onMounted(() => {
 				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
 				<div :class="$style['project-name']">
 					<N8nIconPicker
-						:default-icon="projectIcon"
+						v-model="projectIcon"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
 						:available-icons="availableProjectIcons"
-						@icon-selected="onIconUpdated"
+						@update:model-value="onIconUpdated"
 					/>
 					<N8nFormInput
 						id="projectName"

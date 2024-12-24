@@ -10,34 +10,61 @@ export default {
 	argTypes: {},
 };
 
-const Template: StoryFn = (args, { argTypes }) => ({
+const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 	components: { N8nIconPicker },
 	props: Object.keys(argTypes),
 	setup: () => ({ args }),
+	data: () => ({
+		icon: { type: 'icon', value: 'smile' },
+	}),
 	template:
-		'<div style="height: 500px"><n8n-icon-picker v-bind="args" @iconSelected="onIconSelected" /></div>',
+		'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
 	methods: {
 		onIconSelected: action('iconSelected'),
 	},
 });
 
-export const Default = Template.bind({});
+export const Default = DefaultTemplate.bind({});
 Default.args = {
-	defaultIcon: { type: 'icon', value: 'smile' },
 	buttonTooltip: 'Select an icon',
 	availableIcons: TEST_ICONS,
 };
 
-export const WithCustomIconAndTooltip = Template.bind({});
+const CustomTooltipTemplate: StoryFn = (args, { argTypes }) => ({
+	components: { N8nIconPicker },
+	props: Object.keys(argTypes),
+	setup: () => ({ args }),
+	data: () => ({
+		icon: { type: 'icon', value: 'layer-group' },
+	}),
+	template:
+		'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
+	methods: {
+		onIconSelected: action('iconSelected'),
+	},
+});
+
+export const WithCustomIconAndTooltip = CustomTooltipTemplate.bind({});
 WithCustomIconAndTooltip.args = {
-	defaultIcon: { type: 'icon', value: 'layer-group' },
 	availableIcons: [...TEST_ICONS],
 	buttonTooltip: 'Select something...',
 };
 
-export const OnlyEmojis = Template.bind({});
+const OnlyEmojiTemplate: StoryFn = (args, { argTypes }) => ({
+	components: { N8nIconPicker },
+	props: Object.keys(argTypes),
+	setup: () => ({ args }),
+	data: () => ({
+		icon: { type: 'emoji', value: '🔥' },
+	}),
+	template:
+		'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
+	methods: {
+		onIconSelected: action('iconSelected'),
+	},
+});
+export const OnlyEmojis = OnlyEmojiTemplate.bind({});
 OnlyEmojis.args = {
-	defaultIcon: { type: 'emoji', value: '😁' },
 	buttonTooltip: 'Select an emoji',
 	availableIcons: [],
 };
