@@ -8,10 +8,29 @@ const ttl = 5 * 60 * 1000;
 // 1 minute
 const cleanUpInterval = 60 * 1000;
 
-type Options = {
+type RegistrationOptions = {
 	credentials: unknown;
 	nodeType: string;
 	nodeVersion?: string;
+};
+
+type GetConnectionOption<Pool> = RegistrationOptions & {
+	/** When a node requests for a connection pool, but none is available, this handler is called to create new instance of the pool, which then cached and re-used until it goes stale.  */
+	fallBackHandler: () => Promise<Pool>;
+
+	/** When a pool hasn't been used in a while, or when the server is shutting down, this handler is invoked to close the pool */
+	cleanUpHandler: (pool: Pool) => Promise<void>;
+};
+
+type Registration<Pool> = {
+	/** This is an instance of a Connection Pool class, that gets reused across multiple executions */
+	pool: Pool;
+
+	/** @see GetConnectionOption['closeHandler'] */
+	cleanUpHandler: (pool: Pool) => Promise<void>;
+
+	/** We keep this timestamp to check if a pool hasn't been used in a while, and if it needs to be closed */
+	lastUsed: number;
 };
 
 export class ConnectionPoolManager {
@@ -20,29 +39,23 @@ export class ConnectionPoolManager {
 	 * Creates a new instance if one doesn't exist.
 	 */
 	static getInstance(): ConnectionPoolManager {
-		if (instance) {
-			return instance;
+		if (!instance) {
+			instance = new ConnectionPoolManager();
 		}
-
-		instance = new ConnectionPoolManager();
-
 		return instance;
 	}
+
+	private map = new Map<string, Registration<unknown>>();
 
 	/**
 	 * Private constructor that initializes the connection pool manager.
 	 * Sets up cleanup handlers for process exit and stale connections.
 	 */
-	private constructor(
-		private map: Map<
-			string,
-			{ pool: unknown; cleanUpHandler: (pool: unknown) => Promise<void>; lastUsed: number }
-		> = new Map(),
-	) {
-		// Close all SSH connections when the process exits
+	private constructor() {
+		// Close all open pools when the process exits
 		process.on('exit', () => this.onShutdown());
 
-		// Regularly close stale SSH connections
+		// Regularly close stale pools
 		setInterval(() => this.cleanupStaleConnections(), cleanUpInterval);
 	}
 
@@ -50,7 +63,7 @@ export class ConnectionPoolManager {
 	 * Generates a unique key for connection pool identification.
 	 * Hashes the credentials and node information for security.
 	 */
-	private makeKey({ credentials, nodeType, nodeVersion }: Options): string {
+	private makeKey({ credentials, nodeType, nodeVersion }: RegistrationOptions): string {
 		// The credential contains decrypted secrets, that's why we hash it.
 		return createHash('sha1')
 			.update(
@@ -67,29 +80,18 @@ export class ConnectionPoolManager {
 	 * Gets or creates a connection pool for the given options.
 	 * Updates the last used timestamp for existing connections.
 	 */
-	async getConnection<T>(
-		options: Options,
-		fallBackHandler: () => Promise<T>,
-		cleanUpHandler: (pool: T) => Promise<void>,
-	): Promise<T> {
+	async getConnection<T>(options: GetConnectionOption<T>): Promise<T> {
 		const key = this.makeKey(options);
 
 		let value = this.map.get(key);
-
-		if (value) {
-			this.map.set(key, { ...value, lastUsed: Date.now() });
-
-			return value.pool as T;
+		if (!value) {
+			value = {
+				pool: await options.fallBackHandler(),
+				cleanUpHandler: options.cleanUpHandler,
+			} as Registration<unknown>;
 		}
 
-		value = {
-			pool: await fallBackHandler(),
-			cleanUpHandler: cleanUpHandler as (pool: unknown) => Promise<void>,
-			lastUsed: Date.now(),
-		};
-
-		this.map.set(key, value);
-
+		this.map.set(key, { ...value, lastUsed: Date.now() });
 		return value.pool as T;
 	}
 

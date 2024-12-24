@@ -31,24 +31,23 @@ describe('getConnection', () => {
 		const connectionType = {};
 		const fallBackHandler = jest.fn().mockResolvedValue(connectionType);
 		const cleanUpHandler = jest.fn();
-
-		// ACT 1
-		const connection = await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '1' },
+		const options = {
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
 			fallBackHandler,
 			cleanUpHandler,
-		);
+		};
+
+		// ACT 1
+		const connection = await cpm.getConnection<string>(options);
 
 		// ASSERT 1
 		expect(fallBackHandler).toHaveBeenCalledTimes(1);
 		expect(connection).toBe(connectionType);
 
 		// ACT 2
-		const connection2 = await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '1' },
-			fallBackHandler,
-			cleanUpHandler,
-		);
+		const connection2 = await cpm.getConnection<string>(options);
 		// ASSERT 2
 		expect(fallBackHandler).toHaveBeenCalledTimes(1);
 		expect(connection2).toBe(connectionType);
@@ -65,16 +64,20 @@ describe('getConnection', () => {
 		const cleanUpHandler2 = jest.fn();
 
 		// ACT 1
-		const connection1 = await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '1' },
-			fallBackHandler1,
-			cleanUpHandler1,
-		);
-		const connection2 = await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '2' },
-			fallBackHandler2,
-			cleanUpHandler2,
-		);
+		const connection1 = await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			fallBackHandler: fallBackHandler1,
+			cleanUpHandler: cleanUpHandler1,
+		});
+		const connection2 = await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '2',
+			fallBackHandler: fallBackHandler2,
+			cleanUpHandler: cleanUpHandler2,
+		});
 
 		// ASSERT
 		expect(fallBackHandler1).toHaveBeenCalledTimes(1);
@@ -91,11 +94,13 @@ describe('getConnection', () => {
 		const connectionType = {};
 		const fallBackHandler = jest.fn().mockResolvedValue(connectionType);
 		const cleanUpHandler = jest.fn();
-		await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '1' },
+		await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
 			fallBackHandler,
 			cleanUpHandler,
-		);
+		});
 
 		// ACT
 		jest.advanceTimersByTime(ttl + cleanUpInterval * 2);
@@ -111,20 +116,24 @@ describe('onShutdown', () => {
 		const connectionType1 = {};
 		const fallBackHandler1 = jest.fn().mockResolvedValue(connectionType1);
 		const cleanUpHandler1 = jest.fn();
-		await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '1' },
-			fallBackHandler1,
-			cleanUpHandler1,
-		);
+		await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			fallBackHandler: fallBackHandler1,
+			cleanUpHandler: cleanUpHandler1,
+		});
 
 		const connectionType2 = {};
 		const fallBackHandler2 = jest.fn().mockResolvedValue(connectionType2);
 		const cleanUpHandler2 = jest.fn();
-		await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '2' },
-			fallBackHandler2,
-			cleanUpHandler2,
-		);
+		await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '2',
+			fallBackHandler: fallBackHandler2,
+			cleanUpHandler: cleanUpHandler2,
+		});
 
 		// ACT 1
 		cpm.onShutdown();
@@ -139,20 +148,24 @@ describe('onShutdown', () => {
 		const connectionType1 = {};
 		const fallBackHandler1 = jest.fn().mockResolvedValue(connectionType1);
 		const cleanUpHandler1 = jest.fn();
-		await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '1' },
-			fallBackHandler1,
-			cleanUpHandler1,
-		);
+		await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '1',
+			fallBackHandler: fallBackHandler1,
+			cleanUpHandler: cleanUpHandler1,
+		});
 
 		const connectionType2 = {};
 		const fallBackHandler2 = jest.fn().mockResolvedValue(connectionType2);
 		const cleanUpHandler2 = jest.fn();
-		await cpm.getConnection<string>(
-			{ credentials: {}, nodeType: 'example', nodeVersion: '2' },
-			fallBackHandler2,
-			cleanUpHandler2,
-		);
+		await cpm.getConnection<string>({
+			credentials: {},
+			nodeType: 'example',
+			nodeVersion: '2',
+			fallBackHandler: fallBackHandler2,
+			cleanUpHandler: cleanUpHandler2,
+		});
 
 		// ACT 1
 		// @ts-expect-error we're not supposed to emit `exit` so it's missing from
