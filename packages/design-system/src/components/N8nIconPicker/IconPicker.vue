@@ -67,6 +67,10 @@ watch(
 	},
 );
 
+onMounted(() => {
+	generateEmojis();
+});
+
 const generateEmojis = () => {
 	const emojisArray: string[] = [];
 	emojiRanges.forEach(([start, end]) => {
@@ -84,21 +88,11 @@ onClickOutside(container, () => {
 	popupVisible.value = false;
 });
 
-const selectIcon = (value: string) => {
-	selectedIcon.value = { type: 'icon', value };
+const selectIcon = (value: Icon) => {
+	selectedIcon.value = value;
 	popupVisible.value = false;
 	emit('iconSelected', selectedIcon.value);
 };
-
-const selectEmoji = (value: string) => {
-	selectedIcon.value = { type: 'emoji', value };
-	popupVisible.value = false;
-	emit('iconSelected', selectedIcon.value);
-};
-
-onMounted(() => {
-	generateEmojis();
-});
 </script>
 
 <template>
@@ -137,7 +131,7 @@ onMounted(() => {
 					:class="$style.icon"
 					size="large"
 					data-test-id="icon-picker-icon"
-					@click="selectIcon(icon)"
+					@click="selectIcon({ type: 'icon', value: icon })"
 				/>
 			</div>
 			<div v-if="selectedTab === 'emojis'" :class="$style.content">
@@ -146,7 +140,7 @@ onMounted(() => {
 					:key="emoji"
 					:class="$style.emoji"
 					data-test-id="icon-picker-emoji"
-					@click="selectEmoji(emoji)"
+					@click="selectIcon({ type: 'emoji', value: emoji })"
 				>
 					{{ emoji }}
 				</span>

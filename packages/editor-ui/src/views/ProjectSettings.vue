@@ -477,5 +477,10 @@ onMounted(() => {
 	.project-name-input {
 		flex: 1;
 	}
+
+	// Icon picker button needs to have the same height as the input
+	button {
+		height: 40px !important;
+	}
 }
 </style>
