@@ -7,7 +7,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { PubSubEventMap } from '@/events/maps/pub-sub.event-map';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -16,7 +16,7 @@ import { assertNever } from '@/utils';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { PubSub } from './pubsub.types';
-import { WorkerStatusService } from '../worker-status.service';
+import { WorkerStatusService } from '../worker-status.service.ee';
 
 /**
  * Responsible for handling events emitted from messages received via a pubsub channel.

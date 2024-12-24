@@ -11,7 +11,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 import { createTeamProject } from '@test-integration/db/projects';
 

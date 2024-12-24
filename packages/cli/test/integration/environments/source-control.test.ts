@@ -2,9 +2,9 @@ import { Container } from 'typedi';
 
 import config from '@/config';
 import type { User } from '@/databases/entities/user';
-import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
-import { SourceControlService } from '@/environments/source-control/source-control.service.ee';
-import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
+import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
