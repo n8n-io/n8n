@@ -3,7 +3,7 @@
 // eslint-disable import/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
-import { ref, defineProps, onMounted, computed } from 'vue';
+import { ref, defineProps, onMounted, computed, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 
@@ -59,6 +59,13 @@ const tabs = ref<Array<{ value: string; label: string }>>(
 const selectedTab = ref<string>(tabs.value[0].value);
 const selectedIcon = ref<Icon>(props.defaultIcon);
 const emojis = ref<string[]>([]);
+
+watch(
+	() => props.defaultIcon,
+	(newValue) => {
+		selectedIcon.value = newValue;
+	},
+);
 
 const generateEmojis = () => {
 	const emojisArray: string[] = [];

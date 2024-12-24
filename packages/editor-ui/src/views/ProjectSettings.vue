@@ -7,7 +7,8 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectIcon, type Project, type ProjectRelation } from '@/types/projects.types';
+import type { ProjectIcon } from '@/types/projects.types';
+import { type Project, type ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
@@ -259,6 +260,9 @@ watch(
 			: [];
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
+		if (projectsStore.currentProject?.icon) {
+			projectIcon.value = projectsStore.currentProject.icon;
+		}
 	},
 	{ immediate: true },
 );
@@ -283,7 +287,7 @@ onMounted(() => {
 				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
 				<div :class="$style['project-name']">
 					<N8nIconPicker
-						:default-icon="projectsStore.currentProject?.icon ?? projectIcon"
+						:default-icon="projectIcon"
 						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
 						:available-icons="availableProjectIcons"
 						@icon-selected="onIconUpdated"

@@ -18,7 +18,7 @@ export type ProjectRelationPayload = { userId: string; role: ProjectRole };
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
-	icon: { type: string; value: string } | null;
+	icon: ProjectIcon | null;
 	type: ProjectType;
 	createdAt: string;
 	updatedAt: string;
