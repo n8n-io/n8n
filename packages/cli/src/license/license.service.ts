@@ -1,5 +1,5 @@
+import { Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { Logger } from 'n8n-workflow';
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -19,13 +19,14 @@ export class LicenseService {
 		private eventBus: any,
 		_eventService: any,
 	) {
-		this.logger.debug('Initializing LicenseService');
+		this.logger?.debug('Initializing LicenseService');
 		this.setupEventHandlers();
 	}
 
 	private setupEventHandlers() {
-		this.eventBus.on('license.updated', () => {
-			this.logger.debug('License updated');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+		this.eventBus?.on('license.updated', () => {
+			this.logger?.debug('License updated');
 		});
 	}
 

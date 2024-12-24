@@ -1,9 +1,10 @@
+import { GlobalConfig } from '@n8n/config';
+import { InstanceSettings } from 'n8n-core';
+import { Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
+
 import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
-import type { Logger } from 'n8n-workflow';
-import type { InstanceSettings } from 'n8n-core';
-import type { GlobalConfig } from '@n8n/config';
 
 export type FeatureReturnType = Partial<
 	{
@@ -30,12 +31,13 @@ type Entitlements = {
 
 @Service()
 export class License {
+	// eslint-disable-next-line @typescript-eslint/no-useless-constructor
 	constructor(
-		_logger: Logger,
-		_instanceSettings: InstanceSettings,
-		_licenseManager: any,
-		_eventBus: any,
-		_config: GlobalConfig,
+		private logger: Logger,
+		private instanceSettings: InstanceSettings,
+		private licenseManager: any,
+		private eventBus: any,
+		private config: GlobalConfig,
 	) {}
 
 	async init() {
@@ -242,7 +244,7 @@ export class License {
 	}
 
 	async reinit(): Promise<void> {
-		return this.init();
+		return await this.init();
 	}
 
 	async refresh(): Promise<void> {
