@@ -13,12 +13,12 @@ import type { CredentialsEntity } from '@/databases/entities/credentials-entity'
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { OAuthRequest } from '@/requests';
-import { SecretsHelper } from '@/secrets-helpers';
+import { SecretsHelper } from '@/secrets-helpers.ee';
 import { mockInstance } from '@test/mocking';
 
 describe('OAuth2CredentialController', () => {

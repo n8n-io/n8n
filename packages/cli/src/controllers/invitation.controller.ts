@@ -17,7 +17,7 @@ import { PostHogClient } from '@/posthog';
 import { UserRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
 
 @RestController('/invitations')
 export class InvitationController {

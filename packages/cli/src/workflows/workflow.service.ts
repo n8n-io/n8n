@@ -27,12 +27,12 @@ import { validateEntity } from '@/generic-helpers';
 import { hasSharing, type ListQuery } from '@/requests';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()

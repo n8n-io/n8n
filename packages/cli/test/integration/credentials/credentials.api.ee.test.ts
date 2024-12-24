@@ -8,7 +8,7 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 

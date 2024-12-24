@@ -23,7 +23,7 @@ import {
 	ProjectService,
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
-} from '@/services/project.service';
+} from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 @RestController('/projects')
