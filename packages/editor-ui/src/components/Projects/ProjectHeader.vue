@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
-import { ProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
@@ -105,16 +105,7 @@ const onSelect = (action: string) => {
 <template>
 	<div>
 		<div :class="[$style.projectHeader]">
-			<div :class="[$style.icon]">
-				<N8nIcon
-					v-if="headerIcon.type === 'icon'"
-					:icon="headerIcon.value"
-					color="text-light"
-				></N8nIcon>
-				<N8nText v-else-if="headerIcon.type === 'emoji'" color="text-light" size="xsmall">
-					{{ headerIcon.value }}
-				</N8nText>
-			</div>
+			<ProjectIcon :icon="headerIcon" size="medium" />
 			<div>
 				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 				<N8nText color="text-light">
