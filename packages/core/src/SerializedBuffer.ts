@@ -1,4 +1,4 @@
-import { isObjectLiteral } from './utils';
+import { isObjectLiteral } from '@/utils';
 
 /** A nodejs Buffer gone through JSON.stringify */
 export type SerializedBuffer = {

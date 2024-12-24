@@ -2,20 +2,26 @@ import type { LogScope } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import callsites from 'callsites';
 import type { TransformableInfo } from 'logform';
-import { InstanceSettings, isObjectLiteral } from 'n8n-core';
 import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
+import type {
+	Logger as LoggerType,
+	LogLocationMetadata,
+	LogLevel,
+	LogMetadata,
+} from 'n8n-workflow';
 import path, { basename } from 'node:path';
 import pc from 'picocolors';
 import { Service } from 'typedi';
 import winston from 'winston';
 
-import { inDevelopment, inProduction } from '@/constants';
+import { inDevelopment, inProduction } from '@/Constants';
+import { InstanceSettingsConfig } from '@/InstanceSettingsConfig';
+import { isObjectLiteral } from '@/utils';
 
-import { noOp } from './constants';
-import type { LogLocationMetadata, LogLevel, LogMetadata } from './types';
+const noOp = () => {};
 
 @Service()
-export class Logger {
+export class Logger implements LoggerType {
 	private internalLogger: winston.Logger;
 
 	private readonly level: LogLevel;
@@ -28,7 +34,7 @@ export class Logger {
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		{ isRoot }: { isRoot?: boolean } = { isRoot: true },
 	) {
 		this.level = this.globalConfig.logging.level;
@@ -49,6 +55,8 @@ export class Logger {
 			if (outputs.includes('file')) this.setFileTransport();
 
 			this.scopes = new Set(scopes);
+		} else {
+			this.scopes = new Set();
 		}
 
 		if (isRoot) LoggerProxy.init(this);
@@ -61,7 +69,9 @@ export class Logger {
 	/** Create a logger that injects the given scopes into its log metadata. */
 	scoped(scopes: LogScope | LogScope[]) {
 		scopes = Array.isArray(scopes) ? scopes : [scopes];
-		const scopedLogger = new Logger(this.globalConfig, this.instanceSettings, { isRoot: false });
+		const scopedLogger = new Logger(this.globalConfig, this.instanceSettingsConfig, {
+			isRoot: false,
+		});
 		const childLogger = this.internalLogger.child({ scopes });
 
 		scopedLogger.setInternalLogger(childLogger);
@@ -107,10 +117,10 @@ export class Logger {
 	}
 
 	private scopeFilter() {
-		return winston.format((info: TransformableInfo & { metadata: LogMetadata }) => {
+		return winston.format((info: TransformableInfo) => {
 			if (!this.isScopingEnabled) return info;
 
-			const { scopes } = info.metadata;
+			const { scopes } = (info as unknown as { metadata: LogMetadata }).metadata;
 
 			const shouldIncludeScope =
 				scopes && scopes?.length > 0 && scopes.some((s) => this.scopes.has(s));
@@ -179,7 +189,7 @@ export class Logger {
 		);
 
 		const filename = path.join(
-			this.instanceSettings.n8nFolder,
+			this.instanceSettingsConfig.n8nFolder,
 			this.globalConfig.logging.file.location,
 		);
 

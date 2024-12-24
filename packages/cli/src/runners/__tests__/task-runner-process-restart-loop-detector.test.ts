@@ -1,7 +1,7 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
+import type { Logger } from 'n8n-core';
 
-import type { Logger } from '@/logging/logger.service';
 import type { TaskRunnerAuthService } from '@/runners/auth/task-runner-auth.service';
 import { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart-loop-error';
 import { RunnerLifecycleEvents } from '@/runners/runner-lifecycle-events';
