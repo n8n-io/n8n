@@ -31,7 +31,7 @@ export function isPhoneValid(phone: string): boolean {
 	return VALID_PHONE_REGEX.test(String(phone));
 }
 
-function dateToIsoSupressMillis(dateTime: string) {
+export function dateToIsoSupressMillis(dateTime: string) {
 	const options: ToISOTimeOptions = { suppressMilliseconds: true };
 	return DateTime.fromISO(dateTime).toISO(options);
 }
