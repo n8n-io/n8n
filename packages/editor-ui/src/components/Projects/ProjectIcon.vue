@@ -4,6 +4,7 @@ import type { ProjectIcon } from '@/types/projects.types';
 type Props = {
 	icon: ProjectIcon;
 	size?: 'small' | 'medium' | 'large';
+	round?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -11,7 +12,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 </script>
 <template>
-	<div :class="[$style.container, $style[`size-${props.size}`]]">
+	<div :class="[$style.container, $style[`size-${props.size}`], { [$style.round]: props.round }]">
 		<N8nIcon
 			v-if="props.icon.type === 'icon'"
 			:icon="props.icon.value"
@@ -30,11 +31,10 @@ const props = withDefaults(defineProps<Props>(), {
 	justify-content: center;
 	border: 1px solid var(--color-foreground-light);
 	border-radius: var(--border-radius-base);
-}
 
-.size-small {
-	width: 24px;
-	height: 24px;
+	&.round {
+		border-radius: 50%;
+	}
 }
 
 .size-small {
@@ -52,6 +52,16 @@ const props = withDefaults(defineProps<Props>(), {
 
 	.emoji {
 		font-size: var(--font-size-xs);
+	}
+}
+
+.size-large {
+	// Make this inline with user avatar size
+	width: 40px;
+	height: 40px;
+
+	.emoji {
+		font-size: var(--font-size-s);
 	}
 }
 </style>

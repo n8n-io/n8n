@@ -30,16 +30,7 @@ const projectIcon = computed(() => {
 <template>
 	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
 		<div>
-			<div v-if="projectIcon" :class="[$style.icon]">
-				<N8nIcon
-					v-if="projectIcon.type === 'icon'"
-					:icon="projectIcon.value"
-					color="text-light"
-				></N8nIcon>
-				<N8nText v-else-if="projectIcon.type === 'emoji'" color="text-light" size="large">
-					{{ projectIcon.value }}
-				</N8nText>
-			</div>
+			<ProjectIcon v-if="projectIcon" :icon="projectIcon" size="large" :round="true" />
 			<N8nAvatar v-else :first-name="processedName.firstName" :last-name="processedName.lastName" />
 			<div :class="$style.text">
 				<p v-if="processedName.firstName || processedName.lastName">
