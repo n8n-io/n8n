@@ -2,6 +2,7 @@ import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
 import { TEST_ICONS } from './constants';
+import type { Icon } from './IconPicker.vue';
 import N8nIconPicker from './IconPicker.vue';
 
 export default {
@@ -10,59 +11,37 @@ export default {
 	argTypes: {},
 };
 
-const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
-	components: { N8nIconPicker },
-	props: Object.keys(argTypes),
-	setup: () => ({ args }),
-	data: () => ({
-		icon: { type: 'icon', value: 'smile' },
-	}),
-	template:
-		'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
-	methods: {
-		onIconSelected: action('iconSelected'),
-	},
-});
+function createTemplate(icon: Icon): StoryFn {
+	return (args, { argTypes }) => ({
+		components: { N8nIconPicker },
+		props: Object.keys(argTypes),
+		setup: () => ({ args }),
+		data: () => ({
+			icon,
+		}),
+		template:
+			'<div style="height: 500px"><div style="height: 40px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div></div>',
+		methods: {
+			onIconSelected: action('iconSelected'),
+		},
+	});
+}
 
+const DefaultTemplate = createTemplate({ type: 'icon', value: 'smile' });
 export const Default = DefaultTemplate.bind({});
 Default.args = {
 	buttonTooltip: 'Select an icon',
 	availableIcons: TEST_ICONS,
 };
 
-const CustomTooltipTemplate: StoryFn = (args, { argTypes }) => ({
-	components: { N8nIconPicker },
-	props: Object.keys(argTypes),
-	setup: () => ({ args }),
-	data: () => ({
-		icon: { type: 'icon', value: 'layer-group' },
-	}),
-	template:
-		'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
-	methods: {
-		onIconSelected: action('iconSelected'),
-	},
-});
-
+const CustomTooltipTemplate = createTemplate({ type: 'icon', value: 'layer-group' });
 export const WithCustomIconAndTooltip = CustomTooltipTemplate.bind({});
 WithCustomIconAndTooltip.args = {
 	availableIcons: [...TEST_ICONS],
 	buttonTooltip: 'Select something...',
 };
 
-const OnlyEmojiTemplate: StoryFn = (args, { argTypes }) => ({
-	components: { N8nIconPicker },
-	props: Object.keys(argTypes),
-	setup: () => ({ args }),
-	data: () => ({
-		icon: { type: 'emoji', value: '🔥' },
-	}),
-	template:
-		'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
-	methods: {
-		onIconSelected: action('iconSelected'),
-	},
-});
+const OnlyEmojiTemplate = createTemplate({ type: 'emoji', value: '🔥' });
 export const OnlyEmojis = OnlyEmojiTemplate.bind({});
 OnlyEmojis.args = {
 	buttonTooltip: 'Select an emoji',

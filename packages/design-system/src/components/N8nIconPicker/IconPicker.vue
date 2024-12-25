@@ -18,7 +18,7 @@ const emojiRanges = [
 	[0x1f400, 0x1f4ff], // Additional pictographs
 ];
 
-type Icon = {
+export type Icon = {
 	type: 'icon' | 'emoji';
 	value: string;
 };
@@ -152,11 +152,31 @@ const selectIcon = (value: Icon) => {
 <style module lang="scss">
 .container {
 	position: relative;
+	height: 100%;
+	max-height: var(--spacing-2xl);
+}
+
+.icon-picker-button {
+	aspect-ratio: 1;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.icon-button,
+.emoji-button {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .emoji-button {
-	padding: var(--spacing-xs);
+	font-size: var(--font-size-lg);
 }
+
 .popup {
 	position: absolute;
 	z-index: 1;
