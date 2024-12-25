@@ -10,7 +10,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useRootStore } from '@/stores/root.store';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
-import { claimFreeAiCredits } from '@/api/ai';
+import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('@/composables/useToast', () => ({
 	useToast: vi.fn(),
@@ -44,10 +44,6 @@ vi.mock('@/stores/root.store', () => ({
 	useRootStore: vi.fn(),
 }));
 
-vi.mock('@/api/ai', () => ({
-	claimFreeAiCredits: vi.fn(),
-}));
-
 const assertUserCannotClaimCredits = () => {
 	expect(screen.queryByText('Get 100 free OpenAI API credits')).not.toBeInTheDocument();
 	expect(screen.queryByRole('button', { name: 'Claim credits' })).not.toBeInTheDocument();
@@ -74,6 +70,7 @@ describe('FreeAiCreditsCallout', () => {
 		(useCredentialsStore as any).mockReturnValue({
 			allCredentials: [],
 			upsertCredential: vi.fn(),
+			claimFreeAiCredits: vi.fn(),
 		});
 
 		(useUsersStore as any).mockReturnValue({
@@ -112,6 +109,8 @@ describe('FreeAiCreditsCallout', () => {
 	});
 
 	it('should show success callout when credit are claimed', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+
 		renderComponent(FreeAiCreditsCallout);
 
 		const claimButton = screen.getByRole('button', {
@@ -120,7 +119,7 @@ describe('FreeAiCreditsCallout', () => {
 
 		await fireEvent.click(claimButton);
 
-		expect(claimFreeAiCredits).toHaveBeenCalledWith({}, { projectId: 'test-project-id' });
+		expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalledWith('test-project-id');
 		assertUserClaimedCredits();
 	});
 

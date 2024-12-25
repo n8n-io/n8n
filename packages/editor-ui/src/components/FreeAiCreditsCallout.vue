@@ -35,7 +35,6 @@ const credentialsStore = useCredentialsStore();
 const usersStore = useUsersStore();
 const ndvStore = useNDVStore();
 const projectsStore = useProjectsStore();
-const rootStore = useRootStore();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -71,11 +70,7 @@ const onClaimCreditsClicked = async () => {
 	claimingCredits.value = true;
 
 	try {
-		const credentials = await claimFreeAiCredits(rootStore.restApiContext, {
-			projectId: projectsStore.currentProject?.id,
-		});
-
-		credentialsStore.upsertCredential(credentials as unknown as ICredentialsResponse);
+		await credentialsStore.claimFreeAiCredits(projectsStore.currentProject?.id);
 
 		if (usersStore?.currentUser?.settings) {
 			usersStore.currentUser.settings.userClaimedAiCredits = true;
