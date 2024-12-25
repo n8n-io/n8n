@@ -49,6 +49,19 @@ const emit = defineEmits<{
 
 const hasAvailableIcons = computed(() => props.availableIcons.length > 0);
 
+const emojis = computed(() => {
+	const emojisArray: string[] = [];
+	emojiRanges.forEach(([start, end]) => {
+		for (let i = start; i <= end; i++) {
+			const emoji = String.fromCodePoint(i);
+			if (isEmojiSupported(emoji)) {
+				emojisArray.push(emoji);
+			}
+		}
+	});
+	return emojisArray;
+});
+
 const popupVisible = ref(false);
 const container = ref<HTMLDivElement>();
 const tabs = ref<Array<{ value: string; label: string }>>(
@@ -60,28 +73,10 @@ const tabs = ref<Array<{ value: string; label: string }>>(
 		: [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }],
 );
 const selectedTab = ref<string>(tabs.value[0].value);
-const emojis = ref<string[]>([]);
 
 const selectedIcon = computed({
 	get: () => props.modelValue,
 	set: (value: Icon) => emit('update:modelValue', value),
-});
-
-onMounted(() => {
-	generateEmojis();
-});
-
-const generateEmojis = useMemoize(() => {
-	const emojisArray: string[] = [];
-	emojiRanges.forEach(([start, end]) => {
-		for (let i = start; i <= end; i++) {
-			const emoji = String.fromCodePoint(i);
-			if (isEmojiSupported(emoji)) {
-				emojisArray.push(emoji);
-			}
-		}
-	});
-	emojis.value = emojisArray;
 });
 
 onClickOutside(container, () => {
@@ -128,7 +123,7 @@ const selectIcon = (value: Icon) => {
 			<div :class="$style.tabs">
 				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
 			</div>
-			<div v-if="selectedTab === 'icons'" :class="$style.content">
+			<div v-show="selectedTab === 'icons'" :class="$style.content">
 				<N8nIcon
 					v-for="icon in availableIcons"
 					:key="icon"
@@ -139,7 +134,7 @@ const selectIcon = (value: Icon) => {
 					@click="selectIcon({ type: 'icon', value: icon })"
 				/>
 			</div>
-			<div v-if="selectedTab === 'emojis'" :class="$style.content">
+			<div v-show="selectedTab === 'emojis'" :class="$style.content">
 				<span
 					v-for="emoji in emojis"
 					:key="emoji"
