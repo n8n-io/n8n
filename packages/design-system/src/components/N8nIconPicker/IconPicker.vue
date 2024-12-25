@@ -123,7 +123,7 @@ const selectIcon = (value: Icon) => {
 			<div :class="$style.tabs">
 				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
 			</div>
-			<div v-show="selectedTab === 'icons'" :class="$style.content">
+			<div v-if="selectedTab === 'icons'" :class="$style.content">
 				<N8nIcon
 					v-for="icon in availableIcons"
 					:key="icon"
@@ -134,7 +134,7 @@ const selectIcon = (value: Icon) => {
 					@click="selectIcon({ type: 'icon', value: icon })"
 				/>
 			</div>
-			<div v-show="selectedTab === 'emojis'" :class="$style.content">
+			<div v-if="selectedTab === 'emojis'" :class="$style.content">
 				<span
 					v-for="emoji in emojis"
 					:key="emoji"
