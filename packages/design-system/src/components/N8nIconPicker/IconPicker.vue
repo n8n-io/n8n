@@ -1,11 +1,19 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
 // eslint-disable import/no-extraneous-dependencies
-import { onClickOutside, useMemoize } from '@vueuse/core';
+import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
-import { ref, defineProps, onMounted, computed } from 'vue';
+import { ref, defineProps, computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+
+/**
+ * Simple n8n icon picker component with support for font icons and emojis.
+ * In order to keep this component as dependency-free as possible, it only renders externally provided font icons.
+ * Emojis are rendered from `emojiRanges` array.
+ * If we want to introduce advanced features like search, we need to use libraries like `emojilib`.
+ */
+defineOptions({ name: 'N8nIconPicker' });
 
 const emojiRanges = [
 	[0x1f600, 0x1f64f], // Emoticons
@@ -25,22 +33,19 @@ export type Icon = {
 
 const { t } = useI18n();
 
-defineOptions({ name: 'N8nIconPicker' });
+type Props = {
+	modelValue: Icon;
+	buttonTooltip: string;
+	availableIcons: string[];
+	buttonSize?: 'small' | 'large';
+};
 
-// TODO: Extract to type
-// TODO: Add comments about emoji library and search
-const props = withDefaults(
-	defineProps<{
-		modelValue: Icon;
-		buttonTooltip: string;
-		availableIcons: string[];
-	}>(),
-	{
-		modelValue: () => ({ type: 'icon', value: 'smile' }),
-		buttonTooltip: 'Select an icon',
-		availableIcons: () => [],
-	},
-);
+const props = withDefaults(defineProps<Props>(), {
+	modelValue: () => ({ type: 'icon', value: 'smile' }),
+	buttonTooltip: 'Select an icon',
+	availableIcons: () => [],
+	buttonSize: 'large',
+});
 
 const emit = defineEmits<{
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -63,7 +68,6 @@ const emojis = computed(() => {
 });
 
 const popupVisible = ref(false);
-const container = ref<HTMLDivElement>();
 const tabs = ref<Array<{ value: string; label: string }>>(
 	hasAvailableIcons.value
 		? [
@@ -73,6 +77,8 @@ const tabs = ref<Array<{ value: string; label: string }>>(
 		: [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }],
 );
 const selectedTab = ref<string>(tabs.value[0].value);
+
+const container = ref<HTMLDivElement>();
 
 const selectedIcon = computed({
 	get: () => props.modelValue,
@@ -92,10 +98,10 @@ const selectIcon = (value: Icon) => {
 <template>
 	<div
 		ref="container"
-		:class="$style.container"
+		:class="[$style.container, $style[buttonSize]]"
+		:aria-expanded="popupVisible"
 		role="button"
 		aria-haspopup="true"
-		:aria-expanded="popupVisible"
 	>
 		<div :class="$style['icon-picker-button']">
 			<N8nIconButton
@@ -103,7 +109,8 @@ const selectIcon = (value: Icon) => {
 				:class="$style['icon-button']"
 				:icon="selectedIcon.value ?? 'smile'"
 				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
-				size="large"
+				:size="buttonSize"
+				:square="true"
 				type="tertiary"
 				data-test-id="icon-picker-button"
 				@click="popupVisible = !popupVisible"
@@ -112,6 +119,8 @@ const selectIcon = (value: Icon) => {
 				v-else-if="selectedIcon.type === 'emoji'"
 				:class="$style['emoji-button']"
 				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
+				:size="buttonSize"
+				:square="true"
 				type="tertiary"
 				data-test-id="icon-picker-button"
 				@click="popupVisible = !popupVisible"
@@ -152,29 +161,6 @@ const selectIcon = (value: Icon) => {
 <style module lang="scss">
 .container {
 	position: relative;
-	height: 100%;
-	max-height: var(--spacing-2xl);
-}
-
-.icon-picker-button {
-	aspect-ratio: 1;
-	height: 100%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.icon-button,
-.emoji-button {
-	width: 100%;
-	height: 100%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.emoji-button {
-	font-size: var(--font-size-lg);
 }
 
 .popup {

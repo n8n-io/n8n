@@ -8,7 +8,15 @@ import N8nIconPicker from './IconPicker.vue';
 export default {
 	title: 'Atoms/Icon Picker',
 	component: N8nIconPicker,
-	argTypes: {},
+	argTypes: {
+		buttonTooltip: {
+			control: 'text',
+		},
+		buttonSize: {
+			type: 'select',
+			options: ['small', 'large'],
+		},
+	},
 };
 
 function createTemplate(icon: Icon): StoryFn {
@@ -20,7 +28,7 @@ function createTemplate(icon: Icon): StoryFn {
 			icon,
 		}),
 		template:
-			'<div style="height: 500px"><div style="height: 40px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div></div>',
+			'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
 		methods: {
 			onIconSelected: action('iconSelected'),
 		},
