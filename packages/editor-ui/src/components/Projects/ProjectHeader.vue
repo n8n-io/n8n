@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton } from 'n8n-design-system';
+import { N8nButton, N8nTooltip } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -119,17 +119,23 @@ const onSelect = (action: string) => {
 				</N8nText>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
-				<ProjectCreateResource
-					data-test-id="add-resource-buttons"
-					:actions="menu"
-					@action="onSelect"
+				<N8nTooltip
+					:disabled="!sourceControlStore.preferences.branchReadOnly"
+					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
-					<N8nButton
-						data-test-id="add-resource-workflow"
-						v-bind="createWorkflowButton"
-						@click="onSelect(ACTION_TYPES.WORKFLOW)"
-					/>
-				</ProjectCreateResource>
+					<ProjectCreateResource
+						data-test-id="add-resource-buttons"
+						:actions="menu"
+						:disabled="sourceControlStore.preferences.branchReadOnly"
+						@action="onSelect"
+					>
+						<N8nButton
+							data-test-id="add-resource-workflow"
+							v-bind="createWorkflowButton"
+							@click="onSelect(ACTION_TYPES.WORKFLOW)"
+						/>
+					</ProjectCreateResource>
+				</N8nTooltip>
 			</div>
 		</div>
 		<div :class="$style.actions">
