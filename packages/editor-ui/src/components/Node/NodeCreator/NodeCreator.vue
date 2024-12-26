@@ -188,10 +188,6 @@ onBeforeUnmount(() => {
 	z-index: var(--z-index-node-creator);
 	width: var(--node-creator-width);
 	color: $node-creator-text-color;
-
-	@media screen and (max-width: #{$node-creator-width + $sidebar-width}) {
-		--node-creator-width: calc(100vw - #{$sidebar-width});
-	}
 }
 
 .nodeCreatorScrim {
@@ -218,9 +214,16 @@ onBeforeUnmount(() => {
 	right: var(--spacing-xs);
 	background: transparent;
 	border: 0;
+	display: none;
+}
 
-	@include mixins.breakpoint('sm-and-up') {
-		display: none;
+@media screen and (max-width: #{$node-creator-width + $sidebar-width}) {
+	.nodeCreator {
+		--node-creator-width: calc(100vw - #{$sidebar-width});
+	}
+
+	.close {
+		display: inline-flex;
 	}
 }
 </style>
