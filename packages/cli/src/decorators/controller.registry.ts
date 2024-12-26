@@ -93,7 +93,7 @@ export class ControllerRegistry {
 					if (arg.type === 'param') args.push(req.params[arg.key]);
 					else if (['body', 'query'].includes(arg.type)) {
 						const paramType = argTypes[index] as ZodClass;
-						if (paramType && 'parse' in paramType) {
+						if (paramType && 'safeParse' in paramType) {
 							const output = paramType.safeParse(req[arg.type]);
 							if (output.success) args.push(output.data);
 							else {
