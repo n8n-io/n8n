@@ -22,8 +22,8 @@ beforeEach(async () => {
 describe('POST /tags', () => {
 	test('should create tag', async () => {
 		const resp = await authOwnerAgent.post('/tags').send({ name: 'test' });
-		expect(resp.statusCode).toBe(200);
 
+		expect(resp.statusCode).toBe(200);
 		const dbTag = await Container.get(TagRepository).findBy({ name: 'test' });
 		expect(dbTag.length === 1);
 	});
