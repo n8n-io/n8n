@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
+import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -563,7 +564,7 @@ async function loadResources() {
 		) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
-		const requestParams: DynamicNodeParameters.ResourceLocatorResultsRequest = {
+		const requestParams: ResourceLocatorRequestDto = {
 			nodeTypeAndVersion: {
 				name: props.node.type,
 				version: props.node.typeVersion,
