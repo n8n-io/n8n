@@ -1,5 +1,4 @@
 import type { Scope } from '@n8n/permissions';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import type express from 'express';
 import type {
 	BannerName,
@@ -573,16 +572,4 @@ export declare namespace NpsSurveyRequest {
 	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
 	// once some schema validation is added
 	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
-}
-
-// ----------------------------------
-//             /ai-assistant
-// ----------------------------------
-
-export declare namespace AiAssistantRequest {
-	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
-
-	type SuggestionPayload = { sessionId: string; suggestionId: string };
-	type ApplySuggestionPayload = AuthenticatedRequest<{}, {}, SuggestionPayload>;
-	type AskAiPayload = AuthenticatedRequest<{}, {}, AiAssistantSDK.AskAiRequestPayload>;
 }
