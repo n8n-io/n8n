@@ -143,8 +143,9 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
+
 const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
-const panningMouseButton = ref<number[]>([1]);
+const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
 onKeyDown(panningKeyCode.value, () => {
