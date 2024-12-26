@@ -88,7 +88,7 @@ const selectIcon = (value: Icon) => {
 <template>
 	<div
 		ref="container"
-		:class="[$style.container, $style[buttonSize]]"
+		:class="$style.container"
 		:aria-expanded="popupVisible"
 		role="button"
 		aria-haspopup="true"
