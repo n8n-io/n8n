@@ -199,12 +199,6 @@ export declare namespace MeRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<
-		{},
-		{},
-		Array<{ email: string; role?: AssignableRole }>
-	>;
-
 	export type InviteResponse = {
 		user: {
 			id: string;
@@ -231,19 +225,6 @@ export declare namespace UserRequest {
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
-	export type Update = AuthlessRequest<
-		{ id: string },
-		{},
-		{
-			inviterId: string;
-			firstName: string;
-			lastName: string;
-			password: string;
-		}
-	>;
 }
 
 // ----------------------------------
