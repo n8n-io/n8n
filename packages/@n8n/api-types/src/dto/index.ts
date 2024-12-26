@@ -23,3 +23,7 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
+
+export { CreateTagRequestDto } from './tag/create-tag-request.dto';
+export { UpdateTagRequestDto } from './tag/update-tag-request.dto';
+export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
