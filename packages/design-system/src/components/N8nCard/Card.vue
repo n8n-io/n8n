@@ -34,7 +34,11 @@ const classes = computed(() => ({
 				<slot name="footer" />
 			</div>
 		</div>
-		<div v-if="$slots.append" data-test-id="card-append" :class="$style.append">
+		<div
+			v-if="$slots.append"
+			data-test-id="card-append"
+			:class="[$style.append, 'n8n-card-append']"
+		>
 			<slot name="append" />
 		</div>
 	</div>

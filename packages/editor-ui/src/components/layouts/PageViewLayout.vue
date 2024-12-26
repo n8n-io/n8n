@@ -8,6 +8,8 @@
 </template>
 
 <style lang="scss" module>
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -17,6 +19,10 @@
 	box-sizing: border-box;
 	align-content: start;
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
+
+	@include mixins.breakpoint('sm-and-down') {
+		padding: var(--spacing-s) var(--spacing-s) 0;
+	}
 }
 
 .content {

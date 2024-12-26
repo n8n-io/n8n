@@ -104,19 +104,21 @@ const onSelect = (action: string) => {
 
 <template>
 	<div>
-		<div :class="[$style.projectHeader]">
-			<div :class="[$style.icon]">
-				<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
-			</div>
-			<div>
-				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
-				<N8nText color="text-light">
-					<slot name="subtitle">
-						<span v-if="!projectsStore.currentProject">{{
-							i18n.baseText('projects.header.subtitle')
-						}}</span>
-					</slot>
-				</N8nText>
+		<div :class="$style.projectHeader">
+			<div :class="$style.projectDescription">
+				<div :class="[$style.icon]">
+					<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
+				</div>
+				<div>
+					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+					<N8nText color="text-light">
+						<slot name="subtitle">
+							<span v-if="!projectsStore.currentProject">{{
+								i18n.baseText('projects.header.subtitle')
+							}}</span>
+						</slot>
+					</N8nText>
+				</div>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
 				<ProjectCreateResource
@@ -139,12 +141,23 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-.projectHeader {
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
+.projectHeader,
+.projectDescription {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding-bottom: var(--spacing-m);
+	gap: var(--spacing-2xs);
 	min-height: 64px;
+}
+
+.projectHeader {
+	padding-bottom: var(--spacing-m);
+
+	@include mixins.breakpoint('sm-and-down') {
+		flex-direction: column;
+		align-items: flex-start;
+	}
 }
 
 .headerActions {

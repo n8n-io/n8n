@@ -470,11 +470,14 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 .filters-row {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
 }
 
 .filters {
@@ -483,10 +486,24 @@ onMounted(async () => {
 	grid-auto-columns: max-content;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	width: 100%;
+
+	@include mixins.breakpoint('sm-and-down') {
+		grid-template-columns: 1fr auto;
+		grid-auto-flow: row;
+
+		> *:last-child {
+			grid-column: auto;
+		}
+	}
 }
 
 .search {
 	max-width: 240px;
+
+	@include mixins.breakpoint('sm-and-down') {
+		max-width: 100%;
+	}
 }
 
 .listWrapper {
@@ -497,6 +514,10 @@ onMounted(async () => {
 
 .sort-and-filter {
 	white-space: nowrap;
+
+	@include mixins.breakpoint('sm-and-down') {
+		width: 100%;
+	}
 }
 
 .datatable {

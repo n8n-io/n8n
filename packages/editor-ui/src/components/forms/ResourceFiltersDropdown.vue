@@ -99,10 +99,16 @@ onBeforeMount(async () => {
 				:class="$style['filter-button']"
 				data-test-id="resources-list-filters-trigger"
 			>
-				<n8n-badge v-show="filtersLength > 0" theme="primary" class="mr-4xs">
+				<n8n-badge
+					v-show="filtersLength > 0"
+					:class="$style['filter-button-count']"
+					theme="primary"
+				>
 					{{ filtersLength }}
 				</n8n-badge>
-				{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+				<span :class="$style['filter-button-text']">
+					{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+				</span>
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
@@ -136,9 +142,24 @@ onBeforeMount(async () => {
 </template>
 
 <style lang="scss" module>
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 .filter-button {
 	height: 40px;
 	align-items: center;
+
+	.filter-button-count {
+		margin-right: var(--spacing-4xs);
+		@include mixins.breakpoint('sm-and-down') {
+			margin-right: 0;
+		}
+	}
+
+	.filter-button-text {
+		@include mixins.breakpoint('sm-and-down') {
+			text-indent: -10000px;
+		}
+	}
 }
 
 .filters-dropdown {

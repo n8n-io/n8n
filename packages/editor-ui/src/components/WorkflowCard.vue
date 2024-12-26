@@ -268,6 +268,7 @@ function moveResource() {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
@@ -293,6 +294,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -301,6 +304,15 @@ function moveResource() {
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+	}
+
+	@include mixins.breakpoint('sm-and-down') {
+		flex-direction: column;
+
+		:global(.n8n-card-append) {
+			width: 100%;
+			padding: 0 var(--spacing-s) var(--spacing-s);
+		}
 	}
 }
 
@@ -329,5 +341,16 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+
+	@include mixins.breakpoint('sm-and-down') {
+		width: 100%;
+		padding: 0;
+	}
+}
+
+.cardBadge {
+	@include mixins.breakpoint('sm-and-down') {
+		margin-right: auto !important;
+	}
 }
 </style>
