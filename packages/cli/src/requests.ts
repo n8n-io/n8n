@@ -19,7 +19,7 @@ import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
+import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
 
 import type { ProjectRole } from './databases/entities/project-relation';
 import type { ScopesField } from './services/role.service';
@@ -213,22 +213,6 @@ export declare namespace OwnerRequest {
 	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
 
 	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
-}
-
-// ----------------------------------
-//     password reset endpoints
-// ----------------------------------
-
-export declare namespace PasswordResetRequest {
-	export type Email = AuthlessRequest<{}, {}, Pick<PublicUser, 'email'>>;
-
-	export type Credentials = AuthlessRequest<{}, {}, {}, { userId?: string; token?: string }>;
-
-	export type NewPassword = AuthlessRequest<
-		{},
-		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaCode?: string }
-	>;
 }
 
 // ----------------------------------
