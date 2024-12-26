@@ -150,13 +150,14 @@ onBeforeMount(async () => {
 
 	.filter-button-count {
 		margin-right: var(--spacing-4xs);
-		@include mixins.breakpoint('sm-and-down') {
+
+		@include mixins.breakpoint('xs-only') {
 			margin-right: 0;
 		}
 	}
 
 	.filter-button-text {
-		@include mixins.breakpoint('sm-and-down') {
+		@media screen and (max-width: 480px) {
 			text-indent: -10000px;
 		}
 	}

@@ -488,7 +488,7 @@ onMounted(async () => {
 	align-items: center;
 	width: 100%;
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include mixins.breakpoint('xs-only') {
 		grid-template-columns: 1fr auto;
 		grid-auto-flow: row;
 
