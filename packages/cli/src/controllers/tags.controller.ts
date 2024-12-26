@@ -15,7 +15,6 @@ import {
 	Param,
 	Query,
 } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthenticatedRequest } from '@/requests';
 import { TagService } from '@/services/tag.service';
 
