@@ -5,6 +5,9 @@ export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dt
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 
+export { OwnerSetupRequestDto } from './owner/owner-setup-request.dto';
+export { DismissBannerRequestDto } from './owner/dismiss-banner-request.dto';
+
 export { ForgotPasswordRequestDto } from './password-reset/forgot-password-request.dto';
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';

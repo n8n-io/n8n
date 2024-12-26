@@ -1,7 +1,6 @@
 import type { Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
-	BannerName,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	ILoadOptions,
@@ -193,26 +192,6 @@ export declare namespace ApiKeysRequest {
 
 export declare namespace MeRequest {
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
-}
-
-export interface UserSetupPayload {
-	email: string;
-	password: string;
-	firstName: string;
-	lastName: string;
-	mfaEnabled?: boolean;
-	mfaSecret?: string;
-	mfaRecoveryCodes?: string[];
-}
-
-// ----------------------------------
-//             /owner
-// ----------------------------------
-
-export declare namespace OwnerRequest {
-	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
-
-	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
 }
 
 // ----------------------------------
