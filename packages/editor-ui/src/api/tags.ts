@@ -13,7 +13,7 @@ export interface ITagsApi {
 
 export function createTagsApi(endpoint: TagsApiEndpoint): ITagsApi {
 	return {
-		getTags: async (context: IRestApiContext, { withUsageCount = false }): Promise<ITag[]> => {
+		getTags: async (context: IRestApiContext, { withUsageCount = 'false' }): Promise<ITag[]> => {
 			return await makeRestApiRequest(context, 'GET', endpoint, { withUsageCount });
 		},
 		createTag: async (context: IRestApiContext, params: { name: string }): Promise<ITag> => {
