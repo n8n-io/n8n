@@ -289,6 +289,9 @@ describe('GlobalConfig', () => {
 				apiHost: 'https://ph.n8n.io',
 			},
 		},
+		aiAssistant: {
+			baseUrl: '',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
