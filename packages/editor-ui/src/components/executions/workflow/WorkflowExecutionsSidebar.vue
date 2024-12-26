@@ -256,8 +256,6 @@ const goToUpgrade = () => {
 </template>
 
 <style module lang="scss">
-@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
-
 .container {
 	flex: 310px 0 0;
 	background-color: var(--color-background-xlight);
