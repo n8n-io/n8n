@@ -23,7 +23,7 @@ const data = {
 };
 const projectId = nanoId.nanoid();
 
-const credentialScopes: Scope[] = [
+export const credentialScopes: Scope[] = [
 	'credential:create',
 	'credential:delete',
 	'credential:list',
