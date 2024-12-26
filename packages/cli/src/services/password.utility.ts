@@ -19,6 +19,7 @@ export class PasswordUtility {
 		return await compare(plaintext, hashed);
 	}
 
+	/** @deprecated. All input validation should move to DTOs */
 	validate(plaintext?: string) {
 		if (!plaintext) throw new BadRequestError('Password is mandatory');
 
