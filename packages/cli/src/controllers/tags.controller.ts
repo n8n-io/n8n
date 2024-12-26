@@ -27,9 +27,11 @@ export class TagsController {
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()
-	workflowsEnabledMiddleware(_req: Request, _res: Response, next: NextFunction) {
-		if (this.config.getEnv('workflowTagsDisabled'))
-			throw new BadRequestError('Workflow tags are disabled');
+	workflowsEnabledMiddleware(_req: Request, res: Response, next: NextFunction) {
+		if (this.config.getEnv('workflowTagsDisabled')) {
+			res.status(400).json({ message: 'Workflow tags are disabled' });
+			return;
+		}
 		next();
 	}
 
