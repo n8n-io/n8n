@@ -256,6 +256,8 @@ const goToUpgrade = () => {
 </template>
 
 <style module lang="scss">
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 .container {
 	flex: 310px 0 0;
 	background-color: var(--color-background-xlight);
@@ -265,6 +267,7 @@ const goToUpgrade = () => {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	position: relative;
 }
 
 .heading {
@@ -314,9 +317,11 @@ const goToUpgrade = () => {
 	bottom: 0;
 	margin-left: calc(-1 * var(--spacing-l));
 	border-top: var(--border-base);
+	width: 100%;
 
 	& > div {
-		width: 309px;
+		width: 100%;
+		//width: 309px;
 		background-color: var(--color-background-light);
 		margin-top: 0 !important;
 	}
