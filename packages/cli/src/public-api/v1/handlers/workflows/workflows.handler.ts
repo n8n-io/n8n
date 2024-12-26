@@ -1,7 +1,8 @@
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { FindOptionsWhere } from '@n8n/typeorm';
+import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
 import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -111,7 +112,7 @@ export = {
 				id,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !config.getEnv('workflowTagsDisabled') },
+				{ includeTags: !Container.get(GlobalConfig).tags.workflowTagsDisabled },
 			);
 
 			if (!workflow) {
@@ -209,7 +210,7 @@ export = {
 				skip: offset,
 				take: limit,
 				where,
-				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+				...(!Container.get(GlobalConfig).tags.workflowTagsDisabled && { relations: ['tags'] }),
 			});
 
 			if (excludePinnedData) {
@@ -379,7 +380,7 @@ export = {
 		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			if (config.getEnv('workflowTagsDisabled')) {
+			if (Container.get(GlobalConfig).tags.workflowTagsDisabled) {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
@@ -406,7 +407,7 @@ export = {
 			const { id } = req.params;
 			const newTags = req.body.map((newTag) => newTag.id);
 
-			if (config.getEnv('workflowTagsDisabled')) {
+			if (Container.get(GlobalConfig).tags.workflowTagsDisabled) {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 

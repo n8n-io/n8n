@@ -1,8 +1,8 @@
 import { UpdateTagRequestDto, CreateTagRequestDto } from '@n8n/api-types';
 import { RetrieveTagQueryDto } from '@n8n/api-types/src/dto/tag/retrieve-tag-query.dto';
+import { GlobalConfig } from '@n8n/config';
 import { Request, Response, NextFunction } from 'express';
 
-import config from '@/config';
 import {
 	Delete,
 	Get,
@@ -20,14 +20,15 @@ import { TagService } from '@/services/tag.service';
 
 @RestController('/tags')
 export class TagsController {
-	private config = config;
-
-	constructor(private readonly tagService: TagService) {}
+	constructor(
+		private readonly tagService: TagService,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()
 	workflowsEnabledMiddleware(_req: Request, res: Response, next: NextFunction) {
-		if (this.config.getEnv('workflowTagsDisabled')) {
+		if (this.globalConfig.tags.workflowTagsDisabled) {
 			res.status(400).json({ message: 'Workflow tags are disabled' });
 			return;
 		}

@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from 'typedi';
 
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -6,9 +7,9 @@ import { createUserShell } from './shared/db/users';
 import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import config from '@/config';
 
 let authOwnerAgent: SuperAgentTest;
+
 const testServer = utils.setupTestServer({ endpointGroups: ['tags'] });
 
 beforeAll(async () => {
@@ -96,7 +97,8 @@ describe('POST /tags', () => {
 	});
 
 	test('should throw error if workflowTagsDisabled is true', async () => {
-		config.set('workflowTagsDisabled', true);
+		Container.get(GlobalConfig).tags.workflowTagsDisabled = true;
+
 		const resp = await authOwnerAgent.post('/tags').send({ name: 'new tag' });
 		expect(resp.status).toBe(400);
 	});
