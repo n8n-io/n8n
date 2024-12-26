@@ -5,6 +5,9 @@ export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dt
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 
+export { InviteUsersRequestDto } from './invitation/invite-users-request.dto';
+export { AcceptInvitationRequestDto } from './invitation/accept-invitation-request.dto';
+
 export { OwnerSetupRequestDto } from './owner/owner-setup-request.dto';
 export { DismissBannerRequestDto } from './owner/dismiss-banner-request.dto';
 

@@ -1,4 +1,5 @@
 import {
+	passwordSchema,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
 	UserUpdateRequestDto,
@@ -122,10 +123,6 @@ export class MeController {
 			);
 		}
 
-		if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-			throw new BadRequestError('Invalid payload.');
-		}
-
 		if (!user.password) {
 			throw new BadRequestError('Requesting user not set up.');
 		}
@@ -135,7 +132,12 @@ export class MeController {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const validPassword = this.passwordUtility.validate(newPassword);
+		const passwordValidation = passwordSchema.safeParse(newPassword);
+		if (!passwordValidation.success) {
+			throw new BadRequestError(
+				passwordValidation.error.errors.map(({ message }) => message).join(' '),
+			);
+		}
 
 		if (user.mfaEnabled) {
 			if (typeof mfaCode !== 'string') {
@@ -148,7 +150,7 @@ export class MeController {
 			}
 		}
 
-		user.password = await this.passwordUtility.hash(validPassword);
+		user.password = await this.passwordUtility.hash(newPassword);
 
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
