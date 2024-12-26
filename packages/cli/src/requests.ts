@@ -253,18 +253,6 @@ export declare namespace UserRequest {
 		error?: string;
 	};
 
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
 	export type Delete = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
 		{},
@@ -294,21 +282,6 @@ export declare namespace UserRequest {
 		}
 	>;
 }
-
-// ----------------------------------
-//             /login
-// ----------------------------------
-
-export type LoginRequest = AuthlessRequest<
-	{},
-	{},
-	{
-		email: string;
-		password: string;
-		mfaCode?: string;
-		mfaRecoveryCode?: string;
-	}
->;
 
 // ----------------------------------
 //          MFA endpoints
