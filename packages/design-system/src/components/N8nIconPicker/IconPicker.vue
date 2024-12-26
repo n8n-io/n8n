@@ -31,26 +31,21 @@ export type Icon = {
 	value: string;
 };
 
-const { t } = useI18n();
-
 type Props = {
-	modelValue: Icon;
 	buttonTooltip: string;
 	availableIcons: string[];
 	buttonSize?: 'small' | 'large';
 };
 
+const { t } = useI18n();
+
 const props = withDefaults(defineProps<Props>(), {
-	modelValue: () => ({ type: 'icon', value: 'smile' }),
 	buttonTooltip: 'Select an icon',
 	availableIcons: () => [],
 	buttonSize: 'large',
 });
 
-const emit = defineEmits<{
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'update:modelValue': [value: Icon];
-}>();
+const model = defineModel<Icon>({ default: { type: 'icon', value: 'smile' } });
 
 const hasAvailableIcons = computed(() => props.availableIcons.length > 0);
 
@@ -80,17 +75,12 @@ const selectedTab = ref<string>(tabs.value[0].value);
 
 const container = ref<HTMLDivElement>();
 
-const selectedIcon = computed({
-	get: () => props.modelValue,
-	set: (value: Icon) => emit('update:modelValue', value),
-});
-
 onClickOutside(container, () => {
 	popupVisible.value = false;
 });
 
 const selectIcon = (value: Icon) => {
-	selectedIcon.value = value;
+	model.value = value;
 	popupVisible.value = false;
 };
 </script>
@@ -105,9 +95,9 @@ const selectIcon = (value: Icon) => {
 	>
 		<div :class="$style['icon-picker-button']">
 			<N8nIconButton
-				v-if="selectedIcon.type === 'icon'"
+				v-if="model.type === 'icon'"
 				:class="$style['icon-button']"
-				:icon="selectedIcon.value ?? 'smile'"
+				:icon="model.value ?? 'smile'"
 				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
 				:size="buttonSize"
 				:square="true"
@@ -116,7 +106,7 @@ const selectIcon = (value: Icon) => {
 				@click="popupVisible = !popupVisible"
 			/>
 			<N8nButton
-				v-else-if="selectedIcon.type === 'emoji'"
+				v-else-if="model.type === 'emoji'"
 				:class="$style['emoji-button']"
 				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
 				:size="buttonSize"
@@ -125,7 +115,7 @@ const selectIcon = (value: Icon) => {
 				data-test-id="icon-picker-button"
 				@click="popupVisible = !popupVisible"
 			>
-				{{ selectedIcon.value }}
+				{{ model.value }}
 			</N8nButton>
 		</div>
 		<div v-if="popupVisible" :class="$style.popup">
