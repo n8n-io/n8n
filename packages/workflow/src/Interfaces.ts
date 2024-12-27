@@ -125,6 +125,7 @@ export interface IUser {
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
+	icon: { type: 'emoji' | 'icon'; value: string } | null;
 	type: 'personal' | 'team' | 'public';
 	createdAt: string;
 	updatedAt: string;
