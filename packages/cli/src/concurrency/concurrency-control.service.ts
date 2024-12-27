@@ -92,6 +92,15 @@ export class ConcurrencyControlService {
 		this.productionQueue.on('execution-released', async (executionId) => {
 			this.logger.debug('Execution released', { executionId });
 		});
+
+		this.evaluationQueue.on('execution-throttled', ({ executionId }) => {
+			this.logger.debug('Evaluation execution throttled', { executionId });
+			this.eventService.emit('execution-throttled', { executionId });
+		});
+
+		this.evaluationQueue.on('execution-released', async (executionId) => {
+			this.logger.debug('Evaluation execution released', { executionId });
+		});
 	}
 
 	/**
