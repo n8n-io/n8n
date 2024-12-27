@@ -1,11 +1,19 @@
-import { AiChatRequestDto, AiApplySuggestionRequestDto, AiAskRequestDto } from '@n8n/api-types';
+import {
+	AiChatRequestDto,
+	AiApplySuggestionRequestDto,
+	AiAskRequestDto,
+	AiFreeCreditsRequestDto,
+} from '@n8n/api-types';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
+import { FREE_AI_CREDITS_CREDENTIAL_NAME, OPEN_AI_API_CREDENTIAL_TYPE } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { Body, Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { CredentialRequest } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
@@ -71,7 +79,7 @@ export class AiController {
 	}
 
 	@Post('/free-credits')
-	async aiCredits(req: AiAssistantRequest.FreeAiCreditsPayload) {
+	async aiCredits(req: AuthenticatedRequest, _: Response, @Body payload: AiFreeCreditsRequestDto) {
 		try {
 			const aiCredits = await this.aiService.createFreeAiCredits(req.user);
 
@@ -83,6 +91,7 @@ export class AiController {
 					url: aiCredits.url,
 				},
 				isManaged: true,
+				projectId: payload?.projectId,
 			};
 
 			const newCredential = await this.credentialsService.createCredential(
