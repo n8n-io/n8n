@@ -12,6 +12,7 @@
 import { mock } from 'jest-mock-extended';
 import { pick } from 'lodash';
 import type {
+	ExecutionBaseError,
 	IConnection,
 	IExecuteData,
 	INode,
@@ -22,7 +23,6 @@ import type {
 	IRun,
 	IRunData,
 	IRunExecutionData,
-	ITaskMetadata,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -1190,6 +1190,109 @@ describe('WorkflowExecute', () => {
 				stoppedAt,
 				status: 'running',
 			});
+		});
+	});
+
+	describe('processSuccessExecution', () => {
+		const startedAt: Date = new Date('2023-01-01T00:00:00.000Z');
+		const workflow = new Workflow({
+			id: 'test',
+			nodes: [],
+			connections: {},
+			active: false,
+			nodeTypes: mock<INodeTypes>(),
+		});
+
+		let runExecutionData: IRunExecutionData;
+		let workflowExecute: WorkflowExecute;
+
+		beforeEach(() => {
+			runExecutionData = {
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			};
+			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+
+			jest.spyOn(workflowExecute, 'executeHook').mockResolvedValue(undefined);
+			jest.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation();
+		});
+
+		test('should handle different workflow completion scenarios', async () => {
+			// Test successful execution
+			const successResult = await workflowExecute.processSuccessExecution(startedAt, workflow);
+			expect(successResult.status).toBe('success');
+			expect(successResult.finished).toBe(true);
+
+			// Test execution with wait
+			runExecutionData.waitTill = new Date('2024-01-01');
+			const waitResult = await workflowExecute.processSuccessExecution(startedAt, workflow);
+			expect(waitResult.status).toBe('waiting');
+			expect(waitResult.waitTill).toEqual(runExecutionData.waitTill);
+
+			// Test execution with error
+			const testError = new Error('Test error') as ExecutionBaseError;
+
+			// Reset the status since it was changed by previous tests
+			workflowExecute['status'] = 'new';
+			runExecutionData.waitTill = undefined;
+			const errorResult = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				testError,
+			);
+			expect(errorResult.data.resultData.error).toBeDefined();
+			expect(errorResult.data.resultData.error?.message).toBe('Test error');
+
+			// Test canceled execution
+			const cancelError = new Error('Workflow execution canceled') as ExecutionBaseError;
+			const cancelResult = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				cancelError,
+			);
+			expect(cancelResult.data.resultData.error).toBeDefined();
+			expect(cancelResult.data.resultData.error?.message).toBe('Workflow execution canceled');
+		});
+
+		test('should handle static data, hooks, and cleanup correctly', async () => {
+			// Mock static data change
+			workflow.staticData.__dataChanged = true;
+			workflow.staticData.testData = 'changed';
+
+			// Mock cleanup function that's actually a promise
+			let cleanupCalled = false;
+			const mockCleanupPromise = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					cleanupCalled = true;
+					resolve();
+				}, 0);
+			});
+
+			const result = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				undefined,
+				mockCleanupPromise,
+			);
+
+			// Verify static data handling
+			expect(result).toBeDefined();
+			expect(workflowExecute.moveNodeMetadata).toHaveBeenCalled();
+			expect(workflowExecute.executeHook).toHaveBeenCalledWith('workflowExecuteAfter', [
+				result,
+				workflow.staticData,
+			]);
+
+			// Verify cleanup was called
+			await mockCleanupPromise;
+			expect(cleanupCalled).toBe(true);
 		});
 	});
 });

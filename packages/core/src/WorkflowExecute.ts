@@ -2092,6 +2092,27 @@ export class WorkflowExecute {
 		});
 	}
 
+	/**
+	 * Processes the final state of a workflow execution and prepares the execution result.
+	 * This method handles different completion scenarios: success, waiting, error, and canceled states.
+	 * It also manages cleanup tasks like static data updates and trigger deactivation.
+	 *
+	 * @param startedAt - The timestamp when the workflow execution started
+	 * @param workflow - The workflow being executed
+	 * @param executionError - Optional error that occurred during execution
+	 * @param closeFunction - Optional promise that handles cleanup of triggers/webhooks
+	 *
+	 * @returns A promise that resolves to the complete workflow execution data (IRun)
+	 *
+	 * @remarks
+	 * The function performs these tasks in order:
+	 * 1. Generates full execution data
+	 * 2. Sets appropriate status based on execution outcome
+	 * 3. Handles any static data changes
+	 * 4. Moves node metadata to its final location
+	 * 5. Executes the 'workflowExecuteAfter' hook
+	 * 6. Performs cleanup via closeFunction if provided
+	 */
 	async processSuccessExecution(
 		startedAt: Date,
 		workflow: Workflow,
