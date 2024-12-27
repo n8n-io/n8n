@@ -71,6 +71,8 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
+
+	globalConfig.tags.workflowTagsDisabled = false;
 });
 
 afterEach(async () => {
@@ -1296,16 +1298,12 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should fail due to non-existing workflow', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
 		const workflow = await createWorkflow({ tags }, member);
@@ -1330,8 +1328,6 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return empty array if workflow does not have tags', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
@@ -1356,16 +1352,12 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail due to non-existing workflow', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should add the tags, workflow have not got tags previously', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const workflow = await createWorkflow({}, member);
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
@@ -1424,8 +1416,6 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
@@ -1512,8 +1502,6 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		globalConfig.tags.workflowTagsDisabled = false;
-
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
