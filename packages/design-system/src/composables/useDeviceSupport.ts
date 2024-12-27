@@ -12,12 +12,16 @@ export function useDeviceSupport() {
 			!window.matchMedia('(any-pointer: fine)').matches,
 	);
 	const userAgent = ref(navigator.userAgent.toLowerCase());
-	const isMacOs = ref(
-		userAgent.value.includes('macintosh') ||
+
+	const isIOs = ref(
+		userAgent.value.includes('iphone') ||
 			userAgent.value.includes('ipad') ||
-			userAgent.value.includes('iphone') ||
 			userAgent.value.includes('ipod'),
 	);
+	const isAndroidOs = ref(userAgent.value.includes('android'));
+	const isMacOs = ref(userAgent.value.includes('macintosh') || isIOs.value);
+	const isMobileDevice = ref(isIOs.value || isAndroidOs.value);
+
 	const controlKeyCode = ref(isMacOs.value ? 'Meta' : 'Control');
 
 	function isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
@@ -30,7 +34,10 @@ export function useDeviceSupport() {
 	return {
 		userAgent: userAgent.value,
 		isTouchDevice: isTouchDevice.value,
+		isAndroidOs: isAndroidOs.value,
+		isIOs: isIOs.value,
 		isMacOs: isMacOs.value,
+		isMobileDevice: isMobileDevice.value,
 		controlKeyCode: controlKeyCode.value,
 		isCtrlKeyPressed,
 	};

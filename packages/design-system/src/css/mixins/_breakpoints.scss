@@ -1,0 +1,20 @@
+@use '../common/var';
+
+@mixin breakpoint($name) {
+	@if map-has-key(var.$breakpoints-spec, $name) {
+		$query: map-get(var.$breakpoints-spec, $name);
+		$media-query: '';
+
+		@each $key, $value in $query {
+			$media-query: '#{$media-query} and (#{$key}: #{$value})';
+		}
+
+		$media-query: unquote(str-slice($media-query, 6)); // Remove the initial ' and '
+
+		@media screen and #{$media-query} {
+			@content;
+		}
+	} @else {
+		@error "No breakpoint named `#{$name}` found in `$breakpoints-spec`.";
+	}
+}

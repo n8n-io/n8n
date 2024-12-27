@@ -126,7 +126,7 @@ const badgeTooltip = computed(() => {
 </script>
 <template>
 	<N8nTooltip :disabled="!badgeTooltip" placement="top">
-		<div class="mr-xs">
+		<div class="mr-xs" v-bind="$attrs">
 			<N8nBadge
 				v-if="badgeText"
 				:class="$style.badge"

@@ -75,6 +75,38 @@ describe('useDeviceSupport()', () => {
 		});
 	});
 
+	describe('isMobileDevice', () => {
+		it('should be true for iOS user agent', () => {
+			Object.defineProperty(navigator, 'userAgent', { value: 'iphone' });
+			const { isMobileDevice } = useDeviceSupport();
+			expect(isMobileDevice).toEqual(true);
+		});
+
+		it('should be true for Android user agent', () => {
+			Object.defineProperty(navigator, 'userAgent', { value: 'android' });
+			const { isMobileDevice } = useDeviceSupport();
+			expect(isMobileDevice).toEqual(true);
+		});
+
+		it('should be false for non-mobile user agent', () => {
+			Object.defineProperty(navigator, 'userAgent', { value: 'windows' });
+			const { isMobileDevice } = useDeviceSupport();
+			expect(isMobileDevice).toEqual(false);
+		});
+
+		it('should be true for iPad user agent', () => {
+			Object.defineProperty(navigator, 'userAgent', { value: 'ipad' });
+			const { isMobileDevice } = useDeviceSupport();
+			expect(isMobileDevice).toEqual(true);
+		});
+
+		it('should be true for iPod user agent', () => {
+			Object.defineProperty(navigator, 'userAgent', { value: 'ipod' });
+			const { isMobileDevice } = useDeviceSupport();
+			expect(isMobileDevice).toEqual(true);
+		});
+	});
+
 	describe('isCtrlKeyPressed()', () => {
 		it('should return true for metaKey press on macOS', () => {
 			Object.defineProperty(navigator, 'userAgent', { value: 'macintosh' });

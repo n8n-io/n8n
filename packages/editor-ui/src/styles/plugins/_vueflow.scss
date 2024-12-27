@@ -1,3 +1,5 @@
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 /**
  * Resizer
  */
@@ -56,6 +58,10 @@
 		fill: var(--color-foreground-dark);
 		opacity: 0.2;
 	}
+
+	@include mixins.breakpoint('xs-only') {
+		display: none;
+	}
 }
 
 /**
@@ -99,4 +105,21 @@
 .vue-flow__edges:has(.bring-to-front),
 .vue-flow__edge-label.selected {
 	z-index: 1 !important;
+}
+
+/**
+ * Controls
+ */
+
+.vue-flow__controls {
+	margin: var(--spacing-s);
+
+	@include mixins.breakpoint('xs-only') {
+		max-width: calc(100% - 42px - var(--spacing-s));
+		overflow: auto;
+		margin-left: 0;
+		margin-right: 0;
+		padding-left: var(--spacing-s);
+		padding-right: var(--spacing-s);
+	}
 }

@@ -475,6 +475,8 @@ const goToUpgrade = () => {
 </template>
 
 <style module lang="scss">
+@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
+
 .execListWrapper {
 	display: grid;
 	grid-template-rows: auto auto 1fr 0;
@@ -483,6 +485,10 @@ const goToUpgrade = () => {
 	width: 100%;
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
 	max-width: var(--content-container-width);
+
+	@include mixins.breakpoint('xs-only') {
+		padding: var(--spacing-xs) var(--spacing-xs) 0;
+	}
 }
 
 .execList {
