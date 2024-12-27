@@ -17,7 +17,6 @@ import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
-import type { UserSetupPayload } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 
@@ -47,6 +46,16 @@ const tablesToTruncate = [
 	'workflow_statistics',
 	'workflows_tags',
 ];
+
+type UserSetupPayload = {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
+};
 
 type ResetRequest = Request<
 	{},

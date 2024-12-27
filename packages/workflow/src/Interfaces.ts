@@ -2841,13 +2841,6 @@ export interface SecretsHelpersBase {
 	listSecrets(provider: string): string[];
 }
 
-export type BannerName =
-	| 'V1'
-	| 'TRIAL_OVER'
-	| 'TRIAL'
-	| 'NON_PRODUCTION_LICENSE'
-	| 'EMAIL_CONFIRMATION';
-
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 
 export type CallbackManager = CallbackManagerLC;
