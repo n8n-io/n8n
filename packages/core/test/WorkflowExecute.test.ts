@@ -14,6 +14,7 @@ import { pick } from 'lodash';
 import type {
 	IExecuteData,
 	INode,
+	INodeExecutionData,
 	INodeType,
 	INodeTypes,
 	IPinData,
@@ -27,8 +28,10 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
+	NodeConnectionType,
 	NodeExecutionOutput,
 	NodeHelpers,
+	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -602,6 +605,246 @@ describe('WorkflowExecute', () => {
 
 			abortController.abort();
 			expect(triggerResponse.closeFunction).toHaveBeenCalled();
+		});
+	});
+
+	describe('handleNodeErrorOutput', () => {
+		const testNode: INode = {
+			id: '1',
+			name: 'Node1',
+			type: 'test.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const nodeType = mock<INodeType>({
+			description: {
+				name: 'test',
+				displayName: 'test',
+				defaultVersion: 1,
+				properties: [],
+				inputs: [{ type: NodeConnectionType.Main }],
+				outputs: [
+					{ type: NodeConnectionType.Main },
+					{ type: NodeConnectionType.Main, category: 'error' },
+				],
+			},
+		});
+
+		const nodeTypes = mock<INodeTypes>();
+
+		const workflow = new Workflow({
+			id: 'test',
+			nodes: [testNode],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		const executionData = {
+			node: workflow.nodes.Node1,
+			data: {
+				main: [
+					[
+						{
+							json: { data: 'test' },
+							pairedItem: { item: 0, input: 0 },
+						},
+					],
+				],
+			},
+			source: {
+				[NodeConnectionType.Main]: [
+					{
+						previousNode: 'previousNode',
+						previousNodeOutput: 0,
+						previousNodeRun: 0,
+					},
+				],
+			},
+		};
+
+		const runExecutionData: IRunExecutionData = {
+			resultData: {
+				runData: {
+					previousNode: [
+						{
+							data: {
+								main: [[{ json: { someData: 'test' } }]],
+							},
+							source: [],
+							startTime: 0,
+							executionTime: 0,
+						},
+					],
+				},
+			},
+		};
+
+		let workflowExecute: WorkflowExecute;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+		});
+
+		test('should handle undefined error data input correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[undefined as unknown as INodeExecutionData],
+			];
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+			expect(nodeSuccessData[0]).toEqual([undefined]);
+			expect(nodeSuccessData[1]).toEqual([]);
+		});
+
+		test('should handle empty input', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [[]];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toHaveLength(0);
+			expect(nodeSuccessData[1]).toHaveLength(0);
+		});
+
+		test('should route error items to last output', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Test error', additionalData: 'preserved' },
+						pairedItem: { item: 0, input: 0 },
+					},
+					{
+						json: { regularData: 'success' },
+						pairedItem: { item: 1, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([
+				{
+					json: { additionalData: 'preserved', error: 'Test error' },
+					pairedItem: { item: 0, input: 0 },
+				},
+				{ json: { regularData: 'success' }, pairedItem: { item: 1, input: 0 } },
+			]);
+			expect(nodeSuccessData[1]).toEqual([]);
+		});
+
+		test('should handle error in json with message property', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: {
+							error: 'Error occurred',
+							message: 'Error details',
+						},
+						pairedItem: { item: 0, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: {
+						error: 'Error occurred',
+						message: 'Error details',
+						someData: 'test',
+					},
+					pairedItem: { item: 0, input: 0 },
+				},
+			]);
+		});
+
+		test('should preserve pairedItem data when routing errors', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Test error' },
+						pairedItem: [
+							{ item: 0, input: 0 },
+							{ item: 1, input: 1 },
+						],
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: { someData: 'test', error: 'Test error' },
+					pairedItem: [
+						{ item: 0, input: 0 },
+						{ item: 1, input: 1 },
+					],
+				},
+			]);
+		});
+
+		test('should route multiple error items correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Error 1', data: 'preserved1' },
+						pairedItem: { item: 0, input: 0 },
+					},
+					{
+						json: { error: 'Error 2', data: 'preserved2' },
+						pairedItem: { item: 1, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[1]).toEqual([]);
+			expect(nodeSuccessData[0]).toEqual([
+				{
+					json: { error: 'Error 1', data: 'preserved1' },
+					pairedItem: { item: 0, input: 0 },
+				},
+				{
+					json: { error: 'Error 2', data: 'preserved2' },
+					pairedItem: { item: 1, input: 0 },
+				},
+			]);
+		});
+
+		test('should handle complex pairedItem data correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Test error' },
+						pairedItem: [
+							{ item: 0, input: 0 },
+							{ item: 1, input: 1 },
+						],
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: { someData: 'test', error: 'Test error' },
+					pairedItem: [
+						{ item: 0, input: 0 },
+						{ item: 1, input: 1 },
+					],
+				},
+			]);
 		});
 	});
 });

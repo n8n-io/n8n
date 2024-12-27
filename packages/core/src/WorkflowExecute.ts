@@ -1489,119 +1489,7 @@ export class WorkflowExecute {
 								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
-									// If errorOutput is activated check all the output items for error data.
-									// If any is found, route them to the last output as that will be the
-									// error output.
-
-									const nodeType = workflow.nodeTypes.getByNameAndVersion(
-										executionData.node.type,
-										executionData.node.typeVersion,
-									);
-									const outputs = NodeHelpers.getNodeOutputs(
-										workflow,
-										executionData.node,
-										nodeType.description,
-									);
-									const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-									const mainOutputTypes = outputTypes.filter(
-										(output) => output === NodeConnectionType.Main,
-									);
-
-									const errorItems: INodeExecutionData[] = [];
-									const closeFunctions: CloseFunction[] = [];
-									// Create a WorkflowDataProxy instance that we can get the data of the
-									// item which did error
-									const executeFunctions = new ExecuteContext(
-										workflow,
-										executionData.node,
-										this.additionalData,
-										this.mode,
-										this.runExecutionData,
-										runIndex,
-										[],
-										executionData.data,
-										executionData,
-										closeFunctions,
-										this.abortController.signal,
-									);
-
-									const dataProxy = executeFunctions.getWorkflowDataProxy(0);
-
-									// Loop over all outputs except the error output as it would not contain data by default
-									for (
-										let outputIndex = 0;
-										outputIndex < mainOutputTypes.length - 1;
-										outputIndex++
-									) {
-										const successItems: INodeExecutionData[] = [];
-										const items = nodeSuccessData[outputIndex]?.length
-											? nodeSuccessData[outputIndex]
-											: [];
-
-										while (items.length) {
-											const item = items.shift();
-											if (item === undefined) {
-												continue;
-											}
-
-											let errorData: GenericValue | undefined;
-											if (item.error) {
-												errorData = item.error;
-												item.error = undefined;
-											} else if (item.json.error && Object.keys(item.json).length === 1) {
-												errorData = item.json.error;
-											} else if (
-												item.json.error &&
-												item.json.message &&
-												Object.keys(item.json).length === 2
-											) {
-												errorData = item.json.error;
-											}
-
-											if (errorData) {
-												const pairedItemData =
-													item.pairedItem && typeof item.pairedItem === 'object'
-														? Array.isArray(item.pairedItem)
-															? item.pairedItem[0]
-															: item.pairedItem
-														: undefined;
-
-												if (executionData!.source === null || pairedItemData === undefined) {
-													// Source data is missing for some reason so we can not figure out the item
-													errorItems.push(item);
-												} else {
-													const pairedItemInputIndex = pairedItemData.input || 0;
-
-													const sourceData =
-														executionData!.source[NodeConnectionType.Main][pairedItemInputIndex];
-
-													const constPairedItem = dataProxy.$getPairedItem(
-														sourceData!.previousNode,
-														sourceData,
-														pairedItemData,
-													);
-
-													if (constPairedItem === null) {
-														errorItems.push(item);
-													} else {
-														errorItems.push({
-															...item,
-															json: {
-																...constPairedItem.json,
-																...item.json,
-															},
-														});
-													}
-												}
-											} else {
-												successItems.push(item);
-											}
-										}
-
-										nodeSuccessData[outputIndex] = successItems;
-									}
-
-									nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
+									this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
 								}
 
 								if (runNodeData.closeFunction) {
@@ -2249,6 +2137,106 @@ export class WorkflowExecute {
 		};
 
 		return fullRunData;
+	}
+
+	handleNodeErrorOutput(
+		workflow: Workflow,
+		executionData: IExecuteData,
+		nodeSuccessData: INodeExecutionData[][],
+		runIndex: number,
+	): void {
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(
+			executionData.node.type,
+			executionData.node.typeVersion,
+		);
+		const outputs = NodeHelpers.getNodeOutputs(workflow, executionData.node, nodeType.description);
+		const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+		const mainOutputTypes = outputTypes.filter((output) => output === NodeConnectionType.Main);
+
+		const errorItems: INodeExecutionData[] = [];
+		const closeFunctions: CloseFunction[] = [];
+		// Create a WorkflowDataProxy instance that we can get the data of the
+		// item which did error
+		const executeFunctions = new ExecuteContext(
+			workflow,
+			executionData.node,
+			this.additionalData,
+			this.mode,
+			this.runExecutionData,
+			runIndex,
+			[],
+			executionData.data,
+			executionData,
+			closeFunctions,
+			this.abortController.signal,
+		);
+
+		const dataProxy = executeFunctions.getWorkflowDataProxy(0);
+
+		// Loop over all outputs except the error output as it would not contain data by default
+		for (let outputIndex = 0; outputIndex < mainOutputTypes.length - 1; outputIndex++) {
+			const successItems: INodeExecutionData[] = [];
+			const items = nodeSuccessData[outputIndex]?.length ? nodeSuccessData[outputIndex] : [];
+
+			while (items.length) {
+				const item = items.shift();
+				if (item === undefined) {
+					continue;
+				}
+
+				let errorData: GenericValue | undefined;
+				if (item.error) {
+					errorData = item.error;
+					item.error = undefined;
+				} else if (item.json.error && Object.keys(item.json).length === 1) {
+					errorData = item.json.error;
+				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {
+					errorData = item.json.error;
+				}
+
+				if (errorData) {
+					const pairedItemData =
+						item.pairedItem && typeof item.pairedItem === 'object'
+							? Array.isArray(item.pairedItem)
+								? item.pairedItem[0]
+								: item.pairedItem
+							: undefined;
+
+					if (executionData.source === null || pairedItemData === undefined) {
+						// Source data is missing for some reason so we can not figure out the item
+						errorItems.push(item);
+					} else {
+						const pairedItemInputIndex = pairedItemData.input || 0;
+
+						const sourceData = executionData.source[NodeConnectionType.Main][pairedItemInputIndex];
+
+						const constPairedItem = dataProxy.$getPairedItem(
+							sourceData!.previousNode,
+							sourceData,
+							pairedItemData,
+						);
+
+						if (constPairedItem === null) {
+							errorItems.push(item);
+						} else {
+							errorItems.push({
+								...item,
+								json: {
+									...constPairedItem.json,
+									...item.json,
+								},
+							});
+						}
+					}
+				} else {
+					successItems.push(item);
+				}
+			}
+
+			nodeSuccessData[outputIndex] = successItems;
+		}
+
+		nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
 	}
 
 	private get isCancelled() {
