@@ -319,7 +319,6 @@ const goToUpgrade = () => {
 
 	& > div {
 		width: 100%;
-		//width: 309px;
 		background-color: var(--color-background-light);
 		margin-top: 0 !important;
 	}
