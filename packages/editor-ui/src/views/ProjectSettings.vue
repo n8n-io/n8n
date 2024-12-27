@@ -20,7 +20,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
-import { iconLibrary } from '@/plugins/icons';
+import { getAllIconNames } from '@/plugins/icons';
 
 type FormDataDiff = {
 	name?: string;
@@ -55,7 +55,7 @@ const projectRoleTranslations = ref<{ [key: string]: string }>({
 });
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
-const availableProjectIcons: string[] = Object.keys(iconLibrary.definitions.fas);
+const availableProjectIcons: string[] = getAllIconNames();
 
 const projectIcon = ref<ProjectIcon>({
 	type: 'icon',

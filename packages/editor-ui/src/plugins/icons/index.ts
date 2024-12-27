@@ -350,3 +350,7 @@ type LibraryWithDefinitions = Library & {
 };
 
 export const iconLibrary = library as LibraryWithDefinitions;
+
+export const getAllIconNames = () => {
+	return Object.keys(iconLibrary.definitions.fas);
+};
