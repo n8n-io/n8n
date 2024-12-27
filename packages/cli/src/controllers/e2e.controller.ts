@@ -100,6 +100,7 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
+		[LICENSE_FEATURES.AI_CREDITS]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -108,6 +109,7 @@ export class E2EController {
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
 	};
 
 	constructor(
