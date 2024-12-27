@@ -42,6 +42,13 @@ describe('ResourceLocatorRequestDto', () => {
 					currentNodeParameters: { param1: 'value1' },
 				},
 			},
+			{
+				name: 'request with a semver node version',
+				request: {
+					...baseValidRequest,
+					nodeTypeAndVersion: { name: 'TestNode', version: 1.1 },
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = ResourceLocatorRequestDto.safeParse(request);
 			expect(result.success).toBe(true);

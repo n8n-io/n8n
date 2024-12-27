@@ -2,11 +2,13 @@ import type { INodeCredentials, INodeParameters, INodeTypeNameVersion } from 'n8
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
+import { nodeVersionSchema } from '../../schemas/nodeVersion.schema';
+
 export class BaseDynamicParametersRequestDto extends Z.class({
 	path: z.string(),
 	nodeTypeAndVersion: z.object({
 		name: z.string(),
-		version: z.number().int().min(1),
+		version: nodeVersionSchema,
 	}) satisfies z.ZodType<INodeTypeNameVersion>,
 	currentNodeParameters: z.record(z.string(), z.any()) satisfies z.ZodType<INodeParameters>,
 	methodName: z.string().optional(),
