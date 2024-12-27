@@ -417,6 +417,17 @@ export class WorkflowExecute {
 		return await this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
+	/**
+	 * Merges temporary execution metadata into the final runData structure.
+	 * During workflow execution, metadata is collected in a temporary location
+	 * (executionData.metadata). This method moves that metadata to its final
+	 * location in the resultData.runData for each node.
+	 *
+	 * @remarks
+	 * - Metadata from multiple runs is preserved using run indices
+	 * - Existing metadata in runData is preserved and merged with new metadata
+	 * - If no metadata exists or runData is missing, the operation is a no-op
+	 */
 	moveNodeMetadata(): void {
 		const metadata = get(this.runExecutionData, 'executionData.metadata');
 

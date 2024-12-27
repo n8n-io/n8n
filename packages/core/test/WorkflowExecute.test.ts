@@ -22,6 +22,7 @@ import type {
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	ITaskMetadata,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -32,7 +33,7 @@ import {
 	NodeConnectionType,
 	NodeExecutionOutput,
 	NodeHelpers,
-	NodeOperationError,
+	RelatedExecution,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -1046,6 +1047,111 @@ describe('WorkflowExecute', () => {
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
 			expect(result).toBe(true);
+		});
+	});
+
+	describe('moveNodeMetadata', () => {
+		let runExecutionData: IRunExecutionData;
+		let workflowExecute: WorkflowExecute;
+		const parentExecution = mock<RelatedExecution>();
+
+		beforeEach(() => {
+			runExecutionData = {
+				startData: {},
+				resultData: {
+					runData: {},
+					pinData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+		});
+
+		test('should do nothing when there is no metadata', () => {
+			runExecutionData.resultData.runData = {
+				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+			};
+
+			workflowExecute.moveNodeMetadata();
+
+			expect(runExecutionData.resultData.runData.node1[0].metadata).toBeUndefined();
+		});
+
+		test('should merge metadata into runData for single node', () => {
+			runExecutionData.resultData.runData = {
+				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+			};
+			runExecutionData.executionData!.metadata = {
+				node1: [{ parentExecution }],
+			};
+
+			workflowExecute.moveNodeMetadata();
+
+			expect(runExecutionData.resultData.runData.node1[0].metadata).toEqual({ parentExecution });
+		});
+
+		test('should merge metadata into runData for multiple nodes', () => {
+			runExecutionData.resultData.runData = {
+				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node2: [{ startTime: 0, executionTime: 0, source: [] }],
+			};
+			runExecutionData.executionData!.metadata = {
+				node1: [{ parentExecution }],
+				node2: [{ subExecutionsCount: 4 }],
+			};
+
+			workflowExecute.moveNodeMetadata();
+
+			const { runData } = runExecutionData.resultData;
+			expect(runData.node1[0].metadata).toEqual({ parentExecution });
+			expect(runData.node2[0].metadata).toEqual({ subExecutionsCount: 4 });
+		});
+
+		test('should preserve existing metadata when merging', () => {
+			runExecutionData.resultData.runData = {
+				node1: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						source: [],
+						metadata: { subExecutionsCount: 4 },
+					},
+				],
+			};
+			runExecutionData.executionData!.metadata = {
+				node1: [{ parentExecution }],
+			};
+
+			workflowExecute.moveNodeMetadata();
+
+			expect(runExecutionData.resultData.runData.node1[0].metadata).toEqual({
+				parentExecution,
+				subExecutionsCount: 4,
+			});
+		});
+
+		test('should handle multiple run indices', () => {
+			runExecutionData.resultData.runData = {
+				node1: [
+					{ startTime: 0, executionTime: 0, source: [] },
+					{ startTime: 0, executionTime: 0, source: [] },
+				],
+			};
+			runExecutionData.executionData!.metadata = {
+				node1: [{ parentExecution }, { subExecutionsCount: 4 }],
+			};
+
+			workflowExecute.moveNodeMetadata();
+
+			const { runData } = runExecutionData.resultData;
+			expect(runData.node1[0].metadata).toEqual({ parentExecution });
+			expect(runData.node1[1].metadata).toEqual({ subExecutionsCount: 4 });
 		});
 	});
 });
