@@ -847,4 +847,88 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 	});
+
+	describe('prepareWaitingToExecution', () => {
+		let runExecutionData: IRunExecutionData;
+		let workflowExecute: WorkflowExecute;
+
+		beforeEach(() => {
+			runExecutionData = {
+				startData: {},
+				resultData: {
+					runData: {},
+					pinData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			};
+			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+		});
+
+		test('should initialize waitingExecutionSource if undefined', () => {
+			runExecutionData.executionData!.waitingExecutionSource = null;
+			const nodeName = 'testNode';
+			const numberOfConnections = 2;
+			const runIndex = 0;
+
+			workflowExecute.prepareWaitingToExecution(nodeName, numberOfConnections, runIndex);
+
+			expect(runExecutionData.executionData?.waitingExecutionSource).toBeDefined();
+		});
+
+		test('should create arrays of correct length with null values', () => {
+			const nodeName = 'testNode';
+			const numberOfConnections = 3;
+			const runIndex = 0;
+			runExecutionData.executionData!.waitingExecution[nodeName] = {};
+
+			workflowExecute.prepareWaitingToExecution(nodeName, numberOfConnections, runIndex);
+
+			const nodeWaiting = runExecutionData.executionData!.waitingExecution[nodeName];
+			const nodeWaitingSource = runExecutionData.executionData!.waitingExecutionSource![nodeName];
+
+			expect(nodeWaiting[runIndex].main).toHaveLength(3);
+			expect(nodeWaiting[runIndex].main).toEqual([null, null, null]);
+			expect(nodeWaitingSource[runIndex].main).toHaveLength(3);
+			expect(nodeWaitingSource[runIndex].main).toEqual([null, null, null]);
+		});
+
+		test('should work with zero connections', () => {
+			const nodeName = 'testNode';
+			const numberOfConnections = 0;
+			const runIndex = 0;
+			runExecutionData.executionData!.waitingExecution[nodeName] = {};
+
+			workflowExecute.prepareWaitingToExecution(nodeName, numberOfConnections, runIndex);
+
+			expect(
+				runExecutionData.executionData!.waitingExecution[nodeName][runIndex].main,
+			).toHaveLength(0);
+			expect(
+				runExecutionData.executionData!.waitingExecutionSource![nodeName][runIndex].main,
+			).toHaveLength(0);
+		});
+
+		test('should handle multiple run indices', () => {
+			const nodeName = 'testNode';
+			const numberOfConnections = 2;
+			runExecutionData.executionData!.waitingExecution[nodeName] = {};
+
+			workflowExecute.prepareWaitingToExecution(nodeName, numberOfConnections, 0);
+			workflowExecute.prepareWaitingToExecution(nodeName, numberOfConnections, 1);
+
+			const nodeWaiting = runExecutionData.executionData!.waitingExecution[nodeName];
+			const nodeWaitingSource = runExecutionData.executionData!.waitingExecutionSource![nodeName];
+
+			expect(nodeWaiting[0].main).toHaveLength(2);
+			expect(nodeWaiting[1].main).toHaveLength(2);
+			expect(nodeWaitingSource[0].main).toHaveLength(2);
+			expect(nodeWaitingSource[1].main).toHaveLength(2);
+		});
+	});
 });

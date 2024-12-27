@@ -460,24 +460,29 @@ export class WorkflowExecute {
 		return true;
 	}
 
+	/**
+	 * Prepares the waiting execution data structure for a node that needs to wait for data before it can execute.
+	 * This function initializes arrays to store data and metadata for each connection of the node.
+	 *
+	 * @param nodeName - The name of the node to prepare waiting execution for
+	 * @param numberOfConnections - Number of input connections the node has
+	 * @param runIndex - The index of the current run (for nodes that may run multiple times)
+	 */
 	prepareWaitingToExecution(nodeName: string, numberOfConnections: number, runIndex: number) {
-		if (!this.runExecutionData.executionData!.waitingExecutionSource) {
-			this.runExecutionData.executionData!.waitingExecutionSource = {};
-		}
+		const executionData = this.runExecutionData.executionData!;
 
-		this.runExecutionData.executionData!.waitingExecution[nodeName][runIndex] = {
-			main: [],
-		};
-		this.runExecutionData.executionData!.waitingExecutionSource[nodeName][runIndex] = {
-			main: [],
-		};
+		executionData.waitingExecution ??= {};
+		executionData.waitingExecutionSource ??= {};
+
+		const nodeWaiting = (executionData.waitingExecution[nodeName] ??= []);
+		const nodeWaitingSource = (executionData.waitingExecutionSource[nodeName] ??= []);
+
+		nodeWaiting[runIndex] = { main: [] };
+		nodeWaitingSource[runIndex] = { main: [] };
 
 		for (let i = 0; i < numberOfConnections; i++) {
-			this.runExecutionData.executionData!.waitingExecution[nodeName][runIndex].main.push(null);
-
-			this.runExecutionData.executionData!.waitingExecutionSource[nodeName][runIndex].main.push(
-				null,
-			);
+			nodeWaiting[runIndex].main.push(null);
+			nodeWaitingSource[runIndex].main.push(null);
 		}
 	}
 
