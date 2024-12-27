@@ -3,7 +3,7 @@
 // eslint-disable import/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
-import { ref, defineProps, computed } from 'vue';
+import { ref, defineProps, computed, onMounted } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nTooltip from '../N8nTooltip';
@@ -83,6 +83,13 @@ const selectIcon = (value: Icon) => {
 	model.value = value;
 	popupVisible.value = false;
 };
+
+const togglePopup = () => {
+	popupVisible.value = !popupVisible.value;
+	if (popupVisible.value) {
+		selectedTab.value = tabs.value[0].value;
+	}
+};
 </script>
 
 <template>
@@ -94,7 +101,7 @@ const selectIcon = (value: Icon) => {
 		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']">
-			<N8nTooltip placement="right">
+			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
 				</template>
@@ -106,7 +113,7 @@ const selectIcon = (value: Icon) => {
 					:square="true"
 					type="tertiary"
 					data-test-id="icon-picker-button"
-					@click="popupVisible = !popupVisible"
+					@click="togglePopup"
 				/>
 				<N8nButton
 					v-else-if="model.type === 'emoji'"
@@ -115,13 +122,13 @@ const selectIcon = (value: Icon) => {
 					:square="true"
 					type="tertiary"
 					data-test-id="icon-picker-button"
-					@click="popupVisible = !popupVisible"
+					@click="togglePopup"
 				>
 					{{ model.value }}
 				</N8nButton>
 			</N8nTooltip>
 		</div>
-		<div v-if="popupVisible" :class="$style.popup">
+		<div v-if="popupVisible" :class="$style.popup" data-test-id="icon-picker-popup">
 			<div :class="$style.tabs">
 				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
 			</div>
