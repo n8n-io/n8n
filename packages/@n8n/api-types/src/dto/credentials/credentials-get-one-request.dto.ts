@@ -1,6 +1,6 @@
 import { Z } from 'zod-class';
 
-import { booleanLiteral } from 'dto/common';
+import { booleanLiteral } from '../common';
 
 export class CredentialsGetOneRequestQuery extends Z.class({
 	/**
