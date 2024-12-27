@@ -196,6 +196,7 @@ export class CredentialsService {
 				name: c.name,
 				type: c.type,
 				scopes: c.scopes,
+				isManaged: c.isManaged,
 			}));
 	}
 

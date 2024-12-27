@@ -14,7 +14,8 @@ import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
-	const controller = new AiController(aiService);
+
+	const controller = new AiController(aiService, mock(), mock());
 
 	const request = mock<AuthenticatedRequest>({
 		user: { id: 'user123' },

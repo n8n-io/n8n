@@ -186,6 +186,10 @@ export class CredentialsController {
 			);
 		}
 
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
 		const decryptedData = this.credentialsService.decrypt(credential);
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.body,
