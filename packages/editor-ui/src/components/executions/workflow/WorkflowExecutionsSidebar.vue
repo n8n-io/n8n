@@ -55,7 +55,10 @@ const executionListRef = ref<HTMLElement | null>(null);
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
 const runningExecutionsCount = computed(() => {
-	return props.executions.filter((execution) => execution.status === 'running').length;
+	return props.executions.filter(
+		(execution) =>
+			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
+	).length;
 });
 
 watch(
