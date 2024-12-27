@@ -540,6 +540,7 @@ describe('GET /credentials/:id', () => {
 			id: ownerPersonalProject.id,
 			name: owner.createPersonalProjectName(),
 			type: ownerPersonalProject.type,
+			icon: null,
 		});
 		expect(firstCredential.sharedWithProjects).toHaveLength(0);
 
@@ -629,17 +630,20 @@ describe('GET /credentials/:id', () => {
 			homeProject: {
 				id: member1PersonalProject.id,
 				name: member1.createPersonalProjectName(),
+				icon: null,
 				type: 'personal',
 			},
 			sharedWithProjects: expect.arrayContaining([
 				{
 					id: member2PersonalProject.id,
 					name: member2.createPersonalProjectName(),
+					icon: null,
 					type: member2PersonalProject.type,
 				},
 				{
 					id: member3PersonalProject.id,
 					name: member3.createPersonalProjectName(),
+					icon: null,
 					type: member3PersonalProject.type,
 				},
 			]),
