@@ -31,17 +31,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
 
-		if (listQueryOptions?.includeData) {
-			if (Array.isArray(findManyOptions.select)) {
-				findManyOptions.select.push('data');
-			} else if (typeof findManyOptions.select === 'object') {
-				findManyOptions.select.data = true;
-			} else {
-				findManyOptions.select ??= [];
-				findManyOptions.select.push('data');
-			}
-		}
-
 		if (credentialIds) {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
@@ -49,7 +38,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	private toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+	private toFindManyOptions(listQueryOptions?: ListQuery.Options & { includeData?: boolean }) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
@@ -86,6 +75,17 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
 			findManyOptions.relations = defaultRelations;
+		}
+
+		if (listQueryOptions.includeData) {
+			if (Array.isArray(findManyOptions.select)) {
+				findManyOptions.select.push('data');
+			} else if (typeof findManyOptions.select === 'object') {
+				findManyOptions.select.data = true;
+			} else {
+				findManyOptions.select ??= [];
+				findManyOptions.select.push('data');
+			}
 		}
 
 		return findManyOptions;

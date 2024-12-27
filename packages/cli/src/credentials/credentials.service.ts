@@ -130,15 +130,9 @@ export class CredentialsService {
 
 			if (includeData) {
 				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
-					if (c.scopes.includes('credential:update')) {
-						return {
-							...c,
-							data: this.decrypt(c),
-						} as unknown as CredentialsEntity;
-					}
 					return {
 						...c,
-						data: undefined,
+						data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
 					} as unknown as CredentialsEntity;
 				});
 			}
@@ -190,15 +184,9 @@ export class CredentialsService {
 
 		if (includeData) {
 			credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
-				if (c.scopes.includes('credential:update')) {
-					return {
-						...c,
-						data: this.decrypt(c),
-					} as unknown as CredentialsEntity;
-				}
 				return {
 					...c,
-					data: undefined,
+					data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
 				} as unknown as CredentialsEntity;
 			});
 		}

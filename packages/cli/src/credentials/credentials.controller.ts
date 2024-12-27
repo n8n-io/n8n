@@ -1,4 +1,4 @@
-import { CredentialsGetManyRequest, CredentialsGetOneRequest } from '@n8n/api-types';
+import { CredentialsGetManyRequestQuery, CredentialsGetOneRequestQuery } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -54,7 +54,7 @@ export class CredentialsController {
 	async getMany(
 		req: CredentialRequest.GetMany,
 		_res: unknown,
-		@Query query: CredentialsGetManyRequest,
+		@Query query: CredentialsGetManyRequestQuery,
 	) {
 		const credentials = await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
@@ -93,7 +93,7 @@ export class CredentialsController {
 		req: CredentialRequest.Get,
 		_res: unknown,
 		@Param('credentialId') credentialId: string,
-		@Query query: CredentialsGetOneRequest,
+		@Query query: CredentialsGetOneRequestQuery,
 	) {
 		const { shared, ...credential } = this.license.isSharingEnabled()
 			? await this.enterpriseCredentialsService.getOne(
