@@ -9,7 +9,6 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
