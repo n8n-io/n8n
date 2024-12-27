@@ -341,9 +341,18 @@ export class CredentialsService {
 		return newCredentialData;
 	}
 
-	decrypt(credential: CredentialsEntity) {
+	/**
+	 * Decrypts the credentials data and redacts the content by default.
+	 *
+	 * If `includeRawData` is set to true it will not redact the data.
+	 */
+	decrypt(credential: CredentialsEntity, includeRawData = false) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		return coreCredential.getData();
+		const data = coreCredential.getData();
+		if (includeRawData) {
+			return data;
+		}
+		return this.redact(data, credential);
 	}
 
 	async update(credentialId: string, newCredentialData: ICredentialsDb) {
@@ -533,7 +542,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.redact(this.decrypt(sharing.credentials), sharing.credentials);
+			decryptedData = this.decrypt(sharing.credentials);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
