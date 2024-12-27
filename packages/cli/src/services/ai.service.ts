@@ -22,6 +22,7 @@ export class AiService {
 
 	async init() {
 		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
+
 		if (!aiAssistantEnabled) {
 			return;
 		}
@@ -65,5 +66,14 @@ export class AiService {
 		assert(this.client, 'Assistant client not setup');
 
 		return await this.client.askAi(payload, { id: user.id });
+	}
+
+	async createFreeAiCredits(user: IUser) {
+		if (!this.client) {
+			await this.init();
+		}
+		assert(this.client, 'Assistant client not setup');
+
+		return await this.client.generateAiCreditsCredentials(user);
 	}
 }
