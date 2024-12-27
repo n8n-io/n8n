@@ -53,19 +53,66 @@ const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 
-const hasContentOverride = ref(false);
-const overrideContent = computed(() =>
-	/*props.parameter.overrideField === 'fromAI'*/ true
-		? /*getOverride('fromAi')*/ {
-				overridePlaceholder: 'Defined automatically by the model',
-				icon: 'plus',
-				output: '$fromAI({key}, {value}, {description})',
-				extraProps: {
-					description: 'Description of how the model should define this value',
-				},
-			}
-		: null,
+const fromAiOverride = {
+	overridePlaceholder: 'Defined automatically by the model',
+	icon: 'plus',
+	output: '={{ [marker] $fromAI([key], [type], [default], [description]) }}',
+	providers: {
+		marker: '/* n8n-auto-generated-override */',
+		key: (props: Props) => props.parameter.name, // todo - need to check these
+		type: (props: Props) => 'string', // todo - infer boolean, number and other matching types
+	},
+	extraProps: {
+		description: {
+			default: '',
+			placeholder: 'Description of how the model should define this value',
+		},
+	},
+};
+
+function buildValueFromOverride(
+	providedExtraProps: (typeof fromAiOverride)['extraProps'], // todo generic-ify
+	includeMarker: boolean,
+) {
+	const {
+		providers: { marker, key, type },
+		extraProps,
+	} = fromAiOverride;
+	return `={{ ${includeMarker ? marker : ''} $fromAI('${key(props)}', '${providedExtraProps.description.default ?? extraProps.description}', '${type(props)}') }}`;
+}
+
+function isOverrideValue(s: string) {
+	return s.startsWith('={{ /* n8n-auto-generated-override */ $fromAI(');
+}
+
+function parseOverrides(s: string) {
+	/*
+		Approaches:
+		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts , unclear where to move it
+		- Fun and dangerous: See below
+	*/
+	if (!isOverrideValue(s)) return null;
+
+	const fromAI = (...args: unknown[]) => args;
+	const fns = `const $fromAI = ${fromAI}; const $fromAi = ${fromAI}; const $fromai = ${fromAI};`;
+	const cursor = '={{ /* n8n-auto-generated-override */ $fromAI('.length;
+	const end = '}}'.length;
+	// `eval?.` is an indirect evaluation, outside of local scope
+	const params: unknown[] = eval?.(`${fns} ${s.slice(cursor, -end)}`) ?? [];
+	console.log(fns, params);
+	return {
+		key: params[0] ?? '',
+		description: params[1] ?? '',
+		type: params[2] ?? undefined,
+		// todo - parse the string to get the values
+	};
+}
+
+const isContentOverride = computed(() => isOverrideValue(props.value?.toString() ?? ''));
+const canBeContentOverride = computed(
+	() => node.value?.type?.endsWith('Tool') && props.parameter.type !== 'options',
 );
+// const canBeContentOverride = computed(() => getNodeTypeDescription().codex?.ai?.subcategories.contains('Tool'));
 
 const ndvStore = useNDVStore();
 
@@ -217,7 +264,7 @@ watch(
 
 <template>
 	<N8nInputLabel
-		:class="[$style.wrapper]"
+		:class="[$style.wrapper, { [$style.wrapperFlex]: canBeContentOverride }]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
@@ -246,14 +293,18 @@ watch(
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
-				<div v-if="hasContentOverride && overrideContent" class="parameter-input">
-					{{ overrideContent.overridePlaceholder }}
+				<div v-if="canBeContentOverride && isContentOverride" :class="$style.parameterInput">
+					<ElInput size="small" disabled="true" :placeholder="fromAiOverride.overridePlaceholder" />
 					<N8nIconButton
 						type="secondary"
 						icon="xmark"
 						@click="
 							() => {
-								hasContentOverride = false;
+								valueChanged({
+									node: node?.name,
+									name: props.path,
+									value: buildValueFromOverride(fromAiOverride.extraProps, false),
+								});
 							}
 						"
 					/>
@@ -282,13 +333,15 @@ watch(
 						@drop="onDrop"
 					/>
 					<N8nIconButton
-						v-if="overrideContent"
+						v-if="canBeContentOverride"
 						type="tertiary"
-						:icon="overrideContent.icon"
+						:icon="fromAiOverride.icon"
 						@click="
 							() => {
-								hasContentOverride = true;
-								/*valueChanged({ name: props.path, value: formatOverride() });*/
+								valueChanged({
+									name: props.path,
+									value: buildValueFromOverride(fromAiOverride.extraProps, true),
+								});
 							}
 						"
 					/>
@@ -327,8 +380,20 @@ watch(
 	}
 }
 
+.wrapperFlex {
+	display: flex;
+}
+
 .inputOverrideWrapper {
 	display: flex;
+	flex-grow: 1;
+}
+
+.parameterInput {
+	display: flex;
+	flex-direction: row;
+	flex-grow: 1;
+	gap: var(--spacing-4xs);
 }
 
 .options {
