@@ -251,10 +251,11 @@ function hideGithubButton() {
 }
 
 .main-header {
-	background-color: var(--color-background-xlight);
+	background-color: var(--main-header-background);
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-bottom: var(--border-base);
 }
 
 .top-menu {

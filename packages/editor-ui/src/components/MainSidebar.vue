@@ -468,11 +468,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 .sideMenu {
 	position: relative;
 	height: 100%;
-	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	// border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-right: var(--border-base);
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
 	padding-top: 54px;
-	background-color: var(--menu-background, var(--color-background-xlight));
+	background-color: var(--color-menu-background, var(--color-background-xlight));
 
 	.logo {
 		position: absolute;

@@ -3,18 +3,44 @@
 // They can be only mapped to tokens.
 // Tokens should be used instead in components an other UI elements
 
-@mixin primitives {
-	// Gray
-	--prim-gray-h: 220;
+@font-face {
+	font-family: 'Geomanist Light';
+	src: url('https://cdn.prod.website-files.com/672e2cf8e672665eaf629f92/672e2cf8e672665eaf629ff9_Geomanist-Light.otf')
+		format('opentype');
+}
 
-	--prim-gray-820: hsl(var(--prim-gray-h), 1%, 18%);
-	--prim-gray-800: hsl(var(--prim-gray-h), 1%, 20%);
-	--prim-gray-780: hsl(var(--prim-gray-h), 1%, 22%);
-	--prim-gray-740: hsl(var(--prim-gray-h), 2%, 26%);
-	--prim-gray-670: hsl(var(--prim-gray-h), 2%, 33%);
-	--prim-gray-540: hsl(var(--prim-gray-h), 4%, 46%);
-	--prim-gray-490: hsl(var(--prim-gray-h), 3%, 51%);
-	--prim-gray-420: hsl(var(--prim-gray-h), 4%, 58%);
+@font-face {
+	font-family: 'Geomanist Regular';
+	src: url('https://cdn.prod.website-files.com/672e2cf8e672665eaf629f92/672e2cf8e672665eaf62a00c_Geomanist-Regular.otf')
+		format('opentype');
+}
+
+@font-face {
+	font-family: 'Geomanist Book';
+	src: url('https://cdn.prod.website-files.com/672e2cf8e672665eaf629f92/672e2cf8e672665eaf62a032_Geomanist-Book.otf')
+		format('opentype');
+}
+
+@font-face {
+	font-family: 'Geomanist Medium';
+	src: url('https://cdn.prod.website-files.com/672e2cf8e672665eaf629f92/672e2cf8e672665eaf62a05b_Geomanist-Medium.otf')
+		format('opentype');
+}
+
+@mixin primitives {
+	--prim-gray-1000: hsl(var(--prim-gray-h), 1%, 0%);
+	--prim-gray-940: hsl(var(--prim-gray-h), 20%, 6%);
+	--prim-gray-900: hsl(var(--prim-gray-h), 18%, 10%);
+	--prim-gray-870: hsl(var(--prim-gray-h), 16%, 13%);
+	--prim-gray-840: hsl(var(--prim-gray-h), 13%, 16%);
+	--prim-gray-820: hsl(var(--prim-gray-h), 6%, 18%);
+	--prim-gray-800: hsl(var(--prim-gray-h), 5%, 20%);
+	--prim-gray-780: hsl(var(--prim-gray-h), 5%, 22%);
+	--prim-gray-740: hsl(var(--prim-gray-h), 5%, 26%);
+	--prim-gray-670: hsl(var(--prim-gray-h), 5%, 33%);
+	--prim-gray-540: hsl(var(--prim-gray-h), 5%, 46%);
+	--prim-gray-490: hsl(var(--prim-gray-h), 5%, 51%);
+	--prim-gray-420: hsl(var(--prim-gray-h), 5%, 58%);
 	--prim-gray-320: hsl(var(--prim-gray-h), 10%, 68%);
 	--prim-gray-200: hsl(var(--prim-gray-h), 18%, 80%);
 	--prim-gray-120: hsl(var(--prim-gray-h), 25%, 88%);
@@ -470,5 +496,21 @@
 }
 
 :root {
-	@include primitives;
+	// Gray hue
+	body {
+		--prim-gray-h: 220;
+		@include primitives;
+	}
+
+	body[data-theme='dark'] {
+		--prim-gray-h: 260;
+		@include primitives;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		body:not([data-theme]) {
+			--prim-gray-h: 260;
+			@include primitives;
+		}
+	}
 }

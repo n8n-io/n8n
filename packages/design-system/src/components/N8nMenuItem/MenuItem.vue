@@ -127,7 +127,7 @@ const isItemActive = (item: IMenuItem): boolean => {
 						v-if="item.icon"
 						:class="$style.icon"
 						:icon="item.icon"
-						:size="item.customIconSize || 'large'"
+						:size="item.customIconSize || 'medium'"
 					/>
 					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{

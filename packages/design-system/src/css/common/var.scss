@@ -849,7 +849,7 @@ $menu-item-font-weight: var(--menu-item-font-weight, var(--font-weight-regular))
 $menu-item-font-color: var(--menu-font-color, var(--color-text-dark));
 $menu-item-icon-font-color: var(--menu-item-font-color, var(--color-text-light));
 /// color||Color|0
-$menu-background-color: var(--menu-background-color, var(--color-background-xlight));
+$menu-background-color: var(--color-menu-background, var(--color-background-xlight));
 $menu-item-hover-fill: var(--menu-item-hover-fill, transparent);
 $menu-item-hover-font-color: var(--menu-item-hover-font-color, var(--color-text-dark));
 $menu-item-active-font-color: var(--menu-item-active-font-color, var(--color-primary));

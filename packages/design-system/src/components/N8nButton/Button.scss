@@ -17,6 +17,18 @@
 	padding: $button-padding-vertical $button-padding-horizontal unquote($important);
 	font-size: $button-font-size unquote($important);
 
+	// Buttons experiment
+	/* border: 0;
+	background-color: #0000;
+	background-image: linear-gradient(141deg, #077ac7, #6b21ef 100%, #c5080f);
+	box-shadow:
+		inset 0 1px 1px 0 #fff3,
+		0 1px 2px 0 #08080833,
+		0 4px 4px 0 #08080814,
+		0 7px 0 -12px #077ac7,
+		inset 0 6px 12px 0 #ffffff1f;
+	transition: box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+ */
 	-webkit-appearance: none;
 	text-align: center;
 	box-sizing: border-box;

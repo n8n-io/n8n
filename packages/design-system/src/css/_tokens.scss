@@ -41,8 +41,8 @@
 	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
 
 	// Text
-	--color-text-dark: var(--prim-gray-740);
-	--color-text-base: var(--prim-gray-540);
+	--color-text-dark: var(--prim-gray-940);
+	--color-text-base: var(--prim-gray-840);
 	--color-text-light: var(--prim-gray-420);
 	--color-text-lighter: var(--prim-gray-120);
 	--color-text-xlight: var(--prim-gray-0);
@@ -265,6 +265,14 @@
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
 
+	// Main header
+	--main-header-background: var(--color-background-xlight);
+
+	// Card
+	--card-background: var(--color-background-xlight);
+	--card-background-hover: var(--prim-gray-10);
+	--card-border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
 	// Execution
 	--execution-card-border-new: var(--prim-gray-200);
 	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
@@ -350,6 +358,11 @@
 
 	// Text highlight
 	--color-text-highlight-background: var(--prim-color-alt-d-shade-150);
+
+	// Menu
+	--color-menu-background: var(--prim-gray-0);
+	--color-menu-hover-background: var(--prim-gray-120);
+	--color-menu-active-background: var(--prim-gray-120);
 
 	// AI
 	--node-type-background-l: 95%;
@@ -533,11 +546,6 @@
 	--color-secondary-link: var(--color-secondary);
 	--color-secondary-link-hover: var(--color-secondary-shade-1);
 
-	// Menu
-	--color-menu-background: var(--prim-gray-0);
-	--color-menu-hover-background: var(--prim-gray-120);
-	--color-menu-active-background: var(--prim-gray-120);
-
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	@each $color in ('neutral', 'success', 'warning', 'danger') {
@@ -605,7 +613,11 @@
 
 	--font-weight-regular: 400;
 	--font-weight-bold: 600;
+	// --font-family: 'Open Sans', sans-serif;
 	--font-family: 'Open Sans', sans-serif;
+	--font-family-heading: 'Geomanist Book', 'Open Sans', sans-serif;
+	--font-family-body: 'Open Sans', sans-serif;
+	--font-family-button: 'Open Sans', sans-serif;
 	--font-family-monospace: Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--spacing-5xs: 0.125rem;
@@ -628,5 +640,20 @@
 }
 
 :root {
-	@include theme;
+	body {
+		@include theme;
+	}
+}
+
+// ! TODO:
+// To move somewhere....
+.n8n-heading {
+	font-family: var(--font-family-heading);
+	letter-spacing: 0.03rem;
+}
+
+.vue-flow__background {
+	circle {
+		fill: var(--color-canvas-dot);
+	}
 }

@@ -5,7 +5,7 @@
 	--color-danger: var(--prim-color-alt-k);
 
 	// Text
-	--color-text-dark: var(--prim-gray-40);
+	--color-text-dark: var(--prim-gray-0);
 	--color-text-base: var(--prim-gray-200);
 	--color-text-light: var(--prim-gray-320);
 	--color-text-lighter: var(--prim-gray-740);
@@ -22,10 +22,10 @@
 	// Background
 	--color-background-dark: var(--prim-gray-70);
 	--color-background-medium: var(--prim-gray-540);
-	--color-background-base: var(--prim-gray-670);
+	--color-background-base: var(--prim-gray-740);
 	--color-background-light-base: var(--prim-gray-780);
-	--color-background-light: var(--prim-gray-820);
-	--color-background-xlight: var(--prim-gray-740);
+	--color-background-light: var(--prim-gray-940);
+	--color-background-xlight: var(--prim-gray-840);
 
 	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
 	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
@@ -207,6 +207,14 @@
 	// Notification
 	--color-notification-background: var(--prim-gray-740);
 
+	// Main header
+	--main-header-background: var(--prim-gray-870);
+
+	// Card
+	--card-background: var(--prim-gray-870);
+	--card-background-hover: var(--prim-gray-820);
+	--card-border: var(--border-width-base) var(--border-style-base) var(--prim-gray-740);
+
 	// Execution
 	--execution-card-background-hover: var(--color-foreground-base);
 	--execution-selector-background: var(--prim-gray-740);
@@ -215,7 +223,7 @@
 	--execution-card-text-waiting: var(--prim-color-secondary-tint-100);
 
 	// NDV
-	--color-run-data-background: var(--prim-gray-800);
+	--color-run-data-background: var(--prim-gray-870);
 	--color-ndv-droppable-parameter: var(--prim-color-primary);
 	--color-ndv-droppable-parameter-background: var(--prim-color-primary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
@@ -277,6 +285,11 @@
 
 	// Text highlight
 	--color-text-highlight-background: var(--prim-color-alt-d-shade-600);
+
+	// Menu
+	--color-menu-background: var(--prim-gray-870);
+	--color-menu-hover-background: var(--prim-gray-670);
+	--color-menu-active-background: var(--prim-gray-670);
 
 	// AI
 	--node-type-background-l: 20%;
@@ -452,7 +465,7 @@
 	--color-info-tint-2: var(--prim-gray-740);
 	--border-color-base: var(--color-foreground-base);
 	--border-color-light: var(--color-foreground-light);
-	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	--border-base: var(--border-width-base) var(--border-style-base) var(--prim-gray-780);
 	--node-type-supplemental-label-color-l: 100%;
 	--node-type-supplemental-label-color: hsl(
 		var(--node-type-supplemental-label-color-h),
@@ -462,13 +475,10 @@
 	--color-configurable-node-name: var(--color-text-dark);
 	--color-secondary-link: var(--prim-color-secondary-tint-200);
 	--color-secondary-link-hover: var(--prim-color-secondary-tint-100);
+
 	//Params
 	--color-icon-base: var(--color-text-light);
 	--color-icon-hover: var(--prim-color-primary);
-
-	--color-menu-background: var(--prim-gray-740);
-	--color-menu-hover-background: var(--prim-gray-670);
-	--color-menu-active-background: var(--prim-gray-670);
 }
 
 body[data-theme='dark'] {

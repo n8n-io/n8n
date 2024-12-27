@@ -294,7 +294,7 @@ function moveResource() {
 
 <style lang="scss" module>
 .cardLink {
-	transition: box-shadow 0.3s ease;
+	transition: all 0.3s ease;
 	cursor: pointer;
 	padding: 0;
 	align-items: stretch;

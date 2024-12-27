@@ -131,7 +131,7 @@ const onSelect = (item: IMenuItem): void => {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--menu-background, var(--color-background-xlight));
+	background-color: var(--color-menu-background, var(--color-background-xlight));
 	overflow: hidden;
 }
 

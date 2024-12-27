@@ -44,12 +44,17 @@ const classes = computed(() => ({
 .card {
 	border-radius: var(--border-radius-large);
 	border: var(--border-base);
-	background-color: var(--color-background-xlight);
+	border: var(--card-border);
+	background-color: var(--card-background);
 	padding: var(--spacing-s);
 	display: flex;
 	flex-direction: row;
 	width: 100%;
 	align-items: center;
+}
+
+.card:hover {
+	background-color: var(--card-background-hover);
 }
 
 .header,
