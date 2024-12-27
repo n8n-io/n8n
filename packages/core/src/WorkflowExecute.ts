@@ -1533,53 +1533,7 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
-							if (nodeSuccessData?.length) {
-								// Check if the output data contains pairedItem data and if not try
-								// to automatically fix it
-
-								const isSingleInputAndOutput =
-									executionData.data.main.length === 1 && executionData.data.main[0]?.length === 1;
-
-								const isSameNumberOfItems =
-									nodeSuccessData.length === 1 &&
-									executionData.data.main.length === 1 &&
-									executionData.data.main[0]?.length === nodeSuccessData[0].length;
-
-								checkOutputData: for (const outputData of nodeSuccessData) {
-									if (outputData === null) {
-										continue;
-									}
-									for (const [index, item] of outputData.entries()) {
-										if (item.pairedItem === undefined) {
-											// The pairedItem data is missing, so check if it can get automatically fixed
-											if (isSingleInputAndOutput) {
-												// The node has one input and one incoming item, so we know
-												// that all items must originate from that single
-												item.pairedItem = {
-													item: 0,
-												};
-											} else if (isSameNumberOfItems) {
-												// The number of oncoming and outcoming items is identical so we can
-												// make the reasonable assumption that each of the input items
-												// is the origin of the corresponding output items
-												item.pairedItem = {
-													item: index,
-												};
-											} else {
-												// In all other cases autofixing is not possible
-												break checkOutputData;
-											}
-										}
-									}
-								}
-							}
-
-							if (nodeSuccessData === undefined) {
-								// Node did not get executed
-								nodeSuccessData = null;
-							} else {
-								this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
-							}
+							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
 
 							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
 								if (executionData.node.alwaysOutputData === true) {
@@ -2285,6 +2239,80 @@ export class WorkflowExecute {
 		}
 
 		nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
+	}
+
+	/**
+	 * Assigns pairedItem information to node output items by matching them with input items.
+	 * PairedItem data is used to track which output items were derived from which input items.
+	 *
+	 * @param nodeSuccessData - The output data from a node execution
+	 * @param executionData - The execution data containing input information
+	 *
+	 * @returns The node output data with pairedItem information assigned where possible
+	 *
+	 * @remarks
+	 * Auto-assignment of pairedItem happens in two scenarios:
+	 * 1. Single input/output: When node has exactly one input item and produces output(s),
+	 *    all outputs are marked as derived from that single input (item: 0)
+	 * 2. Matching items count: When number of input and output items match exactly,
+	 *    each output item is paired with the input item at the same index
+	 *
+	 * In all other cases, if pairedItem is missing, it remains undefined as automatic
+	 * assignment cannot be done reliably.
+	 */
+	assignPairedItems(
+		nodeSuccessData: INodeExecutionData[][] | null | undefined,
+		executionData: IExecuteData,
+	) {
+		if (nodeSuccessData?.length) {
+			// Check if the output data contains pairedItem data and if not try
+			// to automatically fix it
+
+			const isSingleInputAndOutput =
+				executionData.data.main.length === 1 && executionData.data.main[0]?.length === 1;
+
+			const isSameNumberOfItems =
+				nodeSuccessData.length === 1 &&
+				executionData.data.main.length === 1 &&
+				executionData.data.main[0]?.length === nodeSuccessData[0].length;
+
+			checkOutputData: for (const outputData of nodeSuccessData) {
+				if (outputData === null) {
+					continue;
+				}
+				for (const [index, item] of outputData.entries()) {
+					if (item.pairedItem === undefined) {
+						// The pairedItem data is missing, so check if it can get automatically fixed
+						if (isSingleInputAndOutput) {
+							// The node has one input and one incoming item, so we know
+							// that all items must originate from that single
+							item.pairedItem = {
+								item: 0,
+							};
+						} else if (isSameNumberOfItems) {
+							// The number of oncoming and outcoming items is identical so we can
+							// make the reasonable assumption that each of the input items
+							// is the origin of the corresponding output items
+							item.pairedItem = {
+								item: index,
+							};
+						} else {
+							// In all other cases autofixing is not possible
+							break checkOutputData;
+						}
+					}
+				}
+			}
+		}
+
+		if (nodeSuccessData === undefined) {
+			// Node did not get executed
+			nodeSuccessData = null;
+		} else {
+			this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
+		}
+
+		return nodeSuccessData;
 	}
 
 	private get isCancelled() {

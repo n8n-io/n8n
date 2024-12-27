@@ -26,6 +26,7 @@ import type {
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
+	RelatedExecution,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -33,7 +34,6 @@ import {
 	NodeConnectionType,
 	NodeExecutionOutput,
 	NodeHelpers,
-	RelatedExecution,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -1180,7 +1180,9 @@ describe('WorkflowExecute', () => {
 
 			const stoppedAt = new Date('2023-01-01T00:00:10.000Z');
 			jest.setSystemTime(stoppedAt);
-			workflowExecute['status'] = 'running';
+			// @ts-expect-error read-only property
+			workflowExecute.status = 'running';
+
 			const result2 = workflowExecute.getFullRunData(startedAt);
 
 			expect(result2).toEqual({
@@ -1240,13 +1242,16 @@ describe('WorkflowExecute', () => {
 			const testError = new Error('Test error') as ExecutionBaseError;
 
 			// Reset the status since it was changed by previous tests
-			workflowExecute['status'] = 'new';
+			// @ts-expect-error read-only property
+			workflowExecute.status = 'new';
 			runExecutionData.waitTill = undefined;
+
 			const errorResult = await workflowExecute.processSuccessExecution(
 				startedAt,
 				workflow,
 				testError,
 			);
+
 			expect(errorResult.data.resultData.error).toBeDefined();
 			expect(errorResult.data.resultData.error?.message).toBe('Test error');
 
@@ -1293,6 +1298,63 @@ describe('WorkflowExecute', () => {
 			// Verify cleanup was called
 			await mockCleanupPromise;
 			expect(cleanupCalled).toBe(true);
+		});
+	});
+
+	describe('assignPairedItems', () => {
+		let workflowExecute: WorkflowExecute;
+
+		beforeEach(() => {
+			workflowExecute = new WorkflowExecute(mock(), 'manual');
+		});
+
+		test('should handle undefined node output', () => {
+			const result = workflowExecute.assignPairedItems(
+				undefined,
+				mock<IExecuteData>({ data: { main: [] } }),
+			);
+			expect(result).toBeNull();
+		});
+
+		test('should auto-fix pairedItem for single input/output scenario', () => {
+			const nodeOutput = [[{ json: { test: true } }]];
+			const executionData = mock<IExecuteData>({ data: { main: [[{ json: { input: true } }]] } });
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
+		});
+
+		test('should auto-fix pairedItem when number of items match', () => {
+			const nodeOutput = [[{ json: { test: 1 } }, { json: { test: 2 } }]];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { input: 1 } }, { json: { input: 2 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
+			expect(result?.[0][1].pairedItem).toEqual({ item: 1 });
+		});
+
+		test('should not modify existing pairedItem data', () => {
+			const existingPairedItem = { item: 5, input: 2 };
+			const nodeOutput = [[{ json: { test: true }, pairedItem: existingPairedItem }]];
+			const executionData = mock<IExecuteData>({ data: { main: [[{ json: { input: true } }]] } });
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result?.[0][0].pairedItem).toEqual(existingPairedItem);
+		});
+
+		test('should process multiple output branches correctly', () => {
+			const nodeOutput = [[{ json: { test: 1 } }], [{ json: { test: 2 } }]];
+			const executionData = mock<IExecuteData>({ data: { main: [[{ json: { input: true } }]] } });
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
+			expect(result?.[1][0].pairedItem).toEqual({ item: 0 });
 		});
 	});
 });
