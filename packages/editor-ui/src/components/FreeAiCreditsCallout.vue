@@ -86,7 +86,7 @@ const onClaimCreditsClicked = async () => {
 };
 </script>
 <template>
-	<div :class="$style['container']">
+	<div class="mt-xs">
 		<n8n-callout
 			v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
 			theme="secondary"
@@ -116,9 +116,3 @@ const onClaimCreditsClicked = async () => {
 		</n8n-callout>
 	</div>
 </template>
-
-<style lang="scss" module>
-.container {
-	margin-top: var(--spacing-xs);
-}
-</style>
