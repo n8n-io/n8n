@@ -54,3 +54,4 @@ export { default as N8nUserSelect } from './N8nUserSelect';
 export { default as N8nUsersList } from './N8nUsersList';
 export { default as N8nResizeObserver } from './ResizeObserver';
 export { N8nKeyboardShortcut } from './N8nKeyboardShortcut';
+export { default as N8nIconPicker } from './N8nIconPicker';
