@@ -692,7 +692,6 @@ describe('GET /credentials', () => {
 				.authAgentFor(owner)
 				.get('/credentials')
 				.query('select=["type"]')
-				.query(JSON.stringify({ select: '' }))
 				.expect(200);
 
 			expect(response.body).toEqual({
