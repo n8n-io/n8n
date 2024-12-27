@@ -142,6 +142,7 @@ export declare namespace CredentialRequest {
 		type: string;
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
+		isManaged?: boolean;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
