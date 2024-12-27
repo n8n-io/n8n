@@ -12,6 +12,7 @@
 import { mock } from 'jest-mock-extended';
 import { pick } from 'lodash';
 import type {
+	IConnection,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -929,6 +930,122 @@ describe('WorkflowExecute', () => {
 			expect(nodeWaiting[1].main).toHaveLength(2);
 			expect(nodeWaitingSource[0].main).toHaveLength(2);
 			expect(nodeWaitingSource[1].main).toHaveLength(2);
+		});
+	});
+
+	describe('incomingConnectionIsEmpty', () => {
+		let workflowExecute: WorkflowExecute;
+
+		beforeEach(() => {
+			workflowExecute = new WorkflowExecute(mock(), 'manual');
+		});
+
+		test('should return true when there are no input connections', () => {
+			const result = workflowExecute.incomingConnectionIsEmpty({}, [], 0);
+			expect(result).toBe(true);
+		});
+
+		test('should return true when all input connections have no data', () => {
+			const runData: IRunData = {
+				node1: [
+					{
+						source: [],
+						data: { main: [[], []] },
+						startTime: 0,
+						executionTime: 0,
+					},
+				],
+			};
+
+			const inputConnections: IConnection[] = [
+				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+			];
+
+			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
+			expect(result).toBe(true);
+		});
+
+		test('should return true when input connection node does not exist in runData', () => {
+			const runData: IRunData = {};
+			const inputConnections: IConnection[] = [
+				{ node: 'nonexistentNode', type: NodeConnectionType.Main, index: 0 },
+			];
+
+			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
+			expect(result).toBe(true);
+		});
+
+		test('should return false when any input connection has data', () => {
+			const runData: IRunData = {
+				node1: [
+					{
+						source: [],
+						data: {
+							main: [[{ json: { data: 'test' } }], []],
+						},
+						startTime: 0,
+						executionTime: 0,
+					},
+				],
+			};
+
+			const inputConnections: IConnection[] = [
+				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+			];
+
+			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
+			expect(result).toBe(false);
+		});
+
+		test('should check correct run index', () => {
+			const runData: IRunData = {
+				node1: [
+					{
+						source: [],
+						data: {
+							main: [[]],
+						},
+						startTime: 0,
+						executionTime: 0,
+					},
+					{
+						source: [],
+						data: {
+							main: [[{ json: { data: 'test' } }]],
+						},
+						startTime: 0,
+						executionTime: 0,
+					},
+				],
+			};
+
+			const inputConnections: IConnection[] = [
+				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+			];
+
+			expect(workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0)).toBe(true);
+			expect(workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 1)).toBe(false);
+		});
+
+		test('should handle undefined data in runData correctly', () => {
+			const runData: IRunData = {
+				node1: [
+					{
+						source: [],
+						startTime: 0,
+						executionTime: 0,
+					},
+				],
+			};
+
+			const inputConnections: IConnection[] = [
+				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+			];
+
+			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
+			expect(result).toBe(true);
 		});
 	});
 });

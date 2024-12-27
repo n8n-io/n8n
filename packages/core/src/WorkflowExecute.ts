@@ -437,14 +437,27 @@ export class WorkflowExecute {
 	}
 
 	/**
-	 * Checks the incoming connection does not receive any data
+	 * Checks if all incoming connections to a node are empty (have no data).
+	 * This is used to determine if a node should be executed or skipped.
+	 *
+	 * @param runData - The execution data from all nodes in the workflow
+	 * @param inputConnections - Array of connections to check
+	 * @param runIndex - Index of the current execution run (nodes can execute multiple times)
+	 *
+	 * @returns `true` if all connections are empty (no data), `false` if any connection has data
+	 *
+	 * @remarks
+	 * A connection is considered empty when:
+	 * - The source node doesn't exist in runData
+	 * - The source node's data is undefined
+	 * - The source node's output array is empty
+	 * - The specified output index contains no items
 	 */
 	incomingConnectionIsEmpty(
 		runData: IRunData,
 		inputConnections: IConnection[],
 		runIndex: number,
 	): boolean {
-		// for (const inputConnection of workflow.connectionsByDestinationNode[nodeToAdd].main[0]) {
 		for (const inputConnection of inputConnections) {
 			const nodeIncomingData = get(runData, [
 				inputConnection.node,
