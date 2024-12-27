@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton } from 'n8n-design-system';
+import { N8nButton, N8nTooltip } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -59,6 +59,8 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
 	label: 'Create Workflow',
+	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
+	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
@@ -119,17 +121,23 @@ const onSelect = (action: string) => {
 				</N8nText>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
-				<ProjectCreateResource
-					data-test-id="add-resource-buttons"
-					:actions="menu"
-					@action="onSelect"
+				<N8nTooltip
+					:disabled="!sourceControlStore.preferences.branchReadOnly"
+					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
-					<N8nButton
-						data-test-id="add-resource-workflow"
-						v-bind="createWorkflowButton"
-						@click="onSelect(ACTION_TYPES.WORKFLOW)"
-					/>
-				</ProjectCreateResource>
+					<ProjectCreateResource
+						data-test-id="add-resource-buttons"
+						:actions="menu"
+						:disabled="sourceControlStore.preferences.branchReadOnly"
+						@action="onSelect"
+					>
+						<N8nButton
+							data-test-id="add-resource-workflow"
+							v-bind="createWorkflowButton"
+							@click="onSelect(ACTION_TYPES.WORKFLOW)"
+						/>
+					</ProjectCreateResource>
+				</N8nTooltip>
 			</div>
 		</div>
 		<div :class="$style.actions">
