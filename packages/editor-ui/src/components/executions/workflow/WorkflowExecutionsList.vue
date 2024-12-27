@@ -140,9 +140,5 @@ onBeforeRouteLeave(async (to, _, next) => {
 	.content {
 		flex: 1 1 50%;
 	}
-	//.container {
-	//	flex: 1 1 100%;
-	//	height: 50%;
-	//}
 }
 </style>
