@@ -2157,15 +2157,13 @@ export class WorkflowExecute {
 	}
 
 	getFullRunData(startedAt: Date): IRun {
-		const fullRunData: IRun = {
+		return {
 			data: this.runExecutionData,
 			mode: this.mode,
 			startedAt,
 			stoppedAt: new Date(),
 			status: this.status,
 		};
-
-		return fullRunData;
 	}
 
 	handleNodeErrorOutput(

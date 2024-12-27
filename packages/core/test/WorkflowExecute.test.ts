@@ -1154,4 +1154,42 @@ describe('WorkflowExecute', () => {
 			expect(runData.node1[1].metadata).toEqual({ subExecutionsCount: 4 });
 		});
 	});
+
+	describe('getFullRunData', () => {
+		afterAll(() => {
+			jest.useRealTimers();
+		});
+
+		test('should return complete IRun object with all properties correctly set', () => {
+			const runExecutionData = mock<IRunExecutionData>();
+
+			const workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			jest.useFakeTimers().setSystemTime(startedAt);
+
+			const result1 = workflowExecute.getFullRunData(startedAt);
+
+			expect(result1).toEqual({
+				data: runExecutionData,
+				mode: 'manual',
+				startedAt,
+				stoppedAt: startedAt,
+				status: 'new',
+			});
+
+			const stoppedAt = new Date('2023-01-01T00:00:10.000Z');
+			jest.setSystemTime(stoppedAt);
+			workflowExecute['status'] = 'running';
+			const result2 = workflowExecute.getFullRunData(startedAt);
+
+			expect(result2).toEqual({
+				data: runExecutionData,
+				mode: 'manual',
+				startedAt,
+				stoppedAt,
+				status: 'running',
+			});
+		});
+	});
 });
