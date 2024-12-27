@@ -44,7 +44,7 @@ const validateResourceMapperValue = (
 			!skipRequiredCheck &&
 			schemaEntry?.required === true &&
 			schemaEntry.type !== 'boolean' &&
-			!resolvedValue
+			resolvedValue === undefined
 		) {
 			return {
 				valid: false,
