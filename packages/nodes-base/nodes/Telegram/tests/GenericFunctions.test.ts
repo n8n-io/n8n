@@ -153,7 +153,8 @@ describe('Telegram > GenericFunctions', () => {
 			addAdditionalFields.call(mockThis, body, index, nodeVersion, instanceId);
 
 			expect(body).toEqual({
-				text: 'Hello, world!\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_45)',
+				text: 'Hello, world!',
+				// text: 'Hello, world!\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_45)',
 				parse_mode: 'Markdown',
 				disable_web_page_preview: true,
 			});

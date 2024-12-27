@@ -97,13 +97,13 @@ export function addAdditionalFields(
 			body.disable_web_page_preview = true;
 		}
 
-		if (additionalFields.appendAttribution) {
-			if (additionalFields.parse_mode === 'Markdown') {
-				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
-			} else if (additionalFields.parse_mode === 'HTML') {
-				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
-			}
-		}
+		// if (additionalFields.appendAttribution) {
+		// 	if (additionalFields.parse_mode === 'Markdown') {
+		// 		body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
+		// 	} else if (additionalFields.parse_mode === 'HTML') {
+		// 		body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+		// 	}
+		// }
 
 		if (
 			nodeVersion &&
