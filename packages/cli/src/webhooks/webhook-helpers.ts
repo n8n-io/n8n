@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type express from 'express';
 import get from 'lodash/get';
 import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
@@ -38,7 +39,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { Project } from '@/databases/entities/project';

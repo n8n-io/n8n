@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { Project } from '@/databases/entities/project';

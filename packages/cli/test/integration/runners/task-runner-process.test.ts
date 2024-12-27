@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
 import { TaskBroker } from '@/runners/task-broker.service';

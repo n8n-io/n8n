@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import { Container } from 'typedi';
 import type { XMLFileInfo } from 'xmllint-wasm';
 
 let xmlMetadata: XMLFileInfo;

@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
@@ -18,7 +19,6 @@ import type {
 	Result,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 

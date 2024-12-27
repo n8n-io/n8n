@@ -1,9 +1,9 @@
+import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'path';
-import { Service } from 'typedi';
 
 import { Logger } from '@/logging/logger';
 

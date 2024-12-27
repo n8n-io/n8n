@@ -1,5 +1,5 @@
+import { Container, Service } from '@n8n/di';
 import type { RequesterMessage } from '@n8n/task-runner';
-import Container, { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 

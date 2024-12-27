@@ -1,6 +1,6 @@
 import 'reflect-metadata';
+import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
-import { Container, Service } from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
@@ -24,6 +24,7 @@ const readEnv = (envName: string) => {
 	return undefined;
 };
 
+// @ts-expect-error xyzy
 export const Config: ClassDecorator = (ConfigClass: Class) => {
 	const factory = function () {
 		const config = new (ConfigClass as new () => Record<PropertyKey, unknown>)();
@@ -35,7 +36,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 
 		for (const [key, { type, envName }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
-				config[key] = Container.get(type);
+				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
@@ -64,7 +65,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 		}
 		return config;
 	};
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
 	return Service({ factory })(ConfigClass);
 };
 

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import Container from 'typedi';
 
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';

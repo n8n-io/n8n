@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { ServiceProviderInstance } from 'samlify';
-import { Container } from 'typedi';
 
 import { UrlService } from '@/services/url.service';
 
