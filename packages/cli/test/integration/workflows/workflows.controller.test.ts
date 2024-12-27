@@ -441,6 +441,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -456,6 +457,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -833,6 +835,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],
@@ -842,6 +845,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],

@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import type { IconDefinition, Library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
@@ -123,6 +123,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faScrewdriver,
+	faSmile,
 	faSignInAlt,
 	faSignOutAlt,
 	faSlidersH,
@@ -298,6 +299,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSearchPlus);
 		addIcon(faServer);
 		addIcon(faScrewdriver);
+		addIcon(faSmile);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
 		addIcon(faSlidersH);
@@ -343,4 +345,14 @@ export const FontAwesomePlugin: Plugin = {
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
+};
+
+type LibraryWithDefinitions = Library & {
+	definitions: Record<string, Record<string, IconDefinition>>;
+};
+
+export const iconLibrary = library as LibraryWithDefinitions;
+
+export const getAllIconNames = () => {
+	return Object.keys(iconLibrary.definitions.fas);
 };
