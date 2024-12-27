@@ -50,7 +50,7 @@ const components = {
 };
 
 describe('IconPicker', () => {
-	it.only('renders icons and emojis', async () => {
+	it('renders icons and emojis', async () => {
 		const { getByTestId, getAllByTestId } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },

@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 1px solid var(--color-foreground-light);
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	border-radius: var(--border-radius-base);
 
 	&.round {
@@ -57,7 +57,7 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .large {
-	// Making this inline with user avatar size
+	// Making this in line with user avatar size
 	width: 40px;
 	height: 40px;
 
