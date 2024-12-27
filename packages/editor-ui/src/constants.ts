@@ -706,12 +706,19 @@ export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const AI_CREDITS_EXPERIMENT = {
+	name: '027_free_openai_calls',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
+	AI_CREDITS_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
