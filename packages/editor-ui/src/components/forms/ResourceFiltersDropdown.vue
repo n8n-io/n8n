@@ -161,6 +161,12 @@ onBeforeMount(async () => {
 			text-indent: -10000px;
 		}
 	}
+
+	@include mixins.breakpoint('xs-only') {
+		:global(span + span) {
+			margin: 0;
+		}
+	}
 }
 
 .filters-dropdown {
