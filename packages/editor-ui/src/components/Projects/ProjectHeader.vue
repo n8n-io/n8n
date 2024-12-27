@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton, N8nTooltip } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
-import { ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
@@ -17,13 +17,13 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 
-const headerIcon = computed(() => {
+const headerIcon = computed((): ProjectIcon => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return 'user';
+		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return 'layer-group';
+		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
 	} else {
-		return 'home';
+		return { type: 'icon', value: 'home' };
 	}
 });
 
@@ -107,9 +107,7 @@ const onSelect = (action: string) => {
 <template>
 	<div>
 		<div :class="[$style.projectHeader]">
-			<div :class="[$style.icon]">
-				<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
-			</div>
+			<ProjectIcon :icon="headerIcon" size="medium" />
 			<div>
 				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 				<N8nText color="text-light">
