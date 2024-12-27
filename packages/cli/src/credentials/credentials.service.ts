@@ -602,4 +602,25 @@ export class CredentialsService {
 			mergedCredentials.data = decryptedData;
 		}
 	}
+
+	/**
+	 * Create a new credential in user's account and return it along the scopes
+	 * If a projectId is send, then it also binds the credential to that specific project
+	 */
+	async createCredential(credentialsData: CredentialRequest.CredentialProperties, user: User) {
+		const newCredential = await this.prepareCreateData(credentialsData);
+
+		const encryptedData = this.createEncryptedData(null, newCredential);
+
+		const { shared, ...credential } = await this.save(
+			newCredential,
+			encryptedData,
+			user,
+			credentialsData.projectId,
+		);
+
+		const scopes = await this.getCredentialScopes(user, credential.id);
+
+		return { ...credential, scopes };
+	}
 }
