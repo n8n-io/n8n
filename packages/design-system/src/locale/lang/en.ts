@@ -48,7 +48,7 @@ export default {
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
 	'inlineAskAssistantButton.asked': 'Asked',
-	'iconPicker.button.tooltip': 'Choose icon',
+	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',
 	'iconPicker.tabs.emojis': 'Emojis',
 } as N8nLocale;

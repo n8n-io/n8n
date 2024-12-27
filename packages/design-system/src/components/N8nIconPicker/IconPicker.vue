@@ -6,6 +6,7 @@ import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, defineProps, computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nTooltip from '../N8nTooltip';
 
 /**
  * Simple n8n icon picker component with support for font icons and emojis.
@@ -40,7 +41,6 @@ type Props = {
 const { t } = useI18n();
 
 const props = withDefaults(defineProps<Props>(), {
-	buttonTooltip: 'Select an icon',
 	availableIcons: () => [],
 	buttonSize: 'large',
 });
@@ -94,29 +94,32 @@ const selectIcon = (value: Icon) => {
 		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']">
-			<N8nIconButton
-				v-if="model.type === 'icon'"
-				:class="$style['icon-button']"
-				:icon="model.value ?? 'smile'"
-				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
-				:size="buttonSize"
-				:square="true"
-				type="tertiary"
-				data-test-id="icon-picker-button"
-				@click="popupVisible = !popupVisible"
-			/>
-			<N8nButton
-				v-else-if="model.type === 'emoji'"
-				:class="$style['emoji-button']"
-				:title="buttonTooltip ?? t('iconPicker.button.tooltip')"
-				:size="buttonSize"
-				:square="true"
-				type="tertiary"
-				data-test-id="icon-picker-button"
-				@click="popupVisible = !popupVisible"
-			>
-				{{ model.value }}
-			</N8nButton>
+			<N8nTooltip placement="right">
+				<template #content>
+					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
+				</template>
+				<N8nIconButton
+					v-if="model.type === 'icon'"
+					:class="$style['icon-button']"
+					:icon="model.value ?? 'smile'"
+					:size="buttonSize"
+					:square="true"
+					type="tertiary"
+					data-test-id="icon-picker-button"
+					@click="popupVisible = !popupVisible"
+				/>
+				<N8nButton
+					v-else-if="model.type === 'emoji'"
+					:class="$style['emoji-button']"
+					:size="buttonSize"
+					:square="true"
+					type="tertiary"
+					data-test-id="icon-picker-button"
+					@click="popupVisible = !popupVisible"
+				>
+					{{ model.value }}
+				</N8nButton>
+			</N8nTooltip>
 		</div>
 		<div v-if="popupVisible" :class="$style.popup">
 			<div :class="$style.tabs">
@@ -156,7 +159,8 @@ const selectIcon = (value: Icon) => {
 .popup {
 	position: absolute;
 	z-index: 1;
-	width: 400px;
+	width: 426px;
+	max-height: 300px;
 	display: flex;
 	flex-direction: column;
 	margin-top: var(--spacing-4xs);
@@ -172,9 +176,7 @@ const selectIcon = (value: Icon) => {
 
 	.content {
 		display: flex;
-		max-height: 400px;
 		flex-wrap: wrap;
-		gap: var(--spacing-2xs);
 		padding: var(--spacing-2xs);
 		overflow-y: auto;
 	}
@@ -182,11 +184,12 @@ const selectIcon = (value: Icon) => {
 	.icon,
 	.emoji {
 		cursor: pointer;
-	}
+		padding: var(--spacing-4xs);
+		border-radius: var(--border-radius-small);
 
-	.emoji {
-		font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji',
-			'Twemoji Mozilla', 'Noto Color Emoji', 'Android Emoji', sans-serif;
+		&:hover {
+			background-color: var(--color-background-medium);
+		}
 	}
 
 	.icon {
@@ -194,8 +197,12 @@ const selectIcon = (value: Icon) => {
 
 		&:hover {
 			color: var(--color-text-dark);
-			background-color: var(--color-background-light);
 		}
+	}
+
+	.emoji {
+		font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji',
+			'Twemoji Mozilla', 'Noto Color Emoji', 'Android Emoji', sans-serif;
 	}
 }
 </style>
