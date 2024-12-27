@@ -57,6 +57,8 @@ describe('ConcurrencyControlService', () => {
 				expect(service.isEnabled).toBe(true);
 				// @ts-expect-error Private property
 				expect(service.queues.get(type)).toBeDefined();
+				// @ts-expect-error Private property
+				expect(service.queues.size).toBe(1);
 			},
 		);
 

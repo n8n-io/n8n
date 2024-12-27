@@ -63,7 +63,9 @@ export class ConcurrencyControlService {
 
 		this.queues = new Map();
 		this.limits.forEach((limit, type) => {
-			this.queues.set(type, new ConcurrencyQueue(limit));
+			if (limit > 0) {
+				this.queues.set(type, new ConcurrencyQueue(limit));
+			}
 		});
 
 		this.logInit();
