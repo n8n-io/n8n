@@ -1,16 +1,17 @@
 import type { DateTime } from 'luxon';
+
+import { ApplicationError } from '../errors/application.error';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
 	FilterOptionsValue,
 	FilterValue,
 	INodeProperties,
-	Result,
 	ValidationResult,
 } from '../Interfaces';
-import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
-import { ApplicationError } from '../errors/application.error';
+import type { Result } from '../result';
+import { validateFieldType } from '../TypeValidation';
 
 type FilterConditionMetadata = {
 	index: number;
@@ -24,7 +25,7 @@ export class FilterError extends ApplicationError {
 		message: string,
 		readonly description: string,
 	) {
-		super(message);
+		super(message, { level: 'warning' });
 	}
 }
 
@@ -109,7 +110,7 @@ function parseFilterConditionValues(
 
 	const getTypeDescription = (isStrict: boolean) => {
 		if (isStrict)
-			return "Try changing the type of comparison. Alternatively you can enable 'Convert Value Types'.";
+			return "Try changing the type of comparison. Alternatively you can enable 'Convert types where required'.";
 		return 'Try changing the type of the comparison.';
 	};
 
@@ -135,7 +136,7 @@ function parseFilterConditionValues(
 			return `
 <p>Try either:</p>
 <ol>
-  <li>Enabling 'Convert Value Types'</li>
+  <li>Enabling 'Convert types where required'</li>
   <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
 </ol>
 			`;

@@ -12,7 +12,7 @@ import LinkItem from '../ItemTypes/LinkItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 
 export interface Props {
-	elements: INodeCreateElement[];
+	elements?: INodeCreateElement[];
 	activeIndex?: number;
 	disabled?: boolean;
 	lazyRender?: boolean;

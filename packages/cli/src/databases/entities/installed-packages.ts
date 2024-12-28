@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from '@n8n/typeorm';
-import type { InstalledNodes } from './installed-nodes';
+
 import { WithTimestamps } from './abstract-entity';
+import type { InstalledNodes } from './installed-nodes';
 
 @Entity()
 export class InstalledPackages extends WithTimestamps {

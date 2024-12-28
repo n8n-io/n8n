@@ -1,7 +1,8 @@
-import { NoXss } from '@/validators/no-xss.validator';
 import { Expose } from 'class-transformer';
 import { IsString, IsArray, IsOptional, IsEmail, IsEnum } from 'class-validator';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
+
+import { NoXss } from '@/validators/no-xss.validator';
 
 export class PersonalizationSurveyAnswersV4 implements IPersonalizationSurveyAnswersV4 {
 	@NoXss()

@@ -8,11 +8,11 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
+import { createUser, createUserShell } from './shared/db/users';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
-import * as utils from './shared/utils/';
-import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -89,7 +89,7 @@ describe('POST /login', () => {
 		const response = await testServer.authlessAgent.post('/login').send({
 			email: owner.email,
 			password: ownerPassword,
-			mfaToken: mfaService.totp.generateTOTP(secret),
+			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -146,6 +146,21 @@ describe('POST /login', () => {
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail on invalid email in the payload', async () => {
+		const response = await testServer.authlessAgent.post('/login').send({
+			email: 'invalid-email',
+			password: ownerPassword,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			validation: 'email',
+			code: 'invalid_string',
+			message: 'Invalid email',
+			path: ['email'],
+		});
 	});
 });
 

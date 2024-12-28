@@ -1,13 +1,21 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { computed, useCssModule } from 'vue';
 
-const { label } = useCanvasNodeHandle();
+const $style = useCssModule();
+const { label, isRequired } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
+
+const classes = computed(() => ({
+	'canvas-node-handle-non-main-output': true,
+	[$style.handle]: true,
+	[$style.required]: isRequired.value,
+}));
 </script>
 <template>
-	<div :class="['canvas-node-handle-non-main-output', $style.handle]">
-		<div :class="[$style.label]">{{ label }}</div>
+	<div :class="classes">
+		<div :class="$style.label">{{ label }}</div>
 		<CanvasHandleDiamond :handle-classes="handleClasses" />
 	</div>
 </template>
@@ -23,13 +31,18 @@ const handleClasses = 'source';
 .label {
 	position: absolute;
 	top: -20px;
-	left: -50%;
-	transform: translate(0%, 0);
+	left: 50%;
+	transform: translate(-50%, 0);
 	font-size: var(--font-size-2xs);
-	color: var(--color-foreground-xdark);
+	color: var(--node-type-supplemental-color);
 	background: var(--color-canvas-label-background);
 	z-index: 0;
 	white-space: nowrap;
+}
+
+.required .label::after {
+	content: '*';
+	color: var(--color-danger);
 }
 
 :global(.vue-flow__handle:not(.connectionindicator)) .plus {

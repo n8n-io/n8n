@@ -1,21 +1,21 @@
+import { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { Service } from 'typedi';
-import { InstanceSettings } from 'n8n-core';
+
 import config from '@/config';
-import { toFlaggedNode } from '@/security-audit/utils';
-import { separate } from '@/utils';
+import { getN8nPackageJson, inDevelopment } from '@/constants';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
 	INSTANCE_REPORT,
 	WEBHOOK_NODE_TYPE,
 	WEBHOOK_VALIDATOR_NODE_TYPES,
 } from '@/security-audit/constants';
-import { getN8nPackageJson, inDevelopment } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
-import { isApiEnabled } from '@/public-api';
-import { Logger } from '@/logger';
-import { GlobalConfig } from '@n8n/config';
+import { toFlaggedNode } from '@/security-audit/utils';
+import { separate } from '@/utils';
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
@@ -102,7 +102,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		};
 
 		settings.telemetry = {
-			diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
+			diagnosticsEnabled: this.globalConfig.diagnostics.enabled,
 		};
 
 		return settings;
@@ -118,7 +118,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		node: WorkflowEntity['nodes'][number];
 		workflow: WorkflowEntity;
 	}) {
-		const childNodeNames = workflow.connections[node.name]?.main[0].map((i) => i.node);
+		const childNodeNames = workflow.connections[node.name]?.main[0]?.map((i) => i.node);
 
 		if (!childNodeNames) return false;
 

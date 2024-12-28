@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -10,14 +11,12 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import {
 	createDatapoint,
 	deleteDatapoint,
 	getAllDatapoints,
 	updateDatapoint,
 } from './Beeminder.node.functions';
-
 import { beeminderApiRequest } from './GenericFunctions';
 
 export class Beeminder implements INodeType {
@@ -104,7 +103,7 @@ export class Beeminder implements INodeType {
 				},
 				default: '',
 				description:
-					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				required: true,
 			},
 			{

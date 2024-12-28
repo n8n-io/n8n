@@ -1,6 +1,15 @@
+import { GlobalConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
+import { NodeConnectionType } from 'n8n-workflow';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { toReportTitle } from '@/security-audit/utils';
+
 import {
 	getRiskSection,
 	saveManualTriggerWorkflow,
@@ -9,19 +18,13 @@ import {
 	simulateUpToDateInstance,
 } from './utils';
 import * as testDb from '../shared/test-db';
-import { toReportTitle } from '@/security-audit/utils';
-import config from '@/config';
-import { generateNanoId } from '@/databases/utils/generators';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import Container from 'typedi';
-import { NodeConnectionType } from 'n8n-workflow';
 
 let securityAuditService: SecurityAuditService;
 
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository), mock());
 
 	simulateUpToDateInstance();
 });
@@ -236,8 +239,7 @@ test('should not report outdated instance when up to date', async () => {
 });
 
 test('should report security settings', async () => {
-	config.set('diagnostics.enabled', true);
-
+	Container.get(GlobalConfig).diagnostics.enabled = true;
 	const testAudit = await securityAuditService.run(['instance']);
 
 	const section = getRiskSection(

@@ -1,6 +1,7 @@
-import { Container } from 'typedi';
 import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, ICredentials, jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
+
 import { Cipher } from './Cipher';
 
 export class Credentials<

@@ -1,6 +1,7 @@
-import type { INodeTypes } from 'n8n-workflow';
 import type { QueryRunner, ObjectLiteral } from '@n8n/typeorm';
-import type { Logger } from '@/logger';
+import type { Logger } from 'n8n-core';
+import type { INodeTypes } from 'n8n-workflow';
+
 import type { createSchemaBuilder } from './dsl';
 
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';

@@ -1,17 +1,17 @@
-import { Service } from 'typedi';
+import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import type { User, AssignableRole } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import type { Invitation, PublicUser } from '@/interfaces';
-import type { PostHogClient } from '@/posthog';
-import { Logger } from '@/logger';
-import { UserManagementMailer } from '@/user-management/email';
-import { UrlService } from '@/services/url.service';
-import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
+import type { Invitation, PublicUser } from '@/interfaces';
+import type { PostHogClient } from '@/posthog';
+import type { UserRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 @Service()
 export class UserService {
@@ -58,7 +58,7 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
@@ -130,6 +130,7 @@ export class UserService {
 						email,
 						inviteAcceptUrl,
 						emailSent: false,
+						role,
 					},
 					error: '',
 				};
@@ -212,9 +213,8 @@ export class UserService {
 					),
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
 			this.logger.error('Failed to create user shells', { userShells: createdUsers });
-			throw new InternalServerError('An error occurred during user creation');
+			throw new InternalServerError('An error occurred during user creation', error);
 		}
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));

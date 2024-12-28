@@ -4,7 +4,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
 import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';
 import { NodeResizer } from '@vue-flow/node-resizer';
-import type { OnResize } from '@vue-flow/node-resizer/dist/types';
+import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
 
 defineOptions({
@@ -27,6 +27,7 @@ const renderOptions = computed(() => render.value.options as CanvasNodeStickyNot
 const classes = computed(() => ({
 	[$style.sticky]: true,
 	[$style.selected]: isSelected.value,
+	['sticky--active']: isActive.value, // Used to increase the z-index of the sticky note when editing
 }));
 
 /**
@@ -102,12 +103,13 @@ onBeforeUnmount(() => {
 		v-bind="$attrs"
 		:id="id"
 		:class="classes"
-		data-test-id="canvas-sticky-note-node"
+		data-test-id="sticky"
 		:height="renderOptions.height"
 		:width="renderOptions.width"
 		:model-value="renderOptions.content"
 		:background-color="renderOptions.color"
 		:edit-mode="isActive"
+		:read-only="isReadOnly"
 		@edit="onEdit"
 		@dblclick="onDoubleClick"
 		@update:model-value="onInputChange"

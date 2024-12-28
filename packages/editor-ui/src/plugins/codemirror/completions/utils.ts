@@ -208,15 +208,29 @@ export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames() {
-	const activeNodeName = useNDVStore().activeNode?.name;
+	const activeNode = useNDVStore().activeNode;
 
-	if (!activeNodeName) return [];
+	if (!activeNode) return [];
 
-	return useWorkflowHelpers({ router: useRouter() })
-		.getCurrentWorkflow()
-		.getParentNodesByDepth(activeNodeName)
+	const activeNodeName = activeNode.name;
+
+	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	const nonMainChildren = workflow.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+
+	// This is a tool node, look for the nearest node with main connections
+	if (nonMainChildren.length > 0) {
+		return nonMainChildren.map(getPreviousNodes).flat();
+	}
+
+	return getPreviousNodes(activeNodeName);
+}
+
+export function getPreviousNodes(nodeName: string) {
+	const workflow = useWorkflowHelpers({ router: useRouter() }).getCurrentWorkflow();
+	return workflow
+		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
-		.filter((name) => name !== activeNodeName);
+		.filter((name) => name !== nodeName);
 }
 
 /**

@@ -1,12 +1,13 @@
 import { mock } from 'jest-mock-extended';
+
 import config from '@/config';
 import type { TranslationRequest } from '@/controllers/translation.controller';
 import {
 	TranslationController,
 	CREDENTIAL_TRANSLATIONS_DIR,
 } from '@/controllers/translation.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CredentialTypes } from '@/credential-types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 describe('TranslationController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');

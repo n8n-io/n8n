@@ -1,4 +1,5 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
+import { ErrorReporter, Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -9,37 +10,29 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	SubworkflowOperationError,
-	Workflow,
-	ErrorReporterProxy as ErrorReporter,
-} from 'n8n-workflow';
+import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import type { WorkflowRequest } from '@/workflows/workflow.request';
-import type {
-	ExecutionPayload,
-	IWorkflowDb,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-} from '@/interfaces';
+import type { CreateExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
-import { WorkflowRunner } from '@/workflow-runner';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { Logger } from '@/logger';
-import type { Project } from '@/databases/entities/project';
-import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
 export class WorkflowExecutionService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -93,9 +86,17 @@ export class WorkflowExecutionService {
 	}
 
 	async executeManually(
-		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
+		{
+			workflowData,
+			runData,
+			startNodes,
+			destinationNode,
+			dirtyNodeNames,
+			triggerToStartFrom,
+		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
+		partialExecutionVersion?: string,
 	) {
 		const pinData = workflowData.pinData;
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -114,14 +115,15 @@ export class WorkflowExecutionService {
 		) {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await this.testWebhooks.needsWebhook(
-				user.id,
-				workflowData,
+			const needsWebhook = await this.testWebhooks.needsWebhook({
+				userId: user.id,
+				workflowEntity: workflowData,
 				additionalData,
 				runData,
 				pushRef,
 				destinationNode,
-			);
+				triggerToStartFrom,
+			});
 
 			if (needsWebhook) return { waitingForWebhook: true };
 		}
@@ -139,6 +141,9 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
+			partialExecutionVersion: partialExecutionVersion ?? '0',
+			dirtyNodeNames,
+			triggerToStartFrom,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
@@ -208,11 +213,10 @@ export class WorkflowExecutionService {
 						initialNode,
 					);
 
-					const fullExecutionData: ExecutionPayload = {
+					const fullExecutionData: CreateExecutionPayload = {
 						data: fakeExecution.data,
 						mode: fakeExecution.mode,
 						finished: false,
-						startedAt: new Date(),
 						stoppedAt: new Date(),
 						workflowData,
 						waitTill: null,
@@ -286,7 +290,7 @@ export class WorkflowExecutionService {
 
 			await this.workflowRunner.run(runData);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			this.logger.error(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,

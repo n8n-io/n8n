@@ -1,5 +1,6 @@
-import { Service } from 'typedi';
 import { DataSource, In, Repository } from '@n8n/typeorm';
+import { Service } from 'typedi';
+
 import { ProjectRelation, type ProjectRole } from '../entities/project-relation';
 
 @Service()

@@ -30,12 +30,18 @@ export class WorkflowExecutionsTab extends BasePage {
 
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
+			cy.ifCanvasVersion(
+				() => {},
+				() => {
+					cy.get('body').click(); // Cancel selection if it exists
+				},
+			);
 			workflowPage.getters.canvasNodeByName(nodeName).click();
 			cy.get('body').type('d', { force: true });
 		},
 		createManualExecutions: (count: number) => {
 			for (let i = 0; i < count; i++) {
-				cy.intercept('POST', '/rest/workflows/**/run').as('workflowExecution');
+				cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
 			}

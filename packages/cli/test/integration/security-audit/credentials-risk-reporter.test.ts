@@ -1,22 +1,30 @@
+import type { SecurityConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import config from '@/config';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/test-db';
-import { generateNanoId } from '@/databases/utils/generators';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import Container from 'typedi';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 
 let securityAuditService: SecurityAuditService;
+
+const securityConfig = mock<SecurityConfig>({ daysAbandonedWorkflow: 90 });
 
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(
+		Container.get(WorkflowRepository),
+		securityConfig,
+	);
 });
 
 beforeEach(async () => {
@@ -152,11 +160,12 @@ test('should report credential in not recently executed workflow', async () => {
 	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	const date = new Date();
-	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') - 1);
+	date.setDate(date.getDate() - securityConfig.daysAbandonedWorkflow - 1);
 
 	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
 		mode: 'manual',
+		createdAt: date,
 		startedAt: date,
 		stoppedAt: date,
 		workflowId: workflow.id,
@@ -220,11 +229,12 @@ test('should not report credentials in recently executed workflow', async () => 
 	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	const date = new Date();
-	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') + 1);
+	date.setDate(date.getDate() - securityConfig.daysAbandonedWorkflow + 1);
 
 	const savedExecution = await Container.get(ExecutionRepository).save({
 		finished: true,
 		mode: 'manual',
+		createdAt: date,
 		startedAt: date,
 		stoppedAt: date,
 		workflowId: workflow.id,

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { useNDVStore } from '@/stores/ndv.store';
-import { computed, ref, watch } from 'vue';
-import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
-import { type Completion, CompletionContext } from '@codemirror/autocomplete';
-import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
-import { watchDebounced } from '@vueuse/core';
 import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
+import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
+import { useNDVStore } from '@/stores/ndv.store';
+import { type Completion, CompletionContext } from '@codemirror/autocomplete';
+import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
+import { watchDebounced } from '@vueuse/core';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
 
@@ -30,13 +30,17 @@ const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
-	() => !ndvStore.isNDVDataEmpty('input') && ndvStore.focusedMappableInput,
+	() => !ndvStore.isInputPanelEmpty && ndvStore.focusedMappableInput,
 );
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
 const tip = computed<TipId>(() => {
-	if (!ndvStore.hasInputData && ndvStore.isInputParentOfActiveNode) {
+	if (
+		!ndvStore.hasInputData &&
+		ndvStore.isInputParentOfActiveNode &&
+		ndvStore.focusedMappableInput
+	) {
 		return 'executePrevious';
 	}
 
@@ -75,9 +79,17 @@ function getCompletionsWithDot(): readonly Completion[] {
 	return completionResult?.options ?? [];
 }
 
-watch(tip, (newTip) => {
-	ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+onBeforeUnmount(() => {
+	ndvStore.setHighlightDraggables(false);
 });
+
+watch(
+	tip,
+	(newTip) => {
+		ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+	},
+	{ immediate: true },
+);
 
 watchDebounced(
 	[() => props.selection, () => props.unresolvedExpression],
@@ -115,15 +127,15 @@ watchDebounced(
 		</div>
 
 		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
+			<span v-n8n-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
 		</div>
 
 		<div v-else-if="tip === 'dotObject'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDotObject')" />
+			<span v-n8n-html="i18n.baseText('expressionTip.typeDotObject')" />
 		</div>
 
 		<div v-else :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.javascript')" />
+			<span v-n8n-html="i18n.baseText('expressionTip.javascript')" />
 		</div>
 	</div>
 </template>
@@ -137,6 +149,13 @@ watchDebounced(
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-2xs);
+
+	code {
+		font-size: var(--font-size-3xs);
+		background: var(--color-background-base);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .content {
@@ -155,13 +174,6 @@ watchDebounced(
 
 .text {
 	display: inline;
-}
-
-code {
-	font-size: var(--font-size-3xs);
-	background: var(--color-background-base);
-	padding: var(--spacing-5xs);
-	border-radius: var(--border-radius-base);
 }
 
 .pill {

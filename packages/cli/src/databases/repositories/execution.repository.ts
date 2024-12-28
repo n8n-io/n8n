@@ -1,5 +1,11 @@
-import { Service } from 'typedi';
-import pick from 'lodash/pick';
+import { GlobalConfig } from '@n8n/config';
+import type {
+	FindManyOptions,
+	FindOneOptions,
+	FindOperator,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import {
 	Brackets,
 	DataSource,
@@ -13,47 +19,37 @@ import {
 	Repository,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
-import type {
-	FindManyOptions,
-	FindOneOptions,
-	FindOperator,
-	FindOptionsWhere,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
-import { GlobalConfig } from '@n8n/config';
-import { BinaryDataService } from 'n8n-core';
-import {
-	ExecutionCancelledError,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
+import pick from 'lodash/pick';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
+import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
+import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
+import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
-	ExecutionPayload,
+	CreateExecutionPayload,
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
+import { separate } from '@/utils';
 
-import config from '@/config';
+import { ExecutionDataRepository } from './execution-data.repository';
 import type { ExecutionData } from '../entities/execution-data';
 import { ExecutionEntity } from '../entities/execution-entity';
 import { ExecutionMetadata } from '../entities/execution-metadata';
-import { ExecutionDataRepository } from './execution-data.repository';
-import { Logger } from '@/logger';
-import type { ExecutionSummaries } from '@/executions/execution.types';
-import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import { separate } from '@/utils';
-import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
-import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
-import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+import { SharedWorkflow } from '../entities/shared-workflow';
+import { WorkflowEntity } from '../entities/workflow-entity';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -124,6 +120,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
@@ -162,7 +159,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData', 'metadata');
+
+			if (Array.isArray(queryParams.relations)) {
+				queryParams.relations.push('executionData', 'metadata');
+			} else {
+				queryParams.relations.executionData = true;
+				queryParams.relations.metadata = true;
+			}
 		}
 
 		const executions = await this.find(queryParams);
@@ -196,13 +199,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return executions.map((execution) => {
 			const { executionData, ...rest } = execution;
 			return rest;
-		});
+		}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 	}
 
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
 		if (executions.length === 0) return;
 
-		ErrorReporter.error(
+		this.errorReporter.error(
 			new ApplicationError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
@@ -295,23 +298,41 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
-		};
+		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 	}
 
 	/**
 	 * Insert a new execution and its execution data using a transaction.
 	 */
-	async createNewExecution(execution: ExecutionPayload): Promise<string> {
-		const { data, workflowData, ...rest } = execution;
-		const { identifiers: inserted } = await this.insert(rest);
-		const { id: executionId } = inserted[0] as { id: string };
-		const { connections, nodes, name, settings } = workflowData ?? {};
-		await this.executionDataRepository.insert({
-			executionId,
-			workflowData: { connections, nodes, name, settings, id: workflowData.id },
-			data: stringify(data),
-		});
-		return String(executionId);
+	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
+		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
+		const { connections, nodes, name, settings } = currentWorkflow ?? {};
+		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
+		const data = stringify(dataObj);
+
+		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
+		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
+			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
+			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
+			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
+			const { id: executionId } = inserted[0] as { id: string };
+			await this.executionDataRepository.insert({ executionId, workflowData, data });
+			return String(executionId);
+		} else {
+			// All other database drivers should create executions and execution-data atomically
+			return await this.manager.transaction(async (transactionManager) => {
+				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
+					...rest,
+					createdAt: new Date(),
+				});
+				const { id: executionId } = inserted[0] as { id: string };
+				await this.executionDataRepository.createExecutionDataForExecution(
+					{ executionId, workflowData, data },
+					transactionManager,
+				);
+				return String(executionId);
+			});
+		}
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
@@ -338,20 +359,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		]);
 	}
 
-	async updateStatus(executionId: string, status: ExecutionStatus) {
-		await this.update({ id: executionId }, { status });
-	}
+	async setRunning(executionId: string) {
+		const startedAt = new Date();
 
-	async resetStartedAt(executionId: string) {
-		await this.update({ id: executionId }, { startedAt: new Date() });
+		await this.update({ id: executionId }, { status: 'running', startedAt });
+
+		return startedAt;
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
-		// Se isolate startedAt because it must be set when the execution starts and should never change.
-		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
-		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowId, workflowData, startedAt, customData, ...executionInformation } =
-			execution;
+		const {
+			id,
+			data,
+			workflowId,
+			workflowData,
+			createdAt, // must never change
+			startedAt, // must never change
+			customData,
+			...executionInformation
+		} = execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
@@ -435,8 +461,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -447,18 +472,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
+		date.setHours(date.getHours() - pruneDataMaxAge);
 
 		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
 			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
 
-		if (maxCount > 0) {
+		if (pruneDataMaxCount > 0) {
 			const executions = await this.createQueryBuilder('execution')
 				.select('execution.id')
 				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(maxCount)
+				.skip(pruneDataMaxCount)
 				.take(1)
 				.orderBy('execution.id', 'DESC')
 				.getMany();
@@ -490,9 +515,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.execute();
 	}
 
-	async hardDeleteSoftDeletedExecutions() {
+	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
@@ -719,6 +744,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		mode: true,
 		retryOf: true,
 		status: true,
+		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
 	};
@@ -804,6 +830,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
+		createdAt?: Date | string;
 		startedAt?: Date | string;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
@@ -814,6 +841,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';
 			return date;
 		};
+
+		if (execution.createdAt) {
+			execution.createdAt =
+				execution.createdAt instanceof Date
+					? execution.createdAt.toISOString()
+					: normalizeDateString(execution.createdAt);
+		}
 
 		if (execution.startedAt) {
 			execution.startedAt =
@@ -874,6 +908,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			metadata,
 			annotationTags,
 			vote,
+			projectId,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -943,6 +978,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (vote) {
 				qb.andWhere('annotation.vote = :vote', { vote });
 			}
+		}
+
+		if (projectId) {
+			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
+				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;

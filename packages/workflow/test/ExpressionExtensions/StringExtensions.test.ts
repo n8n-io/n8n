@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 import { DateTime } from 'luxon';
+
 import { evaluate } from './Helpers';
 import { ExpressionExtensionError } from '../../src/errors';
 

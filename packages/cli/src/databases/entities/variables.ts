@@ -1,4 +1,5 @@
 import { Column, Entity } from '@n8n/typeorm';
+
 import { WithStringId } from './abstract-entity';
 
 @Entity()

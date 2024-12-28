@@ -1,6 +1,7 @@
-import AskAssistantButton from './AskAssistantButton.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import AskAssistantButton from './AskAssistantButton.vue';
 
 export default {
 	title: 'Assistant/AskAssistantButton',

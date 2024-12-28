@@ -1,11 +1,11 @@
 import type { ICredentialType } from 'n8n-workflow';
-import { NodeCreator } from '../pages/features/node-creator';
-import CustomNodeFixture from '../fixtures/Custom_node.json';
-import { CredentialsModal, WorkflowPage } from '../pages';
-import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
-import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
+
 import CustomCredential from '../fixtures/Custom_credential.json';
-import { getVisibleSelect } from '../utils';
+import CustomNodeFixture from '../fixtures/Custom_node.json';
+import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
+import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
+import { CredentialsModal, WorkflowPage } from '../pages';
+import { NodeCreator } from '../pages/features/node-creator';
 import {
 	confirmCommunityNodeUninstall,
 	confirmCommunityNodeUpdate,
@@ -13,6 +13,7 @@ import {
 	installFirstCommunityNode,
 	visitCommunityNodesSettings,
 } from '../pages/settings-community-nodes';
+import { getVisibleSelect } from '../utils';
 
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();

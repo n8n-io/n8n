@@ -24,6 +24,7 @@ const ErrorView = async () => await import('./views/ErrorView.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const CanvasChat = async () => await import('@/components/CanvasChat/CanvasChat.vue');
 const NodeView = async () => await import('@/views/NodeViewSwitcher.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -38,7 +39,6 @@ const SettingsCommunityNodesView = async () =>
 	await import('./views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () => await import('./views/SettingsLogStreamingView.vue');
-const SettingsFakeDoorView = async () => await import('./views/SettingsFakeDoorView.vue');
 const SetupView = async () => await import('./views/SetupView.vue');
 const SigninView = async () => await import('./views/SigninView.vue');
 const SignupView = async () => await import('./views/SignupView.vue');
@@ -47,7 +47,6 @@ const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflo
 const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
-const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
@@ -58,6 +57,10 @@ const SettingsExternalSecrets = async () => await import('./views/SettingsExtern
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
+const TestDefinitionListView = async () =>
+	await import('./views/TestDefinition/TestDefinitionListView.vue');
+const TestDefinitionEditView = async () =>
+	await import('./views/TestDefinition/TestDefinitionEditView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -195,17 +198,6 @@ export const routes: RouteRecordRaw[] = [
 		meta: { middleware: ['authenticated'] },
 	},
 	{
-		path: '/executions',
-		name: VIEWS.EXECUTIONS,
-		components: {
-			default: ExecutionsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
 		components: {
@@ -253,6 +245,54 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
 					executionPreview: WorkflowExecutionsPreview,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+		],
+	},
+	{
+		path: '/workflow/:name/evaluation',
+		meta: {
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+		children: [
+			{
+				path: '',
+				name: VIEWS.TEST_DEFINITION,
+				components: {
+					default: TestDefinitionListView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: 'new',
+				name: VIEWS.NEW_TEST_DEFINITION,
+				components: {
+					default: TestDefinitionEditView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':testId',
+				name: VIEWS.TEST_DEFINITION_EDIT,
+				components: {
+					default: TestDefinitionEditView,
+					header: MainHeader,
+					sidebar: MainSidebar,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -314,6 +354,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
+			footer: CanvasChat,
 		},
 		meta: {
 			nodeView: true,
@@ -346,6 +387,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
+			footer: CanvasChat,
 		},
 		meta: {
 			nodeView: true,
@@ -437,8 +479,16 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/settings',
+		name: VIEWS.SETTINGS,
 		component: SettingsView,
 		props: true,
+		redirect: () => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.settings.hideUsagePage) {
+				return { name: VIEWS.PERSONAL_SETTINGS };
+			}
+			return { name: VIEWS.USAGE };
+		},
 		children: [
 			{
 				path: 'usage',
@@ -576,12 +626,8 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsSso,
 				},
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						custom: () => {
-							const settingsStore = useSettingsStore();
-							return !settingsStore.isDesktopDeployment;
-						},
 						rbac: {
 							scope: 'saml:manage',
 						},
@@ -647,24 +693,6 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: 'coming-soon/:featureId',
-				name: VIEWS.FAKE_DOOR,
-				components: {
-					settingsView: SettingsFakeDoorView,
-				},
-				meta: {
-					middleware: ['authenticated'],
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
-							return {
-								feature: route.params.featureId,
-							};
-						},
-					},
-				},
-			},
-			{
 				path: 'ldap',
 				name: VIEWS.LDAP_SETTINGS,
 				components: {
@@ -693,11 +721,7 @@ export const routes: RouteRecordRaw[] = [
 				custom: () => {
 					const settingsStore = useSettingsStore();
 					const ssoStore = useSSOStore();
-					return (
-						ssoStore.isEnterpriseSamlEnabled &&
-						!settingsStore.isCloudDeployment &&
-						!settingsStore.isDesktopDeployment
-					);
+					return ssoStore.isEnterpriseSamlEnabled && !settingsStore.isCloudDeployment;
 				},
 			},
 			telemetry: {
@@ -739,7 +763,7 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 }
 
 const router = createRouter({
-	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
+	history: createWebHistory(import.meta.env.DEV ? '/' : (window.BASE_PATH ?? '/')),
 	scrollBehavior(to: RouteLocationNormalized, _, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {

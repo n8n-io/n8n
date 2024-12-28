@@ -1,13 +1,17 @@
+import { h } from 'vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
-import { initializeCloudHooks } from '@/hooks/register';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from './stores/roles.store';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
 
 let coreInitialized = false;
 let authenticatedFeaturesInitialized = false;
@@ -26,18 +30,13 @@ export async function initializeCore() {
 	const versionsStore = useVersionsStore();
 
 	await settingsStore.initialize();
+
+	void useExternalHooks().run('app.mount');
+
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
 
 		void versionsStore.checkForNewVersions();
-
-		if (settingsStore.isCloudDeployment) {
-			try {
-				await initializeCloudHooks();
-			} catch (e) {
-				console.error('Failed to initialize cloud hooks:', e);
-			}
-		}
 	}
 
 	coreInitialized = true;
@@ -46,8 +45,10 @@ export async function initializeCore() {
 /**
  * Initializes the features of the application that require an authenticated user
  */
-export async function initializeAuthenticatedFeatures() {
-	if (authenticatedFeaturesInitialized) {
+export async function initializeAuthenticatedFeatures(
+	initialized: boolean = authenticatedFeaturesInitialized,
+) {
+	if (initialized) {
 		return;
 	}
 
@@ -56,6 +57,8 @@ export async function initializeAuthenticatedFeatures() {
 		return;
 	}
 
+	const i18n = useI18n();
+	const toast = useToast();
 	const sourceControlStore = useSourceControlStore();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
@@ -65,7 +68,17 @@ export async function initializeAuthenticatedFeatures() {
 	const rolesStore = useRolesStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
-		await sourceControlStore.getPreferences();
+		try {
+			await sourceControlStore.getPreferences();
+		} catch (e) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.connection.error'),
+				message: h(SourceControlInitializationErrorMessage),
+				type: 'error',
+				duration: 0,
+			});
+			console.error('Failed to initialize source control store', e);
+		}
 	}
 
 	if (settingsStore.isTemplatesEnabled) {

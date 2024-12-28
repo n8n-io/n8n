@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import type { IconDefinition, Library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
@@ -51,6 +51,7 @@ import {
 	faEllipsisH,
 	faEllipsisV,
 	faEnvelope,
+	faEquals,
 	faEye,
 	faExclamationTriangle,
 	faExpand,
@@ -91,6 +92,7 @@ import {
 	faInfoCircle,
 	faKey,
 	faLanguage,
+	faLayerGroup,
 	faLink,
 	faList,
 	faLightbulb,
@@ -121,6 +123,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faScrewdriver,
+	faSmile,
 	faSignInAlt,
 	faSignOutAlt,
 	faSlidersH,
@@ -222,6 +225,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faEllipsisH);
 		addIcon(faEllipsisV);
 		addIcon(faEnvelope);
+		addIcon(faEquals);
 		addIcon(faEye);
 		addIcon(faExclamationTriangle);
 		addIcon(faExpand);
@@ -260,6 +264,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faInfoCircle);
 		addIcon(faKey);
 		addIcon(faLanguage);
+		addIcon(faLayerGroup);
 		addIcon(faLink);
 		addIcon(faList);
 		addIcon(faLightbulb);
@@ -292,6 +297,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSearchPlus);
 		addIcon(faServer);
 		addIcon(faScrewdriver);
+		addIcon(faSmile);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
 		addIcon(faSlidersH);
@@ -337,4 +343,14 @@ export const FontAwesomePlugin: Plugin = {
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
+};
+
+type LibraryWithDefinitions = Library & {
+	definitions: Record<string, Record<string, IconDefinition>>;
+};
+
+export const iconLibrary = library as LibraryWithDefinitions;
+
+export const getAllIconNames = () => {
+	return Object.keys(iconLibrary.definitions.fas);
 };

@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	toRef,
+	useCssModule,
+	watch,
+} from 'vue';
 import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
@@ -22,10 +31,12 @@ import { useCanvas } from '@/composables/useCanvas';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import { isEqual } from 'lodash-es';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
+	hovered?: boolean;
 };
 
 const emit = defineEmits<{
@@ -37,8 +48,12 @@ const emit = defineEmits<{
 	activate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
+	'update:inputs': [id: string];
+	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 }>();
+
+const style = useCssModule();
 
 const props = defineProps<Props>();
 
@@ -62,6 +77,13 @@ const isDisabled = computed(() => props.data.disabled);
 const nodeTypeDescription = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+
+const classes = computed(() => ({
+	[style.canvasNode]: true,
+	[style.showToolbar]: showToolbar.value,
+	hovered: props.hovered,
+	selected: props.selected,
+}));
 
 /**
  * Event bus
@@ -154,7 +176,7 @@ const createEndpointMappingFn =
 			index: endpoint.index,
 		});
 		const handleType = mode === CanvasConnectionMode.Input ? 'target' : 'source';
-		const isConnected = !!connections.value[mode][endpoint.type]?.[endpoint.index]?.length;
+		const connectionsCount = connections.value[mode][endpoint.type]?.[endpoint.index]?.length ?? 0;
 		const isConnecting =
 			connectingHandle.value?.nodeId === props.id &&
 			connectingHandle.value?.handleType === handleType &&
@@ -163,7 +185,7 @@ const createEndpointMappingFn =
 		return {
 			...endpoint,
 			handleId,
-			isConnected,
+			connectionsCount,
 			isConnecting,
 			position,
 			offset: {
@@ -246,6 +268,18 @@ watch(
 	},
 );
 
+watch(inputs, (newValue, oldValue) => {
+	if (!isEqual(newValue, oldValue)) {
+		emit('update:inputs', props.id);
+	}
+});
+
+watch(outputs, (newValue, oldValue) => {
+	if (!isEqual(newValue, oldValue)) {
+		emit('update:outputs', props.id);
+	}
+});
+
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
 });
@@ -256,47 +290,41 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div
-		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
-		data-test-id="canvas-node"
-	>
-		<template v-for="source in mappedOutputs" :key="source.handleId">
+	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
+		<template
+			v-for="source in mappedOutputs"
+			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+		>
 			<CanvasHandleRenderer
-				data-test-id="canvas-node-output-handle"
+				v-bind="source"
 				:mode="CanvasConnectionMode.Output"
-				:type="source.type"
-				:label="source.label"
-				:index="source.index"
-				:position="source.position"
-				:offset="source.offset"
-				:is-connected="source.isConnected"
-				:is-connecting="source.isConnecting"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				:data-node-name="label"
+				data-test-id="canvas-node-output-handle"
+				:data-handle-index="source.index"
 				@add="onAdd"
 			/>
 		</template>
 
-		<template v-for="target in mappedInputs" :key="target.handleId">
+		<template
+			v-for="target in mappedInputs"
+			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+		>
 			<CanvasHandleRenderer
-				data-test-id="canvas-node-input-handle"
+				v-bind="target"
 				:mode="CanvasConnectionMode.Input"
-				:type="target.type"
-				:label="target.label"
-				:index="target.index"
-				:position="target.position"
-				:offset="target.offset"
-				:is-connected="target.isConnected"
-				:is-connecting="target.isConnecting"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
+				data-test-id="canvas-node-input-handle"
+				:data-handle-index="target.index"
+				:data-node-name="label"
 				@add="onAdd"
 			/>
 		</template>
 
 		<CanvasNodeToolbar
 			v-if="nodeTypeDescription"
-			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
@@ -313,7 +341,6 @@ onBeforeUnmount(() => {
 			@open:contextmenu="onOpenContextMenuFromNode"
 		>
 			<NodeIcon
-				v-if="nodeTypeDescription"
 				:node-type="nodeTypeDescription"
 				:size="nodeIconSize"
 				:shrink="false"

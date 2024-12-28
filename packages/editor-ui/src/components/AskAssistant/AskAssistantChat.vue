@@ -33,7 +33,7 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 	} else {
 		await assistantStore.sendMessage({ text: content, quickReplyType });
 	}
-	const task = assistantStore.isSupportChatSessionInProgress ? 'support' : 'error';
+	const task = assistantStore.chatSessionTask;
 	const solutionCount = assistantStore.chatMessages.filter(
 		(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
 	).length;
@@ -71,11 +71,10 @@ function onClose() {
 
 <template>
 	<SlideTransition>
-		<n8n-resize-wrapper
+		<N8nResizeWrapper
 			v-show="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
-			:class="$style.container"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
@@ -83,6 +82,8 @@ function onClose() {
 				:style="{ width: `${assistantStore.chatWidth}px` }"
 				:class="$style.wrapper"
 				data-test-id="ask-assistant-chat"
+				tabindex="0"
+				@keydown.stop
 			>
 				<AskAssistantChat
 					:user="user"
@@ -96,17 +97,11 @@ function onClose() {
 					@code-undo="undoCodeDiff"
 				/>
 			</div>
-		</n8n-resize-wrapper>
+		</N8nResizeWrapper>
 	</SlideTransition>
 </template>
 
 <style module>
-.container {
-	height: 100%;
-	flex-basis: content;
-	z-index: 300;
-}
-
 .wrapper {
 	height: 100%;
 }

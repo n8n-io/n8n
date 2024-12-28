@@ -70,4 +70,8 @@ function onDelete() {
 	--button-background-color: var(--color-background-base);
 	--button-hover-background-color: var(--color-background-light);
 }
+
+.canvas-edge-toolbar-button {
+	border-width: 2px;
+}
 </style>

@@ -1,11 +1,12 @@
+import Container from 'typedi';
+
 import { NODE_PACKAGE_PREFIX } from '@/constants';
 import { InstalledPackages } from '@/databases/entities/installed-packages';
-
-import { randomName } from '../random';
-import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '../constants';
 import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
 import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
-import Container from 'typedi';
+
+import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '../constants';
+import { randomName } from '../random';
 
 export const mockPackageName = () => NODE_PACKAGE_PREFIX + randomName();
 
@@ -21,8 +22,8 @@ export const mockNode = (packageName: string) => {
 
 	return Container.get(InstalledNodesRepository).create({
 		name: nodeName,
-		type: nodeName,
-		latestVersion: COMMUNITY_NODE_VERSION.CURRENT.toString(),
+		type: `${packageName}.${nodeName}`,
+		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
 		package: { packageName },
 	});
 };

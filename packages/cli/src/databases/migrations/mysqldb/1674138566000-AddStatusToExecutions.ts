@@ -8,6 +8,8 @@ export class AddStatusToExecutions1674138566000 implements ReversibleMigration {
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query(`ALTER TABLE \`${tablePrefix}execution_entity\`	DROP COLUMN \`status\``);
+		await queryRunner.query(
+			`ALTER TABLE \`${tablePrefix}execution_entity\`	DROP COLUMN \`status\``,
+		);
 	}
 }

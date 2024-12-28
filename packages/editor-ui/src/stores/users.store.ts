@@ -1,4 +1,9 @@
-import type { IUpdateUserSettingsReqPayload, UpdateGlobalRolePayload } from '@/api/users';
+import type {
+	PasswordUpdateRequestDto,
+	SettingsUpdateRequestDto,
+	UserUpdateRequestDto,
+} from '@n8n/api-types';
+import type { UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
 import { BROWSER_ID_STORAGE_KEY, PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
@@ -11,9 +16,8 @@ import type {
 } from '@/Interface';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from './posthog.store';
-import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import * as mfaApi from '@/api/mfa';
@@ -23,6 +27,8 @@ import type { Scope } from '@n8n/permissions';
 import * as invitationsApi from '@/api/invitation';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { computed, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
@@ -43,6 +49,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
+
+	const telemetry = useTelemetry();
 
 	// Composables
 
@@ -65,6 +73,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
+
+	const userClaimedAiCredits = computed(() => currentUser.value?.settings?.userClaimedAiCredits);
+
+	const isEasyAIWorkflowOnboardingDone = computed(() =>
+		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
+	);
+
+	const setEasyAIWorkflowOnboardingDone = () => {
+		if (currentUser.value?.settings) {
+			currentUser.value.settings.easyAIWorkflowOnboarded = true;
+		}
+	};
 
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
@@ -110,6 +130,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 		const defaultScopes: Scope[] = [];
 		RBACStore.setGlobalScopes(user.globalScopes || defaultScopes);
+		telemetry.identify(rootStore.instanceId, user.id);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 	};
@@ -137,6 +158,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const unsetCurrentUser = () => {
 		currentUserId.value = null;
 		currentUserCloudInfo.value = null;
+		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 	};
 
@@ -162,7 +184,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const loginWithCreds = async (params: {
 		email: string;
 		password: string;
-		mfaToken?: string;
+		mfaCode?: string;
 		mfaRecoveryCode?: string;
 	}) => {
 		const user = await usersApi.login(rootStore.restApiContext, params);
@@ -222,16 +244,16 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.validatePasswordToken(rootStore.restApiContext, params);
 	};
 
-	const changePassword = async (params: { token: string; password: string; mfaToken?: string }) => {
+	const changePassword = async (params: { token: string; password: string; mfaCode?: string }) => {
 		await usersApi.changePassword(rootStore.restApiContext, params);
 	};
 
-	const updateUser = async (params: usersApi.UpdateCurrentUserParams) => {
+	const updateUser = async (params: UserUpdateRequestDto) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
 	};
 
-	const updateUserSettings = async (settings: IUpdateUserSettingsReqPayload) => {
+	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,
@@ -242,10 +264,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const updateOtherUserSettings = async (
-		userId: string,
-		settings: IUpdateUserSettingsReqPayload,
-	) => {
+	const updateOtherUserSettings = async (userId: string, settings: SettingsUpdateRequestDto) => {
 		const updatedSettings = await usersApi.updateOtherUserSettings(
 			rootStore.restApiContext,
 			userId,
@@ -255,7 +274,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers([usersById.value[userId]]);
 	};
 
-	const updateCurrentUserPassword = async (params: usersApi.UpdateUserPasswordParams) => {
+	const updateCurrentUserPassword = async (params: PasswordUpdateRequestDto) => {
 		await usersApi.updateCurrentUserPassword(rootStore.restApiContext, params);
 	};
 
@@ -272,9 +291,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const inviteUsers = async (params: Array<{ email: string; role: InvitableRoleName }>) => {
 		const invitedUsers = await invitationsApi.inviteUsers(rootStore.restApiContext, params);
 		addUsers(
-			invitedUsers.map(({ user }, index) => ({
+			invitedUsers.map(({ user }) => ({
 				isPending: true,
-				globalRole: { name: params[index].role },
 				...user,
 			})),
 		);
@@ -310,21 +328,23 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return await mfaApi.getMfaQR(rootStore.restApiContext);
 	};
 
-	const verifyMfaToken = async (data: { token: string }) => {
-		return await mfaApi.verifyMfaToken(rootStore.restApiContext, data);
+	const verifyMfaCode = async (data: { mfaCode: string }) => {
+		return await mfaApi.verifyMfaCode(rootStore.restApiContext, data);
 	};
 
-	const enableMfa = async (data: { token: string }) => {
+	const canEnableMFA = async () => {
+		return await mfaApi.canEnableMFA(rootStore.restApiContext);
+	};
+
+	const enableMfa = async (data: { mfaCode: string }) => {
 		await mfaApi.enableMfa(rootStore.restApiContext, data);
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = true;
 		}
 	};
 
-	const disableMfa = async (mfaCode: string) => {
-		await mfaApi.disableMfa(rootStore.restApiContext, {
-			token: mfaCode,
-		});
+	const disableMfa = async (data: mfaApi.DisableMfaParams) => {
+		await mfaApi.disableMfa(rootStore.restApiContext, data);
 
 		if (currentUser.value) {
 			currentUser.value.mfaEnabled = false;
@@ -341,8 +361,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 	};
 
-	const confirmEmail = async () => {
-		await cloudApi.confirmEmail(rootStore.restApiContext);
+	const sendConfirmationEmail = async () => {
+		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
 
 	const updateGlobalRole = async ({ id, newRoleName }: UpdateGlobalRolePayload) => {
@@ -370,12 +390,11 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
+		userClaimedAiCredits,
+		isEasyAIWorkflowOnboardingDone,
 		addUsers,
-		setCurrentUser,
 		loginWithCookie,
 		initialize,
-		unsetCurrentUser,
-		deleteUserById,
 		setPersonalizationAnswers,
 		loginWithCreds,
 		logout,
@@ -397,12 +416,14 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		submitPersonalizationSurvey,
 		showPersonalizationSurvey,
 		fetchMfaQR,
-		verifyMfaToken,
+		verifyMfaCode,
 		enableMfa,
 		disableMfa,
+		canEnableMFA,
 		fetchUserCloudAccount,
-		confirmEmail,
+		sendConfirmationEmail,
 		updateGlobalRole,
 		reset,
+		setEasyAIWorkflowOnboardingDone,
 	};
 });

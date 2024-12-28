@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -12,13 +12,12 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { reportFields, reportOperations } from './ReportDescription';
-import { userActivityFields, userActivityOperations } from './UserActivityDescription';
+import { oldVersionNotice } from '@utils/descriptions';
+
 import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
 import type { IData } from './Interfaces';
-
-import { oldVersionNotice } from '@utils/descriptions';
+import { reportFields, reportOperations } from './ReportDescription';
+import { userActivityFields, userActivityOperations } from './UserActivityDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',

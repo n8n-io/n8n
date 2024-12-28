@@ -1,11 +1,12 @@
-import { Service } from 'typedi';
 import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Service } from 'typedi';
+
 import type { ListQuery } from '@/requests';
 
-import { type GlobalRole, User } from '../entities/user';
 import { Project } from '../entities/project';
 import { ProjectRelation } from '../entities/project-relation';
+import { type GlobalRole, User } from '../entities/user';
 
 @Service()
 export class UserRepository extends Repository<User> {

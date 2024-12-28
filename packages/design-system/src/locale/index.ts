@@ -1,6 +1,7 @@
-import defaultLang from '../locale/lang/en';
-import createFormatTemplate from './format';
 import type { N8nLocale, N8nLocaleTranslateFn } from 'n8n-design-system/types';
+
+import createFormatTemplate from './format';
+import defaultLang from '../locale/lang/en';
 
 // import { ElementLocale } from 'element-plus';
 // import ElementLang from 'element-plus/lib/locale/lang/en';

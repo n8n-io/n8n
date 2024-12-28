@@ -1,6 +1,3 @@
-import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
-import { create_container } from 'rhea';
-
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -11,6 +8,8 @@ import type {
 	IRun,
 } from 'n8n-workflow';
 import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { create_container } from 'rhea';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -208,11 +207,11 @@ export class AmqpTrigger implements INodeType {
 
 			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
 			if (!parallelProcessing) {
-				responsePromise = await this.helpers.createDeferredPromise();
+				responsePromise = this.helpers.createDeferredPromise();
 			}
 			if (responsePromise) {
 				this.emit([this.helpers.returnJsonArray([data as any])], undefined, responsePromise);
-				await responsePromise.promise();
+				await responsePromise.promise;
 			} else {
 				this.emit([this.helpers.returnJsonArray([data as any])]);
 			}

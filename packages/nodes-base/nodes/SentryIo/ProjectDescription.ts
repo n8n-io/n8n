@@ -67,7 +67,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -86,7 +86,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the project to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the project to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -105,7 +105,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the team to create a new project for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the team to create a new project for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -199,7 +199,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -218,7 +218,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the project to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the project to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -305,7 +305,7 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -324,6 +324,6 @@ export const projectFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The slug of the project to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The slug of the project to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 ];

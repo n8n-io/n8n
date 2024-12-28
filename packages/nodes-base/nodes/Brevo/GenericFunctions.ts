@@ -19,15 +19,15 @@ export namespace BrevoNode {
 	type ValidatedEmail = ToEmail | SenderEmail | CCEmail | BBCEmail;
 
 	const enum OVERRIDE_MAP_VALUES {
-		'CATEGORY' = 'category',
-		'NORMAL' = 'boolean',
-		'TRANSACTIONAL' = 'id',
+		CATEGORY = 'category',
+		NORMAL = 'boolean',
+		TRANSACTIONAL = 'id',
 	}
 
 	const enum OVERRIDE_MAP_TYPE {
-		'CATEGORY' = 'category',
-		'NORMAL' = 'normal',
-		'TRANSACTIONAL' = 'transactional',
+		CATEGORY = 'category',
+		NORMAL = 'normal',
+		TRANSACTIONAL = 'transactional',
 	}
 
 	export const INTERCEPTORS = new Map<string, (body: JsonObject) => void>([

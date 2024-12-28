@@ -1,11 +1,12 @@
-import { Container } from 'typedi';
+import { SecurityConfig } from '@n8n/config';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
-import config from '@/config';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import type { Risk } from '@/security-audit/types';
+
 import { BaseCommand } from './base-command';
 
 export class SecurityAudit extends BaseCommand {
@@ -25,7 +26,7 @@ export class SecurityAudit extends BaseCommand {
 		}),
 
 		'days-abandoned-workflow': Flags.integer({
-			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
+			default: Container.get(SecurityConfig).daysAbandonedWorkflow,
 			description: 'Days for a workflow to be considered abandoned if not executed',
 		}),
 	};

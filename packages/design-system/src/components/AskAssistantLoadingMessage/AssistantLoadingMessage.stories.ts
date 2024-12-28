@@ -1,5 +1,6 @@
-import AssistantLoadingMessage from './AssistantLoadingMessage.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import AssistantLoadingMessage from './AssistantLoadingMessage.vue';
 
 export default {
 	title: 'Assistant/AskAssistantLoadingMessage',

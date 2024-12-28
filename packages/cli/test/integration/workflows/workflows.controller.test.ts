@@ -1,31 +1,35 @@
+import type { Scope } from '@n8n/permissions';
+import type { INode, IPinData } from 'n8n-workflow';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import type { INode, IPinData } from 'n8n-workflow';
-import type { Scope } from '@n8n/permissions';
 
-import type { User } from '@/databases/entities/user';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { ListQuery } from '@/requests';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
+import type { ListQuery } from '@/requests';
+import { ProjectService } from '@/services/project.service.ee';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { mockInstance } from '../../shared/mocking';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createTag } from '../shared/db/tags';
-import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createWorkflow,
+	shareWorkflowWithProjects,
+	shareWorkflowWithUsers,
+} from '../shared/db/workflows';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
@@ -437,6 +441,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -452,6 +457,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -676,6 +682,21 @@ describe('GET /workflows', () => {
 
 			expect(response2.body.data).toHaveLength(0);
 		});
+
+		test('should return homeProject when filtering workflows by projectId', async () => {
+			const workflow = await createWorkflow({ name: 'First' }, owner);
+			await shareWorkflowWithUsers(workflow, [member]);
+			const pp = await getPersonalProject(member);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query(`filter={ "projectId": "${pp.id}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(workflow.id);
+			expect(response.body.data[0].homeProject).not.toBeNull();
+		});
 	});
 
 	describe('select', () => {
@@ -814,6 +835,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],
@@ -823,6 +845,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],

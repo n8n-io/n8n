@@ -1,28 +1,27 @@
-import { Container, Service } from 'typedi';
-import { readFile } from 'fs/promises';
-import type { Server } from 'http';
+import { GlobalConfig } from '@n8n/config';
+import compression from 'compression';
 import express from 'express';
 import { engine as expressHandlebars } from 'express-handlebars';
-import compression from 'compression';
+import { readFile } from 'fs/promises';
+import type { Server } from 'http';
 import isbot from 'isbot';
+import { Logger } from 'n8n-core';
+import { Container, Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
-import { N8nInstanceType } from '@/interfaces';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
-import { send, sendErrorResponse } from '@/response-helper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
-import { WaitingForms } from '@/waiting-forms';
+import { send, sendErrorResponse } from '@/response-helper';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
-import { LiveWebhooks } from '@/webhooks/live-webhooks';
-import { generateHostInstanceId } from './databases/utils/generators';
-import { Logger } from '@/logger';
+
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export abstract class AbstractServer {
@@ -60,7 +59,7 @@ export abstract class AbstractServer {
 
 	readonly uniqueInstanceId: string;
 
-	constructor(instanceType: N8nInstanceType = 'main') {
+	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -84,8 +83,6 @@ export abstract class AbstractServer {
 		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
 		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
 
-		this.uniqueInstanceId = generateHostInstanceId(instanceType);
-
 		this.logger = Container.get(Logger);
 	}
 
@@ -97,11 +94,8 @@ export abstract class AbstractServer {
 		const { app } = this;
 
 		// Augment errors sent to Sentry
-		const {
-			Handlers: { requestHandler, errorHandler },
-		} = await import('@sentry/node');
-		app.use(requestHandler());
-		app.use(errorHandler());
+		const { setupExpressErrorHandler } = await import('@sentry/node');
+		setupExpressErrorHandler(app);
 	}
 
 	private setupCommonMiddlewares() {

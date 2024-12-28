@@ -1,4 +1,10 @@
+import { combineScopes } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, Not } from '@n8n/typeorm';
+
 import type { Project } from '@/databases/entities/project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import {
 	Get,
 	Post,
@@ -9,21 +15,16 @@ import {
 	ProjectScope,
 	Delete,
 } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { ProjectRequest } from '@/requests';
 import {
 	ProjectService,
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
-} from '@/services/project.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { combineScopes } from '@n8n/permissions';
-import type { Scope } from '@n8n/permissions';
+} from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, Not } from '@n8n/typeorm';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
 
 @RestController('/projects')
 export class ProjectController {
@@ -50,7 +51,12 @@ export class ProjectController {
 	@Licensed('feat:projectRole:admin')
 	async createProject(req: ProjectRequest.Create) {
 		try {
-			const project = await this.projectsService.createTeamProject(req.body.name, req.user);
+			const project = await this.projectsService.createTeamProject(
+				req.body.name,
+				req.user,
+				undefined,
+				req.body.icon,
+			);
 
 			this.eventService.emit('team-project-created', {
 				userId: req.user.id,
@@ -162,7 +168,7 @@ export class ProjectController {
 	@Get('/:projectId')
 	@ProjectScope('project:read')
 	async getProject(req: ProjectRequest.Get): Promise<ProjectRequest.ProjectWithRelations> {
-		const [{ id, name, type }, relations] = await Promise.all([
+		const [{ id, name, icon, type }, relations] = await Promise.all([
 			this.projectsService.getProject(req.params.projectId),
 			this.projectsService.getProjectRelations(req.params.projectId),
 		]);
@@ -171,6 +177,7 @@ export class ProjectController {
 		return {
 			id,
 			name,
+			icon,
 			type,
 			relations: relations.map((r) => ({
 				id: r.user.id,
@@ -192,7 +199,7 @@ export class ProjectController {
 	@ProjectScope('project:update')
 	async updateProject(req: ProjectRequest.Update) {
 		if (req.body.name) {
-			await this.projectsService.updateProject(req.body.name, req.params.projectId);
+			await this.projectsService.updateProject(req.body.name, req.params.projectId, req.body.icon);
 		}
 		if (req.body.relations) {
 			try {

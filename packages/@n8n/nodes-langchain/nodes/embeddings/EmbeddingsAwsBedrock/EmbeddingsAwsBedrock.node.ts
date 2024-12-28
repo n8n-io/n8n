@@ -1,15 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { BedrockEmbeddings } from '@langchain/aws';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { BedrockEmbeddings } from '@langchain/community/embeddings/bedrock';
 
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -104,7 +104,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 

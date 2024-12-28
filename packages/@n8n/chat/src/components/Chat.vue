@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import Close from 'virtual:icons/mdi/close';
 import { computed, nextTick, onMounted } from 'vue';
-import Layout from '@n8n/chat/components/Layout.vue';
+
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
 import GetStartedFooter from '@n8n/chat/components/GetStartedFooter.vue';
-import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import Input from '@n8n/chat/components/Input.vue';
+import Layout from '@n8n/chat/components/Layout.vue';
+import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
 

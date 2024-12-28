@@ -138,7 +138,7 @@ onMounted(() => {
 		:center="true"
 		width="460px"
 		:event-bus="modalBus"
-		@enter="onSubmit"
+		@enter="onSubmitClick"
 	>
 		<template #content>
 			<n8n-form-inputs

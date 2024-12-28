@@ -1,17 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response } from 'express';
-import picocolors from 'picocolors';
-import {
-	ErrorReporterProxy as ErrorReporter,
-	FORM_TRIGGER_PATH_IDENTIFIER,
-	NodeApiError,
-} from 'n8n-workflow';
+import { ErrorReporter, Logger } from 'n8n-core';
+import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import picocolors from 'picocolors';
+import Container from 'typedi';
 
 import { inDevelopment } from '@/constants';
+
 import { ResponseError } from './errors/response-errors/abstract/response.error';
-import Container from 'typedi';
-import { Logger } from './logger';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -102,6 +99,14 @@ export function sendErrorResponse(res: Response, error: Error) {
 			}
 		}
 
+		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
+			//codes other than 200  breaks redirection to form-waiting page from form trigger
+			//render form page instead of json
+			return res.render('form-trigger-409', {
+				message: error.message,
+			});
+		}
+
 		httpStatusCode = error.httpStatusCode;
 
 		if (error.errorCode) {
@@ -132,7 +137,7 @@ export const isUniqueConstraintError = (error: Error) =>
 
 export function reportError(error: Error) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
-		ErrorReporter.error(error);
+		Container.get(ErrorReporter).error(error);
 	}
 }
 

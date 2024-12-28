@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { capitalizeInitial } from '../GenericFunctions';
 import type { CamelCaseResource } from '../types';
 
@@ -258,7 +259,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		name: 'id',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',

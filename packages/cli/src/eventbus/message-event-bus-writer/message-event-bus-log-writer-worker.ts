@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
 import { stat } from 'fs/promises';
 import { isMainThread, parentPort } from 'worker_threads';
+
 import type { MessageEventBusLogWriterOptions } from './message-event-bus-log-writer';
 
 let logFileBasePath = '';

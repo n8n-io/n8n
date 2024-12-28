@@ -24,7 +24,6 @@ import {
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
@@ -34,7 +33,6 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
@@ -46,7 +44,7 @@ import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
@@ -71,7 +69,6 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
-	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
 	INodeOutputConfiguration,
@@ -103,7 +100,6 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
-	IPushDataExecutionFinished,
 	NodeFilterType,
 } from '@/Interface';
 
@@ -162,6 +158,7 @@ import {
 	getConnectorPaintStyleData,
 	OVERLAY_ENDPOINT_ARROW_ID,
 	getEndpointScope,
+	generateOffsets,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -223,7 +220,7 @@ export default defineComponent({
 
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
-		const locale = useI18n();
+		const i18n = useI18n();
 		const contextMenu = useContextMenu();
 		const dataSchema = useDataSchema();
 		const nodeHelpers = useNodeHelpers();
@@ -234,13 +231,15 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({
+			router,
+		});
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 			route,
 		});
 
 		return {
-			locale,
+			i18n,
 			contextMenu,
 			dataSchema,
 			nodeHelpers,
@@ -258,7 +257,7 @@ export default defineComponent({
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
-			...useTitleChange(),
+			documentTitle: useDocumentTitle(),
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
@@ -365,14 +364,14 @@ export default defineComponent({
 		},
 		runButtonText(): string {
 			if (!this.workflowRunning) {
-				return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
+				return this.i18n.baseText('nodeView.runButtonText.executeWorkflow');
 			}
 
 			if (this.executionWaitingForWebhook) {
-				return this.$locale.baseText('nodeView.runButtonText.waitingForTriggerEvent');
+				return this.i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
 			}
 
-			return this.$locale.baseText('nodeView.runButtonText.executingWorkflow');
+			return this.i18n.baseText('nodeView.runButtonText.executingWorkflow');
 		},
 		workflowStyle() {
 			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
@@ -422,7 +421,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive.workflowRunning;
+			return this.workflowsStore.isWorkflowRunning;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -452,13 +451,13 @@ export default defineComponent({
 				)
 			);
 		},
+		canvasChatNode() {
+			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		},
 		isManualChatOnly(): boolean {
 			if (!this.canvasChatNode) return false;
 
 			return this.containsChatNodes && this.triggerNodes.length === 1 && !this.pinnedChatNodeData;
-		},
-		canvasChatNode() {
-			return this.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 		},
 		pinnedChatNodeData() {
 			if (!this.canvasChatNode) return null;
@@ -507,8 +506,11 @@ export default defineComponent({
 		projectPermissions() {
 			const project = this.$route.query?.projectId
 				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
-				: this.projectsStore.currentProject ?? this.projectsStore.personalProject;
+				: (this.projectsStore.currentProject ?? this.projectsStore.personalProject);
 			return getResourcePermissions(project?.scopes);
+		},
+		isChatOpen() {
+			return this.workflowsStore.isChatPanelOpen;
 		},
 	},
 	watch: {
@@ -585,13 +587,13 @@ export default defineComponent({
 		if (!this.nodeViewRef) {
 			this.showError(
 				new Error('NodeView reference not found'),
-				this.$locale.baseText('nodeView.showError.mounted1.title'),
-				this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
+				this.i18n.baseText('nodeView.showError.mounted1.title'),
+				this.i18n.baseText('nodeView.showError.mounted1.message') + ':',
 			);
 			return;
 		}
 		this.canvasStore.initInstance(this.nodeViewRef);
-		this.titleReset();
+		this.documentTitle.reset();
 
 		window.addEventListener('message', this.onPostMessageReceived);
 
@@ -620,8 +622,8 @@ export default defineComponent({
 		} catch (error) {
 			this.showError(
 				error,
-				this.$locale.baseText('nodeView.showError.mounted1.title'),
-				this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
+				this.i18n.baseText('nodeView.showError.mounted1.title'),
+				this.i18n.baseText('nodeView.showError.mounted1.message') + ':',
 			);
 			return;
 		}
@@ -641,8 +643,8 @@ export default defineComponent({
 			} catch (error) {
 				this.showError(
 					error,
-					this.$locale.baseText('nodeView.showError.mounted2.title'),
-					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
+					this.i18n.baseText('nodeView.showError.mounted2.title'),
+					this.i18n.baseText('nodeView.showError.mounted2.message') + ':',
 				);
 			}
 			this.canvasStore.stopLoading();
@@ -810,12 +812,12 @@ export default defineComponent({
 			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
 				this.readOnlyNotification = this.showMessage({
-					title: this.$locale.baseText(
+					title: this.i18n.baseText(
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${this.isReadOnlyRoute ? 'executions' : 'workflows'}.title`
 							: 'readOnly.showMessage.executions.title',
 					),
-					message: this.$locale.baseText(
+					message: this.i18n.baseText(
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${
 									this.isReadOnlyRoute ? 'executions' : 'workflows'
@@ -823,7 +825,7 @@ export default defineComponent({
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
-					dangerouslyUseHTMLString: true,
+
 					onClose: () => {
 						this.readOnlyNotification = null;
 					},
@@ -847,6 +849,7 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
+
 			void this.runWorkflow({ destinationNode: nodeName, source });
 		},
 		async onOpenChat() {
@@ -855,8 +858,9 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked chat open button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onOpenChat', telemetryPayload);
-			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+			this.workflowsStore.setPanelOpen('chat', !this.workflowsStore.isChatPanelOpen);
 		},
+
 		async onRunWorkflow() {
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
@@ -873,7 +877,8 @@ export default defineComponent({
 				void this.externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.runWorkflow({});
+			void this.runWorkflow({});
+
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {
@@ -916,12 +921,12 @@ export default defineComponent({
 
 			const message =
 				this.containsTrigger && this.allTriggersDisabled
-					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
-					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
+					? this.i18n.baseText('nodeView.addOrEnableTriggerNode')
+					: this.i18n.baseText('nodeView.addATriggerNodeFirst');
 
 			const notice = this.showMessage({
 				type: 'info',
-				title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
+				title: this.i18n.baseText('nodeView.cantExecuteNoTrigger'),
 				message,
 				duration: 3000,
 				onClick: () =>
@@ -929,10 +934,9 @@ export default defineComponent({
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
-				dangerouslyUseHTMLString: true,
 			});
 		},
-		clearExecutionData() {
+		async clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
@@ -958,7 +962,7 @@ export default defineComponent({
 				}
 				if (saved) {
 					this.showMessage({
-						title: this.$locale.baseText('generic.workflowSaved'),
+						title: this.i18n.baseText('generic.workflowSaved'),
 						type: 'success',
 					});
 				}
@@ -986,7 +990,7 @@ export default defineComponent({
 			try {
 				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
+				this.showError(error, this.i18n.baseText('nodeView.showError.openExecution.title'));
 				return;
 			}
 			if (data === undefined) {
@@ -1054,7 +1058,7 @@ export default defineComponent({
 					console.error(`Execution ${executionId} error:`);
 					console.error(data.data.resultData.error.stack);
 					this.showMessage({
-						title: this.$locale.baseText('nodeView.showError.workflowError'),
+						title: this.i18n.baseText('nodeView.showError.workflowError'),
 						message: data.data.resultData.error.message,
 						type: 'error',
 						duration: 0,
@@ -1063,7 +1067,7 @@ export default defineComponent({
 			}
 			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
-					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
+					title: this.i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: h(NodeViewUnfinishedWorkflowMessage),
 					type: 'warning',
 					duration: 0,
@@ -1088,7 +1092,7 @@ export default defineComponent({
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.canvasStore.startLoading();
-			this.canvasStore.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
+			this.canvasStore.setLoadingText(this.i18n.baseText('nodeView.loadingTemplate'));
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
@@ -1101,13 +1105,13 @@ export default defineComponent({
 
 				if (!data) {
 					throw new Error(
-						this.$locale.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
+						this.i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
 							interpolate: { templateId },
 						}),
 					);
 				}
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
+				this.showError(error, this.i18n.baseText('nodeView.couldntImportWorkflow'));
 				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
@@ -1254,7 +1258,7 @@ export default defineComponent({
 					element instanceof HTMLElement &&
 					element.className &&
 					typeof element.className === 'string' &&
-					element.className.includes('ignore-key-press')
+					element.className.includes('ignore-key-press-canvas')
 				) {
 					return;
 				}
@@ -1352,7 +1356,7 @@ export default defineComponent({
 				}
 
 				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
+					title: this.i18n.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
 			} else if (e.key === 'Enter' && noModifierKeys) {
@@ -1389,7 +1393,11 @@ export default defineComponent({
 					lastSelectedNode.name,
 				);
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1423,7 +1431,11 @@ export default defineComponent({
 
 				const connections = workflow.connectionsByDestinationNode[lastSelectedNode.name];
 
-				if (connections.main === undefined || connections.main.length === 0) {
+				if (
+					connections.main === undefined ||
+					connections.main.length === 0 ||
+					!connections.main[0]
+				) {
 					return;
 				}
 
@@ -1455,7 +1467,11 @@ export default defineComponent({
 					return;
 				}
 
-				const parentNode = connections.main[0][0].node;
+				const parentNode = connections.main[0]?.[0].node;
+				if (!parentNode) {
+					return;
+				}
+
 				const connectionsParent = this.workflowsStore.outgoingConnectionsByNodeName(parentNode);
 
 				if (!Array.isArray(connectionsParent.main) || !connectionsParent.main.length) {
@@ -1467,7 +1483,7 @@ export default defineComponent({
 				let lastCheckedNodePosition = e.key === 'ArrowUp' ? -99999999 : 99999999;
 				let nextSelectNode: string | null = null;
 				for (const ouputConnections of connectionsParent.main) {
-					for (const ouputConnection of ouputConnections) {
+					for (const ouputConnection of ouputConnections ?? []) {
 						if (ouputConnection.node === lastSelectedNode.name) {
 							// Ignore current node
 							continue;
@@ -1515,7 +1531,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.nodeHelpers.disableNodes(nodes, true);
+			this.nodeHelpers.disableNodes(nodes, { trackHistory: true, trackBulk: true });
 		},
 
 		togglePinNodes(nodes: INode[], source: 'keyboard-shortcut' | 'context-menu') {
@@ -1684,7 +1700,7 @@ export default defineComponent({
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
-							title: 'Copied!',
+							title: this.i18n.baseText('generic.copiedToClipboard'),
 							message: '',
 							type: 'success',
 						});
@@ -1712,19 +1728,13 @@ export default defineComponent({
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
 
-					this.workflowsStore.finishActiveExecution({
-						executionId,
-						data: { finished: true, stoppedAt: new Date() },
-					});
 					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(this.workflowsStore.workflowName, 'IDLE');
 					this.showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
-						message: this.$locale.baseText(
-							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
-						),
+						title: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.message'),
 						type: 'success',
 					});
 				} else if (execution?.finished) {
@@ -1737,24 +1747,20 @@ export default defineComponent({
 						startedAt: execution.startedAt,
 						stoppedAt: execution.stoppedAt,
 					} as IRun;
-					const pushData = {
-						data: executedData,
-						executionId,
-						retryOf: execution.retryOf,
-					} as IPushDataExecutionFinished;
-					this.workflowsStore.finishActiveExecution(pushData);
-					this.titleSet(execution.workflowData.name, 'IDLE');
+					this.workflowHelpers.setDocumentTitle(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
 					this.showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
-						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
+						title: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
+						message: this.i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),
 						type: 'success',
 					});
 				} else {
-					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
+					this.showError(error, this.i18n.baseText('nodeView.showError.stopExecution.title'));
 				}
+			} finally {
+				this.workflowsStore.markExecutionAsStopped();
 			}
 			this.stopExecutionInProgress = false;
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
@@ -1777,10 +1783,7 @@ export default defineComponent({
 			try {
 				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.title'),
-				);
+				this.showError(error, this.i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
 				return;
 			}
 		},
@@ -1811,19 +1814,18 @@ export default defineComponent({
 					}
 
 					const importConfirm = await this.confirm(
-						this.$locale.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
+						this.i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
 							interpolate: { plainTextData },
 						}),
-						this.$locale.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
+						this.i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
 						{
 							type: 'warning',
-							confirmButtonText: this.$locale.baseText(
+							confirmButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
 							),
-							cancelButtonText: this.$locale.baseText(
+							cancelButtonText: this.i18n.baseText(
 								'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 							),
-							dangerouslyUseHTMLString: true,
 						},
 					);
 
@@ -1836,7 +1838,7 @@ export default defineComponent({
 						return;
 					}
 				} else {
-					// Pasted data is is possible workflow data
+					// Pasted data is possible workflow data
 					try {
 						// Check first if it is valid JSON
 						workflowData = JSON.parse(plainTextData);
@@ -1870,7 +1872,7 @@ export default defineComponent({
 				this.canvasStore.stopLoading();
 				this.showError(
 					error,
-					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
+					this.i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
 				return;
 			}
@@ -1909,6 +1911,12 @@ export default defineComponent({
 							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
 								node.webhookId = uuid();
+
+								if (node.parameters.path) {
+									node.parameters.path = node.webhookId as string;
+								} else if ((node.parameters.options as IDataObject).path) {
+									(node.parameters.options as IDataObject).path = node.webhookId as string;
+								}
 							}
 						}
 
@@ -2014,7 +2022,7 @@ export default defineComponent({
 					});
 				}
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
+				this.showError(error, this.i18n.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
 
@@ -2048,10 +2056,7 @@ export default defineComponent({
 			);
 			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
-				const insertNodePosition = [
-					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
-					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-				] as XYPosition;
+				const insertNodePosition: XYPosition = [mousePosition[0], mousePosition[1]];
 
 				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;
@@ -2087,8 +2092,8 @@ export default defineComponent({
 		showMaxNodeTypeError(nodeTypeData: INodeTypeDescription) {
 			const maxNodes = nodeTypeData.maxNodes;
 			this.showMessage({
-				title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
-				message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
+				title: this.i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
+				message: this.i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
 					adjustToNumber: maxNodes,
 					interpolate: { nodeTypeDataDisplayName: nodeTypeData.displayName },
 				}),
@@ -2195,8 +2200,8 @@ export default defineComponent({
 
 			if (nodeTypeData === null) {
 				this.showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
-					message: this.$locale.baseText('nodeView.showMessage.addNodeButton.message', {
+					title: this.i18n.baseText('nodeView.showMessage.addNodeButton.title'),
+					message: this.i18n.baseText('nodeView.showMessage.addNodeButton.message', {
 						interpolate: { nodeTypeName },
 					}),
 					type: 'error',
@@ -2256,12 +2261,6 @@ export default defineComponent({
 						);
 
 						if (sourceNodeType) {
-							const offsets = [
-								[-100, 100],
-								[-140, 0, 140],
-								[-240, -100, 100, 240],
-							];
-
 							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
 								workflow,
 								lastSelectedNode,
@@ -2274,7 +2273,11 @@ export default defineComponent({
 							);
 
 							if (sourceNodeOutputMainOutputs.length > 1) {
-								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const offset = generateOffsets(
+									sourceNodeOutputMainOutputs.length,
+									NodeViewUtils.NODE_SIZE,
+									NodeViewUtils.GRID_SIZE,
+								);
 								const sourceOutputIndex = lastSelectedConnection.__meta
 									? lastSelectedConnection.__meta.sourceOutputIndex
 									: 0;
@@ -2365,7 +2368,7 @@ export default defineComponent({
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
 
-			const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
+			const localizedName = this.i18n.localizeNodeName(newNodeData.name, newNodeData.type);
 
 			newNodeData.name = this.uniqueNodeName(localizedName);
 
@@ -2379,24 +2382,19 @@ export default defineComponent({
 			this.uiStore.stateIsDirty = true;
 
 			if (nodeTypeName === STICKY_NODE_TYPE) {
-				this.$telemetry.trackNodesPanel('nodeView.addSticky', {
+				this.$telemetry.track('User inserted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
 				});
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
-				const trackProperties: ITelemetryTrackProperties = {
+				this.nodeCreatorStore.onNodeAddedToCanvas({
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
 					is_auto_add: isAutoAdd,
 					workflow_id: this.workflowsStore.workflowId,
 					drag_and_drop: options.dragAndDrop,
-				};
-
-				if (lastSelectedNode) {
-					trackProperties.input_node_type = lastSelectedNode.type;
-				}
-
-				this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
+					input_node_type: lastSelectedNode ? lastSelectedNode.type : undefined,
+				});
 			}
 
 			// Automatically deselect all nodes and select the current one and also active
@@ -2721,8 +2719,8 @@ export default defineComponent({
 						if (!input.filter.nodes.includes(sourceNode.type)) {
 							this.dropPrevented = true;
 							this.showToast({
-								title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
-								message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
+								title: this.i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
+								message: this.i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
 									interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
 								}),
 								type: 'error',
@@ -2926,6 +2924,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -2965,6 +2964,7 @@ export default defineComponent({
 				}
 
 				if (
+					// @ts-expect-error Deprecated file
 					// eslint-disable-next-line no-constant-binary-expression
 					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
@@ -3370,14 +3370,14 @@ export default defineComponent({
 					(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
 				) {
 					const confirmModal = await this.confirm(
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+						this.i18n.baseText('generic.unsavedWork.confirmMessage.message'),
 						{
-							title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+							title: this.i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
 							type: 'warning',
-							confirmButtonText: this.$locale.baseText(
+							confirmButtonText: this.i18n.baseText(
 								'generic.unsavedWork.confirmMessage.confirmButtonText',
 							),
-							cancelButtonText: this.$locale.baseText(
+							cancelButtonText: this.i18n.baseText(
 								'generic.unsavedWork.confirmMessage.cancelButtonText',
 							),
 							showClose: true,
@@ -3400,7 +3400,7 @@ export default defineComponent({
 					try {
 						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
 					} catch (error) {
-						this.showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+						this.showError(error, this.i18n.baseText('openWorkflow.workflowNotFoundError'));
 
 						void this.$router.push({
 							name: VIEWS.NEW_WORKFLOW,
@@ -3408,7 +3408,7 @@ export default defineComponent({
 					}
 
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
 
@@ -3587,7 +3587,6 @@ export default defineComponent({
 			if (node.type === STICKY_NODE_TYPE) {
 				this.$telemetry.track('User deleted workflow note', {
 					workflow_id: this.workflowsStore.workflowId,
-					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
 				void this.externalHooks.run('node.deleteNode', { node });
@@ -3698,17 +3697,17 @@ export default defineComponent({
 		async renameNodePrompt(currentName: string) {
 			try {
 				const promptResponsePromise = this.prompt(
-					this.$locale.baseText('nodeView.prompt.newName') + ':',
-					this.$locale.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
+					this.i18n.baseText('nodeView.prompt.newName') + ':',
+					this.i18n.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
 					{
 						customClass: 'rename-prompt',
-						confirmButtonText: this.$locale.baseText('nodeView.prompt.rename'),
-						cancelButtonText: this.$locale.baseText('nodeView.prompt.cancel'),
-						inputErrorMessage: this.$locale.baseText('nodeView.prompt.invalidName'),
+						confirmButtonText: this.i18n.baseText('nodeView.prompt.rename'),
+						cancelButtonText: this.i18n.baseText('nodeView.prompt.cancel'),
+						inputErrorMessage: this.i18n.baseText('nodeView.prompt.invalidName'),
 						inputValue: currentName,
 						inputValidator: (value: string) => {
 							if (!value.trim()) {
-								return this.$locale.baseText('nodeView.prompt.invalidName');
+								return this.i18n.baseText('nodeView.prompt.invalidName');
 							}
 							return true;
 						},
@@ -3820,7 +3819,7 @@ export default defineComponent({
 
 			if (!data.nodes) {
 				// No nodes to add
-				throw new Error(this.$locale.baseText('nodeView.noNodesGivenToAdd'));
+				throw new Error(this.i18n.baseText('nodeView.noNodesGivenToAdd'));
 			}
 
 			// Get how many of the nodes of the types which have
@@ -3854,7 +3853,7 @@ export default defineComponent({
 
 				oldName = node.name;
 
-				const localized = this.locale.localizeNodeName(node.name, node.type);
+				const localized = this.i18n.localizeNodeName(node.name, node.type);
 
 				newName = this.uniqueNodeName(localized, newNodeNames);
 
@@ -3885,13 +3884,10 @@ export default defineComponent({
 						sourceIndex++
 					) {
 						const nodeSourceConnections = [];
-						if (currentConnections[sourceNode][type][sourceIndex]) {
-							for (
-								connectionIndex = 0;
-								connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
-								connectionIndex++
-							) {
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+						const connections = currentConnections[sourceNode][type][sourceIndex];
+						if (connections) {
+							for (connectionIndex = 0; connectionIndex < connections.length; connectionIndex++) {
+								connectionData = connections[connectionIndex];
 								if (!createNodeNames.includes(connectionData.node)) {
 									// Node does not get created so skip input connection
 									continue;
@@ -3927,8 +3923,8 @@ export default defineComponent({
 					// Pin data limit reached
 					if (!pinDataSuccess) {
 						this.showError(
-							new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
-							this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+							new Error(this.i18n.baseText('ndv.pinData.error.tooLarge.description')),
+							this.i18n.baseText('ndv.pinData.error.tooLarge.title'),
 						);
 						continue;
 					}
@@ -4021,14 +4017,17 @@ export default defineComponent({
 				for (type of Object.keys(connections)) {
 					for (sourceIndex = 0; sourceIndex < connections[type].length; sourceIndex++) {
 						connectionToKeep = [];
-						for (
-							connectionIndex = 0;
-							connectionIndex < connections[type][sourceIndex].length;
-							connectionIndex++
-						) {
-							connectionData = connections[type][sourceIndex][connectionIndex];
-							if (exportNodeNames.indexOf(connectionData.node) !== -1) {
-								connectionToKeep.push(connectionData);
+						const connectionsToCheck = connections[type][sourceIndex];
+						if (connectionsToCheck) {
+							for (
+								connectionIndex = 0;
+								connectionIndex < connectionsToCheck.length;
+								connectionIndex++
+							) {
+								connectionData = connectionsToCheck[connectionIndex];
+								if (exportNodeNames.indexOf(connectionData.node) !== -1) {
+									connectionToKeep.push(connectionData);
+								}
 							}
 						}
 
@@ -4136,13 +4135,13 @@ export default defineComponent({
 							window.top.postMessage(
 								JSON.stringify({
 									command: 'error',
-									message: this.$locale.baseText('openWorkflow.workflowImportError'),
+									message: this.i18n.baseText('openWorkflow.workflowImportError'),
 								}),
 								'*',
 							);
 						}
 						this.showMessage({
-							title: this.$locale.baseText('openWorkflow.workflowImportError'),
+							title: this.i18n.baseText('openWorkflow.workflowImportError'),
 							message: (e as Error).message,
 							type: 'error',
 						});
@@ -4162,13 +4161,13 @@ export default defineComponent({
 							window.top.postMessage(
 								JSON.stringify({
 									command: 'error',
-									message: this.$locale.baseText('nodeView.showError.openExecution.title'),
+									message: this.i18n.baseText('nodeView.showError.openExecution.title'),
 								}),
 								'*',
 							);
 						}
 						this.showMessage({
-							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
+							title: this.i18n.baseText('nodeView.showError.openExecution.title'),
 							message: (e as Error).message,
 							type: 'error',
 						});
@@ -4221,12 +4220,13 @@ export default defineComponent({
 				mode,
 				createNodeActive,
 			});
-			this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', {
-				source,
-				mode,
-				createNodeActive,
-				workflow_id: this.workflowsStore.workflowId,
-			});
+			if (createNodeActive) {
+				this.nodeCreatorStore.onCreatorOpened({
+					source,
+					mode,
+					workflow_id: this.workflowsStore.workflowId,
+				});
+			}
 		},
 		async onAddNodes(
 			{ nodes, connections }: AddedNodesAndConnections,
@@ -4369,7 +4369,7 @@ export default defineComponent({
 		},
 		async checkAndInitDebugMode() {
 			if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-				this.titleSet(this.workflowName, 'DEBUG');
+				this.workflowHelpers.setDocumentTitle(this.workflowName, 'DEBUG');
 				if (!this.workflowsStore.isInDebugMode) {
 					await this.applyExecutionData(this.$route.params.executionId as string);
 					this.workflowsStore.isInDebugMode = true;
@@ -4442,7 +4442,7 @@ export default defineComponent({
 					const workflow: IWorkflowDb | undefined =
 						await this.workflowsStore.fetchWorkflow(workflowId);
 					if (workflow) {
-						this.titleSet(workflow.name, 'IDLE');
+						this.workflowHelpers.setDocumentTitle(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 					}
 				}
@@ -4532,7 +4532,7 @@ export default defineComponent({
 					>
 						<template #custom-tooltip>
 							<span
-								v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
+								v-text="i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
 							/>
 						</template>
 					</Node>
@@ -4631,10 +4631,10 @@ export default defineComponent({
 
 				<n8n-button
 					v-if="containsChatNodes"
-					label="Chat"
+					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.window.title')"
 					size="large"
 					icon="comment"
-					type="primary"
+					:type="isChatOpen ? 'tertiary' : 'primary'"
 					data-test-id="workflow-chat-button"
 					@click.stop="onOpenChat"
 				/>
@@ -4647,8 +4647,8 @@ export default defineComponent({
 					type="secondary"
 					:title="
 						stopExecutionInProgress
-							? $locale.baseText('nodeView.stoppingCurrentExecution')
-							: $locale.baseText('nodeView.stopCurrentExecution')
+							? i18n.baseText('nodeView.stoppingCurrentExecution')
+							: i18n.baseText('nodeView.stopCurrentExecution')
 					"
 					:loading="stopExecutionInProgress"
 					data-test-id="stop-execution-button"
@@ -4660,7 +4660,7 @@ export default defineComponent({
 					class="stop-execution"
 					icon="stop"
 					size="large"
-					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
+					:title="i18n.baseText('nodeView.stopWaitingForWebhookCall')"
 					type="secondary"
 					data-test-id="stop-execution-waiting-for-webhook-button"
 					@click.stop="stopWaitingForWebhook"
@@ -4668,7 +4668,7 @@ export default defineComponent({
 
 				<n8n-icon-button
 					v-if="workflowExecution && !workflowRunning && !allTriggersDisabled"
-					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
+					:title="i18n.baseText('nodeView.deletesTheCurrentExecutionData')"
 					icon="trash"
 					size="large"
 					data-test-id="clear-execution-data-button"

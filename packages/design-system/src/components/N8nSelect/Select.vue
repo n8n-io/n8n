@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { ElSelect } from 'element-plus';
 import type { PropType } from 'vue';
 import { computed, ref, useAttrs } from 'vue';
-import { ElSelect } from 'element-plus';
+
 import type { SelectSize } from 'n8n-design-system/types';
+
 import { isEventBindingElementAttribute } from '../../utils';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
@@ -118,9 +120,9 @@ defineExpose({
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
 			ref="innerSelect"
-			:model-value="modelValue ?? undefined"
+			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
-			:popper-class="popperClass"
+			:popper-class="props.popperClass"
 			:class="$style[classes]"
 		>
 			<template v-if="$slots.prefix" #prefix>

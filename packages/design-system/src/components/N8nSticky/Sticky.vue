@@ -1,18 +1,19 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
+
+import { defaultStickyProps } from './constants';
+import type { StickyProps } from './types';
+import { useI18n } from '../../composables/useI18n';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
-import { useI18n } from '../../composables/useI18n';
-import { defaultStickyProps } from './constants';
-import type { StickyProps } from './types';
 
 const props = withDefaults(defineProps<StickyProps>(), defaultStickyProps);
 
 const emit = defineEmits<{
 	edit: [editing: boolean];
 	'update:modelValue': [value: string];
-	'markdown-click': [link: string, e: Event];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 }>();
 
 const { t } = useI18n();
@@ -62,7 +63,7 @@ const onUpdateModelValue = (value: string) => {
 	emit('update:modelValue', value);
 };
 
-const onMarkdownClick = (link: string, event: Event) => {
+const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {
 	emit('markdown-click', link, event);
 };
 
@@ -116,7 +117,7 @@ const onInputScroll = (event: WheelEvent) => {
 		</div>
 		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
 			<N8nText size="xsmall" align="right">
-				<span v-html="t('sticky.markdownHint')"></span>
+				<span v-n8n-html="t('sticky.markdownHint')"></span>
 			</N8nText>
 		</div>
 	</div>

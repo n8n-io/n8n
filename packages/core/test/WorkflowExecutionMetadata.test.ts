@@ -1,3 +1,6 @@
+import type { IRunExecutionData } from 'n8n-workflow';
+
+import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
 import {
 	setWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
@@ -5,8 +8,6 @@ import {
 	getWorkflowExecutionMetadata,
 	getAllWorkflowExecutionMetadata,
 } from '@/ExecutionMetadata';
-import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
-import type { IRunExecutionData } from 'n8n-workflow';
 
 describe('Execution Metadata functions', () => {
 	test('setWorkflowExecutionMetadata will set a value', () => {

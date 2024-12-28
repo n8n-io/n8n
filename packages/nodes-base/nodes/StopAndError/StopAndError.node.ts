@@ -26,7 +26,7 @@ export class StopAndError implements INodeType {
 			color: '#ff0000',
 		},
 		inputs: [NodeConnectionType.Main],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [],
 		properties: [
 			{

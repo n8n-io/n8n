@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
-import N8nText from '../N8nText';
+
+import { useI18n } from '../../composables/useI18n';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
-import { useI18n } from '../../composables/useI18n';
+import N8nText from '../N8nText';
 
 interface UsersInfoProps {
 	firstName?: string;

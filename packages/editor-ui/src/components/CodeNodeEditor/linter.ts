@@ -178,9 +178,9 @@ export const useLinter = (
 					message: i18n.baseText('codeNodeEditor.linter.allItems.unavailableProperty'),
 					actions: [
 						{
-							name: 'Remove',
+							name: 'Fix',
 							apply(view) {
-								view.dispatch({ changes: { from: start - '.'.length, to: end } });
+								view.dispatch({ changes: { from: start, to: end, insert: 'first()' } });
 							},
 						},
 					],
@@ -558,6 +558,76 @@ export const useLinter = (
 				],
 			});
 		});
+
+		/**
+		 * Lint for `$(variable)` usage where variable is not a string, in both modes.
+		 *
+		 * $(nodeName) -> <no autofix>
+		 */
+		const isDollarSignWithVariable = (node: Node) =>
+			node.type === 'CallExpression' &&
+			node.callee.type === 'Identifier' &&
+			node.callee.name === '$' &&
+			node.arguments.length === 1 &&
+			((node.arguments[0].type !== 'Literal' && node.arguments[0].type !== 'TemplateLiteral') ||
+				(node.arguments[0].type === 'TemplateLiteral' && node.arguments[0].expressions.length > 0));
+
+		type TargetCallNode = RangeNode & {
+			callee: { name: string };
+			arguments: Array<{ type: string }>;
+		};
+
+		walk<TargetCallNode>(ast, isDollarSignWithVariable).forEach((node) => {
+			const [start, end] = getRange(node);
+
+			lintings.push({
+				from: start,
+				to: end,
+				severity: 'warning',
+				message: i18n.baseText('codeNodeEditor.linter.bothModes.dollarSignVariable'),
+			});
+		});
+
+		/**
+		 * Lint for $("myNode").item access in runOnceForAllItems mode
+		 *
+		 * $("myNode").item -> $("myNode").first()
+		 */
+		if (toValue(mode) === 'runOnceForEachItem') {
+			type DollarItemNode = RangeNode & {
+				property: { name: string; type: string } & RangeNode;
+			};
+
+			const isDollarNodeItemAccess = (node: Node) =>
+				node.type === 'MemberExpression' &&
+				!node.computed &&
+				node.object.type === 'CallExpression' &&
+				node.object.callee.type === 'Identifier' &&
+				node.object.callee.name === '$' &&
+				node.object.arguments.length === 1 &&
+				node.object.arguments[0].type === 'Literal' &&
+				node.property.type === 'Identifier' &&
+				node.property.name === 'item';
+
+			walk<DollarItemNode>(ast, isDollarNodeItemAccess).forEach((node) => {
+				const [start, end] = getRange(node.property);
+
+				lintings.push({
+					from: start,
+					to: end,
+					severity: 'warning',
+					message: i18n.baseText('codeNodeEditor.linter.eachItem.preferFirst'),
+					actions: [
+						{
+							name: 'Fix',
+							apply(view) {
+								view.dispatch({ changes: { from: start, to: end, insert: 'first()' } });
+							},
+						},
+					],
+				});
+			});
+		}
 
 		return lintings;
 	}

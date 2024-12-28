@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+
 import { InstalledPackages } from './installed-packages';
 
 @Entity()
@@ -10,7 +11,7 @@ export class InstalledNodes {
 	type: string;
 
 	@Column()
-	latestVersion: string;
+	latestVersion: number;
 
 	@ManyToOne('InstalledPackages', 'installedNodes')
 	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })

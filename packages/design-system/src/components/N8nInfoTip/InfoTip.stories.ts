@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3';
+
 import N8nInfoTip from './InfoTip.vue';
 
 export default {
@@ -17,3 +18,9 @@ const Template: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Note = Template.bind({});
+
+export const Tooltip = Template.bind({});
+Tooltip.args = {
+	type: 'tooltip',
+	tooltipPlacement: 'right',
+};

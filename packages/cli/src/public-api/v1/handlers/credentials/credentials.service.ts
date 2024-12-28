@@ -5,19 +5,21 @@ import type {
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import * as Db from '@/db';
-import type { ICredentialsDb } from '@/interfaces';
+import { Container } from 'typedi';
+
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
-import { ExternalHooks } from '@/external-hooks';
-import type { IDependency, IJsonSchema } from '../../../types';
-import type { CredentialRequest } from '@/requests';
-import { Container } from 'typedi';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import * as Db from '@/db';
 import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import type { ICredentialsDb } from '@/interfaces';
+import type { CredentialRequest } from '@/requests';
+
+import type { IDependency, IJsonSchema } from '../../../types';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });

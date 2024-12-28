@@ -17,12 +17,20 @@ export const versionDescription: INodeTypeDescription = {
 	},
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
 	hints: [
 		{
 			message:
 				"Use the 'Minimise API Calls' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
 			displayCondition:
 				'={{$parameter["operation"] === "append" && !$parameter["options"]["useAppend"]}}',
+			whenToDisplay: 'beforeExecution',
+			location: 'outputPane',
+		},
+		{
+			message: 'No columns found in Google Sheet. All rows will be appended',
+			displayCondition:
+				'={{ ["appendOrUpdate", "append"].includes($parameter["operation"]) && $parameter?.columns?.mappingMode === "defineBelow" && !$parameter?.columns?.schema?.length }}',
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},

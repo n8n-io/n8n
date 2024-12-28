@@ -5,6 +5,7 @@ import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import VueJsonPretty from 'vue-json-pretty';
 import RunDataHtml from '@/components/RunDataHtml.vue';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	binaryData: IBinaryData;
@@ -16,6 +17,8 @@ const error = ref(false);
 const data = ref('');
 
 const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
 
 const embedClass = computed(() => {
 	return [props.binaryData.fileType ?? 'other'];
@@ -57,12 +60,13 @@ onMounted(async () => {
 		<span v-else>
 			<video v-if="binaryData.fileType === 'video'" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType" />
-				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+				{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
 			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType" />
-				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+				{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</audio>
+			<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
 			<VueJsonPretty
 				v-else-if="binaryData.fileType === 'json'"
 				:data="data"
@@ -76,18 +80,16 @@ onMounted(async () => {
 </template>
 
 <style lang="scss">
+img,
+video {
+	max-height: 100%;
+	max-width: 100%;
+}
 .binary-data {
-	background-color: var(--color-foreground-xlight);
-
-	&.image {
-		max-height: calc(100% - 1em);
-		max-width: calc(100% - 1em);
-	}
-
 	&.other,
 	&.pdf {
-		height: calc(100% - 1em);
-		width: calc(100% - 1em);
+		height: 100%;
+		width: 100%;
 	}
 }
 </style>

@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
-import { uid } from '../../utils';
-import type { InputSize, InputType } from 'n8n-design-system/types/input';
+import { computed, ref } from 'vue';
+
 import type { ElementPlusSizePropType, InputAutocompletePropType } from 'n8n-design-system/types';
+import type { InputSize, InputType } from 'n8n-design-system/types/input';
+
+import { uid } from '../../utils';
 
 interface InputProps {
 	modelValue?: string | number;
@@ -30,14 +32,14 @@ const props = withDefaults(defineProps<InputProps>(), {
 	readonly: false,
 	clearable: false,
 	rows: 2,
-	maxlength: Infinity,
+	maxlength: undefined,
 	title: '',
 	name: () => uid('input'),
 	autocomplete: 'off',
 });
 
 const resolvedSize = computed(
-	() => (props.size === 'xlarge' ? undefined : props.size) as ElementPlusSizePropType,
+	() => (props.size === 'medium' ? 'default' : props.size) as ElementPlusSizePropType,
 );
 
 const classes = computed(() => {
@@ -79,6 +81,7 @@ defineExpose({ focus, blur, select });
 		:clearable="clearable"
 		:rows="rows"
 		:title="title"
+		:maxlength="maxlength"
 		v-bind="$attrs"
 	>
 		<template v-if="$slots.prepend" #prepend>

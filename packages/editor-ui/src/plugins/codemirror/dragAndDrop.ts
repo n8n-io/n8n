@@ -1,8 +1,8 @@
-import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
-import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
-import { syntaxTree } from '@codemirror/language';
 import { useNDVStore } from '@/stores/ndv.store';
 import { unwrapExpression } from '@/utils/expressions';
+import { syntaxTree } from '@codemirror/language';
+import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
+import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
 
 const setDropCursorPos = StateEffect.define<number | null>({
 	map(pos, mapping) {
@@ -121,20 +121,10 @@ function eventToCoord(event: MouseEvent): { x: number; y: number } {
 	return { x: event.clientX, y: event.clientY };
 }
 
-export async function dropInEditor(view: EditorView, event: MouseEvent, value: string) {
-	const dropPos = view.posAtCoords(eventToCoord(event), false);
-
-	const node = syntaxTree(view.state).resolve(dropPos);
-	let valueToInsert = value;
-
-	// We are already in an expression, do not insert brackets
-	if (node.name === 'Resolvable') {
-		valueToInsert = unwrapExpression(value);
-	}
-
-	const changes = view.state.changes({ from: dropPos, insert: valueToInsert });
-	const anchor = changes.mapPos(dropPos, -1);
-	const head = changes.mapPos(dropPos, 1);
+function dropValueInEditor(view: EditorView, pos: number, value: string) {
+	const changes = view.state.changes({ from: pos, insert: value });
+	const anchor = changes.mapPos(pos, -1);
+	const head = changes.mapPos(pos, 1);
 	const selection = EditorSelection.single(anchor, head);
 
 	view.dispatch({
@@ -144,8 +134,27 @@ export async function dropInEditor(view: EditorView, event: MouseEvent, value: s
 	});
 
 	setTimeout(() => view.focus());
-
 	return selection;
+}
+
+export async function dropInExpressionEditor(view: EditorView, event: MouseEvent, value: string) {
+	const dropPos = view.posAtCoords(eventToCoord(event), false);
+	const node = syntaxTree(view.state).resolve(dropPos);
+	let valueToInsert = value;
+
+	// We are already in an expression, do not insert brackets
+	if (node.name === 'Resolvable') {
+		valueToInsert = unwrapExpression(value);
+	}
+
+	return dropValueInEditor(view, dropPos, valueToInsert);
+}
+
+export async function dropInCodeEditor(view: EditorView, event: MouseEvent, value: string) {
+	const dropPos = view.posAtCoords(eventToCoord(event), false);
+	const valueToInsert = unwrapExpression(value);
+
+	return dropValueInEditor(view, dropPos, valueToInsert);
 }
 
 export function mappingDropCursor(): Extension {

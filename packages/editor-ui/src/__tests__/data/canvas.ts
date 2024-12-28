@@ -1,17 +1,20 @@
-import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
-import { ref } from 'vue';
+import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
+import { computed, ref } from 'vue';
 import type {
+	CanvasInjectionData,
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
+	ConnectStartEvent,
 	ExecutionOutputMapData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import type { ViewportTransform } from '@vue-flow/core';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -88,6 +91,27 @@ export function createCanvasNodeProps({
 	};
 }
 
+export function createCanvasProvide({
+	initialized = true,
+	isExecuting = false,
+	connectingHandle = undefined,
+	viewport = { x: 0, y: 0, zoom: 1 },
+}: {
+	initialized?: boolean;
+	isExecuting?: boolean;
+	connectingHandle?: ConnectStartEvent;
+	viewport?: ViewportTransform;
+} = {}) {
+	return {
+		[String(CanvasKey)]: {
+			initialized: ref(initialized),
+			isExecuting: ref(isExecuting),
+			connectingHandle: ref(connectingHandle),
+			viewport: ref(viewport),
+		} satisfies CanvasInjectionData,
+	};
+}
+
 export function createCanvasNodeProvide({
 	id = 'node',
 	label = 'Test Node',
@@ -105,7 +129,7 @@ export function createCanvasNodeProvide({
 } = {}) {
 	const props = createCanvasNodeProps({ id, label, selected, readOnly, data });
 	return {
-		[`${CanvasNodeKey}`]: {
+		[String(CanvasNodeKey)]: {
 			id: ref(props.id),
 			label: ref(props.label),
 			selected: ref(props.selected),
@@ -125,6 +149,7 @@ export function createCanvasHandleProvide({
 	isConnected = false,
 	isConnecting = false,
 	isReadOnly = false,
+	isRequired = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
@@ -134,17 +159,23 @@ export function createCanvasHandleProvide({
 	isConnected?: boolean;
 	isConnecting?: boolean;
 	isReadOnly?: boolean;
+	isRequired?: boolean;
 } = {}) {
+	const maxConnections = [NodeConnectionType.Main, NodeConnectionType.AiTool].includes(type)
+		? Infinity
+		: 1;
 	return {
-		[`${CanvasNodeHandleKey}`]: {
+		[String(CanvasNodeHandleKey)]: {
 			label: ref(label),
 			mode: ref(mode),
 			type: ref(type),
 			index: ref(index),
-			isConnected: ref(isConnected),
+			isConnected: computed(() => isConnected),
 			isConnecting: ref(isConnecting),
-			runData: ref(runData),
 			isReadOnly: ref(isReadOnly),
+			isRequired: ref(isRequired),
+			maxConnections: ref(maxConnections),
+			runData: ref(runData),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }

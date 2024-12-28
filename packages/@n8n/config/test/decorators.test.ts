@@ -1,4 +1,5 @@
 import { Container } from 'typedi';
+
 import { Config, Env } from '../src/decorators';
 
 describe('decorators', () => {

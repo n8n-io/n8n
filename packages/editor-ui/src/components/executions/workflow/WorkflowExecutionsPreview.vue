@@ -4,20 +4,15 @@ import { useRoute } from 'vue-router';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
+import WorkflowExecutionAnnotationPanel from '@/components/executions/workflow/WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import {
-	EnterpriseEditionFeature,
-	EXECUTION_ANNOTATION_EXPERIMENT,
-	MODAL_CONFIRM,
-	VIEWS,
-} from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import { getResourcePermissions } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
@@ -39,7 +34,6 @@ const executionHelpers = useExecutionHelpers();
 const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
-const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
@@ -67,14 +61,26 @@ const isRetriable = computed(
 );
 
 const isAnnotationEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+
+const hasAnnotation = computed(
 	() =>
-		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters] &&
-		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+		!!props.execution?.annotation &&
+		(props.execution?.annotation.vote || props.execution?.annotation.tags.length > 0),
 );
 
 async function onDeleteExecution(): Promise<void> {
-	const deleteConfirmed = await message.confirm(
+	// Prepend the message with a note about annotations if they exist
+	const confirmationText = [
+		hasAnnotation.value && locale.baseText('executionDetails.confirmMessage.annotationsNote'),
 		locale.baseText('executionDetails.confirmMessage.message'),
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const deleteConfirmed = await message.confirm(
+		confirmationText,
 		locale.baseText('executionDetails.confirmMessage.headline'),
 		{
 			type: 'warning',

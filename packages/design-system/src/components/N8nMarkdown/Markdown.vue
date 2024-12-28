@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
 import type { Options as MarkdownOptions } from 'markdown-it';
 import Markdown from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
+import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
+import { computed, ref } from 'vue';
 import xss, { friendlyAttrValue, whiteList } from 'xss';
 
-import N8nLoading from '../N8nLoading';
 import { escapeMarkdown, toggleCheckbox } from '../../utils/markdown';
+import N8nLoading from '../N8nLoading';
 
 interface IImage {
 	id: string;
@@ -136,7 +136,7 @@ const htmlContent = computed(() => {
 });
 
 const emit = defineEmits<{
-	'markdown-click': [link: string, e: MouseEvent];
+	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
 	'update-content': [content: string];
 }>();
 
@@ -154,7 +154,7 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	if (clickedLink) {
-		emit('markdown-click', clickedLink?.href, event);
+		emit('markdown-click', clickedLink, event);
 	}
 };
 
@@ -202,7 +202,7 @@ const onCheckboxChange = (index: number) => {
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"
-			v-html="htmlContent"
+			v-n8n-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(_, index) in loadingBlocks" :key="index">
@@ -251,17 +251,9 @@ const onCheckboxChange = (index: number) => {
 		}
 	}
 
-	pre {
-		margin-bottom: var(--spacing-s);
-		display: grid;
-	}
-
 	pre > code {
-		display: block;
-		padding: var(--spacing-s);
-		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
-		overflow-x: auto;
+		color: var(--color-text-dark);
 	}
 
 	li > code,
@@ -356,9 +348,8 @@ input[type='checkbox'] + label {
 		}
 	}
 
-	code {
+	pre > code {
 		background-color: var(--color-sticky-code-background);
-		padding: 0 var(--spacing-4xs);
 		color: var(--color-sticky-code-font);
 	}
 
@@ -382,6 +373,20 @@ input[type='checkbox'] + label {
 		&[src*='#full-width'] {
 			width: 100%;
 		}
+	}
+}
+
+.sticky,
+.markdown {
+	pre {
+		margin-bottom: var(--spacing-s);
+		display: grid;
+	}
+
+	pre > code {
+		display: block;
+		padding: var(--spacing-s);
+		overflow-x: auto;
 	}
 }
 

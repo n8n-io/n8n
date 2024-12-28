@@ -7,13 +7,13 @@ type Props = {
 	label?: string;
 	hint?: string;
 	value?: string;
-	copyButtonText: string;
+	copyButtonText?: string;
 	toastTitle?: string;
 	toastMessage?: string;
 	size?: 'medium' | 'large';
 	collapse?: boolean;
 	redactValue?: boolean;
-	disableCopy: boolean;
+	disableCopy?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {

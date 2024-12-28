@@ -1,14 +1,15 @@
+import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
+
 import type { CacheService } from '@/services/cache/cache.service';
-import type { OrchestrationService } from '@/services/orchestration.service';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import { mock } from 'jest-mock-extended';
 
 describe('TestWebhookRegistrationsService', () => {
 	const cacheService = mock<CacheService>();
 	const registrations = new TestWebhookRegistrationsService(
 		cacheService,
-		mock<OrchestrationService>({ isMultiMainSetupEnabled: false }),
+		mock<InstanceSettings>({ isMultiMain: false }),
 	);
 
 	const registration = mock<TestWebhookRegistration>({

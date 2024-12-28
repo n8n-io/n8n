@@ -4,4 +4,4 @@ export const NODE_RAN_MULTIPLE_TIMES_WARNING =
 export const LOCALHOST = '127.0.0.1';
 
 export const ENABLE_LESS_STRICT_TYPE_VALIDATION =
-	"Try changing the type of comparison. Alternatively you can enable 'Convert Value Types'.";
+	"Try changing the type of comparison. Alternatively you can enable 'Convert types where required'.";

@@ -1,13 +1,14 @@
-import SHA from 'jssha';
-import MD5 from 'md5';
 import { toBase64, fromBase64 } from 'js-base64';
-import { titleCase } from 'title-case';
-import type { Extension, ExtensionMap } from './Extensions';
-import { transliterate } from 'transliteration';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import SHA from 'jssha';
 import { DateTime } from 'luxon';
-import { tryToParseDateTime } from '../TypeValidation';
+import MD5 from 'md5';
+import { titleCase } from 'title-case';
+import { transliterate } from 'transliteration';
+
+import type { Extension, ExtensionMap } from './Extensions';
 import { toDateTime as numberToDateTime } from './NumberExtensions';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { tryToParseDateTime } from '../TypeValidation';
 
 export const SupportedHashAlgorithms = [
 	'md5',

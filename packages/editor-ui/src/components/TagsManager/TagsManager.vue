@@ -10,11 +10,11 @@ import type { BaseTextKey } from '@/plugins/i18n';
 
 interface TagsManagerProps {
 	modalKey: string;
-	usageLocaleKey: BaseTextKey;
-	usageColumnTitleLocaleKey: BaseTextKey;
-	titleLocaleKey: BaseTextKey;
-	noTagsTitleLocaleKey: BaseTextKey;
-	noTagsDescriptionLocaleKey: BaseTextKey;
+	usageLocaleKey?: BaseTextKey;
+	usageColumnTitleLocaleKey?: BaseTextKey;
+	titleLocaleKey?: BaseTextKey;
+	noTagsTitleLocaleKey?: BaseTextKey;
+	noTagsDescriptionLocaleKey?: BaseTextKey;
 	tags: ITag[];
 	isLoading: boolean;
 	onFetchTags: () => Promise<void>;

@@ -1,14 +1,15 @@
-import getRawBody from 'raw-body';
-import { type Readable } from 'stream';
-import { createGunzip, createInflate } from 'zlib';
+import { GlobalConfig } from '@n8n/config';
 import type { Request, RequestHandler } from 'express';
-import { parse as parseQueryString } from 'querystring';
-import { Parser as XmlParser } from 'xml2js';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { GlobalConfig } from '@n8n/config';
+import { parse as parseQueryString } from 'querystring';
+import getRawBody from 'raw-body';
+import { type Readable } from 'stream';
 import Container from 'typedi';
+import { Parser as XmlParser } from 'xml2js';
+import { createGunzip, createInflate } from 'zlib';
+
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const xmlParser = new XmlParser({
 	async: true,

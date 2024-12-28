@@ -1,17 +1,18 @@
+import type { Scope } from '@n8n/permissions';
 import { Container } from 'typedi';
-import * as Db from '@/db';
+
+import config from '@/config';
+import type { Project } from '@/databases/entities/project';
+import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
-import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { Project } from '@/databases/entities/project';
 import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import * as Db from '@/db';
 import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
-import type { Scope } from '@n8n/permissions';
-import config from '@/config';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];

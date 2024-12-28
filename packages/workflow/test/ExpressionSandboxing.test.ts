@@ -1,5 +1,6 @@
-import { PrototypeSanitizer, sanitizer } from '@/ExpressionSandboxing';
 import { Tournament } from '@n8n/tournament';
+
+import { PrototypeSanitizer, sanitizer } from '@/ExpressionSandboxing';
 
 const tournament = new Tournament(
 	(e) => {

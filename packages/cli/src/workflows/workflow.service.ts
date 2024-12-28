@@ -1,39 +1,39 @@
-import { Service } from 'typedi';
-import { NodeApiError } from 'n8n-workflow';
-import pick from 'lodash/pick';
-import omit from 'lodash/omit';
-import { v4 as uuid } from 'uuid';
-import { BinaryDataService } from 'n8n-core';
-
-import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { validateEntity } from '@/generic-helpers';
-import { ExternalHooks } from '@/external-hooks';
-import { hasSharing, type ListQuery } from '@/requests';
-import { TagService } from '@/services/tag.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
-import { Logger } from '@/logger';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
-import { WorkflowSharingService } from './workflow-sharing.service';
-import { ProjectService } from '@/services/project.service';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import omit from 'lodash/omit';
+import pick from 'lodash/pick';
+import { BinaryDataService, Logger } from 'n8n-core';
+import { NodeApiError } from 'n8n-workflow';
+import { Service } from 'typedi';
+import { v4 as uuid } from 'uuid';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import config from '@/config';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import { hasSharing, type ListQuery } from '@/requests';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
+import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()
 export class WorkflowService {
@@ -65,6 +65,20 @@ export class WorkflowService {
 		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
 
 		if (hasSharing(workflows)) {
+			// Since we're filtering using project ID as part of the relation,
+			// we end up filtering out all the other relations, meaning that if
+			// it's shared to a project, it won't be able to find the home project.
+			// To solve this, we have to get all the relation now, even though
+			// we're deleting them later.
+			if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
+				const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(
+					workflows.map((c) => c.id),
+				);
+				workflows.forEach((c) => {
+					c.shared = relations.filter((r) => r.workflowId === c.id);
+				});
+			}
+
 			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
 		}
 
@@ -74,8 +88,8 @@ export class WorkflowService {
 		}
 
 		workflows.forEach((w) => {
-			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
-			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// This is to emulate the old behaviour of removing the shared field as
+			// part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
 			// though. So to avoid leaking the information we just delete it.
 			delete w.shared;
 		});

@@ -1,11 +1,12 @@
-import { WorkflowSelect } from './dtos/workflow.select.dto';
-import { UserSelect } from './dtos/user.select.dto';
-import { CredentialsSelect } from './dtos/credentials.select.dto';
+import type { RequestHandler } from 'express';
+
+import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
-import type { RequestHandler } from 'express';
-import type { ListQuery } from '@/requests';
+import { CredentialsSelect } from './dtos/credentials.select.dto';
+import { UserSelect } from './dtos/user.select.dto';
+import { WorkflowSelect } from './dtos/workflow.select.dto';
 
 export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request, res, next) => {
 	const { select: rawSelect } = req.query;

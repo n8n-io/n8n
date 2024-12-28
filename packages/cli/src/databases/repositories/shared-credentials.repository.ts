@@ -1,12 +1,14 @@
-import { Service } from 'typedi';
+import type { Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
-import { type CredentialSharingRole, SharedCredentials } from '../entities/shared-credentials';
-import type { User } from '../entities/user';
+import { Service } from 'typedi';
+
 import { RoleService } from '@/services/role.service';
-import type { Scope } from '@n8n/permissions';
+
 import type { Project } from '../entities/project';
 import type { ProjectRole } from '../entities/project-relation';
+import { type CredentialSharingRole, SharedCredentials } from '../entities/shared-credentials';
+import type { User } from '../entities/user';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {

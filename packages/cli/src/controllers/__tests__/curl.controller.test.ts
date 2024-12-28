@@ -1,7 +1,8 @@
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { CurlController } from '@/controllers/curl.controller';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CurlService } from '@/services/curl.service';
 
 describe('CurlController', () => {

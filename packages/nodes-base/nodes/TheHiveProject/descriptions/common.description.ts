@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { TLP } from '../helpers/interfaces';
 
 export const returnAllAndLimit: INodeProperties[] = [
@@ -31,7 +32,7 @@ export const responderOptions: INodeProperties = {
 	name: 'responder',
 	type: 'options',
 	description:
-		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	required: true,
 	default: '',
 	typeOptions: {
@@ -106,7 +107,7 @@ export const observableTypeOptions: INodeProperties = {
 		loadOptionsMethod: 'loadObservableTypes',
 	},
 	description:
-		'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
 export const alertStatusOptions: INodeProperties = {

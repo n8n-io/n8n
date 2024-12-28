@@ -1,5 +1,5 @@
-import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 const WorkflowsPage = new WorkflowsPageClass();
@@ -72,5 +72,29 @@ describe('Workflows', () => {
 		});
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
+	});
+
+	it('should respect tag querystring filter when listing workflows', () => {
+		WorkflowsPage.getters.newWorkflowButtonCard().click();
+
+		cy.createFixtureWorkflow('Test_workflow_2.json', getUniqueWorkflowName('My New Workflow'));
+
+		cy.visit(WorkflowsPage.url);
+
+		WorkflowsPage.getters.createWorkflowButton().click();
+
+		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+
+		cy.visit(WorkflowsPage.url);
+
+		WorkflowsPage.getters.workflowFilterButton().click();
+
+		WorkflowsPage.getters.workflowTagsDropdown().click();
+
+		WorkflowsPage.getters.workflowTagItem('some-tag-1').click();
+
+		cy.reload();
+
+		WorkflowsPage.getters.workflowCards().should('have.length', 1);
 	});
 });

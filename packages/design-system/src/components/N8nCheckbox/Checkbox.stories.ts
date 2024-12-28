@@ -1,6 +1,7 @@
-import N8nCheckbox from './Checkbox.vue';
-import type { StoryFn } from '@storybook/vue3';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue3';
+
+import N8nCheckbox from './Checkbox.vue';
 
 export default {
 	title: 'Atoms/Checkbox',

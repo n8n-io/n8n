@@ -1,8 +1,10 @@
-import * as path from 'path';
+import { GlobalConfig } from '@n8n/config';
 import glob from 'fast-glob';
+import * as path from 'path';
 import { Service } from 'typedi';
+
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { getNodeTypes } from '@/security-audit/utils';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
 	ENV_VARS_DOCS_URL,
@@ -10,10 +12,9 @@ import {
 	COMMUNITY_NODES_RISKS_URL,
 	NPM_PACKAGE_URL,
 } from '@/security-audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { Risk, RiskReporter } from '@/security-audit/types';
+import { getNodeTypes } from '@/security-audit/utils';
 import { CommunityPackagesService } from '@/services/community-packages.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {

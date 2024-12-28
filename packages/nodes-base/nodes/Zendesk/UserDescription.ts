@@ -142,7 +142,7 @@ export const userFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -174,7 +174,7 @@ export const userFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -244,7 +244,7 @@ export const userFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -302,7 +302,7 @@ export const userFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -399,7 +399,7 @@ export const userFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -438,7 +438,7 @@ export const userFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -508,7 +508,7 @@ export const userFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -566,7 +566,7 @@ export const userFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',

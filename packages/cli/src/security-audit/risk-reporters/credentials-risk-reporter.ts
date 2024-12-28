@@ -1,12 +1,13 @@
-import { Service } from 'typedi';
+import { SecurityConfig } from '@n8n/config';
 import type { IWorkflowBase } from 'n8n-workflow';
-import config from '@/config';
-import { CREDENTIALS_REPORT } from '@/security-audit/constants';
-import type { RiskReporter, Risk } from '@/security-audit/types';
+import { Service } from 'typedi';
+
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { CREDENTIALS_REPORT } from '@/security-audit/constants';
+import type { RiskReporter, Risk } from '@/security-audit/types';
 
 @Service()
 export class CredentialsRiskReporter implements RiskReporter {
@@ -14,10 +15,11 @@ export class CredentialsRiskReporter implements RiskReporter {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly securityConfig: SecurityConfig,
 	) {}
 
 	async report(workflows: WorkflowEntity[]) {
-		const days = config.getEnv('security.audit.daysAbandonedWorkflow');
+		const days = this.securityConfig.daysAbandonedWorkflow;
 
 		const allExistingCreds = await this.getAllExistingCreds();
 		const { credsInAnyUse, credsInActiveUse } = await this.getAllCredsInUse(workflows);

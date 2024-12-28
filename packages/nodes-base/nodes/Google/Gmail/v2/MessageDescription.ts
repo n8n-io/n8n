@@ -1,4 +1,5 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+
 import { appendAttributionOption } from '../../../../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [
@@ -57,6 +58,11 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				action: 'Send a message',
+			},
+			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				action: 'Send message and wait for response',
 			},
 		],
 		default: 'send',
@@ -419,7 +425,7 @@ export const messageFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Search',
@@ -548,6 +554,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
 ];

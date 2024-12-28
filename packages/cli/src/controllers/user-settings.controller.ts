@@ -1,8 +1,9 @@
+import type { NpsSurveyState } from 'n8n-workflow';
+
 import { Patch, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NpsSurveyRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import type { NpsSurveyState } from 'n8n-workflow';
 
 function getNpsSurveyState(state: unknown): NpsSurveyState | undefined {
 	if (typeof state !== 'object' || state === null) {

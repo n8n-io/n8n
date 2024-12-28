@@ -1,6 +1,8 @@
 import axios from 'axios';
-import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
+import { mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
+
+import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
 import { writeBlockedMessage } from '@/ObjectStore/utils';
 
 jest.mock('axios');
@@ -24,7 +26,7 @@ const toDeletionXml = (filename: string) => `<Delete>
 let objectStoreService: ObjectStoreService;
 
 beforeEach(async () => {
-	objectStoreService = new ObjectStoreService();
+	objectStoreService = new ObjectStoreService(mock());
 	mockAxios.request.mockResolvedValueOnce({ status: 200 }); // for checkConnection
 	await objectStoreService.init(mockHost, mockBucket, mockCredentials);
 	jest.restoreAllMocks();

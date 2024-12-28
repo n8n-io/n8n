@@ -1,10 +1,10 @@
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
 import { Post, RestController } from '@/decorators';
-import { getBase } from '@/workflow-execute-additional-data';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { DynamicNodeParametersRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { DynamicNodeParametersRequest } from '@/requests';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
@@ -90,6 +90,22 @@ export class DynamicNodeParametersController {
 			nodeTypeAndVersion,
 			currentNodeParameters,
 			credentials,
+		);
+	}
+
+	@Post('/local-resource-mapper-fields')
+	async getLocalResourceMappingFields(req: DynamicNodeParametersRequest.ResourceMapperFields) {
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion } = req.body;
+
+		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
+
+		const additionalData = await getBase(req.user.id, currentNodeParameters);
+
+		return await this.service.getLocalResourceMappingFields(
+			methodName,
+			path,
+			additionalData,
+			nodeTypeAndVersion,
 		);
 	}
 

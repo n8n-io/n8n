@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryColumn, Unique } from '@n8n/typeorm';
+
 import { WithTimestamps } from './abstract-entity';
 import { User } from './user';
 
@@ -10,7 +11,10 @@ export class AuthIdentity extends WithTimestamps {
 	@Column()
 	userId: string;
 
-	@ManyToOne(() => User, (user) => user.authIdentities)
+	@ManyToOne(
+		() => User,
+		(user) => user.authIdentities,
+	)
 	user: User;
 
 	@PrimaryColumn()

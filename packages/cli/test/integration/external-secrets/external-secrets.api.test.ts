@@ -1,27 +1,27 @@
-import { Container } from 'typedi';
+import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { jsonParse, type IDataObject } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { Container } from 'typedi';
 
-import { License } from '@/license';
-import type { ExternalSecretsSettings, SecretsProviderState } from '@/interfaces';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { ExternalSecretsProviders } from '@/external-secrets/external-secrets-providers.ee';
 import config from '@/config';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import type { EventService } from '@/events/event.service';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
+import { ExternalSecretsProviders } from '@/external-secrets.ee/external-secrets-providers.ee';
+import type { ExternalSecretsSettings, SecretsProviderState } from '@/interfaces';
+import { License } from '@/license';
 
-import { mockInstance } from '../../shared/mocking';
-import { setupTestServer } from '../shared/utils';
-import { createOwner, createUser } from '../shared/db/users';
 import {
 	DummyProvider,
 	FailedProvider,
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
+import { mockInstance, mockLogger } from '../../shared/mocking';
+import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
-import type { EventService } from '@/events/event.service';
+import { setupTestServer } from '../shared/utils';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -52,17 +52,20 @@ async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | n
 
 const eventService = mock<EventService>();
 
+const logger = mockLogger();
+
 const resetManager = async () => {
 	Container.get(ExternalSecretsManager).shutdown();
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
-			mock(),
+			logger,
 			Container.get(SettingsRepository),
 			Container.get(License),
 			mockProvidersInstance,
 			Container.get(Cipher),
 			eventService,
+			mock(),
 		),
 	);
 
@@ -107,6 +110,18 @@ beforeAll(async () => {
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
+	Container.set(
+		ExternalSecretsManager,
+		new ExternalSecretsManager(
+			logger,
+			Container.get(SettingsRepository),
+			Container.get(License),
+			mockProvidersInstance,
+			Container.get(Cipher),
+			eventService,
+			mock(),
+		),
+	);
 });
 
 beforeEach(async () => {

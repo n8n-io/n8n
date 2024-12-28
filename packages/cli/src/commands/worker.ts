@@ -1,26 +1,19 @@
-import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
-import express from 'express';
-import http from 'http';
-import { ApplicationError } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/db';
-import * as ResponseHelper from '@/response-helper';
 import config from '@/config';
-import type { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
-import type { ICredentialsOverwrite } from '@/interfaces';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { rawBodyReader, bodyParser } from '@/middlewares';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
+import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-key.error';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
-import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import type { ScalingService } from '@/scaling/scaling.service';
+import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import { BaseCommand } from './base-command';
-import { JobProcessor } from '@/scaling/job-processor';
-import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -45,10 +38,6 @@ export class Worker extends BaseCommand {
 
 	scalingService: ScalingService;
 
-	jobProcessor: JobProcessor;
-
-	redisSubscriber: RedisServicePubSubSubscriber;
-
 	override needsCommunityPackages = true;
 
 	/**
@@ -57,28 +46,27 @@ export class Worker extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		this.logger.info('Stopping n8n...');
+		this.logger.info('Stopping worker...');
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 		} catch (error) {
-			await this.exitWithCrash('There was an error shutting down n8n.', error);
+			await this.exitWithCrash('Error shutting down worker', error);
 		}
 
 		await this.exitSuccessFully();
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
-		super(argv, cmdConfig);
+		if (!process.env.N8N_ENCRYPTION_KEY) throw new WorkerMissingEncryptionKey();
 
-		if (!process.env.N8N_ENCRYPTION_KEY) {
-			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
-			);
+		if (config.getEnv('executions.mode') !== 'queue') {
+			config.set('executions.mode', 'queue');
 		}
 
-		this.setInstanceType('worker');
-		this.setInstanceQueueModeId();
+		super(argv, cmdConfig);
+
+		this.logger = this.logger.scoped('scaling');
 	}
 
 	async init() {
@@ -93,7 +81,7 @@ export class Worker extends BaseCommand {
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
-		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await this.setConcurrency();
 		await super.init();
@@ -102,6 +90,8 @@ export class Worker extends BaseCommand {
 		this.logger.debug('License init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initDataDeduplicationService();
+		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
@@ -116,15 +106,22 @@ export class Worker extends BaseCommand {
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
-					workerId: this.queueModeId,
+					workerId: this.instanceSettings.hostId,
 				},
 			}),
 		);
+
+		const { taskRunners: taskRunnerConfig } = this.globalConfig;
+		if (taskRunnerConfig.enabled) {
+			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const taskRunnerModule = Container.get(TaskRunnerModule);
+			await taskRunnerModule.start();
+		}
 	}
 
 	async initEventBus() {
 		await Container.get(MessageEventBus).initialize({
-			workerId: this.queueModeId,
+			workerId: this.instanceSettings.hostId,
 		});
 		Container.get(LogStreamingEventRelay).init();
 	}
@@ -136,13 +133,12 @@ export class Worker extends BaseCommand {
 	 * The subscription connection adds a handler to handle the command messages
 	 */
 	async initOrchestration() {
-		await Container.get(OrchestrationWorkerService).init();
-		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
-			queueModeId: this.queueModeId,
-			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
-			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
-		});
+		await Container.get(OrchestrationService).init();
+
+		Container.get(PubSubHandler).init();
+		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {
@@ -151,6 +147,12 @@ export class Worker extends BaseCommand {
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
 
 		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
+		if (this.concurrency < 5) {
+			this.logger.warn(
+				'Concurrency is set to less than 5. THIS CAN LEAD TO AN UNSTABLE ENVIRONMENT. Please consider increasing it to at least 5 to make best use of the worker.',
+			);
+		}
 	}
 
 	async initScalingService() {
@@ -160,112 +162,6 @@ export class Worker extends BaseCommand {
 		await this.scalingService.setupQueue();
 
 		this.scalingService.setupWorker(this.concurrency);
-
-		this.jobProcessor = Container.get(JobProcessor);
-	}
-
-	async setupHealthMonitor() {
-		const { port } = this.globalConfig.queue.health;
-
-		const app = express();
-		app.disable('x-powered-by');
-
-		const server = http.createServer(app);
-
-		app.get('/healthz/readiness', async (_req, res) => {
-			return Db.connectionState.connected && Db.connectionState.migrated
-				? res.status(200).send({ status: 'ok' })
-				: res.status(503).send({ status: 'error' });
-		});
-
-		app.get(
-			'/healthz',
-
-			async (_req: express.Request, res: express.Response) => {
-				this.logger.debug('Health check started!');
-
-				const connection = Db.getConnection();
-
-				try {
-					if (!connection.isInitialized) {
-						// Connection is not active
-						throw new ApplicationError('No active database connection');
-					}
-					// DB ping
-					await connection.query('SELECT 1');
-				} catch (e) {
-					this.logger.error('No Database connection!', e as Error);
-					const error = new ServiceUnavailableError('No Database connection!');
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-
-				// Just to be complete, generally will the worker stop automatically
-				// if it loses the connection to redis
-				try {
-					// Redis ping
-					await this.scalingService.pingQueue();
-				} catch (e) {
-					this.logger.error('No Redis connection!', e as Error);
-					const error = new ServiceUnavailableError('No Redis connection!');
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-
-				// Everything fine
-				const responseData = {
-					status: 'ok',
-				};
-
-				this.logger.debug('Health check completed successfully!');
-
-				ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
-			},
-		);
-
-		let presetCredentialsLoaded = false;
-
-		const endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
-		if (endpointPresetCredentials !== '') {
-			// POST endpoint to set preset credentials
-			app.post(
-				`/${endpointPresetCredentials}`,
-				rawBodyReader,
-				bodyParser,
-				async (req: express.Request, res: express.Response) => {
-					if (!presetCredentialsLoaded) {
-						const body = req.body as ICredentialsOverwrite;
-
-						if (req.contentType !== 'application/json') {
-							ResponseHelper.sendErrorResponse(
-								res,
-								new Error(
-									'Body must be a valid JSON, make sure the content-type is application/json',
-								),
-							);
-							return;
-						}
-
-						Container.get(CredentialsOverwrites).setData(body);
-						presetCredentialsLoaded = true;
-						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-					} else {
-						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
-					}
-				},
-			);
-		}
-
-		server.on('error', (error: Error & { code: string }) => {
-			if (error.code === 'EADDRINUSE') {
-				this.logger.error(
-					`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
-				);
-				process.exit(1);
-			}
-		});
-
-		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks?.run('worker.ready');
-		this.logger.info(`\nn8n worker health check via, port ${port}`);
 	}
 
 	async run() {
@@ -274,8 +170,15 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		if (this.globalConfig.queue.health.active) {
-			await this.setupHealthMonitor();
+		const endpointsConfig: WorkerServerEndpointsConfig = {
+			health: this.globalConfig.queue.health.active,
+			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
+			metrics: this.globalConfig.endpoints.metrics.enable,
+		};
+
+		if (Object.values(endpointsConfig).some((e) => e)) {
+			const { WorkerServer } = await import('@/scaling/worker-server');
+			await Container.get(WorkerServer).init(endpointsConfig);
 		}
 
 		if (!inTest && process.stdout.isTTY) {

@@ -1,22 +1,24 @@
+import type { PushMessage } from '@n8n/api-types';
 import { Request } from 'express';
+import { Logger } from 'n8n-core';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { License } from '@/license';
-import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
-import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/interfaces';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
+import type { FeatureReturnType } from '@/license';
+import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
-import Container from 'typedi';
-import { Logger } from '@/logger';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -45,6 +47,16 @@ const tablesToTruncate = [
 	'workflows_tags',
 ];
 
+type UserSetupPayload = {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
+};
+
 type ResetRequest = Request<
 	{},
 	{},
@@ -59,10 +71,8 @@ type PushRequest = Request<
 	{},
 	{},
 	{
-		type: IPushDataType;
 		pushRef: string;
-		data: object;
-	}
+	} & PushMessage
 >;
 
 @RestController('/e2e')
@@ -89,6 +99,8 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
 		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
+		[LICENSE_FEATURES.ASK_AI]: false,
+		[LICENSE_FEATURES.AI_CREDITS]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -97,6 +109,7 @@ export class E2EController {
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
 	};
 
 	constructor(
@@ -113,9 +126,18 @@ export class E2EController {
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
-		// eslint-disable-next-line @typescript-eslint/unbound-method
-		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
-			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
+
+		// Ugly hack to satisfy biome parser
+		const getFeatureValue = <T extends keyof FeatureReturnType>(
+			feature: T,
+		): FeatureReturnType[T] => {
+			if (feature in this.numericFeatures) {
+				return this.numericFeatures[feature as NumericLicenseFeature] as FeatureReturnType[T];
+			} else {
+				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+			}
+		};
+		license.getFeatureValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}
@@ -132,7 +154,8 @@ export class E2EController {
 
 	@Post('/push', { skipAuth: true })
 	async pushSend(req: PushRequest) {
-		this.push.broadcast(req.body.type, req.body.data);
+		const { pushRef: _, ...pushMsg } = req.body;
+		this.push.broadcast(pushMsg);
 	}
 
 	@Patch('/feature', { skipAuth: true })

@@ -1,28 +1,27 @@
-import { Container } from 'typedi';
 import type { INode } from 'n8n-workflow';
+import { Container } from 'typedi';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { STARTING_NODES } from '@/constants';
+import type { Project } from '@/databases/entities/project';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
-import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
-
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
-import { createUser } from '../shared/db/users';
-import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import { createTag } from '../shared/db/tags';
-import { mockInstance } from '../../shared/mocking';
-import type { SuperAgentTest } from '../shared/types';
+import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
-import { ProjectService } from '@/services/project.service';
 import { createTeamProject } from '@test-integration/db/projects';
+
+import { mockInstance } from '../../shared/mocking';
+import { createTag } from '../shared/db/tags';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
+import * as testDb from '../shared/test-db';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
@@ -40,18 +39,13 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	owner = await createUser({
-		role: 'global:owner',
-		apiKey: randomApiKey(),
-	});
+	owner = await createOwnerWithApiKey();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	member = await createUser({
-		role: 'global:member',
-		apiKey: randomApiKey(),
-	});
+	member = await createMemberWithApiKey();
+
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
 	);
@@ -384,6 +378,47 @@ describe('GET /workflows', () => {
 			expect(updatedAt).toBeDefined();
 		}
 	});
+
+	test('should return all owned workflows without pinned data', async () => {
+		await Promise.all([
+			createWorkflow(
+				{
+					pinData: {
+						Webhook1: [{ json: { first: 'first' } }],
+					},
+				},
+				member,
+			),
+			createWorkflow(
+				{
+					pinData: {
+						Webhook2: [{ json: { second: 'second' } }],
+					},
+				},
+				member,
+			),
+			createWorkflow(
+				{
+					pinData: {
+						Webhook3: [{ json: { third: 'third' } }],
+					},
+				},
+				member,
+			),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?excludePinnedData=true');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+		expect(response.body.nextCursor).toBeNull();
+
+		for (const workflow of response.body.data) {
+			const { pinData } = workflow;
+
+			expect(pinData).not.toBeDefined();
+		}
+	});
 });
 
 describe('GET /workflows/:id', () => {
@@ -449,6 +484,26 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	});
+
+	test('should retrieve workflow without pinned data', async () => {
+		// create and assign workflow to owner
+		const workflow = await createWorkflow(
+			{
+				pinData: {
+					Webhook1: [{ json: { first: 'first' } }],
+				},
+			},
+			member,
+		);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}?excludePinnedData=true`);
+
+		expect(response.statusCode).toBe(200);
+
+		const { pinData } = response.body;
+
+		expect(pinData).not.toBeDefined();
 	});
 });
 
@@ -534,8 +589,28 @@ describe('POST /workflows/:id/activate', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should fail due to trying to activate a workflow without any nodes', async () => {
+		const workflow = await createWorkflow({ nodes: [] }, owner);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should fail due to trying to activate a workflow without a trigger', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+					},
+				],
+			},
+			owner,
+		);
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
 		expect(response.statusCode).toBe(400);
 	});
@@ -1518,6 +1593,10 @@ describe('PUT /workflows/:id/transfer', () => {
 		const secondProject = await createTeamProject('second-project', member);
 		const workflow = await createWorkflow({}, firstProject);
 
+		// Make data more similar to real world scenario by injecting additional records into the database
+		await createTeamProject('third-project', member);
+		await createWorkflow({}, firstProject);
+
 		/**
 		 * Act
 		 */
@@ -1529,6 +1608,13 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(204);
+
+		const workflowsInProjectResponse = await authMemberAgent
+			.get(`/workflows?projectId=${secondProject.id}`)
+			.send();
+
+		expect(workflowsInProjectResponse.statusCode).toBe(200);
+		expect(workflowsInProjectResponse.body.data[0].id).toBe(workflow.id);
 	});
 
 	test('if no destination project, should reject', async () => {

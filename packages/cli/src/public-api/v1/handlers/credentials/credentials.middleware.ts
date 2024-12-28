@@ -2,12 +2,13 @@
 
 import type express from 'express';
 import { validate } from 'jsonschema';
-
-import { CredentialsHelper } from '@/credentials-helper';
-import { CredentialTypes } from '@/credential-types';
-import type { CredentialRequest } from '../../../types';
-import { toJsonSchema } from './credentials.service';
 import { Container } from 'typedi';
+
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsHelper } from '@/credentials-helper';
+
+import { toJsonSchema } from './credentials.service';
+import type { CredentialRequest } from '../../../types';
 
 export const validCredentialType = (
 	req: CredentialRequest.Create,

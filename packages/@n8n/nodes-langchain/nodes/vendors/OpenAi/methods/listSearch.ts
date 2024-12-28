@@ -4,9 +4,9 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-
-import type { Model } from 'openai/resources/models';
 import type { Assistant } from 'openai/resources/beta/assistants';
+import type { Model } from 'openai/resources/models';
+
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
@@ -76,10 +76,10 @@ export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await getModelSearch((model) => model.id.startsWith('gpt-') || model.id.startsWith('ft:'))(
-		this,
-		filter,
-	);
+	return await getModelSearch(
+		(model) =>
+			model.id.startsWith('gpt-') || model.id.startsWith('ft:') || model.id.startsWith('o1'),
+	)(this, filter);
 }
 
 export async function imageModelSearch(

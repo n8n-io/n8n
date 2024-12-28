@@ -1,20 +1,26 @@
-import type express from 'express';
-
-import { Container } from 'typedi';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
+import type express from 'express';
+import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
-import type { WorkflowRequest } from '../../../types';
-import { projectScope, validCursor } from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
 import {
 	getWorkflowById,
 	setWorkflowAsActive,
@@ -25,15 +31,9 @@ import {
 	getWorkflowTags,
 	updateTags,
 } from './workflows.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.ee';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { EventService } from '@/events/event.service';
-import { z } from 'zod';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import type { WorkflowRequest } from '../../../types';
+import { projectScope, validCursor } from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
 	createWorkflow: [
@@ -73,11 +73,13 @@ export = {
 	transferWorkflow: [
 		projectScope('workflow:move', 'workflow'),
 		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+			const { id: workflowId } = req.params;
+
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 			await Container.get(EnterpriseWorkflowService).transferOne(
 				req.user,
-				req.params.workflowId,
+				workflowId,
 				body.destinationProjectId,
 			);
 
@@ -103,6 +105,7 @@ export = {
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
+			const { excludePinnedData = false } = req.query;
 
 			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
 				id,
@@ -118,6 +121,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			if (excludePinnedData) {
+				delete workflow.pinData;
+			}
+
 			Container.get(EventService).emit('user-retrieved-workflow', {
 				userId: req.user.id,
 				publicApi: true,
@@ -129,7 +136,15 @@ export = {
 	getWorkflows: [
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active, tags, name, projectId } = req.query;
+			const {
+				offset = 0,
+				limit = 100,
+				excludePinnedData = false,
+				active,
+				tags,
+				name,
+				projectId,
+			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
@@ -196,6 +211,12 @@ export = {
 				where,
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
+
+			if (excludePinnedData) {
+				workflows.forEach((workflow) => {
+					delete workflow.pinData;
+				});
+			}
 
 			Container.get(EventService).emit('user-retrieved-all-workflows', {
 				userId: req.user.id,

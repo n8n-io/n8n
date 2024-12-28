@@ -37,8 +37,8 @@ export const updateProject = async (
 	context: IRestApiContext,
 	req: ProjectUpdateRequest,
 ): Promise<void> => {
-	const { id, name, relations } = req;
-	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, { name, relations });
+	const { id, name, icon, relations } = req;
+	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, { name, icon, relations });
 };
 
 export const deleteProject = async (

@@ -1,13 +1,14 @@
 import type { Application } from 'express';
+import type { Server } from 'http';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type TestAgent from 'supertest/lib/agent';
-import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/interfaces';
+
 import type { LicenseMocker } from './license';
-import type { Project } from '@/databases/entities/project';
 
 type EndpointGroup =
 	| 'health'
@@ -39,7 +40,10 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
-	| 'dynamic-node-parameters';
+	| 'dynamic-node-parameters'
+	| 'apiKeys'
+	| 'evaluation'
+	| 'ai';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -54,6 +58,8 @@ export interface TestServer {
 	httpServer: Server;
 	authAgentFor: (user: User) => TestAgent;
 	publicApiAgentFor: (user: User) => TestAgent;
+	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
+	publicApiAgentWithoutApiKey: () => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;
@@ -63,6 +69,7 @@ export type CredentialPayload = {
 	name: string;
 	type: string;
 	data: ICredentialDataDecryptedObject;
+	isManaged?: boolean;
 };
 
 export type SaveCredentialFunction = (

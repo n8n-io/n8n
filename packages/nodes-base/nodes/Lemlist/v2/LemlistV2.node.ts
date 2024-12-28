@@ -1,4 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -10,9 +11,6 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
-import { lemlistApiRequest, lemlistApiRequestAllItems } from '../GenericFunctions';
 import {
 	activityFields,
 	activityOperations,
@@ -27,6 +25,7 @@ import {
 	unsubscribeFields,
 	unsubscribeOperations,
 } from './descriptions';
+import { lemlistApiRequest, lemlistApiRequestAllItems } from '../GenericFunctions';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Lemlist',
 	name: 'lemlist',

@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import type {
-	ExecutionStatus,
-	INodeConnections,
-	IConnection,
-	NodeConnectionType,
-} from 'n8n-workflow';
-import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
+	DefaultEdge,
+	Node,
+	NodeProps,
+	Position,
+	OnConnectStartParams,
+	ViewportTransform,
+} from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
-import type { Ref } from 'vue';
-import type { PartialBy } from '@/utils/typeHelpers';
+import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from 'n8n-design-system';
-
-export type CanvasConnectionPortType = NodeConnectionType;
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -24,15 +23,17 @@ export const canvasConnectionModes = [
 ] as const;
 
 export type CanvasConnectionPort = {
-	type: CanvasConnectionPortType;
-	required?: boolean;
+	node?: string;
+	type: NodeConnectionType;
 	index: number;
+	required?: boolean;
+	maxConnections?: number;
 	label?: string;
 };
 
 export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
 	handleId: string;
-	isConnected: boolean;
+	connectionsCount: number;
 	isConnecting: boolean;
 	position: Position;
 	offset?: { top?: string; left?: string };
@@ -58,6 +59,7 @@ export type CanvasNodeDefaultRender = {
 		outputs: {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
+		tooltip?: string;
 	}>;
 };
 
@@ -115,23 +117,28 @@ export type CanvasNode = Node<CanvasNodeData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
-	fromNodeName?: string;
 	status?: 'success' | 'error' | 'pinned' | 'running';
+	maxConnections?: number;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
 export type CanvasConnectionCreateData = {
 	source: string;
+	sourceHandle: string;
 	target: string;
+	targetHandle: string;
 	data: {
-		source: PartialBy<IConnection, 'node'>;
-		target: PartialBy<IConnection, 'node'>;
+		source: CanvasConnectionPort;
+		target: CanvasConnectionPort;
 	};
 };
 
 export interface CanvasInjectionData {
+	initialized: Ref<boolean>;
+	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
+	viewport: Ref<ViewportTransform>;
 }
 
 export type CanvasNodeEventBusEvents = {
@@ -165,13 +172,17 @@ export interface CanvasNodeHandleInjectionData {
 	mode: Ref<CanvasConnectionMode>;
 	type: Ref<NodeConnectionType>;
 	index: Ref<number>;
-	isConnected: Ref<boolean | undefined>;
+	isRequired: Ref<boolean | undefined>;
+	isConnected: ComputedRef<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 	isReadOnly: Ref<boolean | undefined>;
+	maxConnections: Ref<number | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 
-export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
+export type ConnectStartEvent = {
+	event?: MouseEvent | undefined;
+} & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
 
@@ -184,4 +195,11 @@ export type ExecutionOutputMap = {
 	[connectionType: string]: {
 		[outputIndex: string]: ExecutionOutputMapData;
 	};
+};
+
+export type BoundingBox = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
 };

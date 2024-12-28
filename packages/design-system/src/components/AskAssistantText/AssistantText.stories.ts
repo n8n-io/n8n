@@ -1,5 +1,6 @@
-import AssistantText from './AssistantText.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import AssistantText from './AssistantText.vue';
 
 export default {
 	title: 'Assistant/AssistantText',

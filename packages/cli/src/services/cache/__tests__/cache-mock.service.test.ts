@@ -1,5 +1,6 @@
-import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
+import Container from 'typedi';
+
 import { CacheService } from '@/services/cache/cache.service';
 
 const cacheService = Container.get(CacheService);

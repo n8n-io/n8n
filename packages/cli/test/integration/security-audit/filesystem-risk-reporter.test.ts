@@ -1,17 +1,20 @@
+import { mock } from 'jest-mock-extended';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/test-db';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import Container from 'typedi';
 
 let securityAuditService: SecurityAuditService;
 
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository), mock());
 });
 
 beforeEach(async () => {

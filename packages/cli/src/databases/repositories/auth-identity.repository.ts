@@ -1,5 +1,6 @@
-import { Service } from 'typedi';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { Service } from 'typedi';
+
 import { AuthIdentity } from '../entities/auth-identity';
 
 @Service()

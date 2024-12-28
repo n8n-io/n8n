@@ -5,3 +5,4 @@ export * from './typeguards';
 export * from './uid';
 export * from './valueByPath';
 export * from './testUtils';
+export * from './string';

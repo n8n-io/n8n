@@ -1,12 +1,12 @@
 import type { User } from '@/databases/entities/user';
+import { Telemetry } from '@/telemetry';
+import { mockInstance } from '@test/mocking';
 
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
+import { createTeamProject } from '../shared/db/projects';
 import { createUser } from '../shared/db/users';
 import { createWorkflowWithTrigger } from '../shared/db/workflows';
-import { createTeamProject } from '../shared/db/projects';
-import { mockInstance } from '@test/mocking';
-import { Telemetry } from '@/telemetry';
+import * as testDb from '../shared/test-db';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 

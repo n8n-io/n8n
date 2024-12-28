@@ -1,4 +1,3 @@
-import qs from 'node:querystring';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import qs from 'node:querystring';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
 
@@ -459,7 +459,7 @@ export class AwsSes implements INodeType {
 				},
 				default: '',
 				description:
-					'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',

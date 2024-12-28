@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -9,10 +10,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../constants';
 import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
 import { fileSearch, folderSearch } from './v2/methods/listSearch';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../constants';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -294,7 +294,7 @@ export class GoogleDriveTrigger implements INodeType {
 				default: 'root',
 				required: true,
 				description:
-					'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Watch For',

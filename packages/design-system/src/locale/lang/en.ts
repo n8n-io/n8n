@@ -2,6 +2,7 @@
 import type { N8nLocale } from 'n8n-design-system/types';
 
 export default {
+	'generic.retry': 'Retry',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
@@ -44,5 +45,10 @@ export default {
 	'assistantChat.placeholder.3': 'button in the UI.',
 	'assistantChat.placeholder.4': 'How can I help?',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
+	'assistantChat.copy': 'Copy',
+	'assistantChat.copied': 'Copied',
 	'inlineAskAssistantButton.asked': 'Asked',
+	'iconPicker.button.defaultToolTip': 'Choose icon',
+	'iconPicker.tabs.icons': 'Icons',
+	'iconPicker.tabs.emojis': 'Emojis',
 } as N8nLocale;

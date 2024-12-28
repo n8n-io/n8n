@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
 import { useSSOStore } from '@/stores/sso.store';
-import { useUIStore } from '@/stores/ui.store';
 import CopyInput from '@/components/CopyInput.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useRootStore } from '@/stores/root.store';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -18,9 +19,10 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const ssoStore = useSSOStore();
-const uiStore = useUIStore();
 const message = useMessage();
 const toast = useToast();
+const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const ssoActivatedLabel = computed(() =>
 	ssoStore.isSamlLoginEnabled
@@ -131,7 +133,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	void uiStore.goToUpgrade('sso', 'upgrade-sso');
+	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
 };
 
 const isToggleSsoDisabled = computed(() => {
@@ -144,6 +146,7 @@ const isToggleSsoDisabled = computed(() => {
 });
 
 onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.sso.title'));
 	if (!ssoStore.isEnterpriseSamlEnabled) {
 		return;
 	}

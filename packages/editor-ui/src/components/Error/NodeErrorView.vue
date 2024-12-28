@@ -23,8 +23,7 @@ import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -36,14 +35,13 @@ const props = defineProps<Props>();
 const clipboard = useClipboard();
 const toast = useToast();
 const i18n = useI18n();
+const assistantHelpers = useAIAssistantHelpers();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
-const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
-const telemetry = useTelemetry();
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -119,41 +117,27 @@ const prepareRawMessages = computed(() => {
 });
 
 const isAskAssistantAvailable = computed(() => {
-	if (!node.value) {
+	if (!node.value || isSubNodeError.value) {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
-	return assistantStore.canShowAssistantButtons && !isCustomNode;
+
+	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode && !nodeIsHidden();
 });
 
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
-		error: simplifyErrorForAssistant(props.error),
+		error: assistantHelpers.simplifyErrorForAssistant(props.error),
 		node: props.error.node || ndvStore.activeNode,
 	});
 });
 
-function simplifyErrorForAssistant(
-	error: NodeError | NodeApiError | NodeOperationError,
-): ChatRequest.ErrorContext['error'] {
-	const simple: ChatRequest.ErrorContext['error'] = {
-		name: error.name,
-		message: error.message,
-	};
-	if ('type' in error) {
-		simple.type = error.type;
-	}
-	if ('description' in error && error.description) {
-		simple.description = error.description;
-	}
-	if (error.stack) {
-		simple.stack = error.stack;
-	}
-	if ('lineNumber' in error) {
-		simple.lineNumber = error.lineNumber;
-	}
-	return simple;
-}
+const isSubNodeError = computed(() => {
+	return (
+		props.error.name === 'NodeOperationError' &&
+		(props.error as NodeOperationError).functionality === 'configuration-node'
+	);
+});
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
@@ -176,19 +160,6 @@ function prepareDescription(description: string): string {
 }
 
 function getErrorDescription(): string {
-	const isSubNodeError =
-		props.error.name === 'NodeOperationError' &&
-		(props.error as NodeOperationError).functionality === 'configuration-node';
-
-	if (isSubNodeError) {
-		return prepareDescription(
-			props.error.description +
-				i18n.baseText('pushConnection.executionError.openNode', {
-					interpolate: { node: props.error.node.name },
-				}),
-		);
-	}
-
 	if (props.error.context?.descriptionKey) {
 		const interpolate = {
 			nodeCause: props.error.context.nodeCause as string,
@@ -228,13 +199,10 @@ function addItemIndexSuffix(message: string): string {
 function getErrorMessage(): string {
 	let message = '';
 
-	const isSubNodeError =
-		props.error.name === 'NodeOperationError' &&
-		(props.error as NodeOperationError).functionality === 'configuration-node';
 	const isNonEmptyString = (value?: unknown): value is string =>
 		!!value && typeof value === 'string';
 
-	if (isSubNodeError) {
+	if (isSubNodeError.value) {
 		message = i18n.baseText('nodeErrorView.errorSubNode', {
 			interpolate: { node: props.error.node.name },
 		});
@@ -408,10 +376,19 @@ function copySuccess() {
 	});
 }
 
+function nodeIsHidden() {
+	const nodeType = nodeTypesStore.getNodeType(node?.value.type);
+	return nodeType?.hidden ?? false;
+}
+
+const onOpenErrorNodeDetailClick = () => {
+	ndvStore.activeNodeName = props.error.node.name;
+};
+
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
-	const errorPayload: ChatRequest.ErrorContext = {
+	const errorHelp: ChatRequest.ErrorContext = {
 		error: {
 			name: props.error.name,
 			message,
@@ -424,18 +401,15 @@ async function onAskAssistantClick() {
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
 			name: NEW_ASSISTANT_SESSION_MODAL,
-			data: { context: errorPayload },
+			data: { context: { errorHelp } },
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorPayload);
-	telemetry.track('User opened assistant', {
+	await assistantStore.initErrorHelper(errorHelp);
+	assistantStore.trackUserOpenedAssistant({
 		source: 'error',
 		task: 'error',
 		has_existing_session: false,
-		workflow_id: workflowsStore.workflowId,
-		node_type: node.value.type,
-		error: props.error,
 	});
 }
 </script>
@@ -449,14 +423,25 @@ async function onAskAssistantClick() {
 				</div>
 			</div>
 			<div
-				v-if="error.description || error.context?.descriptionKey"
+				v-if="(error.description || error.context?.descriptionKey) && !isSubNodeError"
 				data-test-id="node-error-description"
 				class="node-error-view__header-description"
-				v-html="getErrorDescription()"
+				v-n8n-html="getErrorDescription()"
 			></div>
+
+			<div v-if="isSubNodeError">
+				<n8n-button
+					icon="arrow-right"
+					type="secondary"
+					:label="i18n.baseText('pushConnection.executionError.openNode')"
+					class="node-error-view__button"
+					data-test-id="node-error-view-open-node-button"
+					@click="onOpenErrorNodeDetailClick"
+				/>
+			</div>
 			<div
 				v-if="isAskAssistantAvailable"
-				class="node-error-view__assistant-button"
+				class="node-error-view__button"
 				data-test-id="node-error-view-ask-assistant-button"
 			>
 				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
@@ -717,9 +702,14 @@ async function onAskAssistantClick() {
 		}
 	}
 
-	&__assistant-button {
+	&__button {
 		margin-left: var(--spacing-s);
 		margin-bottom: var(--spacing-xs);
+		flex-direction: row-reverse;
+		span {
+			margin-right: var(--spacing-5xs);
+			margin-left: var(--spacing-5xs);
+		}
 	}
 
 	&__debugging {
@@ -852,7 +842,7 @@ async function onAskAssistantClick() {
 	}
 }
 
-.node-error-view__assistant-button {
+.node-error-view__button {
 	margin-top: var(--spacing-xs);
 }
 </style>

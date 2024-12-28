@@ -1,7 +1,8 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
-import { User } from './user';
+
 import { WithTimestamps } from './abstract-entity';
 import { Project } from './project';
+import { User } from './user';
 
 // personalOwner is only used for personal projects
 export type ProjectRole =

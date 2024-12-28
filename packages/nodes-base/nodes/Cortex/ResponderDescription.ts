@@ -43,7 +43,7 @@ export const responderFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Entity Type Name or ID',
@@ -61,7 +61,7 @@ export const responderFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',

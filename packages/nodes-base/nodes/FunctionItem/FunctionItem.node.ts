@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, deepCopy, NodeOperationError } from 'n8n-workflow';
+
 import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class FunctionItem implements INodeType {
@@ -113,8 +114,8 @@ return item;`,
 						}
 						item.binary = data;
 					},
-					getNodeParameter: this.getNodeParameter,
-					getWorkflowStaticData: this.getWorkflowStaticData,
+					getNodeParameter: this.getNodeParameter.bind(this),
+					getWorkflowStaticData: this.getWorkflowStaticData.bind(this),
 					helpers: this.helpers,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
@@ -165,7 +166,7 @@ return item;`,
 				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 				if (mode === 'manual') {
-					vm.on('console.log', this.sendMessageToUI);
+					vm.on('console.log', this.sendMessageToUI.bind(this));
 				}
 
 				// Get the code to execute

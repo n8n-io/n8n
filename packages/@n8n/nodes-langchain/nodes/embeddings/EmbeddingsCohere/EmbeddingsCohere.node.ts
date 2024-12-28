@@ -1,14 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { CohereEmbeddings } from '@langchain/cohere';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { CohereEmbeddings } from '@langchain/cohere';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsCohere implements INodeType {
 	description: INodeTypeDescription = {
@@ -99,7 +100,7 @@ export class EmbeddingsCohere implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply data for embeddings Cohere');
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
 		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');

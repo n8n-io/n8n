@@ -1,15 +1,15 @@
-import Container from 'typedi';
 import type { DeepPartial } from '@n8n/typeorm';
+import { NodeConnectionType } from 'n8n-workflow';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
+import { Project } from '@/databases/entities/project';
+import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { Project } from '@/databases/entities/project';
-import { NodeConnectionType } from 'n8n-workflow';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -40,6 +40,7 @@ export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowE
 		],
 		connections: connections ?? {},
 		versionId: versionId ?? uuid(),
+		settings: {},
 		...attributes,
 	});
 

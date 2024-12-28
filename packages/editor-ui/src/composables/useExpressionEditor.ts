@@ -209,7 +209,7 @@ export const useExpressionEditor = ({
 		if (editor.value) {
 			editor.value.destroy();
 		}
-		editor.value = new EditorView({ parent, state, scrollTo: EditorView.scrollIntoView(0) });
+		editor.value = new EditorView({ parent, state });
 		debouncedUpdateSegments();
 	});
 
@@ -305,7 +305,11 @@ export const useExpressionEditor = ({
 				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 			}
 		} catch (error) {
-			result.resolved = `[${getExpressionErrorMessage(error)}]`;
+			const hasRunData =
+				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
+					ndvStore.activeNode?.name ?? ''
+				];
+			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
 		}
@@ -352,6 +356,12 @@ export const useExpressionEditor = ({
 	 * - `This is a {{ [] }} test` displays as `This is a test`.
 	 * - `{{ [] }}` displays as `[Array: []]`.
 	 *
+	 * - `This is a {{ {} }} test` displays as `This is a [object Object] test`.
+	 * - `{{ {} }}` displays as `[Object: {}]`.
+	 *
+	 * - `This is a {{ [{}] }} test` displays as `This is a [object Object] test`.
+	 * - `{{ [] }}` displays as `[Array: []]`.
+	 *
 	 * Some segments display differently based on context:
 	 *
 	 * Date displays as
@@ -366,13 +376,29 @@ export const useExpressionEditor = ({
 			.map((s) => {
 				if (cachedSegments.length <= 1 || s.kind !== 'resolvable') return s;
 
-				if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
-					const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
-					s.resolved = new Date(utcDateString).toString();
-				}
+				if (typeof s.resolved === 'string') {
+					let resolved = s.resolved;
 
-				if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
-					s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
+					if (/\[Object: "\d{4}-\d{2}-\d{2}T/.test(resolved)) {
+						const utcDateString = resolved.replace(/(\[Object: "|\"\])/g, '');
+						resolved = new Date(utcDateString).toString();
+					}
+
+					if (/\[Object:\s(\{.+\}|\{\})\]/.test(resolved)) {
+						resolved = resolved.replace(/(\[Object: |\]$)/g, '');
+						try {
+							resolved = String(JSON.parse(resolved));
+						} catch (error) {}
+					}
+
+					if (/\[Array:\s\[.+\]\]/.test(resolved)) {
+						resolved = resolved.replace(/(\[Array: |\]$)/g, '');
+						try {
+							resolved = String(JSON.parse(resolved));
+						} catch (error) {}
+					}
+
+					s.resolved = resolved;
 				}
 
 				return s;
@@ -405,7 +431,8 @@ export const useExpressionEditor = ({
 		if (pos === 'lastExpression') {
 			const END_OF_EXPRESSION = ' }}';
 			const endOfLastExpression = readEditorValue().lastIndexOf(END_OF_EXPRESSION);
-			pos = endOfLastExpression !== -1 ? endOfLastExpression : editor.value?.state.doc.length ?? 0;
+			pos =
+				endOfLastExpression !== -1 ? endOfLastExpression : (editor.value?.state.doc.length ?? 0);
 		} else if (pos === 'end') {
 			pos = editor.value?.state.doc.length ?? 0;
 		}
@@ -414,7 +441,7 @@ export const useExpressionEditor = ({
 
 	function select(anchor: number, head: number | 'end' = 'end'): void {
 		editor.value?.dispatch({
-			selection: { anchor, head: head === 'end' ? editor.value?.state.doc.length ?? 0 : head },
+			selection: { anchor, head: head === 'end' ? (editor.value?.state.doc.length ?? 0) : head },
 		});
 	}
 

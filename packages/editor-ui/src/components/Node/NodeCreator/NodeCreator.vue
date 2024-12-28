@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
 	top: $header-height;
 	bottom: 0;
 	right: 0;
-	z-index: 200;
+	z-index: var(--z-index-node-creator);
 	width: $node-creator-width;
 	color: $node-creator-text-color;
 }

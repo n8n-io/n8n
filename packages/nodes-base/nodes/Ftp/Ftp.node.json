@@ -17,6 +17,6 @@
 	},
 	"alias": ["SFTP", "FTP", "Binary", "File", "Transfer"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Files", "Helpers"]
 	}
 }

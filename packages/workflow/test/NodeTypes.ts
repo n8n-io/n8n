@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+
 import {
 	NodeConnectionType,
 	type IDataObject,

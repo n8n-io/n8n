@@ -4,10 +4,11 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+
 import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput } from '../../helpers/utils';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import { viewRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -107,7 +108,7 @@ const properties: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Direction',

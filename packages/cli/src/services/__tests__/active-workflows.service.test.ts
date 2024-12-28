@@ -1,11 +1,12 @@
+import { mock } from 'jest-mock-extended';
+
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import type { User } from '@/databases/entities/user';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ActiveWorkflowsService } from '@/services/active-workflows.service';
-import { mock } from 'jest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 
 describe('ActiveWorkflowsService', () => {
 	const user = mock<User>();

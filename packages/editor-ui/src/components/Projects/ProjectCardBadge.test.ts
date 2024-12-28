@@ -1,10 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { truncate } from 'n8n-design-system';
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 
 describe('ProjectCardBadge', () => {
-	it('should show "Owned by me" badge if there is no homeProject', () => {
+	it('should show "Personal" badge if there is no homeProject', () => {
 		const { getByText } = renderComponent({
 			props: {
 				resource: {},
@@ -12,15 +13,16 @@ describe('ProjectCardBadge', () => {
 			},
 		});
 
-		expect(getByText('Owned by me')).toBeVisible();
+		expect(getByText('Personal')).toBeVisible();
 	});
 
-	it('should show "Owned by me" badge if homeProject ID equals personalProject ID', () => {
+	it('should show "Personal" badge if homeProject ID equals personalProject ID', () => {
 		const { getByText } = renderComponent({
 			props: {
 				resource: {
 					homeProject: {
 						id: '1',
+						name: 'John',
 					},
 				},
 				resourceType: 'workflow',
@@ -30,7 +32,27 @@ describe('ProjectCardBadge', () => {
 			},
 		});
 
-		expect(getByText('Owned by me')).toBeVisible();
+		expect(getByText('Personal')).toBeVisible();
+	});
+
+	it('should show shared with count', () => {
+		const { getByText } = renderComponent({
+			props: {
+				resource: {
+					sharedWithProjects: [{}, {}, {}],
+					homeProject: {
+						id: '1',
+						name: 'John',
+					},
+				},
+				resourceType: 'workflow',
+				personalProject: {
+					id: '1',
+				},
+			},
+		});
+
+		expect(getByText('+ 3')).toBeVisible();
 	});
 
 	test.each([
@@ -56,6 +78,6 @@ describe('ProjectCardBadge', () => {
 				},
 			},
 		});
-		expect(getByText(result)).toBeVisible();
+		expect(getByText(truncate(result, 20))).toBeVisible();
 	});
 });

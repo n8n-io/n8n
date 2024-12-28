@@ -1,5 +1,6 @@
-import BetaTag from './BetaTag.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import BetaTag from './BetaTag.vue';
 
 export default {
 	title: 'Assistant/BetaTag',

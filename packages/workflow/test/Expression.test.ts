@@ -3,15 +3,17 @@
  */
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { Workflow } from '@/Workflow';
-import * as Helpers from './Helpers';
-import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
-import { baseFixtures } from './ExpressionFixtures/base';
-import type { INodeExecutionData } from '@/Interfaces';
-import { extendSyntax } from '@/Extensions/ExpressionExtension';
+
 import { ExpressionError } from '@/errors/expression.error';
 import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
+import { extendSyntax } from '@/Extensions/ExpressionExtension';
+import type { INodeExecutionData } from '@/Interfaces';
+import { Workflow } from '@/Workflow';
+
 import { workflow } from './ExpressionExtensions/Helpers';
+import { baseFixtures } from './ExpressionFixtures/base';
+import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
+import * as Helpers from './Helpers';
 
 setDifferEnabled(true);
 

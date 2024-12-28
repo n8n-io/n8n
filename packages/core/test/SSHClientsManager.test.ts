@@ -1,5 +1,6 @@
-import { Client } from 'ssh2';
 import type { SSHCredentials } from 'n8n-workflow';
+import { Client } from 'ssh2';
+
 import { SSHClientsManager } from '@/SSHClientsManager';
 
 describe('SSHClientsManager', () => {

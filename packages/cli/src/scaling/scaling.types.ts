@@ -1,11 +1,6 @@
-import type {
-	ExecutionError,
-	ExecutionStatus,
-	IExecuteResponsePromiseData,
-	IRun,
-	WorkflowExecuteMode as WorkflowExecutionMode,
-} from 'n8n-workflow';
+import type { RunningJobSummary } from '@n8n/api-types';
 import type Bull from 'bull';
+import type { ExecutionError, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 export type JobQueue = Bull.Queue<JobData>;
@@ -28,34 +23,50 @@ export type JobStatus = Bull.JobStatus;
 
 export type JobOptions = Bull.JobOptions;
 
-export type PubSubMessage = MessageToMain | MessageToWorker;
+/**
+ * Message sent by main to worker and vice versa about a job. `JobMessage` is
+ * sent via Bull's internal pubsub setup - do not confuse with `PubSub.Command`
+ * and `PubSub.Response`, which are sent via n8n's own pubsub setup to keep
+ * main and worker processes in sync outside of a job's lifecycle.
+ */
+export type JobMessage =
+	| RespondToWebhookMessage
+	| JobFinishedMessage
+	| JobFailedMessage
+	| AbortJobMessage;
 
-type MessageToMain = RepondToWebhookMessage;
-
-type MessageToWorker = AbortJobMessage;
-
-type RepondToWebhookMessage = {
+/** Message sent by worker to main to respond to a webhook. */
+export type RespondToWebhookMessage = {
 	kind: 'respond-to-webhook';
 	executionId: string;
 	response: IExecuteResponsePromiseData;
+	workerId: string;
 };
 
-type AbortJobMessage = {
+/** Message sent by worker to main to report a job has finished successfully. */
+export type JobFinishedMessage = {
+	kind: 'job-finished';
+	executionId: string;
+	workerId: string;
+};
+
+/** Message sent by worker to main to report a job has failed. */
+export type JobFailedMessage = {
+	kind: 'job-failed';
+	executionId: string;
+	workerId: string;
+	errorMsg: string;
+	errorStack: string;
+};
+
+/** Message sent by main to worker to abort a job. */
+export type AbortJobMessage = {
 	kind: 'abort-job';
 };
 
-export type RunningJob = {
-	executionId: string;
-	workflowId: string;
-	workflowName: string;
-	mode: WorkflowExecutionMode;
-	startedAt: Date;
-	retryOf: string;
-	status: ExecutionStatus;
+export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
 };
-
-export type RunningJobSummary = Omit<RunningJob, 'run'>;
 
 export type QueueRecoveryContext = {
 	/** ID of timeout for next scheduled recovery cycle. */

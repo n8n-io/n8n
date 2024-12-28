@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
-import N8nSelect from '../N8nSelect';
+
+import { useI18n } from '../../composables/useI18n';
+import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
+import { getValueByPath } from '../../utils';
 import N8nOption from '../N8nOption';
 import N8nPagination from '../N8nPagination';
-import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
-import { useI18n } from '../../composables/useI18n';
-import { getValueByPath } from '../../utils';
+import N8nSelect from '../N8nSelect';
 
 const ALL_ROWS = -1;
 
@@ -30,7 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const rowsPerPageOptions = ref([10, 25, 50, 100]);
+const rowsPerPageOptions = ref([1, 10, 25, 50, 100]);
 
 const $style = useCssModule();
 

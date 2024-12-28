@@ -1,27 +1,28 @@
-import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
+import { Container } from 'typedi';
 import { URL } from 'url';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
+import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
-import { License } from '@/license';
-import { Logger } from '@/logger';
-import { AuthService } from '@/auth/auth.service';
 import type { APIRequest } from '@/requests';
+import { Telemetry } from '@/telemetry';
 
 import { mockInstance } from '../../../shared/mocking';
-import * as testDb from '../test-db';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
+import * as testDb from '../test-db';
+import type { SetupProps, TestServer } from '../types';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -61,17 +62,30 @@ function createAgent(
 	return agent;
 }
 
-function publicApiAgent(
+const userDoesNotHaveApiKey = (user: User) => {
+	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
+};
+
+const publicApiAgent = (
 	app: express.Application,
-	{ user, version = 1 }: { user: User; version?: number },
-) {
+	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
+) => {
+	if (user && apiKey) {
+		throw new Error('Cannot provide both user and API key');
+	}
+
+	if (user && userDoesNotHaveApiKey(user)) {
+		throw new Error('User does not have an API key');
+	}
+
+	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
+
 	const agent = request.agent(app);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
-	if (user.apiKey) {
-		void agent.set({ 'X-N8N-API-KEY': user.apiKey });
-	}
+	if (!user && !apiKey) return agent;
+	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
-}
+};
 
 export const setupTestServer = ({
 	endpointGroups,
@@ -90,6 +104,7 @@ export const setupTestServer = ({
 	mockInstance(Logger);
 	mockInstance(PostHogClient);
 	mockInstance(Push);
+	mockInstance(Telemetry);
 
 	const testServer: TestServer = {
 		app,
@@ -98,6 +113,8 @@ export const setupTestServer = ({
 		authlessAgent: createAgent(app),
 		restlessAgent: createAgent(app, { auth: false, noRest: true }),
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
 		license: new LicenseMocker(),
 	};
 
@@ -138,7 +155,7 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'annotationTags':
-						await import('@/controllers/annotation-tags.controller');
+						await import('@/controllers/annotation-tags.controller.ee');
 						break;
 
 					case 'credentials':
@@ -154,7 +171,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'variables':
-						await import('@/environments/variables/variables.controller.ee');
+						await import('@/environments.ee/variables/variables.controller.ee');
 						break;
 
 					case 'license':
@@ -185,20 +202,20 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { LdapService } = await import('@/ldap/ldap.service.ee');
-						await import('@/ldap/ldap.controller.ee');
+						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+						await import('@/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
 
 					case 'saml':
-						const { setSamlLoginEnabled } = await import('@/sso/saml/saml-helpers');
-						await import('@/sso/saml/routes/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
+						await import('@/sso.ee/saml/routes/saml.controller.ee');
 						await setSamlLoginEnabled(true);
 						break;
 
 					case 'sourceControl':
-						await import('@/environments/source-control/source-control.controller.ee');
+						await import('@/environments.ee/source-control/source-control.controller.ee');
 						break;
 
 					case 'community-packages':
@@ -230,11 +247,11 @@ export const setupTestServer = ({
 						break;
 
 					case 'externalSecrets':
-						await import('@/external-secrets/external-secrets.controller.ee');
+						await import('@/external-secrets.ee/external-secrets.controller.ee');
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
 						break;
 
 					case 'binaryData':
@@ -256,6 +273,19 @@ export const setupTestServer = ({
 					case 'dynamic-node-parameters':
 						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
+
+					case 'apiKeys':
+						await import('@/controllers/api-keys.controller');
+						break;
+
+					case 'evaluation':
+						await import('@/evaluation.ee/metrics.controller');
+						await import('@/evaluation.ee/test-definitions.controller.ee');
+						await import('@/evaluation.ee/test-runs.controller.ee');
+						break;
+
+					case 'ai':
+						await import('@/controllers/ai.controller');
 				}
 			}
 

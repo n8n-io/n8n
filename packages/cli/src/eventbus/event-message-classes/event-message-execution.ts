@@ -1,9 +1,10 @@
-import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
 import type { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
+
+import type { EventNamesExecutionType } from '.';
+import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
 import type { AbstractEventPayload } from './abstract-event-payload';
-import type { EventNamesExecutionType } from '.';
 
 export interface EventPayloadExecution extends AbstractEventPayload {
 	executionId: string;

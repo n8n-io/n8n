@@ -1,5 +1,6 @@
-import BlinkingCursor from './BlinkingCursor.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import BlinkingCursor from './BlinkingCursor.vue';
 
 export default {
 	title: 'Assistant/BlinkingCursor',

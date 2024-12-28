@@ -1,31 +1,31 @@
-import { Container } from 'typedi';
-import type { Scope } from '@sentry/node';
 import { GlobalConfig } from '@n8n/config';
+import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import type { ListQuery } from '@/requests';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';
+import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { ListQuery } from '@/requests';
 
-import * as testDb from '../shared/test-db';
-import { setupTestServer } from '../shared/utils';
-import {
-	randomCredentialPayload as payload,
-	randomCredentialPayload,
-	randomName,
-} from '../shared/random';
 import {
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	randomCredentialPayload as payload,
+	randomCredentialPayload,
+	randomName,
+} from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
+import { setupTestServer } from '../shared/utils';
 
 const { any } = expect;
 
@@ -87,6 +87,7 @@ describe('GET /credentials', () => {
 			validateMainCredentialData(credential);
 			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
+			expect('isManaged' in credential).toBe(true);
 		});
 	});
 
@@ -1035,6 +1036,19 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(403);
 	});
+
+	test('should fail with a 400 is credential is managed', async () => {
+		const { id } = await saveCredential(randomCredentialPayload({ isManaged: true }), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${id}`)
+			.send(randomCredentialPayload());
+
+		expect(response.statusCode).toBe(400);
+	});
 });
 
 describe('GET /credentials/new', () => {
@@ -1188,10 +1202,11 @@ const INVALID_PAYLOADS = [
 ];
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, sharedWithProjects, homeProject } = credential;
+	const { name, type, sharedWithProjects, homeProject, isManaged } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
+	expect(typeof isManaged).toBe('boolean');
 
 	if (sharedWithProjects) {
 		expect(Array.isArray(sharedWithProjects)).toBe(true);

@@ -12,9 +12,10 @@ module.exports = {
 		project: './tsconfig.json',
 	},
 
-	ignorePatterns: ['scenarios/**', 'scripts/**'],
+	ignorePatterns: ['scenarios/**'],
 
 	rules: {
+		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 		'n8n-local-rules/no-plain-errors': 'off',
 		complexity: 'error',
 	},

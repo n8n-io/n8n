@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
+import type { IUser, UserAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
-import type { IUser, UserAction } from '../../types';
-import { useI18n } from '../../composables/useI18n';
 
 interface UsersListProps {
 	users: IUser[];

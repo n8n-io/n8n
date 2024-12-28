@@ -1,11 +1,12 @@
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import * as testDb from '@test-integration/test-db';
-import Container from 'typedi';
-import { createWorkflow } from '@test-integration/db/workflows';
 import { Workflow } from 'n8n-workflow';
-import { mockInstance } from '@test/mocking';
-import { NodeTypes } from '@/node-types';
+import Container from 'typedi';
+
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { NodeTypes } from '@/node-types';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { mockInstance } from '@test/mocking';
+import { createWorkflow } from '@test-integration/db/workflows';
+import * as testDb from '@test-integration/test-db';
 
 const nodeTypes = mockInstance(NodeTypes);
 let workflowStaticDataService: WorkflowStaticDataService;

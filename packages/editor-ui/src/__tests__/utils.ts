@@ -126,7 +126,7 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 			Record<string, never>,
 			{
 				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
-					? Mock<Args, ReturnT>
+					? Mock<(...args: Args) => ReturnT>
 					: Actions[K];
 			}
 		> & {
@@ -136,3 +136,5 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return useStore() as any;
 };
+
+export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;

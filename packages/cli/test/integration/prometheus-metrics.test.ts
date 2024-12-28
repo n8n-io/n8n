@@ -1,13 +1,14 @@
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
+import { Container } from 'typedi';
 
-import { N8N_VERSION } from '@/constants';
-import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
-import { setupTestServer } from './shared/utils';
-import { GlobalConfig } from '@n8n/config';
 import config from '@/config';
+import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
+
+import { setupTestServer } from './shared/utils';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 

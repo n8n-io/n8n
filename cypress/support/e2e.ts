@@ -1,5 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
+
 import { settings } from './commands';
 
 before(() => {

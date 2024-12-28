@@ -1,5 +1,3 @@
-import type { Readable } from 'stream';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,6 +7,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
@@ -25,6 +24,7 @@ export class Telegram implements INodeType {
 		defaults: {
 			name: 'Telegram',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

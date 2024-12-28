@@ -1,8 +1,5 @@
-import path from 'path';
 import { readdirSync, readFileSync } from 'fs';
-
-const BASE_DIR = path.resolve(__dirname, '../../..');
-
+import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
 	IDeferredPromise,
@@ -17,14 +14,17 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-
 import { ApplicationError, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import path from 'path';
+
+import { UnrecognizedNodeTypeError } from '@/errors';
 
 import { predefinedNodesTypes } from './constants';
-import { mock } from 'jest-mock-extended';
+
+const BASE_DIR = path.resolve(__dirname, '../../..');
 
 class NodeTypesClass implements INodeTypes {
-	constructor(private nodeTypes: INodeTypeData = predefinedNodesTypes) {}
+	constructor(private nodeTypes: INodeTypeData) {}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return this.nodeTypes[nodeType].type;
@@ -41,7 +41,7 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-export function NodeTypes(nodeTypes?: INodeTypeData): INodeTypes {
+export function NodeTypes(nodeTypes: INodeTypeData = predefinedNodesTypes): INodeTypes {
 	if (nodeTypesInstance === undefined || nodeTypes !== undefined) {
 		nodeTypesInstance = new NodeTypesClass(nodeTypes);
 	}
@@ -104,12 +104,9 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	);
 
 	for (const nodeName of nodeNames) {
-		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
-		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);

@@ -1,17 +1,16 @@
+import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from '@n8n/typeorm';
 import { Length } from 'class-validator';
-
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from '@n8n/typeorm';
+import type { IWorkflowDb } from '@/interfaces';
 
-import type { TagEntity } from './tag-entity';
+import { WithTimestampsAndStringId, dbType, jsonColumnType } from './abstract-entity';
 import type { SharedWorkflow } from './shared-workflow';
+import type { TagEntity } from './tag-entity';
 import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
-import { WithTimestampsAndStringId, dbType, jsonColumnType } from './abstract-entity';
-import type { IWorkflowDb } from '@/interfaces';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
@@ -81,7 +80,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		nullable: true,
 		transformer: sqlite.jsonColumn,
 	})
-	pinData: ISimplifiedPinData;
+	pinData?: ISimplifiedPinData;
 
 	@Column({ length: 36 })
 	versionId: string;

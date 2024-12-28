@@ -1,5 +1,5 @@
-import { EventEmitter } from 'node:events';
 import debounce from 'lodash/debounce';
+import { EventEmitter } from 'node:events';
 
 type Payloads<ListenerMap> = {
 	[E in keyof ListenerMap]: unknown;

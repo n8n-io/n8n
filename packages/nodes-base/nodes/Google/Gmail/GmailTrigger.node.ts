@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -9,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
@@ -24,7 +24,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -107,6 +107,13 @@ export class GmailTrigger implements INodeType {
 						description: 'Whether to include messages from SPAM and TRASH in the results',
 					},
 					{
+						displayName: 'Include Drafts',
+						name: 'includeDrafts',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include email drafts in the results',
+					},
+					{
 						displayName: 'Label Names or IDs',
 						name: 'labelIds',
 						type: 'multiOptions',
@@ -115,7 +122,7 @@ export class GmailTrigger implements INodeType {
 						},
 						default: [],
 						description:
-							'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Search',
@@ -284,6 +291,15 @@ export class GmailTrigger implements INodeType {
 				qs.format = 'raw';
 			}
 
+			let includeDrafts;
+			if (node.typeVersion > 1.1) {
+				includeDrafts = (qs.includeDrafts as boolean) ?? false;
+			} else {
+				includeDrafts = (qs.includeDrafts as boolean) ?? true;
+			}
+			delete qs.includeDrafts;
+			const withoutDrafts = [];
+
 			for (let i = 0; i < responseData.length; i++) {
 				responseData[i] = await googleApiRequest.call(
 					this,
@@ -292,8 +308,12 @@ export class GmailTrigger implements INodeType {
 					{},
 					qs,
 				);
-
-				if (!simple) {
+				if (!includeDrafts) {
+					if (responseData[i].labelIds.includes('DRAFT')) {
+						continue;
+					}
+				}
+				if (!simple && responseData?.length) {
 					const dataPropertyNameDownload =
 						(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
@@ -303,9 +323,14 @@ export class GmailTrigger implements INodeType {
 						dataPropertyNameDownload,
 					);
 				}
+				withoutDrafts.push(responseData[i]);
 			}
 
-			if (simple) {
+			if (!includeDrafts) {
+				responseData = withoutDrafts;
+			}
+
+			if (simple && responseData?.length) {
 				responseData = this.helpers.returnJsonArray(
 					await simplifyOutput.call(this, responseData as IDataObject[]),
 				);
@@ -324,17 +349,14 @@ export class GmailTrigger implements INodeType {
 				},
 			);
 		}
-
 		if (!responseData?.length) {
 			nodeStaticData.lastTimeChecked = endDate;
 			return null;
 		}
 
 		const emailsWithInvalidDate = new Set<string>();
-
 		const getEmailDateAsSeconds = (email: IDataObject): number => {
 			let date;
-
 			if (email.internalDate) {
 				date = +(email.internalDate as string) / 1000;
 			} else if (email.date) {

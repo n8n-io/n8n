@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+
 import config from '@/config';
 import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } from '@/decorators';
-import { TagService } from '@/services/tag.service';
-import { TagsRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { TagsRequest } from '@/requests';
+import { TagService } from '@/services/tag.service';
 
 @RestController('/tags')
 export class TagsController {

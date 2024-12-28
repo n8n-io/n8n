@@ -1,3 +1,4 @@
+import type { Scope } from '@n8n/permissions';
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -7,31 +8,25 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	IPinData,
 	IRun,
-	IRunData,
 	IRunExecutionData,
-	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
-	Workflow,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionSummary,
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
-	StartNodeData,
+	IWorkflowExecutionDataProcess,
+	DeduplicationMode,
+	DeduplicationItemTypes,
 } from 'n8n-workflow';
-
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-
-import type { WorkflowExecute } from 'n8n-core';
-
 import type PCancelable from 'p-cancelable';
 
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
@@ -40,11 +35,10 @@ import type { CredentialsRepository } from '@/databases/repositories/credentials
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExternalHooks } from './external-hooks';
+
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-import type { RunningJobSummary } from './scaling/scaling.types';
-import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -52,6 +46,20 @@ export interface ICredentialsTypeData {
 
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
+}
+
+// ----------------------------------
+//               ProcessedData
+// ----------------------------------
+
+export interface IProcessedDataLatest {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes[];
 }
 
 // ----------------------------------
@@ -121,9 +129,14 @@ export type SaveExecutionDataType = 'all' | 'none';
 export interface IExecutionBase {
 	id: string;
 	mode: WorkflowExecuteMode;
+	createdAt: Date; // set by DB
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId: string;
+
+	/**
+	 * @deprecated Use `status` instead
+	 */
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
@@ -137,15 +150,11 @@ export interface IExecutionDb extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-/**
- * Payload for creating or updating an execution.
- */
-export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
+/** Payload for creating an execution. */
+export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
 
-export interface IExecutionPushResponse {
-	executionId?: string;
-	waitingForWebhook?: boolean;
-}
+/** Payload for updating an execution. */
+export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
@@ -204,7 +213,8 @@ export interface IExecutionsCurrentSummary {
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;
-	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
+	postExecutePromise: IDeferredPromise<IRun | undefined>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
@@ -250,12 +260,6 @@ export interface IExternalHooksFunctions {
 	};
 }
 
-export interface IVersionNotificationSettings {
-	enabled: boolean;
-	endpoint: string;
-	infoUrl: string;
-}
-
 export interface IPersonalizationSurveyAnswers {
 	email: string | null;
 	codingSkill: string | null;
@@ -272,207 +276,6 @@ export interface IActiveDirectorySettings {
 
 export interface IPackageVersions {
 	cli: string;
-}
-
-export type IPushDataType = IPushData['type'];
-
-export type IPushData =
-	| PushDataExecutionFinished
-	| PushDataExecutionStarted
-	| PushDataExecuteAfter
-	| PushDataExecuteBefore
-	| PushDataConsoleMessage
-	| PushDataReloadNodeType
-	| PushDataRemoveNodeType
-	| PushDataTestWebhook
-	| PushDataNodeDescriptionUpdated
-	| PushDataExecutionRecovered
-	| PushDataWorkerStatusMessage
-	| PushDataWorkflowActivated
-	| PushDataWorkflowDeactivated
-	| PushDataWorkflowFailedToActivate
-	| PushDataActiveWorkflowUsersChanged;
-
-type PushDataActiveWorkflowUsersChanged = {
-	data: IActiveWorkflowUsersChanged;
-	type: 'activeWorkflowUsersChanged';
-};
-
-type PushDataWorkflowFailedToActivate = {
-	data: IWorkflowFailedToActivate;
-	type: 'workflowFailedToActivate';
-};
-
-type PushDataWorkflowActivated = {
-	data: IActiveWorkflowChanged;
-	type: 'workflowActivated';
-};
-
-type PushDataWorkflowDeactivated = {
-	data: IActiveWorkflowChanged;
-	type: 'workflowDeactivated';
-};
-
-export type PushDataExecutionRecovered = {
-	data: IPushDataExecutionRecovered;
-	type: 'executionRecovered';
-};
-
-export type PushDataExecutionFinished = {
-	data: IPushDataExecutionFinished;
-	type: 'executionFinished';
-};
-
-export type PushDataExecutionStarted = {
-	data: IPushDataExecutionStarted;
-	type: 'executionStarted';
-};
-
-export type PushDataExecuteAfter = {
-	data: IPushDataNodeExecuteAfter;
-	type: 'nodeExecuteAfter';
-};
-
-export type PushDataExecuteBefore = {
-	data: IPushDataNodeExecuteBefore;
-	type: 'nodeExecuteBefore';
-};
-
-export type PushDataConsoleMessage = {
-	data: IPushDataConsoleMessage;
-	type: 'sendConsoleMessage';
-};
-
-type PushDataWorkerStatusMessage = {
-	data: IPushDataWorkerStatusMessage;
-	type: 'sendWorkerStatusMessage';
-};
-
-type PushDataReloadNodeType = {
-	data: IPushDataReloadNodeType;
-	type: 'reloadNodeType';
-};
-
-export type PushDataRemoveNodeType = {
-	data: IPushDataRemoveNodeType;
-	type: 'removeNodeType';
-};
-
-export type PushDataTestWebhook = {
-	data: IPushDataTestWebhook;
-	type: 'testWebhookDeleted' | 'testWebhookReceived';
-};
-
-export type PushDataNodeDescriptionUpdated = {
-	data: undefined;
-	type: 'nodeDescriptionUpdated';
-};
-
-/** DateTime in the Iso8601 format, e.g. 2024-10-31T00:00:00.123Z */
-export type Iso8601DateTimeString = string;
-
-export interface IActiveWorkflowUser {
-	user: PublicUser;
-	lastSeen: Iso8601DateTimeString;
-}
-
-export interface IActiveWorkflowUsersChanged {
-	workflowId: Workflow['id'];
-	activeUsers: IActiveWorkflowUser[];
-}
-
-export interface IActiveWorkflowAdded {
-	workflowId: Workflow['id'];
-}
-
-interface IActiveWorkflowChanged {
-	workflowId: Workflow['id'];
-}
-
-interface IWorkflowFailedToActivate {
-	workflowId: Workflow['id'];
-	errorMessage: string;
-}
-
-export interface IPushDataExecutionRecovered {
-	executionId: string;
-}
-
-export interface IPushDataExecutionFinished {
-	data: IRun;
-	executionId: string;
-	retryOf?: string;
-}
-
-export interface IPushDataExecutionStarted {
-	executionId: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	retryOf?: string;
-	workflowId: string;
-	workflowName?: string;
-}
-
-export interface IPushDataNodeExecuteAfter {
-	data: ITaskData;
-	executionId: string;
-	nodeName: string;
-}
-
-export interface IPushDataNodeExecuteBefore {
-	executionId: string;
-	nodeName: string;
-}
-
-export interface IPushDataReloadNodeType {
-	name: string;
-	version: number;
-}
-
-export interface IPushDataRemoveNodeType {
-	name: string;
-	version: number;
-}
-
-export interface IPushDataTestWebhook {
-	executionId: string;
-	workflowId: string;
-}
-
-export interface IPushDataConsoleMessage {
-	source: string;
-	message: string;
-}
-
-export interface IPushDataWorkerStatusMessage {
-	workerId: string;
-	status: IPushDataWorkerStatusPayload;
-}
-
-export interface IPushDataWorkerStatusPayload {
-	workerId: string;
-	runningJobsSummary: RunningJobSummary[];
-	freeMem: number;
-	totalMem: number;
-	uptime: number;
-	loadAvg: number[];
-	cpus: string;
-	arch: string;
-	platform: NodeJS.Platform;
-	hostname: string;
-	interfaces: Array<{
-		family: 'IPv4' | 'IPv6';
-		address: string;
-		internal: boolean;
-	}>;
-	version: string;
-}
-
-export interface INodesTypeData {
-	[key: string]: {
-		className: string;
-		sourcePath: string;
-	};
 }
 
 export interface IWorkflowErrorData {
@@ -493,27 +296,6 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
-}
-
-export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
-	restartExecutionId?: string;
-	executionMode: WorkflowExecuteMode;
-	executionData?: IRunExecutionData;
-	runData?: IRunData;
-	pinData?: IPinData;
-	retryOf?: string;
-	pushRef?: string;
-	startNodes?: StartNodeData[];
-	workflowData: IWorkflowBase;
-	userId?: string;
-	projectId?: string;
-}
-
-export interface IWorkflowExecuteProcess {
-	startedAt: Date;
-	workflow: Workflow;
-	workflowExecute: WorkflowExecute;
 }
 
 export interface IWorkflowStatisticsDataLoaded {
@@ -569,7 +351,7 @@ export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {
-		executions: {
+		activeWorkflowTriggers: {
 			limit: number;
 			value: number;
 			warningThreshold: number;
@@ -649,5 +431,3 @@ export abstract class SecretsProvider {
 	abstract hasSecret(name: string): boolean;
 	abstract getSecretNames(): string[];
 }
-
-export type N8nInstanceType = 'main' | 'webhook' | 'worker';

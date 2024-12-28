@@ -1,4 +1,4 @@
-import { URL } from 'url';
+import { pascalCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,8 +11,8 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { URL } from 'url';
 
-import { pascalCase } from 'change-case';
 import { awsApiRequestSOAP } from '../GenericFunctions';
 
 export class AwsSqs implements INodeType {
@@ -67,7 +67,7 @@ export class AwsSqs implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',

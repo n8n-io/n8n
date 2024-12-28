@@ -1,9 +1,10 @@
 <script lang="ts" setup>
+import { ElMenu } from 'element-plus';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMenu } from 'element-plus';
-import N8nMenuItem from '../N8nMenuItem';
+
 import type { IMenuItem } from '../../types';
+import N8nMenuItem from '../N8nMenuItem';
 import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
 
 interface MenuProps {
@@ -131,6 +132,7 @@ const onSelect = (item: IMenuItem): void => {
 	display: flex;
 	flex-direction: column;
 	background-color: var(--menu-background, var(--color-background-xlight));
+	overflow: hidden;
 }
 
 .menuHeader {

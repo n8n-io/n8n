@@ -1,11 +1,13 @@
-import { anyNumber, mock } from 'jest-mock-extended';
 import { NodeVM } from '@n8n/vm2';
+import { anyNumber, mock } from 'jest-mock-extended';
+import { normalizeItems } from 'n8n-core';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
-import { normalizeItems } from 'n8n-core';
+
+import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
+
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
-import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
 
 describe('Test Code Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);
@@ -57,7 +59,8 @@ describe('Code Node unit test', () => {
 					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
-					expect(output).toEqual([expected]);
+
+					expect([...output]).toEqual([expected]);
 				}),
 			);
 		});
@@ -109,7 +112,7 @@ describe('Code Node unit test', () => {
 					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
-					expect(output).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
+					expect([...output]).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
 				}),
 			);
 		});

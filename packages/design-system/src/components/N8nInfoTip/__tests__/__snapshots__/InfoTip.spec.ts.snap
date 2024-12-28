@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`N8nInfoTip > should render correctly as note 1`] = `"<div class="n8n-info-tip note infoTip info bold"><span class="iconText"><span class="n8n-text compact size-medium regular n8n-icon n8n-icon"><!----></span><span>Need help doing something?<a href="/docs" target="_blank">Open docs</a></span></span></div>"`;

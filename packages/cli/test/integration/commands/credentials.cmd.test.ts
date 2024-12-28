@@ -2,13 +2,13 @@ import { nanoid } from 'nanoid';
 
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-
 import { setupTestCommand } from '@test-integration/utils/test-command';
+
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/test-db';
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
-import { createMember, createOwner } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';
+import { createMember, createOwner } from '../shared/db/users';
+import * as testDb from '../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);

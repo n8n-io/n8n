@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,19 +9,6 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import set from 'lodash/set';
-import { oldVersionNotice } from '../../../utils/descriptions';
-import {
-	formatFeed,
-	formatResults,
-	formatSearch,
-	getId,
-	populate,
-	setCount,
-	splunkApiRequest,
-	toUnixEpoch,
-} from './GenericFunctions';
 
 import {
 	firedAlertOperations,
@@ -34,8 +21,18 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
-
+import {
+	formatFeed,
+	formatResults,
+	formatSearch,
+	getId,
+	populate,
+	setCount,
+	splunkApiRequest,
+	toUnixEpoch,
+} from './GenericFunctions';
 import type { SplunkFeedResponse } from './types';
+import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Splunk',

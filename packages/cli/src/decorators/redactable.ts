@@ -1,5 +1,5 @@
 import { RedactableError } from '@/errors/redactable.error';
-import type { UserLike } from '@/events/relay-event-map';
+import type { UserLike } from '@/events/maps/relay.event-map';
 
 function toRedactable(userLike: UserLike) {
 	return {

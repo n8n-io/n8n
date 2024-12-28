@@ -1,6 +1,6 @@
-import * as formStep from '../composables/setup-template-form-step';
-import { overrideFeatureFlag } from '../composables/featureFlags';
 import { CredentialsModal, MessageBox } from './modals';
+import { overrideFeatureFlag } from '../composables/featureFlags';
+import * as formStep from '../composables/setup-template-form-step';
 
 const credentialsModal = new CredentialsModal();
 const messageBox = new MessageBox();

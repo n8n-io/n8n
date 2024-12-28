@@ -1,13 +1,14 @@
-import { toFlaggedNode } from '@/security-audit/utils';
+import { Service } from 'typedi';
+
+import type { WorkflowEntity as Workflow } from '@/databases/entities/workflow-entity';
 import {
 	SQL_NODE_TYPES,
 	DATABASE_REPORT,
 	DB_QUERY_PARAMS_DOCS_URL,
 	SQL_NODE_TYPES_WITH_QUERY_PARAMS,
 } from '@/security-audit/constants';
-import type { WorkflowEntity as Workflow } from '@/databases/entities/workflow-entity';
 import type { RiskReporter, Risk } from '@/security-audit/types';
-import { Service } from 'typedi';
+import { toFlaggedNode } from '@/security-audit/utils';
 
 @Service()
 export class DatabaseRiskReporter implements RiskReporter {

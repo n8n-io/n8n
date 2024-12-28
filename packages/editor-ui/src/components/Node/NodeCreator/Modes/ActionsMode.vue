@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, defineComponent, h } from 'vue';
-import type { PropType } from 'vue';
+import { computed, onMounted } from 'vue';
 import type {
 	INodeCreateElement,
-	NodeFilterType,
 	IUpdateInformation,
 	ActionCreateElement,
 	NodeCreateElement,
 } from '@/Interface';
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
 	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -29,6 +26,8 @@ import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue'
 import type { IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import OrderSwitcher from './../OrderSwitcher.vue';
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
@@ -46,6 +45,8 @@ const {
 	parseCategoryActions,
 	actionsCategoryLocales,
 } = useActions();
+
+const nodeCreatorStore = useNodeCreatorStore();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -182,7 +183,7 @@ function trackActionsView() {
 	};
 
 	void useExternalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+	nodeCreatorStore.onViewActions(trackingPayload);
 }
 
 function resetSearch() {
@@ -206,28 +207,8 @@ function addHttpNode() {
 	void useExternalHooks().run('nodeCreateList.onActionsCustmAPIClicked', {
 		app_identifier,
 	});
-	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	nodeCreatorStore.onActionsCustomAPIClicked({ app_identifier });
 }
-
-// Anonymous component to handle triggers and actions rendering order
-const OrderSwitcher = defineComponent({
-	props: {
-		rootView: {
-			type: String as PropType<NodeFilterType>,
-			required: true,
-		},
-	},
-	setup(props, { slots }) {
-		return () =>
-			h(
-				'div',
-				{},
-				props.rootView === REGULAR_NODE_CREATOR_VIEW
-					? [slots.actions?.(), slots.triggers?.()]
-					: [slots.triggers?.(), slots.actions?.()],
-			);
-	},
-});
 
 onMounted(() => {
 	trackActionsView();
@@ -258,7 +239,7 @@ onMounted(() => {
 							data-test-id="actions-panel-no-triggers-callout"
 						>
 							<span
-								v-html="
+								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noTriggerItems', {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
@@ -271,7 +252,7 @@ onMounted(() => {
 						<p
 							:class="$style.resetSearch"
 							@click="resetSearch"
-							v-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -293,13 +274,13 @@ onMounted(() => {
 						slim
 						data-test-id="actions-panel-activation-callout"
 					>
-						<span v-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
+						<span v-n8n-html="i18n.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
 					</n8n-callout>
 					<!-- Empty state -->
 					<template #empty>
 						<n8n-info-tip v-if="!search" theme="info" type="note" :class="$style.actionsEmpty">
 							<span
-								v-html="
+								v-n8n-html="
 									i18n.baseText('nodeCreator.actionsCallout.noActionItems', {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
@@ -311,7 +292,7 @@ onMounted(() => {
 							:class="$style.resetSearch"
 							data-test-id="actions-panel-no-matching-actions"
 							@click="resetSearch"
-							v-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -320,7 +301,7 @@ onMounted(() => {
 		<div v-if="containsAPIAction" :class="$style.apiHint">
 			<span
 				@click.prevent="addHttpNode"
-				v-html="
+				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
 						interpolate: { node: subcategory ?? '' },
 					})

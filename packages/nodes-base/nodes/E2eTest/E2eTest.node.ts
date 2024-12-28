@@ -9,6 +9,7 @@ import {
 	type INodeTypeDescription,
 	type ResourceMapperFields,
 } from 'n8n-workflow';
+
 import { remoteOptions, resourceMapperFields, returnData, searchOptions } from './mock';
 
 export class E2eTest implements INodeType {
@@ -57,7 +58,7 @@ export class E2eTest implements INodeType {
 				displayName: 'Remote Options Name or ID',
 				name: 'remoteOptions',
 				description:
-					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: ['fieldId'],

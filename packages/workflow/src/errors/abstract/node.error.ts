@@ -1,6 +1,6 @@
-import { isTraversableObject, jsonParse } from '../../utils';
-import type { IDataObject, INode, JsonObject } from '../../Interfaces';
 import { ExecutionBaseError } from './execution-base.error';
+import type { IDataObject, INode, JsonObject } from '../../Interfaces';
+import { isTraversableObject, jsonParse } from '../../utils';
 
 /**
  * Descriptive messages for common errors.

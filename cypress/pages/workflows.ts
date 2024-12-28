@@ -7,7 +7,10 @@ export class WorkflowsPage extends BasePage {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
 		searchBar: () => cy.getByTestId('resources-list-search'),
-		createWorkflowButton: () => cy.getByTestId('resources-list-add'),
+		createWorkflowButton: () => {
+			cy.getByTestId('add-resource-workflow').should('be.visible');
+			return cy.getByTestId('add-resource-workflow');
+		},
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>
 			this.getters
@@ -16,6 +19,8 @@ export class WorkflowsPage extends BasePage {
 				.parents('[data-test-id="resources-list-item"]'),
 		workflowTags: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-tags'),
+		workflowCardContent: (workflowName: string) =>
+			this.getters.workflowCard(workflowName).findChildByTestId('card-content'),
 		workflowActivator: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-activator'),
 		workflowActivatorStatus: (workflowName: string) =>

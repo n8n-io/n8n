@@ -1,7 +1,8 @@
+import concatStream from 'concat-stream';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
+
 import type { BinaryData } from './types';
-import concatStream from 'concat-stream';
 
 export const CONFIG_MODES = ['default', 'filesystem', 's3'] as const;
 

@@ -1,7 +1,8 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
-import { WorkflowEntity } from './workflow-entity';
+
 import { WithTimestamps } from './abstract-entity';
 import { Project } from './project';
+import { WorkflowEntity } from './workflow-entity';
 
 export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor';
 

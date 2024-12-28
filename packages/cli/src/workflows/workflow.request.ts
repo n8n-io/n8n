@@ -1,6 +1,14 @@
+import type {
+	INode,
+	IConnections,
+	IWorkflowSettings,
+	IRunData,
+	StartNodeData,
+	ITaskData,
+} from 'n8n-workflow';
+
 import type { IWorkflowDb } from '@/interfaces';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
-import type { INode, IConnections, IWorkflowSettings, IRunData, StartNodeData } from 'n8n-workflow';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
@@ -21,6 +29,11 @@ export declare namespace WorkflowRequest {
 		runData: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		dirtyNodeNames?: string[];
+		triggerToStartFrom?: {
+			name: string;
+			data?: ITaskData;
+		};
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
@@ -42,7 +55,12 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload>;
+	type ManualRun = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		ManualRunPayload,
+		{ partialExecutionVersion?: string }
+	>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 

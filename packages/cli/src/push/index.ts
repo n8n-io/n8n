@@ -1,23 +1,24 @@
+import type { PushMessage } from '@n8n/api-types';
+import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
+import { InstanceSettings } from 'n8n-core';
 import type { Socket } from 'net';
-import type { Application } from 'express';
-import { Server as WSServer } from 'ws';
-import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
+import { parse as parseUrl } from 'url';
+import { Server as WSServer } from 'ws';
 
-import config from '@/config';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { AuthService } from '@/auth/auth.service';
+import config from '@/config';
+import type { User } from '@/databases/entities/user';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { IPushDataType } from '@/interfaces';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { TypedEmitter } from '@/typed-emitter';
 
 import { SSEPush } from './sse.push';
-import { WebSocketPush } from './websocket.push';
 import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
-import { TypedEmitter } from '@/typed-emitter';
-import type { User } from '@/databases/entities/user';
+import { WebSocketPush } from './websocket.push';
 
 type PushEvents = {
 	editorUiConnected: string;
@@ -35,14 +36,21 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends TypedEmitter<PushEvents> {
-	public isBidirectional = useWebSockets;
+	isBidirectional = useWebSockets;
 
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
-	constructor(private readonly orchestrationService: OrchestrationService) {
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
+	) {
 		super();
 
 		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
+	}
+
+	getBackend() {
+		return this.backend;
 	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -73,32 +81,30 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast(type: IPushDataType, data?: unknown) {
-		this.backend.sendToAll(type, data);
+	broadcast(pushMsg: PushMessage) {
+		this.backend.sendToAll(pushMsg);
 	}
 
-	send(type: IPushDataType, data: unknown, pushRef: string) {
+	send(pushMsg: PushMessage, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
 		 * the webhook. If so, the handler process commands the creator process to
 		 * relay the former's execution lifecycle events to the creator's frontend.
 		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.backend.hasPushRef(pushRef)) {
-			const payload = { type, args: data, pushRef };
-			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
+		if (this.instanceSettings.isMultiMain && !this.backend.hasPushRef(pushRef)) {
+			void this.publisher.publishCommand({
+				command: 'relay-execution-lifecycle-event',
+				payload: { ...pushMsg, pushRef },
+			});
 			return;
 		}
 
-		this.backend.sendToOne(type, data, pushRef);
+		this.backend.sendToOne(pushMsg, pushRef);
 	}
 
-	getBackend() {
-		return this.backend;
-	}
-
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(type, data, userIds);
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(pushMsg, userIds);
 	}
 
 	@OnShutdown()

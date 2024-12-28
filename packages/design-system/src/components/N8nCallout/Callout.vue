@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
+
 import type { IconSize } from 'n8n-design-system/types/icon';
+
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
 
 const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
 export type CalloutTheme = (typeof THEMES)[number];
@@ -21,6 +23,7 @@ interface CalloutProps {
 	iconless?: boolean;
 	slim?: boolean;
 	roundCorners?: boolean;
+	onlyBottomBorder?: boolean;
 }
 
 defineOptions({ name: 'N8nCallout' });
@@ -36,6 +39,7 @@ const classes = computed(() => [
 	$style[props.theme],
 	props.slim ? $style.slim : '',
 	props.roundCorners ? $style.round : '',
+	props.onlyBottomBorder ? $style.onlyBottomBorder : '',
 ]);
 
 const getIcon = computed(
@@ -91,6 +95,12 @@ const getIconSize = computed<IconSize>(() => {
 
 .round {
 	border-radius: var(--border-radius-base);
+}
+
+.onlyBottomBorder {
+	border-top: 0;
+	border-left: 0;
+	border-right: 0;
 }
 
 .messageSection {

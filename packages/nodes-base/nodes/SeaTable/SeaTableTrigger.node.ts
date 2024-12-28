@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IPollFunctions,
 	type ILoadOptionsFunctions,
@@ -8,9 +9,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { getColumns, rowFormatColumns, seaTableApiRequest, simplify } from './GenericFunctions';
-
 import type { ICtx, IRow, IRowResponse } from './Interfaces';
 
 export class SeaTableTrigger implements INodeType {
@@ -45,7 +44,7 @@ export class SeaTableTrigger implements INodeType {
 				},
 				default: '',
 				description:
-					'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',

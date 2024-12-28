@@ -1,6 +1,6 @@
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
-import { auth, expects, getRequestOptions } from './utils';
 import { DEFAULT_HEADERS } from './constants';
+import { auth, expects, getRequestOptions } from './utils';
 
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
 	token_type?: string | undefined;

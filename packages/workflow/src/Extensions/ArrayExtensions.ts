@@ -1,10 +1,10 @@
 import deepEqual from 'deep-equal';
 import uniqWith from 'lodash/uniqWith';
 
-import { ExpressionError } from '../errors/expression.error';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import type { Extension, ExtensionMap } from './Extensions';
 import { compact as oCompact } from './ObjectExtensions';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { ExpressionError } from '../errors/expression.error';
 import { randomInt } from '../utils';
 
 function first(value: unknown[]): unknown {

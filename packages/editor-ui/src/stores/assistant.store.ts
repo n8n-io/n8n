@@ -1,14 +1,16 @@
-import { chatWithAssistant, replaceCode } from '@/api/assistant';
+import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
 	STORES,
 	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	CREDENTIAL_EDIT_MODAL_KEY,
 } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
+import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
@@ -16,30 +18,33 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { INodeParameters } from 'n8n-workflow';
+import type { ICredentialType, INodeParameters, NodeError, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
-import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
-import {
-	getMainAuthField,
-	getNodeAuthOptions,
-	getReferencedNodes,
-	getNodesSchemas,
-	pruneNodeProperties,
-} from '@/utils/nodeTypesUtils';
-import { useNodeTypesStore } from './nodeTypes.store';
+import type { IUpdateInformation } from '@/Interface';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from './ui.store';
 import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
+import { useCredentialsStore } from './credentials.store';
+import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
 export const DEFAULT_CHAT_WIDTH = 330;
-export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
+export const ENABLED_VIEWS = [
+	...EDITABLE_CANVAS_VIEWS,
+	VIEWS.EXECUTION_PREVIEW,
+	VIEWS.WORKFLOWS,
+	VIEWS.CREDENTIALS,
+	VIEWS.PROJECTS_CREDENTIALS,
+	VIEWS.PROJECTS_WORKFLOWS,
+	VIEWS.PROJECT_SETTINGS,
+	VIEWS.TEMPLATE_SETUP,
+];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
@@ -58,6 +63,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const { getVariant } = usePostHog();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
+	const assistantHelpers = useAIAssistantHelpers();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -65,25 +71,26 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			suggested: INodeParameters;
 		};
 	}>({});
+
+	type NodeExecutionStatus = 'error' | 'not_executed' | 'success';
+
+	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
-	const nodeExecutionStatus = ref<'not_executed' | 'success' | 'error'>('not_executed');
+	const nodeExecutionStatus = ref<NodeExecutionStatus>('not_executed');
 	// This is used to show a message when the assistant is performing intermediate steps
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
+	const chatSessionTask = ref<'error' | 'support' | 'credentials' | undefined>();
+	// Indicate if last sent workflow and execution data is stale
+	const workflowDataStale = ref<boolean>(true);
+	const workflowExecutionDataStale = ref<boolean>(true);
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
-	);
-
-	const canShowAssistant = computed(
-		() =>
-			isExperimentEnabled.value &&
-			settings.isAiAssistantEnabled &&
-			ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const assistantMessages = computed(() =>
@@ -103,11 +110,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
-	const canShowAssistantButtons = computed(
-		() =>
-			isExperimentEnabled.value &&
-			settings.isAiAssistantEnabled &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
+	const isAssistantEnabled = computed(
+		() => isExperimentEnabled.value && settings.isAiAssistantEnabled,
+	);
+
+	const canShowAssistant = computed(
+		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
+	);
+
+	const canShowAssistantButtonsOnCanvas = computed(
+		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const unreadCount = computed(
@@ -117,22 +129,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			).length,
 	);
 
-	const isSupportChatSessionInProgress = computed(() => {
-		return currentSessionId.value !== undefined && chatSessionError.value === undefined;
-	});
-
-	watch(route, () => {
-		const activeWorkflowId = workflowsStore.workflowId;
-		if (
-			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-			currentSessionWorkflowId.value === activeWorkflowId
-		) {
-			return;
-		}
-		resetAssistantChat();
-	});
-
 	function resetAssistantChat() {
 		clearMessages();
 		currentSessionId.value = undefined;
@@ -141,6 +137,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
+		chatSessionCredType.value = undefined;
+		chatSessionTask.value = undefined;
+		currentSessionWorkflowId.value = workflowsStore.workflowId;
 	}
 
 	// As assistant sidebar opens and closes, use window width to calculate the container width
@@ -169,7 +168,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
-		// TODO: simplify
 		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
@@ -235,8 +233,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const targetNode = context.node.name;
 
 		return (
+			chatSessionTask.value === 'error' &&
 			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
+		);
+	}
+
+	function isCredTypeActive(credType: ICredentialType) {
+		return (
+			chatSessionTask.value === 'credentials' && credType.name === chatSessionCredType.value?.name
 		);
 	}
 
@@ -248,13 +253,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		streaming.value = false;
 	}
 
-	function addAssistantError(content: string, id: string) {
+	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
 		chatMessages.value.push({
 			id,
 			role: 'assistant',
 			type: 'error',
 			content,
 			read: true,
+			retry,
 		});
 	}
 
@@ -272,11 +278,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function handleServiceError(e: unknown, id: string) {
+	function handleServiceError(e: unknown, id: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
-		addAssistantError(`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`, id);
+		addAssistantError(
+			`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`,
+			id,
+			retry,
+		);
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
@@ -286,13 +296,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				'Assistant session started',
 				{
 					chat_session_id: currentSessionId.value,
-					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+					task: chatSessionTask.value,
 					node_type: chatSessionError.value?.node.type,
+					credential_type: chatSessionCredType.value?.name,
 				},
 				{ withPostHog: true },
 			);
 			// Track first user message in support chat now that we have a session id
-			if (usersMessages.value.length === 1 && isSupportChatSessionInProgress.value) {
+			if (usersMessages.value.length === 1 && chatSessionTask.value === 'support') {
 				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
 				trackUserMessage(firstUserMessage.content, false);
 			}
@@ -308,6 +319,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function onDoneStreaming(id: string) {
 		stopStreaming();
+		workflowDataStale.value = false;
+		workflowExecutionDataStale.value = false;
 		lastUnread.value = chatMessages.value.find(
 			(msg) =>
 				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
@@ -319,30 +332,132 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, 4000);
 	}
 
-	async function initSupportChat(userMessage: string) {
-		const id = getRandomId();
+	async function initCredHelp(credType: ICredentialType) {
+		const hasExistingSession = !!currentSessionId.value;
+		const credentialName = credType.displayName;
+		const question = `How do I set up the credentials for ${credentialName}?`;
+
+		await initSupportChat(question, credType);
+
+		trackUserOpenedAssistant({
+			source: 'credential',
+			task: 'credentials',
+			has_existing_session: hasExistingSession,
+		});
+	}
+
+	/**
+	 * Gets information about the current view and active node to provide context to the assistant
+	 */
+	function getVisualContext(
+		nodeInfo?: ChatRequest.NodeInfo,
+	): ChatRequest.AssistantContext | undefined {
+		if (chatSessionTask.value === 'error') {
+			return undefined;
+		}
+		const currentView = route.name as VIEWS;
+		const activeNode = workflowsStore.activeNode();
+		const activeNodeForLLM = activeNode
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			: null;
+		const activeModals = uiStore.activeModals;
+		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
+		const activeCredential = isCredentialModalActive
+			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
+			: undefined;
+		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const isCurrentNodeExecuted = Boolean(
+			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
+		);
+		const currentNodeHasError =
+			executionResult?.error &&
+			'node' in executionResult.error &&
+			executionResult.error.node?.name === activeNode?.name;
+		const nodeError = currentNodeHasError ? (executionResult.error as NodeError) : undefined;
+		const executionStatus = isCurrentNodeExecuted
+			? {
+					status: nodeError ? 'error' : 'success',
+					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
+				}
+			: undefined;
+		return {
+			currentView: {
+				name: currentView,
+				description: assistantHelpers.getCurrentViewDescription(currentView),
+			},
+			activeNodeInfo: {
+				node: activeNodeForLLM ?? undefined,
+				nodeIssues: !isCurrentNodeExecuted ? activeNode?.issues : undefined,
+				executionStatus,
+				nodeInputData: nodeInfo?.nodeInputData,
+				referencedNodes: nodeInfo?.schemas,
+			},
+			activeCredentials: activeCredential
+				? {
+						name: activeCredential?.name,
+						displayName: activeCredential?.displayName,
+						authType: nodeInfo?.authType?.name,
+					}
+				: undefined,
+			currentWorkflow: workflowDataStale.value
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				: undefined,
+			executionData:
+				workflowExecutionDataStale.value && executionResult
+					? assistantHelpers.simplifyResultData(executionResult)
+					: undefined,
+		};
+	}
+
+	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		resetAssistantChat();
-		chatSessionError.value = undefined;
-		currentSessionActiveExecutionId.value = undefined;
-		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		chatSessionTask.value = credentialType ? 'credentials' : 'support';
+		const activeNode = workflowsStore.activeNode() as INode;
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+		// For the initial message, only provide visual context if the task is support
+		const visualContext =
+			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
+
+		if (nodeInfo.authType && chatSessionTask.value === 'credentials') {
+			userMessage += ` I am using ${nodeInfo.authType.name}.`;
+		}
+
+		const id = getRandomId();
+		chatSessionCredType.value = credentialType;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		openChat();
 		streaming.value = true;
+
+		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
+			role: 'user',
+			type: 'init-support-chat',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			context: visualContext,
+			question: userMessage,
+		};
+		if (credentialType) {
+			payload = {
+				...payload,
+				type: 'init-cred-help',
+				credentialType: {
+					name: credentialType.name,
+					displayName: credentialType.displayName,
+				},
+			};
+		}
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				payload: {
-					role: 'user',
-					type: 'init-support-chat',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					question: userMessage,
-				},
+				payload,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id),
+			(e) =>
+				handleServiceError(e, id, async () => await initSupportChat(userMessage, credentialType)),
 		);
 	}
 
@@ -356,6 +471,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		resetAssistantChat();
+		chatSessionTask.value = 'error';
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
 
@@ -363,19 +479,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
 		}
 
-		// Get all referenced nodes and their schemas
-		const referencedNodeNames = getReferencedNodes(context.node);
-		const schemas = getNodesSchemas(referencedNodeNames);
+		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
+			context.node,
+		);
 
-		// Get node credentials details for the ai assistant
-		const nodeType = useNodeTypesStore().getNodeType(context.node.type);
-		let authType = undefined;
-		if (nodeType) {
-			const authField = getMainAuthField(nodeType);
-			const credentialInUse = context.node.parameters[authField?.name ?? ''];
-			const availableAuthOptions = getNodeAuthOptions(nodeType);
-			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
-		}
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
@@ -390,14 +497,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: pruneNodeProperties(context.node, ['position']),
+					node: assistantHelpers.processNodeForAssistant(context.node, [
+						'position',
+						'parameters.notice',
+					]),
+					nodeInputData,
 					executionSchema: schemas,
 					authType,
 				},
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id),
+			(e) => handleServiceError(e, id, async () => await initErrorHelper(context)),
 		);
 	}
 
@@ -426,29 +537,35 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
-			(e) => handleServiceError(e, id),
+			(e) => handleServiceError(e, id, async () => await sendEvent(eventName, error)),
 		);
 	}
-	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
+
+	async function onNodeExecution(pushEvent: PushPayload<'nodeExecuteAfter'>) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
+
+		if (nodeExecutionStatus.value === 'success') {
+			return;
+		}
+
 		if (pushEvent.data.error && nodeExecutionStatus.value !== 'error') {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 			nodeExecutionStatus.value = 'error';
 			telemetry.track('User executed node after assistant suggestion', {
-				task: 'error',
+				task: chatSessionTask.value,
 				chat_session_id: currentSessionId.value,
 				success: false,
 			});
 		} else if (
 			pushEvent.data.executionStatus === 'success' &&
-			nodeExecutionStatus.value !== 'success'
+			['error', 'not_executed'].includes(nodeExecutionStatus.value)
 		) {
 			await sendEvent('node-execution-succeeded');
 			nodeExecutionStatus.value = 'success';
 			telemetry.track('User executed node after assistant suggestion', {
-				task: 'error',
+				task: chatSessionTask.value,
 				chat_session_id: currentSessionId.value,
 				success: true,
 			});
@@ -463,6 +580,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		const id = getRandomId();
+
+		const retry = async () => {
+			chatMessages.value = chatMessages.value.filter((msg) => msg.id !== id);
+			await sendMessage(chatMessage);
+		};
+
 		try {
 			addUserMessage(chatMessage.text, id);
 			addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
@@ -475,6 +598,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			) {
 				nodeExecutionStatus.value = 'not_executed';
 			}
+			const activeNode = workflowsStore.activeNode() as INode;
+			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+			const userContext = getVisualContext(nodeInfo);
+
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
@@ -483,17 +610,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						type: 'message',
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
+						context: userContext,
 					},
 					sessionId: currentSessionId.value,
 				},
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(id),
-				(e) => handleServiceError(e, id),
+				(e) => handleServiceError(e, id, retry),
 			);
 			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
 			// in case of assert
-			handleServiceError(e, id);
+			handleServiceError(e, id, retry);
 		}
 	}
 
@@ -506,7 +634,36 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			is_quick_reply: isQuickReply,
 			chat_session_id: currentSessionId.value,
 			message_number: usersMessages.value.length,
-			task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+			task: chatSessionTask.value,
+		});
+	}
+
+	function trackUserOpenedAssistant({
+		source,
+		task,
+		has_existing_session,
+	}: { has_existing_session: boolean } & (
+		| {
+				source: 'error';
+				task: 'error';
+		  }
+		| {
+				source: 'canvas';
+				task: 'placeholder';
+		  }
+		| {
+				source: 'credential';
+				task: 'credentials';
+		  }
+	)) {
+		telemetry.track('User opened assistant', {
+			source,
+			task,
+			has_existing_session,
+			workflow_id: workflowsStore.workflowId,
+			node_type: chatSessionError.value?.node?.type,
+			error: chatSessionError.value?.error,
+			chat_session_id: currentSessionId.value,
 		});
 	}
 
@@ -631,18 +788,47 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 	}
 
+	watch(route, () => {
+		const activeWorkflowId = workflowsStore.workflowId;
+		if (
+			!currentSessionId.value ||
+			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			currentSessionWorkflowId.value === activeWorkflowId
+		) {
+			return;
+		}
+		resetAssistantChat();
+	});
+
+	watch(
+		() => uiStore.stateIsDirty,
+		() => {
+			workflowDataStale.value = true;
+		},
+	);
+
+	watch(
+		() => workflowsStore.workflowExecutionData?.data?.resultData ?? {},
+		() => {
+			workflowExecutionDataStale.value = true;
+		},
+		{ deep: true, immediate: true },
+	);
+
 	return {
+		isAssistantEnabled,
+		canShowAssistantButtonsOnCanvas,
 		chatWidth,
 		chatMessages,
 		unreadCount,
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,
-		canShowAssistantButtons,
 		currentSessionId,
 		lastUnread,
 		isSessionEnded,
 		onNodeExecution,
+		trackUserOpenedAssistant,
 		closeChat,
 		openChat,
 		updateWindowWidth,
@@ -657,6 +843,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addAssistantMessages,
 		assistantThinkingMessage,
 		chatSessionError,
-		isSupportChatSessionInProgress,
+		chatSessionTask,
+		initCredHelp,
+		isCredTypeActive,
+		handleServiceError,
 	};
 });

@@ -1,13 +1,14 @@
 <script lang="ts" setup>
+import { ElSubMenu, ElMenuItem } from 'element-plus';
 import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElSubMenu, ElMenuItem } from 'element-plus';
-import N8nTooltip from '../N8nTooltip';
-import N8nIcon from '../N8nIcon';
-import ConditionalRouterLink from '../ConditionalRouterLink';
-import type { IMenuItem } from '../../types';
+
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
+import type { IMenuItem } from '../../types';
 import { getInitials } from '../../utils/labelUtil';
+import ConditionalRouterLink from '../ConditionalRouterLink';
+import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
 
 interface MenuItemProps {
 	item: IMenuItem;
@@ -103,7 +104,7 @@ const isItemActive = (item: IMenuItem): boolean => {
 		<N8nTooltip
 			v-else
 			placement="right"
-			:content="item.label"
+			:content="compact ? item.label : ''"
 			:disabled="!compact"
 			:show-after="tooltipDelay"
 		>
@@ -122,12 +123,17 @@ const isItemActive = (item: IMenuItem): boolean => {
 					:disabled="item.disabled"
 					@click="handleSelect?.(item)"
 				>
-					<N8nIcon
-						v-if="item.icon"
-						:class="$style.icon"
-						:icon="item.icon"
-						:size="item.customIconSize || 'large'"
-					/>
+					<div v-if="item.icon">
+						<N8nIcon
+							v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+							:class="$style.icon"
+							:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+							:size="item.customIconSize || 'large'"
+						/>
+						<span v-else-if="item.icon.type === 'emoji'" :class="$style.icon">{{
+							item.icon.value
+						}}</span>
+					</div>
 					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
 						getInitials(item.label)

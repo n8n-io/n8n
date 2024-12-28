@@ -1,9 +1,9 @@
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { Risk } from '@/security-audit/types';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { AuthlessRequest, AuthenticatedRequest } from '@/requests';
+import type { Risk } from '@/security-audit/types';
 
 export type PaginatedRequest = AuthenticatedRequest<
 	{},
@@ -74,21 +74,18 @@ export declare namespace WorkflowRequest {
 			active: boolean;
 			name?: string;
 			projectId?: string;
+			excludePinnedData?: boolean;
 		}
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
-	type Transfer = AuthenticatedRequest<
-		{ workflowId: string },
-		{},
-		{ destinationProjectId: string }
-	>;
+	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 }
 
 export declare namespace UserRequest {
@@ -144,11 +141,7 @@ export declare namespace CredentialRequest {
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
-	type Transfer = AuthenticatedRequest<
-		{ workflowId: string },
-		{},
-		{ destinationProjectId: string }
-	>;
+	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';

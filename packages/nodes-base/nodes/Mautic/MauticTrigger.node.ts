@@ -1,5 +1,3 @@
-import { parse as urlParse } from 'url';
-
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -11,6 +9,7 @@ import {
 	type IWebhookResponseData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import { parse as urlParse } from 'url';
 
 import { mauticApiRequest } from './GenericFunctions';
 
@@ -77,7 +76,7 @@ export class MauticTrigger implements INodeType {
 				name: 'events',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeConnectionType,
@@ -24,11 +23,11 @@ const descriptionV1: INodeTypeDescription = {
 	icon: 'file:form.svg',
 	group: ['trigger'],
 	version: 1,
-	description: 'Runs the flow when an n8n generated webform is submitted',
+	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'n8n Form Trigger',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 	inputs: [],
 	outputs: [NodeConnectionType.Main],
 	webhooks: [

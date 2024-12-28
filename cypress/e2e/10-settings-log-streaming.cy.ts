@@ -1,6 +1,6 @@
 import { SettingsLogStreamingPage } from '../pages';
-import { getVisibleModalOverlay } from '../utils/modal';
 import { getVisibleDropdown } from '../utils';
+import { getVisibleModalOverlay } from '../utils/modal';
 
 const settingsLogStreamingPage = new SettingsLogStreamingPage();
 

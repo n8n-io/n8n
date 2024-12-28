@@ -5,42 +5,61 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 const prettier = path.resolve('node_modules', '.bin', 'prettier');
+const biome = path.resolve('node_modules', '.bin', 'biome');
 
-if (!fs.existsSync(prettier)) {
-	throw new Error(
-		[`Prettier not found at path: ${prettier}`, 'Please run `pnpm i` first'].join('\n'),
-	);
-}
+[prettier, biome].forEach((bin) => {
+	if (!fs.existsSync(bin)) {
+		throw new Error(
+			[`${path.basename(bin)} not found at path: ${bin}`, 'Please run `pnpm i` first'].join('\n'),
+		);
+	}
+});
 
-const config = path.resolve('.prettierrc.js');
+const prettierConfig = path.resolve('.prettierrc.js');
+const biomeConfig = path.resolve('biome.jsonc');
 const ignore = path.resolve('.prettierignore');
 
-const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages'];
-const EXTENSIONS_TO_FORMAT = ['.md', '.yml', '.js', '.json', '.ts'];
+const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages', '.turbo', 'cypress'];
+const EXTENSIONS_TO_FORMAT_WITH_PRETTIER = ['.yml'];
+const EXTENSIONS_TO_FORMAT_WITH_BIOME = ['.js', '.json', '.ts'];
 
 const isDir = (path) => fs.lstatSync(path).isDirectory();
 
-const isTarget = (path) => EXTENSIONS_TO_FORMAT.some((ext) => path.endsWith(ext));
+const isPrettierTarget = (path) =>
+	EXTENSIONS_TO_FORMAT_WITH_PRETTIER.some((ext) => path.endsWith(ext));
+const isBiomeTarget = (path) => EXTENSIONS_TO_FORMAT_WITH_BIOME.some((ext) => path.endsWith(ext));
 
-const walk = (dir, test, found = []) => {
+const biomeTargets = [];
+const prettierTargets = [];
+
+const walk = (dir) => {
 	fs.readdirSync(dir).forEach((entry) => {
 		const entryPath = path.resolve(dir, entry);
-		if (isDir(entryPath)) walk(entryPath, test, found);
-		if (test(entryPath)) found.push(entryPath);
+		if (isDir(entryPath)) walk(entryPath);
+		if (isPrettierTarget(entryPath)) prettierTargets.push(entryPath);
+		if (isBiomeTarget(entryPath)) biomeTargets.push(entryPath);
 	});
-
-	return found;
 };
 
-const targets = fs
-	.readdirSync('.')
-	.reduce((acc, cur) => {
-		if (ROOT_DIRS_TO_SKIP.includes(cur)) return acc;
-		if (isDir(cur)) return [...acc, ...walk(cur, isTarget)];
-		if (isTarget(cur)) return [...acc, cur];
+fs.readdirSync('.').forEach((cur) => {
+	if (ROOT_DIRS_TO_SKIP.includes(cur)) return;
+	if (isDir(cur)) walk(cur);
+	if (isPrettierTarget(cur)) prettierTargets.push(cur);
+	if (isBiomeTarget(cur)) biomeTargets.push(cur);
+});
 
-		return acc;
-	}, [])
-	.join(' ');
+execSync(
+	[
+		prettier,
+		'--config',
+		prettierConfig,
+		'--ignore-path',
+		ignore,
+		'--write',
+		prettierTargets.join(' '),
+	].join(' '),
+);
 
-execSync([prettier, '--config', config, '--ignore-path', ignore, '--write', targets].join(' '));
+execSync(
+	[biome, 'format', '--write', `--config-path=${biomeConfig}`, biomeTargets.join(' ')].join(' '),
+);

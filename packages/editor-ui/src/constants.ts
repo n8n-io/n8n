@@ -33,7 +33,6 @@ export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
 export const DUPLICATE_POSTFFIX = ' copy';
 export const NODE_OUTPUT_DEFAULT_KEY = '_NODE_OUTPUT_DEFAULT_KEY_';
-export const QUICKSTART_NOTE_NAME = '_QUICKSTART_NOTE_';
 
 // tags
 export const MAX_TAG_NAME_LENGTH = 24;
@@ -51,7 +50,6 @@ export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
-export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
@@ -69,9 +67,9 @@ export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
-export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
+export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -98,8 +96,6 @@ export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
-	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
@@ -197,6 +193,10 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
 export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
+export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
+export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
+export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
+export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -222,12 +222,20 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_TRANSFORM_NODE_TYPE,
 ];
 
+export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
+
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
 export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+];
+
+export const SINGLE_WEBHOOK_TRIGGERS = [
+	TELEGRAM_TRIGGER_NODE_TYPE,
+	SLACK_TRIGGER_NODE_TYPE,
+	FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE,
 ];
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
@@ -290,7 +298,6 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
-export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 /** PERSONALIZATION SURVEY */
 export const EMAIL_KEY = 'email';
@@ -426,6 +433,9 @@ export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
+export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
+export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
+export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -475,15 +485,18 @@ export const enum VIEWS {
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
+	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
-	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
+	TEST_DEFINITION = 'TestDefinition',
+	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
+	NEW_TEST_DEFINITION = 'NewTestDefinition',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -497,15 +510,10 @@ export const enum VIEWS {
 	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
+	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
-
-export const enum FAKE_DOOR_FEATURES {
-	ENVIRONMENTS = 'environments',
-	LOGGING = 'logging',
-	SSO = 'sso',
-}
 
 export const TEST_PIN_DATA = [
 	{
@@ -527,6 +535,7 @@ export const MAPPING_PARAMS = [
 	'$input',
 	'$item',
 	'$jmespath',
+	'$fromAI',
 	'$json',
 	'$node',
 	'$now',
@@ -584,6 +593,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
+	TEST_DEFINITION = 'testDefinition',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -645,6 +655,7 @@ export const enum STORES {
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
+	TEST_DEFINITION = 'testDefinition',
 }
 
 export const enum SignInType {
@@ -669,13 +680,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const ASK_AI_EXPERIMENT = {
-	name: '011_ask_AI',
-	control: 'control',
-	gpt3: 'gpt3',
-	gpt4: 'gpt4',
-};
-
 export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
 export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
@@ -690,26 +694,34 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
-	name: '022_more_onboarding_options',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',
 	variant: 'variant',
 };
+
+export const EASY_AI_WORKFLOW_EXPERIMENT = {
+	name: '026_easy_ai_workflow',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const AI_CREDITS_EXPERIMENT = {
+	name: '027_free_openai_calls',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
-	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
-	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
+	EASY_AI_WORKFLOW_EXPERIMENT.name,
+	AI_CREDITS_EXPERIMENT.name,
 ];
+
+export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
 
 export const MFA_FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
@@ -718,13 +730,17 @@ export const MFA_FORM = {
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
-export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+export const MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED = 997;
 
-export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+export const MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH = 6;
 
 export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
-export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE, SWITCH_NODE_TYPE];
+export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
+	FILTER_NODE_TYPE,
+	SWITCH_NODE_TYPE,
+	REMOVE_DUPLICATES_NODE_TYPE,
+];
 
 type ClearOutgoingConnectonsEvents = {
 	[nodeName: string]: {
@@ -882,3 +898,7 @@ export const CanvasNodeHandleKey =
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
+
+export const NEW_SAMPLE_WORKFLOW_CREATED_CHANNEL = 'new-sample-sub-workflow-created';
+
+export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';

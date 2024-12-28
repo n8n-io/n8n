@@ -1,7 +1,8 @@
 import type { RouteHandler } from 'cypress/types/net-stubbing';
+
+import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
 import { WorkflowPage } from '../pages';
 import { WorkflowExecutionsTab } from '../pages/workflow-executions-tab';
-import executionOutOfMemoryServerResponse from '../fixtures/responses/execution-out-of-memory-server-response.json';
 import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
@@ -227,6 +228,35 @@ describe('Workflow Executions', () => {
 			cy.getByTestId('executions-filter-button').click();
 			cy.getByTestId('executions-filter-reset-button').should('be.visible').click();
 			executionsTab.getters.executionListItems().eq(11).should('be.visible');
+		});
+
+		it('should redirect back to editor after seeing a couple of execution using browser back button', () => {
+			createMockExecutions();
+			cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+
+			executionsTab.actions.switchToExecutionsTab();
+
+			cy.wait(['@getExecutions']);
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+
+			executionsTab.getters.executionListItems().eq(2).click();
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+			executionsTab.getters.executionListItems().eq(4).click();
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+			executionsTab.getters.executionListItems().eq(6).click();
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+
+			cy.go('back');
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+			cy.go('back');
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+			cy.go('back');
+			executionsTab.getters.workflowExecutionPreviewIframe().should('exist');
+			cy.go('back');
+
+			cy.url().should('not.include', '/executions');
+			cy.url().should('include', '/workflow/');
+			workflowPage.getters.nodeViewRoot().should('be.visible');
 		});
 	});
 

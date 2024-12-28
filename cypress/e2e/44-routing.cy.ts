@@ -1,7 +1,7 @@
-import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { getSaveChangesModal } from '../composables/modals/save-changes-modal';
+import { EDIT_FIELDS_SET_NODE_NAME } from '../constants';
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();

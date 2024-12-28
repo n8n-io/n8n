@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { createGunzip } from 'node:zlib';
+
 import { binaryToBuffer } from '@/BinaryData/utils';
 
 describe('BinaryData/utils', () => {

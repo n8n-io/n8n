@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
-import { apiRequest } from '../transport';
+
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -21,6 +21,7 @@ import type {
 	ValueRenderOption,
 } from './GoogleSheets.types';
 import { getSheetId, removeEmptyColumns } from './GoogleSheets.utils';
+import { apiRequest } from '../transport';
 
 export class GoogleSheet {
 	id: string;
@@ -485,8 +486,7 @@ export class GoogleSheet {
 		columnValuesList?: string[];
 	}) {
 		const decodedRange = this.getDecodedSheetRange(range);
-		// prettier-ignore
-		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
+		const keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
 
 		const sheetDatakeyRow = columnNamesList || (await this.getData(keyRowRange, valueRenderMode));
 

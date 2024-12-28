@@ -1,5 +1,6 @@
-import N8nNotice from './Notice.vue';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nNotice from './Notice.vue';
 
 export default {
 	title: 'Atoms/Notice',

@@ -1,9 +1,10 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { User } from '@/databases/entities/user';
-import { generateNanoId } from '@/databases/utils/generators';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+
+import type { ProjectRole } from '@/databases/entities/project-relation';
+import type { User } from '@/databases/entities/user';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import { generateNanoId } from '@/databases/utils/generators';
 
 const projectAdminRole: ProjectRole = 'project:personalOwner';
 

@@ -1,16 +1,15 @@
-import FormData from 'form-data';
-import { merge } from 'lodash';
-
-import { ALPHABET } from './Constants';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
-import { ApplicationError } from './errors/application.error';
-
 import {
 	parse as esprimaParse,
 	Syntax,
 	type Node as SyntaxNode,
 	type ExpressionStatement,
 } from 'esprima-next';
+import FormData from 'form-data';
+import { merge } from 'lodash';
+
+import { ALPHABET } from './Constants';
+import { ApplicationError } from './errors/application.error';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -122,7 +121,7 @@ type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
  *
  * @param {string} jsonString - The JSON string to parse.
  * @param {Object} [options] - Optional settings for parsing the JSON string. Either `fallbackValue` or `errorMessage` can be set, but not both.
- * @param {boolean} [options.parseJSObject=false] - If true, attempts to recover from common JSON format errors by parsing the JSON string as a JavaScript Object.
+ * @param {boolean} [options.acceptJSObject=false] - If true, attempts to recover from common JSON format errors by parsing the JSON string as a JavaScript Object.
  * @param {string} [options.errorMessage] - A custom error message to throw if the JSON string cannot be parsed.
  * @param {*} [options.fallbackValue] - A fallback value to return if the JSON string cannot be parsed.
  * @returns {Object} - The parsed object, or the fallback value if parsing fails and `fallbackValue` is set.

@@ -1,13 +1,16 @@
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionService } from '@/executions/execution.service';
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
-import { createWorkflow } from './shared/db/workflows';
-import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
-import * as testDb from './shared/test-db';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExecutionSummaries } from '@/executions/execution.types';
+
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ExecutionService } from '@/executions/execution.service';
+import type { ExecutionSummaries } from '@/executions/execution.types';
+import { createTeamProject } from '@test-integration/db/projects';
+
+import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
+import { createWorkflow } from './shared/db/workflows';
+import * as testDb from './shared/test-db';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
@@ -67,6 +70,7 @@ describe('ExecutionService', () => {
 				mode: expect.any(String),
 				retryOf: null,
 				status: expect.any(String),
+				createdAt: expect.any(String),
 				startedAt: expect.any(String),
 				stoppedAt: expect.any(String),
 				waitTill: null,
@@ -292,6 +296,126 @@ describe('ExecutionService', () => {
 			});
 		});
 
+		test('should filter executions by `projectId`', async () => {
+			const firstProject = await createTeamProject();
+			const secondProject = await createTeamProject();
+
+			const firstWorkflow = await createWorkflow(undefined, firstProject);
+			const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'success' }, secondWorkflow); // to filter out
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [firstWorkflow.id],
+				projectId: firstProject.id,
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 2,
+				estimated: false,
+				results: expect.arrayContaining([
+					expect.objectContaining({ workflowId: firstWorkflow.id }),
+					expect.objectContaining({ workflowId: firstWorkflow.id }),
+					// execution for workflow in second project was filtered out
+				]),
+			});
+		});
+
+		test('should filter executions by `projectId` and expected `status`', async () => {
+			const firstProject = await createTeamProject();
+			const secondProject = await createTeamProject();
+
+			const firstWorkflow = await createWorkflow(undefined, firstProject);
+			const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+			await createExecution({ status: 'success' }, firstWorkflow);
+			await createExecution({ status: 'error' }, firstWorkflow);
+			await createExecution({ status: 'success' }, secondWorkflow);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [firstWorkflow.id],
+				projectId: firstProject.id,
+				status: ['error'],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output).toEqual({
+				count: 1,
+				estimated: false,
+				results: expect.arrayContaining([
+					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
+				]),
+			});
+		});
+
+		test.each([
+			{
+				name: 'waitTill',
+				filter: { waitTill: true },
+				matchingParams: { waitTill: new Date() },
+				nonMatchingParams: { waitTill: undefined },
+			},
+			{
+				name: 'metadata',
+				filter: { metadata: [{ key: 'testKey', value: 'testValue' }] },
+				matchingParams: { metadata: [{ key: 'testKey', value: 'testValue' }] },
+				nonMatchingParams: { metadata: [{ key: 'otherKey', value: 'otherValue' }] },
+			},
+			{
+				name: 'startedAfter',
+				filter: { startedAfter: '2023-01-01' },
+				matchingParams: { startedAt: new Date('2023-06-01') },
+				nonMatchingParams: { startedAt: new Date('2022-01-01') },
+			},
+			{
+				name: 'startedBefore',
+				filter: { startedBefore: '2023-12-31' },
+				matchingParams: { startedAt: new Date('2023-06-01') },
+				nonMatchingParams: { startedAt: new Date('2024-01-01') },
+			},
+		])(
+			'should filter executions by `projectId` and expected `$name`',
+			async ({ filter, matchingParams, nonMatchingParams }) => {
+				const firstProject = await createTeamProject();
+				const secondProject = await createTeamProject();
+
+				const firstWorkflow = await createWorkflow(undefined, firstProject);
+				const secondWorkflow = await createWorkflow(undefined, secondProject);
+
+				await Promise.all([
+					createExecution(matchingParams, firstWorkflow),
+					createExecution(nonMatchingParams, secondWorkflow),
+				]);
+
+				const query: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					accessibleWorkflowIds: [firstWorkflow.id],
+					projectId: firstProject.id,
+					...filter,
+				};
+
+				const output = await executionService.findRangeWithCount(query);
+
+				expect(output).toEqual({
+					count: 1,
+					estimated: false,
+					results: expect.arrayContaining([
+						expect.objectContaining({ workflowId: firstWorkflow.id }),
+					]),
+				});
+			},
+		);
+
 		test('should exclude executions by inaccessible `workflowId`', async () => {
 			const accessibleWorkflow = await createWorkflow();
 			const inaccessibleWorkflow = await createWorkflow();
@@ -476,6 +600,7 @@ describe('ExecutionService', () => {
 			mode: expect.any(String),
 			retryOf: null,
 			status: expect.any(String),
+			createdAt: expect.any(String),
 			startedAt: expect.any(String),
 			stoppedAt: expect.any(String),
 			waitTill: null,
@@ -527,10 +652,10 @@ describe('ExecutionService', () => {
 					{
 						...summaryShape,
 						annotation: {
-							tags: [
+							tags: expect.arrayContaining([
 								expect.objectContaining({ name: 'tag1' }),
 								expect.objectContaining({ name: 'tag2' }),
-							],
+							]),
 							vote: 'up',
 						},
 					},
@@ -610,10 +735,10 @@ describe('ExecutionService', () => {
 				{
 					...summaryShape,
 					annotation: {
-						tags: [
+						tags: expect.arrayContaining([
 							expect.objectContaining({ name: 'tag1' }),
 							expect.objectContaining({ name: 'tag2' }),
-						],
+						]),
 						vote: 'up',
 					},
 				},
@@ -655,10 +780,10 @@ describe('ExecutionService', () => {
 				{
 					...summaryShape,
 					annotation: {
-						tags: [
+						tags: expect.arrayContaining([
 							expect.objectContaining({ name: 'tag1' }),
 							expect.objectContaining({ name: 'tag2' }),
-						],
+						]),
 						vote: 'up',
 					},
 				},

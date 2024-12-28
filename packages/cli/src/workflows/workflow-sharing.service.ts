@@ -1,14 +1,14 @@
-import { Service } from 'typedi';
+import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { Service } from 'typedi';
 
-import type { User } from '@/databases/entities/user';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { RoleService } from '@/services/role.service';
-import type { Scope } from '@n8n/permissions';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
+import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class WorkflowSharingService {

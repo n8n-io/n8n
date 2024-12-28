@@ -44,9 +44,9 @@ export default mergeConfig(
 				dts: false,
 				resolvers: [
 					iconsResolver({
-						prefix: 'icon'
-					})
-				]
+						prefix: 'icon',
+					}),
+				],
 			}),
 		],
 		resolve: {

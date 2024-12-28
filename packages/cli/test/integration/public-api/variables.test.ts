@@ -1,8 +1,9 @@
-import { setupTestServer } from '@test-integration/utils';
-import { createOwner } from '@test-integration/db/users';
-import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
-import * as testDb from '../shared/test-db';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
+import { setupTestServer } from '@test-integration/utils';
+
+import * as testDb from '../shared/test-db';
 
 describe('Variables in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -21,7 +22,7 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const owner = await createOwner({ withApiKey: true });
+			const owner = await createOwnerWithApiKey();
 			const variables = await Promise.all([createVariable(), createVariable(), createVariable()]);
 
 			/**
@@ -47,7 +48,8 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+
+			const owner = await createOwnerWithApiKey();
 
 			/**
 			 * Act
@@ -71,7 +73,7 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const owner = await createOwner({ withApiKey: true });
+			const owner = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
@@ -95,7 +97,7 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+			const owner = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
@@ -123,7 +125,7 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const owner = await createOwner({ withApiKey: true });
+			const owner = await createOwnerWithApiKey();
 			const variable = await createVariable();
 
 			/**
@@ -144,7 +146,7 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+			const owner = await createOwnerWithApiKey();
 			const variable = await createVariable();
 
 			/**

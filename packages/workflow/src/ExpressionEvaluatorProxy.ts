@@ -1,9 +1,10 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import type { ReturnValue, TmplDifference } from '@n8n/tournament';
 import { Tournament } from '@n8n/tournament';
+import * as tmpl from '@n8n_io/riot-tmpl';
+
+import { PrototypeSanitizer } from './ExpressionSandboxing';
 import type { ExpressionEvaluatorType } from './Interfaces';
 import * as LoggerProxy from './LoggerProxy';
-import { PrototypeSanitizer } from './ExpressionSandboxing';
 
 type Evaluator = (expr: string, data: unknown) => tmpl.ReturnValue;
 type ErrorHandler = (error: Error) => void;

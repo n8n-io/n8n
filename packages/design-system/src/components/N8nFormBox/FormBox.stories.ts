@@ -1,6 +1,7 @@
-import N8nFormBox from './FormBox.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
+
+import N8nFormBox from './FormBox.vue';
 
 export default {
 	title: 'Modules/FormBox',

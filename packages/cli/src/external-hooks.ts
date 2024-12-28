@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+import { ApplicationError } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/interfaces';
+
 import config from '@/config';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ApplicationError } from 'n8n-workflow';
+import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/interfaces';
 
 @Service()
 export class ExternalHooks {

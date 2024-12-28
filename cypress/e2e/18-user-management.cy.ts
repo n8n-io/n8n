@@ -1,8 +1,8 @@
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN } from '../constants';
 import { MainSidebar, SettingsSidebar, SettingsUsersPage } from '../pages';
+import { errorToast, successToast } from '../pages/notifications';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 import { getVisibleSelect } from '../utils';
-import { errorToast, successToast } from '../pages/notifications';
 
 /**
  * User A - Instance owner
@@ -148,24 +148,9 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 		personalSettingsPage.actions.changeTheme('Dark');
 		cy.get('body').should('have.attr', 'data-theme', 'dark');
-		settingsSidebar.actions.back();
-		mainSidebar.getters
-			.logo()
-			.should('have.attr', 'src')
-			.then((src) => {
-				expect(src).to.include('/static/logo/channel/dev-dark.svg');
-			});
 
-		cy.visit(personalSettingsPage.url);
 		personalSettingsPage.actions.changeTheme('Light');
 		cy.get('body').should('have.attr', 'data-theme', 'light');
-		settingsSidebar.actions.back();
-		mainSidebar.getters
-			.logo()
-			.should('have.attr', 'src')
-			.then((src) => {
-				expect(src).to.include('/static/logo/channel/dev.svg');
-			});
 	});
 
 	it('should delete user and their data', () => {

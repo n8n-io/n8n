@@ -1,0 +1,52 @@
+{
+  "name": "@n8n/task-runner",
+  "version": "1.11.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "start": "node dist/start.js",
+    "dev": "pnpm build && pnpm start",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --quiet",
+    "lintfix": "eslint . --fix",
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
+  },
+  "main": "dist/start.js",
+  "module": "src/start.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    "./start": {
+      "require": "./dist/start.js",
+      "import": "./src/start.ts",
+      "types": "./dist/start.d.ts"
+    },
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@n8n/config": "workspace:*",
+    "@sentry/node": "catalog:",
+    "acorn": "8.14.0",
+    "acorn-walk": "8.3.4",
+    "lodash": "catalog:",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
+    "typedi": "catalog:",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/lodash": "catalog:",
+    "luxon": "catalog:"
+  }
+}

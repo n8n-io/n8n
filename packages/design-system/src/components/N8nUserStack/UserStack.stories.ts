@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryFn } from '@storybook/vue3';
+
 import UserStack from './UserStack.vue';
 
 export default {

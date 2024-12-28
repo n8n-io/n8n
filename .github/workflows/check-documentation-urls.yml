@@ -26,7 +26,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build relevant packages
-        run: pnpm --filter @n8n/client-oauth2 --filter @n8n/imap --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base --filter @n8n/n8n-nodes-langchain build
+        run: pnpm build:nodes
 
       - run: npm install --prefix=.github/scripts --no-package-lock
 

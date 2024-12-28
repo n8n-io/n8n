@@ -1,8 +1,9 @@
-import { getNodeTypes } from '@/security-audit/utils';
-import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { RiskReporter, Risk } from '@/security-audit/types';
 import { Service } from 'typedi';
+
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
+import type { RiskReporter, Risk } from '@/security-audit/types';
+import { getNodeTypes } from '@/security-audit/utils';
 
 @Service()
 export class FilesystemRiskReporter implements RiskReporter {

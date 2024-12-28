@@ -1,4 +1,5 @@
 import { BasePage } from './base';
+
 import Chainable = Cypress.Chainable;
 
 export class VariablesPage extends BasePage {

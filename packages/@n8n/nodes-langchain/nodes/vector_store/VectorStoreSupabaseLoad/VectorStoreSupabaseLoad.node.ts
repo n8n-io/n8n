@@ -1,17 +1,19 @@
+import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
+import type { Embeddings } from '@langchain/core/embeddings';
+import { createClient } from '@supabase/supabase-js';
 import {
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Embeddings } from '@langchain/core/embeddings';
-import { createClient } from '@supabase/supabase-js';
-import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
-import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
-import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+
+import { getMetadataFiltersValues } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { metadataFilterField } from '@utils/sharedFields';
+
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
@@ -81,7 +83,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 	methods = { listSearch: { supabaseTableNameSearch } };
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply Supabase Load Vector Store');
 
 		const tableName = this.getNodeParameter('tableName', itemIndex, '', {

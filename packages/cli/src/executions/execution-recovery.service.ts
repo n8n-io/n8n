@@ -1,18 +1,19 @@
-import { Service } from 'typedi';
-import { Push } from '@/push';
-import { sleep } from 'n8n-workflow';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 import type { DateTime } from 'luxon';
+import { InstanceSettings, Logger } from 'n8n-core';
+import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { InstanceSettings } from 'n8n-core';
-import type { EventMessageTypes } from '../eventbus/event-message-classes';
-import type { IExecutionResponse } from '@/interfaces';
+import { Service } from 'typedi';
+
+import { ARTIFICIAL_TASK_DATA } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { Logger } from '@/logger';
 import { EventService } from '@/events/event.service';
+import type { IExecutionResponse } from '@/interfaces';
+import { Push } from '@/push';
+import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
+
+import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
 /**
  * Service for recovering key properties in executions.
@@ -47,7 +48,7 @@ export class ExecutionRecoveryService {
 
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast('executionRecovered', { executionId });
+			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
 		return amendedExecution;

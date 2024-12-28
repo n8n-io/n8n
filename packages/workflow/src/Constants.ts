@@ -1,12 +1,10 @@
-import type { NodeParameterValue } from './Interfaces';
-
 export const DIGITS = '0123456789';
 export const UPPERCASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export const LOWERCASE_LETTERS = UPPERCASE_LETTERS.toLowerCase();
 export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
 
 export const BINARY_ENCODING = 'base64';
-export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
+export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 
@@ -38,6 +36,10 @@ export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
+export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
+export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
+export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -52,6 +54,8 @@ export const SCRIPTING_NODE_TYPES = [
 	CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ];
+
+export const ADD_FORM_NOTICE = 'addFormPage';
 
 /**
  * Nodes whose parameter values may refer to other nodes without expressions.
@@ -81,31 +85,6 @@ export const LANGCHAIN_CUSTOM_TOOLS = [
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 ];
 
-//nodes that would execute only once with such parameters
-//add 'undefined' to parameters values if it is parameter's default value
-export const SINGLE_EXECUTION_NODES: { [key: string]: { [key: string]: NodeParameterValue[] } } = {
-	'n8n-nodes-base.code': {
-		mode: [undefined, 'runOnceForAllItems'],
-	},
-	'n8n-nodes-base.executeWorkflow': {
-		mode: [undefined, 'once'],
-	},
-	'n8n-nodes-base.crateDb': {
-		operation: [undefined, 'update'], // default insert
-	},
-	'n8n-nodes-base.timescaleDb': {
-		operation: [undefined, 'update'], // default insert
-	},
-	'n8n-nodes-base.microsoftSql': {
-		operation: [undefined, 'update', 'delete'], // default insert
-	},
-	'n8n-nodes-base.questDb': {
-		operation: [undefined], // default insert
-	},
-	'n8n-nodes-base.mongoDb': {
-		operation: ['insert', 'update'],
-	},
-	'n8n-nodes-base.redis': {
-		operation: [undefined], // default info
-	},
-};
+export const SEND_AND_WAIT_OPERATION = 'sendAndWait';
+export const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
+export const AI_TRANSFORM_JS_CODE = 'jsCode';

@@ -6,10 +6,10 @@ import { computed } from 'vue';
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
-		isSaving: boolean;
-		disabled: boolean;
-		type: string;
-		withShortcut: boolean;
+		isSaving?: boolean;
+		disabled?: boolean;
+		type?: string;
+		withShortcut?: boolean;
 		shortcutTooltip?: string;
 		savingLabel?: string;
 	}>(),
@@ -25,7 +25,7 @@ const i18n = useI18n();
 
 const saveButtonLabel = computed(() => {
 	return props.isSaving
-		? props.savingLabel ?? i18n.baseText('saveButton.saving')
+		? (props.savingLabel ?? i18n.baseText('saveButton.saving'))
 		: i18n.baseText('saveButton.save');
 });
 
@@ -36,7 +36,7 @@ const shortcutTooltipLabel = computed(() => {
 
 <template>
 	<span :class="$style.container" data-test-id="save-button">
-		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
+		<span v-if="saved" :class="$style.saved">{{ i18n.baseText('saveButton.saved') }}</span>
 		<template v-else>
 			<KeyboardShortcutTooltip
 				v-if="withShortcut"

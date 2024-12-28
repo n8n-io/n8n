@@ -1,12 +1,13 @@
 import Container from 'typedi';
-import * as testDb from './shared/test-db';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import { createOwner, createAdmin, createMember } from './shared/db/users';
 import type { User } from '@/databases/entities/user';
+
 import { saveCredential } from './shared/db/credentials';
-import { randomCredentialPayload } from './shared/random';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';
+import { createOwner, createAdmin, createMember } from './shared/db/users';
+import { randomCredentialPayload } from './shared/random';
+import * as testDb from './shared/test-db';
 
 let credentialHelper: CredentialsHelper;
 let owner: User;

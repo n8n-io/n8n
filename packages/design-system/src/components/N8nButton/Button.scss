@@ -53,7 +53,7 @@
 		}
 	}
 
-	&:focus:not(:active, .active) {
+	&:focus-visible:not(:active, .active) {
 		color: $button-focus-font-color unquote($important);
 		border-color: $button-focus-border-color unquote($important);
 		background-color: $button-focus-background-color unquote($important);
@@ -68,7 +68,7 @@
 		&,
 		&:hover,
 		&:active,
-		&:focus {
+		&:focus-visible {
 			color: $button-disabled-font-color;
 			border-color: $button-disabled-border-color;
 			background-color: $button-disabled-background-color;
@@ -83,7 +83,7 @@
 		&,
 		&:hover,
 		&:active,
-		&:focus {
+		&:focus-visible {
 			color: $button-loading-font-color;
 			border-color: $button-loading-border-color;
 			background-color: $button-loading-background-color;
