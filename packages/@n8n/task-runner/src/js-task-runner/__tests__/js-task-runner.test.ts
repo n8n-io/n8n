@@ -190,6 +190,27 @@ describe('JsTaskRunner', () => {
 				}),
 			).resolves.toBeDefined();
 		});
+
+		it('should log the context object as [[ExecutionContext]]', async () => {
+			const rpcCallSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+
+			const task = newTaskWithSettings({
+				code: `
+					console.log(this);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await execTaskWithParams({
+				task,
+				taskData: newDataRequestResponse([wrapIntoJson({})]),
+			});
+
+			expect(rpcCallSpy).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
+				'[[ExecutionContext]]',
+			]);
+		});
 	});
 
 	describe('built-in methods and variables available in the context', () => {

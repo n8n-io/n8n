@@ -18,6 +18,7 @@ import type {
 	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { inspect } from 'node:util';
 import { runInNewContext, type Context } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
@@ -438,7 +439,7 @@ export class JsTaskRunner extends TaskRunner {
 	private buildCustomConsole(taskId: string): CustomConsole {
 		const stringifyArg = (arg: unknown) => {
 			try {
-				return typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg;
+				return typeof arg === 'object' && arg !== null ? inspect(arg) : arg;
 			} catch (e) {
 				const error = ensureError(e);
 				console.warn('Failed to stringify console.log argument:', error.message);
@@ -479,6 +480,7 @@ export class JsTaskRunner extends TaskRunner {
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		const context: Context = {
+			[inspect.custom]: () => '[[ExecutionContext]]',
 			require: this.requireResolver,
 			module: {},
 			console: this.buildCustomConsole(taskId),
