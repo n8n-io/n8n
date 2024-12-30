@@ -1304,6 +1304,7 @@
 	"nodeView.confirmMessage.debug.headline": "Unpin workflow data",
 	"nodeView.confirmMessage.debug.message": "Loading this execution will unpin the data currently pinned in these nodes",
 	"nodeView.couldntImportWorkflow": "Could not import workflow",
+	"nodeView.couldntLoadWorkflow.invalidWorkflowObject": "Invalid workflow object",
 	"nodeView.deletesTheCurrentExecutionData": "Deletes the current execution data",
 	"nodeView.itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes will be lost.",
 	"nodeView.loadingTemplate": "Loading template",
