@@ -131,7 +131,7 @@ export class ProjectService {
 			);
 		} else {
 			for (const sharedCredential of ownedCredentials) {
-				await credentialsService.delete(sharedCredential.credentials);
+				await credentialsService.delete(user, sharedCredential.credentials.id);
 			}
 		}
 
