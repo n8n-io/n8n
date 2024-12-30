@@ -6,7 +6,7 @@ import { Container } from 'typedi';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 
 import type { PaginatedRequest } from '../../../types';

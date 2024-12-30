@@ -93,6 +93,7 @@ export const LICENSE_FEATURES = {
 	AI_ASSISTANT: 'feat:aiAssistant',
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
+	AI_CREDITS: 'feat:aiCredits',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -101,6 +102,7 @@ export const LICENSE_QUOTAS = {
 	USERS_LIMIT: 'quota:users',
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
+	AI_CREDITS: 'quota:aiCredits',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -174,3 +176,6 @@ export const WsStatusCodes = {
 	CloseAbnormal: 1006,
 	CloseInvalidData: 1007,
 } as const;
+
+export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
+export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';

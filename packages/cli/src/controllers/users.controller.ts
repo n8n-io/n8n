@@ -11,8 +11,16 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { GlobalScope, Delete, Get, RestController, Patch, Licensed, Body } from '@/decorators';
-import { Param } from '@/decorators/args';
+import {
+	GlobalScope,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+	Body,
+	Param,
+} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -21,7 +29,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { PublicUser } from '@/interfaces';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 

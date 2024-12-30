@@ -12,19 +12,19 @@ import config from '@/config';
 import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getVariablesLimit } from '@/environments/variables/environment-helpers';
-import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { getVariablesLimit } from '@/environments.ee/variables/environment-helpers';
+import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { isApiEnabled } from '@/public-api';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
-import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
+import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history/workflow-history-helper.ee';
+} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
 
@@ -216,6 +216,10 @@ export class FrontendService {
 			askAi: {
 				enabled: false,
 			},
+			aiCredits: {
+				enabled: false,
+				credits: 0,
+			},
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,
@@ -283,6 +287,7 @@ export class FrontendService {
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
+		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -341,6 +346,11 @@ export class FrontendService {
 
 		if (isAskAiEnabled) {
 			this.settings.askAi.enabled = isAskAiEnabled;
+		}
+
+		if (isAiCreditsEnabled) {
+			this.settings.aiCredits.enabled = isAiCreditsEnabled;
+			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
