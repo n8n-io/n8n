@@ -12,6 +12,7 @@ import type { GlobalRole, User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
+import { ConcurrencyType } from '@/concurrency/concurrency-control.service';
 
 export type UserLike = {
 	id: string;
@@ -338,6 +339,7 @@ export type RelayEventMap = {
 
 	'execution-throttled': {
 		executionId: string;
+		type: ConcurrencyType;
 	};
 
 	'execution-started-during-bootup': {
