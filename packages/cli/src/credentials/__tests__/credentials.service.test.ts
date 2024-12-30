@@ -1,6 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import { nanoId, date } from 'minifaker';
+import { Cipher } from 'n8n-core';
 import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
+import Container from 'typedi';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
@@ -30,6 +32,8 @@ describe('CredentialsService', () => {
 			},
 		],
 	});
+
+	const cipher = Container.get(Cipher);
 	const credentialTypes = mock<CredentialTypes>();
 	const service = new CredentialsService(
 		mock(),
@@ -61,7 +65,7 @@ describe('CredentialsService', () => {
 				csrfSecret: 'super-secret',
 			};
 
-			credentialTypes.getByName.calledWith(credential.type).mockReturnValue(credType);
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
 
 			const redactedData = service.redact(decryptedData, credential);
 
@@ -135,6 +139,62 @@ describe('CredentialsService', () => {
 				...saveCredentialsResponse,
 				scopes: credentialScopes,
 			});
+		});
+	});
+
+	describe('decrypt', () => {
+		it('should redact sensitive values by default', () => {
+			// ARRANGE
+			const data = {
+				clientId: 'abc123',
+				clientSecret: 'sensitiveSecret',
+				accessToken: '',
+				oauthTokenData: 'super-secret',
+				csrfSecret: 'super-secret',
+			};
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(data),
+			});
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			// ACT
+			const redactedData = service.decrypt(credential);
+
+			// ASSERT
+			expect(redactedData).toEqual({
+				clientId: 'abc123',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
+				accessToken: CREDENTIAL_EMPTY_VALUE,
+				oauthTokenData: CREDENTIAL_BLANKING_VALUE,
+				csrfSecret: CREDENTIAL_BLANKING_VALUE,
+			});
+		});
+
+		it('should return sensitive values if `includeRawData` is true', () => {
+			// ARRANGE
+			const data = {
+				clientId: 'abc123',
+				clientSecret: 'sensitiveSecret',
+				accessToken: '',
+				oauthTokenData: 'super-secret',
+				csrfSecret: 'super-secret',
+			};
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(data),
+			});
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			// ACT
+			const redactedData = service.decrypt(credential, true);
+
+			// ASSERT
+			expect(redactedData).toEqual(data);
 		});
 	});
 });
