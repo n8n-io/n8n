@@ -38,7 +38,7 @@ import type {
 
 @Service()
 export class ScalingService {
-	private queue: JobQueue;
+	private queuePromise: Promise<JobQueue>;
 
 	constructor(
 		private readonly logger: Logger,
@@ -64,34 +64,38 @@ export class ScalingService {
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
 		const prefix = service.toValidPrefix(bullPrefix);
 
-		this.queue = new BullQueue(QUEUE_NAME, {
-			prefix,
-			settings: this.globalConfig.queue.bull.settings,
-			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
+		this.queuePromise = new Promise(async (resolve) => {
+			const queue = new BullQueue(QUEUE_NAME, {
+				prefix,
+				settings: this.globalConfig.queue.bull.settings,
+				createClient: (type) => service.createClient({ type: `${type}(bull)` }),
+			});
+
+			await this.registerListeners();
+
+			const { isLeader, isMultiMain } = this.instanceSettings;
+
+			if (isLeader) this.scheduleQueueRecovery();
+
+			if (isMultiMain) {
+				this.orchestrationService.multiMainSetup
+					.on('leader-takeover', () => this.scheduleQueueRecovery())
+					.on('leader-stepdown', () => this.stopQueueRecovery());
+			}
+
+			this.scheduleQueueMetrics();
+
+			this.logger.debug('Queue setup completed');
+
+			resolve(queue);
 		});
-
-		this.registerListeners();
-
-		const { isLeader, isMultiMain } = this.instanceSettings;
-
-		if (isLeader) this.scheduleQueueRecovery();
-
-		if (isMultiMain) {
-			this.orchestrationService.multiMainSetup
-				.on('leader-takeover', () => this.scheduleQueueRecovery())
-				.on('leader-stepdown', () => this.stopQueueRecovery());
-		}
-
-		this.scheduleQueueMetrics();
-
-		this.logger.debug('Queue setup completed');
 	}
 
-	setupWorker(concurrency: number) {
+	async setupWorker(concurrency: number) {
 		this.assertWorker();
-		this.assertQueue();
 
-		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		const queue = await this.queuePromise;
+		void queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				await this.jobProcessor.processJob(job);
 			} catch (error) {
@@ -136,7 +140,8 @@ export class ScalingService {
 
 	private async stopMain() {
 		if (this.instanceSettings.isSingleMain) {
-			await this.queue.pause(true, true); // no more jobs will be picked up
+			const queue = await this.queuePromise;
+			await queue.pause(true, true); // no more jobs will be picked up
 			this.logger.debug('Queue paused');
 		}
 
@@ -159,7 +164,8 @@ export class ScalingService {
 	}
 
 	async pingQueue() {
-		await this.queue.client.ping();
+		const queue = await this.queuePromise;
+		await queue.client.ping();
 	}
 
 	// #endregion
@@ -167,7 +173,8 @@ export class ScalingService {
 	// #region Jobs
 
 	async getPendingJobCounts() {
-		const { active, waiting } = await this.queue.getJobCounts();
+		const queue = await this.queuePromise;
+		const { active, waiting } = await queue.getJobCounts();
 
 		return { active, waiting };
 	}
@@ -187,7 +194,8 @@ export class ScalingService {
 			removeOnFail: true,
 		};
 
-		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
+		const queue = await this.queuePromise;
+		const job = await queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
 		const { executionId } = jobData;
 		const jobId = job.id;
@@ -198,11 +206,13 @@ export class ScalingService {
 	}
 
 	async getJob(jobId: JobId) {
-		return await this.queue.getJob(jobId);
+		const queue = await this.queuePromise;
+		return await queue.getJob(jobId);
 	}
 
 	async findJobsByStatus(statuses: JobStatus[]) {
-		const jobs = await this.queue.getJobs(statuses);
+		const queue = await this.queuePromise;
+		const jobs = await queue.getJobs(statuses);
 
 		return jobs.filter((job) => job !== null);
 	}
@@ -243,26 +253,27 @@ export class ScalingService {
 
 	// #region Listeners
 
-	private registerListeners() {
+	private async registerListeners() {
 		const { instanceType } = this.instanceSettings;
 		if (instanceType === 'main' || instanceType === 'webhook') {
-			this.registerMainOrWebhookListeners();
+			await this.registerMainOrWebhookListeners();
 		} else if (instanceType === 'worker') {
-			this.registerWorkerListeners();
+			await this.registerWorkerListeners();
 		}
 	}
 
 	/**
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
-	private registerWorkerListeners() {
-		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+	private async registerWorkerListeners() {
+		const queue = await this.queuePromise;
+		queue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
-		this.queue.on('error', (error: Error) => {
+		queue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
 			if (error.message.includes('job stalled more than maxStalledCount')) {
@@ -288,8 +299,9 @@ export class ScalingService {
 	/**
 	 * Register listeners on a `main` or `webhook` process for Bull queue events.
 	 */
-	private registerMainOrWebhookListeners() {
-		this.queue.on('error', (error: Error) => {
+	private async registerMainOrWebhookListeners() {
+		const queue = await this.queuePromise;
+		queue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
 			this.logger.error('Queue errored', { error });
@@ -297,7 +309,7 @@ export class ScalingService {
 			throw error;
 		});
 
-		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+		queue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
 			// completion and failure are reported via `global:progress` to convey more details
@@ -337,8 +349,8 @@ export class ScalingService {
 		});
 
 		if (this.isQueueMetricsEnabled) {
-			this.queue.on('global:completed', () => this.jobCounters.completed++);
-			this.queue.on('global:failed', () => this.jobCounters.failed++);
+			queue.on('global:completed', () => this.jobCounters.completed++);
+			queue.on('global:failed', () => this.jobCounters.failed++);
 		}
 	}
 
@@ -363,12 +375,6 @@ export class ScalingService {
 		}
 
 		return response;
-	}
-
-	private assertQueue() {
-		if (this.queue) return;
-
-		throw new ApplicationError('This method must be called after `setupQueue`');
 	}
 
 	private assertWorker() {
