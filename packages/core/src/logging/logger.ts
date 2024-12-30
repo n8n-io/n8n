@@ -33,7 +33,7 @@ export class Logger implements LoggerType {
 	}
 
 	/** https://no-color.org/ */
-	private readonly noColor = process.env.NO_COLOR !== undefined;
+	private readonly noColor = process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '';
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
