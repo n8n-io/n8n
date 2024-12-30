@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { IUpdateInformation, DynamicNodeParameters } from '@/Interface';
+import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
+import type { IUpdateInformation } from '@/Interface';
 import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
@@ -294,7 +295,7 @@ const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
+	const requestParams: ResourceMapperFieldsRequestDto = {
 		nodeTypeAndVersion: {
 			name: props.node.type,
 			version: props.node.typeVersion,
@@ -320,12 +321,12 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
 			resourceMapperMethod,
-		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		) as ResourceMapperFieldsRequestDto;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else if (typeof localResourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
 			localResourceMapperMethod,
-		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
