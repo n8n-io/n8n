@@ -138,6 +138,7 @@ export type AwsCredentialsType = {
 	sesEndpoint?: string;
 	sqsEndpoint?: string;
 	s3Endpoint?: string;
+	ssmEndpoint?: string;
 };
 
 // Some AWS services are global and don't have a region
@@ -294,6 +295,19 @@ export class Aws implements ICredentialType {
 			default: '',
 			placeholder: 'https://s3.{region}.amazonaws.com',
 		},
+		{
+			displayName: 'SSM Endpoint',
+			name: 'ssmEndpoint',
+			description: 'Endpoint for AWS Systems Manager (SSM)',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customEndpoints: [true],
+				},
+			},
+			default: '',
+			placeholder: 'https://ssm.{region}.amazonaws.com',
+		},
 	];
 
 	async authenticate(
@@ -356,6 +370,8 @@ export class Aws implements ICredentialType {
 					endpointString = credentials.sqsEndpoint;
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
+				} else if (service === 'ssm' && credentials.ssmEndpoint) {
+					endpointString = credentials.ssmEndpoint;
 				}
 				endpoint = new URL(endpointString!.replace('{region}', region) + path);
 			} else {
