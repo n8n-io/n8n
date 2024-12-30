@@ -42,8 +42,8 @@ import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
-export interface RPCCallObject {
-	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RPCCallObject;
+export interface RpcCallObject {
+	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
 }
 
 export interface JSExecSettings {
@@ -449,7 +449,7 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private buildRpcCallObject(taskId: string) {
-		const rpcObject: RPCCallObject = {};
+		const rpcObject: RpcCallObject = {};
 
 		for (const rpcMethod of EXPOSED_RPC_METHODS) {
 			set(
