@@ -1,6 +1,6 @@
 import { Z } from 'zod-class';
 
-import { booleanLiteral } from '../common';
+import { booleanLiteral } from '../../schemas/booleanLiteral';
 
 export class CredentialsGetManyRequestQuery extends Z.class({
 	/**
