@@ -9,5 +9,5 @@ export class CredentialsGetOneRequestQuery extends Z.class({
 	 * It only does this for credentials for which the user has the
 	 * `credential:update` scope.
 	 */
-	includeData: booleanFromString.optional(),
+	includeData: booleanFromString.optional().default('false'),
 }) {}

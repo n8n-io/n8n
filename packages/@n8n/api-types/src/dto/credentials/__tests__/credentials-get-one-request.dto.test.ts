@@ -8,6 +8,8 @@ describe('CredentialsGetManyRequestQuery', () => {
 			const result = CredentialsGetOneRequestQuery.safeParse(data);
 
 			expect(result.success).toBe(true);
+			// defaults to false
+			expect(result.data?.includeData).toBe(false);
 		});
 
 		test.each([

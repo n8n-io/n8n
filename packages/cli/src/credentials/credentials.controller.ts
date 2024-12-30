@@ -102,9 +102,9 @@ export class CredentialsController {
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
 					// the scopes and always decrypt the data if the user has the permissions
 					// to do so.
-					query.includeData ?? false,
+					query.includeData,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData ?? false);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
