@@ -1,6 +1,6 @@
 import set from 'lodash/set';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject, ensureError } from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
