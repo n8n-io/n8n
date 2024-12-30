@@ -173,6 +173,23 @@ describe('JsTaskRunner', () => {
 				}),
 			).resolves.toBeDefined();
 		});
+
+		it('should not throw when trying to log the context object', async () => {
+			const task = newTaskWithSettings({
+				code: `
+					console.log(this);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await expect(
+				execTaskWithParams({
+					task,
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
+				}),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('built-in methods and variables available in the context', () => {
