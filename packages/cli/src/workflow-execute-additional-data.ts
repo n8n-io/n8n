@@ -5,7 +5,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
-import { ErrorReporter, WorkflowExecute, isObjectLiteral } from 'n8n-core';
+import { ErrorReporter, Logger, WorkflowExecute, isObjectLiteral } from 'n8n-core';
 import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -58,9 +58,8 @@ import {
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { Logger } from './logging/logger.service';
 import { TaskManager } from './runners/task-managers/task-manager';
-import { SecretsHelper } from './secrets-helpers';
+import { SecretsHelper } from './secrets-helpers.ee';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';

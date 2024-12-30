@@ -102,7 +102,6 @@ export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.schema_name as string,
 		value: s.schema_name as string,
 	}));
-	await db.$pool.end();
 	return { results };
 }
 
@@ -122,6 +121,5 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.table_name as string,
 		value: s.table_name as string,
 	}));
-	await db.$pool.end();
 	return { results };
 }

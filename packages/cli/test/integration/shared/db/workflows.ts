@@ -40,6 +40,7 @@ export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowE
 		],
 		connections: connections ?? {},
 		versionId: versionId ?? uuid(),
+		settings: {},
 		...attributes,
 	});
 
