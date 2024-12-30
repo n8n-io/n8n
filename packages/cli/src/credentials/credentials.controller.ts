@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -23,7 +24,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
@@ -147,32 +147,22 @@ export class CredentialsController {
 
 	@Post('/')
 	async createCredentials(req: CredentialRequest.Create) {
-		const newCredential = await this.credentialsService.prepareCreateData(req.body);
-
-		const encryptedData = this.credentialsService.createEncryptedData(null, newCredential);
-		const { shared, ...credential } = await this.credentialsService.save(
-			newCredential,
-			encryptedData,
-			req.user,
-			req.body.projectId,
-		);
+		const newCredential = await this.credentialsService.createCredential(req.body, req.user);
 
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
-			credential.id,
+			newCredential.id,
 		);
 
 		this.eventService.emit('credentials-created', {
 			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
+			credentialType: newCredential.type,
+			credentialId: newCredential.id,
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
 		});
 
-		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
-
-		return { ...credential, scopes };
+		return newCredential;
 	}
 
 	@Patch('/:credentialId')
@@ -194,6 +184,10 @@ export class CredentialsController {
 			throw new NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
 			);
+		}
+
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
 		const decryptedData = this.credentialsService.decrypt(credential);

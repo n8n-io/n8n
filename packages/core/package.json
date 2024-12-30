@@ -1,14 +1,13 @@
 {
   "name": "n8n-core",
-  "version": "1.71.0",
+  "version": "1.73.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
     "n8n-copy-icons": "./bin/copy-icons",
-    "n8n-generate-known": "./bin/generate-known",
     "n8n-generate-translations": "./bin/generate-translations",
-    "n8n-generate-ui-types": "./bin/generate-ui-types"
+    "n8n-generate-metadata": "./bin/generate-metadata"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -40,8 +39,11 @@
     "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
+    "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",
+    "callsites": "catalog:",
+    "chardet": "2.0.0",
     "concat-stream": "2.0.0",
     "cron": "3.1.7",
     "fast-glob": "catalog:",
@@ -55,11 +57,13 @@
     "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",
     "p-cancelable": "2.1.1",
+    "picocolors": "catalog:",
     "pretty-bytes": "5.6.0",
     "qs": "6.11.0",
     "ssh2": "1.15.0",
     "typedi": "catalog:",
     "uuid": "catalog:",
+    "winston": "3.14.2",
     "xml2js": "catalog:",
     "zod": "catalog:"
   }

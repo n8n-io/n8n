@@ -49,6 +49,7 @@ import type {
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -98,7 +99,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, N8nCallout } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -179,6 +180,8 @@ const {
 	revertCreateConnection,
 	deleteConnection,
 	revertDeleteConnection,
+	revalidateNodeInputConnections,
+	revalidateNodeOutputConnections,
 	setNodeActiveByName,
 	addConnections,
 	importWorkflowData,
@@ -291,7 +294,7 @@ async function initializeData() {
 	}
 }
 
-async function initializeRoute() {
+async function initializeRoute(force = false) {
 	// In case the workflow got saved we do not have to run init
 	// as only the route changed but all the needed data is already loaded
 	if (route.params.action === 'workflowSave') {
@@ -300,6 +303,7 @@ async function initializeRoute() {
 	}
 
 	const isAlreadyInitialized =
+		!force &&
 		initializedWorkflowId.value &&
 		[NEW_WORKFLOW_ID, workflowId.value].includes(initializedWorkflowId.value);
 
@@ -586,7 +590,6 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 				cancelButtonText: i18n.baseText(
 					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
 				),
-				dangerouslyUseHTMLString: true,
 			},
 		);
 
@@ -720,6 +723,14 @@ async function onRevertRenameNode({
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	setNodeParameters(id, parameters);
+}
+
+function onUpdateNodeInputs(id: string) {
+	revalidateNodeInputConnections(id);
+}
+
+function onUpdateNodeOutputs(id: string) {
+	revalidateNodeOutputConnections(id);
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
@@ -910,7 +921,10 @@ async function onAddNodesAndConnections(
 	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
-	selectNodes([addedNodes[addedNodes.length - 1].id]);
+
+	if (addedNodes.length > 0) {
+		selectNodes([addedNodes[addedNodes.length - 1].id]);
+	}
 }
 
 async function onRevertAddNode({ node }: { node: INodeUi }) {
@@ -1364,7 +1378,6 @@ function checkIfEditingIsAllowed(): boolean {
 					: 'readOnly.showMessage.executions.message',
 			),
 			type: 'info',
-			dangerouslyUseHTMLString: true,
 		}) as unknown as { visible: boolean };
 
 		return false;
@@ -1441,6 +1454,28 @@ function onClickPane(position: CanvasNode['position']) {
 }
 
 /**
+ * Drag and Drop events
+ */
+
+async function onDragAndDrop(position: VueFlowXYPosition, event: DragEvent) {
+	if (!event.dataTransfer) {
+		return;
+	}
+
+	const dropData = jsonParse<AddedNodesAndConnections>(
+		event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
+	);
+
+	if (dropData) {
+		const insertNodePosition: XYPosition = [position.x, position.y];
+
+		await onAddNodesAndConnections(dropData, true, insertNodePosition);
+
+		onToggleNodeCreator({ createNodeActive: false, hasAddedNodes: true });
+	}
+}
+
+/**
  * Custom Actions
  */
 
@@ -1483,14 +1518,23 @@ function unregisterCustomActions() {
 	unregisterCustomAction('showNodeCreator');
 }
 
+function showAddFirstStepIfEnabled() {
+	if (uiStore.addFirstStepOnLoad) {
+		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		uiStore.addFirstStepOnLoad = false;
+	}
+}
+
 /**
  * Routing
  */
 
 watch(
 	() => route.name,
-	async () => {
-		await initializeRoute();
+	async (newRouteName, oldRouteName) => {
+		// it's navigating from and existing workflow to a new workflow
+		const force = newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW;
+		await initializeRoute(force);
 	},
 );
 
@@ -1543,6 +1587,7 @@ onMounted(() => {
 
 onActivated(async () => {
 	addUndoRedoEventBindings();
+	showAddFirstStepIfEnabled();
 });
 
 onDeactivated(() => {
@@ -1583,6 +1628,8 @@ onBeforeUnmount(() => {
 		@update:node:enabled="onToggleNodeDisabled"
 		@update:node:name="onOpenRenameNodeModal"
 		@update:node:parameters="onUpdateNodeParameters"
+		@update:node:inputs="onUpdateNodeInputs"
+		@update:node:outputs="onUpdateNodeOutputs"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
@@ -1603,6 +1650,7 @@ onBeforeUnmount(() => {
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
+		@drag-and-drop="onDragAndDrop"
 	>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
@@ -1634,6 +1682,16 @@ onBeforeUnmount(() => {
 				@click="onClearExecutionData"
 			/>
 		</div>
+
+		<N8nCallout
+			v-if="isReadOnlyEnvironment"
+			theme="warning"
+			icon="lock"
+			:class="$style.readOnlyEnvironmentNotification"
+		>
+			{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
+		</N8nCallout>
+
 		<Suspense>
 			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
@@ -1687,5 +1745,12 @@ onBeforeUnmount(() => {
 			margin: 0;
 		}
 	}
+}
+
+.readOnlyEnvironmentNotification {
+	position: absolute;
+	bottom: 16px;
+	left: 50%;
+	transform: translateX(-50%);
 }
 </style>

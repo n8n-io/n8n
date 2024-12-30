@@ -4,15 +4,12 @@ import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataService,
 	InstanceSettings,
+	Logger,
 	ObjectStoreService,
 	DataDeduplicationService,
+	ErrorReporter,
 } from 'n8n-core';
-import {
-	ApplicationError,
-	ensureError,
-	ErrorReporterProxy as ErrorReporter,
-	sleep,
-} from 'n8n-workflow';
+import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -22,22 +19,22 @@ import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
+
+	protected errorReporter: ErrorReporter;
 
 	protected externalHooks?: ExternalHooks;
 
@@ -63,7 +60,11 @@ export abstract class BaseCommand extends Command {
 	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
-		await initErrorHandling();
+		this.errorReporter = Container.get(ErrorReporter);
+		await this.errorReporter.init(
+			this.instanceSettings.instanceType,
+			this.globalConfig.sentry.backendDsn,
+		);
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
@@ -130,7 +131,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async exitWithCrash(message: string, error: unknown) {
-		ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
 	}

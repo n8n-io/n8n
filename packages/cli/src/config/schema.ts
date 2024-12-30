@@ -341,15 +341,6 @@ export const schema = {
 		},
 	},
 
-	aiAssistant: {
-		baseUrl: {
-			doc: 'Base URL of the AI assistant service',
-			format: String,
-			default: '',
-			env: 'N8N_AI_ASSISTANT_BASE_URL',
-		},
-	},
-
 	expression: {
 		evaluator: {
 			doc: 'Expression evaluator to use',
@@ -404,12 +395,5 @@ export const schema = {
 			env: 'PARTIAL_EXECUTION_VERSION_DEFAULT',
 			doc: 'Set this to 1 to enable the new partial execution logic by default.',
 		},
-	},
-
-	virtualSchemaView: {
-		doc: 'Whether to display the virtualized schema view',
-		format: Boolean,
-		default: false,
-		env: 'N8N_VIRTUAL_SCHEMA_VIEW',
 	},
 };

@@ -1,10 +1,13 @@
 import { createHash, randomBytes } from 'crypto';
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'path';
 import { Service } from 'typedi';
 
+import { Logger } from '@/logging/logger';
+
+import { Memoized } from './decorators';
 import { InstanceSettingsConfig } from './InstanceSettingsConfig';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -27,13 +30,11 @@ const inTest = process.env.NODE_ENV === 'test';
 
 @Service()
 export class InstanceSettings {
-	private readonly userHome = this.getUserHome();
-
 	/** The path to the n8n folder in which all n8n related data gets saved */
-	readonly n8nFolder = path.join(this.userHome, '.n8n');
+	readonly n8nFolder = this.config.n8nFolder;
 
 	/** The path to the folder where all generated static assets are copied to */
-	readonly staticCacheDir = path.join(this.userHome, '.cache/n8n/public');
+	readonly staticCacheDir = path.join(this.config.userHome, '.cache/n8n/public');
 
 	/** The path to the folder containing custom nodes and credentials */
 	readonly customExtensionDir = path.join(this.n8nFolder, 'custom');
@@ -57,7 +58,10 @@ export class InstanceSettings {
 
 	readonly instanceType: InstanceType;
 
-	constructor(private readonly config: InstanceSettingsConfig) {
+	constructor(
+		private readonly config: InstanceSettingsConfig,
+		private readonly logger: Logger,
+	) {
 		const command = process.argv[2];
 		this.instanceType = ['webhook', 'worker'].includes(command)
 			? (command as InstanceType)
@@ -86,6 +90,29 @@ export class InstanceSettings {
 	 */
 	readonly hostId: string;
 
+	private isMultiMainEnabled = false;
+
+	private isMultiMainLicensed = false;
+
+	/** Set whether multi-main mode is enabled. Does not imply licensed status. */
+	setMultiMainEnabled(newState: boolean) {
+		this.isMultiMainEnabled = newState;
+	}
+
+	setMultiMainLicensed(newState: boolean) {
+		this.isMultiMainLicensed = newState;
+	}
+
+	/** Whether this `main` instance is running in multi-main mode. */
+	get isMultiMain() {
+		return this.instanceType === 'main' && this.isMultiMainEnabled && this.isMultiMainLicensed;
+	}
+
+	/** Whether this `main` instance is running in single-main mode. */
+	get isSingleMain() {
+		return !this.isMultiMain;
+	}
+
 	get isLeader() {
 		return this.instanceRole === 'leader';
 	}
@@ -110,17 +137,24 @@ export class InstanceSettings {
 		return this.settings.tunnelSubdomain;
 	}
 
-	update(newSettings: WritableSettings) {
-		this.save({ ...this.settings, ...newSettings });
+	/**
+	 * Whether this instance is running inside a Docker container.
+	 *
+	 * Based on: https://github.com/sindresorhus/is-docker
+	 */
+	@Memoized
+	get isDocker() {
+		try {
+			return (
+				existsSync('/.dockerenv') || readFileSync('/proc/self/cgroup', 'utf8').includes('docker')
+			);
+		} catch {
+			return false;
+		}
 	}
 
-	/**
-	 * The home folder path of the user.
-	 * If none can be found it falls back to the current working directory
-	 */
-	private getUserHome() {
-		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
-		return process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
+	update(newSettings: WritableSettings) {
+		this.save({ ...this.settings, ...newSettings });
 	}
 
 	/**
@@ -158,7 +192,9 @@ export class InstanceSettings {
 		this.save(settings);
 
 		if (!inTest && !process.env.N8N_ENCRYPTION_KEY) {
-			console.info(`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`);
+			this.logger.info(
+				`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`,
+			);
 		}
 		this.ensureSettingsFilePermissions();
 
@@ -220,11 +256,11 @@ export class InstanceSettings {
 
 		const permissionsResult = toResult(() => {
 			const stats = statSync(this.settingsFile);
-			return stats.mode & 0o777;
+			return stats?.mode & 0o777;
 		});
 		// If we can't determine the permissions, log a warning and skip the check
 		if (!permissionsResult.ok) {
-			console.warn(
+			this.logger.warn(
 				`Could not ensure settings file permissions: ${permissionsResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
 			);
 			return;
@@ -237,7 +273,7 @@ export class InstanceSettings {
 
 		// If the permissions are incorrect and the flag is not set, log a warning
 		if (!this.enforceSettingsFilePermissions.isSet) {
-			console.warn(
+			this.logger.warn(
 				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
 			);
 			// The default is false so we skip the enforcement for now
@@ -245,7 +281,7 @@ export class InstanceSettings {
 		}
 
 		if (this.enforceSettingsFilePermissions.enforce) {
-			console.warn(
+			this.logger.warn(
 				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. Changing permissions to 0600..`,
 			);
 			const chmodResult = toResult(() => chmodSync(this.settingsFile, 0o600));
@@ -253,7 +289,7 @@ export class InstanceSettings {
 				// Some filesystems don't support permissions. In this case we log the
 				// error and ignore it. We might want to prevent the app startup in the
 				// future in this case.
-				console.warn(
+				this.logger.warn(
 					`Could not enforce settings file permissions: ${chmodResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
 				);
 			}

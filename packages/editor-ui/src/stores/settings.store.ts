@@ -98,6 +98,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
+	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+
+	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
+
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
 	const isPersonalizationSurveyEnabled = computed(
@@ -278,7 +282,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				message: i18n.baseText('startupError.message'),
 				type: 'error',
 				duration: 0,
-				dangerouslyUseHTMLString: true,
 			});
 
 			throw e;
@@ -426,6 +429,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isCommunityPlan,
 		isAskAiEnabled,
 		isCanvasV2Enabled,
+		isAiCreditsEnabled,
+		aiCreditsQuota,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

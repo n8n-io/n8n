@@ -74,6 +74,18 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
 
+	const userClaimedAiCredits = computed(() => currentUser.value?.settings?.userClaimedAiCredits);
+
+	const isEasyAIWorkflowOnboardingDone = computed(() =>
+		Boolean(currentUser.value?.settings?.easyAIWorkflowOnboarded),
+	);
+
+	const setEasyAIWorkflowOnboardingDone = () => {
+		if (currentUser.value?.settings) {
+			currentUser.value.settings.easyAIWorkflowOnboarded = true;
+		}
+	};
+
 	const personalizedNodeTypes = computed(() => {
 		const user = currentUser.value;
 		if (!user) {
@@ -378,6 +390,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,
+		userClaimedAiCredits,
+		isEasyAIWorkflowOnboardingDone,
 		addUsers,
 		loginWithCookie,
 		initialize,
@@ -410,5 +424,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		sendConfirmationEmail,
 		updateGlobalRole,
 		reset,
+		setEasyAIWorkflowOnboardingDone,
 	};
 });

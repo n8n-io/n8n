@@ -21,7 +21,7 @@ export class BuiltInsParser {
 	/**
 	 * Parses which built-in variables are accessed in the given code
 	 */
-	public parseUsedBuiltIns(code: string): Result<BuiltInsParserState, Error> {
+	parseUsedBuiltIns(code: string): Result<BuiltInsParserState, Error> {
 		return toResult(() => {
 			const wrappedCode = `async function VmCodeWrapper() { ${code} }`;
 			const ast = parse(wrappedCode, { ecmaVersion: 2025, sourceType: 'module' });

@@ -1,11 +1,11 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 import { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
@@ -28,17 +28,17 @@ export type TaskRunnerProcessEventMap = {
  */
 @Service()
 export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
-	public get isRunning() {
+	get isRunning() {
 		return this.process !== null;
 	}
 
 	/** The process ID of the task runner process */
-	public get pid() {
+	get pid() {
 		return this.process?.pid;
 	}
 
 	/** Promise that resolves when the process has exited */
-	public get runPromise() {
+	get runPromise() {
 		return this._runPromise;
 	}
 

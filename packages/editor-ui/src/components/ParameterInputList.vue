@@ -531,16 +531,6 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
-					type="tertiary"
-					text
-					size="mini"
-					icon="trash"
-					class="delete-option"
-					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></N8nIconButton>
 				<N8nInputLabel
 					:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
 					:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
@@ -580,6 +570,16 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					<N8nIcon icon="exclamation-triangle" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
+				<N8nIconButton
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="icon-button"
+					:title="i18n.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></N8nIconButton>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -620,7 +620,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					text
 					size="mini"
 					icon="trash"
-					class="delete-option"
+					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
 				></N8nIconButton>
@@ -650,12 +650,19 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	.delete-option {
+	--disabled-fill: var(--color-background-base);
+	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: 0;
-		left: calc(-1 * var(--spacing-2xs));
+		left: calc(-0.5 * var(--spacing-2xs));
 		transition: opacity 100ms ease-in;
+		Button {
+			color: var(--color-icon-base);
+		}
+	}
+	.icon-button > Button:hover {
+		color: var(--color-icon-hover);
 	}
 
 	.indent > div {
@@ -675,8 +682,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 		position: relative;
 		margin: var(--spacing-xs) 0;
 	}
-	.parameter-item:hover > .delete-option,
-	.multi-parameter:hover > .delete-option {
+	.parameter-item:hover > .icon-button,
+	.multi-parameter:hover > .icon-button {
 		opacity: 1;
 	}
 

@@ -9,9 +9,10 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
+
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
-import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
+import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
 
 export class FilterV2 implements INodeType {
 	description: INodeTypeDescription;

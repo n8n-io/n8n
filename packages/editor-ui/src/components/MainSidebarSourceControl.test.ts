@@ -16,10 +16,17 @@ let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 let rbacStore: ReturnType<typeof useRBACStore>;
 
+const showMessage = vi.fn();
+const showError = vi.fn();
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({ showMessage, showError }),
+}));
+
 const renderComponent = createComponentRenderer(MainSidebarSourceControl);
 
 describe('MainSidebarSourceControl', () => {
 	beforeEach(() => {
+		vi.resetAllMocks();
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -75,13 +82,13 @@ describe('MainSidebarSourceControl', () => {
 			vi.spyOn(sourceControlStore, 'pullWorkfolder').mockRejectedValueOnce({
 				response: { status: 400 },
 			});
-			const { getAllByRole, getByRole } = renderComponent({
+			const { getAllByRole } = renderComponent({
 				pinia,
 				props: { isCollapsed: false },
 			});
 
 			await userEvent.click(getAllByRole('button')[0]);
-			await waitFor(() => expect(getByRole('alert')).toBeInTheDocument());
+			await waitFor(() => expect(showError).toHaveBeenCalled());
 		});
 
 		it('should show confirm if pull response http status code is 409', async () => {
@@ -105,6 +112,22 @@ describe('MainSidebarSourceControl', () => {
 							status,
 						}),
 					}),
+				),
+			);
+		});
+
+		it('should show toast when there are no changes', async () => {
+			vi.spyOn(sourceControlStore, 'getAggregatedStatus').mockResolvedValueOnce([]);
+
+			const { getAllByRole } = renderComponent({
+				pinia,
+				props: { isCollapsed: false },
+			});
+
+			await userEvent.click(getAllByRole('button')[1]);
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ title: 'No changes to commit' }),
 				),
 			);
 		});

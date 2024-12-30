@@ -1,7 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
+import type { ActiveExecutions } from '@/active-executions';
 import type { Project } from '@/databases/entities/project';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/interfaces';
@@ -12,15 +14,16 @@ import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { mockLogger } from '@test/mocking';
 
-jest.useFakeTimers();
+jest.useFakeTimers({ advanceTimers: true });
 
 describe('WaitTracker', () => {
+	const activeExecutions = mock<ActiveExecutions>();
 	const ownershipService = mock<OwnershipService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
-	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
 	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
@@ -30,6 +33,7 @@ describe('WaitTracker', () => {
 		mode: 'manual',
 		data: mock({
 			pushRef: 'push_ref',
+			parentExecution: undefined,
 		}),
 	});
 	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
@@ -40,6 +44,7 @@ describe('WaitTracker', () => {
 			mockLogger(),
 			executionRepository,
 			ownershipService,
+			activeExecutions,
 			workflowRunner,
 			orchestrationService,
 			instanceSettings,
@@ -80,7 +85,9 @@ describe('WaitTracker', () => {
 			let startExecutionSpy: jest.SpyInstance<Promise<void>, [executionId: string]>;
 
 			beforeEach(() => {
-				executionRepository.findSingleExecution.mockResolvedValue(execution);
+				executionRepository.findSingleExecution
+					.calledWith(execution.id)
+					.mockResolvedValue(execution);
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
@@ -110,13 +117,17 @@ describe('WaitTracker', () => {
 	});
 
 	describe('startExecution()', () => {
-		it('should query for execution to start', async () => {
+		beforeEach(() => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 			waitTracker.init();
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionRepository.findSingleExecution.calledWith(execution.id).mockResolvedValue(execution);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
+			execution.data.parentExecution = undefined;
+		});
+
+		it('should query for execution to start', async () => {
 			await waitTracker.startExecution(execution.id);
 
 			expect(executionRepository.findSingleExecution).toHaveBeenCalledWith(execution.id, {
@@ -137,6 +148,65 @@ describe('WaitTracker', () => {
 				execution.id,
 			);
 		});
+
+		it('should also resume parent execution once sub-workflow finishes', async () => {
+			const parentExecution = mock<IExecutionResponse>({
+				id: 'parent_execution_id',
+				finished: false,
+			});
+			parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+			execution.data.parentExecution = {
+				executionId: parentExecution.id,
+				workflowId: parentExecution.workflowData.id,
+			};
+			executionRepository.findSingleExecution
+				.calledWith(parentExecution.id)
+				.mockResolvedValue(parentExecution);
+			const postExecutePromise = createDeferredPromise<IRun | undefined>();
+			activeExecutions.getPostExecutePromise
+				.calledWith(execution.id)
+				.mockReturnValue(postExecutePromise.promise);
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(executionRepository.findSingleExecution).toHaveBeenNthCalledWith(1, execution.id, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			expect(workflowRunner.run).toHaveBeenNthCalledWith(
+				1,
+				{
+					executionMode: execution.mode,
+					executionData: execution.data,
+					workflowData: execution.workflowData,
+					projectId: project.id,
+					pushRef: execution.data.pushRef,
+				},
+				false,
+				false,
+				execution.id,
+			);
+
+			postExecutePromise.resolve(mock<IRun>());
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+			expect(workflowRunner.run).toHaveBeenNthCalledWith(
+				2,
+				{
+					executionMode: parentExecution.mode,
+					executionData: parentExecution.data,
+					workflowData: parentExecution.workflowData,
+					projectId: project.id,
+					pushRef: parentExecution.data.pushRef,
+				},
+				false,
+				false,
+				parentExecution.id,
+			);
+		});
 	});
 
 	describe('single-main setup', () => {
@@ -151,8 +221,6 @@ describe('WaitTracker', () => {
 
 	describe('multi-main setup', () => {
 		it('should start tracking if leader', () => {
-			jest.spyOn(orchestrationService, 'isSingleMainSetup', 'get').mockReturnValue(false);
-
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
 			waitTracker.init();
@@ -165,11 +233,11 @@ describe('WaitTracker', () => {
 				mockLogger(),
 				executionRepository,
 				ownershipService,
+				activeExecutions,
 				workflowRunner,
 				orchestrationService,
-				mock<InstanceSettings>({ isLeader: false }),
+				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 			);
-			jest.spyOn(orchestrationService, 'isSingleMainSetup', 'get').mockReturnValue(false);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 

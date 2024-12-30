@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import compression from 'compression';
 import express from 'express';
+import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';
@@ -10,7 +11,6 @@ import { Service } from 'typedi';
 import { Server as WSServer } from 'ws';
 
 import { inTest } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
@@ -31,7 +31,7 @@ export class TaskRunnerServer {
 
 	readonly app: express.Application;
 
-	public get port() {
+	get port() {
 		return (this.server?.address() as AddressInfo)?.port;
 	}
 
@@ -133,11 +133,8 @@ export class TaskRunnerServer {
 
 		// Augment errors sent to Sentry
 		if (this.globalConfig.sentry.backendDsn) {
-			const {
-				Handlers: { requestHandler, errorHandler },
-			} = await import('@sentry/node');
-			app.use(requestHandler());
-			app.use(errorHandler());
+			const { setupExpressErrorHandler } = await import('@sentry/node');
+			setupExpressErrorHandler(app);
 		}
 	}
 

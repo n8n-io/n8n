@@ -9,8 +9,11 @@ import type {
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeExecutionData,
+	INodeInputConfiguration,
+	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	NodeConnectionType,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
 	Workflow,
@@ -20,22 +23,21 @@ import {
 	ApplicationError,
 	deepCopy,
 	ExpressionError,
-	LoggerProxy,
 	NodeHelpers,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/Constants';
+import { Memoized } from '@/decorators';
 import { extractValue } from '@/ExtractValue';
 import { InstanceSettings } from '@/InstanceSettings';
+import { Logger } from '@/logging/logger';
 
-import {
-	cleanupParameterData,
-	ensureType,
-	getAdditionalKeys,
-	validateValueAgainstSchema,
-} from './utils';
+import { cleanupParameterData } from './utils/cleanupParameterData';
+import { ensureType } from './utils/ensureType';
+import { getAdditionalKeys } from './utils/getAdditionalKeys';
+import { validateValueAgainstSchema } from './utils/validateValueAgainstSchema';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -51,8 +53,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		protected readonly executeData?: IExecuteData,
 	) {}
 
+	@Memoized
 	get logger() {
-		return LoggerProxy;
+		return Container.get(Logger);
 	}
 
 	getExecutionId() {
@@ -86,6 +89,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				disabled: node.disabled ?? false,
 			});
 		}
 		return output;
@@ -101,9 +105,46 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
+				disabled: node.disabled ?? false,
 			});
 		}
 		return output;
+	}
+
+	@Memoized
+	get nodeType() {
+		const { type, typeVersion } = this.node;
+		return this.workflow.nodeTypes.getByNameAndVersion(type, typeVersion);
+	}
+
+	@Memoized
+	get nodeInputs() {
+		return NodeHelpers.getNodeInputs(this.workflow, this.node, this.nodeType.description).map(
+			(input) => (typeof input === 'string' ? { type: input } : input),
+		);
+	}
+
+	getNodeInputs(): INodeInputConfiguration[] {
+		return this.nodeInputs;
+	}
+
+	@Memoized
+	get nodeOutputs() {
+		return NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType.description).map(
+			(output) => (typeof output === 'string' ? { type: output } : output),
+		);
+	}
+
+	getConnectedNodes(connectionType: NodeConnectionType): INode[] {
+		return this.workflow
+			.getParentNodes(this.node.name, connectionType, 1)
+			.map((nodeName) => this.workflow.getNode(nodeName))
+			.filter((node) => !!node)
+			.filter((node) => node.disabled !== true);
+	}
+
+	getNodeOutputs(): INodeOutputConfiguration[] {
+		return this.nodeOutputs;
 	}
 
 	getKnownNodeTypes() {
@@ -258,6 +299,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return decryptedDataObject as T;
 	}
 
+	@Memoized
 	protected get additionalKeys() {
 		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);
 	}

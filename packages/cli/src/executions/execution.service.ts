@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
+import { Logger } from 'n8n-core';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -38,7 +39,6 @@ import type {
 	IWorkflowDb,
 } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -504,7 +504,7 @@ export class ExecutionService {
 		}
 	}
 
-	public async annotate(
+	async annotate(
 		executionId: string,
 		updateData: ExecutionRequest.ExecutionUpdatePayload,
 		sharedWorkflowIds: string[],

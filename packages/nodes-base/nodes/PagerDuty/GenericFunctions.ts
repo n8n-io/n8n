@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	JsonObject,
 	IDataObject,
@@ -9,8 +10,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { snakeCase } from 'change-case';
 
 export async function pagerDutyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

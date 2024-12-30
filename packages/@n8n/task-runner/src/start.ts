@@ -1,17 +1,18 @@
+import './polyfills';
+import type { ErrorReporter } from 'n8n-core';
 import { ensureError, setGlobalState } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
-import type { ErrorReporter } from './error-reporter';
-import type { HealthcheckServer } from './healthcheck-server';
+import type { HealthCheckServer } from './health-check-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 
-let healthcheckServer: HealthcheckServer | undefined;
+let healthCheckServer: HealthCheckServer | undefined;
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
 let errorReporter: ErrorReporter | undefined;
 
-function createSignalHandler(signal: string) {
+function createSignalHandler(signal: string, timeoutInS = 10) {
 	return async function onSignal() {
 		if (isShuttingDown) {
 			return;
@@ -19,16 +20,21 @@ function createSignalHandler(signal: string) {
 
 		console.log(`Received ${signal} signal, shutting down...`);
 
+		setTimeout(() => {
+			console.error('Shutdown timeout reached, forcing shutdown...');
+			process.exit(1);
+		}, timeoutInS * 1000).unref();
+
 		isShuttingDown = true;
 		try {
 			if (runner) {
 				await runner.stop();
 				runner = undefined;
-				void healthcheckServer?.stop();
+				void healthCheckServer?.stop();
 			}
 
 			if (errorReporter) {
-				await errorReporter.stop();
+				await errorReporter.shutdown();
 				errorReporter = undefined;
 			}
 		} catch (e) {
@@ -49,22 +55,23 @@ void (async function start() {
 	});
 
 	if (config.sentryConfig.sentryDsn) {
-		const { ErrorReporter } = await import('@/error-reporter');
-		errorReporter = new ErrorReporter(config.sentryConfig);
-		await errorReporter.start();
+		const { ErrorReporter } = await import('n8n-core');
+		errorReporter = Container.get(ErrorReporter);
+		await errorReporter.init('task_runner', config.sentryConfig.sentryDsn);
 	}
 
 	runner = new JsTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {
-		void createSignalHandler('IDLE_TIMEOUT')();
+		// Use shorter timeout since we know we don't have any tasks running
+		void createSignalHandler('IDLE_TIMEOUT', 1)();
 	});
 
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
 
 	if (enabled) {
-		const { HealthcheckServer } = await import('./healthcheck-server');
-		healthcheckServer = new HealthcheckServer();
-		await healthcheckServer.start(host, port);
+		const { HealthCheckServer } = await import('./health-check-server');
+		healthCheckServer = new HealthCheckServer();
+		await healthCheckServer.start(host, port);
 	}
 
 	process.on('SIGINT', createSignalHandler('SIGINT'));

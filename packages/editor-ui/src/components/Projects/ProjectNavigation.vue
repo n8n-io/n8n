@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
-import { sortByProperty } from '@/utils/sortUtils';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 
 type Props = {
 	collapsed: boolean;
@@ -16,6 +16,10 @@ const props = defineProps<Props>();
 
 const locale = useI18n();
 const projectsStore = useProjectsStore();
+const globalEntityCreation = useGlobalEntityCreation();
+
+const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
+const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -29,7 +33,7 @@ const home = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: props.collapsed ? undefined : 'layer-group',
+	icon: project.icon,
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -41,7 +45,7 @@ const getProjectMenuItem = (project: ProjectListItem) => ({
 const personalProject = computed<IMenuItem>(() => ({
 	id: projectsStore.personalProject?.id ?? '',
 	label: locale.baseText('projects.menu.personal'),
-	icon: props.collapsed ? undefined : 'user',
+	icon: 'user',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -50,11 +54,8 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
-const displayProjects = computed(() =>
-	sortByProperty(
-		'name',
-		projectsStore.myProjects.filter((p) => p.type === 'team'),
-	),
+const showAddFirstProject = computed(
+	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
 );
 </script>
 
@@ -72,11 +73,20 @@ const displayProjects = computed(() =>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
-			:class="$style.projectsLabel"
+			:class="[$style.projectsLabel]"
 			tag="h3"
 			bold
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
+			<N8nButton
+				v-if="projectsStore.canCreateProjects"
+				icon="plus"
+				text
+				data-test-id="project-plus-button"
+				:disabled="isCreatingProject"
+				:class="$style.plusBtn"
+				@click="globalEntityCreation.createProject"
+			/>
 		</N8nText>
 		<ElMenu
 			v-if="projectsStore.isTeamProjectFeatureEnabled"
@@ -103,6 +113,22 @@ const displayProjects = computed(() =>
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
+		<N8nButton
+			v-if="showAddFirstProject"
+			:class="[
+				$style.addFirstProjectBtn,
+				{
+					[$style.collapsed]: props.collapsed,
+				},
+			]"
+			:disabled="isCreatingProject"
+			type="tertiary"
+			icon="plus"
+			data-test-id="add-first-project-button"
+			@click="globalEntityCreation.createProject"
+		>
+			{{ locale.baseText('projects.menu.addFirstProject') }}
+		</N8nButton>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
@@ -114,6 +140,11 @@ const displayProjects = computed(() =>
 	width: 100%;
 	overflow: hidden;
 	align-items: start;
+	&:hover {
+		.plusBtn {
+			display: block;
+		}
+	}
 }
 
 .projectItems {
@@ -132,12 +163,40 @@ const displayProjects = computed(() =>
 }
 
 .projectsLabel {
-	margin: 0 var(--spacing-xs) var(--spacing-s);
+	display: flex;
+	justify-content: space-between;
+	margin: 0 0 var(--spacing-s) var(--spacing-xs);
 	padding: 0 var(--spacing-s);
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
 	color: var(--color-text-base);
+
+	&.collapsed {
+		padding: 0;
+		margin-left: 0;
+		justify-content: center;
+	}
+}
+
+.plusBtn {
+	margin: 0;
+	padding: 0;
+	color: var(--color-text-lighter);
+	display: none;
+}
+
+.addFirstProjectBtn {
+	border: 1px solid var(--color-background-dark);
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-3xs);
+	margin: 0 var(--spacing-m) var(--spacing-m);
+
+	&.collapsed {
+		> span:last-child {
+			display: none;
+		}
+	}
 }
 </style>
 

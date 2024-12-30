@@ -35,7 +35,9 @@ const initialState = {
 	},
 };
 
-const renderComponent = createComponentRenderer(CredentialsView);
+const renderComponent = createComponentRenderer(CredentialsView, {
+	global: { stubs: { ProjectHeader: true } },
+});
 let router: ReturnType<typeof useRouter>;
 
 describe('CredentialsView', () => {

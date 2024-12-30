@@ -87,12 +87,14 @@ export class OwnershipService {
 					id: project.id,
 					type: project.type,
 					name: project.name,
+					icon: project.icon,
 				};
 			} else {
 				entity.sharedWithProjects.push({
 					id: project.id,
 					type: project.type,
 					name: project.name,
+					icon: project.icon,
 				});
 			}
 		}

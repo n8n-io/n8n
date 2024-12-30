@@ -10,9 +10,8 @@ import { NodeApiError } from 'n8n-workflow';
 import type { ElasticsearchApiCredentials } from './types';
 
 export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body: IDataObject) {
-	const { baseUrl, ignoreSSLIssues } = (await this.getCredentials(
-		'elasticsearchApi',
-	)) as ElasticsearchApiCredentials;
+	const { baseUrl, ignoreSSLIssues } =
+		await this.getCredentials<ElasticsearchApiCredentials>('elasticsearchApi');
 
 	const bulkBody = Object.values(body).flat().join('\n') + '\n';
 
@@ -20,7 +19,7 @@ export async function elasticsearchBulkApiRequest(this: IExecuteFunctions, body:
 		method: 'POST',
 		headers: { 'Content-Type': 'application/x-ndjson' },
 		body: bulkBody,
-		url: `${baseUrl}/_bulk`,
+		url: `${baseUrl.replace(/\/$/, '')}/_bulk`,
 		skipSslCertificateValidation: ignoreSSLIssues,
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true,
@@ -58,15 +57,14 @@ export async function elasticsearchApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl, ignoreSSLIssues } = (await this.getCredentials(
-		'elasticsearchApi',
-	)) as ElasticsearchApiCredentials;
+	const { baseUrl, ignoreSSLIssues } =
+		await this.getCredentials<ElasticsearchApiCredentials>('elasticsearchApi');
 
 	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
-		url: `${baseUrl}${endpoint}`,
+		url: `${baseUrl.replace(/\/$/, '')}${endpoint}`,
 		json: true,
 		skipSslCertificateValidation: ignoreSSLIssues,
 	};

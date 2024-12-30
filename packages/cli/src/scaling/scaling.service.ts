@@ -1,13 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings } from 'n8n-core';
-import {
-	ApplicationError,
-	BINARY_ENCODING,
-	sleep,
-	jsonStringify,
-	ErrorReporterProxy,
-	ensureError,
-} from 'n8n-workflow';
+import { ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
+import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify, ensureError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
@@ -19,7 +12,6 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
 
@@ -43,6 +35,7 @@ export class ScalingService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly jobProcessor: JobProcessor,
 		private readonly globalConfig: GlobalConfig,
@@ -72,9 +65,11 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
+		const { isLeader, isMultiMain } = this.instanceSettings;
 
-		if (this.orchestrationService.isMultiMainSetupEnabled) {
+		if (isLeader) this.scheduleQueueRecovery();
+
+		if (isMultiMain) {
 			this.orchestrationService.multiMainSetup
 				.on('leader-takeover', () => this.scheduleQueueRecovery())
 				.on('leader-stepdown', () => this.stopQueueRecovery());
@@ -119,7 +114,7 @@ export class ScalingService {
 
 		await job.progress(msg);
 
-		ErrorReporterProxy.error(error, { executionId });
+		this.errorReporter.error(error, { executionId });
 
 		throw error;
 	}
@@ -133,7 +128,7 @@ export class ScalingService {
 	}
 
 	private async stopMain() {
-		if (this.orchestrationService.isSingleMainSetup) {
+		if (this.instanceSettings.isSingleMain) {
 			await this.queue.pause(true, true); // no more jobs will be picked up
 			this.logger.debug('Queue paused');
 		}
@@ -379,7 +374,7 @@ export class ScalingService {
 		return (
 			this.globalConfig.endpoints.metrics.includeQueueMetrics &&
 			this.instanceSettings.instanceType === 'main' &&
-			!this.orchestrationService.isMultiMainSetupEnabled
+			this.instanceSettings.isSingleMain
 		);
 	}
 

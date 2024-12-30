@@ -125,4 +125,42 @@ BQIDAQAB
 		accessToken: 'testToken',
 		baseUrl: 'https://api.telegram.org',
 	},
+	gmailOAuth2: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+		accessTokenUrl: 'https://oauth2.googleapis.com/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.addons.current.action.compose https://www.googleapis.com/auth/gmail.addons.current.message.action https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.compose',
+		authQueryParameters: 'access_type=offline&prompt=consent',
+		authentication: 'body',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope:
+				'https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.addons.current.action.compose https://www.googleapis.com/auth/gmail.addons.current.message.action https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.compose',
+			token_type: 'bearer',
+			expires_in: 86400,
+		},
+	},
+	notionApi: {
+		apiKey: 'key123',
+	},
+	philipsHueOAuth2Api: {
+		grantType: 'authorizationCode',
+		appId: 'APPID',
+		authUrl: 'https://api.meethue.com/v2/oauth2/authorize',
+		accessTokenUrl: 'https://api.meethue.com/v2/oauth2/token',
+		authQueryParameters: 'appid=APPID',
+		scope: '',
+		authentication: 'header',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope: '',
+			token_type: 'bearer',
+			expires_in: 86400,
+		},
+	},
 } as const;
