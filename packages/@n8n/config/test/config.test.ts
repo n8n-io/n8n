@@ -292,6 +292,9 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		tags: {
+			workflowTagsDisabled: false,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

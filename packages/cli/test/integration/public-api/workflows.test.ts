@@ -1,8 +1,8 @@
+import { GlobalConfig } from '@n8n/config';
 import type { INode } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { STARTING_NODES } from '@/constants';
 import type { Project } from '@/databases/entities/project';
 import type { TagEntity } from '@/databases/entities/tag-entity';
@@ -35,6 +35,8 @@ let activeWorkflowManager: ActiveWorkflowManager;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
+
+const globalConfig = Container.get(GlobalConfig);
 
 mockInstance(ExecutionService);
 
@@ -69,6 +71,8 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
+
+	globalConfig.tags.workflowTagsDisabled = false;
 });
 
 afterEach(async () => {
@@ -1285,7 +1289,7 @@ describe('GET /workflows/:id/tags', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2/tags', 'abcXYZ'));
 
 	test('should fail if workflowTagsDisabled', async () => {
-		config.set('workflowTagsDisabled', true);
+		globalConfig.tags.workflowTagsDisabled = true;
 
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
@@ -1294,16 +1298,12 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should fail due to non-existing workflow', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
 		const workflow = await createWorkflow({ tags }, member);
@@ -1328,8 +1328,6 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return empty array if workflow does not have tags', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
@@ -1345,7 +1343,7 @@ describe('PUT /workflows/:id/tags', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/2/tags', 'abcXYZ'));
 
 	test('should fail if workflowTagsDisabled', async () => {
-		config.set('workflowTagsDisabled', true);
+		globalConfig.tags.workflowTagsDisabled = true;
 
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
 
@@ -1354,16 +1352,12 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail due to non-existing workflow', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should add the tags, workflow have not got tags previously', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const workflow = await createWorkflow({}, member);
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
@@ -1422,8 +1416,6 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
@@ -1510,8 +1502,6 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		config.set('workflowTagsDisabled', false);
-
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);

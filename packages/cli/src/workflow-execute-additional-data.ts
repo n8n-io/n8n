@@ -36,7 +36,6 @@ import type {
 import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
@@ -728,7 +727,7 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
+		const relations = Container.get(GlobalConfig).tags.workflowTagsDisabled ? [] : ['tags'];
 
 		workflowData = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },

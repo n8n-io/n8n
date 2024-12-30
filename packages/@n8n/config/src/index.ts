@@ -18,6 +18,7 @@ import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
@@ -125,4 +126,7 @@ export class GlobalConfig {
 
 	@Nested
 	aiAssistant: AiAssistantConfig;
+
+	@Nested
+	tags: TagsConfig;
 }

@@ -87,7 +87,7 @@ export class WorkflowsController {
 
 		const { tags: tagIds } = req.body;
 
-		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
+		if (tagIds?.length && !this.globalConfig.tags.workflowTagsDisabled) {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
 
@@ -162,7 +162,7 @@ export class WorkflowsController {
 
 		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
 
-		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
+		if (tagIds && !this.globalConfig.tags.workflowTagsDisabled && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
@@ -262,7 +262,7 @@ export class WorkflowsController {
 				},
 			};
 
-			if (!config.getEnv('workflowTagsDisabled')) {
+			if (!this.globalConfig.tags.workflowTagsDisabled) {
 				relations.tags = true;
 			}
 
@@ -270,7 +270,7 @@ export class WorkflowsController {
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !config.getEnv('workflowTagsDisabled') },
+				{ includeTags: !this.globalConfig.tags.workflowTagsDisabled },
 			);
 
 			if (!workflow) {
@@ -298,7 +298,7 @@ export class WorkflowsController {
 			workflowId,
 			req.user,
 			['workflow:read'],
-			{ includeTags: !config.getEnv('workflowTagsDisabled') },
+			{ includeTags: !this.globalConfig.tags.workflowTagsDisabled },
 		);
 
 		if (!workflow) {

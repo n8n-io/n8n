@@ -139,13 +139,6 @@ export const schema = {
 		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
 	},
 
-	workflowTagsDisabled: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_WORKFLOW_TAGS_DISABLED',
-		doc: 'Disable workflow tags.',
-	},
-
 	userManagement: {
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
