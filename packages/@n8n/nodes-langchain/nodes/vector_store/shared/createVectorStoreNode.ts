@@ -49,7 +49,7 @@ interface NodeMeta {
 	operationModes?: NodeOperationMode[];
 }
 
-interface VectorStoreNodeConstructorArgs {
+export interface VectorStoreNodeConstructorArgs {
 	meta: NodeMeta;
 	methods?: {
 		listSearch?: {
