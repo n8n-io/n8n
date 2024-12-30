@@ -80,11 +80,8 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		if (listQueryOptions.includeData) {
 			if (Array.isArray(findManyOptions.select)) {
 				findManyOptions.select.push('data');
-			} else if (typeof findManyOptions.select === 'object') {
-				findManyOptions.select.data = true;
 			} else {
-				findManyOptions.select ??= [];
-				findManyOptions.select.push('data');
+				findManyOptions.select.data = true;
 			}
 		}
 
