@@ -600,6 +600,7 @@ export class GSuiteAdmin implements INodeType {
 						const body: {
 							name?: { givenName?: string; familyName?: string };
 							emails?: IDataObject[];
+							primaryEmail?: string;
 							phones?: IDataObject[];
 							suspended?: boolean;
 							roles?: { [key: string]: boolean };
@@ -625,8 +626,12 @@ export class GSuiteAdmin implements INodeType {
 							body.emails = emails;
 						}
 
+						if (updateFields.primaryEmail) {
+							body.primaryEmail = updateFields.primaryEmail as string;
+						}
+
 						if (typeof updateFields.suspendUi === 'boolean') {
-							body.suspended = updateFields.suspendUi; // Map directly to suspended
+							body.suspended = updateFields.suspendUi;
 						}
 
 						if (updateFields.roles) {
