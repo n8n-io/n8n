@@ -66,10 +66,15 @@ export class WorkflowRunner {
 		//
 		// FIXME: This is a quick fix. The proper fix would be to not remove
 		// the execution from the active executions while it's still running.
-		if (error instanceof ExecutionNotFoundError || error instanceof ExecutionCancelledError) {
+		if (
+			error instanceof ExecutionNotFoundError ||
+			error instanceof ExecutionCancelledError ||
+			error.message.includes('cancelled')
+		) {
 			return;
 		}
 
+		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
@@ -413,7 +418,6 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
-					this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);
