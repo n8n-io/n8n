@@ -1,8 +1,15 @@
 import { GlobalConfig } from '@n8n/config';
 import { ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify, ensureError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	BINARY_ENCODING,
+	sleep,
+	jsonStringify,
+	ensureError,
+	ExecutionCancelledError,
+} from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
-import { strict } from 'node:assert';
+import assert, { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -206,7 +213,8 @@ export class ScalingService {
 		try {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
-				this.logger.debug('Stopped active job', props);
+				await job.discard(); // prevent retries
+				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
 				return true;
 			}
 
@@ -214,8 +222,15 @@ export class ScalingService {
 			this.logger.debug('Stopped inactive job', props);
 			return true;
 		} catch (error: unknown) {
-			await job.progress({ kind: 'abort-job' });
-			this.logger.error('Failed to stop job', { ...props, error });
+			assert(error instanceof Error);
+			this.logger.error('Failed to stop job', {
+				...props,
+				error: {
+					message: error.message,
+					name: error.name,
+					stack: error.stack,
+				},
+			});
 			return false;
 		}
 	}
