@@ -5,15 +5,23 @@ type Props = {
 	icon: ProjectIcon;
 	size?: 'small' | 'medium' | 'large';
 	round?: boolean;
+	borderLess?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
 	round: false,
+	borderLess: false,
 });
 </script>
 <template>
-	<div :class="[$style.container, $style[props.size], { [$style.round]: props.round }]">
+	<div
+		:class="[
+			$style.container,
+			$style[props.size],
+			{ [$style.round]: props.round, [$style.borderless]: props.borderLess },
+		]"
+	>
 		<N8nIcon
 			v-if="props.icon.type === 'icon'"
 			:icon="props.icon.value"
@@ -35,6 +43,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 	&.round {
 		border-radius: 50%;
+	}
+
+	&.borderless {
+		border: none;
 	}
 }
 
