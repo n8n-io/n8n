@@ -66,7 +66,7 @@ export class WorkflowRunner {
 		//
 		// FIXME: This is a quick fix. The proper fix would be to not remove
 		// the execution from the active executions while it's still running.
-		if (error instanceof ExecutionNotFoundError) {
+		if (error instanceof ExecutionNotFoundError || error instanceof ExecutionCancelledError) {
 			return;
 		}
 
