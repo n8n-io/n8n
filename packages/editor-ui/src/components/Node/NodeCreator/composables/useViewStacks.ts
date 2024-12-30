@@ -7,6 +7,7 @@ import type {
 } from '@/Interface';
 import {
 	AI_CATEGORY_ROOT_NODES,
+	AI_CATEGORY_TOOLS,
 	AI_CODE_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -209,8 +210,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return items.filter((node) => {
 			if (node.type !== 'node') return false;
 
-			return node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
-				AI_CATEGORY_ROOT_NODES,
+			const subcategories = node.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+			return (
+				subcategories.includes(AI_CATEGORY_ROOT_NODES) &&
+				!subcategories?.includes(AI_CATEGORY_TOOLS)
 			);
 		});
 	}

@@ -150,7 +150,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			codex: {
 				categories: ['AI'],
 				subcategories: {
-					AI: ['Vector Stores', 'Root Nodes'],
+					AI: ['Tools', 'Vector Stores', 'Root Nodes'],
+					Tools: ['Other Tools'],
 				},
 				resources: {
 					primaryDocumentation: [
