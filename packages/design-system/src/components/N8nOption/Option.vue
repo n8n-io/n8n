@@ -3,7 +3,7 @@ import { ElOption } from 'element-plus';
 
 const props = defineProps({
 	...ElOption.props,
-	value: { type: [String, Number], required: true },
+	value: { type: [String, Number, Boolean, Object], required: true },
 });
 </script>
 
