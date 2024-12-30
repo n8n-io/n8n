@@ -4,6 +4,7 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
 import type {
 	IExecuteFunctions,
 	INodeCredentialDescription,
@@ -395,7 +396,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			if (mode === 'retrieve') {
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
+
+				async function closeFunction() {
+					const pgVectorStore = vectorStore as PGVectorStore;
+					void pgVectorStore?.client?.release();
+				}
+
 				return {
+					closeFunction,
 					response: logWrapper(vectorStore, this),
 				};
 			}
