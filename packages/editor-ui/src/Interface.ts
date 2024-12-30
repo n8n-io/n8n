@@ -2,6 +2,7 @@ import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { Connection } from '@jsplumb/core';
 import type {
+	BannerName,
 	FrontendSettings,
 	Iso8601DateTimeString,
 	IUserManagementSettings,
@@ -38,7 +39,6 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	IUserSettings,
-	BannerName,
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,

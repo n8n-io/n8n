@@ -39,6 +39,7 @@ import { DropRoleMapping1705429061930 } from './1705429061930-DropRoleMapping';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { AddApiKeysTable1724951148974 } from './1724951148974-AddApiKeysTable';
 import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from './1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
+import { AddProjectIcons1729607673469 } from './1729607673469-AddProjectIcons';
 import { AddDescriptionToTestDefinition1731404028106 } from './1731404028106-AddDescriptionToTestDefinition';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
@@ -71,6 +72,7 @@ import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-
 import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
 import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
 import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
+import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -144,6 +146,8 @@ const sqliteMigrations: Migration[] = [
 	CreateTestMetricTable1732271325258,
 	CreateTestRun1732549866705,
 	AddMockedNodesColumnToTestDefinition1733133775640,
+	AddManagedColumnToCredentialsTable1734479635324,
+	AddProjectIcons1729607673469,
 ];
 
 export { sqliteMigrations };

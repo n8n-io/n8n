@@ -8,6 +8,7 @@ import { useToast } from '@/composables/useToast';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/constants';
@@ -178,5 +179,29 @@ describe('useGlobalEntityCreation', () => {
 			'Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows',
 		);
 		expect(upgradeLabel.value).toBe('Enterprise');
+	});
+
+	it('should display properly for readOnlyEnvironment', () => {
+		const sourceControlStore = mockedStore(useSourceControlStore);
+		sourceControlStore.preferences.branchReadOnly = true;
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.teamProjectsLimit = -1;
+
+		const personalProjectId = 'personal-project';
+		projectsStore.isTeamProjectFeatureEnabled = true;
+		projectsStore.personalProject = { id: personalProjectId } as Project;
+		projectsStore.myProjects = [
+			{ id: '1', name: '1', type: 'team' },
+			{ id: '2', name: '2', type: 'public' },
+			{ id: '3', name: '3', type: 'team' },
+		] as ProjectListItem[];
+
+		const { menu } = useGlobalEntityCreation();
+
+		expect(menu.value[0].disabled).toBe(true);
+		expect(menu.value[1].disabled).toBe(true);
+
+		expect(menu.value[0].submenu).toBe(undefined);
+		expect(menu.value[1].submenu).toBe(undefined);
 	});
 });

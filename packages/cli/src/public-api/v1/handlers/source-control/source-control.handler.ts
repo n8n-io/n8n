@@ -5,10 +5,10 @@ import { Container } from 'typedi';
 import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
-} from '@/environments/source-control/source-control-helper.ee';
-import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
-import { SourceControlService } from '@/environments/source-control/source-control.service.ee';
-import type { ImportResult } from '@/environments/source-control/types/import-result';
+} from '@/environments.ee/source-control/source-control-helper.ee';
+import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import type { ImportResult } from '@/environments.ee/source-control/types/import-result';
 import { EventService } from '@/events/event.service';
 
 import type { PublicSourceControlRequest } from '../../../types';

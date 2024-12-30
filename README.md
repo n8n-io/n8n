@@ -22,7 +22,7 @@ Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (req
 
 Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):
 
-`docker run -it --rm --name n8n -p 5678:5678 docker.n8n.io/n8n-io/n8n`
+`docker run -it --rm --name n8n -p 5678:5678 docker.n8n.io/n8nio/n8n`
 
 Access the editor at http://localhost:5678
 

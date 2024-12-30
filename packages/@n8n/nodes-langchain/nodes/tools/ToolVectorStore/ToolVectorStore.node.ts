@@ -18,6 +18,7 @@ export class ToolVectorStore implements INodeType {
 		displayName: 'Vector Store Question Answer Tool',
 		name: 'toolVectorStore',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1],
 		description: 'Answer questions with a vector store',

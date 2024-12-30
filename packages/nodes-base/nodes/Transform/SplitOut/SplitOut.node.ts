@@ -15,6 +15,7 @@ import type {
 	INodeTypeDescription,
 	NodeExecutionHint,
 } from 'n8n-workflow';
+
 import { prepareFieldsArray } from '../utils/utils';
 
 export class SplitOut implements INodeType {

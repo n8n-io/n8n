@@ -9,15 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	mispApiRequest,
-	mispApiRequestAllItems,
-	mispApiRestSearch,
-	throwOnEmptyUpdate,
-	throwOnInvalidUrl,
-	throwOnMissingSharingGroup,
-} from './GenericFunctions';
-
-import {
 	attributeFields,
 	attributeOperations,
 	eventFields,
@@ -41,7 +32,14 @@ import {
 	warninglistFields,
 	warninglistOperations,
 } from './descriptions';
-
+import {
+	mispApiRequest,
+	mispApiRequestAllItems,
+	mispApiRestSearch,
+	throwOnEmptyUpdate,
+	throwOnInvalidUrl,
+	throwOnMissingSharingGroup,
+} from './GenericFunctions';
 import type { LoadedOrgs, LoadedSharingGroups, LoadedTags, LoadedUsers } from './types';
 
 export class Misp implements INodeType {

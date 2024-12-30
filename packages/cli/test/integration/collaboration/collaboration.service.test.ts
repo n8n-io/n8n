@@ -78,37 +78,41 @@ describe('CollaborationService', () => {
 			// Assert
 			expect(sendToUsersSpy).toHaveBeenNthCalledWith(
 				1,
-				'collaboratorsChanged',
 				{
-					collaborators: [
-						{
-							lastSeen: expect.any(String),
-							user: owner.toIUser(),
-						},
-					],
-					workflowId: workflow.id,
+					type: 'collaboratorsChanged',
+					data: {
+						collaborators: [
+							{
+								lastSeen: expect.any(String),
+								user: owner.toIUser(),
+							},
+						],
+						workflowId: workflow.id,
+					},
 				},
 				[owner.id],
 			);
 			expect(sendToUsersSpy).toHaveBeenNthCalledWith(
 				2,
-				'collaboratorsChanged',
 				{
-					collaborators: expect.arrayContaining([
-						expect.objectContaining({
-							lastSeen: expect.any(String),
-							user: expect.objectContaining({
-								id: owner.id,
+					type: 'collaboratorsChanged',
+					data: {
+						collaborators: expect.arrayContaining([
+							expect.objectContaining({
+								lastSeen: expect.any(String),
+								user: expect.objectContaining({
+									id: owner.id,
+								}),
 							}),
-						}),
-						expect.objectContaining({
-							lastSeen: expect.any(String),
-							user: expect.objectContaining({
-								id: memberWithAccess.id,
+							expect.objectContaining({
+								lastSeen: expect.any(String),
+								user: expect.objectContaining({
+									id: memberWithAccess.id,
+								}),
 							}),
-						}),
-					]),
-					workflowId: workflow.id,
+						]),
+						workflowId: workflow.id,
+					},
 				},
 				[owner.id, memberWithAccess.id],
 			);
@@ -151,17 +155,19 @@ describe('CollaborationService', () => {
 
 			// Assert
 			expect(sendToUsersSpy).toHaveBeenCalledWith(
-				'collaboratorsChanged',
 				{
-					collaborators: expect.arrayContaining([
-						expect.objectContaining({
-							lastSeen: expect.any(String),
-							user: expect.objectContaining({
-								id: memberWithAccess.id,
+					type: 'collaboratorsChanged',
+					data: {
+						collaborators: expect.arrayContaining([
+							expect.objectContaining({
+								lastSeen: expect.any(String),
+								user: expect.objectContaining({
+									id: memberWithAccess.id,
+								}),
 							}),
-						}),
-					]),
-					workflowId: workflow.id,
+						]),
+						workflowId: workflow.id,
+					},
 				},
 				[memberWithAccess.id],
 			);

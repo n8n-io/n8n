@@ -8,7 +8,7 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 
@@ -540,6 +540,7 @@ describe('GET /credentials/:id', () => {
 			id: ownerPersonalProject.id,
 			name: owner.createPersonalProjectName(),
 			type: ownerPersonalProject.type,
+			icon: null,
 		});
 		expect(firstCredential.sharedWithProjects).toHaveLength(0);
 
@@ -629,17 +630,20 @@ describe('GET /credentials/:id', () => {
 			homeProject: {
 				id: member1PersonalProject.id,
 				name: member1.createPersonalProjectName(),
+				icon: null,
 				type: 'personal',
 			},
 			sharedWithProjects: expect.arrayContaining([
 				{
 					id: member2PersonalProject.id,
 					name: member2.createPersonalProjectName(),
+					icon: null,
 					type: member2PersonalProject.type,
 				},
 				{
 					id: member3PersonalProject.id,
 					name: member3.createPersonalProjectName(),
+					icon: null,
 					type: member3PersonalProject.type,
 				},
 			]),
