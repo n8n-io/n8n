@@ -633,6 +633,7 @@ describe('JsTaskRunner', () => {
 						),
 					});
 
+					// Assert
 					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
 				});
 
@@ -661,26 +662,22 @@ describe('JsTaskRunner', () => {
 			describe('unsupported methods', () => {
 				for (const unsupportedFunction of UNSUPPORTED_HELPER_FUNCTIONS) {
 					it(`should throw an error if ${unsupportedFunction} is used in runOnceForAllItems`, async () => {
-						// Act
-
+						// Act & Assert
 						await expect(
-							async () =>
-								await executeForAllItems({
-									code: `${unsupportedFunction}()`,
-									inputItems,
-								}),
+							executeForAllItems({
+								code: `${unsupportedFunction}()`,
+								inputItems,
+							}),
 						).rejects.toThrow(UnsupportedFunctionError);
 					});
 
 					it(`should throw an error if ${unsupportedFunction} is used in runOnceForEachItem`, async () => {
-						// Act
-
+						// Act & Assert
 						await expect(
-							async () =>
-								await executeForEachItem({
-									code: `${unsupportedFunction}()`,
-									inputItems,
-								}),
+							executeForEachItem({
+								code: `${unsupportedFunction}()`,
+								inputItems,
+							}),
 						).rejects.toThrow(UnsupportedFunctionError);
 					});
 				}
