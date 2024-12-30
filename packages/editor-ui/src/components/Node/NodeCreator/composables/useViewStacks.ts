@@ -38,12 +38,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import {
-	AI_TRANSFORM_NODE_TYPE,
-	NodeConnectionType,
-	type INodeInputFilter,
-	type Themed,
-} from 'n8n-workflow';
+import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
+import type { NodeConnectionType, INodeInputFilter, Themed } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
