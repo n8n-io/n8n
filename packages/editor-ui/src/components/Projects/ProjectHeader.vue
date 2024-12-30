@@ -107,16 +107,18 @@ const onSelect = (action: string) => {
 <template>
 	<div>
 		<div :class="[$style.projectHeader]">
-			<ProjectIcon :icon="headerIcon" size="medium" />
-			<div>
-				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
-				<N8nText color="text-light">
-					<slot name="subtitle">
-						<span v-if="!projectsStore.currentProject">{{
-							i18n.baseText('projects.header.subtitle')
-						}}</span>
-					</slot>
-				</N8nText>
+			<div :class="[$style.projectDetails]">
+				<ProjectIcon :icon="headerIcon" :border-less="true" size="medium" />
+				<div>
+					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+					<N8nText color="text-light">
+						<slot name="subtitle">
+							<span v-if="!projectsStore.currentProject">{{
+								i18n.baseText('projects.header.subtitle')
+							}}</span>
+						</slot>
+					</N8nText>
+				</div>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
 				<N8nTooltip
@@ -148,25 +150,17 @@ const onSelect = (action: string) => {
 .projectHeader {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	justify-content: space-between;
 	padding-bottom: var(--spacing-m);
-	min-height: 64px;
+	min-height: var(--spacing-3xl);
 }
 
-.headerActions {
-	margin-left: auto;
-}
-
-.icon {
-	border: 1px solid var(--color-foreground-light);
-	padding: 6px;
-	border-radius: var(--border-radius-base);
+.projectDetails {
+	display: flex;
+	align-items: center;
 }
 
 .actions {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-end;
 	padding: var(--spacing-2xs) 0 var(--spacing-l);
 }
 </style>
