@@ -426,7 +426,7 @@ export class WorkflowExecute {
 	 * @remarks
 	 * - Metadata from multiple runs is preserved using run indices
 	 * - Existing metadata in runData is preserved and merged with new metadata
-	 * - If no metadata exists or runData is missing, the operation is a no-op
+	 * - If no metadata exists, the operation is a no-op
 	 */
 	moveNodeMetadata(): void {
 		const metadata = get(this.runExecutionData, 'executionData.metadata');
