@@ -124,6 +124,7 @@ export interface IUser {
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
+	icon: { type: 'emoji' | 'icon'; value: string } | null;
 	type: 'personal' | 'team' | 'public';
 	createdAt: string;
 	updatedAt: string;
@@ -2766,6 +2767,7 @@ export interface IUserSettings {
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
+	userClaimedAiCredits?: boolean;
 }
 
 export interface IProcessedDataConfig {
@@ -2822,13 +2824,6 @@ export interface SecretsHelpersBase {
 	listProviders(): string[];
 	listSecrets(provider: string): string[];
 }
-
-export type BannerName =
-	| 'V1'
-	| 'TRIAL_OVER'
-	| 'TRIAL'
-	| 'NON_PRODUCTION_LICENSE'
-	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 

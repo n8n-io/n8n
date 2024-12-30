@@ -17,7 +17,6 @@ import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
-import type { UserSetupPayload } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 
@@ -47,6 +46,16 @@ const tablesToTruncate = [
 	'workflow_statistics',
 	'workflows_tags',
 ];
+
+type UserSetupPayload = {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
+};
 
 type ResetRequest = Request<
 	{},
@@ -91,6 +100,7 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
+		[LICENSE_FEATURES.AI_CREDITS]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -99,6 +109,7 @@ export class E2EController {
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
 	};
 
 	constructor(

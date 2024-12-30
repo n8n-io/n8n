@@ -283,6 +283,9 @@ export const setupTestServer = ({
 						await import('@/evaluation.ee/test-definitions.controller.ee');
 						await import('@/evaluation.ee/test-runs.controller.ee');
 						break;
+
+					case 'ai':
+						await import('@/controllers/ai.controller');
 				}
 			}
 

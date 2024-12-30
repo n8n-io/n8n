@@ -320,7 +320,6 @@ export class PostgresV1 implements INodeType {
 
 					const db = pgp(config);
 					await db.connect();
-					await db.$pool.end();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -409,15 +408,11 @@ export class PostgresV1 implements INodeType {
 
 			returnItems = wrapData(updateItems);
 		} else {
-			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
-
-		// shuts down the connection pool associated with the db object to allow the process to finish
-		await db.$pool.end();
 
 		return [returnItems];
 	}
