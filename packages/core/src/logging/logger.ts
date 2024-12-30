@@ -32,6 +32,9 @@ export class Logger implements LoggerType {
 		return this.scopes.size > 0;
 	}
 
+	/** https://no-color.org/ */
+	private readonly noColor = process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '';
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
@@ -129,18 +132,22 @@ export class Logger implements LoggerType {
 		})();
 	}
 
+	private color() {
+		return this.noColor ? winston.format.uncolorize() : winston.format.colorize({ all: true });
+	}
+
 	private debugDevConsoleFormat() {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp({ format: () => this.devTsFormat() }),
-			winston.format.colorize({ all: true }),
+			this.color(),
 			this.scopeFilter(),
-			winston.format.printf(({ level: _level, message, timestamp, metadata: _metadata }) => {
-				const SEPARATOR = ' '.repeat(3);
-				const LOG_LEVEL_COLUMN_WIDTH = 15; // 5 columns + ANSI color codes
-				const level = _level.toLowerCase().padEnd(LOG_LEVEL_COLUMN_WIDTH, ' ');
-				const metadata = this.toPrintable(_metadata);
-				return [timestamp, level, message + ' ' + pc.dim(metadata)].join(SEPARATOR);
+			winston.format.printf(({ level: rawLevel, message, timestamp, metadata: rawMetadata }) => {
+				const separator = ' '.repeat(3);
+				const logLevelColumnWidth = this.noColor ? 5 : 15; // when colorizing, account for ANSI color codes
+				const level = rawLevel.toLowerCase().padEnd(logLevelColumnWidth, ' ');
+				const metadata = this.toPrintable(rawMetadata);
+				return [timestamp, level, message + ' ' + pc.dim(metadata)].join(separator);
 			}),
 		);
 	}
@@ -149,10 +156,11 @@ export class Logger implements LoggerType {
 		return winston.format.combine(
 			winston.format.metadata(),
 			winston.format.timestamp(),
+			this.color(),
 			this.scopeFilter(),
-			winston.format.printf(({ level, message, timestamp, metadata }) => {
-				const _metadata = this.toPrintable(metadata);
-				return `${timestamp} | ${level.padEnd(5)} | ${message}${_metadata ? ' ' + _metadata : ''}`;
+			winston.format.printf(({ level, message, timestamp, metadata: rawMetadata }) => {
+				const metadata = this.toPrintable(rawMetadata);
+				return `${timestamp} | ${level.padEnd(5)} | ${message}${metadata ? ' ' + metadata : ''}`;
 			}),
 		);
 	}
