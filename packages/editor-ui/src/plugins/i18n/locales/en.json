@@ -2805,5 +2805,11 @@
 	"testDefinition.notImplemented": "This feature is not implemented yet!",
 	"testDefinition.viewDetails": "View Details",
 	"testDefinition.editTest": "Edit Test",
-	"testDefinition.deleteTest": "Delete Test"
+	"testDefinition.deleteTest": "Delete Test",
+	"freeAi.credits.callout.claim.title": "Get {credits} free OpenAI API credits",
+	"freeAi.credits.callout.claim.button.label": "Claim credits",
+	"freeAi.credits.callout.success.title": "Claimed {credits} free OpenAI API credits",
+	"freeAi.credits.credentials.edit": "This is a managed credential and cannot be edited.",
+	"freeAi.credits.showError.claim.title": "Free AI credits",
+	"freeAi.credits.showError.claim.message": "Enable to claim credits"
 }
