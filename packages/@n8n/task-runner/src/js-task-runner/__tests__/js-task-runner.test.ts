@@ -139,7 +139,8 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(defaultTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
-					'Hello world!',
+					"'Hello'",
+					"'world!'",
 				]);
 			},
 		);

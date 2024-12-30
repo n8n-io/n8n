@@ -447,8 +447,8 @@ export class JsTaskRunner extends TaskRunner {
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
-				const logOutput = args.map((arg) => inspect(arg)).join(' ');
-				void this.makeRpcCall(taskId, 'logNodeOutput', [logOutput]);
+				const formattedLogArgs = args.map((arg) => inspect(arg));
+				void this.makeRpcCall(taskId, 'logNodeOutput', formattedLogArgs);
 			},
 		};
 	}
