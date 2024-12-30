@@ -51,7 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .small {
-	width: var(--spacing-l);
+	min-width: var(--spacing-l);
 	height: var(--spacing-l);
 
 	.emoji {
@@ -60,7 +60,7 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .medium {
-	width: var(--spacing-xl);
+	min-width: var(--spacing-xl);
 	height: var(--spacing-xl);
 
 	.emoji {
@@ -70,7 +70,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 .large {
 	// Making this in line with user avatar size
-	width: 40px;
+	min-width: 40px;
 	height: 40px;
 
 	.emoji {
