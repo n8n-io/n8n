@@ -1,6 +1,6 @@
 import { Z } from 'zod-class';
 
-import { booleanLiteral } from '../../schemas/booleanLiteral';
+import { booleanFromString } from '../../schemas/booleanFromString';
 
 export class CredentialsGetManyRequestQuery extends Z.class({
 	/**
@@ -8,7 +8,7 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 * requesting user has in relation to the credential, e.g.
 	 *     ['credential:read', 'credential:update']
 	 */
-	includeScopes: booleanLiteral.optional(),
+	includeScopes: booleanFromString.optional(),
 
 	/**
 	 * Adds the decrypted `data` field to each credential.
@@ -18,5 +18,5 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 *
 	 * This switches `includeScopes` to true to be able to check for the scopes
 	 */
-	includeData: booleanLiteral.optional(),
+	includeData: booleanFromString.optional(),
 }) {}

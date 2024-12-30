@@ -1,6 +1,6 @@
 import { Z } from 'zod-class';
 
-import { booleanLiteral } from '../../schemas/booleanLiteral';
+import { booleanFromString } from '../../schemas/booleanFromString';
 
 export class CredentialsGetOneRequestQuery extends Z.class({
 	/**
@@ -9,5 +9,5 @@ export class CredentialsGetOneRequestQuery extends Z.class({
 	 * It only does this for credentials for which the user has the
 	 * `credential:update` scope.
 	 */
-	includeData: booleanLiteral.optional(),
+	includeData: booleanFromString.optional(),
 }) {}
