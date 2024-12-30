@@ -317,7 +317,7 @@ async function initializeRoute(force = false) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const templateId = route.params.id;
-		const loadWorkflowFromJSON = route.params.fromJson === 'true';
+		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
 			await openTemplateFromWorkflowJSON(EASY_AI_WORKFLOW_JSON);
