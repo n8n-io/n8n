@@ -7,7 +7,7 @@ import { ElOption } from 'element-plus';
 type OptionProps = {
 	value: string | number | boolean | object;
 	label?: string | number;
-	disabled: boolean;
+	disabled?: boolean;
 };
 const props = defineProps<OptionProps>();
 </script>
