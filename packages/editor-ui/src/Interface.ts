@@ -27,9 +27,6 @@ import type {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	INodeTypeNameVersion,
-	ILoadOptions,
-	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -1265,35 +1262,6 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
-
-export declare namespace DynamicNodeParameters {
-	interface BaseRequest {
-		path: string;
-		nodeTypeAndVersion: INodeTypeNameVersion;
-		currentNodeParameters: INodeParameters;
-		methodName?: string;
-		credentials?: INodeCredentials;
-	}
-
-	interface OptionsRequest extends BaseRequest {
-		loadOptions?: ILoadOptions;
-	}
-
-	interface ResourceLocatorResultsRequest extends BaseRequest {
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}
-
-	interface ResourceMapperFieldsRequest extends BaseRequest {
-		methodName: string;
-	}
-
-	interface ActionResultRequest extends BaseRequest {
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}
-}
 
 export interface EnvironmentVariable {
 	id: string;
