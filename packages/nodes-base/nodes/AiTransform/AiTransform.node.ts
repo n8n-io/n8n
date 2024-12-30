@@ -1,3 +1,4 @@
+import set from 'lodash/set';
 import {
 	NodeOperationError,
 	NodeConnectionType,
@@ -8,8 +9,6 @@ import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 	AI_TRANSFORM_JS_CODE,
 } from 'n8n-workflow';
-
-import set from 'lodash/set';
 
 import { JavaScriptSandbox } from '../Code/JavaScriptSandbox';
 import { getSandboxContext } from '../Code/Sandbox';

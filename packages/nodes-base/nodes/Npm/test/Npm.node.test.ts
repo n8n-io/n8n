@@ -1,6 +1,7 @@
 import nock from 'nock';
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
+
 import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
+import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 describe('Test npm Node', () => {
 	beforeAll(() => {

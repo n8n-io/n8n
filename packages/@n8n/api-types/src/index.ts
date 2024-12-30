@@ -7,3 +7,6 @@ export type * from './user';
 
 export type { Collaborator } from './push/collaboration';
 export type { SendWorkerStatusMessage } from './push/worker';
+
+export type { BannerName } from './schemas/bannerName.schema';
+export { passwordSchema } from './schemas/password.schema';

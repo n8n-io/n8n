@@ -124,9 +124,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = projectData.name;
+			myProjects.value[projectIndex].icon = projectData.icon;
 		}
 		if (currentProject.value) {
 			currentProject.value.name = projectData.name;
+			currentProject.value.icon = projectData.icon;
 		}
 		if (projectData.relations) {
 			await getProject(projectData.id);

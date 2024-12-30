@@ -31,6 +31,7 @@ export class ChainRetrievalQa implements INodeType {
 		displayName: 'Question and Answer Chain',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Answer questions about retrieved documents',

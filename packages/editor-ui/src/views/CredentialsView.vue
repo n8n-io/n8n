@@ -21,6 +21,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -37,6 +38,7 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -179,7 +181,6 @@ onMounted(() => {
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"
 		:disabled="readOnlyEnv || !projectPermissions.credential.create"
-		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
 		<template #header>
@@ -220,6 +221,36 @@ onMounted(() => {
 					/>
 				</N8nSelect>
 			</div>
+		</template>
+		<template #empty>
+			<n8n-action-box
+				data-test-id="empty-resources-list"
+				emoji="👋"
+				:heading="
+					i18n.baseText(
+						usersStore.currentUser?.firstName
+							? 'credentials.empty.heading'
+							: 'credentials.empty.heading.userNotSetup',
+						{
+							interpolate: { name: usersStore.currentUser?.firstName ?? '' },
+						},
+					)
+				"
+				:description="i18n.baseText('credentials.empty.description')"
+				:button-text="i18n.baseText('credentials.empty.button')"
+				button-type="secondary"
+				:button-disabled="readOnlyEnv || !projectPermissions.credential.create"
+				:button-icon="readOnlyEnv ? 'lock' : undefined"
+				@click:button="addCredential"
+			>
+				<template #disabledButtonTooltip>
+					{{
+						readOnlyEnv
+							? i18n.baseText('readOnlyEnv.cantAdd.credential')
+							: i18n.baseText('credentials.empty.button.disabled.tooltip')
+					}}
+				</template>
+			</n8n-action-box>
 		</template>
 	</ResourcesListLayout>
 </template>

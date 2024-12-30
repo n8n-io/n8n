@@ -15,19 +15,19 @@ import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_OWNER_SCOPES,
-} from '@/permissions/global-roles';
+} from '@/permissions.ee/global-roles';
 import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
-} from '@/permissions/project-roles';
+} from '@/permissions.ee/project-roles';
 import {
 	CREDENTIALS_SHARING_OWNER_SCOPES,
 	CREDENTIALS_SHARING_USER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 	WORKFLOW_SHARING_OWNER_SCOPES,
-} from '@/permissions/resource-roles';
+} from '@/permissions.ee/resource-roles';
 import type { ListQuery } from '@/requests';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';

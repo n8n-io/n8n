@@ -21,7 +21,7 @@ import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
-	const instanceSettings = new InstanceSettings(mock());
+	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
 	const now = new Date();

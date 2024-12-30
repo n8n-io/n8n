@@ -27,7 +27,7 @@ export class CollaborationState {
 	 * After how many minutes of inactivity a user should be removed
 	 * as being an active user of a workflow.
 	 */
-	public readonly inactivityCleanUpTime = 15 * Time.minutes.toMilliseconds;
+	readonly inactivityCleanUpTime = 15 * Time.minutes.toMilliseconds;
 
 	constructor(private readonly cache: CacheService) {}
 

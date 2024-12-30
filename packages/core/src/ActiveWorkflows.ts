@@ -11,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
-	LoggerProxy as Logger,
 	toCronExpression,
 	TriggerCloseError,
 	WorkflowActivationError,
@@ -21,12 +20,14 @@ import { Service } from 'typedi';
 
 import { ErrorReporter } from './error-reporter';
 import type { IWorkflowData } from './Interfaces';
+import { Logger } from './logging/logger';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { TriggersAndPollers } from './TriggersAndPollers';
 
 @Service()
 export class ActiveWorkflows {
 	constructor(
+		private readonly logger: Logger,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
@@ -71,16 +72,13 @@ export class ActiveWorkflows {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
-		this.activeWorkflows[workflowId] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
-		let triggerResponse: ITriggerResponse | undefined;
-
-		this.activeWorkflows[workflowId].triggerResponses = [];
+		const triggerResponses: ITriggerResponse[] = [];
 
 		for (const triggerNode of triggerNodes) {
 			try {
-				triggerResponse = await this.triggersAndPollers.runTrigger(
+				const triggerResponse = await this.triggersAndPollers.runTrigger(
 					workflow,
 					triggerNode,
 					getTriggerFunctions,
@@ -89,10 +87,7 @@ export class ActiveWorkflows {
 					activation,
 				);
 				if (triggerResponse !== undefined) {
-					// If a response was given save it
-
-					// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-					this.activeWorkflows[workflowId].triggerResponses!.push(triggerResponse);
+					triggerResponses.push(triggerResponse);
 				}
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -103,6 +98,8 @@ export class ActiveWorkflows {
 				);
 			}
 		}
+
+		this.activeWorkflows[workflowId] = { triggerResponses };
 
 		const pollingNodes = workflow.getPollNodes();
 
@@ -119,6 +116,11 @@ export class ActiveWorkflows {
 					activation,
 				);
 			} catch (e) {
+				// Do not mark this workflow as active if there are no triggerResponses, and any polling activation failed
+				if (triggerResponses.length === 0) {
+					delete this.activeWorkflows[workflowId];
+				}
+
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
 				throw new WorkflowActivationError(
@@ -132,7 +134,7 @@ export class ActiveWorkflows {
 	/**
 	 * Activates polling for the given node
 	 */
-	async activatePolling(
+	private async activatePolling(
 		node: INode,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -150,7 +152,7 @@ export class ActiveWorkflows {
 		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async (testingTrigger = false) => {
-			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
+			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
 			});
@@ -192,7 +194,7 @@ export class ActiveWorkflows {
 	 */
 	async remove(workflowId: string) {
 		if (!this.isActive(workflowId)) {
-			Logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
+			this.logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
 			return false;
 		}
 
@@ -221,7 +223,7 @@ export class ActiveWorkflows {
 			await response.closeFunction();
 		} catch (e) {
 			if (e instanceof TriggerCloseError) {
-				Logger.error(
+				this.logger.error(
 					`There was a problem calling "closeFunction" on "${e.node.name}" in workflow "${workflowId}"`,
 				);
 				this.errorReporter.error(e, { extra: { workflowId } });

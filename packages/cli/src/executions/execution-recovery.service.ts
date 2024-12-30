@@ -1,5 +1,5 @@
 import type { DateTime } from 'luxon';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -10,7 +10,6 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutionResponse } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { Push } from '@/push';
 import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 
@@ -49,7 +48,7 @@ export class ExecutionRecoveryService {
 
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast('executionRecovered', { executionId });
+			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
 		return amendedExecution;

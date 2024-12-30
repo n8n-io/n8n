@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../utils/utilities';
 
 export const guildRLC: INodeProperties = {
