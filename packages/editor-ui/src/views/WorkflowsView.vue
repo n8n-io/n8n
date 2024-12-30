@@ -270,8 +270,8 @@ const openAIWorkflow = async (source: string) => {
 		{ withPostHog: true },
 	);
 	await router.push({
-		name: VIEWS.WORKFLOW_ONBOARDING,
-		params: { id: EASY_AI_WORKFLOW_JSON.meta.templateId },
+		name: VIEWS.TEMPLATE_IMPORT,
+		params: { id: EASY_AI_WORKFLOW_JSON.meta.templateId, fromJson: 'true' },
 	});
 };
 

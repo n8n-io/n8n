@@ -318,7 +318,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflows/templates/:id',
+		path: '/workflows/templates/:id/:fromJson?',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
 			default: NodeView,
