@@ -441,6 +441,12 @@ export declare namespace ProjectRequest {
 		}
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
+	type DeleteUser = AuthenticatedRequest<{ projectId: string; id: string }, {}, {}, {}>;
+	type AddUsers = AuthenticatedRequest<
+		{ projectId: string },
+		{},
+		{ users: ProjectRelationPayload[] }
+	>;
 }
 
 // ----------------------------------
