@@ -364,6 +364,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
 	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
+	isManaged: boolean;
 }
 
 export interface ICredentialsBase {
