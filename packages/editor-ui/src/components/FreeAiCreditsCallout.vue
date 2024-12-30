@@ -54,6 +54,14 @@ const activeNodeHasOpenAiApiCredential = computed(
 );
 
 const userCanClaimOpenAiCredits = computed(() => {
+	console.log(`settingsStore.isAiCreditsEnabled: ${settingsStore.isAiCreditsEnabled}`);
+	console.log(`activeNodeHasOpenAiApiCredential.value: ${activeNodeHasOpenAiApiCredential.value}`);
+	console.log(
+		`postHogStore.isFeatureEnabled: ${postHogStore.isFeatureEnabled(AI_CREDITS_EXPERIMENT.name)}`,
+	);
+	console.log(`userHasOpenAiCredentialAlready.value: ${userHasOpenAiCredentialAlready.value}`);
+	console.log(`userHasClaimedAiCreditsAlready.value: ${userHasClaimedAiCreditsAlready.value}`);
+
 	return (
 		settingsStore.isAiCreditsEnabled &&
 		activeNodeHasOpenAiApiCredential.value &&
