@@ -58,8 +58,8 @@ export class CredentialsController {
 	) {
 		const credentials = await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
-			includeScopes: query.includeScopes === 'true',
-			includeData: query.includeData === 'true',
+			includeScopes: query.includeScopes,
+			includeData: query.includeData,
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -102,9 +102,9 @@ export class CredentialsController {
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
 					// the scopes and always decrypt the data if the user has the permissions
 					// to do so.
-					query.includeData === 'true',
+					query.includeData ?? false,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData === 'true');
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData ?? false);
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
