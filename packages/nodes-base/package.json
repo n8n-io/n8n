@@ -709,6 +709,7 @@
       "dist/nodes/RenameKeys/RenameKeys.node.js",
       "dist/nodes/RespondToWebhook/RespondToWebhook.node.js",
       "dist/nodes/Rocketchat/Rocketchat.node.js",
+      "dist/nodes/RouteManager/RouteManager.node.js",
       "dist/nodes/RssFeedRead/RssFeedRead.node.js",
       "dist/nodes/RssFeedRead/RssFeedReadTrigger.node.js",
       "dist/nodes/Rundeck/Rundeck.node.js",
