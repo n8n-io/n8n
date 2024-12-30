@@ -33,6 +33,7 @@ describe('ProjectMoveResourceModal', () => {
 			{
 				id: '1',
 				name: 'My Project',
+				icon: { type: 'icon', value: 'folder' },
 				type: 'personal',
 				role: 'project:personalOwner',
 				createdAt: '2021-01-01T00:00:00.000Z',

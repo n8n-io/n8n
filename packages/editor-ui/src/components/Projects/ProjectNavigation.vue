@@ -33,7 +33,7 @@ const home = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
-	icon: props.collapsed ? undefined : 'layer-group',
+	icon: project.icon,
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -45,7 +45,7 @@ const getProjectMenuItem = (project: ProjectListItem) => ({
 const personalProject = computed<IMenuItem>(() => ({
 	id: projectsStore.personalProject?.id ?? '',
 	label: locale.baseText('projects.menu.personal'),
-	icon: props.collapsed ? undefined : 'user',
+	icon: 'user',
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,

@@ -87,6 +87,7 @@ describe('GET /credentials', () => {
 			validateMainCredentialData(credential);
 			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
+			expect('isManaged' in credential).toBe(true);
 		});
 	});
 
@@ -1035,6 +1036,19 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(403);
 	});
+
+	test('should fail with a 400 is credential is managed', async () => {
+		const { id } = await saveCredential(randomCredentialPayload({ isManaged: true }), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${id}`)
+			.send(randomCredentialPayload());
+
+		expect(response.statusCode).toBe(400);
+	});
 });
 
 describe('GET /credentials/new', () => {
@@ -1188,10 +1202,11 @@ const INVALID_PAYLOADS = [
 ];
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, sharedWithProjects, homeProject } = credential;
+	const { name, type, sharedWithProjects, homeProject, isManaged } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
+	expect(typeof isManaged).toBe('boolean');
 
 	if (sharedWithProjects) {
 		expect(Array.isArray(sharedWithProjects)).toBe(true);

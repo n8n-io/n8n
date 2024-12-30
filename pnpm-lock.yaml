@@ -788,8 +788,8 @@ importers:
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@8.42.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.12.0
-        version: 1.12.0
+        specifier: 1.13.0
+        version: 1.13.0
       '@n8n_io/license-sdk':
         specifier: 2.13.1
         version: 2.13.1
@@ -1242,9 +1242,15 @@ importers:
       '@fortawesome/vue-fontawesome':
         specifier: ^3.0.3
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.7.2))
+      '@vueuse/core':
+        specifier: '*'
+        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       element-plus:
         specifier: 2.4.3
         version: 2.4.3(vue@3.5.13(typescript@5.7.2))
+      is-emoji-supported:
+        specifier: ^0.0.5
+        version: 0.0.5
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -4326,8 +4332,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.12.0':
-    resolution: {integrity: sha512-ddIGzUn8icxWwl49PLSpl/Gfb0bCIGpqvWtZWqC3GIBeb51Nul6E4e3cIyDYOFlZmWWr/BDKsN0wskm2s/jkdg==}
+  '@n8n_io/ai-assistant-sdk@1.13.0':
+    resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.1':
@@ -8954,6 +8960,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  is-emoji-supported@0.0.5:
+    resolution: {integrity: sha512-WOlXUhDDHxYqcSmFZis+xWhhqXiK2SU0iYiqmth5Ip0FHLZQAt9rKL5ahnilE8/86WH8tZ3bmNNNC+bTzamqlw==}
+
   is-expression@4.0.0:
     resolution: {integrity: sha512-zMIXX63sxzG3XrkHkrAPvm/OVZVSCPNkwMHU8oTX7/U3AL78I0QXCEICXUM13BIa8TYGZ68PiTKfQz3yaTNr4A==}
 
@@ -12996,6 +13005,9 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
+  vue-component-type-helpers@2.2.0:
+    resolution: {integrity: sha512-cYrAnv2me7bPDcg9kIcGwjJiSB6Qyi08+jLDo9yuvoFQjzHiPTzML7RnkJB1+3P6KMsX/KbCD4QE3Tv/knEllw==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -16546,7 +16558,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.12.0': {}
+  '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
   '@n8n_io/license-sdk@2.13.1':
     dependencies:
@@ -18024,7 +18036,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.7.2)
-      vue-component-type-helpers: 2.1.10
+      vue-component-type-helpers: 2.2.0
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -19024,7 +19036,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.1.10
+      vue-component-type-helpers: 2.2.0
 
   '@vueuse/components@10.11.0(vue@3.5.13(typescript@5.7.2))':
     dependencies:
@@ -22528,6 +22540,8 @@ snapshots:
       has-tostringtag: 1.0.2
 
   is-docker@2.2.1: {}
+
+  is-emoji-supported@0.0.5: {}
 
   is-expression@4.0.0:
     dependencies:
@@ -27336,6 +27350,8 @@ snapshots:
       typescript: 5.7.2
 
   vue-component-type-helpers@2.1.10: {}
+
+  vue-component-type-helpers@2.2.0: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.7.2)):
     dependencies:

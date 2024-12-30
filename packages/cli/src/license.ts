@@ -255,6 +255,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ASK_AI);
 	}
 
+	isAiCreditsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.AI_CREDITS);
+	}
+
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
@@ -363,6 +367,10 @@ export class License {
 
 	getVariablesLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getAiCredits() {
+		return this.getFeatureValue(LICENSE_QUOTAS.AI_CREDITS) ?? 0;
 	}
 
 	getWorkflowHistoryPruneLimit() {
