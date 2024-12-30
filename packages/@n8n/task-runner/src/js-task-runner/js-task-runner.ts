@@ -437,16 +437,6 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private buildCustomConsole(taskId: string): CustomConsole {
-		const stringifyArg = (arg: unknown) => {
-			try {
-				return typeof arg === 'object' && arg !== null ? inspect(arg) : arg;
-			} catch (e) {
-				const error = ensureError(e);
-				console.warn('Failed to stringify console.log argument:', error.message);
-				return '[argument could not be stringified]';
-			}
-		};
-
 		return {
 			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
 			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
@@ -457,7 +447,7 @@ export class JsTaskRunner extends TaskRunner {
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
-				const logOutput = args.map(stringifyArg).join(' ');
+				const logOutput = args.map((arg) => inspect(arg)).join(' ');
 				void this.makeRpcCall(taskId, 'logNodeOutput', [logOutput]);
 			},
 		};
