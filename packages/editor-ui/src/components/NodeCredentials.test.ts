@@ -1,8 +1,8 @@
 import { describe, it } from 'vitest';
 import { fireEvent, screen } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import type { RenderOptions } from '@testing-library/vue';
 import NodeCredentials from './NodeCredentials.vue';
+import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { mockedStore } from '@/__tests__/utils';
