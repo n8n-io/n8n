@@ -217,7 +217,7 @@ describe('ExecutionService', () => {
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
-					expect(scalingService.stopJob).toHaveBeenCalled();
+					expect(scalingService.stopJob).not.toHaveBeenCalled();
 				});
 			});
 
