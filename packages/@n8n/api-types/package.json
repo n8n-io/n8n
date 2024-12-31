@@ -27,6 +27,6 @@
   "dependencies": {
     "xss": "catalog:",
     "zod": "catalog:",
-    "zod-class": "0.0.15"
+    "zod-class": "0.0.16"
   }
 }
