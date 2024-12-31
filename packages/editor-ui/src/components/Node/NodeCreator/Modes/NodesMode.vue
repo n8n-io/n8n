@@ -26,7 +26,7 @@ import { useI18n } from '@/composables/useI18n';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useActions } from '../composables/useActions';
-import { INodeParameters } from 'n8n-workflow';
+import type { INodeParameters } from 'n8n-workflow';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
