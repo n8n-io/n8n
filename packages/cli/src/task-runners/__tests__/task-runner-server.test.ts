@@ -3,10 +3,10 @@ import { mock } from 'jest-mock-extended';
 import { ServerResponse } from 'node:http';
 import type WebSocket from 'ws';
 
-import type { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
-import { TaskRunnerServer } from '@/runners/task-runner-server';
+import type { TaskRunnerAuthController } from '@/task-runners/auth/task-runner-auth.controller';
+import { TaskRunnerServer } from '@/task-runners/task-runner-server';
 
-import type { TaskRunnerServerInitRequest } from '../runner-types';
+import type { TaskRunnerServerInitRequest } from '../task-runner-types';
 
 describe('TaskRunnerServer', () => {
 	describe('handleUpgradeRequest', () => {

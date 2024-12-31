@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type WebSocket from 'ws';
 
 import { Time, WsStatusCodes } from '@/constants';
-import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
+import { TaskRunnerWsServer } from '@/task-runners/task-runner-ws-server';
 
 describe('TaskRunnerWsServer', () => {
 	describe('removeConnection', () => {

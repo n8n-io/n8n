@@ -49,7 +49,7 @@ interface ExecuteFunctionObject {
 }
 
 @Service()
-export abstract class TaskManager {
+export abstract class TaskRequester {
 	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
