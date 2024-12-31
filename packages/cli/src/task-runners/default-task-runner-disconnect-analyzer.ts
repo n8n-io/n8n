@@ -4,7 +4,7 @@ import config from '@/config';
 
 import { TaskRunnerDisconnectedError } from './errors/task-runner-disconnected-error';
 import { TaskRunnerFailedHeartbeatError } from './errors/task-runner-failed-heartbeat.error';
-import type { DisconnectAnalyzer, DisconnectErrorOptions } from './runner-types';
+import type { DisconnectAnalyzer, DisconnectErrorOptions } from './task-runner-types';
 
 /**
  * Analyzes the disconnect reason of a task runner to provide a more
