@@ -1,5 +1,11 @@
 import type { ActionTypeDescription, ActionsRecord, SimplifiedNodeType } from '@/Interface';
-import { AI_SUBCATEGORY, CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
+import {
+	AI_CATEGORY_ROOT_NODES,
+	AI_CATEGORY_TOOLS,
+	AI_SUBCATEGORY,
+	CUSTOM_API_CALL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
+} from '@/constants';
 import { memoize, startCase } from 'lodash-es';
 import type {
 	ICredentialType,
@@ -263,7 +269,11 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 export function useActionsGenerator() {
 	function generateNodeActions(node: INodeTypeDescription | undefined) {
 		if (!node) return [];
-		if (node.codex?.subcategories?.AI?.includes('Tools')) return [];
+		if (
+			node.codex?.subcategories?.AI?.includes(AI_CATEGORY_TOOLS) &&
+			!node.codex?.subcategories?.AI?.includes(AI_CATEGORY_ROOT_NODES)
+		)
+			return [];
 		return [
 			...triggersCategory(node),
 			...operationsCategory(node),
@@ -271,6 +281,7 @@ export function useActionsGenerator() {
 			...modeCategory(node),
 		];
 	}
+
 	function filterActions(actions: ActionTypeDescription[]) {
 		// Do not show single action nodes
 		if (actions.length <= 1) return [];
