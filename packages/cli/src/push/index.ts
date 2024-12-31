@@ -2,7 +2,7 @@ import type { PushMessage } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import type { Socket } from 'net';
 import { Container, Service } from 'typedi';
@@ -15,7 +15,6 @@ import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Logger } from '@/logging/logger.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';
 
