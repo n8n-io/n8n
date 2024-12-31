@@ -29,7 +29,10 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
+				const msg = [
+					e.message + context,
+					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
+				].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
 				this.logger.error(msg, meta);
 				e = e.cause as Error;
