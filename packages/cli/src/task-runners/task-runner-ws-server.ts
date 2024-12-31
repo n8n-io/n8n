@@ -8,6 +8,7 @@ import type WebSocket from 'ws';
 import { Time, WsStatusCodes } from '@/constants';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
+import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import type {
 	DisconnectAnalyzer,
@@ -15,7 +16,6 @@ import type {
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
 } from './task-runner-types';
-import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
