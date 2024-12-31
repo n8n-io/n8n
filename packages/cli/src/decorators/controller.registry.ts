@@ -11,7 +11,7 @@ import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
@@ -93,7 +93,7 @@ export class ControllerRegistry {
 					if (arg.type === 'param') args.push(req.params[arg.key]);
 					else if (['body', 'query'].includes(arg.type)) {
 						const paramType = argTypes[index] as ZodClass;
-						if (paramType && 'parse' in paramType) {
+						if (paramType && 'safeParse' in paramType) {
 							const output = paramType.safeParse(req[arg.type]);
 							if (output.success) args.push(output.data);
 							else {

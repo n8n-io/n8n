@@ -244,8 +244,8 @@ describe('ExecutionService', () => {
 					 */
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 					expect(activeExecutions.stopExecution).toHaveBeenCalled();
-					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
-					expect(scalingService.stopJob).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
+					expect(scalingService.stopJob).not.toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 
@@ -270,8 +270,8 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
-					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
-					expect(scalingService.stopJob).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).not.toHaveBeenCalled();
+					expect(scalingService.stopJob).not.toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});

@@ -99,7 +99,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, N8nCallout } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -1682,6 +1682,16 @@ onBeforeUnmount(() => {
 				@click="onClearExecutionData"
 			/>
 		</div>
+
+		<N8nCallout
+			v-if="isReadOnlyEnvironment"
+			theme="warning"
+			icon="lock"
+			:class="$style.readOnlyEnvironmentNotification"
+		>
+			{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
+		</N8nCallout>
+
 		<Suspense>
 			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
@@ -1735,5 +1745,12 @@ onBeforeUnmount(() => {
 			margin: 0;
 		}
 	}
+}
+
+.readOnlyEnvironmentNotification {
+	position: absolute;
+	bottom: 16px;
+	left: 50%;
+	transform: translateX(-50%);
 }
 </style>

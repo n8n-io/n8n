@@ -35,25 +35,21 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as PostgresType;
 
-	try {
-		switch (postgresNodeData.resource) {
-			case 'database':
-				returnData = await database[postgresNodeData.operation].execute.call(
-					this,
-					runQueries,
-					items,
-					options,
-					db,
-				);
-				break;
-			default:
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-				);
-		}
-	} finally {
-		if (!db.$pool.ending) await db.$pool.end();
+	switch (postgresNodeData.resource) {
+		case 'database':
+			returnData = await database[postgresNodeData.operation].execute.call(
+				this,
+				runQueries,
+				items,
+				options,
+				db,
+			);
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 	}
 
 	if (operation === 'select' && items.length > 1 && !node.executeOnce) {

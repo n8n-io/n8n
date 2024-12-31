@@ -1,5 +1,5 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import { InstanceSettings, WorkflowExecute, ErrorReporter } from 'n8n-core';
+import { InstanceSettings, WorkflowExecute, ErrorReporter, Logger } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -13,7 +13,6 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logging/logger.service';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

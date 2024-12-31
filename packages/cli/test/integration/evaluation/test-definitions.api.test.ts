@@ -5,7 +5,7 @@ import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-en
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
-import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createAnnotationTags } from '@test-integration/db/executions';
 
 import { createUserShell } from './../shared/db/users';

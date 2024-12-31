@@ -4,6 +4,7 @@ import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataService,
 	InstanceSettings,
+	Logger,
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
@@ -22,14 +23,13 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);

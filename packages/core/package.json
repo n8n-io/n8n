@@ -42,6 +42,7 @@
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",
+    "callsites": "catalog:",
     "chardet": "2.0.0",
     "concat-stream": "2.0.0",
     "cron": "3.1.7",
@@ -56,11 +57,13 @@
     "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",
     "p-cancelable": "2.1.1",
+    "picocolors": "catalog:",
     "pretty-bytes": "5.6.0",
     "qs": "6.11.0",
     "ssh2": "1.15.0",
     "typedi": "catalog:",
     "uuid": "catalog:",
+    "winston": "3.14.2",
     "xml2js": "catalog:",
     "zod": "catalog:"
   }
