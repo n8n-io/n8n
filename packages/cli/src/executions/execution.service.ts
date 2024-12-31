@@ -16,7 +16,7 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -475,18 +475,6 @@ export class ExecutionService {
 
 		if (this.waitTracker.has(execution.id)) {
 			this.waitTracker.stopExecution(execution.id);
-		}
-
-		const { ScalingService } = await import('@/scaling/scaling.service');
-		const scalingService = Container.get(ScalingService);
-		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
-
-		const job = jobs.find(({ data }) => data.executionId === execution.id);
-
-		if (job) {
-			await scalingService.stopJob(job);
-		} else {
-			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
