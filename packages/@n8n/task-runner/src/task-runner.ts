@@ -174,9 +174,11 @@ export abstract class TaskRunner extends EventEmitter {
 	sendOffers() {
 		this.deleteStaleOffers();
 
-		const offersToSend =
-			this.maxConcurrency -
-			(Object.values(this.openOffers).length + Object.values(this.runningTasks).length);
+		if (!this.canSendOffers) {
+			return;
+		}
+
+		const offersToSend = this.maxConcurrency - (this.openOffers.size + this.runningTasks.size);
 
 		for (let i = 0; i < offersToSend; i++) {
 			// Add a bit of randomness so that not all offers expire at the same time
@@ -255,7 +257,7 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	hasOpenTasks() {
-		return Object.values(this.runningTasks).length < this.maxConcurrency;
+		return this.runningTasks.size < this.maxConcurrency;
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
@@ -267,6 +269,7 @@ export abstract class TaskRunner extends EventEmitter {
 			});
 			return;
 		}
+
 		const offer = this.openOffers.get(offerId);
 		if (!offer) {
 			this.send({
