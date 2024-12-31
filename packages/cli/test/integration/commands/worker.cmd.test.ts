@@ -13,8 +13,8 @@ import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-m
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { TaskRunnerProcess } from '@/runners/task-runner-process';
-import { TaskRunnerServer } from '@/runners/task-runner-server';
+import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { TaskRunnerServer } from '@/task-runners/task-runner-server';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';

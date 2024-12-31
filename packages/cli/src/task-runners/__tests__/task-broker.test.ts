@@ -7,7 +7,7 @@ import { Time } from '@/constants';
 
 import { TaskRejectError } from '../errors';
 import { TaskRunnerTimeoutError } from '../errors/task-runner-timeout.error';
-import type { RunnerLifecycleEvents } from '../runner-lifecycle-events';
+import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
@@ -718,7 +718,7 @@ describe('TaskBroker', () => {
 	describe('task timeouts', () => {
 		let taskBroker: TaskBroker;
 		let config: TaskRunnersConfig;
-		let runnerLifecycleEvents = mock<RunnerLifecycleEvents>();
+		let runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
 
 		beforeAll(() => {
 			jest.useFakeTimers();

@@ -15,7 +15,7 @@ import { Time } from '@/constants';
 
 import { TaskDeferredError, TaskRejectError } from './errors';
 import { TaskRunnerTimeoutError } from './errors/task-runner-timeout.error';
-import { RunnerLifecycleEvents } from './runner-lifecycle-events';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 
 export interface TaskRunner {
 	id: string;
@@ -89,7 +89,7 @@ export class TaskBroker {
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
-		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
+		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new ApplicationError('Task timeout must be greater than 0');

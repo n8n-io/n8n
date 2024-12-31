@@ -8,7 +8,7 @@ import { mockInstance } from '@test/mocking';
 import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
 import type { AuthlessRequest } from '../../../requests';
-import type { TaskRunnerServerInitRequest } from '../../runner-types';
+import type { TaskRunnerServerInitRequest } from '../../task-runner-types';
 import { TaskRunnerAuthController } from '../task-runner-auth.controller';
 import { TaskRunnerAuthService } from '../task-runner-auth.service';
 

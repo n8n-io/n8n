@@ -8,13 +8,13 @@ import type WebSocket from 'ws';
 import { Time, WsStatusCodes } from '@/constants';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
-import { RunnerLifecycleEvents } from './runner-lifecycle-events';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import type {
 	DisconnectAnalyzer,
 	DisconnectReason,
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
-} from './runner-types';
+} from './task-runner-types';
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
@@ -34,7 +34,7 @@ export class TaskRunnerWsServer {
 		private readonly taskBroker: TaskBroker,
 		private disconnectAnalyzer: DefaultTaskRunnerDisconnectAnalyzer,
 		private readonly taskTunnersConfig: TaskRunnersConfig,
-		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
+		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {}
 
 	start() {
