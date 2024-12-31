@@ -2,17 +2,17 @@
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import {
-	IBinaryData,
-	IConnectedNode,
-	IDataObject,
-	INodeExecutionData,
-	INodeOutputConfiguration,
-	IRunData,
-	IRunExecutionData,
-	ITaskMetadata,
-	NodeError,
-	NodeHint,
-	Workflow,
+	type IBinaryData,
+	type IConnectedNode,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeOutputConfiguration,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskMetadata,
+	type NodeError,
+	type NodeHint,
+	type Workflow,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
