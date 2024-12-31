@@ -168,7 +168,7 @@ export const TRIMMED_TASK_DATA_CONNECTIONS: ITaskDataConnections = {
 	main: [
 		[
 			{
-				json: { isTrimmedManualExecutionDataItem: true },
+				json: { __isTrimmedManualExecutionDataItem: true },
 				pairedItem: undefined,
 			},
 		],

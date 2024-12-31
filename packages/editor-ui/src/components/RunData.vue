@@ -276,7 +276,7 @@ const isArtificialRecoveredEventItem = computed(
 );
 
 const isTrimmedManualExecutionDataItem = computed(
-	() => rawInputData.value?.[0]?.json?.isTrimmedManualExecutionDataItem,
+	() => rawInputData.value?.[0]?.json?.__isTrimmedManualExecutionDataItem,
 );
 
 const subworkflowExecutionError = computed(() => {
