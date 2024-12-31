@@ -161,9 +161,9 @@ export class JobProcessor {
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 
-		if (execution.mode === 'manual') {
-			const { startData, resultData, manualData } = execution.data;
+		const { startData, resultData, manualData, isTestWebhook } = execution.data;
 
+		if (execution.mode === 'manual' && !isTestWebhook) {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
