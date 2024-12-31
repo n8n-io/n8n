@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
+import { UpdateWorkflowCommand } from '@/commands/update/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -12,9 +13,65 @@ import * as testDb from '../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportWorkflowsCommand);
+const updateCommand = setupTestCommand(UpdateWorkflowCommand);
 
 beforeEach(async () => {
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'User']);
+});
+
+test('import:workflow should import active workflow and keep active state for already existing workflows', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	//
+	// ACT
+	//
+
+	// import workflows
+	await command.run([
+		'--separate',
+		'--input=./test/integration/commands/import-workflows/separate',
+	]);
+
+	// activate one workflow
+	await updateCommand.run(['--id=998', '--active=true']);
+
+	// import workflows again and keep active state from DB
+	await command.run([
+		'--separate',
+		'--input=./test/integration/commands/import-workflows/separate',
+		'--keepDbActiveState',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+
+	expect(after).toMatchObject({
+		workflows: [
+			expect.objectContaining({ name: 'active-workflow', active: true }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+		],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+			expect.objectContaining({
+				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {
