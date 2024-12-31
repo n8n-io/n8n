@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import type {
+import {
 	IBinaryData,
 	IConnectedNode,
 	IDataObject,
@@ -13,6 +13,7 @@ import type {
 	NodeError,
 	NodeHint,
 	Workflow,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -276,7 +277,7 @@ const isArtificialRecoveredEventItem = computed(
 );
 
 const isTrimmedManualExecutionDataItem = computed(
-	() => rawInputData.value?.[0]?.json?.__isTrimmedManualExecutionDataItem,
+	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
 );
 
 const subworkflowExecutionError = computed(() => {
