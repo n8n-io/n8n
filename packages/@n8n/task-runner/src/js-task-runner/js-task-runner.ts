@@ -15,8 +15,10 @@ import type {
 	EnvProviderState,
 	IExecuteData,
 	INodeTypeDescription,
+	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { inspect } from 'node:util';
 import { runInNewContext, type Context } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
@@ -79,6 +81,8 @@ type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
 
+const noOp = () => {};
+
 export class JsTaskRunner extends TaskRunner {
 	private readonly requireResolver: RequireResolver;
 
@@ -129,29 +133,12 @@ export class JsTaskRunner extends TaskRunner {
 			nodeTypes: this.nodeTypes,
 		});
 
-		const noOp = () => {};
-		const customConsole = {
-			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
-			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
-				acc[name] = noOp;
-				return acc;
-			}, {}),
-			// Send log output back to the main process. It will take care of forwarding
-			// it to the UI or printing to console.
-			log: (...args: unknown[]) => {
-				const logOutput = args
-					.map((arg) => (typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : arg))
-					.join(' ');
-				void this.makeRpcCall(task.taskId, 'logNodeOutput', [logOutput]);
-			},
-		};
-
 		workflow.staticData = ObservableObject.create(workflow.staticData);
 
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
-				? await this.runForAllItems(task.taskId, settings, data, workflow, customConsole, signal)
-				: await this.runForEachItem(task.taskId, settings, data, workflow, customConsole, signal);
+				? await this.runForAllItems(task.taskId, settings, data, workflow, signal)
+				: await this.runForEachItem(task.taskId, settings, data, workflow, signal);
 
 		return {
 			result,
@@ -200,22 +187,14 @@ export class JsTaskRunner extends TaskRunner {
 		settings: JSExecSettings,
 		data: JsTaskData,
 		workflow: Workflow,
-		customConsole: CustomConsole,
 		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
 
-		const context: Context = {
-			require: this.requireResolver,
-			module: {},
-			console: customConsole,
+		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
 			items: inputItems,
-			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, data.node),
-			...this.getNativeVariables(),
-			...dataProxy,
-			...this.buildRpcCallObject(taskId),
-		};
+		});
 
 		try {
 			const result = await new Promise<TaskResultData['result']>((resolve, reject) => {
@@ -264,7 +243,6 @@ export class JsTaskRunner extends TaskRunner {
 		settings: JSExecSettings,
 		data: JsTaskData,
 		workflow: Workflow,
-		customConsole: CustomConsole,
 		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
 		const inputItems = data.connectionInputData;
@@ -279,17 +257,7 @@ export class JsTaskRunner extends TaskRunner {
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
-			const context: Context = {
-				require: this.requireResolver,
-				module: {},
-				console: customConsole,
-				item,
-				$getWorkflowStaticData: (type: 'global' | 'node') =>
-					workflow.getStaticData(type, data.node),
-				...this.getNativeVariables(),
-				...dataProxy,
-				...this.buildRpcCallObject(taskId),
-			};
+			const context = this.buildContext(taskId, workflow, data.node, dataProxy, { item });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -466,5 +434,53 @@ export class JsTaskRunner extends TaskRunner {
 		}
 
 		return rpcObject;
+	}
+
+	private buildCustomConsole(taskId: string): CustomConsole {
+		return {
+			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
+			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
+				acc[name] = noOp;
+				return acc;
+			}, {}),
+
+			// Send log output back to the main process. It will take care of forwarding
+			// it to the UI or printing to console.
+			log: (...args: unknown[]) => {
+				const formattedLogArgs = args.map((arg) => inspect(arg));
+				void this.makeRpcCall(taskId, 'logNodeOutput', formattedLogArgs);
+			},
+		};
+	}
+
+	/**
+	 * Builds the 'global' context object that is passed to the script
+	 *
+	 * @param taskId The ID of the task. Needed for RPC calls
+	 * @param workflow The workflow that is being executed. Needed for static data
+	 * @param node The node that is being executed. Needed for static data
+	 * @param dataProxy The data proxy object that provides access to built-ins
+	 * @param additionalProperties Additional properties to add to the context
+	 */
+	private buildContext(
+		taskId: string,
+		workflow: Workflow,
+		node: INode,
+		dataProxy: IWorkflowDataProxyData,
+		additionalProperties: Record<string, unknown> = {},
+	): Context {
+		const context: Context = {
+			[inspect.custom]: () => '[[ExecutionContext]]',
+			require: this.requireResolver,
+			module: {},
+			console: this.buildCustomConsole(taskId),
+			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, node),
+			...this.getNativeVariables(),
+			...dataProxy,
+			...this.buildRpcCallObject(taskId),
+			...additionalProperties,
+		};
+
+		return context;
 	}
 }
