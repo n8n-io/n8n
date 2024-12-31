@@ -89,7 +89,7 @@ export class TaskBroker {
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
-		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		private readonly taskRunnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new ApplicationError('Task timeout must be greater than 0');
@@ -460,7 +460,7 @@ export class TaskBroker {
 		if (!task) return;
 
 		if (this.taskRunnersConfig.mode === 'internal') {
-			this.runnerLifecycleEvents.emit('runner:timed-out-during-task');
+			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task');
 		} else if (this.taskRunnersConfig.mode === 'external') {
 			await this.messageRunner(task.runnerId, {
 				type: 'broker:taskcancel',
