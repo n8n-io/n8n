@@ -324,7 +324,6 @@ async function initializeRoute(force = false) {
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
-		// await openWorkflowTemplate(templateId.toString());
 	} else if (isWorkflowRoute.value) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
