@@ -11,7 +11,7 @@
 			}
 		]
 	},
-	"alias": ["code", "Javascript", "JS", "Script", "Custom Code", "Function", "AI", "LLM"],
+	"alias": ["code", "AI", "LLM", "Javascript", "JS", "Script", "Custom Code", "Function"],
 	"subcategories": {
 		"Core Nodes": ["Data Transformation"]
 	}

@@ -8,6 +8,7 @@ const SEQUENTIAL_BONUS = 60; // bonus for adjacent matches
 const SEPARATOR_BONUS = 30; // bonus if match occurs after a separator
 const CAMEL_BONUS = 30; // bonus if match is uppercase and prev is lower
 const FIRST_LETTER_BONUS = 15; // bonus if the first letter is matched
+const WHOLE_WORD_BONUS = 50; // bonus if whole word is matched
 
 const LEADING_LETTER_PENALTY = -20; // penalty applied for every letter in str before the first match
 const MAX_LEADING_LETTER_PENALTY = -200; // maximum penalty for leading letters
@@ -73,6 +74,11 @@ function fuzzyMatchRecursive(
 	recursionCount: number,
 	recursionLimit: number,
 ): { matched: boolean; outScore: number } {
+	const containsWord = (text: string, word: string): boolean => {
+		const regex = new RegExp(`\\b${word}\\b`, 'i');
+		return regex.test(text);
+	};
+
 	let outScore = 0;
 
 	// Return if recursion limit is reached.
@@ -161,6 +167,11 @@ function fuzzyMatchRecursive(
 				}
 			}
 
+			// Apply whole word bonus
+			if (containsWord(target, pattern)) {
+				outScore += WHOLE_WORD_BONUS;
+			}
+
 			// Check for bonuses based on neighbor character value.
 			if (currIdx > 0) {
 				// Camel case
@@ -225,7 +236,14 @@ export function sublimeSearch<T extends object>(
 		keys.forEach(({ key, weight }) => {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {
-				values = values.concat(value.map((v) => ({ value: v, weight })));
+				// Reduce the weight by 10% for subsequent value in the array so we promote results based on the order of values
+				// e.g. if node has multiple aliases, we want to promote the first alias over the second
+				values = values.concat(
+					value.map((v, i) => ({
+						value: v,
+						weight: i <= 1 ? weight : weight * (1 - (i - 1) * 0.1),
+					})),
+				);
 			} else if (typeof value === 'string') {
 				values.push({
 					value,
