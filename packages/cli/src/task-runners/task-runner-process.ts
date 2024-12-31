@@ -10,7 +10,7 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
-import { RunnerLifecycleEvents } from './runner-lifecycle-events';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import { TypedEmitter } from '../typed-emitter';
 
 type ChildProcess = ReturnType<typeof spawn>;
@@ -68,7 +68,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
 		private readonly authService: TaskRunnerAuthService,
-		private readonly runnerLifecycleEvents: RunnerLifecycleEvents,
+		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super();
 
