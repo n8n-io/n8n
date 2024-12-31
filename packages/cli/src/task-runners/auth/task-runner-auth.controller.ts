@@ -7,7 +7,7 @@ import { taskRunnerAuthRequestBodySchema } from './task-runner-auth.schema';
 import { TaskRunnerAuthService } from './task-runner-auth.service';
 import { BadRequestError } from '../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../errors/response-errors/forbidden.error';
-import type { TaskRunnerServerInitRequest } from '../runner-types';
+import type { TaskRunnerServerInitRequest } from '../task-runner-types';
 
 /**
  * Controller responsible for authenticating Task Runner connections

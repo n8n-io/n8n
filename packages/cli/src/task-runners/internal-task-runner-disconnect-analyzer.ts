@@ -3,10 +3,10 @@ import { Service } from 'typedi';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';
-import type { DisconnectErrorOptions } from './runner-types';
 import { SlidingWindowSignal } from './sliding-window-signal';
 import type { ExitReason, TaskRunnerProcessEventMap } from './task-runner-process';
 import { TaskRunnerProcess } from './task-runner-process';
+import type { DisconnectErrorOptions } from './task-runner-types';
 
 /**
  * Analyzes the disconnect reason of a task runner process to provide a more

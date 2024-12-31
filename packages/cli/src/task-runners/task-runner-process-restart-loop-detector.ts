@@ -1,6 +1,6 @@
 import { Time } from '@/constants';
-import { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart-loop-error';
-import type { TaskRunnerProcess } from '@/runners/task-runner-process';
+import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
+import type { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { TypedEmitter } from '@/typed-emitter';
 
 const MAX_RESTARTS = 5;
