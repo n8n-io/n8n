@@ -547,7 +547,7 @@ describe('Node Creator', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 	});
 
-	it.only('should add node directly for sub-connection as tool', () => {
+	it('should add node directly for sub-connection as tool', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		clickGetBackToCanvas();
