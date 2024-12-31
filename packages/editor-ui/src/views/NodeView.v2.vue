@@ -32,6 +32,7 @@ import type {
 	IWorkflowTemplate,
 	NodeCreatorOpenSource,
 	ToggleNodeCreatorOptions,
+	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
 import type {
@@ -107,6 +108,7 @@ import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -315,7 +317,13 @@ async function initializeRoute(force = false) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const templateId = route.params.id;
-		await openWorkflowTemplate(templateId.toString());
+		const loadWorkflowFromJSON = route.query.fromJson === 'true';
+
+		if (loadWorkflowFromJSON) {
+			await openTemplateFromWorkflowJSON(EASY_AI_WORKFLOW_JSON);
+		} else {
+			await openWorkflowTemplate(templateId.toString());
+		}
 	} else if (isWorkflowRoute.value) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
@@ -422,6 +430,42 @@ function trackOpenWorkflowFromOnboardingTemplate() {
 /**
  * Templates
  */
+
+async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId) {
+	if (!workflow.nodes || !workflow.connections) {
+		toast.showError(
+			new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+			i18n.baseText('nodeView.couldntImportWorkflow'),
+		);
+		await router.replace({ name: VIEWS.NEW_WORKFLOW });
+		return;
+	}
+	resetWorkspace();
+
+	canvasStore.startLoading();
+	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+	workflowsStore.currentWorkflowExecutions = [];
+	executionsStore.activeExecution = null;
+
+	isBlankRedirect.value = true;
+	await router.replace({
+		name: VIEWS.NEW_WORKFLOW,
+		query: { templateId: workflow.meta.templateId },
+	});
+
+	const convertedNodes = workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+	workflowsStore.setConnections(workflow.connections);
+	await addNodes(convertedNodes);
+	await workflowsStore.getNewWorkflowData(workflow.name, projectsStore.currentProjectId);
+
+	uiStore.stateIsDirty = true;
+
+	canvasStore.stopLoading();
+
+	fitView();
+}
 
 async function openWorkflowTemplate(templateId: string) {
 	resetWorkspace();
