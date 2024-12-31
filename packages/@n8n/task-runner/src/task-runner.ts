@@ -262,6 +262,7 @@ export abstract class TaskRunner extends EventEmitter {
 
 	offerAccepted(offerId: string, taskId: string) {
 		if (!this.hasOpenTasks()) {
+			this.openOffers.delete(offerId);
 			this.send({
 				type: 'runner:taskrejected',
 				taskId,
