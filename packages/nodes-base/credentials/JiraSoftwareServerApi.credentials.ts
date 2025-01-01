@@ -36,6 +36,13 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://example.com',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -52,6 +59,7 @@ export class JiraSoftwareServerApi implements ICredentialType {
 		request: {
 			baseURL: '={{$credentials?.domain}}',
 			url: '/rest/api/2/project',
+			skipSslCertificateValidation: '={{$credentials.allowUnauthorizedCerts}}',
 		},
 	};
 }
