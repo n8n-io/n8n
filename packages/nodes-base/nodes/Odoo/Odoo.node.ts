@@ -28,6 +28,7 @@ import type { IOdooFilterOperations } from './GenericFunctions';
 import {
 	odooCreate,
 	odooDelete,
+	odooCount,
 	odooGet,
 	odooGetAll,
 	odooGetDBName,
@@ -315,6 +316,18 @@ export class Odoo implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'contact') {
+					if (operation === 'count') {
+						responseData = await odooCount.call(
+							this,
+							db,
+							userID,
+							password,
+							resource,
+							operation,
+							url,
+						);
+					}
+
 					if (operation === 'create') {
 						let additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -455,6 +468,20 @@ export class Odoo implements INodeType {
 						);
 					}
 
+					if (operation === 'count') {
+						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
+						responseData = await odooCount.call(
+							this,
+							db,
+							userID,
+							password,
+							customResource,
+							operation,
+							url,
+							filter,
+						);
+					}
+
 					if (operation === 'delete') {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
 						responseData = await odooDelete.call(
@@ -538,6 +565,18 @@ export class Odoo implements INodeType {
 				}
 
 				if (resource === 'note') {
+					if (operation === 'count') {
+						responseData = await odooCount.call(
+							this,
+							db,
+							userID,
+							password,
+							resource,
+							operation,
+							url,
+						);
+					}
+
 					if (operation === 'create') {
 						// const additionalFields = this.getNodeParameter('additionalFields', i);
 						const memo = this.getNodeParameter('memo', i) as string;
@@ -642,6 +681,18 @@ export class Odoo implements INodeType {
 				}
 
 				if (resource === 'opportunity') {
+					if (operation === 'count') {
+						responseData = await odooCount.call(
+							this,
+							db,
+							userID,
+							password,
+							resource,
+							operation,
+							url,
+						);
+					}
+
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const name = this.getNodeParameter('opportunityName', i) as string;
