@@ -35,5 +35,12 @@ export class FileMaker implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
+		},
 	];
 }
