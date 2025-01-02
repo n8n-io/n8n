@@ -272,8 +272,8 @@ importers:
         specifier: 'catalog:'
         version: 3.23.8
       zod-class:
-        specifier: 0.0.15
-        version: 0.0.15(zod@3.23.8)
+        specifier: 0.0.16
+        version: 0.0.16(zod@3.23.8)
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -13393,8 +13393,8 @@ packages:
     resolution: {integrity: sha512-Z2Fe1bn+eLstG8DRR6FTavGD+MeAwyfmouhHsIUgaADz8jvFKbO/fXc2trJKZg+5EBjh4gGm3iU/t3onKlXHIg==}
     engines: {node: '>=10'}
 
-  zod-class@0.0.15:
-    resolution: {integrity: sha512-CD5B4e9unKPj1hiy7JOSwRV01WqbEBkFOlhws0C9s9wB0FSpECOnlKXOAkjo9tKYX2enQsXWyyOIBNPPNUHWRA==}
+  zod-class@0.0.16:
+    resolution: {integrity: sha512-3A1l81VEUOxvSTGoNPsU4fTUY9CKin/HSySnXT3bIc+TJTDGCPbzSPE8W1VvwXqyzHEIWK608eFZja2uew9Ivw==}
     peerDependencies:
       zod: ^3
 
@@ -27783,7 +27783,7 @@ snapshots:
       property-expr: 2.0.5
       toposort: 2.0.2
 
-  zod-class@0.0.15(zod@3.23.8):
+  zod-class@0.0.16(zod@3.23.8):
     dependencies:
       type-fest: 4.26.1
       zod: 3.23.8

@@ -2,10 +2,10 @@ import { mock } from 'jest-mock-extended';
 import { get, set } from 'lodash';
 
 import type { NodeTypes } from '@/node-types';
-import type { Task } from '@/runners/task-managers/task-manager';
-import { TaskManager } from '@/runners/task-managers/task-manager';
+import type { Task } from '@/task-runners/task-managers/task-requester';
+import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
-class TestTaskManager extends TaskManager {
+class TestTaskRequester extends TaskRequester {
 	sentMessages: unknown[] = [];
 
 	sendMessage(message: unknown) {
@@ -13,12 +13,12 @@ class TestTaskManager extends TaskManager {
 	}
 }
 
-describe('TaskManager', () => {
-	let instance: TestTaskManager;
+describe('TaskRequester', () => {
+	let instance: TestTaskRequester;
 	const mockNodeTypes = mock<NodeTypes>();
 
 	beforeEach(() => {
-		instance = new TestTaskManager(mockNodeTypes);
+		instance = new TestTaskRequester(mockNodeTypes);
 	});
 
 	describe('handleRpc', () => {

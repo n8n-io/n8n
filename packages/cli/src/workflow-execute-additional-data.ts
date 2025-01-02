@@ -42,10 +42,10 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { EventService } from './events/event.service';
-import { TaskManager } from './runners/task-managers/task-manager';
 import { SecretsHelper } from './secrets-helpers.ee';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
+import { TaskRequester } from './task-runners/task-managers/task-requester';
 import { WorkflowRunner } from './workflow-runner';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
 
@@ -351,7 +351,7 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		async startAgentJob(
+		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,
 			settings: unknown,
@@ -369,7 +369,7 @@ export async function getBase(
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
-			return await Container.get(TaskManager).startTask(
+			return await Container.get(TaskRequester).startTask(
 				additionalData,
 				jobType,
 				settings,
