@@ -186,6 +186,11 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs when a Checkout Session has been successfully completed.',
 					},
 					{
+						name: 'Checkout Session.expired',
+						value: 'checkout.session.expired',
+						description: 'Occurs when a Checkout Session is expired.',
+					},
+					{
 						name: 'Coupon Created',
 						value: 'coupon.created',
 						description: 'Occurs whenever a coupon is created.',
