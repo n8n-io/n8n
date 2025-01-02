@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 import { ApplicationError } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/error-reporter';
+import type { Logger } from '@/logging/logger';
 
 jest.mock('@sentry/node', () => ({
 	init: jest.fn(),
@@ -99,6 +100,36 @@ describe('ErrorReporter', () => {
 		])('should ignore if originalException is %s', async (_, originalException) => {
 			const result = await errorReporter.beforeSend(event, { originalException });
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('error', () => {
+		it('should include stack trace for error-level `ApplicationError`', () => {
+			const logger = mock<Logger>();
+			const errorReporter = new ErrorReporter(logger);
+
+			const error = new ApplicationError('Test error');
+			error.level = 'error';
+			error.stack = 'test stack trace';
+			const metadata = undefined;
+
+			errorReporter.error(error);
+
+			expect(logger.error).toHaveBeenCalledWith('Test error\ntest stack trace\n', metadata);
+		});
+
+		it('should exclude stack trace for warning-level `ApplicationError`', () => {
+			const logger = mock<Logger>();
+			const errorReporter = new ErrorReporter(logger);
+
+			const error = new ApplicationError('Test error');
+			error.level = 'warning';
+			error.stack = 'test stack trace';
+			const metadata = undefined;
+
+			errorReporter.error(error);
+
+			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
 		});
 	});
 });
