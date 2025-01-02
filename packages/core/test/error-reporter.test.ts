@@ -104,31 +104,26 @@ describe('ErrorReporter', () => {
 	});
 
 	describe('error', () => {
+		let error: ApplicationError;
+		let logger: Logger;
+		let errorReporter: ErrorReporter;
+		const metadata = undefined;
+
+		beforeEach(() => {
+			error = new ApplicationError('Test error');
+			logger = mock<Logger>();
+			errorReporter = new ErrorReporter(logger);
+		});
+
 		it('should include stack trace for error-level `ApplicationError`', () => {
-			const logger = mock<Logger>();
-			const errorReporter = new ErrorReporter(logger);
-
-			const error = new ApplicationError('Test error');
 			error.level = 'error';
-			error.stack = 'test stack trace';
-			const metadata = undefined;
-
 			errorReporter.error(error);
-
-			expect(logger.error).toHaveBeenCalledWith('Test error\ntest stack trace\n', metadata);
+			expect(logger.error).toHaveBeenCalledWith(`Test error\n${error.stack}\n`, metadata);
 		});
 
 		it('should exclude stack trace for warning-level `ApplicationError`', () => {
-			const logger = mock<Logger>();
-			const errorReporter = new ErrorReporter(logger);
-
-			const error = new ApplicationError('Test error');
 			error.level = 'warning';
-			error.stack = 'test stack trace';
-			const metadata = undefined;
-
 			errorReporter.error(error);
-
 			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
 		});
 	});
