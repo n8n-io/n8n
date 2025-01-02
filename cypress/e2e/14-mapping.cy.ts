@@ -41,7 +41,9 @@ describe('Data mapping', () => {
 		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }}');
 		ndv.getters.inlineExpressionEditorInput().type('{esc}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '2024');
+		ndv.getters
+			.parameterExpressionPreview('value')
+			.should('include.text', new Date().getFullYear());
 
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
