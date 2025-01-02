@@ -7,6 +7,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const httpNode: INodeUi = {
 	parameters: {
@@ -31,6 +32,25 @@ const httpNode: INodeUi = {
 	issues: { parameters: { url: ['Parameter "URL" is required.'] } },
 };
 
+const openAiNode: INodeUi = {
+	parameters: {
+		resource: 'text',
+		operation: 'message',
+		modelId: { __rl: true, mode: 'list', value: '' },
+		messages: { values: [{ content: '', role: 'user' }] },
+		simplify: true,
+		jsonOutput: false,
+		options: {},
+	},
+	type: '@n8n/n8n-nodes-langchain.openAi',
+	typeVersion: 1.8,
+	position: [440, 0],
+	id: '17241295-a277-4cdf-8c46-6c3f85b335e9',
+	name: 'OpenAI',
+	credentials: { openAiApi: { id: 'byDFnd7vN5GzMVD2', name: 'n8n free OpenAI API credits' } },
+	issues: { parameters: { modelId: ['Parameter "Model" is required.'] } },
+};
+
 describe('NodeCredentials', () => {
 	const defaultRenderOptions: RenderOptions = {
 		pinia: createTestingPinia(),
@@ -44,6 +64,9 @@ describe('NodeCredentials', () => {
 	};
 
 	const renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
+
+	const credentialsStore = mockedStore(useCredentialsStore);
+	const ndvStore = mockedStore(useNDVStore);
 
 	beforeAll(() => {
 		credentialsStore.state.credentialTypes = {
@@ -80,9 +103,8 @@ describe('NodeCredentials', () => {
 		};
 	});
 
-	const credentialsStore = mockedStore(useCredentialsStore);
-
 	it('should display available credentials in the dropdown', async () => {
+		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
 			c8vqdPpPClh4TgIO: {
 				id: 'c8vqdPpPClh4TgIO',
@@ -103,7 +125,8 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
-	it('should ignore managed credentials in the dropdown', async () => {
+	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
+		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
 			c8vqdPpPClh4TgIO: {
 				id: 'c8vqdPpPClh4TgIO',
@@ -131,5 +154,43 @@ describe('NodeCredentials', () => {
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 		expect(screen.queryByText('OpenAi account 2')).not.toBeInTheDocument();
+	});
+
+	it('should not ignored managed credentials in the dropdown if active node is not the HTTP node', async () => {
+		ndvStore.activeNode = openAiNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: {
+				id: 'c8vqdPpPClh4TgIO',
+				name: 'OpenAi account',
+				type: 'openAiApi',
+				isManaged: false,
+				createdAt: '',
+				updatedAt: '',
+			},
+			SkXM3oUkQvvYS31c: {
+				id: 'c8vqdPpPClh4TgIO',
+				name: 'OpenAi account 2',
+				type: 'openAiApi',
+				isManaged: true,
+				createdAt: '',
+				updatedAt: '',
+			},
+		};
+
+		renderComponent(
+			{
+				props: {
+					node: openAiNode,
+				},
+			},
+			{ merge: true },
+		);
+
+		const credentialsSelect = screen.getByTestId('node-credentials-select');
+
+		await fireEvent.click(credentialsSelect);
+
+		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+		expect(screen.queryByText('OpenAi account 2')).toBeInTheDocument();
 	});
 });
