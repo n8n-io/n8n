@@ -25,6 +25,12 @@ export type TaskStateOpts = {
  *
  * The task has the following lifecycle:
  *
+ *                      ┌───┐
+ *                      └───┘
+ *                        │
+ *               broker:taskofferaccept : create task state
+ *                        │
+ *                        ▼
  *               ┌────────────────────┐  broker:taskcancel / timeout
  *               │ waitingForSettings ├──────────────────────────────────┐
  *               └────────┬───────────┘                                  │
@@ -60,11 +66,11 @@ export class TaskState {
 
 	readonly taskId: string;
 
-	/** Signal for aborting the execution of the task */
+	/** Controller for aborting the execution of the task */
 	readonly abortController = new AbortController();
 
 	/** Timeout timer for the task */
-	private timeoutTimer: NodeJS.Timeout;
+	private timeoutTimer: NodeJS.Timeout | undefined;
 
 	constructor(opts: TaskStateOpts) {
 		this.taskId = opts.taskId;
@@ -74,6 +80,7 @@ export class TaskState {
 	/** Cleans up any resources before the task can be removed */
 	cleanup() {
 		clearTimeout(this.timeoutTimer);
+		this.timeoutTimer = undefined;
 	}
 
 	/** Custom JSON serialization for the task state for logging purposes */

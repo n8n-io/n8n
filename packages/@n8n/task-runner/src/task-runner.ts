@@ -286,14 +286,14 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 
 		this.resetIdleTimer();
-		const task = new TaskState({
+		const taskState = new TaskState({
 			taskId,
 			timeoutInS: this.taskTimeout,
 			onTimeout: () => {
 				void this.taskTimedOut(taskId);
 			},
 		});
-		this.runningTasks.set(taskId, task);
+		this.runningTasks.set(taskId, taskState);
 
 		this.send({
 			type: 'runner:taskaccepted',
@@ -334,16 +334,18 @@ export abstract class TaskRunner extends EventEmitter {
 			// If we are still waiting for settings for the task, we can error the
 			// task immediately
 			waitingForSettings: () => {
-				this.send({
-					type: 'runner:taskerror',
-					taskId,
-					error: new TimeoutError(this.taskTimeout),
-				});
-
-				this.finishTask(taskState);
+				try {
+					this.send({
+						type: 'runner:taskerror',
+						taskId,
+						error: new TimeoutError(this.taskTimeout),
+					});
+				} finally {
+					this.finishTask(taskState);
+				}
 			},
 
-			// This should never happen, the time out timer should only fire once
+			// This should never happen, the timeout timer should only fire once
 			'aborting:timeout': TaskState.throwUnexpectedTaskStatus,
 
 			// If we are currently executing the task, abort the execution and
