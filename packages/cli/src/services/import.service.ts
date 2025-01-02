@@ -1,3 +1,4 @@
+import { Logger } from 'n8n-core';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -11,7 +12,6 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import * as Db from '@/db';
 import type { ICredentialsDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()

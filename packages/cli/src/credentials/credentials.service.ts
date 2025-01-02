@@ -6,7 +6,7 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
-import { Credentials } from 'n8n-core';
+import { Credentials, Logger } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -33,12 +33,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { ICredentialsDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
-import { userHasScopes } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
+import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
 
 export type CredentialsGetSharedOptions =
@@ -63,33 +63,47 @@ export class CredentialsService {
 
 	async getMany(
 		user: User,
-		options: {
-			listQueryOptions?: ListQuery.Options;
-			includeScopes?: string;
+		{
+			listQueryOptions = {},
+			includeScopes = false,
+			includeData = false,
+		}: {
+			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			includeScopes?: boolean;
+			includeData?: boolean;
 		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
-		const isDefaultSelect = !options.listQueryOptions?.select;
+		const isDefaultSelect = !listQueryOptions.select;
+
+		if (includeData) {
+			// We need the scopes to check if we're allowed to include the decrypted
+			// data.
+			// Only if the user has the `credential:update` scope the user is allowed
+			// to get the data.
+			includeScopes = true;
+			listQueryOptions.includeData = true;
+		}
 
 		let projectRelations: ProjectRelation[] | undefined = undefined;
-		if (options.includeScopes) {
+		if (includeScopes) {
 			projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			if (options.listQueryOptions?.filter?.projectId && user.hasGlobalScope('credential:list')) {
+			if (listQueryOptions.filter?.projectId && user.hasGlobalScope('credential:list')) {
 				// Only instance owners and admins have the credential:list scope
 				// Those users should be able to use _all_ credentials within their workflows.
 				// TODO: Change this so we filter by `workflowId` in this case. Require a slight FE change
 				const projectRelation = projectRelations.find(
-					(relation) => relation.projectId === options.listQueryOptions?.filter?.projectId,
+					(relation) => relation.projectId === listQueryOptions.filter?.projectId,
 				);
 				if (projectRelation?.role === 'project:personalOwner') {
 					// Will not affect team projects as these have admins, not owners.
-					delete options.listQueryOptions?.filter?.projectId;
+					delete listQueryOptions.filter?.projectId;
 				}
 			}
 		}
 
 		if (returnAll) {
-			let credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
+			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
 			if (isDefaultSelect) {
 				// Since we're filtering using project ID as part of the relation,
@@ -97,7 +111,7 @@ export class CredentialsService {
 				// it's shared to a project, it won't be able to find the home project.
 				// To solve this, we have to get all the relation now, even though
 				// we're deleting them later.
-				if ((options.listQueryOptions?.filter?.shared as { projectId?: string })?.projectId) {
+				if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
 					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 						credentials.map((c) => c.id),
 					);
@@ -108,23 +122,32 @@ export class CredentialsService {
 				credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
 			}
 
-			if (options.includeScopes) {
+			if (includeScopes) {
 				credentials = credentials.map((c) =>
 					this.roleService.addScopes(c, user, projectRelations!),
 				);
 			}
 
+			if (includeData) {
+				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+					return {
+						...c,
+						data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
+					} as unknown as CredentialsEntity;
+				});
+			}
+
 			return credentials;
 		}
 
-		// If the workflow is part of a personal project we want to show the credentials the user making the request has access to, not the credentials the user owning the workflow has access to.
-		if (typeof options.listQueryOptions?.filter?.projectId === 'string') {
-			const project = await this.projectService.getProject(
-				options.listQueryOptions.filter.projectId,
-			);
+		// If the workflow is part of a personal project we want to show the
+		// credentials the user making the request has access to, not the
+		// credentials the user owning the workflow has access to.
+		if (typeof listQueryOptions.filter?.projectId === 'string') {
+			const project = await this.projectService.getProject(listQueryOptions.filter.projectId);
 			if (project?.type === 'personal') {
 				const currentUsersPersonalProject = await this.projectService.getPersonalProject(user);
-				options.listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
+				listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
 			}
 		}
 
@@ -133,7 +156,7 @@ export class CredentialsService {
 		});
 
 		let credentials = await this.credentialsRepository.findMany(
-			options.listQueryOptions,
+			listQueryOptions,
 			ids, // only accessible credentials
 		);
 
@@ -143,7 +166,7 @@ export class CredentialsService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if ((options.listQueryOptions?.filter?.shared as { projectId?: string })?.projectId) {
+			if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
 				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 					credentials.map((c) => c.id),
 				);
@@ -155,8 +178,17 @@ export class CredentialsService {
 			credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
 		}
 
-		if (options.includeScopes) {
+		if (includeScopes) {
 			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+		}
+
+		if (includeData) {
+			credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
+				return {
+					...c,
+					data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
+				} as unknown as CredentialsEntity;
+			});
 		}
 
 		return credentials;
@@ -197,6 +229,7 @@ export class CredentialsService {
 				name: c.name,
 				type: c.type,
 				scopes: c.scopes,
+				isManaged: c.isManaged,
 			}));
 	}
 
@@ -308,9 +341,18 @@ export class CredentialsService {
 		return newCredentialData;
 	}
 
-	decrypt(credential: CredentialsEntity) {
+	/**
+	 * Decrypts the credentials data and redacts the content by default.
+	 *
+	 * If `includeRawData` is set to true it will not redact the data.
+	 */
+	decrypt(credential: CredentialsEntity, includeRawData = false) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		return coreCredential.getData();
+		const data = coreCredential.getData();
+		if (includeRawData) {
+			return data;
+		}
+		return this.redact(data, credential);
 	}
 
 	async update(credentialId: string, newCredentialData: ICredentialsDb) {
@@ -500,7 +542,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.redact(this.decrypt(sharing.credentials), sharing.credentials);
+			decryptedData = this.decrypt(sharing.credentials);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -602,5 +644,26 @@ export class CredentialsService {
 		) {
 			mergedCredentials.data = decryptedData;
 		}
+	}
+
+	/**
+	 * Create a new credential in user's account and return it along the scopes
+	 * If a projectId is send, then it also binds the credential to that specific project
+	 */
+	async createCredential(credentialsData: CredentialRequest.CredentialProperties, user: User) {
+		const newCredential = await this.prepareCreateData(credentialsData);
+
+		const encryptedData = this.createEncryptedData(null, newCredential);
+
+		const { shared, ...credential } = await this.save(
+			newCredential,
+			encryptedData,
+			user,
+			credentialsData.projectId,
+		);
+
+		const scopes = await this.getCredentialScopes(user, credential.id);
+
+		return { ...credential, scopes };
 	}
 }

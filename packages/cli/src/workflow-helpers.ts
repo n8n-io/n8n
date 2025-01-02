@@ -14,7 +14,7 @@ import { v4 as uuid } from 'uuid';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,

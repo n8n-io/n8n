@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type { LogScope } from '@n8n/config';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
@@ -125,6 +125,7 @@ export interface IUser {
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
+	icon: { type: 'emoji' | 'icon'; value: string } | null;
 	type: 'personal' | 'team' | 'public';
 	createdAt: string;
 	updatedAt: string;
@@ -675,6 +676,7 @@ export type ICredentialTestFunction = (
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
+	logger: Logger;
 	helpers: SSHTunnelFunctions & {
 		request: (uriOrObject: string | object, options?: object) => Promise<any>;
 	};
@@ -1017,7 +1019,21 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
+
 	helpers: RequestHelperFunctions & SSHTunnelFunctions;
+}
+
+export type FieldValueOption = { name: string; type: FieldType | 'any' };
+
+export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
+	Pick<FunctionsBase, 'getNode'>;
+
+export interface ILocalLoadOptionsFunctions {
+	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
+}
+
+export interface IWorkflowLoader {
+	get(workflowId: string): Promise<IWorkflowBase>;
 }
 
 export interface IPollFunctions
@@ -1293,14 +1309,18 @@ export interface INodePropertyTypeOptions {
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
 	assignment?: AssignmentTypeOptions;
+	minRequiredFields?: number; // Supported by: fixedCollection
+	maxAllowedFields?: number; // Supported by: fixedCollection
 	[key: string]: any;
 }
 
-export interface ResourceMapperTypeOptions {
-	resourceMapperMethod: string;
-	mode: 'add' | 'update' | 'upsert';
+export interface ResourceMapperTypeOptionsBase {
+	mode: 'add' | 'update' | 'upsert' | 'map';
 	valuesLabel?: string;
-	fieldWords?: { singular: string; plural: string };
+	fieldWords?: {
+		singular: string;
+		plural: string;
+	};
 	addAllFields?: boolean;
 	noFieldsError?: string;
 	multiKeyMatch?: boolean;
@@ -1310,7 +1330,22 @@ export interface ResourceMapperTypeOptions {
 		description?: string;
 		hint?: string;
 	};
+	showTypeConversionOptions?: boolean;
 }
+
+// Enforce at least one of resourceMapperMethod or localResourceMapperMethod
+export type ResourceMapperTypeOptionsLocal = {
+	resourceMapperMethod: string;
+	localResourceMapperMethod?: never; // Explicitly disallows this property
+};
+
+export type ResourceMapperTypeOptionsExternal = {
+	localResourceMapperMethod: string;
+	resourceMapperMethod?: never; // Explicitly disallows this property
+};
+
+export type ResourceMapperTypeOptions = ResourceMapperTypeOptionsBase &
+	(ResourceMapperTypeOptionsLocal | ResourceMapperTypeOptionsExternal);
 
 type NonEmptyArray<T> = [T, ...T[]];
 
@@ -1582,6 +1617,9 @@ export interface INodeType {
 		};
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
+		localResourceMapping?: {
+			[functionName: string]: (this: ILocalLoadOptionsFunctions) => Promise<ResourceMapperFields>;
 		};
 		actionHandler?: {
 			[functionName: string]: (
@@ -2312,7 +2350,7 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
-	startAgentJob<T, E = unknown>(
+	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
 		settings: unknown,
@@ -2411,7 +2449,17 @@ export interface WorkflowTestData {
 }
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
-export type Logger = Record<Exclude<LogLevel, 'silent'>, (message: string, meta?: object) => void>;
+export type LogMetadata = {
+	[key: string]: unknown;
+	scopes?: LogScope[];
+	file?: string;
+	function?: string;
+};
+export type Logger = Record<
+	Exclude<LogLevel, 'silent'>,
+	(message: string, metadata?: LogMetadata) => void
+>;
+export type LogLocationMetadata = Pick<LogMetadata, 'file' | 'function'>;
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
@@ -2651,6 +2699,9 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
+	ignoreTypeMismatchErrors: boolean;
+	attemptToConvertTypes: boolean;
+	convertFieldsToString: boolean;
 };
 
 export type FilterOperatorType =
@@ -2733,6 +2784,7 @@ export interface IUserSettings {
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
 	easyAIWorkflowOnboarded?: boolean;
+	userClaimedAiCredits?: boolean;
 }
 
 export interface IProcessedDataConfig {
@@ -2789,13 +2841,6 @@ export interface SecretsHelpersBase {
 	listProviders(): string[];
 	listSecrets(provider: string): string[];
 }
-
-export type BannerName =
-	| 'V1'
-	| 'TRIAL_OVER'
-	| 'TRIAL'
-	| 'NON_PRODUCTION_LICENSE'
-	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 

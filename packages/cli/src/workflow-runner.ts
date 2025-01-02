@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -21,7 +21,6 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
@@ -67,10 +66,15 @@ export class WorkflowRunner {
 		//
 		// FIXME: This is a quick fix. The proper fix would be to not remove
 		// the execution from the active executions while it's still running.
-		if (error instanceof ExecutionNotFoundError) {
+		if (
+			error instanceof ExecutionNotFoundError ||
+			error instanceof ExecutionCancelledError ||
+			error.message.includes('cancelled')
+		) {
 			return;
 		}
 
+		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
 		const isQueueMode = config.getEnv('executions.mode') === 'queue';
@@ -414,7 +418,6 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
-					this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 					await this.processError(error, new Date(), data.executionMode, executionId, hooks);
 
 					reject(error);

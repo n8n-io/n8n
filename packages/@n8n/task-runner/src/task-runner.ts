@@ -452,15 +452,15 @@ export abstract class TaskRunner extends EventEmitter {
 			});
 		});
 
-		this.send({
-			type: 'runner:rpc',
-			callId,
-			taskId,
-			name,
-			params,
-		});
-
 		try {
+			this.send({
+				type: 'runner:rpc',
+				callId,
+				taskId,
+				name,
+				params,
+			});
+
 			const returnValue = await dataPromise;
 
 			return isSerializedBuffer(returnValue) ? toBuffer(returnValue) : returnValue;

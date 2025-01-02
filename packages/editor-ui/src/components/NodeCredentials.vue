@@ -260,7 +260,8 @@ function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 			),
 		);
 	});
-	return options;
+
+	return options.filter((option) => !option.isManaged);
 }
 
 function getSelectedId(type: string) {

@@ -10,8 +10,8 @@ import {
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
-} from '@/ldap/helpers.ee';
-import { LdapService } from '@/ldap/ldap.service.ee';
+} from '@/ldap.ee/helpers.ee';
+import { LdapService } from '@/ldap.ee/ldap.service.ee';
 
 export const handleLdapLogin = async (
 	loginId: string,

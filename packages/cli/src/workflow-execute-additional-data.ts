@@ -2,10 +2,10 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { PushType } from '@n8n/api-types';
+import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { stringify } from 'flatted';
-import { ErrorReporter, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, Logger, WorkflowExecute, isObjectLiteral } from 'n8n-core';
 import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -45,7 +45,7 @@ import type { IWorkflowErrorData, UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { findSubworkflowStart, isObjectLiteral, isWorkflowIdValid } from '@/utils';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
@@ -58,12 +58,11 @@ import {
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { Logger } from './logging/logger.service';
-import { TaskManager } from './runners/task-managers/task-manager';
-import { SecretsHelper } from './secrets-helpers';
+import { SecretsHelper } from './secrets-helpers.ee';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
+import { TaskRequester } from './task-runners/task-managers/task-requester';
 import { PermissionChecker } from './user-management/permission-checker';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
@@ -262,7 +261,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, pushRef);
+				pushInstance.send({ type: 'nodeExecuteBefore', data: { executionId, nodeName } }, pushRef);
 			},
 		],
 		nodeExecuteAfter: [
@@ -279,7 +278,10 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, pushRef);
+				pushInstance.send(
+					{ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } },
+					pushRef,
+				);
 			},
 		],
 		workflowExecuteBefore: [
@@ -296,17 +298,19 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					return;
 				}
 				pushInstance.send(
-					'executionStarted',
 					{
-						executionId,
-						mode: this.mode,
-						startedAt: new Date(),
-						retryOf: this.retryOf,
-						workflowId,
-						workflowName,
-						flattedRunData: data?.resultData.runData
-							? stringify(data.resultData.runData)
-							: stringify({}),
+						type: 'executionStarted',
+						data: {
+							executionId,
+							mode: this.mode,
+							startedAt: new Date(),
+							retryOf: this.retryOf,
+							workflowId,
+							workflowName,
+							flattedRunData: data?.resultData.runData
+								? stringify(data.resultData.runData)
+								: stringify({}),
+						},
 					},
 					pushRef,
 				);
@@ -326,12 +330,11 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 
 				const { status } = fullRunData;
 				if (status === 'waiting') {
-					pushInstance.send('executionWaiting', { executionId }, pushRef);
+					pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
 				} else {
 					const rawData = stringify(fullRunData.data);
 					pushInstance.send(
-						'executionFinished',
-						{ executionId, workflowId, status, rawData },
+						{ type: 'executionFinished', data: { executionId, workflowId, status, rawData } },
 						pushRef,
 					);
 				}
@@ -974,7 +977,7 @@ export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) 
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type, data, pushRef);
+		pushInstance.send({ type, data } as PushMessage, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -1012,7 +1015,7 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		async startAgentJob(
+		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,
 			settings: unknown,
@@ -1030,7 +1033,7 @@ export async function getBase(
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
-			return await Container.get(TaskManager).startTask(
+			return await Container.get(TaskRequester).startTask(
 				additionalData,
 				jobType,
 				settings,
