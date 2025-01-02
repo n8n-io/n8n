@@ -4,6 +4,8 @@ import type {
 	ValidationResult,
 } from 'n8n-workflow';
 
+import type { ExecutionHooks } from '@/execution-hooks';
+
 export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
 export interface IResponseError extends Error {
@@ -32,6 +34,12 @@ export namespace n8n {
 			name?: string;
 			email?: string;
 		};
+	}
+}
+
+declare module 'n8n-workflow' {
+	interface IWorkflowExecuteAdditionalData {
+		hooks?: ExecutionHooks;
 	}
 }
 

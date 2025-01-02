@@ -210,7 +210,7 @@ export const describeCommonTests = (
 		};
 
 		it('should execute workflow and return data', async () => {
-			additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+			additionalData.executeSubWorkflow.mockResolvedValue(executeWorkflowData);
 			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
 
 			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
@@ -227,7 +227,7 @@ export const describeCommonTests = (
 
 		it('should put execution to wait if waitTill is returned', async () => {
 			const waitTill = new Date();
-			additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData, waitTill });
+			additionalData.executeSubWorkflow.mockResolvedValue({ ...executeWorkflowData, waitTill });
 			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
 
 			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {

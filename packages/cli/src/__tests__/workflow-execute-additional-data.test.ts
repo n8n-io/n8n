@@ -17,13 +17,15 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
+import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
 import { ExternalHooks } from '@/external-hooks';
+import { Push } from '@/push';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { Telemetry } from '@/telemetry';
 import { PermissionChecker } from '@/user-management/permission-checker';
-import { executeWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
+import { executeSubWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
 
 const EXECUTION_ID = '123';
@@ -78,6 +80,8 @@ jest.mock('n8n-core', () => ({
 }));
 
 describe('WorkflowExecuteAdditionalData', () => {
+	mockInstance(Push);
+	mockInstance(ExecutionHooksFactory);
 	const variablesService = mockInstance(VariablesService);
 	variablesService.getAllCached.mockResolvedValue([]);
 	const credentialsHelper = mockInstance(CredentialsHelper);
@@ -128,7 +132,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
-			const response = await executeWorkflow(
+			const response = await executeSubWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
@@ -141,7 +145,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should execute workflow, skip waiting', async () => {
-			const response = await executeWorkflow(
+			const response = await executeSubWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
@@ -154,7 +158,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should set sub workflow execution as running', async () => {
-			await executeWorkflow(
+			await executeSubWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined }),
@@ -167,7 +171,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const waitTill = new Date();
 			runWithData.waitTill = waitTill;
 
-			const response = await executeWorkflow(
+			const response = await executeSubWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),

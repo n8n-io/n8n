@@ -8,6 +8,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -34,6 +35,7 @@ export class JobProcessor {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly executionHooksFactory: ExecutionHooksFactory,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -115,25 +117,23 @@ export class JobProcessor {
 			executionTimeoutTimestamp,
 		);
 
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
+		additionalData.hooks = this.executionHooksFactory.forSubExecution(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
-			{ retryOf: execution.retryOf as string },
+			{ retryOf: execution.retryOf },
 		);
 
-		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const msg: RespondToWebhookMessage = {
-					kind: 'respond-to-webhook',
-					executionId,
-					response: this.encodeWebhookResponse(response),
-					workerId: this.instanceSettings.hostId,
-				};
+		additionalData.hooks.addHook('sendResponse', async (response) => {
+			const msg: RespondToWebhookMessage = {
+				kind: 'respond-to-webhook',
+				executionId,
+				response: this.encodeWebhookResponse(response),
+				workerId: this.instanceSettings.hostId,
+			};
 
-				await job.progress(msg);
-			},
-		];
+			await job.progress(msg);
+		});
 
 		additionalData.executionId = executionId;
 
