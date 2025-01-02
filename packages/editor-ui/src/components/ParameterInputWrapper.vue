@@ -133,7 +133,7 @@ const evaluatedExpression = computed<Result<unknown, Error>>(() => {
 
 		if (props.isForCredential) opts.additionalKeys = resolvedAdditionalExpressionData.value;
 
-		return { ok: true, result: workflowHelpers.resolveExpression(value, undefined, opts) };
+		return { ok: true, result: workflowHelpers.resolveExpression(value, undefined, opts, false) };
 	} catch (error) {
 		return { ok: false, error };
 	}
