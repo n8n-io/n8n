@@ -2,7 +2,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import WorkflowSettingsVue from '@/components/WorkflowSettings.vue';
 
 import { setupServer } from '@/__tests__/server';
-import { afterAll, beforeAll, MockInstance } from 'vitest';
+import type { MockInstance } from 'vitest';
+import { afterAll, beforeAll } from 'vitest';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
