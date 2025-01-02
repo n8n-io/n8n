@@ -210,11 +210,11 @@
 	--button-focus-font-color: var(--color-button-danger-font);
 	--button-focus-border-color: var(--color-danger);
 	--button-focus-background-color: var(--color-danger);
-	--button-focus-outline-color: var(--color-danger-tint-1);
+	--button-focus-outline-color: var(--color-button-danger-focus-outline);
 
 	--button-disabled-font-color: var(--color-button-danger-disabled-font);
-	--button-disabled-border-color: var(--color-danger-tint-1);
-	--button-disabled-background-color: var(--color-danger-tint-1);
+	--button-disabled-border-color: var(--color-button-danger-disabled-border);
+	--button-disabled-background-color: var(--color-button-danger-disabled-background);
 
 	--button-loading-font-color: var(--color-button-danger-font);
 	--button-loading-border-color: var(--color-danger);
