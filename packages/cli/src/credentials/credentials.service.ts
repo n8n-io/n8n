@@ -106,9 +106,7 @@ export class CredentialsService {
 
 			if (includeScopes) {
 				const projectRelations = await this.projectService.getProjectRelationsForUser(user);
-				credentials = credentials.map((c) =>
-					this.roleService.addScopes(c, user, projectRelations!),
-				);
+				credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 			}
 
 			if (includeData) {
@@ -163,7 +161,7 @@ export class CredentialsService {
 
 		if (includeScopes) {
 			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 		}
 
 		if (includeData) {
