@@ -13,12 +13,12 @@ import { Server as WSServer } from 'ws';
 import { inTest } from '@/constants';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
-import { TaskRunnerAuthController } from '@/runners/auth/task-runner-auth.controller';
+import { TaskRunnerAuthController } from '@/task-runners/auth/task-runner-auth.controller';
 import type {
 	TaskRunnerServerInitRequest,
 	TaskRunnerServerInitResponse,
-} from '@/runners/runner-types';
-import { TaskRunnerWsServer } from '@/runners/runner-ws-server';
+} from '@/task-runners/task-runner-types';
+import { TaskRunnerWsServer } from '@/task-runners/task-runner-ws-server';
 
 /**
  * Task Runner HTTP & WS server

@@ -3,15 +3,15 @@ import Container, { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 
-import { TaskManager } from './task-manager';
+import { TaskRequester } from './task-requester';
 import type { RequesterMessageCallback } from '../task-broker.service';
 import { TaskBroker } from '../task-broker.service';
 
 @Service()
-export class LocalTaskManager extends TaskManager {
+export class LocalTaskRequester extends TaskRequester {
 	taskBroker: TaskBroker;
 
-	id: string = 'single-main';
+	id = 'local-task-requester';
 
 	constructor(nodeTypes: NodeTypes) {
 		super(nodeTypes);

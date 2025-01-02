@@ -5,14 +5,14 @@ import * as a from 'node:assert/strict';
 import Container, { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
-import type { TaskRunnerRestartLoopError } from '@/runners/errors/task-runner-restart-loop-error';
-import type { TaskRunnerProcess } from '@/runners/task-runner-process';
-import { TaskRunnerProcessRestartLoopDetector } from '@/runners/task-runner-process-restart-loop-detector';
+import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
+import type { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
-import { TaskRunnerWsServer } from './runner-ws-server';
-import type { LocalTaskManager } from './task-managers/local-task-manager';
+import type { LocalTaskRequester } from './task-managers/local-task-requester';
 import type { TaskRunnerServer } from './task-runner-server';
+import { TaskRunnerWsServer } from './task-runner-ws-server';
 
 /**
  * Module responsible for loading and starting task runner. Task runner can be
@@ -25,7 +25,7 @@ export class TaskRunnerModule {
 
 	private taskRunnerWsServer: TaskRunnerWsServer | undefined;
 
-	private taskManager: LocalTaskManager | undefined;
+	private taskRequester: LocalTaskRequester | undefined;
 
 	private taskRunnerProcess: TaskRunnerProcess | undefined;
 
@@ -46,7 +46,7 @@ export class TaskRunnerModule {
 
 		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
 
-		await this.loadTaskManager();
+		await this.loadTaskRequester();
 		await this.loadTaskRunnerServer();
 
 		if (mode === 'internal') {
@@ -73,17 +73,19 @@ export class TaskRunnerModule {
 		await Promise.all([stopRunnerProcessTask, stopRunnerServerTask]);
 	}
 
-	private async loadTaskManager() {
-		const { TaskManager } = await import('@/runners/task-managers/task-manager');
-		const { LocalTaskManager } = await import('@/runners/task-managers/local-task-manager');
-		this.taskManager = Container.get(LocalTaskManager);
-		Container.set(TaskManager, this.taskManager);
+	private async loadTaskRequester() {
+		const { TaskRequester } = await import('@/task-runners/task-managers/task-requester');
+		const { LocalTaskRequester } = await import(
+			'@/task-runners/task-managers/local-task-requester'
+		);
+		this.taskRequester = Container.get(LocalTaskRequester);
+		Container.set(TaskRequester, this.taskRequester);
 	}
 
 	private async loadTaskRunnerServer() {
 		// These are imported dynamically because we need to set the task manager
 		// instance before importing them
-		const { TaskRunnerServer } = await import('@/runners/task-runner-server');
+		const { TaskRunnerServer } = await import('@/task-runners/task-runner-server');
 		this.taskRunnerHttpServer = Container.get(TaskRunnerServer);
 		this.taskRunnerWsServer = Container.get(TaskRunnerWsServer);
 
@@ -93,7 +95,7 @@ export class TaskRunnerModule {
 	private async startInternalTaskRunner() {
 		a.ok(this.taskRunnerWsServer, 'Task Runner WS Server not loaded');
 
-		const { TaskRunnerProcess } = await import('@/runners/task-runner-process');
+		const { TaskRunnerProcess } = await import('@/task-runners/task-runner-process');
 		this.taskRunnerProcess = Container.get(TaskRunnerProcess);
 		this.taskRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
 			this.taskRunnerProcess,
@@ -106,7 +108,7 @@ export class TaskRunnerModule {
 		await this.taskRunnerProcess.start();
 
 		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
-			'@/runners/internal-task-runner-disconnect-analyzer'
+			'@/task-runners/internal-task-runner-disconnect-analyzer'
 		);
 		this.taskRunnerWsServer.setDisconnectAnalyzer(
 			Container.get(InternalTaskRunnerDisconnectAnalyzer),
