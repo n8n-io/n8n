@@ -447,8 +447,14 @@ const parameterInputClasses = computed(() => {
 	return classes;
 });
 
+const isNormalBoolParameter = computed(
+	() => props.parameter.type === 'boolean' && !props.droppable,
+);
+
 const parameterInputWrapperStyle = computed(() => {
 	let deductWidth = 0;
+	let width;
+
 	const styles = {
 		width: '100%',
 	};
@@ -457,6 +463,10 @@ const parameterInputWrapperStyle = computed(() => {
 	}
 	if (getIssues.value.length) {
 		deductWidth += 20;
+	}
+
+	if (isNormalBoolParameter.value) {
+		deductWidth += 30;
 	}
 
 	if (deductWidth !== 0) {
@@ -1023,7 +1033,17 @@ onUpdated(async () => {
 			@update:model-value="expressionUpdated"
 		></ExpressionEditModal>
 
-		<div class="parameter-input ignore-key-press-canvas" :style="parameterInputWrapperStyle">
+		<div
+			:class="[
+				$style.parameterInput,
+				'ignore-key-press-canvas',
+				{
+					// [$style.parameterInputWidth]: !isNormalBoolParameter,
+					// [$style.parameterInputBoolWidth]: isNormalBoolParameter,
+				},
+			]"
+			:style="parameterInputWrapperStyle"
+		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
@@ -1321,6 +1341,7 @@ onUpdated(async () => {
 						/>
 					</template>
 				</N8nInput>
+				HERE???
 			</div>
 
 			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
@@ -1503,7 +1524,7 @@ onUpdated(async () => {
 				<InlineExpressionTip />
 			</div>
 		</div>
-
+		<slot name="overrideButton" />
 		<ParameterIssues
 			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
 			:issues="getIssues"

@@ -12,8 +12,14 @@ import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { INodeProperties, IParameterLabel, NodeParameterValueType } from 'n8n-workflow';
+import {
+	type INodeProperties,
+	type IParameterLabel,
+	type NodeParameterValueType,
+} from 'n8n-workflow';
 import { N8nInputLabel } from 'n8n-design-system';
+import AiStarsIcon from './AiStarsIcon.vue';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -88,8 +94,8 @@ function isOverrideValue(s: string) {
 function parseOverrides(s: string) {
 	/*
 		Approaches:
-		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts , unclear where to move it
-		- Fun and dangerous: See below
+		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts ; unclear where to move it
+		- Fun and dangerous: Use eval, see below
 	*/
 	if (!isOverrideValue(s)) return null;
 
@@ -109,12 +115,19 @@ function parseOverrides(s: string) {
 }
 
 const isContentOverride = computed(() => isOverrideValue(props.value?.toString() ?? ''));
-const canBeContentOverride = computed(
-	() => node.value?.type?.endsWith('Tool') && props.parameter.type !== 'options',
+const canBeContentOverride = computed(() =>
+	node.value?.type === undefined
+		? false
+		: nodeTypesStore
+				.getNodeType(node.value.type, node.value.typeVersion)
+				?.codex?.categories?.includes('AI') &&
+			!props.parameter.noDataExpression &&
+			props.parameter.type !== 'options',
 );
 // const canBeContentOverride = computed(() => getNodeTypeDescription().codex?.ai?.subcategories.contains('Tool'));
 
 const ndvStore = useNDVStore();
+const nodeTypesStore = useNodeTypesStore();
 
 const node = computed(() => ndvStore.activeNode);
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
@@ -125,13 +138,18 @@ const isResourceLocator = computed(
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
-		props.isReadOnly ||
+		isReadOnlyParameter.value ||
 		isResourceLocator.value ||
 		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 const showExpressionSelector = computed(() =>
-	isResourceLocator.value ? !hasOnlyListMode(props.parameter) : true,
+	!isContentOverride.value && isResourceLocator.value ? !hasOnlyListMode(props.parameter) : true,
+);
+
+const isReadOnlyParameter = computed(
+	() =>
+		props.isReadOnly || props.parameter.disabledOptions !== undefined || isContentOverride.value,
 );
 
 function onFocus() {
@@ -264,7 +282,7 @@ watch(
 
 <template>
 	<N8nInputLabel
-		:class="[$style.wrapper, { [$style.wrapperFlex]: canBeContentOverride }]"
+		:class="[$style.wrapper, { [$style.displayFlex]: canBeContentOverride }]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
@@ -278,7 +296,7 @@ watch(
 			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:is-read-only="isReadOnly"
+				:is-read-only="isReadOnlyParameter"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				@update:model-value="optionSelected"
@@ -293,11 +311,23 @@ watch(
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
-				<div v-if="canBeContentOverride && isContentOverride" :class="$style.parameterInput">
-					<ElInput size="small" disabled="true" :placeholder="fromAiOverride.overridePlaceholder" />
+				<div v-if="canBeContentOverride && isContentOverride" :class="$style.contentOverride">
+					<div :class="[$style['prepend-section'], 'el-input-group__prepend', $style.cornersLeft]">
+						<AiStarsIcon />
+					</div>
+					<N8nInput
+						:model-value="fromAiOverride.overridePlaceholder"
+						disabled
+						type="text"
+						size="small"
+					/>
+					<!-- <ElInput class="n8n-input" size="small" disabled /> -->
 					<N8nIconButton
-						type="secondary"
+						type="tertiary"
+						:class="['n8n-input', $style.closeButton, $style.cornersRight]"
+						outline="false"
 						icon="xmark"
+						size="xsmall"
 						@click="
 							() => {
 								valueChanged({
@@ -309,12 +339,12 @@ watch(
 						"
 					/>
 				</div>
-				<div v-else :class="$style.inputOverrideWrapper">
+				<div v-else :class="$style.displayFlex">
 					<ParameterInputWrapper
 						:parameter="parameter"
 						:model-value="value"
 						:path="path"
-						:is-read-only="isReadOnly"
+						:is-read-only="isReadOnlyParameter"
 						:is-assignment="isAssignment"
 						:rows="rows"
 						:droppable="droppable"
@@ -331,20 +361,25 @@ watch(
 						@focus="onFocus"
 						@blur="onBlur"
 						@drop="onDrop"
-					/>
-					<N8nIconButton
-						v-if="canBeContentOverride"
-						type="tertiary"
-						:icon="fromAiOverride.icon"
-						@click="
-							() => {
-								valueChanged({
-									name: props.path,
-									value: buildValueFromOverride(fromAiOverride.extraProps, true),
-								});
-							}
-						"
-					/>
+					>
+						<template #overrideButton>
+							<N8nButton
+								v-if="canBeContentOverride"
+								:class="['n8n-input', $style.overrideButton, $style.cornersRight]"
+								type="tertiary"
+								@click="
+									() => {
+										valueChanged({
+											name: props.path,
+											value: buildValueFromOverride(fromAiOverride.extraProps, true),
+										});
+									}
+								"
+							>
+								<AiStarsIcon />
+							</N8nButton>
+						</template>
+					</ParameterInputWrapper>
 				</div>
 			</template>
 		</DraggableTarget>
@@ -358,7 +393,7 @@ watch(
 				v-if="optionsPosition === 'bottom'"
 				:parameter="parameter"
 				:value="value"
-				:is-read-only="isReadOnly"
+				:is-read-only="isReadOnlyParameter"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
 				@update:model-value="optionSelected"
@@ -380,20 +415,52 @@ watch(
 	}
 }
 
-.wrapperFlex {
+.displayFlex {
 	display: flex;
 }
 
-.inputOverrideWrapper {
+.contentOverride {
 	display: flex;
-	flex-grow: 1;
-}
-
-.parameterInput {
-	display: flex;
-	flex-direction: row;
-	flex-grow: 1;
 	gap: var(--spacing-4xs);
+	border-radius: var(--border-radius-base);
+	background: var(--color-background-base);
+}
+
+.closeButton {
+	padding: 0px 8px 3px; // the icon used is off-center vertically
+	border: 0px;
+}
+
+.overrideButton {
+	display: flex;
+	justify-content: center;
+	align-self: start;
+	flex-grow: 1;
+	border: 0px;
+	// height: 30px;
+	width: 30px;
+	background: var(--color-background-base);
+
+	&:hover {
+		background: var(--color-primary);
+	}
+}
+
+.cornersLeft {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.cornersRight {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.prepend-section {
+	align-self: center;
+	padding-left: 8px;
+	width: 22px;
+	text-align: center;
 }
 
 .options {

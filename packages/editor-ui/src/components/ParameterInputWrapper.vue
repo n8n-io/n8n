@@ -224,7 +224,11 @@ function onTextInput(parameterData: IUpdateInformation) {
 			@drop="onDrop"
 			@text-input="onTextInput"
 			@update="onValueChanged"
-		/>
+		>
+			<template #overrideButton>
+				<slot v-if="$slots.overrideButton" name="overrideButton" />
+			</template>
+		</ParameterInput>
 		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
 			<div>
 				<InputHint
