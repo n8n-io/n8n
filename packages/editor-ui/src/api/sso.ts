@@ -1,10 +1,6 @@
+import type { SamlPreferences, SamlToggleDto } from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type {
-	IRestApiContext,
-	SamlPreferencesLoginEnabled,
-	SamlPreferences,
-	SamlPreferencesExtractedData,
-} from '@/Interface';
+import type { IRestApiContext, SamlPreferencesExtractedData } from '@/Interface';
 
 export const initSSO = async (context: IRestApiContext): Promise<string> => {
 	return await makeRestApiRequest(context, 'GET', '/sso/saml/initsso');
@@ -29,7 +25,7 @@ export const saveSamlConfig = async (
 
 export const toggleSamlConfig = async (
 	context: IRestApiContext,
-	data: SamlPreferencesLoginEnabled,
+	data: SamlToggleDto,
 ): Promise<void> => {
 	return await makeRestApiRequest(context, 'POST', '/sso/saml/config/toggle', data);
 };
