@@ -265,6 +265,7 @@ export class Odoo implements INodeType {
 						body,
 						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
+						rejectUnauthorized: !credentials?.ignoreSSLIssues as boolean,
 					};
 					const result = await this.helpers.request(options);
 					if (result.error || !result.result) {
