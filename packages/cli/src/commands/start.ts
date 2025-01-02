@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { GlobalConfig } from '@n8n/config';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -21,7 +20,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { License } from '@/license';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
@@ -200,10 +198,14 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
-			this.logger.warn(
-				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
-			);
+		await this.license.setRenewal();
+
+		if (this.globalConfig.multiMainSetup.enabled) {
+			if (this.globalConfig.license.autoRenewalEnabled) await this.license.renew();
+
+			if (!this.license.isMultiMainLicensed()) {
+				throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+			}
 		}
 
 		Container.get(WaitTracker).init();
@@ -237,13 +239,6 @@ export class Start extends BaseCommand {
 			return;
 		}
 
-		if (
-			Container.get(GlobalConfig).multiMainSetup.enabled &&
-			!Container.get(License).isMultipleMainInstancesLicensed()
-		) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
-
 		const orchestrationService = Container.get(OrchestrationService);
 
 		await orchestrationService.init();
@@ -260,11 +255,11 @@ export class Start extends BaseCommand {
 
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
-				await this.license.reinit(); // to disable renewal
+				await this.license.setRenewal(); // to disable renewal
 				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 			})
 			.on('leader-takeover', async () => {
-				await this.license.reinit(); // to enable renewal
+				await this.license.setRenewal(); // to enable renewal
 				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}

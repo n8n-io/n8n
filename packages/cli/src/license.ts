@@ -40,23 +40,25 @@ export class License {
 		this.logger = this.logger.scoped('license');
 	}
 
-	/**
-	 * Whether this instance should renew the license - on init and periodically.
-	 */
-	private renewalEnabled() {
-		if (this.instanceSettings.instanceType !== 'main') return false;
-		const autoRenewEnabled = this.globalConfig.license.autoRenewalEnabled;
+	/** Set whether this instance should renew the license - on init and periodically. */
+	async setRenewal() {
+		if (!this.manager || this.instanceSettings.instanceType !== 'main') return;
 
-		/**
-		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
-		 * On becoming leader or follower, each will enable or disable renewal, respectively.
-		 * This ensures the mains do not cause a 429 (too many requests) on license init.
-		 */
-		if (this.globalConfig.multiMainSetup.enabled) {
-			return autoRenewEnabled && this.instanceSettings.isLeader;
+		const { isLeader } = this.instanceSettings;
+		const { autoRenewalEnabled: autoRenewalConfigEnabled } = this.globalConfig.license;
+
+		const shouldRenew = isLeader && autoRenewalConfigEnabled;
+
+		// this.manager.setRenewOnInit(shouldRenew); // @TODO: Add method to SDK
+		// this.manager.setAutoRenewal(shouldRenew); // @TODO: Add method to SDK
+
+		this.logger.debug(shouldRenew ? 'Enabled license renewal' : 'Disabled license renewal');
+
+		if (isLeader && !autoRenewalConfigEnabled) {
+			this.logger.warn(
+				'This instance has been configured not to renew the license, so access to licensed features may be lost. Please consider setting N8N_LICENSE_AUTO_RENEW_ENABLED to `true` to allow the license to renew on init and periodically.',
+			);
 		}
-
-		return autoRenewEnabled;
 	}
 
 	async init(forceRecreate = false) {
@@ -87,15 +89,13 @@ export class License {
 			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
 
-		const renewalEnabled = this.renewalEnabled();
-
 		try {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled: renewalEnabled,
-				renewOnInit: renewalEnabled,
+				autoRenewEnabled: false, // needs leadership state, so set after orchestration init
+				renewOnInit: false, // needs leadership state, so set after orchestration init
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
@@ -275,7 +275,7 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 	}
 
-	isMultipleMainInstancesLicensed() {
+	isMultiMainLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
@@ -397,11 +397,5 @@ export class License {
 
 	isWithinUsersLimit() {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
-	}
-
-	async reinit() {
-		this.manager?.reset();
-		await this.init(true);
-		this.logger.debug('License reinitialized');
 	}
 }
