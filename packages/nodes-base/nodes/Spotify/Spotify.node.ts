@@ -8,7 +8,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { isoCountryCodes } from '@utils/ISOCountryCodes';
+import { isoCountryCodes } from '../../utils/ISOCountryCodes';
 
 import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 
@@ -1309,8 +1309,9 @@ export class Spotify implements INodeType {
 				}
 
 				// Remove null values from the response
-				responseData = responseData.filter((item: IDataObject) => item !== null);
-
+				if (operation === 'getUserPlaylists') {
+					responseData = responseData.filter((item: IDataObject) => item !== null);
+				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },

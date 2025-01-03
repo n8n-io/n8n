@@ -38,6 +38,7 @@ export async function spotifyApiRequest(
 		options.body = body;
 	}
 	try {
+		console.log(options);
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
