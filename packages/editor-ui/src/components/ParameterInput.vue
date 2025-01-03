@@ -856,11 +856,12 @@ async function optionSelected(command: string) {
 			(!props.modelValue || props.modelValue === '[Object: null]')
 		) {
 			valueChanged('={{ 0 }}');
+		} else if (props.parameter.type === 'multiOptions') {
+			valueChanged(`={{ ${JSON.stringify(props.modelValue)} }}`);
 		} else if (
-			props.parameter.type !== 'multiOptions' &&
-			(props.parameter.type === 'number' ||
-				props.parameter.type === 'boolean' ||
-				typeof props.modelValue !== 'string')
+			props.parameter.type === 'number' ||
+			props.parameter.type === 'boolean' ||
+			typeof props.modelValue !== 'string'
 		) {
 			valueChanged(`={{ ${props.modelValue} }}`);
 		} else {
