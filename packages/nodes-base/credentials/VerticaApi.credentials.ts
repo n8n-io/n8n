@@ -66,7 +66,21 @@ export class VerticaApi implements ICredentialType {
 				type: 'responseCode',
 				properties: {
 					value: 403,
-					message: 'Connection failed: Invalid credentials or unreachable server',
+					message: 'Connection failed: Invalid credentials or insufficient permissions',
+				},
+			},
+			{
+				type: 'responseCode',
+				properties: {
+					value: 503,
+					message: 'Service unavailable: Server is overloaded or under maintenance',
+				},
+			},
+			{
+				type: 'responseCode',
+				properties: {
+					value: 504,
+					message: 'Gateway timeout: Upstream server took too long to respond',
 				},
 			},
 		],
