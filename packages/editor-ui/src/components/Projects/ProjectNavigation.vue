@@ -122,7 +122,7 @@ const showAddFirstProject = computed(
 				},
 			]"
 			:disabled="isCreatingProject"
-			type="tertiary"
+			type="secondary"
 			icon="plus"
 			data-test-id="add-first-project-button"
 			@click="globalEntityCreation.createProject"
@@ -187,7 +187,6 @@ const showAddFirstProject = computed(
 }
 
 .addFirstProjectBtn {
-	border: 1px solid var(--color-background-dark);
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-3xs);
 	margin: 0 var(--spacing-m) var(--spacing-m);
