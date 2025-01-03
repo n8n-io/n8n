@@ -115,12 +115,7 @@ export class MemoryPostgresChat implements INodeType {
 			...kOptions,
 		});
 
-		async function closeFunction() {
-			void pool.end();
-		}
-
 		return {
-			closeFunction,
 			response: logWrapper(memory, this),
 		};
 	}
