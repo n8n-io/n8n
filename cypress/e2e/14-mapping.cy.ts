@@ -115,6 +115,7 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from json view', () => {
+		cy.viewport(800, 1200);
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -123,14 +124,7 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('JSON');
 
-		ndv.getters
-			.inputDataContainer()
-			.should('exist');
-
-		ndv.getters
-			.inputDataContainer()
-			.find('.json-data')
-			.scrollTo('top');
+		ndv.getters.inputDataContainer().should('exist');
 
 		ndv.getters
 			.inputDataContainer()
@@ -140,17 +134,9 @@ describe('Data mapping', () => {
 				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
 			);
 
-		ndv.getters
-			.inputDataContainer()
-			.find('span')
-			.contains('"count"')
-			.scrollIntoView();
+		ndv.getters.inputDataContainer().find('span').contains('"count"').scrollIntoView();
 
-		ndv.getters
-			.inputDataContainer()
-			.find('span')
-			.contains('"count"')
-			.realMouseDown();
+		ndv.getters.inputDataContainer().find('span').contains('"count"').realMouseDown();
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
