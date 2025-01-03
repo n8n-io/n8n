@@ -32,11 +32,4 @@ export type FormTriggerData = {
 	buttonLabel?: string;
 };
 
-export type CompletionPageConfig = {
-	pageTitle?: string;
-	completionMessage?: string;
-	completionTitle?: string;
-	redirectUrl?: string;
-};
-
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';
