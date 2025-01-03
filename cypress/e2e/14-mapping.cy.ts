@@ -125,12 +125,29 @@ describe('Data mapping', () => {
 
 		ndv.getters
 			.inputDataContainer()
-			.should('exist')
+			.should('exist');
+
+		ndv.getters
+			.inputDataContainer()
+			.find('.json-data')
+			.scrollTo('top');
+
+		ndv.getters
+			.inputDataContainer()
 			.find('.json-data')
 			.should(
 				'have.text',
 				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
-			)
+			);
+
+		ndv.getters
+			.inputDataContainer()
+			.find('span')
+			.contains('"count"')
+			.scrollIntoView();
+
+		ndv.getters
+			.inputDataContainer()
 			.find('span')
 			.contains('"count"')
 			.realMouseDown();
