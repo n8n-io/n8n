@@ -32,7 +32,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 
-		WorkflowPage.getters.nodeViewBackground().click(600, 400, { force: true });
+		WorkflowPage.getters.nodeViewBackground().click(800, 600, { force: true });
 		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 
 		// Change connection from Set to Set1

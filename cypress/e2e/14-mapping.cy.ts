@@ -115,8 +115,6 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from json view', () => {
-		// ADO-3063 - followup to make this viewport global
-		cy.viewport('macbook-16');
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
