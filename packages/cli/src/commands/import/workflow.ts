@@ -1,7 +1,7 @@
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import fs from 'fs';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
@@ -18,7 +18,7 @@ import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
-		throw new ApplicationError(
+		throw new UserError(
 			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
 		);
 	}
@@ -29,7 +29,7 @@ function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IW
 			!Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
 			!Object.prototype.hasOwnProperty.call(workflow, 'connections')
 		) {
-			throw new ApplicationError('File does not seem to contain valid workflows.');
+			throw new UserError('File does not seem to contain valid workflows.');
 		}
 	}
 }
@@ -80,7 +80,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		}
 
 		if (flags.projectId && flags.userId) {
-			throw new ApplicationError(
+			throw new UserError(
 				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 			);
 		}
@@ -92,7 +92,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
 
 		if (!result.success) {
-			throw new ApplicationError(result.message);
+			throw new UserError(result.message);
 		}
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
@@ -219,7 +219,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		if (!userId) {
 			const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 			if (!owner) {
-				throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}
 			userId = owner.id;
 		}

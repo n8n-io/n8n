@@ -9,7 +9,7 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
+import { ensureError, sleep, ConfigurationError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -143,7 +143,7 @@ export abstract class BaseCommand extends Command {
 		if (!isSelected && !isAvailable) return;
 
 		if (isSelected && !isAvailable) {
-			throw new ApplicationError(
+			throw new ConfigurationError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
@@ -187,31 +187,31 @@ export abstract class BaseCommand extends Command {
 		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
 
 		if (host === '') {
-			throw new ApplicationError(
+			throw new ConfigurationError(
 				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
 			);
 		}
 
 		if (bucket.name === '') {
-			throw new ApplicationError(
+			throw new ConfigurationError(
 				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
 			);
 		}
 
 		if (bucket.region === '') {
-			throw new ApplicationError(
+			throw new ConfigurationError(
 				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
 			);
 		}
 
 		if (credentials.accessKey === '') {
-			throw new ApplicationError(
+			throw new ConfigurationError(
 				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
 			);
 		}
 
 		if (credentials.accessSecret === '') {
-			throw new ApplicationError(
+			throw new ConfigurationError(
 				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
 			);
 		}

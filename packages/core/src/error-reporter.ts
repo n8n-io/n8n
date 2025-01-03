@@ -2,7 +2,12 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
+import {
+	ApplicationError,
+	isBaseError,
+	ExecutionCancelledError,
+	type ReportingOptions,
+} from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
 
@@ -29,11 +34,15 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [
-					e.message + context,
-					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
-				].join('');
-				const meta = e instanceof ApplicationError ? e.extra : undefined;
+				let stack = '';
+				let meta = undefined;
+				if (e instanceof ApplicationError || isBaseError(e)) {
+					if (e.level === 'error' && e.stack) {
+						stack = `\n${e.stack}\n`;
+					}
+					meta = e.extra;
+				}
+				const msg = [e.message + context, stack].join('');
 				this.logger.error(msg, meta);
 				e = e.cause as Error;
 			} while (e);
@@ -117,13 +126,8 @@ export class ErrorReporter {
 			return null;
 		}
 
-		if (originalException instanceof ApplicationError) {
-			const { level, extra, tags } = originalException;
-			if (level === 'warning') return null;
-			event.level = level;
-			if (extra) event.extra = { ...event.extra, ...extra };
-			if (tags) event.tags = { ...event.tags, ...tags };
-		}
+		if (this.handleBaseError(event, originalException)) return null;
+		if (this.handleApplicationError(event, originalException)) return null;
 
 		if (
 			originalException instanceof Error &&
@@ -163,5 +167,32 @@ export class ErrorReporter {
 		if (e instanceof Error) return e;
 		if (typeof e === 'string') return new ApplicationError(e);
 		return;
+	}
+
+	/** @returns Whether the error should be dropped */
+	private handleBaseError(event: ErrorEvent, error: unknown): boolean {
+		if (isBaseError(error)) {
+			if (!error.shouldReport) return true;
+
+			event.level = error.level;
+			if (error.extra) event.extra = { ...event.extra, ...error.extra };
+			if (error.tags) event.tags = { ...event.tags, ...error.tags };
+		}
+
+		return false;
+	}
+
+	/** @returns Whether the error should be dropped */
+	private handleApplicationError(event: ErrorEvent, error: unknown): boolean {
+		if (error instanceof ApplicationError) {
+			const { level, extra, tags } = error;
+			if (level === 'warning') return true;
+
+			event.level = level;
+			if (extra) event.extra = { ...event.extra, ...extra };
+			if (tags) event.tags = { ...event.tags, ...tags };
+		}
+
+		return false;
 	}
 }

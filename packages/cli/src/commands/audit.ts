@@ -1,6 +1,6 @@
 import { SecurityConfig } from '@n8n/config';
 import { Flags } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { RISK_CATEGORIES } from '@/security-audit/constants';
@@ -48,7 +48,7 @@ export class SecurityAudit extends BaseCommand {
 
 			const hint = `Valid categories are: ${RISK_CATEGORIES.join(', ')}`;
 
-			throw new ApplicationError([message, hint].join('. '));
+			throw new UserError(`${message}. ${hint}`);
 		}
 
 		const result = await Container.get(SecurityAuditService).run(
