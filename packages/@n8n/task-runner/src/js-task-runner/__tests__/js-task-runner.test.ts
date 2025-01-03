@@ -139,7 +139,8 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(defaultTaskRunner.makeRpcCall).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
-					'Hello world!',
+					"'Hello'",
+					"'world!'",
 				]);
 			},
 		);
@@ -172,6 +173,44 @@ describe('JsTaskRunner', () => {
 					taskData: newDataRequestResponse([wrapIntoJson({})]),
 				}),
 			).resolves.toBeDefined();
+		});
+
+		it('should not throw when trying to log the context object', async () => {
+			const task = newTaskWithSettings({
+				code: `
+					console.log(this);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await expect(
+				execTaskWithParams({
+					task,
+					taskData: newDataRequestResponse([wrapIntoJson({})]),
+				}),
+			).resolves.toBeDefined();
+		});
+
+		it('should log the context object as [[ExecutionContext]]', async () => {
+			const rpcCallSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+
+			const task = newTaskWithSettings({
+				code: `
+					console.log(this);
+					return {json: {}}
+				`,
+				nodeMode: 'runOnceForAllItems',
+			});
+
+			await execTaskWithParams({
+				task,
+				taskData: newDataRequestResponse([wrapIntoJson({})]),
+			});
+
+			expect(rpcCallSpy).toHaveBeenCalledWith(task.taskId, 'logNodeOutput', [
+				'[[ExecutionContext]]',
+			]);
 		});
 	});
 
@@ -633,6 +672,7 @@ describe('JsTaskRunner', () => {
 						),
 					});
 
+					// Assert
 					expect(rpcCallSpy).toHaveBeenCalledWith('1', group.method, group.expectedParams);
 				});
 
@@ -661,26 +701,22 @@ describe('JsTaskRunner', () => {
 			describe('unsupported methods', () => {
 				for (const unsupportedFunction of UNSUPPORTED_HELPER_FUNCTIONS) {
 					it(`should throw an error if ${unsupportedFunction} is used in runOnceForAllItems`, async () => {
-						// Act
-
+						// Act & Assert
 						await expect(
-							async () =>
-								await executeForAllItems({
-									code: `${unsupportedFunction}()`,
-									inputItems,
-								}),
+							executeForAllItems({
+								code: `${unsupportedFunction}()`,
+								inputItems,
+							}),
 						).rejects.toThrow(UnsupportedFunctionError);
 					});
 
 					it(`should throw an error if ${unsupportedFunction} is used in runOnceForEachItem`, async () => {
-						// Act
-
+						// Act & Assert
 						await expect(
-							async () =>
-								await executeForEachItem({
-									code: `${unsupportedFunction}()`,
-									inputItems,
-								}),
+							executeForEachItem({
+								code: `${unsupportedFunction}()`,
+								inputItems,
+							}),
 						).rejects.toThrow(UnsupportedFunctionError);
 					});
 				}

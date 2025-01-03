@@ -2,7 +2,7 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, type ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Service } from 'typedi';
 
@@ -29,7 +29,10 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
+				const msg = [
+					e.message + context,
+					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
+				].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
 				this.logger.error(msg, meta);
 				e = e.cause as Error;
@@ -143,6 +146,7 @@ export class ErrorReporter {
 	}
 
 	error(e: unknown, options?: ReportingOptions) {
+		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);
 	}
