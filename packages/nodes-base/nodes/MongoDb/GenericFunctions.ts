@@ -1,21 +1,21 @@
-import { createSecureContext } from 'tls';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import { MongoClient, ObjectId } from 'mongodb';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { createSecureContext } from 'tls';
 
-import get from 'lodash/get';
-import set from 'lodash/set';
-import { MongoClient, ObjectId } from 'mongodb';
-import { formatPrivateKey } from '../../utils/utilities';
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
+import { formatPrivateKey } from '../../utils/utilities';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string

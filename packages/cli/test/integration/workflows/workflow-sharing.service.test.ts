@@ -2,7 +2,7 @@ import Container from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { createUser } from '../shared/db/users';

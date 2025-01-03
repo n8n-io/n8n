@@ -8,7 +8,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { isoCountryCodes } from '../../utils/ISOCountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 

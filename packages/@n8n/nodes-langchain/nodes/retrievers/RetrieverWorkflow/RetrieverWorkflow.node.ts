@@ -41,6 +41,7 @@ export class RetrieverWorkflow implements INodeType {
 		displayName: 'Workflow Retriever',
 		name: 'retrieverWorkflow',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Use an n8n Workflow as Retriever',

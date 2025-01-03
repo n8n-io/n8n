@@ -19,9 +19,9 @@ import {
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
+import { type CompletionPageConfig } from './interfaces';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
 import { prepareFormReturnItem, renderForm, resolveRawData } from '../Form/utils';
-import { type CompletionPageConfig } from './interfaces';
 
 export const formFieldsProperties: INodeProperties[] = [
 	{

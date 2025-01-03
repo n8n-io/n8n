@@ -3,7 +3,7 @@ import { ErrorReporter } from 'n8n-core';
 import { Service } from 'typedi';
 
 import config from '@/config';
-import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets/constants';
+import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets.ee/constants';
 
 import { Settings } from '../entities/settings';
 

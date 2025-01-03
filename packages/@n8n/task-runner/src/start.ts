@@ -56,7 +56,7 @@ void (async function start() {
 
 	if (config.sentryConfig.sentryDsn) {
 		const { ErrorReporter } = await import('n8n-core');
-		errorReporter = new ErrorReporter();
+		errorReporter = Container.get(ErrorReporter);
 		await errorReporter.init('task_runner', config.sentryConfig.sentryDsn);
 	}
 
