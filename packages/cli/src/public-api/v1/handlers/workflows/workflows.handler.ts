@@ -17,7 +17,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.ee';
+import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -105,6 +105,7 @@ export = {
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
+			const { excludePinnedData = false } = req.query;
 
 			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
 				id,
@@ -120,6 +121,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			if (excludePinnedData) {
+				delete workflow.pinData;
+			}
+
 			Container.get(EventService).emit('user-retrieved-workflow', {
 				userId: req.user.id,
 				publicApi: true,
@@ -131,7 +136,15 @@ export = {
 	getWorkflows: [
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active, tags, name, projectId } = req.query;
+			const {
+				offset = 0,
+				limit = 100,
+				excludePinnedData = false,
+				active,
+				tags,
+				name,
+				projectId,
+			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
@@ -198,6 +211,12 @@ export = {
 				where,
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
+
+			if (excludePinnedData) {
+				workflows.forEach((workflow) => {
+					delete workflow.pinData;
+				});
+			}
 
 			Container.get(EventService).emit('user-retrieved-all-workflows', {
 				userId: req.user.id,

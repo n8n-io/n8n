@@ -1,4 +1,11 @@
-import type { INode, IConnections, IWorkflowSettings, IRunData, StartNodeData } from 'n8n-workflow';
+import type {
+	INode,
+	IConnections,
+	IWorkflowSettings,
+	IRunData,
+	StartNodeData,
+	ITaskData,
+} from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/interfaces';
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
@@ -22,6 +29,11 @@ export declare namespace WorkflowRequest {
 		runData: IRunData;
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
+		dirtyNodeNames?: string[];
+		triggerToStartFrom?: {
+			name: string;
+			data?: ITaskData;
+		};
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;

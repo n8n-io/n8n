@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { getExecutePollFunctions, returnJsonArray, type InstanceSettings } from 'n8n-core';
+import { PollContext, returnJsonArray, type InstanceSettings } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
 import type {
 	IBinaryData,
@@ -13,7 +13,6 @@ import type {
 	INode,
 	INodeType,
 	INodeTypes,
-	IPollFunctions,
 	ITriggerFunctions,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -193,14 +192,15 @@ export async function testPollingTriggerNode(
 		options.node,
 	) as INode;
 	const workflow = mock<Workflow>({
-		timezone: options.timezone ?? 'Europe/Berlin',
+		timezone,
 		nodeTypes: mock<INodeTypes>({
 			getByNameAndVersion: () => mock<INodeType>({ description: trigger.description }),
 		}),
+		getStaticData: () => options.workflowStaticData ?? {},
 	});
 	const mode = options.mode ?? 'trigger';
 
-	const originalPollingFunctions = getExecutePollFunctions(
+	const pollContext = new PollContext(
 		workflow,
 		node,
 		mock<IWorkflowExecuteAdditionalData>({
@@ -218,22 +218,13 @@ export async function testPollingTriggerNode(
 		'init',
 	);
 
-	async function getCredentials<T extends object = ICredentialDataDecryptedObject>(): Promise<T> {
-		return (options.credential ?? {}) as T;
-	}
+	pollContext.getNode = () => node;
+	pollContext.getCredentials = async <T extends object = ICredentialDataDecryptedObject>() =>
+		(options.credential ?? {}) as T;
+	pollContext.getNodeParameter = (parameterName, fallback) =>
+		get(node.parameters, parameterName) ?? fallback;
 
-	const pollingFunctions = mock<IPollFunctions>({
-		...originalPollingFunctions,
-		getCredentials,
-		getTimezone: () => timezone,
-		getNode: () => node,
-		getMode: () => mode,
-		getInstanceId: () => 'instanceId',
-		getWorkflowStaticData: () => options.workflowStaticData ?? {},
-		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
-	});
-
-	const response = await trigger.poll?.call(pollingFunctions);
+	const response = await trigger.poll?.call(pollContext);
 
 	return {
 		response,

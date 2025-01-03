@@ -1,3 +1,4 @@
+import { Logger } from 'n8n-core';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import { Service } from 'typedi';
 
@@ -7,7 +8,6 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -33,7 +33,7 @@ export class ConcurrencyControlService {
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
 	) {
-		this.logger = this.logger.withScope('executions');
+		this.logger = this.logger.scoped('concurrency');
 
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 

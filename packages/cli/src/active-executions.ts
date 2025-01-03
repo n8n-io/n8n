@@ -1,3 +1,4 @@
+import { Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -18,7 +19,6 @@ import type {
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
@@ -154,6 +154,7 @@ export class ActiveExecutions {
 
 	/** Resolve the post-execution promise in an execution. */
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
+		if (!this.has(executionId)) return;
 		const execution = this.getExecution(executionId);
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });

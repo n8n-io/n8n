@@ -56,10 +56,10 @@ describe('Template credentials setup', () => {
 	it('can be opened from template collection page', () => {
 		visitTemplateCollectionPage(testData.ecommerceStarterPack);
 		templateCredentialsSetupPage.enableTemplateCredentialSetupFeatureFlag();
-		clickUseWorkflowButtonByTitle('Promote new Shopify products on Twitter and Telegram');
+		clickUseWorkflowButtonByTitle('Promote new Shopify products');
 
 		templateCredentialsSetupPage.getters
-			.title("Set up 'Promote new Shopify products on Twitter and Telegram' template")
+			.title("Set up 'Promote new Shopify products' template")
 			.should('be.visible');
 	});
 
@@ -67,7 +67,7 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 
 		templateCredentialsSetupPage.getters
-			.title("Set up 'Promote new Shopify products on Twitter and Telegram' template")
+			.title("Set up 'Promote new Shopify products' template")
 			.should('be.visible');
 
 		templateCredentialsSetupPage.getters

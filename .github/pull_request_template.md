@@ -11,6 +11,8 @@ Photos and videos are recommended.
 Include links to **Linear ticket** or Github issue or Community forum post.
 Important in order to close *automatically* and provide context to reviewers.
 -->
+<!-- Use "closes #<issue-number>", "fixes #<issue-number>", or "resolves #<issue-number>" to automatically close issues when the PR is merged. -->
+
 
 ## Review / Merge checklist
 

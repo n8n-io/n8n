@@ -10,8 +10,6 @@ export class ExecutionError extends SerializableError {
 
 	context: { itemIndex: number } | undefined = undefined;
 
-	stack = '';
-
 	lineNumber: number | undefined = undefined;
 
 	constructor(error: ErrorLike, itemIndex?: number) {
@@ -22,7 +20,12 @@ export class ExecutionError extends SerializableError {
 			this.context = { itemIndex: this.itemIndex };
 		}
 
-		this.stack = error.stack ?? '';
+		// Override the stack trace with the given error's stack trace. Since
+		// node v22 it's not writable, so we can't assign it directly
+		Object.defineProperty(this, 'stack', {
+			value: error.stack,
+			enumerable: true,
+		});
 
 		this.populateFromStack();
 	}
@@ -31,7 +34,7 @@ export class ExecutionError extends SerializableError {
 	 * Populate error `message` and `description` from error `stack`.
 	 */
 	private populateFromStack() {
-		const stackRows = this.stack.split('\n');
+		const stackRows = (this.stack ?? '').split('\n');
 
 		if (stackRows.length === 0) {
 			this.message = 'Unknown error';

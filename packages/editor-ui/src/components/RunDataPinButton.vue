@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { usePinnedData } from '@/composables/usePinnedData';
+import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from 'n8n-design-system';
 
 const locale = useI18n();
 
@@ -27,7 +28,7 @@ const visible = computed(() =>
 </script>
 
 <template>
-	<n8n-tooltip placement="bottom-end" :visible="visible">
+	<N8nTooltip placement="bottom-end" :visible="visible">
 		<template #content>
 			<div v-if="props.tooltipContentsVisibility.binaryDataTooltipContent">
 				{{ locale.baseText('ndv.pinData.pin.binary') }}
@@ -37,16 +38,16 @@ const visible = computed(() =>
 			</div>
 			<div v-else>
 				<strong>{{ locale.baseText('ndv.pinData.pin.title') }}</strong>
-				<n8n-text size="small" tag="p">
+				<N8nText size="small" tag="p">
 					{{ locale.baseText('ndv.pinData.pin.description') }}
 
-					<n8n-link :to="props.dataPinningDocsUrl" size="small">
+					<N8nLink :to="props.dataPinningDocsUrl" size="small">
 						{{ locale.baseText('ndv.pinData.pin.link') }}
-					</n8n-link>
-				</n8n-text>
+					</N8nLink>
+				</N8nText>
 			</div>
 		</template>
-		<n8n-icon-button
+		<N8nIconButton
 			:class="$style.pinDataButton"
 			type="tertiary"
 			:active="props.pinnedData.hasData.value"
@@ -55,7 +56,7 @@ const visible = computed(() =>
 			data-test-id="ndv-pin-data"
 			@click="emit('togglePinData')"
 		/>
-	</n8n-tooltip>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>

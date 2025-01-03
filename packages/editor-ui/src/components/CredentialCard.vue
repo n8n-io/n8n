@@ -39,6 +39,7 @@ const props = withDefaults(
 			name: '',
 			sharedWithProjects: [],
 			homeProject: {} as ProjectSharingData,
+			isManaged: false,
 		}),
 		readOnly: false,
 	},

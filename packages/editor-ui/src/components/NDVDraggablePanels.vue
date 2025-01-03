@@ -8,10 +8,10 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import { useDebounce } from '@/composables/useDebounce';
-import type { XYPosition } from '@/Interface';
+import type { MainPanelType, XYPosition } from '@/Interface';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
+import { useThrottleFn } from '@vueuse/core';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -20,7 +20,7 @@ const PANEL_WIDTH = 350;
 const PANEL_WIDTH_LARGE = 420;
 const MIN_WINDOW_WIDTH = 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 
-const initialMainPanelWidth: { [key: string]: number } = {
+const initialMainPanelWidth: Record<MainPanelType, number> = {
 	regular: MAIN_NODE_PANEL_WIDTH,
 	dragless: MAIN_NODE_PANEL_WIDTH,
 	unknown: MAIN_NODE_PANEL_WIDTH,
@@ -34,7 +34,8 @@ interface Props {
 	nodeType: INodeTypeDescription | null;
 }
 
-const { callDebounced } = useDebounce();
+const throttledOnResize = useThrottleFn(onResize, 100);
+
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 
@@ -106,22 +107,16 @@ watch(containerWidth, (width) => {
 	setPositions(mainPanelDimensions.value.relativeLeft);
 });
 
-const currentNodePaneType = computed((): string => {
+const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputSlot.value) return 'inputless';
 	if (!props.isDraggable) return 'dragless';
 	if (props.nodeType === null) return 'unknown';
 	return props.nodeType.parameterPane ?? 'regular';
 });
 
-const mainPanelDimensions = computed(
-	(): {
-		relativeWidth: number;
-		relativeLeft: number;
-		relativeRight: number;
-	} => {
-		return ndvStore.getMainPanelDimensions(currentNodePaneType.value);
-	},
-);
+const mainPanelDimensions = computed(() => {
+	return ndvStore.mainPanelDimensions[currentNodePaneType.value];
+});
 
 const calculatedPositions = computed(
 	(): { inputPanelRelativeRight: number; outputPanelRelativeLeft: number } => {
@@ -298,9 +293,9 @@ function onResizeEnd() {
 	storePositionData();
 }
 
-function onResizeDebounced(data: { direction: string; x: number; width: number }) {
+function onResizeThrottle(data: { direction: string; x: number; width: number }) {
 	if (initialized.value) {
-		void callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
+		void throttledOnResize(data);
 	}
 }
 
@@ -374,13 +369,13 @@ function onDragEnd() {
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
-			<n8n-resize-wrapper
+			<N8nResizeWrapper
 				:is-resizing-enabled="currentNodePaneType !== 'unknown'"
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
 				:min-width="MIN_PANEL_WIDTH"
 				:grid-size="20"
 				:supported-directions="supportedResizeDirections"
-				@resize="onResizeDebounced"
+				@resize="onResizeThrottle"
 				@resizeend="onResizeEnd"
 			>
 				<div :class="$style.dragButtonContainer">
@@ -397,7 +392,7 @@ function onDragEnd() {
 				<div :class="{ [$style.mainPanelInner]: true, [$style.dragging]: isDragging }">
 					<slot name="main" />
 				</div>
-			</n8n-resize-wrapper>
+			</N8nResizeWrapper>
 		</div>
 	</div>
 </template>

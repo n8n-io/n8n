@@ -36,7 +36,7 @@ const validators = ref<{ [key: string]: IValidator }>({
 
 			if (!VALID_EMAIL_REGEX.test(value)) {
 				return {
-					messageKey: 'settings.users.invalidEmailError',
+					message: 'settings.users.invalidEmailError',
 					options: { interpolate: { email: value } },
 				};
 			}

@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
+import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -27,19 +28,17 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { listQueryMiddleware } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
-import { UserOnboardingService } from '@/services/user-onboarding.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -55,7 +54,6 @@ export class WorkflowsController {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
-		private readonly userOnboardingService: UserOnboardingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
@@ -213,13 +211,7 @@ export class WorkflowsController {
 		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
-
-		const onboardingFlowEnabled =
-			!this.globalConfig.workflows.onboardingFlowDisabled &&
-			!req.user.settings?.isOnboarded &&
-			(await this.userOnboardingService.isBelowThreshold(req.user));
-
-		return { name, onboardingFlowEnabled };
+		return { name };
 	}
 
 	@Get('/from-url')

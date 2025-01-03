@@ -79,70 +79,6 @@ describe('findSubgraph', () => {
 		);
 	});
 
-	//                     XX
-	//  ┌───────┐         ┌────────┐       ►►
-	//  │       ├────────►│        │      ┌───────────┐
-	//  │trigger│         │disabled├─────►│destination│
-	//  │       ├────────►│        │      └───────────┘
-	//  └───────┘         └────────┘
-	// turns into
-	//  ┌───────┐       ►►
-	//  │       │      ┌───────────┐
-	//  │trigger├─────►│destination│
-	//  │       │      └───────────┘
-	//  └───────┘
-	test('skip disabled nodes', () => {
-		const trigger = createNodeData({ name: 'trigger' });
-		const disabled = createNodeData({ name: 'disabled', disabled: true });
-		const destination = createNodeData({ name: 'destination' });
-
-		const graph = new DirectedGraph()
-			.addNodes(trigger, disabled, destination)
-			.addConnections({ from: trigger, to: disabled }, { from: disabled, to: destination });
-
-		const subgraph = findSubgraph({ graph, destination, trigger });
-
-		expect(subgraph).toEqual(
-			new DirectedGraph()
-				.addNodes(trigger, destination)
-				.addConnections({ from: trigger, to: destination }),
-		);
-	});
-
-	//                 XX          XX
-	//  ┌───────┐     ┌─────┐     ┌─────┐     ┌───────────┐
-	//  │trigger├────►│node1├────►│node2├────►│destination│
-	//  └───────┘     └─────┘     └─────┘     └───────────┘
-	// turns into
-	//  ┌───────┐     ┌───────────┐
-	//  │trigger├────►│destination│
-	//  └───────┘     └───────────┘
-	test('skip multiple disabled nodes', () => {
-		// ARRANGE
-		const trigger = createNodeData({ name: 'trigger' });
-		const disabledNode1 = createNodeData({ name: 'disabledNode1', disabled: true });
-		const disabledNode2 = createNodeData({ name: 'disabledNode2', disabled: true });
-		const destination = createNodeData({ name: 'destination' });
-
-		const graph = new DirectedGraph()
-			.addNodes(trigger, disabledNode1, disabledNode2, destination)
-			.addConnections(
-				{ from: trigger, to: disabledNode1 },
-				{ from: disabledNode1, to: disabledNode2 },
-				{ from: disabledNode2, to: destination },
-			);
-
-		// ACT
-		const subgraph = findSubgraph({ graph, destination, trigger });
-
-		// ASSERT
-		expect(subgraph).toEqual(
-			new DirectedGraph()
-				.addNodes(trigger, destination)
-				.addConnections({ from: trigger, to: destination }),
-		);
-	});
-
 	//                                ►►
 	//  ┌───────┐       ┌─────┐      ┌─────┐
 	//  │Trigger├───┬──►│Node1├───┬─►│Node2│
@@ -291,36 +227,29 @@ describe('findSubgraph', () => {
 			expect(subgraph.getNodes().size).toBe(0);
 		});
 
+		//  ┌───────┐            ┌───────────┐
+		//  │trigger├────────────►destination│
+		//  └───────┘            └───────────┘
 		//
-		//              XX
-		//  ┌───────┐   ┌────┐   ┌───────────┐
-		//  │trigger├───►root├───►destination│
-		//  └───────┘   └──▲─┘   └───────────┘
-		//                 │AiLanguageModel
-		//                ┌┴──────┐
+		//                ┌───────┐
 		//                │aiModel│
 		//                └───────┘
 		// turns into
 		//  ┌───────┐            ┌───────────┐
 		//  │trigger├────────────►destination│
 		//  └───────┘            └───────────┘
-		test('skip disabled root nodes', () => {
+		test('remove orphaned nodes', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
-			const root = createNodeData({ name: 'root', disabled: true });
 			const aiModel = createNodeData({ name: 'ai_model' });
 			const destination = createNodeData({ name: 'destination' });
 
 			const graph = new DirectedGraph()
-				.addNodes(trigger, root, aiModel, destination)
-				.addConnections(
-					{ from: trigger, to: root },
-					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: root },
-					{ from: root, to: destination },
-				);
+				.addNodes(trigger, aiModel, destination)
+				.addConnections({ from: trigger, to: destination });
 
 			// ACT
-			const subgraph = findSubgraph({ graph, destination: root, trigger });
+			const subgraph = findSubgraph({ graph, destination, trigger });
 
 			// ASSERT
 			expect(subgraph).toEqual(

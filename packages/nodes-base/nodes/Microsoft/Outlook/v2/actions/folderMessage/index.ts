@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import * as getAll from './getAll.operation';
 
 export { getAll };

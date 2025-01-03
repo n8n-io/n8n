@@ -14,13 +14,10 @@ const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
-const isPopoverVisible = ref(false);
 
 const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1));
 
-function togglePopover() {
-	isPopoverVisible.value = !isPopoverVisible.value;
-}
+const isPopoverVisible = defineModel<boolean>('visible');
 
 function hidePopover() {
 	isPopoverVisible.value = false;
@@ -59,22 +56,21 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nPopover
+		v-model:visible="isPopoverVisible"
 		effect="dark"
 		trigger="click"
 		placement="top"
 		:popper-class="$style.popover"
 		:popper-style="{ width: '208px' }"
-		:visible="isPopoverVisible"
-		:teleported="false"
-		@mouseenter="onMouseEnter"
-		@mouseleave="onMouseLeave"
+		:teleported="true"
+		@before-enter="onMouseEnter"
+		@after-leave="onMouseLeave"
 	>
 		<template #reference>
 			<div
 				:class="$style.option"
 				data-test-id="change-sticky-color"
 				:title="i18n.baseText('node.changeColor')"
-				@click.stop="togglePopover"
 			>
 				<FontAwesomeIcon icon="palette" />
 			</div>

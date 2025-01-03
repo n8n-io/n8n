@@ -11,9 +11,16 @@ const router = useRouter();
 const previousRoute = ref<HistoryState[string] | undefined>();
 
 function onReturn() {
-	void router.push(
-		isRouteLocationRaw(previousRoute.value) ? previousRoute.value : { name: VIEWS.HOMEPAGE },
-	);
+	const resolvedSettingsRoute = router.resolve({ name: VIEWS.SETTINGS });
+	const resolvedPreviousRoute = isRouteLocationRaw(previousRoute.value)
+		? router.resolve(previousRoute.value)
+		: null;
+	const backRoute =
+		!resolvedPreviousRoute || resolvedPreviousRoute.path.startsWith(resolvedSettingsRoute.path)
+			? { name: VIEWS.HOMEPAGE }
+			: resolvedPreviousRoute;
+
+	void router.push(backRoute);
 }
 
 onMounted(() => {

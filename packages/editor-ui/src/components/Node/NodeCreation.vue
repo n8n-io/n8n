@@ -13,6 +13,7 @@ import type { AddedNodesAndConnections, ToggleNodeCreatorOptions } from '@/Inter
 import { useActions } from './NodeCreator/composables/useActions';
 import { useThrottleFn } from '@vueuse/core';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useI18n } from '@/composables/useI18n';
 
 type Props = {
 	nodeViewScale: number;
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const uiStore = useUIStore();
+const i18n = useI18n();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -101,7 +103,7 @@ onBeforeUnmount(() => {
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
 		<div :class="$style.nodeCreatorButton" ref="wrapperRef" data-test-id="node-creator-plus-button">
 			<KeyboardShortcutTooltip
-				:label="$locale.baseText('nodeView.openNodesPanel')"
+				:label="i18n.baseText('nodeView.openNodesPanel')"
 				:shortcut="{ keys: ['Tab'] }"
 				placement="left"
 			>
@@ -119,7 +121,7 @@ onBeforeUnmount(() => {
 				@click="addStickyNote"
 			>
 				<KeyboardShortcutTooltip
-					:label="$locale.baseText('nodeView.addStickyHint')"
+					:label="i18n.baseText('nodeView.addStickyHint')"
 					:shortcut="{ keys: ['s'], shiftKey: true }"
 					placement="left"
 				>

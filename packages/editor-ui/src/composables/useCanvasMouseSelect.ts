@@ -7,6 +7,7 @@ import { getMousePosition, getRelativePosition } from '@/utils/nodeViewUtils';
 import { ref, computed } from 'vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useContextMenu } from './useContextMenu';
+import { useStyles } from './useStyles';
 
 interface ExtendedHTMLSpanElement extends HTMLSpanElement {
 	x: number;
@@ -22,6 +23,7 @@ export default function useCanvasMouseSelect() {
 	const canvasStore = useCanvasStore();
 	const workflowsStore = useWorkflowsStore();
 	const { isOpen: isContextMenuOpen } = useContextMenu();
+	const { APP_Z_INDEXES } = useStyles();
 
 	function _setSelectBoxStyle(styles: Record<string, string>) {
 		Object.assign(selectBox.value.style, styles);
@@ -106,7 +108,7 @@ export default function useCanvasMouseSelect() {
 			border: '2px dotted #FF0000',
 			// Positioned absolutely within #node-view. This is consistent with how nodes are positioned.
 			position: 'absolute',
-			zIndex: '100',
+			zIndex: `${APP_Z_INDEXES.SELECT_BOX}`,
 			visibility: 'hidden',
 		});
 

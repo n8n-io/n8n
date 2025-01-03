@@ -6,7 +6,6 @@ import ElementPlus, { ElLoading, ElMessageBox } from 'element-plus';
 import { N8nPlugin } from 'n8n-design-system';
 import { useMessage } from '@/composables/useMessage';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import RBAC from '@/components/RBAC.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 
 export const GlobalComponentsPlugin: Plugin = {
@@ -14,7 +13,6 @@ export const GlobalComponentsPlugin: Plugin = {
 		const messageService = useMessage();
 
 		app.component('EnterpriseEdition', EnterpriseEdition);
-		app.component('RBAC', RBAC);
 		app.component('ParameterInputList', ParameterInputList);
 
 		app.use(ElementPlus);

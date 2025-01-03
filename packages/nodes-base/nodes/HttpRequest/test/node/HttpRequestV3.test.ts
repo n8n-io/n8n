@@ -182,7 +182,7 @@ describe('HttpRequestV3', () => {
 		];
 
 		it.each(authenticationTypes)(
-			'should handle %s authentication',
+			'should handle $genericCredentialType authentication',
 			async ({ genericCredentialType, credentials, authField, authValue }) => {
 				(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 				(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {

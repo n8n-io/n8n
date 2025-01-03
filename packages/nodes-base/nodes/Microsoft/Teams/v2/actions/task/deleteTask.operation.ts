@@ -1,6 +1,8 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
-import { microsoftApiRequest } from '../../transport';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{

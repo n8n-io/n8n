@@ -399,12 +399,17 @@ async function onDrop(value: string, event: MouseEvent) {
 			:class="$style.tabs"
 		>
 			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				:label="i18n.baseText('codeNodeEditor.tabs.code')"
 				name="code"
 				data-test-id="code-node-tab-code"
 				:class="$style.fillHeight"
 			>
-				<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+				<DraggableTarget
+					type="mapping"
+					:disabled="!dragAndDropEnabled"
+					:class="$style.fillHeight"
+					@drop="onDrop"
+				>
 					<template #default="{ activeDrop, droppable }">
 						<div
 							ref="codeNodeEditorRef"
@@ -421,7 +426,7 @@ async function onDrop(value: string, event: MouseEvent) {
 				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				:label="i18n.baseText('codeNodeEditor.tabs.askAi')"
 				name="ask-ai"
 				data-test-id="code-node-tab-ai"
 			>
@@ -437,7 +442,12 @@ async function onDrop(value: string, event: MouseEvent) {
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
 		<div v-else :class="$style.fillHeight">
-			<DraggableTarget type="mapping" :disabled="!dragAndDropEnabled" @drop="onDrop">
+			<DraggableTarget
+				type="mapping"
+				:disabled="!dragAndDropEnabled"
+				:class="$style.fillHeight"
+				@drop="onDrop"
+			>
 				<template #default="{ activeDrop, droppable }">
 					<div
 						ref="codeNodeEditorRef"

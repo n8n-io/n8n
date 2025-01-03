@@ -21,10 +21,6 @@ export class WrappedExecutionError extends ApplicationError {
 
 	private copyErrorProperties(error: WrappableError) {
 		for (const key of Object.getOwnPropertyNames(error)) {
-			if (key === 'message' || key === 'stack') {
-				continue;
-			}
-
 			this[key] = error[key];
 		}
 	}

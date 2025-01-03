@@ -4,7 +4,7 @@ import { Service } from 'typedi';
 
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 @Service()
 export class PermissionChecker {

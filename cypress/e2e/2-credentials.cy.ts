@@ -1,5 +1,6 @@
 import { type ICredentialType } from 'n8n-workflow';
 
+import { getCredentialSaveButton, saveCredential } from '../composables/modals/credential-modal';
 import {
 	AGENT_NODE_NAME,
 	AI_TOOL_HTTP_NODE_NAME,
@@ -15,7 +16,7 @@ import {
 	TRELLO_NODE_NAME,
 } from '../constants';
 import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
-import { successToast } from '../pages/notifications';
+import { errorToast, successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -25,6 +26,22 @@ const nodeDetailsView = new NDV();
 
 const NEW_CREDENTIAL_NAME = 'Something else';
 const NEW_CREDENTIAL_NAME2 = 'Something else entirely';
+
+function createNotionCredential() {
+	workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
+	workflowPage.actions.openNode(NOTION_NODE_NAME);
+	workflowPage.getters.nodeCredentialsSelect().click();
+	getVisibleSelect().find('li').last().click();
+	credentialsModal.actions.fillCredentialsForm();
+	cy.get('body').type('{esc}');
+	workflowPage.actions.deleteNode(NOTION_NODE_NAME);
+}
+
+function deleteSelectedCredential() {
+	workflowPage.getters.nodeCredentialsEditButton().click();
+	credentialsModal.getters.deleteButton().click();
+	cy.get('.el-message-box').find('button').contains('Yes').click();
+}
 
 describe('Credentials', () => {
 	beforeEach(() => {
@@ -178,7 +195,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
-		credentialsModal.getters.saveButton().click();
+		saveCredential();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -196,7 +213,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME2);
-		credentialsModal.getters.saveButton().click();
+		saveCredential();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -221,12 +238,46 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
 		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
-		credentialsModal.getters.saveButton().click();
+		saveCredential();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_CREDENTIAL_NAME);
+	});
+
+	it('should set a default credential when adding nodes', () => {
+		workflowPage.actions.visit();
+
+		createNotionCredential();
+
+		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
+
+		deleteSelectedCredential();
+	});
+
+	it('should set a default credential when editing a node', () => {
+		workflowPage.actions.visit();
+
+		createNotionCredential();
+
+		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
+		nodeDetailsView.getters.parameterInput('authentication').click();
+		getVisibleSelect().find('li').contains('Predefined').click();
+
+		nodeDetailsView.getters.parameterInput('nodeCredentialType').click();
+		getVisibleSelect().find('li').contains('Notion API').click();
+
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_NOTION_ACCOUNT_NAME);
+
+		deleteSelectedCredential();
 	});
 
 	it('should setup generic authentication for HTTP node', () => {
@@ -277,5 +328,27 @@ describe('Credentials', () => {
 		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		nodeDetailsView.getters.copyInput().should('not.exist');
+	});
+
+	it('ADO-2583 should show notifications above credential modal overlay', () => {
+		// check error notifications because they are sticky
+		cy.intercept('POST', '/rest/credentials', { forceNetworkError: true });
+		credentialsPage.getters.createCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+
+		credentialsModal.actions.setName('My awesome Notion account');
+		getCredentialSaveButton().click();
+
+		errorToast().should('have.length', 1);
+		errorToast().should('be.visible');
+
+		errorToast().should('have.css', 'z-index', '2100');
+		cy.get('.el-overlay').should('have.css', 'z-index', '2001');
 	});
 });
