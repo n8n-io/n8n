@@ -35,3 +35,5 @@ export { CommunityRegisteredRequestDto } from './license/community-registered-re
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
+
+export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
