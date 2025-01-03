@@ -365,7 +365,7 @@ const getIssues = computed<string[]>(() => {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
-				checkValues.push(displayValue.value as string);
+				checkValues = checkValues.concat(displayValue.value?.toString().split(','));
 			}
 		}
 
@@ -857,9 +857,10 @@ async function optionSelected(command: string) {
 		) {
 			valueChanged('={{ 0 }}');
 		} else if (
-			props.parameter.type === 'number' ||
-			props.parameter.type === 'boolean' ||
-			typeof props.modelValue !== 'string'
+			props.parameter.type !== 'multiOptions' &&
+			(props.parameter.type === 'number' ||
+				props.parameter.type === 'boolean' ||
+				typeof props.modelValue !== 'string')
 		) {
 			valueChanged(`={{ ${props.modelValue} }}`);
 		} else {
