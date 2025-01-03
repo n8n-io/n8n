@@ -3,7 +3,6 @@ import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { mockLogger } from '@test/mocking';
@@ -197,94 +196,126 @@ describe('License', () => {
 
 describe('License', () => {
 	describe('init', () => {
-		describe('in single-main setup', () => {
-			describe('with `license.autoRenewEnabled` enabled', () => {
-				it('should enable renewal', async () => {
-					const globalConfig = mock<GlobalConfig>({
-						license: licenseConfig,
-						multiMainSetup: { enabled: false },
-					});
+		it('should disable renewal', async () => {
+			await new License(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig }),
+			).init();
 
-					await new License(
-						mockLogger(),
-						mock<InstanceSettings>({ instanceType: 'main' }),
-						mock(),
-						mock(),
-						globalConfig,
-					).init();
+			expect(LicenseManager).toHaveBeenCalledTimes(1);
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
+			);
+		});
+	});
 
-					expect(LicenseManager).toHaveBeenCalledWith(
-						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
-					);
-				});
-			});
+	// @TODO: Add method to SDK
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	describe.skip('enableRenewal', () => {
+		let enableRenewalSpy: jest.SpyInstance;
 
-			describe('with `license.autoRenewEnabled` disabled', () => {
-				it('should disable renewal', async () => {
-					await new License(
-						mockLogger(),
-						mock<InstanceSettings>({ instanceType: 'main' }),
-						mock(),
-						mock(),
-						mock(),
-					).init();
-
-					expect(LicenseManager).toHaveBeenCalledWith(
-						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
-					);
-				});
-			});
+		beforeEach(() => {
+			// @ts-expect-error Private method
+			enableRenewalSpy = jest.spyOn(LicenseManager.prototype, 'enableRenewal');
 		});
 
-		describe('in multi-main setup', () => {
-			describe('with `license.autoRenewEnabled` disabled', () => {
-				test.each(['unset', 'leader', 'follower'])(
-					'if %s status, should disable removal',
-					async (status) => {
-						const globalConfig = mock<GlobalConfig>({
-							license: { ...licenseConfig, autoRenewalEnabled: false },
-							multiMainSetup: { enabled: true },
-						});
-						config.set('multiMainSetup.instanceType', status);
+		afterEach(() => {
+			enableRenewalSpy.mockRestore();
+		});
 
-						await new License(mockLogger(), mock(), mock(), mock(), globalConfig).init();
-
-						expect(LicenseManager).toHaveBeenCalledWith(
-							expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
-						);
-					},
-				);
+		it('when instance type is not main, should no-op', async () => {
+			const logger = mockLogger();
+			const instanceSettings = mock<InstanceSettings>({
+				instanceType: 'worker',
+				instanceId: MOCK_INSTANCE_ID,
 			});
 
-			describe('with `license.autoRenewEnabled` enabled', () => {
-				test.each(['unset', 'follower'])('if %s status, should disable removal', async (status) => {
-					const globalConfig = mock<GlobalConfig>({
-						license: { ...licenseConfig, autoRenewalEnabled: false },
-						multiMainSetup: { enabled: true },
-					});
-					config.set('multiMainSetup.instanceType', status);
+			const license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig }),
+			);
+			await license.init();
+			await license.enableRenewal();
 
-					await new License(mockLogger(), mock(), mock(), mock(), globalConfig).init();
+			expect(enableRenewalSpy).not.toHaveBeenCalled();
+		});
 
-					expect(LicenseManager).toHaveBeenCalledWith(
-						expect.objectContaining({ autoRenewEnabled: false, renewOnInit: false }),
-					);
-				});
-
-				it('if leader status, should enable renewal', async () => {
-					const globalConfig = mock<GlobalConfig>({
-						license: licenseConfig,
-						multiMainSetup: { enabled: true },
-					});
-					config.set('multiMainSetup.instanceType', 'leader');
-
-					await new License(mockLogger(), mock(), mock(), mock(), globalConfig).init();
-
-					expect(LicenseManager).toHaveBeenCalledWith(
-						expect.objectContaining({ autoRenewEnabled: true, renewOnInit: true }),
-					);
-				});
+		it('when leader main with N8N_LICENSE_AUTO_RENEW_ENABLED set to true, should enable renewal', async () => {
+			const logger = mockLogger();
+			const instanceSettings = mock<InstanceSettings>({
+				instanceType: 'main',
+				instanceId: MOCK_INSTANCE_ID,
+				isLeader: true,
 			});
+
+			const license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({
+					license: { ...licenseConfig, autoRenewalEnabled: true },
+				}),
+			);
+			await license.init();
+			await license.enableRenewal();
+
+			expect(enableRenewalSpy).toHaveBeenCalledWith(true);
+			expect(enableRenewalSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('when leader main with N8N_LICENSE_AUTO_RENEW_ENABLED set to false, should disable renewal', async () => {
+			const logger = mockLogger();
+			const instanceSettings = mock<InstanceSettings>({
+				instanceType: 'main',
+				instanceId: MOCK_INSTANCE_ID,
+				isLeader: true,
+			});
+
+			const license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({
+					license: { ...licenseConfig, autoRenewalEnabled: false },
+				}),
+			);
+			await license.init();
+			await license.enableRenewal();
+
+			expect(enableRenewalSpy).toHaveBeenCalledWith(false);
+			expect(enableRenewalSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('when follower main with N8N_LICENSE_AUTO_RENEW_ENABLED set to true, should disable renewal', async () => {
+			const logger = mockLogger();
+			const instanceSettings = mock<InstanceSettings>({
+				instanceType: 'main',
+				instanceId: MOCK_INSTANCE_ID,
+				isLeader: false,
+			});
+
+			const license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({
+					license: { ...licenseConfig, autoRenewalEnabled: true },
+				}),
+			);
+			await license.init();
+			await license.enableRenewal();
+
+			expect(enableRenewalSpy).toHaveBeenCalledWith(false);
+			expect(enableRenewalSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -198,7 +198,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		await this.license.setRenewal();
+		await this.license.enableRenewal();
 
 		if (this.globalConfig.multiMainSetup.enabled) {
 			if (this.globalConfig.license.autoRenewalEnabled) await this.license.renew();
@@ -255,11 +255,11 @@ export class Start extends BaseCommand {
 
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
-				await this.license.setRenewal(); // to disable renewal
+				await this.license.enableRenewal(); // follower so will disable
 				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 			})
 			.on('leader-takeover', async () => {
-				await this.license.setRenewal(); // to enable renewal
+				await this.license.enableRenewal(); // leader so will enable
 				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
