@@ -134,8 +134,6 @@ describe('Data mapping', () => {
 				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
 			);
 
-		ndv.getters.inputDataContainer().find('span').contains('"count"').scrollIntoView();
-
 		ndv.getters.inputDataContainer().find('span').contains('"count"').realMouseDown();
 
 		ndv.actions.mapToParameter('value');
