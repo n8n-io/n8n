@@ -60,6 +60,9 @@ catalogs:
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
+    reflect-metadata:
+      specifier: 0.2.2
+      version: 0.2.2
     uuid:
       specifier: 10.0.0
       version: 10.0.0
@@ -378,13 +381,13 @@ importers:
         specifier: workspace:*
         version: link:../di
       reflect-metadata:
-        specifier: 0.2.2
+        specifier: 'catalog:'
         version: 0.2.2
 
   packages/@n8n/di:
     dependencies:
       reflect-metadata:
-        specifier: '*'
+        specifier: 'catalog:'
         version: 0.2.2
 
   packages/@n8n/imap:
@@ -971,7 +974,7 @@ importers:
         specifier: 2.5.1
         version: 2.5.1
       reflect-metadata:
-        specifier: 0.2.2
+        specifier: 'catalog:'
         version: 0.2.2
       replacestream:
         specifier: 4.0.3

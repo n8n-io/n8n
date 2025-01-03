@@ -24,7 +24,6 @@ const readEnv = (envName: string) => {
 	return undefined;
 };
 
-// @ts-expect-error xyzy
 export const Config: ClassDecorator = (ConfigClass: Class) => {
 	const factory = function () {
 		const config = new (ConfigClass as new () => Record<PropertyKey, unknown>)();
@@ -65,7 +64,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 		}
 		return config;
 	};
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return Service({ factory })(ConfigClass);
 };
 

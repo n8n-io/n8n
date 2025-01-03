@@ -5,10 +5,11 @@ import 'reflect-metadata';
  * @template T The type of instance the constructor creates
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Constructable<T = any> = new (...args: any[]) => T;
+export type Constructable<T = unknown> = new (...args: any[]) => T;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AbstractConstructable<T = any> = abstract new (...args: any[]) => T;
+type AbstractConstructable<T = unknown> = abstract new (...args: unknown[]) => T;
+
+type ServiceIdentifier<T = unknown> = Constructable<T> | AbstractConstructable<T>;
 
 interface Metadata<T = unknown> {
 	instance?: T;
@@ -19,7 +20,7 @@ interface Options<T> {
 	factory?: () => T;
 }
 
-const instances = new Map<Constructable | AbstractConstructable, Metadata>();
+const instances = new Map<ServiceIdentifier, Metadata>();
 
 /**
  * Decorator that marks a class as available for dependency injection.
@@ -27,9 +28,13 @@ const instances = new Map<Constructable | AbstractConstructable, Metadata>();
  * @param options.factory Optional factory function to create instances of this class
  * @returns A class decorator to be applied to the target class
  */
-export function Injectable<T>({ factory }: Options<T> = {}): ClassDecorator {
-	return (target) => {
-		instances.set(target as unknown as Constructable<T>, { factory });
+// eslint-disable-next-line @typescript-eslint/ban-types
+export function Service<T = unknown>(): Function;
+// eslint-disable-next-line @typescript-eslint/ban-types
+export function Service<T = unknown>(options: Options<T>): Function;
+export function Service<T>({ factory }: Options<T> = {}) {
+	return function (target: Constructable<T>) {
+		instances.set(target, { factory });
 		return target;
 	};
 }
@@ -42,7 +47,7 @@ class DIError extends Error {
 
 class ContainerClass {
 	/** Stack to track types being resolved to detect circular dependencies */
-	private readonly resolutionStack: Array<Constructable | AbstractConstructable> = [];
+	private readonly resolutionStack: ServiceIdentifier[] = [];
 
 	/**
 	 * Checks if a type is registered in the container
@@ -50,7 +55,7 @@ class ContainerClass {
 	 * @param type The constructor of the type to check
 	 * @returns True if the type is registered (has metadata), false otherwise
 	 */
-	has<T>(type: Constructable<T> | AbstractConstructable<T>): boolean {
+	has<T>(type: ServiceIdentifier<T>): boolean {
 		return instances.has(type);
 	}
 
@@ -61,18 +66,16 @@ class ContainerClass {
 	 * @returns An instance of the specified type with all dependencies injected
 	 * @throws {DIError} If circular dependencies are detected or if the type is not injectable
 	 */
-	get<T>(type: Constructable<T> | AbstractConstructable<T>): T {
+	get<T>(type: ServiceIdentifier<T>): T {
 		const { resolutionStack } = this;
-		// Get metadata for the requested type, including any factory or existing instance
 		const metadata = instances.get(type) as Metadata<T>;
 		if (!metadata) {
 			// Special case: Allow undefined returns for non-decorated constructor params
 			// when resolving a dependency chain (i.e., resolutionStack not empty)
 			if (resolutionStack.length) return undefined as T;
-			throw new DIError(`${type.name} is not decorated with ${Injectable.name}`);
+			throw new DIError(`${type.name} is not decorated with ${Service.name}`);
 		}
 
-		// Return cached instance if it exists
 		if (metadata?.instance) return metadata.instance as T;
 
 		// Check for circular dependencies before proceeding with instantiation
@@ -91,19 +94,15 @@ class ContainerClass {
 			if (metadata?.factory) {
 				instance = metadata.factory();
 			} else {
-				// Get constructor parameter types using reflect-metadata
-				const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ||
+				const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ??
 					[]) as Constructable[];
-				// Recursively resolve all dependencies
 				const dependencies = paramTypes.map(<P>(paramType: Constructable<P>) =>
 					this.get(paramType),
 				);
 				// Create new instance with resolved dependencies
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment
-				instance = new (type as Constructable)(...dependencies);
+				instance = new (type as Constructable)(...dependencies) as T;
 			}
 
-			// Cache the instance for future retrievals
 			instances.set(type, { ...metadata, instance });
 			return instance;
 		} catch (error) {
@@ -112,7 +111,6 @@ class ContainerClass {
 			}
 			throw error;
 		} finally {
-			// Always remove type from stack, even if an error occurred
 			resolutionStack.pop();
 		}
 	}
@@ -123,7 +121,7 @@ class ContainerClass {
 	 * @param type The constructor of the type to set. This can also be an abstract class
 	 * @param instance The instance to store in the container
 	 */
-	set<T>(type: Constructable<T> | AbstractConstructable<T>, instance: T): void {
+	set<T>(type: ServiceIdentifier<T>, instance: T): void {
 		// Preserve any existing metadata (like factory) when setting new instance
 		const metadata = instances.get(type) ?? {};
 		instances.set(type, { ...metadata, instance });
@@ -136,9 +134,6 @@ class ContainerClass {
 		}
 	}
 }
-
-/** @deprecated Use Injectable decorator instead  */
-export const Service = Injectable;
 
 /**
  * Global dependency injection container instance

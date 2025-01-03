@@ -1,13 +1,13 @@
-import { Injectable, Container } from '../di';
+import { Container, Service } from '../di';
 
-@Injectable()
+@Service()
 class SimpleService {
 	getValue() {
 		return 'simple';
 	}
 }
 
-@Injectable()
+@Service()
 class DependentService {
 	constructor(readonly simple: SimpleService) {}
 
@@ -22,7 +22,7 @@ class CustomFactory {
 	}
 }
 
-@Injectable({ factory: () => new CustomFactory() })
+@Service({ factory: () => new CustomFactory() })
 class FactoryService {
 	getValue() {
 		return 'should-not-be-called';
@@ -33,7 +33,7 @@ abstract class AbstractService {
 	abstract getValue(): string;
 }
 
-@Injectable()
+@Service()
 class ConcreteService extends AbstractService {
 	getValue(): string {
 		return 'concrete';
@@ -60,7 +60,7 @@ describe('DI Container', () => {
 		});
 
 		it('should handle classes with no dependencies (empty constructor)', () => {
-			@Injectable()
+			@Service()
 			class EmptyConstructorService {}
 
 			const instance = Container.get(EmptyConstructorService);
@@ -83,14 +83,14 @@ describe('DI Container', () => {
 		});
 
 		it('should handle deep dependency chains', () => {
-			@Injectable()
+			@Service()
 			class ServiceC {
 				getValue() {
 					return 'C';
 				}
 			}
 
-			@Injectable()
+			@Service()
 			class ServiceB {
 				constructor(private c: ServiceC) {}
 
@@ -99,7 +99,7 @@ describe('DI Container', () => {
 				}
 			}
 
-			@Injectable()
+			@Service()
 			class ServiceA {
 				constructor(private b: ServiceB) {}
 
@@ -115,7 +115,7 @@ describe('DI Container', () => {
 		it('should return undefined for non-decorated dependencies in resolution chain', () => {
 			class NonDecoratedDep {}
 
-			@Injectable()
+			@Service()
 			class ServiceWithNonDecoratedDep {
 				constructor(readonly dep: NonDecoratedDep) {}
 			}
@@ -150,7 +150,7 @@ describe('DI Container', () => {
 		});
 
 		it('should throw error when factory throws', () => {
-			@Injectable({
+			@Service({
 				factory: () => {
 					throw new Error('Factory error');
 				},
@@ -172,7 +172,7 @@ describe('DI Container', () => {
 
 	describe('abstract classes', () => {
 		it('should throw when trying to instantiate an abstract class directly', () => {
-			@Injectable()
+			@Service()
 			abstract class TestAbstractClass {
 				abstract doSomething(): void;
 
@@ -199,7 +199,7 @@ describe('DI Container', () => {
 		});
 
 		it('should allow factory for abstract class', () => {
-			@Injectable({ factory: () => new ConcreteService() })
+			@Service({ factory: () => new ConcreteService() })
 			abstract class FactoryAbstractService {
 				abstract getValue(): string;
 			}
@@ -212,14 +212,14 @@ describe('DI Container', () => {
 
 	describe('inheritance', () => {
 		it('should handle inheritance in injectable classes', () => {
-			@Injectable()
+			@Service()
 			class BaseService {
 				getValue() {
 					return 'base';
 				}
 			}
 
-			@Injectable()
+			@Service()
 			class DerivedService extends BaseService {
 				getValue() {
 					return 'derived-' + super.getValue();
@@ -231,14 +231,14 @@ describe('DI Container', () => {
 		});
 
 		it('should maintain separate instances for base and derived classes', () => {
-			@Injectable()
+			@Service()
 			class BaseService {
 				getValue() {
 					return 'base';
 				}
 			}
 
-			@Injectable()
+			@Service()
 			class DerivedService extends BaseService {}
 
 			const baseInstance = Container.get(BaseService);

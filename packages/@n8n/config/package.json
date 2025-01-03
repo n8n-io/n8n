@@ -22,6 +22,6 @@
   ],
   "dependencies": {
     "@n8n/di": "workspace:*",
-    "reflect-metadata": "0.2.2"
+    "reflect-metadata": "catalog:"
   }
 }

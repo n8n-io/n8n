@@ -20,7 +20,7 @@
   "files": [
     "dist/**/*"
   ],
-  "peerDependencies": {
-    "reflect-metadata": "*"
+  "dependencies": {
+    "reflect-metadata": "catalog:"
   }
 }
