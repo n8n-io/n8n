@@ -1169,7 +1169,7 @@ describe('TelemetryEventRelay', () => {
 			const runData = mock<IRun>({
 				finished: true,
 				status: 'success',
-				mode: 'trigger',
+				mode: 'manual',
 				data: { resultData: {} },
 			});
 
@@ -1189,14 +1189,14 @@ describe('TelemetryEventRelay', () => {
 					workflow_id: 'workflow123',
 					user_id: 'user123',
 					success: true,
-					is_manual: false,
-					execution_mode: 'trigger',
+					is_manual: true,
+					execution_mode: 'manual',
 				}),
 			);
 		});
 
 		it('should call telemetry.track when manual node execution finished', async () => {
-			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:owner');
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 
 			const runData = {
 				status: 'error',
@@ -1270,7 +1270,7 @@ describe('TelemetryEventRelay', () => {
 					workflow_id: 'workflow123',
 					status: 'error',
 					executionStatus: 'error',
-					sharing_role: 'owner',
+					sharing_role: 'sharee',
 					error_message: 'Error message',
 					error_node_type: 'n8n-nodes-base.jira',
 					error_node_id: '1',
