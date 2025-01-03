@@ -1,6 +1,9 @@
 import { WebSocket } from 'ws';
 
+import { newTaskState } from '@/js-task-runner/__tests__/test-data';
+import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import { TaskRunner, type TaskRunnerOpts } from '@/task-runner';
+import type { TaskStatus } from '@/task-state';
 
 class TestRunner extends TaskRunner {}
 
@@ -154,11 +157,8 @@ describe('TestRunner', () => {
 			runner.onMessage({
 				type: 'broker:runnerregistered',
 			});
-			runner.runningTasks.set('test-task', {
-				taskId: 'test-task',
-				active: true,
-				cancelled: false,
-			});
+			const taskState = newTaskState('test-task');
+			runner.runningTasks.set('test-task', taskState);
 			const sendSpy = jest.spyOn(runner, 'send');
 
 			runner.sendOffers();
@@ -174,6 +174,7 @@ describe('TestRunner', () => {
 					},
 				],
 			]);
+			taskState.cleanup();
 		});
 
 		it('should delete stale offers and send new ones', () => {
@@ -198,15 +199,45 @@ describe('TestRunner', () => {
 	});
 
 	describe('taskCancelled', () => {
-		it('should reject pending requests when task is cancelled', () => {
-			const runner = newTestRunner();
+		test.each<[TaskStatus, string]>([
+			['aborting:cancelled', 'cancelled'],
+			['aborting:timeout', 'timeout'],
+		])('should not do anything if task status is %s', async (status, reason) => {
+			runner = newTestRunner();
 
 			const taskId = 'test-task';
-			runner.runningTasks.set(taskId, {
-				taskId,
-				active: false,
-				cancelled: false,
-			});
+			const task = newTaskState(taskId);
+			task.status = status;
+
+			runner.runningTasks.set(taskId, task);
+
+			await runner.taskCancelled(taskId, reason);
+
+			expect(runner.runningTasks.size).toBe(1);
+			expect(task.status).toBe(status);
+		});
+
+		it('should delete task if task is waiting for settings when task is cancelled', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			const taskCleanupSpy = jest.spyOn(task, 'cleanup');
+			runner.runningTasks.set(taskId, task);
+
+			await runner.taskCancelled(taskId, 'test-reason');
+
+			expect(runner.runningTasks.size).toBe(0);
+			expect(taskCleanupSpy).toHaveBeenCalled();
+		});
+
+		it('should reject pending requests when task is cancelled', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'running';
+			runner.runningTasks.set(taskId, task);
 
 			const dataRequestReject = jest.fn();
 			const nodeTypesRequestReject = jest.fn();
@@ -225,7 +256,71 @@ describe('TestRunner', () => {
 				reject: nodeTypesRequestReject,
 			});
 
-			runner.taskCancelled(taskId, 'test-reason');
+			await runner.taskCancelled(taskId, 'test-reason');
+
+			expect(dataRequestReject).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: test-reason',
+				}),
+			);
+
+			expect(nodeTypesRequestReject).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: test-reason',
+				}),
+			);
+
+			expect(runner.dataRequests.size).toBe(0);
+			expect(runner.nodeTypesRequests.size).toBe(0);
+		});
+	});
+
+	describe('taskTimedOut', () => {
+		it('should error task if task is waiting for settings', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'waitingForSettings';
+			runner.runningTasks.set(taskId, task);
+			const sendSpy = jest.spyOn(runner, 'send');
+
+			await runner.taskTimedOut(taskId);
+
+			expect(runner.runningTasks.size).toBe(0);
+			expect(sendSpy).toHaveBeenCalledWith({
+				type: 'runner:taskerror',
+				taskId,
+				error: expect.any(TimeoutError),
+			});
+		});
+
+		it('should reject pending requests when task is running', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'running';
+			runner.runningTasks.set(taskId, task);
+
+			const dataRequestReject = jest.fn();
+			const nodeTypesRequestReject = jest.fn();
+
+			runner.dataRequests.set('data-req', {
+				taskId,
+				requestId: 'data-req',
+				resolve: jest.fn(),
+				reject: dataRequestReject,
+			});
+
+			runner.nodeTypesRequests.set('node-req', {
+				taskId,
+				requestId: 'node-req',
+				resolve: jest.fn(),
+				reject: nodeTypesRequestReject,
+			});
+
+			await runner.taskCancelled(taskId, 'test-reason');
 
 			expect(dataRequestReject).toHaveBeenCalledWith(
 				expect.objectContaining({
