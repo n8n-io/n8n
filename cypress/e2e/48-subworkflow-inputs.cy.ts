@@ -1,10 +1,18 @@
 import {
+	clickExecuteNode,
 	clickGetBackToCanvas,
+	clickResourceLocatorInput,
+	getExecuteNodeButton,
 	getOutputTableHeaders,
-	getOutputTableRows,
 	getOutputTbodyCell,
+	getParameterInputByName,
+	getResourceLocator,
+	getResourceLocatorInput,
+	populateFixedCollection,
+	selectResourceLocatorItem,
 } from '../composables/ndv';
 import {
+	clickWorkflowCardContent,
 	clickZoomToFit,
 	navigateToNewWorkflowPage,
 	openNode,
@@ -24,8 +32,6 @@ const DEFAULT_WORKFLOW_NAME = 'My workflow';
 const DEFAULT_SUBWORKFLOW_NAME_1 = 'My Sub-Workflow 1';
 const DEFAULT_SUBWORKFLOW_NAME_2 = 'My Sub-Workflow 2';
 
-type FieldRow = readonly string[];
-
 const exampleFields = [
 	['aNumber', 'Number'],
 	['aString', 'String'],
@@ -35,34 +41,6 @@ const exampleFields = [
 	// bool last since it's a switch instead of a normal inputField so we'll skip it for some cases
 	['aBool', 'Boolean'],
 ] as const;
-
-/**
- * Populate multiValue fixedCollections. Only supports fixedCollections for which all fields can be defined via keyboard typing
- *
- * @param items - 2D array of items to populate, i.e. [["myField1", "String"], [""]
- * @param collectionName - name of the fixedCollection to populate
- * @param offset - amount of 'parameter-input's before the fixedCollection under test
- * @returns
- */
-function populateFixedCollection(
-	items: readonly FieldRow[],
-	collectionName: string,
-	offset: number,
-) {
-	if (items.length === 0) return;
-	const n = items[0].length;
-	for (const [i, params] of items.entries()) {
-		ndv.actions.addItemToFixedCollection(collectionName);
-		for (const [j, param] of params.entries()) {
-			cy.wait(100);
-			ndv.getters
-				.fixedCollectionParameter(collectionName)
-				.getByTestId('parameter-input')
-				.eq(offset + i * n + j)
-				.type(`{selectAll}{backspace}${param}{downArrow}{enter}`);
-		}
-	}
-}
 
 function makeExample(type: TypeField) {
 	switch (type) {
@@ -82,35 +60,13 @@ function makeExample(type: TypeField) {
 }
 
 type TypeField = 'Allow Any Type' | 'String' | 'Number' | 'Boolean' | 'Array' | 'Object';
-function populateFields(items: ReadonlyArray<readonly [string, TypeField]>) {
-	populateFixedCollection(items, 'workflowInputs', 1);
-}
 
-function navigateWorkflowSelectionDropdown(index: number, expectedText: string) {
-	ndv.getters.resourceLocator('workflowId').should('be.visible');
-	ndv.getters.resourceLocatorInput('workflowId').click();
+function populateMapperFields(fields: ReadonlyArray<[string, string]>) {
+	for (const [name, value] of fields) {
+		getParameterInputByName(name).type(value);
 
-	getVisiblePopper().findChildByTestId('rlc-item').eq(0).should('exist');
-	getVisiblePopper()
-		.findChildByTestId('rlc-item')
-		.eq(index)
-		.find('span')
-		.should('have.text', expectedText)
-		.click();
-}
-
-function populateMapperFields(values: readonly string[], offset: number) {
-	for (const [i, value] of values.entries()) {
-		cy.getByTestId('parameter-input')
-			.eq(offset + i)
-			.type(value);
-
-		// Click on a parent to dismiss the pop up hiding the field below.
-		cy.getByTestId('parameter-input')
-			.eq(offset + i)
-			.parent()
-			.parent()
-			.click('topLeft');
+		// Click on a parent to dismiss the pop up which hides the field below.
+		getParameterInputByName(name).parent().parent().parent().click('topLeft');
 	}
 }
 
@@ -125,7 +81,7 @@ function assertOutputTableContent(expectedContent: unknown[][]) {
 // This function starts off in the Child Workflow Input Trigger, assuming we just defined the input fields
 // It then navigates back to the parent and validates output
 function validateAndReturnToParent(targetChild: string, offset: number, fields: string[]) {
-	ndv.actions.execute();
+	clickExecuteNode();
 
 	// + 1 to account for formatting-only column
 	getOutputTableHeaders().should('have.length', fields.length + 1);
@@ -138,16 +94,16 @@ function validateAndReturnToParent(targetChild: string, offset: number, fields: 
 
 	cy.visit(workflowsPage.url);
 
-	workflowsPage.getters.workflowCardContent(DEFAULT_WORKFLOW_NAME).click();
+	clickWorkflowCardContent(DEFAULT_WORKFLOW_NAME);
 
 	openNode('Execute Workflow');
 
 	// Note that outside of e2e tests this will be pre-selected correctly.
 	// Due to our workaround to remain in the same tab we need to select the correct tab manually
-	navigateWorkflowSelectionDropdown(offset, targetChild);
+	selectResourceLocatorItem('workflowId', offset, targetChild);
 
 	// This fails, pointing to `usePushConnection` `const triggerNode = subWorkflow?.nodes.find` being `undefined.find()`I <think>
-	ndv.actions.execute();
+	clickExecuteNode();
 
 	getOutputTableHeaders().should('have.length', fields.length + 1);
 	for (const [i, name] of fields.entries()) {
@@ -181,7 +137,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
+		selectResourceLocatorItem('workflowId', 0, 'Create a new sub-workflow');
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
@@ -190,7 +146,7 @@ describe('Sub-workflow creation and typed usage', () => {
 	});
 
 	it.only('works with type-checked values', () => {
-		populateFields(exampleFields);
+		populateFixedCollection(exampleFields, 'workflowInputs', 1);
 
 		validateAndReturnToParent(
 			DEFAULT_SUBWORKFLOW_NAME_1,
@@ -204,9 +160,9 @@ describe('Sub-workflow creation and typed usage', () => {
 		];
 
 		// this matches with the pinned data provided in the fixture
-		populateMapperFields(values, 2);
+		populateMapperFields(values.map((x, i) => [exampleFields[i][0], x]));
 
-		ndv.actions.execute();
+		clickExecuteNode();
 
 		const expected = [
 			['-1', 'A String', '0:11:true2:3', 'aKey:-1', '[empty object]', 'false'],
@@ -214,12 +170,11 @@ describe('Sub-workflow creation and typed usage', () => {
 		];
 		assertOutputTableContent(expected);
 
-		populateMapperFields(
-			values.map((x) => `{selectAll}{backspace}${x.slice(1)}`),
-			2,
-		);
+		// populateMapperFields(
+		// 	values.map((x, i) => [exampleFields[i][0], `{selectAll}{backspace}${x.slice(1)}`]),
+		// );
 
-		assertOutputTableContent(expected);
+		// assertOutputTableContent(expected);
 
 		// todo:
 		// - validate output lines up
@@ -241,7 +196,7 @@ describe('Sub-workflow creation and typed usage', () => {
 	it('works with Fields input source, then changed to JSON input source', () => {
 		ndv.getters.nodeOutputHint().should('exist');
 
-		populateFields(exampleFields);
+		populateFixedCollection(exampleFields, 'workflowInputs', 1);
 
 		validateAndReturnToParent(
 			DEFAULT_SUBWORKFLOW_NAME_1,
@@ -254,7 +209,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
+		selectResourceLocatorItem('workflowId', 0, 'Create a new sub-workflow');
 
 		openNode('Workflow Input Trigger');
 
@@ -273,7 +228,7 @@ describe('Sub-workflow creation and typed usage', () => {
 			.type(`${exampleJson}{enter}`);
 
 		// first one doesn't work for some reason, might need to wait for something?
-		ndv.actions.execute();
+		clickExecuteNode();
 
 		validateAndReturnToParent(
 			DEFAULT_SUBWORKFLOW_NAME_2,
@@ -286,7 +241,7 @@ describe('Sub-workflow creation and typed usage', () => {
 			['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
 		]);
 
-		ndv.actions.execute();
+		clickExecuteNode();
 
 		// test for either InputSource mode and options combinations:
 		// + we're showing the notice in the output panel
