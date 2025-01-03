@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import Container from 'typedi';
 
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { VariablesController } from '@/environments/variables/variables.controller.ee';
+import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
 

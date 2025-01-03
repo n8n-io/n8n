@@ -56,7 +56,7 @@ describe('updateDynamicConnections', () => {
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		expect(updatedConnections?.TestNode.main).toHaveLength(2);
-		expect(updatedConnections?.TestNode.main[1][0].node).toEqual('Node3');
+		expect(updatedConnections?.TestNode.main[1]?.[0].node).toEqual('Node3');
 	});
 
 	it('should handle fallbackOutput === "extra" and all rules removed', () => {
@@ -82,7 +82,7 @@ describe('updateDynamicConnections', () => {
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		expect(updatedConnections?.TestNode.main).toHaveLength(1);
-		expect(updatedConnections?.TestNode.main[0][0].node).toEqual('Node3');
+		expect(updatedConnections?.TestNode.main[0]?.[0].node).toEqual('Node3');
 	});
 
 	it('should add a new connection when a rule is added', () => {
@@ -137,7 +137,7 @@ describe('updateDynamicConnections', () => {
 
 		expect(updatedConnections?.TestNode.main).toHaveLength(4);
 		expect(updatedConnections?.TestNode.main[2]).toEqual([]);
-		expect(updatedConnections?.TestNode.main[3][0].node).toEqual('Node3');
+		expect(updatedConnections?.TestNode.main[3]?.[0].node).toEqual('Node3');
 	});
 
 	it('should return null if no conditions are met', () => {

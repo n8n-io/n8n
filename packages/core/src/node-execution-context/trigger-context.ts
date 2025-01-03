@@ -1,12 +1,8 @@
 import type {
 	ICredentialDataDecryptedObject,
-	IGetNodeParameterOptions,
 	INode,
-	INodeExecutionData,
-	IRunExecutionData,
 	ITriggerFunctions,
 	IWorkflowExecuteAdditionalData,
-	NodeParameterValueType,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -15,10 +11,7 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	getAdditionalKeys,
 	getBinaryHelperFunctions,
-	getCredentials,
-	getNodeParameter,
 	getRequestHelperFunctions,
 	getSchedulingFunctions,
 	getSSHTunnelFunctions,
@@ -64,33 +57,6 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await getCredentials<T>(this.workflow, this.node, type, this.additionalData, this.mode);
-	}
-
-	getNodeParameter(
-		parameterName: string,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object {
-		const runExecutionData: IRunExecutionData | null = null;
-		const itemIndex = 0;
-		const runIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-
-		return getNodeParameter(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			this.node,
-			parameterName,
-			itemIndex,
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, runExecutionData),
-			undefined,
-			fallbackValue,
-			options,
-		);
+		return await this._getCredentials<T>(type);
 	}
 }

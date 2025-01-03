@@ -1,4 +1,5 @@
 import type { BrokerMessage } from '@/message-types';
+import type { InputDataChunkDefinition } from '@/runner-types';
 
 /**
  * Class to keep track of which built-in variables are accessed in the code
@@ -53,11 +54,16 @@ export class BuiltInsParserState {
 		this.needs$prevNode = true;
 	}
 
-	toDataRequestParams(): BrokerMessage.ToRequester.TaskDataRequest['requestParams'] {
+	toDataRequestParams(
+		chunk?: InputDataChunkDefinition,
+	): BrokerMessage.ToRequester.TaskDataRequest['requestParams'] {
 		return {
 			dataOfNodes: this.needsAllNodes ? 'all' : Array.from(this.neededNodeNames),
 			env: this.needs$env,
-			input: this.needs$input,
+			input: {
+				include: this.needs$input,
+				chunk,
+			},
 			prevNode: this.needs$prevNode,
 		};
 	}

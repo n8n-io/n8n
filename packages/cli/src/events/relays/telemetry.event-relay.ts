@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { snakeCase } from 'change-case';
+import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
@@ -28,6 +29,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly telemetry: Telemetry,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -37,7 +39,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	async init() {
-		if (!config.getEnv('diagnostics.enabled')) return;
+		if (!this.globalConfig.diagnostics.enabled) return;
 
 		await this.telemetry.init();
 
@@ -760,6 +762,7 @@ export class TelemetryEventRelay extends EventRelay {
 					model: cpus[0].model,
 					speed: cpus[0].speed,
 				},
+				is_docker: this.instanceSettings.isDocker,
 			},
 			execution_variables: {
 				executions_mode: config.getEnv('executions.mode'),
@@ -771,8 +774,8 @@ export class TelemetryEventRelay extends EventRelay {
 				executions_data_save_manual_executions: config.getEnv(
 					'executions.saveDataManualExecutions',
 				),
-				executions_data_prune: this.globalConfig.pruning.isEnabled,
-				executions_data_max_age: this.globalConfig.pruning.maxAge,
+				executions_data_prune: this.globalConfig.executions.pruneData,
+				executions_data_max_age: this.globalConfig.executions.pruneDataMaxAge,
 			},
 			n8n_deployment_type: config.getEnv('deployment.type'),
 			n8n_binary_data_mode: binaryDataConfig.mode,

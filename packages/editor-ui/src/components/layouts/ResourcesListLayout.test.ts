@@ -4,6 +4,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type router from 'vue-router';
 
+vi.mock('@/composables/useGlobalEntityCreation', () => ({
+	useGlobalEntityCreation: () => ({
+		menu: [],
+	}),
+}));
+
 vi.mock('vue-router', async (importOriginal) => {
 	const { RouterLink } = await importOriginal<typeof router>();
 	return {

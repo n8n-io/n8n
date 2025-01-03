@@ -1,10 +1,16 @@
-import { Column, Entity, Index, ManyToOne, RelationId } from '@n8n/typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
+import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
+import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
+
+// Entity representing a node in a workflow under test, for which data should be mocked during test execution
+export type MockedNodeItem = {
+	name: string;
+};
 
 /**
  * Entity representing a Test Definition
@@ -25,6 +31,9 @@ export class TestDefinition extends WithTimestampsAndStringId {
 
 	@Column('text')
 	description: string;
+
+	@Column(jsonColumnType, { default: '[]' })
+	mockedNodes: MockedNodeItem[];
 
 	/**
 	 * Relation to the workflow under test
@@ -53,4 +62,7 @@ export class TestDefinition extends WithTimestampsAndStringId {
 
 	@RelationId((test: TestDefinition) => test.annotationTag)
 	annotationTagId: string;
+
+	@OneToMany('TestMetric', 'testDefinition')
+	metrics: TestMetric[];
 }

@@ -39,7 +39,7 @@ describe('WorkflowStatisticsService', () => {
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
-	config.set('diagnostics.enabled', true);
+	globalConfig.diagnostics.enabled = true;
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
 	mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);

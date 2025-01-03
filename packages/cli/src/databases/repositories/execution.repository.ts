@@ -21,12 +21,8 @@ import {
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
-import { BinaryDataService } from 'n8n-core';
-import {
-	ExecutionCancelledError,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -46,7 +42,6 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -125,6 +120,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
@@ -163,7 +159,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData', 'metadata');
+
+			if (Array.isArray(queryParams.relations)) {
+				queryParams.relations.push('executionData', 'metadata');
+			} else {
+				queryParams.relations.executionData = true;
+				queryParams.relations.metadata = true;
+			}
 		}
 
 		const executions = await this.find(queryParams);
@@ -203,7 +205,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
 		if (executions.length === 0) return;
 
-		ErrorReporter.error(
+		this.errorReporter.error(
 			new ApplicationError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
@@ -459,7 +461,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const { maxAge, maxCount } = this.globalConfig.pruning;
+		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -470,18 +472,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
+		date.setHours(date.getHours() - pruneDataMaxAge);
 
 		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
 			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
 
-		if (maxCount > 0) {
+		if (pruneDataMaxCount > 0) {
 			const executions = await this.createQueryBuilder('execution')
 				.select('execution.id')
 				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(maxCount)
+				.skip(pruneDataMaxCount)
 				.take(1)
 				.orderBy('execution.id', 'DESC')
 				.getMany();
@@ -515,7 +517,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - this.globalConfig.pruning.hardDeleteBuffer);
+		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
@@ -981,7 +983,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (projectId) {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
-				.where('sw.projectId = :projectId', { projectId });
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;

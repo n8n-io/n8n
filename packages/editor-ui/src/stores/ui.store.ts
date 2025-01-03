@@ -53,7 +53,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { BannerName } from 'n8n-workflow';
+import type { BannerName } from '@n8n/api-types';
 import {
 	addThemeToBody,
 	getPreferredTheme,
@@ -186,14 +186,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const appliedTheme = computed(() => {
 		return theme.value === 'system' ? getPreferredTheme() : theme.value;
-	});
-
-	const logo = computed(() => {
-		const { releaseChannel } = settingsStore.settings;
-		const suffix = appliedTheme.value === 'dark' ? '-dark.svg' : '.svg';
-		return `static/logo/${
-			releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
-		}${suffix}`;
 	});
 
 	const contextBasedTranslationKeys = computed(() => {
@@ -563,7 +555,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	return {
 		appGridWidth,
 		appliedTheme,
-		logo,
 		contextBasedTranslationKeys,
 		getLastSelectedNode,
 		isVersionsOpen,

@@ -1,11 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { guildRLC } from '../common.description';
+import * as deleteMessage from './deleteMessage.operation';
+import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as react from './react.operation';
 import * as send from './send.operation';
-import * as deleteMessage from './deleteMessage.operation';
-import * as get from './get.operation';
+import { guildRLC } from '../common.description';
 
 export { getAll, react, send, deleteMessage, get };
 

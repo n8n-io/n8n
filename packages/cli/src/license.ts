@@ -1,15 +1,13 @@
 import { GlobalConfig } from '@n8n/config';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
-import { InstanceSettings, ObjectStoreService } from 'n8n-core';
+import { InstanceSettings, ObjectStoreService, Logger } from 'n8n-core';
 import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import {
 	LICENSE_FEATURES,
@@ -35,7 +33,6 @@ export class License {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly licenseMetricsService: LicenseMetricsService,
 		private readonly globalConfig: GlobalConfig,
@@ -138,23 +135,24 @@ export class License {
 		this.logger.debug('License feature change detected', _features);
 
 		if (config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled) {
-			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
-				| boolean
-				| undefined;
+			const isMultiMainLicensed =
+				(_features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as boolean | undefined) ?? false;
 
-			this.orchestrationService.setMultiMainSetupLicensed(isMultiMainLicensed ?? false);
+			this.instanceSettings.setMultiMainLicensed(isMultiMainLicensed);
 
-			if (this.orchestrationService.isMultiMainSetupEnabled && this.instanceSettings.isFollower) {
-				this.logger.debug(
-					'[Multi-main setup] Instance is follower, skipping sending of "reload-license" command...',
-				);
+			if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+				this.logger
+					.scoped(['scaling', 'multi-main-setup', 'license'])
+					.debug('Instance is not leader, skipping sending of "reload-license" command...');
 				return;
 			}
 
-			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
-				this.logger.debug(
-					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
-				);
+			if (this.globalConfig.multiMainSetup.enabled && !isMultiMainLicensed) {
+				this.logger
+					.scoped(['scaling', 'multi-main-setup', 'license'])
+					.debug(
+						'License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
+					);
 			}
 		}
 
@@ -255,6 +253,10 @@ export class License {
 
 	isAskAiEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ASK_AI);
+	}
+
+	isAiCreditsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.AI_CREDITS);
 	}
 
 	isAdvancedExecutionFiltersEnabled() {
@@ -365,6 +367,10 @@ export class License {
 
 	getVariablesLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getAiCredits() {
+		return this.getFeatureValue(LICENSE_QUOTAS.AI_CREDITS) ?? 0;
 	}
 
 	getWorkflowHistoryPruneLimit() {

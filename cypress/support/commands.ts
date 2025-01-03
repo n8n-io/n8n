@@ -75,8 +75,13 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			.then((response) => {
 				Cypress.env('currentUserId', response.body.data.id);
 
+				// @TODO Remove this once the switcher is removed
 				cy.window().then((win) => {
-					win.localStorage.setItem('NodeView.switcher.discovered', 'true'); // @TODO Remove this once the switcher is removed
+					win.localStorage.setItem('NodeView.migrated', 'true');
+					win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
+
+					const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
+					win.localStorage.setItem('NodeView.version', nodeViewVersion ?? '1');
 				});
 			});
 	});

@@ -17,14 +17,16 @@ import type {
 	INodeListSearchResult,
 	Icon,
 	INodePropertyOptions,
+	ThemeIconColor,
 } from 'n8n-workflow';
 
+import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { processDocument } from './processDocuments';
-import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
 
@@ -36,6 +38,7 @@ interface NodeMeta {
 	description: string;
 	docsUrl: string;
 	icon: Icon;
+	iconColor?: ThemeIconColor;
 	credentials?: INodeCredentialDescription[];
 	operationModes?: NodeOperationMode[];
 }
@@ -124,6 +127,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			name: args.meta.name,
 			description: args.meta.description,
 			icon: args.meta.icon,
+			iconColor: args.meta.iconColor,
 			group: ['transform'],
 			version: 1,
 			defaults: {

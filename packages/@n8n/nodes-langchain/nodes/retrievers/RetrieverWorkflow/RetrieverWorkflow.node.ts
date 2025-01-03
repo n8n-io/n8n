@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
+import { Document } from '@langchain/core/documents';
+import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -13,13 +18,7 @@ import type {
 	ExecuteWorkflowData,
 } from 'n8n-workflow';
 
-import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
-import { Document } from '@langchain/core/documents';
-
-import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
-import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
 
 function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
 	let result = '';
@@ -42,6 +41,7 @@ export class RetrieverWorkflow implements INodeType {
 		displayName: 'Workflow Retriever',
 		name: 'retrieverWorkflow',
 		icon: 'fa:box-open',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Use an n8n Workflow as Retriever',

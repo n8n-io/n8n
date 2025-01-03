@@ -4,13 +4,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-
 import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
-import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import type { ResponseWithJobReference } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { googleBigQueryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

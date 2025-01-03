@@ -9,9 +9,9 @@ import Container from 'typedi';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SourceControlImportService } from '@/environments/source-control/source-control-import.service.ee';
-import type { ExportableCredential } from '@/environments/source-control/types/exportable-credential';
-import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
+import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
+import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
+import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 
 import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
@@ -26,6 +26,7 @@ describe('SourceControlImportService', () => {
 
 	beforeAll(async () => {
 		service = new SourceControlImportService(
+			mock(),
 			mock(),
 			mock(),
 			mock(),

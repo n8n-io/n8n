@@ -990,11 +990,8 @@ function alphanumericId() {
 
 const chooseRandomly = <T>(array: T[]) => array[randomInt(array.length)];
 
-function generateTestWorkflowAndRunData(): { workflow: IWorkflowBase; runData: IRunData } {
-	const workflow: IWorkflowBase = {
-		meta: {
-			instanceId: 'a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0',
-		},
+function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; runData: IRunData } {
+	const workflow: Partial<IWorkflowBase> = {
 		nodes: [
 			{
 				parameters: {},
@@ -1096,9 +1093,7 @@ function generateTestWorkflowAndRunData(): { workflow: IWorkflowBase; runData: I
 			},
 			Switch: {
 				main: [
-					// @ts-ignore
 					null,
-					// @ts-ignore
 					null,
 					[
 						{

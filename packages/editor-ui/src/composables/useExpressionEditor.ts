@@ -305,7 +305,11 @@ export const useExpressionEditor = ({
 				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 			}
 		} catch (error) {
-			result.resolved = `[${getExpressionErrorMessage(error)}]`;
+			const hasRunData =
+				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
+					ndvStore.activeNode?.name ?? ''
+				];
+			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
 		}

@@ -1,9 +1,9 @@
 import type { Ref } from 'vue';
 import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue';
-import type { ResizeData } from 'n8n-design-system/components/N8nResizeWrapper/ResizeWrapper.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import type { IChatResizeStyles } from '../types/chat';
 import { useStorage } from '@/composables/useStorage';
+import { type ResizeData } from 'n8n-design-system';
 
 const LOCAL_STORAGE_PANEL_HEIGHT = 'N8N_CANVAS_CHAT_HEIGHT';
 const LOCAL_STORAGE_PANEL_WIDTH = 'N8N_CANVAS_CHAT_WIDTH';

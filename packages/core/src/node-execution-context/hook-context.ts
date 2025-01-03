@@ -1,12 +1,8 @@
 import type {
 	ICredentialDataDecryptedObject,
-	IGetNodeParameterOptions,
 	INode,
-	INodeExecutionData,
 	IHookFunctions,
-	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
-	NodeParameterValueType,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -17,9 +13,6 @@ import { ApplicationError } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
-	getAdditionalKeys,
-	getCredentials,
-	getNodeParameter,
 	getNodeWebhookUrl,
 	getRequestHelperFunctions,
 	getWebhookDescription,
@@ -48,34 +41,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await getCredentials<T>(this.workflow, this.node, type, this.additionalData, this.mode);
-	}
-
-	getNodeParameter(
-		parameterName: string,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object {
-		const runExecutionData: IRunExecutionData | null = null;
-		const itemIndex = 0;
-		const runIndex = 0;
-		const connectionInputData: INodeExecutionData[] = [];
-
-		return getNodeParameter(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			connectionInputData,
-			this.node,
-			parameterName,
-			itemIndex,
-			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, runExecutionData),
-			undefined,
-			fallbackValue,
-			options,
-		);
+		return await this._getCredentials<T>(type);
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
@@ -85,7 +51,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 			this.node,
 			this.additionalData,
 			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, null),
+			this.additionalKeys,
 			this.webhookData?.isTest,
 		);
 	}

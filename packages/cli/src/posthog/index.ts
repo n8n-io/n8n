@@ -4,7 +4,6 @@ import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog } from 'posthog-node';
 import { Service } from 'typedi';
 
-import config from '@/config';
 import type { PublicUser } from '@/interfaces';
 
 @Service()
@@ -17,14 +16,14 @@ export class PostHogClient {
 	) {}
 
 	async init() {
-		const enabled = config.getEnv('diagnostics.enabled');
+		const { enabled, posthogConfig } = this.globalConfig.diagnostics;
 		if (!enabled) {
 			return;
 		}
 
 		const { PostHog } = await import('posthog-node');
-		this.postHog = new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'), {
-			host: config.getEnv('diagnostics.config.posthog.apiHost'),
+		this.postHog = new PostHog(posthogConfig.apiKey, {
+			host: posthogConfig.apiHost,
 		});
 
 		const logLevel = this.globalConfig.logging.level;

@@ -25,7 +25,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		});
 	}
 
-	async findMany(listQueryOptions?: ListQuery.Options, credentialIds?: string[]) {
+	async findMany(
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+		credentialIds?: string[],
+	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
 
 		if (credentialIds) {
@@ -35,13 +38,13 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	private toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+	private toFindManyOptions(listQueryOptions?: ListQuery.Options & { includeData?: boolean }) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
 
 		const defaultRelations = ['shared', 'shared.project'];
-		const defaultSelect: Select = ['id', 'name', 'type', 'createdAt', 'updatedAt'];
+		const defaultSelect: Select = ['id', 'name', 'type', 'isManaged', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
 
@@ -72,6 +75,14 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
 			findManyOptions.relations = defaultRelations;
+		}
+
+		if (listQueryOptions.includeData) {
+			if (Array.isArray(findManyOptions.select)) {
+				findManyOptions.select.push('data');
+			} else {
+				findManyOptions.select.data = true;
+			}
 		}
 
 		return findManyOptions;

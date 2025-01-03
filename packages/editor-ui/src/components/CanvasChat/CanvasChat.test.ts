@@ -4,6 +4,7 @@ import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { createRouter, createWebHistory } from 'vue-router';
 import { computed, ref } from 'vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import CanvasChat from './CanvasChat.vue';
@@ -15,7 +16,6 @@ import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import * as useChatMessaging from './composables/useChatMessaging';
 import * as useChatTrigger from './composables/useChatTrigger';
@@ -23,6 +23,7 @@ import { useToast } from '@/composables/useToast';
 
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ChatMessage } from '@n8n/chat/types';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -59,6 +60,26 @@ const mockNodes: INodeUi[] = [
 		type: '@n8n/n8n-nodes-langchain.agent',
 		typeVersion: 1.7,
 		position: [960, 860],
+	},
+];
+const mockNodeTypes: INodeTypeDescription[] = [
+	{
+		displayName: 'AI Agent',
+		name: '@n8n/n8n-nodes-langchain.agent',
+		properties: [],
+		defaults: {
+			name: 'AI Agent',
+		},
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		version: 0,
+		group: [],
+		description: '',
+		codex: {
+			subcategories: {
+				AI: ['Agents'],
+			},
+		},
 	},
 ];
 
@@ -110,8 +131,8 @@ describe('CanvasChat', () => {
 	});
 
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let canvasStore: ReturnType<typeof mockedStore<typeof useCanvasStore>>;
+	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({
@@ -131,8 +152,8 @@ describe('CanvasChat', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		uiStore = mockedStore(useUIStore);
 		canvasStore = mockedStore(useCanvasStore);
+		nodeTypeStore = mockedStore(useNodeTypesStore);
 
 		// Setup default mocks
 		workflowsStore.getCurrentWorkflow.mockReturnValue(
@@ -141,12 +162,21 @@ describe('CanvasChat', () => {
 				connections: mockConnections,
 			}),
 		);
-		workflowsStore.getNodeByName.mockImplementation(
-			(name) => mockNodes.find((node) => node.name === name) ?? null,
-		);
+		workflowsStore.getNodeByName.mockImplementation((name) => {
+			const matchedNode = mockNodes.find((node) => node.name === name) ?? null;
+
+			return matchedNode;
+		});
 		workflowsStore.isChatPanelOpen = true;
+		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
+
+		nodeTypeStore.getNodeType = vi.fn().mockImplementation((nodeTypeName) => {
+			return mockNodeTypes.find((node) => node.name === nodeTypeName) ?? null;
+		});
+
+		workflowsStore.runWorkflow.mockResolvedValue({ executionId: 'test-execution-issd' });
 	});
 
 	afterEach(() => {
@@ -190,6 +220,10 @@ describe('CanvasChat', () => {
 			// Verify message and response
 			expect(await findByText('Hello AI!')).toBeInTheDocument();
 			await waitFor(async () => {
+				workflowsStore.getWorkflowExecution = {
+					...(mockWorkflowExecution as unknown as IExecutionResponse),
+					status: 'success',
+				};
 				expect(await findByText('AI response message')).toBeInTheDocument();
 			});
 
@@ -231,11 +265,12 @@ describe('CanvasChat', () => {
 			await userEvent.type(input, 'Test message');
 			await userEvent.keyboard('{Enter}');
 
-			// Verify loading states
-			uiStore.isActionActive = { workflowRunning: true };
 			await waitFor(() => expect(queryByTestId('chat-message-typing')).toBeInTheDocument());
 
-			uiStore.isActionActive = { workflowRunning: false };
+			workflowsStore.getWorkflowExecution = {
+				...(mockWorkflowExecution as unknown as IExecutionResponse),
+				status: 'success',
+			};
 			await waitFor(() => expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument());
 		});
 
@@ -269,7 +304,7 @@ describe('CanvasChat', () => {
 				sendMessage: vi.fn(),
 				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
-				waitForExecution: vi.fn(),
+				isLoading: computed(() => false),
 			});
 		});
 
@@ -339,7 +374,7 @@ describe('CanvasChat', () => {
 				sendMessage: vi.fn(),
 				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
-				waitForExecution: vi.fn(),
+				isLoading: computed(() => false),
 			});
 
 			workflowsStore.isChatPanelOpen = true;
@@ -437,7 +472,7 @@ describe('CanvasChat', () => {
 				sendMessage: sendMessageSpy,
 				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
-				waitForExecution: vi.fn(),
+				isLoading: computed(() => false),
 			});
 			workflowsStore.messages = mockMessages;
 		});
@@ -449,26 +484,25 @@ describe('CanvasChat', () => {
 			await userEvent.click(repostButton);
 
 			expect(sendMessageSpy).toHaveBeenCalledWith('Original message');
-			//   expect.objectContaining({
-			//     runData: expect.objectContaining({
-			//       'When chat message received': expect.arrayContaining([
-			//         expect.objectContaining({
-			//           data: expect.objectContaining({
-			//             main: expect.arrayContaining([
-			//               expect.arrayContaining([
-			//                 expect.objectContaining({
-			//                   json: expect.objectContaining({
-			//                     chatInput: 'Original message',
-			//                   }),
-			//                 }),
-			//               ]),
-			//             ]),
-			//           }),
-			//         }),
-			//       ]),
-			//     }),
-			//   }),
-			// );
+			expect.objectContaining({
+				runData: expect.objectContaining({
+					'When chat message received': expect.arrayContaining([
+						expect.objectContaining({
+							data: expect.objectContaining({
+								main: expect.arrayContaining([
+									expect.arrayContaining([
+										expect.objectContaining({
+											json: expect.objectContaining({
+												chatInput: 'Original message',
+											}),
+										}),
+									]),
+								]),
+							}),
+						}),
+					]),
+				}),
+			});
 		});
 
 		it('should show message options only for appropriate messages', async () => {
@@ -491,32 +525,6 @@ describe('CanvasChat', () => {
 			expect(
 				botMessage?.querySelector('[data-test-id="reuse-message-button"]'),
 			).not.toBeInTheDocument();
-		});
-	});
-
-	describe('execution handling', () => {
-		it('should update UI when execution is completed', async () => {
-			const { findByTestId, queryByTestId } = renderComponent();
-
-			// Start execution
-			const input = await findByTestId('chat-input');
-			await userEvent.type(input, 'Test message');
-			await userEvent.keyboard('{Enter}');
-
-			// Simulate execution completion
-			uiStore.isActionActive = { workflowRunning: true };
-			await waitFor(() => {
-				expect(queryByTestId('chat-message-typing')).toBeInTheDocument();
-			});
-
-			uiStore.isActionActive = { workflowRunning: false };
-			workflowsStore.setWorkflowExecutionData(
-				mockWorkflowExecution as unknown as IExecutionResponse,
-			);
-
-			await waitFor(() => {
-				expect(queryByTestId('chat-message-typing')).not.toBeInTheDocument();
-			});
 		});
 	});
 

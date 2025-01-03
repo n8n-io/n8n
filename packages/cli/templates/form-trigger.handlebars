@@ -4,7 +4,7 @@
 		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
 		<link
-			href='http://fonts.googleapis.com/css?family=Open+Sans'
+			href='https://fonts.googleapis.com/css?family=Open+Sans'
 			rel='stylesheet'
 			type='text/css'
 		/>
@@ -450,7 +450,11 @@
 
 				<div class='card' id='submitted-form' style='display: none;'>
 					<div class='form-header'>
-						<h1 id='submitted-header'>Form Submitted</h1>
+						{{#if formSubmittedHeader}}
+							<h1 id='submitted-header'>{{formSubmittedHeader}}</h1>
+						{{else}}
+							<h1 id='submitted-header'>Form Submitted</h1>
+						{{/if}}
 						{{#if formSubmittedText}}
 							<p id='submitted-content'>
 								{{formSubmittedText}}
@@ -740,14 +744,6 @@
 							}
 
 							return;
-						}).then(() => {
-							window.addEventListener('storage', function(event) {
-								if (event.key === 'n8n_redirect_to_next_form_test_page' && event.newValue) {
-									const newUrl = event.newValue;
-									localStorage.removeItem('n8n_redirect_to_next_form_test_page');
-									window.location.replace(newUrl);
-								}
-							});
 						})
 						.catch(function (error) {
 							console.error('Error:', error);

@@ -557,6 +557,8 @@ describe('General help', () => {
 		}).as('chatRequest');
 
 		aiAssistant.getters.askAssistantFloatingButton().click();
+		wf.getters.zoomToFitButton().click();
+
 		aiAssistant.actions.sendMessage('What is wrong with this workflow?');
 		cy.wait('@chatRequest');
 

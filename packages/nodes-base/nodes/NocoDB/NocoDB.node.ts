@@ -12,7 +12,6 @@ import type {
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
 
 export class NocoDB implements INodeType {

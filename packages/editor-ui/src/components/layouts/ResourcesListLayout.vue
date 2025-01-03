@@ -83,7 +83,7 @@ defineSlots<{
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
-	'add-button'(props: { disabled: boolean }): unknown;
+	'add-button'(): unknown;
 	callout(): unknown;
 	filters(props: {
 		filters: Record<string, boolean | string | string[]>;
@@ -407,16 +407,7 @@ onMounted(async () => {
 								</n8n-select>
 							</div>
 						</div>
-						<slot name="add-button" :disabled="disabled">
-							<n8n-button
-								size="large"
-								:disabled="disabled"
-								data-test-id="resources-list-add"
-								@click="onAddButtonClick"
-							>
-								{{ i18n.baseText(`${resourceKey}.add` as BaseTextKey) }}
-							</n8n-button>
-						</slot>
+						<slot name="add-button"></slot>
 					</div>
 
 					<slot name="callout"></slot>

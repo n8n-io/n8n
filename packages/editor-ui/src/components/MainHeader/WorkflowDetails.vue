@@ -103,6 +103,7 @@ const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
 const {
+	isNewUser,
 	nodeViewVersion,
 	nodeViewSwitcherDiscovered,
 	isNodeViewDiscoveryTooltipVisible,
@@ -190,26 +191,32 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
-		...(nodeViewVersion.value === '2'
-			? {}
-			: nodeViewSwitcherDiscovered.value
-				? {
-						badge: locale.baseText('menuActions.badge.alpha'),
-						badgeProps: {
-							theme: 'tertiary',
-						},
-					}
-				: {
-						badge: locale.baseText('menuActions.badge.new'),
-					}),
-		label:
-			nodeViewVersion.value === '2'
-				? locale.baseText('menuActions.switchToOldNodeViewVersion')
-				: locale.baseText('menuActions.switchToNewNodeViewVersion'),
-		disabled: !onWorkflowPage.value,
-	});
+	if (settingsStore.isCanvasV2Enabled) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
+			...(nodeViewVersion.value === '2'
+				? nodeViewSwitcherDiscovered.value || isNewUser.value
+					? {}
+					: {
+							badge: locale.baseText('menuActions.badge.new'),
+						}
+				: nodeViewSwitcherDiscovered.value
+					? {
+							badge: locale.baseText('menuActions.badge.beta'),
+							badgeProps: {
+								theme: 'tertiary',
+							},
+						}
+					: {
+							badge: locale.baseText('menuActions.badge.new'),
+						}),
+			label:
+				nodeViewVersion.value === '2'
+					? locale.baseText('menuActions.switchToOldNodeViewVersion')
+					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
@@ -598,7 +605,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
-		if (projectsStore.currentProject) {
+
+		if (
+			projectsStore.currentProject &&
+			projectsStore.currentProject.id !== projectsStore.personalProject?.id
+		) {
 			toastTitle = locale.baseText('workflows.create.project.toast.title', {
 				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
 			});
@@ -756,9 +767,12 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					/>
 					<template #content>
 						<div class="mb-4xs">
-							<N8nBadge>{{ i18n.baseText('menuActions.badge.alpha') }}</N8nBadge>
+							<N8nBadge>{{ i18n.baseText('menuActions.badge.beta') }}</N8nBadge>
 						</div>
-						{{ i18n.baseText('menuActions.nodeViewDiscovery.tooltip') }}
+						<p>{{ i18n.baseText('menuActions.nodeViewDiscovery.tooltip') }}</p>
+						<N8nText color="text-light" size="small">
+							{{ i18n.baseText('menuActions.nodeViewDiscovery.tooltip.switchBack') }}
+						</N8nText>
 						<N8nIcon
 							:class="$style.closeNodeViewDiscovery"
 							icon="times-circle"
@@ -777,6 +791,10 @@ $--header-spacing: 20px;
 
 .name-container {
 	margin-right: $--header-spacing;
+
+	:deep(.el-input) {
+		padding: 0;
+	}
 }
 
 .name {
@@ -827,6 +845,7 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-m);
+	flex-wrap: wrap;
 }
 </style>
 
@@ -837,6 +856,7 @@ $--header-spacing: 20px;
 	width: 100%;
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 }
 
 .group {

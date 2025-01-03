@@ -399,7 +399,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
-			currentWorkflow: workflowDataStale.value ? workflowsStore.workflow : undefined,
+			currentWorkflow: workflowDataStale.value
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult)
