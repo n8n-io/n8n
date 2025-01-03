@@ -1,4 +1,5 @@
 import type {
+	ActionTypeDescription,
 	INodeCreateElement,
 	NodeCreateElement,
 	NodeFilterType,
@@ -6,6 +7,7 @@ import type {
 } from '@/Interface';
 import {
 	AI_CATEGORY_ROOT_NODES,
+	AI_CATEGORY_TOOLS,
 	AI_CODE_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -36,12 +38,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import {
-	AI_TRANSFORM_NODE_TYPE,
-	type INodeInputFilter,
-	type NodeConnectionType,
-	type Themed,
-} from 'n8n-workflow';
+import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
+import type { NodeConnectionType, INodeInputFilter, Themed } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -71,6 +69,7 @@ interface ViewStack {
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
+	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
 }
@@ -207,8 +206,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return items.filter((node) => {
 			if (node.type !== 'node') return false;
 
-			return node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
-				AI_CATEGORY_ROOT_NODES,
+			const subcategories = node.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+			return (
+				subcategories.includes(AI_CATEGORY_ROOT_NODES) &&
+				!subcategories?.includes(AI_CATEGORY_TOOLS)
 			);
 		});
 	}
@@ -345,6 +346,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					...item,
 					subcategory: connectionType,
 				};
+			},
+			actionsFilter: (items: ActionTypeDescription[]) => {
+				// Filter out actions that are not compatible with the connection type
+				if (items.some((item) => item.outputConnectionType)) {
+					return items.filter((item) => item.outputConnectionType === connectionType);
+				}
+				return items;
 			},
 			hideActions: true,
 			preventBack: true,

@@ -1,4 +1,5 @@
 import { getManualChatModal } from './modals/chat-modal';
+import { clickGetBackToCanvas, getParameterInputByName } from './ndv';
 import { ROUTES } from '../constants';
 
 /**
@@ -127,7 +128,7 @@ export function navigateToNewWorkflowPage(preventNodeViewUnload = true) {
 	});
 }
 
-export function addSupplementalNodeToParent(
+function connectNodeToParent(
 	nodeName: string,
 	endpointType: EndpointType,
 	parentNodeName: string,
@@ -141,6 +142,15 @@ export function addSupplementalNodeToParent(
 	} else {
 		getNodeCreatorItems().contains(nodeName).click();
 	}
+}
+
+export function addSupplementalNodeToParent(
+	nodeName: string,
+	endpointType: EndpointType,
+	parentNodeName: string,
+	exactMatch = false,
+) {
+	connectNodeToParent(nodeName, endpointType, parentNodeName, exactMatch);
 	getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
 }
 
@@ -158,6 +168,15 @@ export function addMemoryNodeToParent(nodeName: string, parentNodeName: string) 
 
 export function addToolNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_tool', parentNodeName);
+}
+
+export function addVectorStoreToolToParent(nodeName: string, parentNodeName: string) {
+	connectNodeToParent(nodeName, 'ai_tool', parentNodeName, false);
+	getParameterInputByName('mode')
+		.find('input')
+		.should('have.value', 'Retrieve Documents (As Tool for AI Agent)');
+	clickGetBackToCanvas();
+	getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
 }
 
 export function addOutputParserNodeToParent(nodeName: string, parentNodeName: string) {

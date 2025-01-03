@@ -8,6 +8,7 @@ import type {
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_OTHER_TOOLS,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
@@ -169,6 +170,7 @@ export function groupItemsInSections(
 	result.sort((a, b) => {
 		if (a.key.toLowerCase().includes('recommended')) return -1;
 		if (b.key.toLowerCase().includes('recommended')) return 1;
+		if (b.key === AI_CATEGORY_OTHER_TOOLS) return -1;
 
 		return 0;
 	});
