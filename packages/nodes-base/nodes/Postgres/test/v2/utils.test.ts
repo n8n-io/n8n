@@ -1,5 +1,6 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import pgPromise from 'pg-promise';
 
 import type { ColumnInfo } from '../../v2/helpers/interfaces';
 import {
@@ -14,6 +15,8 @@ import {
 	wrapData,
 	convertArraysToPostgresFormat,
 	isJSON,
+	convertValuesToJsonWithPgp,
+	hasJsonDataTypeInSchema,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -384,6 +387,57 @@ describe('Test PostgresV2, checkItemAgainstSchema', () => {
 		} catch (error) {
 			expect(error.message).toEqual("Column 'foo' is not nullable");
 		}
+	});
+});
+
+describe('Test PostgresV2, hasJsonDataType', () => {
+	it('returns true if there are columns which are of type json', () => {
+		const schema: ColumnInfo[] = [
+			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+		];
+
+		expect(hasJsonDataTypeInSchema(schema)).toEqual(true);
+	});
+
+	it('returns false if there are columns which are of type json', () => {
+		const schema: ColumnInfo[] = [{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' }];
+
+		expect(hasJsonDataTypeInSchema(schema)).toEqual(false);
+	});
+});
+
+describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
+	it('should use pgp to properly convert values to JSON', () => {
+		const pgp = pgPromise();
+		const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+
+		const schema: ColumnInfo[] = [
+			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+		];
+		const values = [
+			{
+				value: { data: [], id: 1 },
+				expected: { data: '[]', id: 1 },
+			},
+			{
+				value: { data: [0], id: 1 },
+				expected: { data: '[0]', id: 1 },
+			},
+			{
+				value: { data: { key: 2 }, id: 1 },
+				expected: { data: '{"key":2}', id: 1 },
+			},
+		];
+
+		values.forEach((value) => {
+			const data = value.value.data;
+
+			expect(convertValuesToJsonWithPgp(pgp, schema, value.value)).toEqual(value.expected);
+			expect(value.value).toEqual(value.expected);
+			expect(pgpJsonSpy).toHaveBeenCalledWith(data, true);
+		});
 	});
 });
 

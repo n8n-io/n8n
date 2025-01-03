@@ -1,13 +1,14 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
+	PgpClient,
 	PgpDatabase,
 	PostgresNodeOptions,
 	QueriesRunner,
@@ -22,6 +23,8 @@ import {
 	prepareItem,
 	convertArraysToPostgresFormat,
 	replaceEmptyStringsByNulls,
+	hasJsonDataTypeInSchema,
+	convertValuesToJsonWithPgp,
 } from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
@@ -160,6 +163,7 @@ export async function execute(
 	items: INodeExecutionData[],
 	nodeOptions: PostgresNodeOptions,
 	db: PgpDatabase,
+	pgp: PgpClient,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 	const nodeVersion = nodeOptions.nodeVersion as number;
@@ -215,11 +219,16 @@ export async function execute(
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			if (nodeVersion < 2.2) {
-				item = prepareItem(valuesToSend);
-			} else {
-				item = this.getNodeParameter('columns.value', i) as IDataObject;
-			}
+			item =
+				nodeVersion < 2.2
+					? prepareItem(valuesToSend)
+					: hasJsonDataTypeInSchema(tableSchema)
+						? convertValuesToJsonWithPgp(
+								pgp,
+								tableSchema,
+								(this.getNodeParameter('columns', i) as IDataObject)?.value as IDataObject,
+							)
+						: (this.getNodeParameter('columns.value', i) as IDataObject);
 		}
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);

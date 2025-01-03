@@ -394,6 +394,24 @@ export function prepareItem(values: IDataObject[]) {
 	return item;
 }
 
+export function hasJsonDataTypeInSchema(schema: ColumnInfo[]) {
+	return schema.some(({ data_type }) => data_type === 'json');
+}
+
+export function convertValuesToJsonWithPgp(
+	pgp: PgpClient,
+	schema: ColumnInfo[],
+	values: IDataObject,
+) {
+	schema
+		.filter(({ data_type }: { data_type: string }) => data_type === 'json')
+		.forEach(({ column_name }) => {
+			values[column_name] = pgp.as.json(values[column_name], true);
+		});
+
+	return values;
+}
+
 export async function columnFeatureSupport(
 	db: PgpDatabase,
 ): Promise<{ identity_generation: boolean; is_generated: boolean }> {
