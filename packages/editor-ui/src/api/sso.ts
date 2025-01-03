@@ -18,7 +18,7 @@ export const getSamlConfig = async (
 
 export const saveSamlConfig = async (
 	context: IRestApiContext,
-	data: SamlPreferences,
+	data: Partial<SamlPreferences>,
 ): Promise<SamlPreferences | undefined> => {
 	return await makeRestApiRequest(context, 'POST', '/sso/saml/config', data);
 };

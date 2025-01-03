@@ -65,7 +65,7 @@ export const useSSOStore = defineStore('sso', () => {
 		state.samlConfig = samlConfig;
 		return samlConfig;
 	};
-	const saveSamlConfig = async (config: SamlPreferences) =>
+	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
 		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
 	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
 
