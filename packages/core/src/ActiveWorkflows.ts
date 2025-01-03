@@ -11,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
-	LoggerProxy as Logger,
 	toCronExpression,
 	TriggerCloseError,
 	WorkflowActivationError,
@@ -21,12 +20,14 @@ import { Service } from 'typedi';
 
 import { ErrorReporter } from './error-reporter';
 import type { IWorkflowData } from './Interfaces';
+import { Logger } from './logging/logger';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { TriggersAndPollers } from './TriggersAndPollers';
 
 @Service()
 export class ActiveWorkflows {
 	constructor(
+		private readonly logger: Logger,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
@@ -151,7 +152,7 @@ export class ActiveWorkflows {
 		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async (testingTrigger = false) => {
-			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
+			this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
 			});
@@ -193,7 +194,7 @@ export class ActiveWorkflows {
 	 */
 	async remove(workflowId: string) {
 		if (!this.isActive(workflowId)) {
-			Logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
+			this.logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
 			return false;
 		}
 
@@ -222,7 +223,7 @@ export class ActiveWorkflows {
 			await response.closeFunction();
 		} catch (e) {
 			if (e instanceof TriggerCloseError) {
-				Logger.error(
+				this.logger.error(
 					`There was a problem calling "closeFunction" on "${e.node.name}" in workflow "${workflowId}"`,
 				);
 				this.errorReporter.error(e, { extra: { workflowId } });
