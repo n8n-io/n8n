@@ -190,9 +190,10 @@
 
 	// Button success, warning, danger
 	--color-button-danger-font: var(--prim-gray-0);
+	--color-button-danger-border: transparent;
 	--color-button-danger-focus-outline: var(--prim-color-alt-c-tint-250);
 	--color-button-danger-disabled-font: var(--prim-gray-0-alpha-025);
-	--color-button-danger-disabled-border: var(--prim-color-alt-c-alpha-02);
+	--color-button-danger-disabled-border: transparent;
 	--color-button-danger-disabled-background: var(--prim-color-alt-c-alpha-02);
 
 	// Text button

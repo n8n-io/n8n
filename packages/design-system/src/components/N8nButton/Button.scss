@@ -196,7 +196,7 @@
 
 @mixin n8n-button-danger {
 	--button-font-color: var(--color-button-danger-font);
-	--button-border-color: var(--color-danger);
+	--button-border-color: var(--color-button-danger-border);
 	--button-background-color: var(--color-danger);
 
 	--button-hover-font-color: var(--color-button-danger-font);
