@@ -200,12 +200,8 @@ export class Start extends BaseCommand {
 
 		await this.license.enableRenewal();
 
-		if (this.globalConfig.multiMainSetup.enabled) {
-			if (this.globalConfig.license.autoRenewalEnabled) await this.license.renew();
-
-			if (!this.license.isMultiMainLicensed()) {
-				throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-			}
+		if (this.globalConfig.multiMainSetup.enabled && !this.license.isMultiMainLicensed()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		Container.get(WaitTracker).init();

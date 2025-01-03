@@ -40,7 +40,10 @@ export class License {
 		this.logger = this.logger.scoped('license');
 	}
 
-	/** Set whether this instance should renew the license. */
+	/**
+	 * Set whether this instance should renew the license periodically. If true,
+	 * the manager will also renew the license immediately once.
+	 */
 	async enableRenewal() {
 		if (!this.manager || this.instanceSettings.instanceType !== 'main') return;
 
