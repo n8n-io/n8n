@@ -21,6 +21,10 @@ export { ForgotPasswordRequestDto } from './password-reset/forgot-password-reque
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
+export { SamlAcsDto } from './saml/saml-acs.dto';
+export { SamlPreferences } from './saml/saml-preferences.dto';
+export { SamlToggleDto } from './saml/saml-toggle.dto';
+
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
