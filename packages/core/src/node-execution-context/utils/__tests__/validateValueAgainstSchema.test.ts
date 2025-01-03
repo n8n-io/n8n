@@ -246,4 +246,47 @@ describe('validateValueAgainstSchema', () => {
 		// value should be type number
 		expect(typeof result).toEqual('number');
 	});
+
+	test('should validate when the value to be validated is 0, the mode is in Fixed mode, and the node is a resource mapper', () => {
+		const nodeType = {
+			description: {
+				properties: [
+					{
+						name: 'operation',
+						type: 'resourceMapper',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							},
+						},
+					},
+				],
+			},
+		} as unknown as INodeType;
+
+		const node = {
+			parameters: {
+				operation: {
+					schema: [
+						{
+							id: 'num',
+							type: 'number',
+							required: true,
+						},
+					],
+					attemptToConvertTypes: true,
+					mappingMode: '',
+					value: '',
+				},
+			},
+		} as unknown as INode;
+
+		const value = { num: 0 };
+
+		const parameterName = 'operation.value';
+
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+		).not.toThrow();
+	});
 });
