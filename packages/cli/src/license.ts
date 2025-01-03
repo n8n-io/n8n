@@ -49,8 +49,7 @@ export class License {
 
 		const shouldRenew = isLeader && autoRenewalConfigEnabled;
 
-		// this.manager.setRenewOnInit(shouldRenew); // @TODO: Add method to SDK
-		// this.manager.setAutoRenewal(shouldRenew); // @TODO: Add method to SDK
+		// this.manager.enableRenewal(shouldRenew); // @TODO: Add method to SDK
 
 		this.logger.debug(shouldRenew ? 'Enabled license renewal' : 'Disabled license renewal');
 
