@@ -3470,7 +3470,7 @@
 						}
 					],
 					"tracks": {
-						"href": "https://api.spotify.com/v1/albums/4R6FV9NSzhPihHR0h4pI93/tracks?offset=0&limit=50",
+						"href": "https://api.spotify.com/v1/albums/4R6FV9NSzhPihHR0h4pI93/tracks",
 						"limit": 50,
 						"next": null,
 						"offset": 0,

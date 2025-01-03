@@ -7,7 +7,6 @@ import {
 	getNewReleases,
 	searchForAlbum,
 } from './apiResponses';
-
 import {
 	setup,
 	equalityTest,

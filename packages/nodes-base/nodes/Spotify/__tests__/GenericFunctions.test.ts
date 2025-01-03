@@ -1,5 +1,7 @@
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+
 import { spotifyApiRequest } from '../GenericFunctions';
-import { IExecuteFunctions, IHookFunctions, NodeApiError } from 'n8n-workflow';
 
 describe('Spotify -> GenericFunctions', () => {
 	let mockThis: IHookFunctions | IExecuteFunctions;
