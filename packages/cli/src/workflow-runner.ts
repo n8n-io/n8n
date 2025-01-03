@@ -82,7 +82,7 @@ export class WorkflowRunner {
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
-		if (isQueueMode && executionMode !== 'manual') {
+		if (isQueueMode) {
 			const executionWithoutData = await this.executionRepository.findSingleExecution(executionId, {
 				includeData: false,
 			});
@@ -153,9 +153,13 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
-			// Do not run "manual" executions in bull because sending events to the
-			// frontend would not be possible
+		// @TODO: Reduce to true branch once feature is stable
+		const shouldEnqueue =
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+				? this.executionsMode === 'queue'
+				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
+
+		if (shouldEnqueue) {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
@@ -349,6 +353,7 @@ export class WorkflowRunner {
 		const jobData: JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
+			pushRef: data.pushRef,
 		};
 
 		if (!this.scalingService) {
