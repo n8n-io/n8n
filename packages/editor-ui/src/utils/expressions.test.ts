@@ -30,7 +30,7 @@ describe('Utils: Expressions', () => {
 		});
 
 		it('should return [empty] message when result is empty string', () => {
-			expect(stringifyExpressionResult({ ok: true, result: '' })).toEqual('[empty]');
+			expect(stringifyExpressionResult({ ok: true, result: '' })).toEqual('');
 		});
 
 		it('should return the result when it is a string', () => {

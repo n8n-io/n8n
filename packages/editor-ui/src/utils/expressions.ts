@@ -133,9 +133,5 @@ export const stringifyExpressionResult = (
 		return '';
 	}
 
-	if (typeof result.result === 'string' && result.result.length === 0) {
-		return i18n.baseText('parameterInput.emptyString');
-	}
-
 	return typeof result.result === 'string' ? result.result : String(result.result);
 };

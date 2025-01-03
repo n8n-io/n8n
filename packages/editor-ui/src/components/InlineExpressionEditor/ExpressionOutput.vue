@@ -21,10 +21,6 @@ const editor = ref<EditorView | null>(null);
 const root = ref<HTMLElement | null>(null);
 
 const resolvedExpression = computed(() => {
-	if (props.segments.length === 0) {
-		return i18n.baseText('parameterInput.emptyString');
-	}
-
 	return props.segments.reduce(
 		(acc, segment) => {
 			// skip duplicate segments

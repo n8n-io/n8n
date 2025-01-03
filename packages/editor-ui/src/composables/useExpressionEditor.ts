@@ -314,14 +314,6 @@ export const useExpressionEditor = ({
 			result.fullError = error;
 		}
 
-		if (result.resolved === '') {
-			result.resolved = i18n.baseText('expressionModalInput.empty');
-		}
-
-		if (result.resolved === undefined && isEmptyExpression(resolvable)) {
-			result.resolved = i18n.baseText('expressionModalInput.empty');
-		}
-
 		if (result.resolved === undefined) {
 			result.resolved = isUncalledExpressionExtension(resolvable)
 				? i18n.baseText('expressionEditor.uncalledFunction')
