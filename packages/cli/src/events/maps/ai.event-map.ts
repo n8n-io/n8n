@@ -35,4 +35,6 @@ export type AiEventMap = {
 	'ai-vector-store-populated': AiEventPayload;
 
 	'ai-vector-store-updated': AiEventPayload;
+
+	'ai-vector-store-deleted': AiEventPayload;
 };
