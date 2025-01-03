@@ -1442,6 +1442,7 @@ export interface INodePropertyMode {
 	displayName: string;
 	name: string;
 	type: 'string' | 'list';
+	required?: boolean;
 	hint?: string;
 	validation?: Array<
 		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }

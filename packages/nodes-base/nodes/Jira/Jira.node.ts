@@ -445,6 +445,7 @@ export class Jira implements INodeType {
 						extractValue: true,
 					});
 					if (assignee) additionalFields.assignee = assignee;
+					else delete additionalFields.assignee;
 
 					const reporter = this.getNodeParameter('additionalFields.reporter', i, '', {
 						extractValue: true,
@@ -570,6 +571,7 @@ export class Jira implements INodeType {
 						extractValue: true,
 					});
 					if (assignee) updateFields.assignee = assignee;
+					else delete updateFields.assignee;
 
 					const reporter = this.getNodeParameter('updateFields.reporter', i, '', {
 						extractValue: true,
