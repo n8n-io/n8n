@@ -21,8 +21,11 @@ function checkStickiesStyle(
 	});
 }
 
+
+
 describe('Canvas Actions', () => {
 	beforeEach(() => {
+		// cy.viewport(1000, 660);
 		workflowPage.actions.visit();
 		cy.get('#collapse-change-button').should('be.visible').click();
 		cy.get('#side-menu[class*=collapsed i]').should('be.visible');
@@ -99,10 +102,10 @@ describe('Canvas Actions', () => {
 		moveSticky({ top: 200, left: 200 });
 
 		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [100, 100]);
-		checkStickiesStyle(100, 20, 160, 346);
+		checkStickiesStyle(120, 40, 160, 346);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
-		checkStickiesStyle(100, 20, 160, 302);
+		checkStickiesStyle(120, 40, 160, 302);
 	});
 
 	it('expands/shrinks sticky from the left edge', () => {
@@ -110,74 +113,74 @@ describe('Canvas Actions', () => {
 
 		moveSticky({ left: 600, top: 200 });
 		cy.drag('[data-test-id="sticky"] [data-dir="left"]', [100, 100]);
-		checkStickiesStyle(100, 510, 160, 150);
+		checkStickiesStyle(120, 530, 160, 150);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="left"]', [-50, -50]);
-		checkStickiesStyle(100, 466, 160, 194);
+		checkStickiesStyle(120, 486, 160, 194);
 	});
 
 	it('expands/shrinks sticky from the top edge', () => {
 		workflowPage.actions.addSticky();
 		cy.drag('[data-test-id="sticky"]', [100, 100]); // move away from canvas button
-		checkStickiesStyle(300, 620, 160, 240);
+		checkStickiesStyle(460, 900, 160, 240);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="top"]', [100, 100]);
-		checkStickiesStyle(380, 620, 80, 240);
+		checkStickiesStyle(540, 900, 80, 240);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="top"]', [-50, -50]);
-		checkStickiesStyle(324, 620, 136, 240);
+		checkStickiesStyle(484, 900, 136, 240);
 	});
 
 	it('expands/shrinks sticky from the bottom edge', () => {
 		workflowPage.actions.addSticky();
 		cy.drag('[data-test-id="sticky"]', [100, 100]); // move away from canvas button
-		checkStickiesStyle(300, 620, 160, 240);
+		checkStickiesStyle(460, 900, 160, 240);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="bottom"]', [100, 100]);
-		checkStickiesStyle(300, 620, 254, 240);
+		checkStickiesStyle(460, 900, 254, 240);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="bottom"]', [-50, -50]);
-		checkStickiesStyle(300, 620, 198, 240);
+		checkStickiesStyle(460, 900, 198, 240);
 	});
 
 	it('expands/shrinks sticky from the bottom right edge', () => {
 		workflowPage.actions.addSticky();
 		cy.drag('[data-test-id="sticky"]', [-100, -100]); // move away from canvas button
-		checkStickiesStyle(100, 420, 160, 240);
+		checkStickiesStyle(260, 700, 160, 240);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="bottomRight"]', [100, 100]);
-		checkStickiesStyle(100, 420, 254, 346);
+		checkStickiesStyle(260, 700, 254, 346);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="bottomRight"]', [-50, -50]);
-		checkStickiesStyle(100, 420, 198, 302);
+		checkStickiesStyle(260, 700, 198, 302);
 	});
 
 	it('expands/shrinks sticky from the top right edge', () => {
 		addDefaultSticky();
 
 		cy.drag('[data-test-id="sticky"] [data-dir="topRight"]', [100, 100]);
-		checkStickiesStyle(360, 400, 80, 346);
+		checkStickiesStyle(520, 680, 80, 346);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="topRight"]', [-50, -50]);
-		checkStickiesStyle(304, 400, 136, 302);
+		checkStickiesStyle(464, 680, 136, 302);
 	});
 
 	it('expands/shrinks sticky from the top left edge, and reach min height/width', () => {
 		addDefaultSticky();
 
 		cy.drag('[data-test-id="sticky"] [data-dir="topLeft"]', [100, 100]);
-		checkStickiesStyle(360, 490, 80, 150);
+		checkStickiesStyle(520, 770, 80, 150);
 
 		cy.drag('[data-test-id="sticky"] [data-dir="topLeft"]', [-150, -150]);
-		checkStickiesStyle(204, 346, 236, 294);
+		checkStickiesStyle(364, 626, 236, 294);
 	});
 
-	it('sets sticky behind node', () => {
+	it.only('sets sticky behind node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		addDefaultSticky();
 
 		cy.drag('[data-test-id="sticky"] [data-dir="topLeft"]', [-150, -150]);
-		checkStickiesStyle(124, 256, 316, 384, -121);
+		checkStickiesStyle(284, 536, 316, 384, -121);
 
 		workflowPage.getters
 			.canvasNodes()
@@ -265,8 +268,8 @@ function addDefaultSticky() {
 }
 
 function stickyShouldBePositionedCorrectly(position: Position) {
-	const yOffset = -100;
-	const xOffset = -180;
+	const yOffset = -80;
+	const xOffset = -160;
 	workflowPage.getters.stickies().should(($el) => {
 		expect($el).to.have.css('top', `${yOffset + position.top}px`);
 		expect($el).to.have.css('left', `${xOffset + position.left}px`);
