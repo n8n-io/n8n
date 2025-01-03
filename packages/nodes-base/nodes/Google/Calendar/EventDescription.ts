@@ -115,7 +115,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Start time of the event',
+		description: 'Start time of the event, if not specified will default to now',
 	},
 	{
 		displayName: 'End',
@@ -129,7 +129,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'End time of the event',
+		description: 'End time of the event, if not specified will default to start time plus 1 hour',
 	},
 	{
 		displayName: 'Use Default Reminders',
