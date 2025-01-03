@@ -21,8 +21,6 @@ function checkStickiesStyle(
 	});
 }
 
-
-
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		// cy.viewport(1000, 660);
