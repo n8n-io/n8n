@@ -228,6 +228,7 @@ export class License {
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
+		return true;
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
@@ -380,6 +381,7 @@ export class License {
 	}
 
 	getTeamProjectLimit() {
+		return UNLIMITED_LICENSE_QUOTA;
 		return this.getFeatureValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 

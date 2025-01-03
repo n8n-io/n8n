@@ -34,7 +34,7 @@ export = {
 			}
 			try {
 				const sourceControlService = Container.get(SourceControlService);
-				const result = await sourceControlService.pullWorkfolder({
+				const result = await sourceControlService.pullWorkfolder(req.user, {
 					force: req.body.force,
 					variables: req.body.variables,
 					userId: req.user.id,

@@ -8,6 +8,7 @@ import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
@@ -110,7 +111,7 @@ export class Reset extends BaseCommand {
 		}
 
 		for (const credential of ownedCredentials) {
-			await Container.get(CredentialsService).delete(credential);
+			await Container.get(CredentialsRepository).remove(credential);
 		}
 
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
