@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { captor, mock, type MockProxy } from 'jest-mock-extended';
 import type {
 	IRunExecutionData,
@@ -15,7 +16,6 @@ import type {
 	IExecuteWorkflowInfo,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 

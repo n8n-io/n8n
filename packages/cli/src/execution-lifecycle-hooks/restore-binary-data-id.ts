@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
 import { BinaryDataService, Logger } from 'n8n-core';
 import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
-import Container from 'typedi';
 
 import config from '@/config';
 

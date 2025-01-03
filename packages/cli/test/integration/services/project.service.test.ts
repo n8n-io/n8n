@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import Container from 'typedi';
 
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';

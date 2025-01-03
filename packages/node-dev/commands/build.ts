@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { Command, Flags } from '@oclif/core';
 import { InstanceSettings } from 'n8n-core';
-import { Container } from 'typedi';
 
 import type { IBuildOptions } from '../src';
 import { buildFiles } from '../src';

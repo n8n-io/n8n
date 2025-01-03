@@ -1,4 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type {
 	BrokerMessage,
 	RequesterMessage,
@@ -8,7 +9,6 @@ import type {
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { Time } from '@/constants';

@@ -1,8 +1,8 @@
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

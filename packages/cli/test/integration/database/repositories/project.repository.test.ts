@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import Container from 'typedi';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

@@ -1,5 +1,5 @@
+import { Container, Service } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container, { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { ShutdownService } from '@/shutdown/shutdown.service';

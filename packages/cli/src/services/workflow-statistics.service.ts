@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataService,
@@ -10,7 +11,6 @@ import {
 	ErrorReporter,
 } from 'n8n-core';
 import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';

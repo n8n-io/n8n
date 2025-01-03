@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { constants as fsConstants, accessSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';
-import Container from 'typedi';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,

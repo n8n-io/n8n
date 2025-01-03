@@ -1,7 +1,7 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
-import Container from 'typedi';
 
 import { TaskRunnerServer } from '@/task-runners/task-runner-server';
 

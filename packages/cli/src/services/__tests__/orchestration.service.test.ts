@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import type Redis from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';

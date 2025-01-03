@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import mock from 'jest-mock-extended/lib/Mock';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import { ApplicationError, deepCopy } from 'n8n-workflow';
-import Container from 'typedi';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';

@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import FormData from 'form-data';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
@@ -19,7 +20,6 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
-import Container from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import { InstanceSettings } from '@/InstanceSettings';

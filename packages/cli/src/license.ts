@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService, Logger } from 'n8n-core';
-import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';

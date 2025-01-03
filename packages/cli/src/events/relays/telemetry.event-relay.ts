@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
 import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';

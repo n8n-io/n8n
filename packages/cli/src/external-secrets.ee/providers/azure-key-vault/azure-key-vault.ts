@@ -1,8 +1,8 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
+import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets.ee/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/interfaces';

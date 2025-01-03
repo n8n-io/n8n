@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import type { User } from '@/databases/entities/user';

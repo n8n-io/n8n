@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import { Service } from 'typedi';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import type { User } from '@/databases/entities/user';

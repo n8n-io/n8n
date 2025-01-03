@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
 	type DataSource,
@@ -8,7 +9,6 @@ import {
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';

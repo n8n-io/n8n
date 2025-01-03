@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Project } from '@/databases/entities/project';

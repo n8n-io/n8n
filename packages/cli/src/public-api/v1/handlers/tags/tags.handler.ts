@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions } from '@n8n/typeorm';
 import type express from 'express';
-import { Container } from 'typedi';
 
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import { TagRepository } from '@/databases/repositories/tag.repository';

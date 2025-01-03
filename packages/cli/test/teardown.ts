@@ -1,7 +1,7 @@
 import 'tsconfig-paths/register';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { DataSource as Connection } from '@n8n/typeorm';
-import { Container } from 'typedi';
 
 import { getBootstrapDBOptions, testDbPrefix } from './integration/shared/test-db';
 

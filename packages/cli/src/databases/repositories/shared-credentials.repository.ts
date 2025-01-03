@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import { RoleService } from '@/services/role.service';
 

@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';

@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import { Container, Service } from '@n8n/di';
 
 import type { Variables } from '@/databases/entities/variables';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

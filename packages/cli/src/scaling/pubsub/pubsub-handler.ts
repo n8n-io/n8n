@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

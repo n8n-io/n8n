@@ -1,7 +1,7 @@
 import type { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
+import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets.ee/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/interfaces';

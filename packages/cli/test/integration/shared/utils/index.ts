@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
@@ -13,7 +14,6 @@ import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
 import type { INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';

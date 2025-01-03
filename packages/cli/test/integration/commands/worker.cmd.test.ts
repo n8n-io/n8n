@@ -1,8 +1,8 @@
 process.argv[2] = 'worker';
 
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
-import Container from 'typedi';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';

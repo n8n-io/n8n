@@ -28,6 +28,7 @@
 			"dependsOn": [
 				"@n8n/api-types#lint",
 				"@n8n/config#lint",
+				"@n8n/di#lint",
 				"@n8n/client-oauth2#lint",
 				"@n8n/imap#lint",
 				"@n8n/permissions#lint",
@@ -57,6 +58,7 @@
 			"dependsOn": [
 				"@n8n/api-types#test",
 				"@n8n/config#test",
+				"@n8n/di#test",
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",
 				"@n8n/permissions#test",

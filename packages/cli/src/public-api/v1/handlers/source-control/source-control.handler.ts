@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import type express from 'express';
 import type { StatusResult } from 'simple-git';
-import { Container } from 'typedi';
 
 import {
 	getTrackingInformationFromPullResult,

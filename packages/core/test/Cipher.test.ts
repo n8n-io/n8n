@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { Cipher } from '@/Cipher';
 import { InstanceSettings } from '@/InstanceSettings';

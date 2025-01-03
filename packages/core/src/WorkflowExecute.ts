@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import { omit } from 'lodash';
@@ -53,7 +54,6 @@ import {
 	Node,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-import Container from 'typedi';
 
 import { ErrorReporter } from './error-reporter';
 import { ExecuteContext, PollContext } from './node-execution-context';

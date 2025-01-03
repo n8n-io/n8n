@@ -1,8 +1,8 @@
+import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';

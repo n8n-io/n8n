@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';

@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
@@ -5,7 +6,6 @@ import { Client } from 'ldapts';
 import { Cipher, Logger } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import type { RunningMode, SyncStatus } from '@/databases/entities/auth-provider-sync-history';

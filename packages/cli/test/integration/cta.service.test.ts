@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { User } from '@/databases/entities/user';
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';

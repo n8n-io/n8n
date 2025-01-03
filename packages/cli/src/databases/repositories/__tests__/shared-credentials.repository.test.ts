@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { hasScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';

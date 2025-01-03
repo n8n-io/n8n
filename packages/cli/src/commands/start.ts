@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -9,7 +10,6 @@ import { jsonParse, randomString, type IWorkflowExecutionDataProcess } from 'n8n
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';

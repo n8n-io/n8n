@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { EventDestinations } from '@/databases/entities/event-destinations';
 

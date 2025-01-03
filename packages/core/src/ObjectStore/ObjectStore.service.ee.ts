@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { sign } from 'aws4';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import axios from 'axios';
@@ -5,7 +6,6 @@ import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Met
 import { ApplicationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import type { Readable } from 'stream';
-import { Service } from 'typedi';
 
 import { Logger } from '@/logging/logger';
 

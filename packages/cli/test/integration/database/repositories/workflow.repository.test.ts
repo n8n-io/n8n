@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 

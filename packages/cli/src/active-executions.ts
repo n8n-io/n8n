@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
@@ -9,7 +10,6 @@ import type {
 import { createDeferredPromise, ExecutionCancelledError, sleep } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
-import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';

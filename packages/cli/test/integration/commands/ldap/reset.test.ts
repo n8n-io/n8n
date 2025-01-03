@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { Reset } from '@/commands/ldap/reset';

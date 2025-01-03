@@ -1,10 +1,10 @@
+import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Service } from 'typedi';
 
 import type { InstanceType } from './InstanceSettings';
 import { Logger } from './logging/logger';

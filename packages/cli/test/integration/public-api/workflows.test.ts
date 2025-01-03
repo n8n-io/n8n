@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';

@@ -1,7 +1,7 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { AuthIdentity } from '@/databases/entities/auth-identity';

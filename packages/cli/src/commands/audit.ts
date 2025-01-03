@@ -1,7 +1,7 @@
 import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { RISK_CATEGORIES } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';

@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import { Service } from 'typedi';
 import type { XMLFileInfo, XMLLintOptions, XMLValidationResult } from 'xmllint-wasm';
 
 @Service()

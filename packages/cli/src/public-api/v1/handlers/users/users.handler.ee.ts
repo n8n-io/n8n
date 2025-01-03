@@ -1,7 +1,7 @@
 import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type express from 'express';
 import type { Response } from 'express';
-import { Container } from 'typedi';
 
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';

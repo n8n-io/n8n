@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';

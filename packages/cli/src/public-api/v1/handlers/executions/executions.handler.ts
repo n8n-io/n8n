@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import type express from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';

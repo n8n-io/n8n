@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import { get } from 'lodash';
@@ -38,7 +39,6 @@ import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from
 import nock from 'nock';
 import { tmpdir } from 'os';
 import path from 'path';
-import { Container } from 'typedi';
 
 import { executeWorkflow } from './ExecuteWorkflow';
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';

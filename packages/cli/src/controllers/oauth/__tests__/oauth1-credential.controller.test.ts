@@ -1,10 +1,10 @@
+import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { Logger } from 'n8n-core';
 import nock from 'nock';
-import Container from 'typedi';
 
 import { Time } from '@/constants';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';

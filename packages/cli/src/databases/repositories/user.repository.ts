@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import type { ListQuery } from '@/requests';
 

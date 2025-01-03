@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
-import { Service } from 'typedi';
 import { promisify } from 'util';
 
 import {

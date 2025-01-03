@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
@@ -18,7 +19,6 @@ import {
 	type IWorkflowExecuteHooks,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-import Container from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';

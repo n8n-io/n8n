@@ -1,10 +1,10 @@
+import { Container, Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { ApplicationError } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
 
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
 import type { ProjectIcon, ProjectType } from '@/databases/entities/project';

@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { Project } from '@/databases/entities/project';

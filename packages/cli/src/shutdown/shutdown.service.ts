@@ -1,7 +1,7 @@
+import { Container, Service } from '@n8n/di';
 import { type Class, ErrorReporter } from 'n8n-core';
 import { Logger } from 'n8n-core';
 import { ApplicationError, assert } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
 
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 

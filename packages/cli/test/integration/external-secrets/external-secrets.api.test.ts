@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { jsonParse, type IDataObject } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';

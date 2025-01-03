@@ -23,7 +23,7 @@ catalog:
   luxon: 3.4.4
   nanoid: 3.3.8
   picocolors: 1.0.1
-  typedi: 0.10.0
+  reflect-metadata: 0.2.2
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15

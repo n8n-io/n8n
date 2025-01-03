@@ -1,8 +1,8 @@
 import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { Time } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';

@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';

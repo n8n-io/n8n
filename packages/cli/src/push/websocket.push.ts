@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';

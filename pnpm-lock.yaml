@@ -60,9 +60,9 @@ catalogs:
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
-    typedi:
-      specifier: 0.10.0
-      version: 0.10.0
+    reflect-metadata:
+      specifier: 0.2.2
+      version: 0.2.2
     uuid:
       specifier: 10.0.0
       version: 10.0.0
@@ -136,9 +136,6 @@ patchedDependencies:
   pyodide@0.23.4:
     hash: kzcwsjcayy5m6iezu7r4tdimjq
     path: patches/pyodide@0.23.4.patch
-  typedi@0.10.0:
-    hash: sk6omkefrosihg7lmqbzh7vfxe
-    path: patches/typedi@0.10.0.patch
   vue-tsc@2.1.10:
     hash: z2iuqlt7ype4qnrwd5eymeecl4
     path: patches/vue-tsc@2.1.10.patch
@@ -380,12 +377,18 @@ importers:
 
   packages/@n8n/config:
     dependencies:
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
       reflect-metadata:
-        specifier: 0.2.2
-        version: 0.2.2
-      typedi:
         specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
+        version: 0.2.2
+
+  packages/@n8n/di:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
 
   packages/@n8n/imap:
     dependencies:
@@ -669,6 +672,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.42.0
@@ -690,9 +696,6 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
@@ -772,6 +775,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@n8n/localtunnel':
         specifier: 3.0.0
         version: 3.0.0
@@ -968,7 +974,7 @@ importers:
         specifier: 2.5.1
         version: 2.5.1
       reflect-metadata:
-        specifier: 0.2.2
+        specifier: 'catalog:'
         version: 0.2.2
       replacestream:
         specifier: 4.0.3
@@ -1000,9 +1006,6 @@ importers:
       syslog-client:
         specifier: 1.1.1
         version: 1.1.1
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -1127,6 +1130,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.42.0
@@ -1193,9 +1199,6 @@ importers:
       ssh2:
         specifier: 1.15.0
         version: 1.15.0
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -1625,6 +1628,9 @@ importers:
 
   packages/node-dev:
     dependencies:
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -1649,9 +1655,6 @@ importers:
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
     devDependencies:
       '@types/inquirer':
         specifier: ^6.5.0
@@ -1668,6 +1671,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
@@ -1845,9 +1851,6 @@ importers:
       ts-ics:
         specifier: 1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.23.8)
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -12614,9 +12617,6 @@ packages:
 
   typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
-
-  typedi@0.10.0:
-    resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
 
   typescript@5.7.2:
     resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
@@ -27007,8 +27007,6 @@ snapshots:
   typedarray-dts@1.0.0: {}
 
   typedarray@0.0.6: {}
-
-  typedi@0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe): {}
 
   typescript@5.7.2: {}
 

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import Container from 'typedi';
 
 import { ProjectController } from '@/controllers/project.controller';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

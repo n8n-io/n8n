@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -7,7 +8,6 @@ import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService, Logger } from 'n8n-core';
 import { NodeApiError } from 'n8n-workflow';
-import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';

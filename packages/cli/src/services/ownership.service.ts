@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -7,7 +8,6 @@ import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import { Logger } from 'n8n-core';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';

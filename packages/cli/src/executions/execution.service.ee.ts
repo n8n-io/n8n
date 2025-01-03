@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/interfaces';

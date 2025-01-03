@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

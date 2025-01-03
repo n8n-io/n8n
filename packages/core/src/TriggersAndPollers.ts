@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	Workflow,
@@ -13,7 +14,6 @@ import type {
 	IExecuteResponsePromiseData,
 	IRun,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 @Service()
 export class TriggersAndPollers {

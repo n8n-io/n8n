@@ -1,8 +1,8 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { Logger } from 'n8n-core';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
-import { Service } from 'typedi';
 import type WebSocket from 'ws';
 
 import { Time, WsStatusCodes } from '@/constants';

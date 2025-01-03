@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';

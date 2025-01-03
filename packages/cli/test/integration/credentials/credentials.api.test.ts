@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';

@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { ApplicationError } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
 import type { ZodClass } from 'zod-class';
 
 import { AuthService } from '@/auth/auth.service';
@@ -73,7 +73,7 @@ export class ControllerRegistry {
 			.replace(/\/$/, '');
 		app.use(prefix, router);
 
-		const controller = Container.get<Controller>(controllerClass);
+		const controller = Container.get(controllerClass) as Controller;
 		const controllerMiddlewares = metadata.middlewares.map(
 			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
 		);

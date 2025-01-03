@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import convict from 'convict';
 import { flatten } from 'flat';
 import { readFileSync } from 'fs';
@@ -7,7 +8,6 @@ import { Logger } from 'n8n-core';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
 import assert from 'node:assert';
 import colors from 'picocolors';
-import { Container } from 'typedi';
 
 import { inTest, inE2ETests } from '@/constants';
 

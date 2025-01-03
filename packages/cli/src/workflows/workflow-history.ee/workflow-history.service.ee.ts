@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

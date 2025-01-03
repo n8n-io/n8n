@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter, Logger } from 'n8n-core';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
-import Container from 'typedi';
 
 import { inDevelopment } from '@/constants';
 

@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import type { ListQuery } from '@/requests';
 import { RoleService } from '@/services/role.service';

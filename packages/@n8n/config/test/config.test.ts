@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import { GlobalConfig } from '../src/index';
 

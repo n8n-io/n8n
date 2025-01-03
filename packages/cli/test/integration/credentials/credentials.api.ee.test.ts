@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';

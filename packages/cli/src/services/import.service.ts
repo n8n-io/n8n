@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
-import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { Project } from '@/databases/entities/project';

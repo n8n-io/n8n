@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
-import { Container } from 'typedi';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { User } from '@/databases/entities/user';

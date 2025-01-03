@@ -1,9 +1,9 @@
+import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
-import { Service } from 'typedi';
 
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';

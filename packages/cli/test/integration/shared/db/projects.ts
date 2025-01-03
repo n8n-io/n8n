@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { Project } from '@/databases/entities/project';
 import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';

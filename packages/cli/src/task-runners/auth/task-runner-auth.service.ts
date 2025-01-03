@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { randomBytes } from 'crypto';
-import { Service } from 'typedi';
 
 import { Time } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';

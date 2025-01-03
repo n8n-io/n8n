@@ -1,7 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';

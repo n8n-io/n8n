@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
@@ -13,7 +14,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';

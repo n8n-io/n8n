@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { Flags } from '@oclif/core';
@@ -6,7 +7,6 @@ import fs from 'fs';
 import { Cipher } from 'n8n-core';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';

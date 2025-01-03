@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
 import { engine as expressHandlebars } from 'express-handlebars';
@@ -6,7 +7,6 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
 import { Logger } from 'n8n-core';
-import { Container, Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';

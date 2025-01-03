@@ -1,6 +1,6 @@
+import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
-import type { Class } from 'n8n-core';
 
 import type { BooleanLicenseFeature } from '@/interfaces';
 
@@ -46,5 +46,5 @@ export interface ControllerMetadata {
 	routes: Map<HandlerName, RouteMetadata>;
 }
 
-export type Controller = Class<object> &
+export type Controller = Constructable<object> &
 	Record<HandlerName, (...args: unknown[]) => Promise<unknown>>;

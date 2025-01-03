@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import type {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
@@ -16,7 +17,6 @@ import {
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ErrorReporter } from './error-reporter';
 import type { IWorkflowData } from './Interfaces';
