@@ -1,5 +1,5 @@
-import type { IZepConfig } from '@langchain/community/vectorstores/zep';
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
+import { ZepCloudVectorStore } from '@langchain/community/vectorstores/zep_cloud';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -84,17 +84,21 @@ export class VectorStoreZep extends createVectorStoreNode({
 		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
+			cloud: boolean;
 		}>('zepApi');
 
-		const zepConfig: IZepConfig = {
-			apiUrl: credentials.apiUrl,
+		const zepConfig = {
 			apiKey: credentials.apiKey,
 			collectionName,
 			embeddingDimensions: options.embeddingDimensions ?? 1536,
 			metadata: filter,
 		};
 
-		return new ZepVectorStore(embeddings, zepConfig);
+		if (credentials.cloud) {
+			return new ZepCloudVectorStore(embeddings, zepConfig);
+		} else {
+			return new ZepVectorStore(embeddings, { ...zepConfig, apiUrl: credentials.apiUrl });
+		}
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('collectionName', itemIndex) as string;
@@ -107,10 +111,10 @@ export class VectorStoreZep extends createVectorStoreNode({
 		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
+			cloud: boolean;
 		}>('zepApi');
 
 		const zepConfig = {
-			apiUrl: credentials.apiUrl,
 			apiKey: credentials.apiKey,
 			collectionName,
 			embeddingDimensions: options.embeddingDimensions ?? 1536,
@@ -118,7 +122,14 @@ export class VectorStoreZep extends createVectorStoreNode({
 		};
 
 		try {
-			await ZepVectorStore.fromDocuments(documents, embeddings, zepConfig);
+			if (credentials.cloud) {
+				await ZepCloudVectorStore.fromDocuments(documents, embeddings, zepConfig);
+			} else {
+				await ZepVectorStore.fromDocuments(documents, embeddings, {
+					...zepConfig,
+					apiUrl: credentials.apiUrl,
+				});
+			}
 		} catch (error) {
 			const errorCode = (error as IDataObject).code as number;
 			const responseData = (error as IDataObject).responseData as string;
