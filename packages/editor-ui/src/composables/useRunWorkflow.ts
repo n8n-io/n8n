@@ -240,7 +240,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
 			);
 
-			if (singleWebhookTrigger && workflowsStore.isWorkflowActive) {
+			if (
+				singleWebhookTrigger &&
+				workflowsStore.isWorkflowActive &&
+				!workflowData.pinData?.[singleWebhookTrigger.name]
+			) {
 				toast.showMessage({
 					title: i18n.baseText('workflowRun.showError.deactivate'),
 					message: i18n.baseText('workflowRun.showError.productionActive', {

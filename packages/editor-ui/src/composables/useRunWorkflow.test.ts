@@ -219,6 +219,55 @@ describe('useRunWorkflow({ router })', () => {
 				type: 'error',
 			});
 		});
+		it('should execute workflow has pin data and is active with single webhook trigger', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const toast = useToast();
+			const i18n = useI18n();
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(workflowsStore).isWorkflowActive = true;
+
+			vi.mocked(useWorkflowHelpers({ router })).getWorkflowDataToSave.mockResolvedValue({
+				nodes: [
+					{
+						name: 'Slack',
+						type: 'n8n-nodes-base.slackTrigger',
+						disabled: false,
+					},
+				],
+				pinData: {
+					Slack: [{ json: { value: 'data2' } }],
+				},
+			} as unknown as IWorkflowData);
+
+			const mockExecutionResponse = { executionId: '123' };
+
+			vi.mocked(uiStore).activeActions = [''];
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
+				name: 'Test Workflow',
+			} as unknown as Workflow);
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = true;
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				NodeName: [],
+			};
+
+			const result = await runWorkflow({});
+			expect(result).toEqual(mockExecutionResponse);
+
+			expect(toast.showMessage).not.toHaveBeenCalledWith({
+				title: i18n.baseText('workflowRun.showError.deactivate'),
+				message: i18n.baseText('workflowRun.showError.productionActive', {
+					interpolate: { nodeName: 'Webhook' },
+				}),
+				type: 'error',
+			});
+		});
 	});
 
 	describe('runWorkflow()', () => {
