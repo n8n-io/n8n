@@ -25,4 +25,7 @@ module.exports = defineConfig({
 		screenshotsFolder: 'screenshots',
 		videosFolder: 'videos',
 	},
+	// macbook-16 https://docs.cypress.io/api/commands/viewport
+	viewportHeight: 960,
+	viewportWidth: 1536,
 });
