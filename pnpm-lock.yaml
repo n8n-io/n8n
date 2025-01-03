@@ -1937,8 +1937,8 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n/tournament':
-        specifier: 1.0.5
-        version: 1.0.5
+        specifier: 1.0.6
+        version: 1.0.6
       '@n8n_io/riot-tmpl':
         specifier: 4.0.0
         version: 4.0.0
@@ -4259,8 +4259,8 @@ packages:
     resolution: {integrity: sha512-rbnMnSdEwq2yuYMgzOQ4jTXm+oH7yjN/0ISfB/7O6pUcEPsZt9UW60BYfQ1WWHkKa/evI8vgER2zV5/RC1BupQ==}
     engines: {node: '>=18.10'}
 
-  '@n8n/tournament@1.0.5':
-    resolution: {integrity: sha512-IPBHa7gC0wwHVct/dnBquHz+uMCDZaZ05cor1D/rjlwaOe/PVu5mtoZaPHYuR98R3W1/IyxC5PuBd0JizDP9gg==}
+  '@n8n/tournament@1.0.6':
+    resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
     engines: {node: '>=20.15', pnpm: '>=9.5'}
 
   '@n8n/typeorm@0.3.20-12':
@@ -16484,7 +16484,7 @@ snapshots:
       '@types/retry': 0.12.5
       retry: 0.13.1
 
-  '@n8n/tournament@1.0.5':
+  '@n8n/tournament@1.0.6':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
@@ -19401,7 +19401,7 @@ snapshots:
     dependencies:
       call-bind: 1.0.7
       is-nan: 1.3.2
-      object-is: 1.1.5
+      object-is: 1.1.6
       object.assign: 4.1.5
       util: 0.12.5
 
@@ -20867,7 +20867,7 @@ snapshots:
   enzyme-shallow-equal@1.0.7:
     dependencies:
       hasown: 2.0.2
-      object-is: 1.1.5
+      object-is: 1.1.6
 
   enzyme@3.11.0:
     dependencies:
@@ -25609,7 +25609,7 @@ snapshots:
   regexp.prototype.flags@1.5.0:
     dependencies:
       call-bind: 1.0.7
-      define-properties: 1.2.0
+      define-properties: 1.2.1
       functions-have-names: 1.2.3
 
   regexp.prototype.flags@1.5.2:

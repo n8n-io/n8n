@@ -15,6 +15,7 @@ import type {
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 
+import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -145,6 +146,35 @@ export class WorkflowExecutionService {
 			dirtyNodeNames,
 			triggerToStartFrom,
 		};
+
+		/**
+		 * Historically, manual executions in scaling mode ran in the main process,
+		 * so some execution details were never persisted in the database.
+		 *
+		 * Currently, manual executions in scaling mode are offloaded to workers,
+		 * so we persist all details to give workers full access to them.
+		 */
+		if (
+			config.getEnv('executions.mode') === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+		) {
+			data.executionData = {
+				startData: {
+					startNodes,
+					destinationNode,
+				},
+				resultData: {
+					pinData,
+					runData,
+				},
+				manualData: {
+					userId: data.userId,
+					partialExecutionVersion: data.partialExecutionVersion,
+					dirtyNodeNames,
+					triggerToStartFrom,
+				},
+			};
+		}
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
 
