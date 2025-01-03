@@ -87,10 +87,7 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.redact(
-				this.credentialsService.decrypt(credential),
-				credential,
-			);
+			decryptedData = this.credentialsService.decrypt(credential);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.

@@ -113,6 +113,10 @@ export class InstanceSettings {
 		return !this.isMultiMain;
 	}
 
+	get isWorker() {
+		return this.instanceType === 'worker';
+	}
+
 	get isLeader() {
 		return this.instanceRole === 'leader';
 	}

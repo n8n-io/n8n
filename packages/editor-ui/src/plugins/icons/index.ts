@@ -163,6 +163,7 @@ import {
 	faStream,
 	faPowerOff,
 	faPaperPlane,
+	faExclamationCircle,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable, faXmark, faVault, faRefresh } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -228,6 +229,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faEquals);
 		addIcon(faEye);
 		addIcon(faExclamationTriangle);
+		addIcon(faExclamationCircle);
 		addIcon(faExpand);
 		addIcon(faExpandAlt);
 		addIcon(faExternalLinkAlt);
