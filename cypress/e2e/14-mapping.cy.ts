@@ -115,6 +115,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from json view', () => {
+		// ADO-3063 - followup to make this viewport global
+		cy.viewport('macbook-16');
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -123,17 +125,17 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('JSON');
 
+		ndv.getters.inputDataContainer().should('exist');
+
 		ndv.getters
 			.inputDataContainer()
-			.should('exist')
 			.find('.json-data')
 			.should(
 				'have.text',
 				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
-			)
-			.find('span')
-			.contains('"count"')
-			.realMouseDown();
+			);
+
+		ndv.getters.inputDataContainer().find('span').contains('"count"').realMouseDown();
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
