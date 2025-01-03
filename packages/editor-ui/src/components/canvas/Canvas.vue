@@ -143,7 +143,7 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
+const panningKeyCode = ref<string[]>([controlKeyCode]);
 const panningMouseButton = ref<number[]>([1]);
 const selectionKeyCode = ref<true | null>(true);
 
@@ -228,7 +228,8 @@ const keyMap = computed(() => ({
 				ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 				d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 				p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-				f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+				o: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+				' |f2': emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 				tab: () => emit('create:node', 'tab'),
 				shift_s: () => emit('create:sticky'),
 				ctrl_alt_n: () => emit('create:workflow'),
@@ -493,7 +494,11 @@ function onPaneMoveEnd() {
  * Context menu
  */
 
-const contextMenu = useContextMenu();
+const contextMenuShortcuts = {
+	rename: { keys: ['⎵'] },
+};
+
+const contextMenu = useContextMenu(() => {}, { shortcuts: contextMenuShortcuts });
 
 function onOpenContextMenu(event: MouseEvent) {
 	contextMenu.open(event, {
@@ -749,7 +754,7 @@ provide(CanvasKey, {
 		/>
 
 		<Suspense>
-			<ContextMenu @action="onContextMenuAction" />
+			<ContextMenu :shortcuts="contextMenuShortcuts" @action="onContextMenuAction" />
 		</Suspense>
 	</VueFlow>
 </template>
