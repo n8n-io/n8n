@@ -1,4 +1,9 @@
-import { clickGetBackToCanvas, getOutputTableHeaders } from '../composables/ndv';
+import {
+	clickGetBackToCanvas,
+	getOutputTableHeaders,
+	getOutputTableRows,
+	getOutputTbodyCell,
+} from '../composables/ndv';
 import {
 	clickZoomToFit,
 	navigateToNewWorkflowPage,
@@ -27,7 +32,7 @@ const exampleFields = [
 	['aArray', 'Array'],
 	['aObject', 'Object'],
 	['aAny', 'Allow Any Type'],
-	// bool last since it's not an inputField so we'll skip it for some cases
+	// bool last since it's a switch instead of a normal inputField so we'll skip it for some cases
 	['aBool', 'Boolean'],
 ] as const;
 
@@ -49,11 +54,12 @@ function populateFixedCollection(
 	for (const [i, params] of items.entries()) {
 		ndv.actions.addItemToFixedCollection(collectionName);
 		for (const [j, param] of params.entries()) {
+			cy.wait(100);
 			ndv.getters
 				.fixedCollectionParameter(collectionName)
 				.getByTestId('parameter-input')
 				.eq(offset + i * n + j)
-				.type(`${param}{downArrow}{enter}`);
+				.type(`{selectAll}{backspace}${param}{downArrow}{enter}`);
 		}
 	}
 }
@@ -105,6 +111,14 @@ function populateMapperFields(values: readonly string[], offset: number) {
 			.parent()
 			.parent()
 			.click('topLeft');
+	}
+}
+
+function assertOutputTableContent(expectedContent: unknown[][]) {
+	for (const [i, row] of expectedContent.entries()) {
+		for (const [j, value] of row.entries()) {
+			getOutputTbodyCell(1 + i, j).should('have.text', value);
+		}
 	}
 }
 
@@ -175,7 +189,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		openNode('Workflow Input Trigger');
 	});
 
-	it('works with type-checked values', () => {
+	it.only('works with type-checked values', () => {
 		populateFields(exampleFields);
 
 		validateAndReturnToParent(
@@ -194,6 +208,19 @@ describe('Sub-workflow creation and typed usage', () => {
 
 		ndv.actions.execute();
 
+		const expected = [
+			['-1', 'A String', '0:11:true2:3', 'aKey:-1', '[empty object]', 'false'],
+			['-1', 'Another String', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'false'],
+		];
+		assertOutputTableContent(expected);
+
+		populateMapperFields(
+			values.map((x) => `{selectAll}{backspace}${x.slice(1)}`),
+			2,
+		);
+
+		assertOutputTableContent(expected);
+
 		// todo:
 		// - validate output lines up
 		// - change input to need casts
@@ -211,7 +238,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		// - confirm a value was not cast
 	});
 
-	it('works with Fields input source into JSON input source', () => {
+	it('works with Fields input source, then changed to JSON input source', () => {
 		ndv.getters.nodeOutputHint().should('exist');
 
 		populateFields(exampleFields);
@@ -233,8 +260,6 @@ describe('Sub-workflow creation and typed usage', () => {
 
 		cy.getByTestId('parameter-input').eq(0).click();
 
-		// Todo: Check if there's a better way to interact with option dropdowns
-		// This PR would add this child testId
 		getVisiblePopper()
 			.getByTestId('parameter-input')
 			.eq(0)
@@ -245,7 +270,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		cy.getByTestId('parameter-input-jsonExample')
 			.find('.cm-line')
 			.eq(0)
-			.type(`{selectAll}{backspace}${exampleJson}{enter}`);
+			.type(`${exampleJson}{enter}`);
 
 		// first one doesn't work for some reason, might need to wait for something?
 		ndv.actions.execute();
@@ -255,6 +280,13 @@ describe('Sub-workflow creation and typed usage', () => {
 			2,
 			exampleFields.map((f) => f[0]),
 		);
+
+		assertOutputTableContent([
+			['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
+			['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
+		]);
+
+		ndv.actions.execute();
 
 		// test for either InputSource mode and options combinations:
 		// + we're showing the notice in the output panel
