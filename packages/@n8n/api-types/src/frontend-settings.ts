@@ -163,6 +163,10 @@ export interface FrontendSettings {
 		pruneTime: number;
 		licensePruneTime: number;
 	};
+	aiCredits: {
+		enabled: boolean;
+		credits: number;
+	};
 	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;

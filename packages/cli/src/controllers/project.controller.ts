@@ -23,7 +23,7 @@ import {
 	ProjectService,
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
-} from '@/services/project.service';
+} from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 @RestController('/projects')
@@ -51,7 +51,12 @@ export class ProjectController {
 	@Licensed('feat:projectRole:admin')
 	async createProject(req: ProjectRequest.Create) {
 		try {
-			const project = await this.projectsService.createTeamProject(req.body.name, req.user);
+			const project = await this.projectsService.createTeamProject(
+				req.body.name,
+				req.user,
+				undefined,
+				req.body.icon,
+			);
 
 			this.eventService.emit('team-project-created', {
 				userId: req.user.id,
@@ -163,7 +168,7 @@ export class ProjectController {
 	@Get('/:projectId')
 	@ProjectScope('project:read')
 	async getProject(req: ProjectRequest.Get): Promise<ProjectRequest.ProjectWithRelations> {
-		const [{ id, name, type }, relations] = await Promise.all([
+		const [{ id, name, icon, type }, relations] = await Promise.all([
 			this.projectsService.getProject(req.params.projectId),
 			this.projectsService.getProjectRelations(req.params.projectId),
 		]);
@@ -172,6 +177,7 @@ export class ProjectController {
 		return {
 			id,
 			name,
+			icon,
 			type,
 			relations: relations.map((r) => ({
 				id: r.user.id,
@@ -193,7 +199,7 @@ export class ProjectController {
 	@ProjectScope('project:update')
 	async updateProject(req: ProjectRequest.Update) {
 		if (req.body.name) {
-			await this.projectsService.updateProject(req.body.name, req.params.projectId);
+			await this.projectsService.updateProject(req.body.name, req.params.projectId, req.body.icon);
 		}
 		if (req.body.relations) {
 			try {

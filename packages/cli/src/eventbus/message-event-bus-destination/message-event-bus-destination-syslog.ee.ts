@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Logger } from 'n8n-core';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -6,8 +7,6 @@ import type {
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import syslog from 'syslog-client';
 import Container from 'typedi';
-
-import { Logger } from '@/logging/logger.service';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';

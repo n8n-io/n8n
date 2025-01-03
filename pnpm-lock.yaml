@@ -33,6 +33,9 @@ catalogs:
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
+    callsites:
+      specifier: 3.1.0
+      version: 3.1.0
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -54,6 +57,9 @@ catalogs:
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
+    picocolors:
+      specifier: 1.0.1
+      version: 1.0.1
     typedi:
       specifier: 0.10.0
       version: 0.10.0
@@ -266,8 +272,8 @@ importers:
         specifier: 'catalog:'
         version: 3.23.8
       zod-class:
-        specifier: 0.0.15
-        version: 0.0.15(zod@3.23.8)
+        specifier: 0.0.16
+        version: 0.0.16(zod@3.23.8)
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -782,8 +788,8 @@ importers:
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@8.42.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.12.0
-        version: 1.12.0
+        specifier: 1.13.0
+        version: 1.13.0
       '@n8n_io/license-sdk':
         specifier: 2.13.1
         version: 2.13.1
@@ -811,9 +817,6 @@ importers:
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
-      callsites:
-        specifier: 3.1.0
-        version: 3.1.0
       change-case:
         specifier: 4.1.2
         version: 4.1.2
@@ -947,7 +950,7 @@ importers:
         specifier: 8.12.0
         version: 8.12.0
       picocolors:
-        specifier: 1.0.1
+        specifier: 'catalog:'
         version: 1.0.1
       pkce-challenge:
         specifier: 3.0.0
@@ -1006,9 +1009,6 @@ importers:
       validator:
         specifier: 13.7.0
         version: 13.7.0
-      winston:
-        specifier: 3.14.2
-        version: 3.14.2
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
@@ -1136,6 +1136,9 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.7.4
+      callsites:
+        specifier: 'catalog:'
+        version: 3.1.0
       chardet:
         specifier: 2.0.0
         version: 2.0.0
@@ -1178,6 +1181,9 @@ importers:
       p-cancelable:
         specifier: 2.1.1
         version: 2.1.1
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
       pretty-bytes:
         specifier: 5.6.0
         version: 5.6.0
@@ -1193,6 +1199,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      winston:
+        specifier: 3.14.2
+        version: 3.14.2
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -1233,9 +1242,15 @@ importers:
       '@fortawesome/vue-fontawesome':
         specifier: ^3.0.3
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.7.2))
+      '@vueuse/core':
+        specifier: '*'
+        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       element-plus:
         specifier: 2.4.3
         version: 2.4.3(vue@3.5.13(typescript@5.7.2))
+      is-emoji-supported:
+        specifier: ^0.0.5
+        version: 0.0.5
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -1698,6 +1713,9 @@ importers:
       fflate:
         specifier: 0.7.4
         version: 0.7.4
+      generate-schema:
+        specifier: 2.6.0
+        version: 2.6.0
       get-system-fonts:
         specifier: 2.0.2
         version: 2.0.2
@@ -1919,8 +1937,8 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n/tournament':
-        specifier: 1.0.5
-        version: 1.0.5
+        specifier: 1.0.6
+        version: 1.0.6
       '@n8n_io/riot-tmpl':
         specifier: 4.0.0
         version: 4.0.0
@@ -1931,7 +1949,7 @@ importers:
         specifier: 'catalog:'
         version: 1.7.4
       callsites:
-        specifier: 3.1.0
+        specifier: 'catalog:'
         version: 3.1.0
       deep-equal:
         specifier: 2.2.0
@@ -1976,6 +1994,9 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -4238,8 +4259,8 @@ packages:
     resolution: {integrity: sha512-rbnMnSdEwq2yuYMgzOQ4jTXm+oH7yjN/0ISfB/7O6pUcEPsZt9UW60BYfQ1WWHkKa/evI8vgER2zV5/RC1BupQ==}
     engines: {node: '>=18.10'}
 
-  '@n8n/tournament@1.0.5':
-    resolution: {integrity: sha512-IPBHa7gC0wwHVct/dnBquHz+uMCDZaZ05cor1D/rjlwaOe/PVu5mtoZaPHYuR98R3W1/IyxC5PuBd0JizDP9gg==}
+  '@n8n/tournament@1.0.6':
+    resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
     engines: {node: '>=20.15', pnpm: '>=9.5'}
 
   '@n8n/typeorm@0.3.20-12':
@@ -4311,8 +4332,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.12.0':
-    resolution: {integrity: sha512-ddIGzUn8icxWwl49PLSpl/Gfb0bCIGpqvWtZWqC3GIBeb51Nul6E4e3cIyDYOFlZmWWr/BDKsN0wskm2s/jkdg==}
+  '@n8n_io/ai-assistant-sdk@1.13.0':
+    resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.1':
@@ -8939,6 +8960,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  is-emoji-supported@0.0.5:
+    resolution: {integrity: sha512-WOlXUhDDHxYqcSmFZis+xWhhqXiK2SU0iYiqmth5Ip0FHLZQAt9rKL5ahnilE8/86WH8tZ3bmNNNC+bTzamqlw==}
+
   is-expression@4.0.0:
     resolution: {integrity: sha512-zMIXX63sxzG3XrkHkrAPvm/OVZVSCPNkwMHU8oTX7/U3AL78I0QXCEICXUM13BIa8TYGZ68PiTKfQz3yaTNr4A==}
 
@@ -12981,6 +13005,9 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
+  vue-component-type-helpers@2.2.0:
+    resolution: {integrity: sha512-cYrAnv2me7bPDcg9kIcGwjJiSB6Qyi08+jLDo9yuvoFQjzHiPTzML7RnkJB1+3P6KMsX/KbCD4QE3Tv/knEllw==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -13366,8 +13393,8 @@ packages:
     resolution: {integrity: sha512-Z2Fe1bn+eLstG8DRR6FTavGD+MeAwyfmouhHsIUgaADz8jvFKbO/fXc2trJKZg+5EBjh4gGm3iU/t3onKlXHIg==}
     engines: {node: '>=10'}
 
-  zod-class@0.0.15:
-    resolution: {integrity: sha512-CD5B4e9unKPj1hiy7JOSwRV01WqbEBkFOlhws0C9s9wB0FSpECOnlKXOAkjo9tKYX2enQsXWyyOIBNPPNUHWRA==}
+  zod-class@0.0.16:
+    resolution: {integrity: sha512-3A1l81VEUOxvSTGoNPsU4fTUY9CKin/HSySnXT3bIc+TJTDGCPbzSPE8W1VvwXqyzHEIWK608eFZja2uew9Ivw==}
     peerDependencies:
       zod: ^3
 
@@ -14445,13 +14472,13 @@ snapshots:
   '@babel/code-frame@7.24.6':
     dependencies:
       '@babel/highlight': 7.24.6
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/code-frame@7.26.2':
     dependencies:
       '@babel/helper-validator-identifier': 7.25.9
       js-tokens: 4.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/compat-data@7.23.5': {}
 
@@ -14698,7 +14725,7 @@ snapshots:
       '@babel/helper-validator-identifier': 7.24.7
       chalk: 2.4.2
       js-tokens: 4.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/parser@7.25.6':
     dependencies:
@@ -16457,7 +16484,7 @@ snapshots:
       '@types/retry': 0.12.5
       retry: 0.13.1
 
-  '@n8n/tournament@1.0.5':
+  '@n8n/tournament@1.0.6':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
@@ -16531,7 +16558,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.12.0': {}
+  '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
   '@n8n_io/license-sdk@2.13.1':
     dependencies:
@@ -18009,7 +18036,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.7.2)
-      vue-component-type-helpers: 2.1.10
+      vue-component-type-helpers: 2.2.0
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -19009,7 +19036,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.1.10
+      vue-component-type-helpers: 2.2.0
 
   '@vueuse/components@10.11.0(vue@3.5.13(typescript@5.7.2))':
     dependencies:
@@ -19374,7 +19401,7 @@ snapshots:
     dependencies:
       call-bind: 1.0.7
       is-nan: 1.3.2
-      object-is: 1.1.5
+      object-is: 1.1.6
       object.assign: 4.1.5
       util: 0.12.5
 
@@ -19412,7 +19439,7 @@ snapshots:
       caniuse-lite: 1.0.30001667
       fraction.js: 4.3.7
       normalize-range: 0.1.2
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       postcss: 8.4.38
       postcss-value-parser: 4.2.0
 
@@ -19600,7 +19627,7 @@ snapshots:
       '@types/readable-stream': 4.0.10
       buffer: 6.0.3
       inherits: 2.0.4
-      readable-stream: 4.4.2
+      readable-stream: 4.5.2
 
   blob-util@2.0.2: {}
 
@@ -20840,7 +20867,7 @@ snapshots:
   enzyme-shallow-equal@1.0.7:
     dependencies:
       hasown: 2.0.2
-      object-is: 1.1.5
+      object-is: 1.1.6
 
   enzyme@3.11.0:
     dependencies:
@@ -22513,6 +22540,8 @@ snapshots:
       has-tostringtag: 1.0.2
 
   is-docker@2.2.1: {}
+
+  is-emoji-supported@0.0.5: {}
 
   is-expression@4.0.0:
     dependencies:
@@ -25029,13 +25058,13 @@ snapshots:
   postcss@8.4.31:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.4.38:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       source-map-js: 1.2.0
 
   postcss@8.4.49:
@@ -25580,7 +25609,7 @@ snapshots:
   regexp.prototype.flags@1.5.0:
     dependencies:
       call-bind: 1.0.7
-      define-properties: 1.2.0
+      define-properties: 1.2.1
       functions-have-names: 1.2.3
 
   regexp.prototype.flags@1.5.2:
@@ -26493,7 +26522,7 @@ snapshots:
       css-tree: 2.3.1
       css-what: 6.1.0
       csso: 5.0.5
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   swagger-ui-dist@5.11.0: {}
 
@@ -26539,7 +26568,7 @@ snapshots:
       micromatch: 4.0.8
       normalize-path: 3.0.0
       object-hash: 3.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       postcss: 8.4.38
       postcss-import: 15.1.0(postcss@8.4.38)
       postcss-js: 4.0.1(postcss@8.4.38)
@@ -27091,7 +27120,7 @@ snapshots:
     dependencies:
       browserslist: 4.23.0
       escalade: 3.1.1
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   update-browserslist-db@1.1.1(browserslist@4.24.2):
     dependencies:
@@ -27321,6 +27350,8 @@ snapshots:
       typescript: 5.7.2
 
   vue-component-type-helpers@2.1.10: {}
+
+  vue-component-type-helpers@2.2.0: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.7.2)):
     dependencies:
@@ -27752,7 +27783,7 @@ snapshots:
       property-expr: 2.0.5
       toposort: 2.0.2
 
-  zod-class@0.0.15(zod@3.23.8):
+  zod-class@0.0.16(zod@3.23.8):
     dependencies:
       type-fest: 4.26.1
       zod: 3.23.8

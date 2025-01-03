@@ -1,3 +1,4 @@
+import { Logger } from 'n8n-core';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { Container } from 'typedi';
@@ -5,7 +6,6 @@ import { v4 as uuid } from 'uuid';
 
 import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
