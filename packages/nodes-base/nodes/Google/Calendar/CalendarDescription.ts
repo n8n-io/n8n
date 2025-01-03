@@ -87,7 +87,7 @@ export const calendarFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Start of the interval',
+		description: 'Start of the interval, if not specified will default to now',
 	},
 	{
 		displayName: 'End Time',
@@ -101,7 +101,7 @@ export const calendarFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'End of the interval',
+		description: 'End of the interval, if not specified will default to Start Time plus 1 hour',
 	},
 	{
 		displayName: 'Options',
