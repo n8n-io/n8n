@@ -37,10 +37,12 @@ import {
 	FORM_NODE_TYPE,
 	NodeOperationError,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 import { finished } from 'stream/promises';
 import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -529,6 +531,15 @@ export async function executeWebhook(
 						{ executionId, workflowId: workflow.id },
 					);
 				});
+		}
+
+		if (
+			config.getEnv('executions.mode') === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' &&
+			runData.executionMode === 'manual'
+		) {
+			assert(runData.executionData);
+			runData.executionData.isTestWebhook = true;
 		}
 
 		// Start now to run the workflow
