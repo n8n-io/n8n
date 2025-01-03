@@ -13,6 +13,7 @@ const executionsRefreshInterval = 4000;
 describe('Workflow Executions', () => {
 	describe('when workflow is saved', () => {
 		beforeEach(() => {
+			cy.viewport(1000, 660);
 			workflowPage.actions.visit();
 			cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', 'My test workflow');
 		});
@@ -25,7 +26,7 @@ describe('Workflow Executions', () => {
 
 			cy.wait(['@getExecutions']);
 
-			executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
+			executionsTab.getters.executionsList().scrollTo(0, 1000).wait(0);
 
 			executionsTab.getters.executionListItems().should('have.length', 11);
 			executionsTab.getters.successfulExecutionListItems().should('have.length', 9);
@@ -195,7 +196,7 @@ describe('Workflow Executions', () => {
 
 			cy.wait(['@getExecutions']);
 
-			executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
+			executionsTab.getters.executionsList().scrollTo(0, 1000).wait(0);
 
 			executionsTab.getters.executionListItems().eq(10).click();
 
