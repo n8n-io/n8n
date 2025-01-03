@@ -964,7 +964,6 @@ describe('Gong Node', () => {
 							method: 'delete',
 							path: '/groups/a8eb60e3-0145-4d7e-85ef-c6259784761b/members/87d349ed-44d7-43e1-9a83-5f2406dee5bd/$ref',
 							statusCode: 204,
-							requestBody: {},
 							responseBody: {},
 						},
 					],

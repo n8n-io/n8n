@@ -130,6 +130,13 @@ export async function handleErrorPostReceive(
 				}
 			} else if (operation === 'getAll') {
 			} else if (operation === 'update') {
+				if (
+					errorCode === 'BadRequest' &&
+					errorMessage === 'Empty Payload. JSON content expected.'
+				) {
+					// Ignore empty payload error. Currently n8n deletes the empty body object from the request.
+					return data;
+				}
 				if (errorCode === 'Request_ResourceNotFound') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 						message: "The required group doesn't match any existing one",
@@ -197,6 +204,13 @@ export async function handleErrorPostReceive(
 					});
 				}
 			} else if (operation === 'update') {
+				if (
+					errorCode === 'BadRequest' &&
+					errorMessage === 'Empty Payload. JSON content expected.'
+				) {
+					// Ignore empty payload error. Currently n8n deletes the empty body object from the request.
+					return data;
+				}
 				if (errorCode === 'Request_ResourceNotFound') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 						message: "The required user doesn't match any existing one",
