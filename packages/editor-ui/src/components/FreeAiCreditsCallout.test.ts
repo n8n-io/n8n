@@ -11,9 +11,14 @@ import { useRootStore } from '@/stores/root.store';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 vi.mock('@/composables/useToast', () => ({
 	useToast: vi.fn(),
+}));
+
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: vi.fn(),
 }));
 
 vi.mock('@/stores/settings.store', () => ({
@@ -100,6 +105,10 @@ describe('FreeAiCreditsCallout', () => {
 		(useToast as any).mockReturnValue({
 			showError: vi.fn(),
 		});
+
+		(useTelemetry as any).mockReturnValue({
+			track: vi.fn(),
+		});
 	});
 
 	it('should shows the claim callout when the user can claim credits', () => {
@@ -120,6 +129,7 @@ describe('FreeAiCreditsCallout', () => {
 		await fireEvent.click(claimButton);
 
 		expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalledWith('test-project-id');
+		expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits');
 		assertUserClaimedCredits();
 	});
 

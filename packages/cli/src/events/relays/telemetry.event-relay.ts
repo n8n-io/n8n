@@ -9,6 +9,7 @@ import { Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -34,6 +35,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {
 		super(eventService);
 	}
@@ -693,6 +695,8 @@ export class TelemetryEventRelay extends EventRelay {
 					error_node_id: telemetryProperties.error_node_id as string,
 					webhook_domain: null,
 					sharing_role: userRole,
+					credential_type: null,
+					is_managed: false,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
@@ -703,7 +707,17 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (runData.data.startData?.destinationNode) {
-					const telemetryPayload = {
+					const { credentialId, credentialType } =
+						TelemetryHelpers.extractLastExecutedNodeCredentialData(runData);
+					if (credentialId && credentialType) {
+						manualExecEventProperties.credential_type = credentialType;
+						const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
+						if (credential) {
+							manualExecEventProperties.is_managed = credential.isManaged;
+						}
+					}
+
+					const telemetryPayload: { [key: string]: any } = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,

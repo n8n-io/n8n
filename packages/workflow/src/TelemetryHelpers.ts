@@ -26,6 +26,7 @@ import type {
 	IDataObject,
 	IRunData,
 	ITaskData,
+	IRun,
 } from './Interfaces';
 import { getNodeParameters } from './NodeHelpers';
 
@@ -469,4 +470,19 @@ export function generateNodesGraph(
 	});
 
 	return { nodeGraph, nameIndices, webhookNodeNames };
+}
+
+export function extractLastExecutedNodeCredentialData(runData: IRun) {
+	let id: string | null = null;
+	let credentialType: string | null = null;
+
+	const nodeCredentials = runData?.data?.executionData?.nodeExecutionStack?.[0]?.node?.credentials;
+
+	if (nodeCredentials) {
+		credentialType = Object.keys(nodeCredentials)[0] ?? null;
+		if (credentialType) {
+			({ id } = nodeCredentials[credentialType]);
+		}
+	}
+	return { credentialId: id, credentialType };
 }
