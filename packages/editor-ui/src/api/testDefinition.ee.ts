@@ -62,7 +62,8 @@ interface DeleteTestRunParams {
 }
 
 const endpoint = '/evaluation/test-definitions';
-const getMetricsEndpoint = (testDefinitionId: string) => `${endpoint}/${testDefinitionId}/metrics`;
+const getMetricsEndpoint = (testDefinitionId: string, metricId?: string) =>
+	`${endpoint}/${testDefinitionId}/metrics${metricId ? `/${metricId}` : ''}`;
 
 export async function getTestDefinitions(
 	context: IRestApiContext,
@@ -148,7 +149,7 @@ export const getTestMetric = async (
 	return await makeRestApiRequest<TestMetricRecord>(
 		context,
 		'GET',
-		`${getMetricsEndpoint(testDefinitionId)}/${id}`,
+		getMetricsEndpoint(testDefinitionId, id),
 	);
 };
 
@@ -171,7 +172,7 @@ export const updateTestMetric = async (
 	return await makeRestApiRequest<TestMetricRecord>(
 		context,
 		'PATCH',
-		`${getMetricsEndpoint(params.testDefinitionId)}/${params.id}`,
+		getMetricsEndpoint(params.testDefinitionId, params.id),
 		{ name: params.name },
 	);
 };
@@ -183,11 +184,12 @@ export const deleteTestMetric = async (
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
-		`${getMetricsEndpoint(params.testDefinitionId)}/${params.id}`,
+		getMetricsEndpoint(params.testDefinitionId, params.id),
 	);
 };
 
-const getRunsEndpoint = (testDefinitionId: string) => `${endpoint}/${testDefinitionId}/runs`;
+const getRunsEndpoint = (testDefinitionId: string, runId?: string) =>
+	`${endpoint}/${testDefinitionId}/runs${runId ? `/${runId}` : ''}`;
 
 // Get all test runs for a test definition
 export const getTestRuns = async (context: IRestApiContext, testDefinitionId: string) => {
@@ -203,7 +205,7 @@ export const getTestRun = async (context: IRestApiContext, params: GetTestRunPar
 	return await makeRestApiRequest<TestRunRecord>(
 		context,
 		'GET',
-		`${getRunsEndpoint(params.testDefinitionId)}/${params.runId}`,
+		getRunsEndpoint(params.testDefinitionId, params.runId),
 	);
 };
 
@@ -224,6 +226,6 @@ export const deleteTestRun = async (context: IRestApiContext, params: DeleteTest
 	return await makeRestApiRequest<{ success: boolean }>(
 		context,
 		'DELETE',
-		`${getRunsEndpoint(params.testDefinitionId)}/${params.runId}`,
+		getRunsEndpoint(params.testDefinitionId, params.runId),
 	);
 };

@@ -126,7 +126,7 @@ onMounted(loadData);
 		<N8nSpinner v-if="isLoading" size="xlarge" type="dots" :class="$style.spinner" />
 		<Canvas
 			:id="canvasId"
-			:style="{ opacity: isLoading ? 0 : 1 }"
+			:loading="isLoading"
 			:class="{ [$style.canvas]: true }"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"

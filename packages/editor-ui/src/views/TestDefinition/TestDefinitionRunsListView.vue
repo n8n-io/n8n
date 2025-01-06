@@ -7,13 +7,18 @@ import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vu
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/stores/ui.store';
 
 const router = useRouter();
 const testDefinitionStore = useTestDefinitionStore();
-const isLoading = ref(false);
+const uiStore = useUIStore();
 const locale = useI18n();
 const toast = useToast();
+
 const selectedMetric = ref();
+const isLoading = ref(false);
+
+const appliedTheme = computed(() => uiStore.appliedTheme);
 const testId = computed(() => {
 	return router.currentRoute.value.params.testId as string;
 });
@@ -94,7 +99,7 @@ onMounted(async () => {
 			<N8nLoading :rows="10" />
 		</template>
 		<template v-else-if="runs.length > 0">
-			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" />
+			<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
 			<TestRunsTable :runs="runs" @get-run-detail="getRunDetail" @delete-runs="onDeleteRuns" />
 		</template>
 		<template v-else>

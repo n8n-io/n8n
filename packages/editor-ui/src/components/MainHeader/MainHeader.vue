@@ -119,18 +119,22 @@ function isViewRoute(name: unknown): name is VIEWS {
 }
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
-	if (isViewRoute(to.name)) {
-		if (testDefinitionRoutes.includes(to.name)) {
-			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
-		}
-		if (executionRoutes.includes(to.name)) {
-			activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
-		}
-		if (workflowRoutes.includes(to.name)) {
-			activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
+	// Map route types to their corresponding tab in the header
+	const routeTabMapping = [
+		{ routes: testDefinitionRoutes, tab: MAIN_HEADER_TABS.TEST_DEFINITION },
+		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
+		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
+	];
+
+	// Update the active tab based on the current route
+	if (to.name && isViewRoute(to.name)) {
+		const matchingTab = routeTabMapping.find(({ routes }) => routes.includes(to.name as VIEWS));
+		if (matchingTab) {
+			activeHeaderTab.value = matchingTab.tab;
 		}
 	}
 
+	// Store the current workflow ID, but only if it's not a new workflow
 	if (to.params.name !== 'new' && typeof to.params.name === 'string') {
 		workflowToReturnTo.value = to.params.name;
 	}

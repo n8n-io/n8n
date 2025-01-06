@@ -174,23 +174,24 @@ watch(
 				:save-changes="saveChanges"
 				:handle-keydown="handleKeydown"
 			/>
-
-			<!-- Description -->
-			<EvaluationStep
-				:class="$style.step"
-				:title="locale.baseText('testDefinition.edit.description')"
-				:expanded="false"
-				:tooltip="locale.baseText('testDefinition.edit.description.tooltip')"
-			>
-				<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
-				<template #cardContent>
-					<DescriptionInput v-model="state.description" />
-				</template>
-			</EvaluationStep>
-
-			<div :class="$style.panelIntro">{{ locale.baseText('testDefinition.edit.step.intro') }}</div>
-			<BlockArrow :class="$style.introArrow" />
 			<div :class="$style.panelBlock">
+				<!-- Description -->
+				<EvaluationStep
+					:class="$style.step"
+					:title="locale.baseText('testDefinition.edit.description')"
+					:expanded="false"
+					:tooltip="locale.baseText('testDefinition.edit.description.tooltip')"
+				>
+					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
+					<template #cardContent>
+						<DescriptionInput v-model="state.description" />
+					</template>
+				</EvaluationStep>
+
+				<div :class="$style.panelIntro">
+					{{ locale.baseText('testDefinition.edit.step.intro') }}
+				</div>
+				<BlockArrow :class="$style.introArrow" />
 				<!-- Select Executions -->
 				<EvaluationStep
 					:class="$style.step"
@@ -351,7 +352,9 @@ watch(
 	width: 100%;
 	min-width: fit-content;
 	padding-bottom: 10px;
-	overflow: auto;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 .runsTableTotal {
 	display: block;
@@ -370,7 +373,8 @@ watch(
 .panelBlock {
 	max-width: var(--evaluation-edit-panel-width, 24rem);
 	display: grid;
-	justify-items: end;
+	overflow-y: auto;
+	min-height: 0;
 }
 .panelIntro {
 	font-size: var(--font-size-m);

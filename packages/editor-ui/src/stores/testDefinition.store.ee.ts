@@ -28,9 +28,16 @@ export const useTestDefinitionStore = defineStore(
 			);
 		});
 
-		const allTestDefinitionsByWorkflowId = computed(() => (workflowId: string) => {
-			return Object.values(testDefinitionsById.value).filter(
-				(test) => test.workflowId === workflowId,
+		const allTestDefinitionsByWorkflowId = computed(() => {
+			return Object.values(testDefinitionsById.value).reduce(
+				(acc: Record<string, TestDefinitionRecord[]>, test) => {
+					if (!acc[test.workflowId]) {
+						acc[test.workflowId] = [];
+					}
+					acc[test.workflowId].push(test);
+					return acc;
+				},
+				{},
 			);
 		});
 
@@ -43,22 +50,54 @@ export const useTestDefinitionStore = defineStore(
 
 		const hasTestDefinitions = computed(() => Object.keys(testDefinitionsById.value).length > 0);
 
-		const getMetricsByTestId = computed(() => (testId: string) => {
-			return Object.values(metricsById.value).filter(
-				(metric) => metric.testDefinitionId === testId,
+		const metricsByTestId = computed(() => {
+			return Object.values(metricsById.value).reduce(
+				(acc: Record<string, testDefinitionsApi.TestMetricRecord[]>, metric) => {
+					if (!acc[metric.testDefinitionId]) {
+						acc[metric.testDefinitionId] = [];
+					}
+					acc[metric.testDefinitionId].push(metric);
+					return acc;
+				},
+				{},
 			);
 		});
 
-		const getTestRunsByTestId = computed(() => (testId: string) => {
-			return Object.values(testRunsById.value).filter((run) => run.testDefinitionId === testId);
+		const testRunsByTestId = computed(() => {
+			return Object.values(testRunsById.value).reduce(
+				(acc: Record<string, TestRunRecord[]>, run) => {
+					if (!acc[run.testDefinitionId]) {
+						acc[run.testDefinitionId] = [];
+					}
+					acc[run.testDefinitionId].push(run);
+					return acc;
+				},
+				{},
+			);
 		});
 
-		const getLastRunByTestId = computed(() => (testId: string) => {
-			const testRuns = Object.values(testRunsById.value)
-				.filter((run) => run.testDefinitionId === testId)
-				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+		const lastRunByTestId = computed(() => {
+			const grouped = Object.values(testRunsById.value).reduce(
+				(acc: Record<string, TestRunRecord[]>, run) => {
+					if (!acc[run.testDefinitionId]) {
+						acc[run.testDefinitionId] = [];
+					}
+					acc[run.testDefinitionId].push(run);
+					return acc;
+				},
+				{},
+			);
 
-			return testRuns[0] || null;
+			return Object.entries(grouped).reduce(
+				(acc: Record<string, TestRunRecord | null>, [testId, runs]) => {
+					acc[testId] =
+						runs.sort(
+							(a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+						)[0] || null;
+					return acc;
+				},
+				{},
+			);
 		});
 
 		// Methods
@@ -311,9 +350,9 @@ export const useTestDefinitionStore = defineStore(
 			hasTestDefinitions,
 			isFeatureEnabled,
 			metricsById,
-			getMetricsByTestId,
-			getTestRunsByTestId,
-			getLastRunByTestId,
+			metricsByTestId,
+			testRunsByTestId,
+			lastRunByTestId,
 
 			// Methods
 			fetchTestDefinition,

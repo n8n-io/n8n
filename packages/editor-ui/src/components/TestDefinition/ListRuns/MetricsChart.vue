@@ -4,7 +4,7 @@ import { Line } from 'vue-chartjs';
 import { useMetricsChart } from '../composables/useMetricsChart';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { useI18n } from '@/composables/useI18n';
-import { getPreferredTheme } from '@/stores/ui.utils';
+import type { AppliedThemeOption } from '@/Interface';
 
 const emit = defineEmits<{
 	'update:selectedMetric': [value: string];
@@ -13,13 +13,11 @@ const emit = defineEmits<{
 const props = defineProps<{
 	selectedMetric: string;
 	runs: TestRunRecord[];
+	theme?: AppliedThemeOption;
 }>();
 
 const locale = useI18n();
-const currentTheme = computed(
-	() => (document.body.getAttribute('data-theme') as 'light' | 'dark') || getPreferredTheme(),
-);
-const { generateChartData, generateChartOptions } = useMetricsChart(currentTheme.value);
+const metricsChart = useMetricsChart(props.theme);
 
 const availableMetrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
@@ -28,9 +26,10 @@ const availableMetrics = computed(() => {
 	}, [] as string[]);
 });
 
-const chartData = computed(() => generateChartData(props.runs, props.selectedMetric));
+const chartData = computed(() => metricsChart.generateChartData(props.runs, props.selectedMetric));
+
 const chartOptions = computed(() =>
-	generateChartOptions({
+	metricsChart.generateChartOptions({
 		metric: props.selectedMetric,
 		xTitle: locale.baseText('testDefinition.listRuns.runDate'),
 	}),

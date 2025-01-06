@@ -80,6 +80,7 @@ const props = withDefaults(
 		executing?: boolean;
 		keyBindings?: boolean;
 		showBugReportingButton?: boolean;
+		loading?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -90,6 +91,7 @@ const props = withDefaults(
 		readOnly: false,
 		executing: false,
 		keyBindings: true,
+		loading: false,
 	},
 );
 
@@ -131,7 +133,7 @@ const isPaneReady = ref(false);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
-	[$style.ready]: isPaneReady.value,
+	[$style.ready]: !props.loading && isPaneReady.value,
 }));
 
 /**

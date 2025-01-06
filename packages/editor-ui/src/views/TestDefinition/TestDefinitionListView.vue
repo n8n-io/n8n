@@ -19,15 +19,18 @@ const toast = useToast();
 const locale = useI18n();
 
 const tests = computed<TestListItem[]>(() => {
-	return testDefinitionStore
-		.allTestDefinitionsByWorkflowId(router.currentRoute.value.params.name as string)
+	return (
+		testDefinitionStore.allTestDefinitionsByWorkflowId[
+			router.currentRoute.value.params.name as string
+		] ?? []
+	)
 		.filter((test): test is TestDefinitionRecord => test.id !== undefined)
 		.sort((a, b) => new Date(b?.updatedAt ?? '').getTime() - new Date(a?.updatedAt ?? '').getTime())
 		.map((test) => ({
 			id: test.id,
 			name: test.name ?? '',
 			tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
-			testCases: testDefinitionStore.getTestRunsByTestId(test.id)?.length ?? 0,
+			testCases: testDefinitionStore.testRunsByTestId[test.id]?.length ?? 0,
 			execution: getTestExecution(test.id),
 		}));
 });
@@ -42,7 +45,7 @@ function getTagName(tagId: string) {
 }
 
 function getTestExecution(testId: string): TestExecution {
-	const lastRun = testDefinitionStore.getLastRunByTestId(testId);
+	const lastRun = testDefinitionStore.lastRunByTestId[testId];
 	if (!lastRun) {
 		return {
 			lastRun: null,

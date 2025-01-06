@@ -1,8 +1,7 @@
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import dateFormat from 'dateformat';
-
-type ChartTheme = 'light' | 'dark';
+import type { AppliedThemeOption } from '@/Interface';
 
 const THEME_COLORS = {
 	light: {
@@ -25,9 +24,8 @@ const THEME_COLORS = {
 	},
 };
 
-export function useMetricsChart(mode: ChartTheme = 'light') {
+export function useMetricsChart(mode: AppliedThemeOption = 'light') {
 	const colors = THEME_COLORS[mode];
-
 	const toRGBA = (color: string, alpha: number) => {
 		if (color.includes('rgba')) return color;
 		return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);

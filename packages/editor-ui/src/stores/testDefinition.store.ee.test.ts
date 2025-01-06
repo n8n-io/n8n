@@ -342,10 +342,10 @@ describe('testDefinition.store.ee', () => {
 				metric3,
 			};
 
-			const metricsForTest1 = store.getMetricsByTestId('1');
+			const metricsForTest1 = store.metricsByTestId['1'];
 			expect(metricsForTest1).toEqual([metric1, metric2]);
 
-			const metricsForTest2 = store.getMetricsByTestId('2');
+			const metricsForTest2 = store.metricsByTestId['2'];
 			expect(metricsForTest2).toEqual([metric3]);
 		});
 	});
@@ -444,7 +444,7 @@ describe('testDefinition.store.ee', () => {
 				run2: { ...TEST_RUN, id: 'run2', testDefinitionId: '2' },
 			};
 
-			const runs = store.getTestRunsByTestId('1');
+			const runs = store.testRunsByTestId['1'];
 
 			expect(runs).toEqual([TEST_RUN]);
 		});
