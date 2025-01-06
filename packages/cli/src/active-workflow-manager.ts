@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Service } from '@n8n/di';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
 	InstanceSettings,
+	Logger,
 	PollContext,
 	TriggerContext,
 } from 'n8n-core';
@@ -27,7 +29,6 @@ import {
 	WebhookPathTakenError,
 	ApplicationError,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
@@ -42,7 +43,6 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
