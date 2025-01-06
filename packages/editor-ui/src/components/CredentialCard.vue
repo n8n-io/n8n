@@ -162,6 +162,7 @@ function moveResource() {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
@@ -180,9 +181,10 @@ function moveResource() {
 
 <style lang="scss" module>
 .cardLink {
+	--card--padding: 0 0 0 var(--spacing-s);
+
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
-	padding: 0 0 0 var(--spacing-s);
 	align-items: stretch;
 
 	&:hover {
@@ -214,5 +216,23 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--append--width: 100%;
+
+		flex-wrap: wrap;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0;
+	}
+
+	.cardBadge {
+		margin-right: auto;
+	}
 }
 </style>
