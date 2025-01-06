@@ -159,10 +159,6 @@ onMounted(loadData);
 	width: 100vw;
 	height: 100%;
 }
-.canvas {
-	opacity: 0;
-	transition: opacity 1s ease-in-out;
-}
 .pinButtonContainer {
 	position: absolute;
 	right: 0;
