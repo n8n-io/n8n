@@ -36,7 +36,7 @@ export const schema = {
 				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
 			},
 			evaluationLimit: {
-				doc: 'Max evaluation executions allowed to run concurrently. Default is `1`.',
+				doc: 'Max evaluation executions allowed to run concurrently.',
 				format: Number,
 				default: -1,
 				env: 'N8N_CONCURRENCY_EVALUATION_LIMIT',
