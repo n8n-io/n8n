@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+import { Service } from '@n8n/di';
 import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

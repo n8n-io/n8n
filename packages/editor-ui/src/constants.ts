@@ -283,6 +283,7 @@ export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
 export const AI_CATEGORY_EMBEDDING = 'Embeddings';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_CATEGORY_OTHER_TOOLS = 'Other Tools';
 export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
@@ -706,12 +707,19 @@ export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const AI_CREDITS_EXPERIMENT = {
+	name: '027_free_openai_calls',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
+	AI_CREDITS_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';

@@ -1,9 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
+import { Logger } from 'n8n-core';
 import { join as pathJoin } from 'path';
-import { Container, Service } from 'typedi';
 
 import { inTest } from '@/constants';
 import type { User } from '@/databases/entities/user';
@@ -11,7 +12,6 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 

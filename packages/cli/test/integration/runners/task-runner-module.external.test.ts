@@ -1,12 +1,12 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container from 'typedi';
 
-import { MissingAuthTokenError } from '@/runners/errors/missing-auth-token.error';
-import { TaskRunnerModule } from '@/runners/task-runner-module';
+import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
-import { DefaultTaskRunnerDisconnectAnalyzer } from '../../../src/runners/default-task-runner-disconnect-analyzer';
-import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
+import { DefaultTaskRunnerDisconnectAnalyzer } from '../../../src/task-runners/default-task-runner-disconnect-analyzer';
+import { TaskRunnerWsServer } from '../../../src/task-runners/task-runner-ws-server';
 
 describe('TaskRunnerModule in external mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);

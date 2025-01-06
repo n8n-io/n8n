@@ -1,4 +1,5 @@
-import { HookContext, WebhookContext } from 'n8n-core';
+import { Service } from '@n8n/di';
+import { HookContext, WebhookContext, Logger } from 'n8n-core';
 import { ApplicationError, Node, NodeHelpers } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
@@ -12,11 +13,9 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import { WebhookRepository } from '@/databases/repositories/webhook.repository';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 

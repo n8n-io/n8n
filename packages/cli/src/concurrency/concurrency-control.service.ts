@@ -1,5 +1,6 @@
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -7,7 +8,6 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutingWorkflowData } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';

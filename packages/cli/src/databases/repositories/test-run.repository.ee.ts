@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import type { FindManyOptions } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import type { AggregatedTestRunMetrics } from '@/databases/entities/test-run.ee';
 import { TestRun } from '@/databases/entities/test-run.ee';

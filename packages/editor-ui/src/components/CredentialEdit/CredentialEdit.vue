@@ -160,6 +160,11 @@ const credentialTypeName = computed(() => {
 	return `${props.activeId}`;
 });
 
+const isEditingManagedCredential = computed(() => {
+	if (!props.activeId) return false;
+	return credentialsStore.getCredentialById(props.activeId)?.isManaged ?? false;
+});
+
 const isCredentialTestable = computed(() => {
 	if (isOAuthType.value || !requiredPropertiesFilled.value) {
 		return false;
@@ -597,6 +602,10 @@ function scrollToBottom() {
 }
 
 async function retestCredential() {
+	if (isEditingManagedCredential.value) {
+		return;
+	}
+
 	if (!isCredentialTestable.value || !credentialTypeName.value) {
 		authError.value = '';
 		testedSuccessfully.value = false;
@@ -1061,7 +1070,9 @@ function resetCredentialData(): void {
 					<InlineNameEdit
 						:model-value="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.update || !credentialType"
+						:readonly="
+							!credentialPermissions.update || !credentialType || isEditingManagedCredential
+						"
 						type="Credential"
 						data-test-id="credential-name"
 						@update:model-value="onNameEdit"
@@ -1113,6 +1124,7 @@ function resetCredentialData(): void {
 						:credential-properties="credentialProperties"
 						:credential-data="credentialData"
 						:credential-id="credentialId"
+						:is-managed="isEditingManagedCredential"
 						:show-validation-warning="showValidationWarning"
 						:auth-error="authError"
 						:tested-successfully="testedSuccessfully"

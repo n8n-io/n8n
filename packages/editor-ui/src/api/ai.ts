@@ -1,4 +1,4 @@
-import type { IRestApiContext } from '@/Interface';
+import type { ICredentialsResponse, IRestApiContext } from '@/Interface';
 import type { AskAiRequest, ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@/utils/apiUtils';
 import type { IDataObject } from 'n8n-workflow';
@@ -40,5 +40,14 @@ export async function generateCodeForPrompt(
 		question,
 		context,
 		forNode,
+	} as IDataObject);
+}
+
+export async function claimFreeAiCredits(
+	ctx: IRestApiContext,
+	{ projectId }: { projectId?: string },
+): Promise<ICredentialsResponse> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/free-credits', {
+		projectId,
 	} as IDataObject);
 }

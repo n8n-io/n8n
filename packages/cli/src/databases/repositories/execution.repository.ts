@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -21,7 +22,7 @@ import {
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
 import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
@@ -29,7 +30,6 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
@@ -42,7 +42,6 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
