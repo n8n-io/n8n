@@ -37,5 +37,5 @@ export interface IEvent {
 
 export type ReccuringEventInstance = {
 	recurringEventId?: string;
-	start: { dateTime: string };
+	start: { dateTime: string; date: string };
 };

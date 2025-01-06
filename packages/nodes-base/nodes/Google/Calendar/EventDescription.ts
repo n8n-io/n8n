@@ -646,7 +646,8 @@ export const eventFields: INodeProperties[] = [
 		name: 'timeMin',
 		type: 'dateTime',
 		default: '',
-		description: 'At least some part of the event must be after this time',
+		description:
+			'At least some part of the event must be after this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 		displayOptions: {
 			show: {
 				'@version': [{ _cnd: { gte: 1.3 } }],
@@ -660,7 +661,8 @@ export const eventFields: INodeProperties[] = [
 		name: 'timeMax',
 		type: 'dateTime',
 		default: '',
-		description: 'At least some part of the event must be before this time',
+		description:
+			'At least some part of the event must be before this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 		displayOptions: {
 			show: {
 				'@version': [{ _cnd: { gte: 1.3 } }],
@@ -687,7 +689,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
-				description: 'At least some part of the event must be after this time',
+				description:
+					'At least some part of the event must be after this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.3 } }],
@@ -699,7 +702,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
-				description: 'At least some part of the event must be before this time',
+				description:
+					'At least some part of the event must be before this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.3 } }],

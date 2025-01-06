@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import moment from 'moment-timezone';
 import type {
 	IDataObject,
@@ -271,10 +272,27 @@ export async function googleApiRequestWithRetries({
 }
 
 export const eventExtendYearIntoFuture = (data: ReccuringEventInstance[], timezone: string) => {
-	const now = moment().tz(timezone);
+	const thisYear = moment().tz(timezone).year();
+
 	return data.some((event) => {
 		if (!event.recurringEventId) return false;
-		const diffInYears = now.diff(event.start.dateTime || '', 'years', true);
-		return diffInYears;
+
+		const eventStart = event.start.dateTime || event.start.date;
+
+		const eventDateTime = moment(eventStart).tz(timezone);
+		if (!eventDateTime.isValid()) return false;
+
+		const targetYear = eventDateTime.year();
+
+		if (targetYear - thisYear >= 1) {
+			return true;
+		} else {
+			return false;
+		}
 	});
 };
+
+export function dateTimeToIso<T>(date: T): string {
+	if (date instanceof DateTime) return date.toISO();
+	return date as string;
+}

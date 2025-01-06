@@ -24,6 +24,7 @@ import type { IEvent, ReccuringEventInstance } from './EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
+	dateTimeToIso,
 	encodeURIComponentOnce,
 	eventExtendYearIntoFuture,
 	getCalendars,
@@ -430,8 +431,8 @@ export class GoogleCalendar implements INodeType {
 						}) as string;
 
 						if (nodeVersion >= 1.3) {
-							const timeMin = this.getNodeParameter('timeMin', i) as string;
-							const timeMax = this.getNodeParameter('timeMax', i) as string;
+							const timeMin = dateTimeToIso(this.getNodeParameter('timeMin', i));
+							const timeMax = dateTimeToIso(this.getNodeParameter('timeMax', i));
 							if (timeMin) {
 								qs.timeMin = addTimezoneToDate(timeMin as string, tz || timezone);
 							}
@@ -466,16 +467,16 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = addTimezoneToDate(options.timeMax as string, tz || timezone);
+							qs.timeMax = addTimezoneToDate(dateTimeToIso(options.timeMax), tz || timezone);
 						}
 						if (options.timeMin) {
-							qs.timeMin = addTimezoneToDate(options.timeMin as string, tz || timezone);
+							qs.timeMin = addTimezoneToDate(dateTimeToIso(options.timeMin), tz || timezone);
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = addTimezoneToDate(options.updatedMin as string, tz || timezone);
+							qs.updatedMin = addTimezoneToDate(dateTimeToIso(options.updatedMin), tz || timezone);
 						}
 						if (options.fields) {
 							qs.fields = options.fields as string;
@@ -550,7 +551,9 @@ export class GoogleCalendar implements INodeType {
 
 									return true;
 								});
-							} else {
+							} else if (nodeVersion < 1.3) {
+								// in node version above or equal to 1.3, this would correspond to the 'expand' option,
+								// so no need to add the next occurrence as event instances returned by the API
 								responseData = addNextOccurrence(responseData);
 							}
 
