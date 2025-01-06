@@ -1286,6 +1286,7 @@ defineExpose({ enterEditMode });
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
