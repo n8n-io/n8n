@@ -370,6 +370,54 @@ describe('testDefinition.store.ee', () => {
 
 			expect(store.isFeatureEnabled).toBe(true);
 		});
+
+		test('allTestDefinitionsByWorkflowId', () => {
+			store.testDefinitionsById = {
+				'1': { ...TEST_DEF_A, workflowId: 'workflow1' },
+				'2': { ...TEST_DEF_B, workflowId: 'workflow1' },
+				'3': { ...TEST_DEF_NEW, workflowId: 'workflow2' },
+			};
+
+			expect(store.allTestDefinitionsByWorkflowId).toEqual({
+				workflow1: [
+					{ ...TEST_DEF_A, workflowId: 'workflow1' },
+					{ ...TEST_DEF_B, workflowId: 'workflow1' },
+				],
+				workflow2: [{ ...TEST_DEF_NEW, workflowId: 'workflow2' }],
+			});
+		});
+
+		test('lastRunByTestId', () => {
+			const olderRun = {
+				...TEST_RUN,
+				id: 'run2',
+				testDefinitionId: '1',
+				updatedAt: '2023-12-31',
+			};
+
+			const newerRun = {
+				...TEST_RUN,
+				id: 'run3',
+				testDefinitionId: '2',
+				updatedAt: '2024-01-02',
+			};
+
+			store.testRunsById = {
+				run1: { ...TEST_RUN, testDefinitionId: '1' },
+				run2: olderRun,
+				run3: newerRun,
+			};
+
+			expect(store.lastRunByTestId).toEqual({
+				'1': TEST_RUN,
+				'2': newerRun,
+			});
+		});
+
+		test('lastRunByTestId with no runs', () => {
+			store.testRunsById = {};
+			expect(store.lastRunByTestId).toEqual({});
+		});
 	});
 
 	describe('Error Handling', () => {
@@ -447,6 +495,87 @@ describe('testDefinition.store.ee', () => {
 			const runs = store.testRunsByTestId['1'];
 
 			expect(runs).toEqual([TEST_RUN]);
+		});
+	});
+
+	describe('Polling Mechanism', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('should start polling for running test runs', async () => {
+			const runningTestRun = {
+				...TEST_RUN,
+				status: 'running',
+			};
+
+			getTestRuns.mockResolvedValueOnce([runningTestRun]);
+
+			// First call returns running status
+			getTestRun.mockResolvedValueOnce({
+				...runningTestRun,
+				status: 'running',
+			});
+
+			// Second call returns completed status
+			getTestRun.mockResolvedValueOnce({
+				...runningTestRun,
+				status: 'completed',
+			});
+
+			await store.fetchTestRuns('1');
+
+			expect(store.testRunsById).toEqual({
+				run1: runningTestRun,
+			});
+
+			// Advance timer to trigger the first poll
+			await vi.advanceTimersByTimeAsync(1000);
+
+			// Verify first poll happened
+			expect(getTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, {
+				testDefinitionId: '1',
+				runId: 'run1',
+			});
+
+			// Advance timer again
+			await vi.advanceTimersByTimeAsync(1000);
+
+			// Verify polling stopped after status changed to completed
+			expect(getTestRun).toHaveBeenCalledTimes(2);
+		});
+
+		test('should cleanup polling timeouts', async () => {
+			const runningTestRun = {
+				...TEST_RUN,
+				status: 'running',
+			};
+
+			getTestRuns.mockResolvedValueOnce([runningTestRun]);
+			getTestRun.mockResolvedValue({
+				...runningTestRun,
+				status: 'running',
+			});
+
+			await store.fetchTestRuns('1');
+
+			// Wait for the first poll to complete
+			await vi.runOnlyPendingTimersAsync();
+
+			// Clear mock calls from initial setup
+			getTestRun.mockClear();
+
+			store.cleanupPolling();
+
+			// Advance timer
+			await vi.advanceTimersByTimeAsync(1000);
+
+			// Verify no more polling happened after cleanup
+			expect(getTestRun).not.toHaveBeenCalled();
 		});
 	});
 });
