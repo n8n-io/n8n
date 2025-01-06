@@ -18,7 +18,9 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 
 Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (requires [Node.js](https://nodejs.org/en/)):
 
-`npx n8n`
+```
+npx n8n
+```
 
 Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):
 
