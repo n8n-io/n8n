@@ -123,6 +123,7 @@ export function getNodeOutputErrorMessage() {
 /**
  * Actions
  */
+
 export function openCredentialSelect(eq = 0) {
 	getCredentialSelect(eq).click();
 }
