@@ -127,7 +127,6 @@ export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
 		const removedKeys = new Set(schema.filter((x) => x.removed).map((x) => x.displayName));
 
 		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
-			index,
 			pairedItem: { item: index },
 			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
 		}));

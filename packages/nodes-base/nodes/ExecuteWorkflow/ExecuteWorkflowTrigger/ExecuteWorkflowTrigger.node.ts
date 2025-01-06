@@ -216,6 +216,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					// which we do not want to expose past this node.
 					..._.pickBy(row.json, (_value, key) => newKeys.has(key)),
 				},
+				...(row.pairedItem ? { pairedItem: row.pairedItem } : {}),
 			}));
 
 			return [itemsInSchema];
