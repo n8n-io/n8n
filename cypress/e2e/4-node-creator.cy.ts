@@ -1,10 +1,12 @@
+import { clickGetBackToCanvas } from '../composables/ndv';
 import {
 	addNodeToCanvas,
 	addRetrieverNodeToParent,
 	addVectorStoreNodeToParent,
+	addVectorStoreToolToParent,
 	getNodeCreatorItems,
 } from '../composables/workflow';
-import { IF_NODE_NAME } from '../constants';
+import { AGENT_NODE_NAME, IF_NODE_NAME, MANUAL_CHAT_TRIGGER_NODE_NAME } from '../constants';
 import { NodeCreator } from '../pages/features/node-creator';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
@@ -536,12 +538,20 @@ describe('Node Creator', () => {
 		});
 	});
 
-	it('should add node directly for sub-connection', () => {
+	it('should add node directly for sub-connection as vector store', () => {
 		addNodeToCanvas('Question and Answer Chain', true);
 		addRetrieverNodeToParent('Vector Store Retriever', 'Question and Answer Chain');
 		cy.realPress('Escape');
 		addVectorStoreNodeToParent('In-Memory Vector Store', 'Vector Store Retriever');
 		cy.realPress('Escape');
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
+	});
+
+	it('should add node directly for sub-connection as tool', () => {
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		clickGetBackToCanvas();
+
+		addVectorStoreToolToParent('In-Memory Vector Store', AGENT_NODE_NAME);
 	});
 });
