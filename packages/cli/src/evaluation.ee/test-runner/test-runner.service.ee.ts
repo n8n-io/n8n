@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import type {
 	IDataObject,
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
-import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
