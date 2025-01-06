@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import type { OpenAPIV3 } from 'openapi-types';
-import { Service } from 'typedi';
 
 import { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';

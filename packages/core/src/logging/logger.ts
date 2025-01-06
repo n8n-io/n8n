@@ -1,5 +1,6 @@
 import type { LogScope } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import callsites from 'callsites';
 import type { TransformableInfo } from 'logform';
 import { LoggerProxy, LOG_LEVELS } from 'n8n-workflow';
@@ -11,7 +12,6 @@ import type {
 } from 'n8n-workflow';
 import path, { basename } from 'node:path';
 import pc from 'picocolors';
-import { Service } from 'typedi';
 import winston from 'winston';
 
 import { inDevelopment, inProduction } from '@/Constants';

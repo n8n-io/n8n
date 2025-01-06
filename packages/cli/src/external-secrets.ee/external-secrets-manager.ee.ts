@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { Cipher, Logger } from 'n8n-core';
 import { jsonParse, type IDataObject, ApplicationError, ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { EventService } from '@/events/event.service';
