@@ -1,13 +1,14 @@
+import { Container, Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { ApplicationError } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
 
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
-import { Project, type ProjectType } from '@/databases/entities/project';
+import type { ProjectIcon, ProjectType } from '@/databases/entities/project';
+import { Project } from '@/databases/entities/project';
 import { ProjectRelation } from '@/databases/entities/project-relation';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
@@ -167,7 +168,12 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async createTeamProject(name: string, adminUser: User, id?: string): Promise<Project> {
+	async createTeamProject(
+		name: string,
+		adminUser: User,
+		id?: string,
+		icon?: ProjectIcon,
+	): Promise<Project> {
 		const limit = this.license.getTeamProjectLimit();
 		if (
 			limit !== UNLIMITED_LICENSE_QUOTA &&
@@ -180,6 +186,7 @@ export class ProjectService {
 			this.projectRepository.create({
 				id,
 				name,
+				icon,
 				type: 'team',
 			}),
 		);
@@ -190,7 +197,11 @@ export class ProjectService {
 		return project;
 	}
 
-	async updateProject(name: string, projectId: string): Promise<Project> {
+	async updateProject(
+		name: string,
+		projectId: string,
+		icon?: { type: 'icon' | 'emoji'; value: string },
+	): Promise<Project> {
 		const result = await this.projectRepository.update(
 			{
 				id: projectId,
@@ -198,6 +209,7 @@ export class ProjectService {
 			},
 			{
 				name,
+				icon,
 			},
 		);
 

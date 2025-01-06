@@ -1,3 +1,5 @@
+import type { SamlPreferences } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
 import https from 'https';
@@ -5,7 +7,6 @@ import { Logger } from 'n8n-core';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
-import Container, { Service } from 'typedi';
 
 import type { Settings } from '@/databases/entities/settings';
 import type { User } from '@/databases/entities/user';
@@ -27,11 +28,9 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './saml-helpers';
-import { validateMetadata, validateResponse } from './saml-validator';
+import { SamlValidator } from './saml-validator';
 import { getServiceProviderInstance } from './service-provider.ee';
-import type { SamlLoginBinding } from './types';
-import type { SamlPreferences } from './types/saml-preferences';
-import type { SamlUserAttributes } from './types/saml-user-attributes';
+import type { SamlLoginBinding, SamlUserAttributes } from './types';
 import { isSsoJustInTimeProvisioningEnabled } from '../sso-helpers';
 
 @Service()
@@ -79,12 +78,16 @@ export class SamlService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly validator: SamlValidator,
+		private readonly userRepository: UserRepository,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	async init(): Promise<void> {
 		try {
 			// load preferences first but do not apply so as to not load samlify unnecessarily
 			await this.loadFromDbAndApplySamlPreferences(false);
+			await this.validator.init();
 			if (isSamlLicensedAndEnabled()) {
 				await this.loadSamlify();
 				await this.loadFromDbAndApplySamlPreferences(true);
@@ -108,9 +111,10 @@ export class SamlService {
 			this.logger.debug('Loading samlify library into memory');
 			this.samlify = await import('samlify');
 		}
+
 		this.samlify.setSchemaValidator({
 			validate: async (response: string) => {
-				const valid = await validateResponse(response);
+				const valid = await this.validator.validateResponse(response);
 				if (!valid) {
 					throw new InvalidSamlMetadataError();
 				}
@@ -188,7 +192,7 @@ export class SamlService {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
-			const user = await Container.get(UserRepository).findOne({
+			const user = await this.userRepository.findOne({
 				where: { email: lowerCasedEmail },
 				relations: ['authIdentities'],
 			});
@@ -233,7 +237,7 @@ export class SamlService {
 		};
 	}
 
-	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
+	async setSamlPreferences(prefs: Partial<SamlPreferences>): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
 		await this.loadPreferencesWithoutValidation(prefs);
 		if (prefs.metadataUrl) {
@@ -242,7 +246,7 @@ export class SamlService {
 				this._samlPreferences.metadata = fetchedMetadata;
 			}
 		} else if (prefs.metadata) {
-			const validationResult = await validateMetadata(prefs.metadata);
+			const validationResult = await this.validator.validateMetadata(prefs.metadata);
 			if (!validationResult) {
 				throw new InvalidSamlMetadataError();
 			}
@@ -252,7 +256,7 @@ export class SamlService {
 		return result;
 	}
 
-	async loadPreferencesWithoutValidation(prefs: SamlPreferences) {
+	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
 		this._samlPreferences.loginBinding = prefs.loginBinding ?? this._samlPreferences.loginBinding;
 		this._samlPreferences.metadata = prefs.metadata ?? this._samlPreferences.metadata;
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
@@ -278,7 +282,7 @@ export class SamlService {
 	}
 
 	async loadFromDbAndApplySamlPreferences(apply = true): Promise<SamlPreferences | undefined> {
-		const samlPreferences = await Container.get(SettingsRepository).findOne({
+		const samlPreferences = await this.settingsRepository.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
 		if (samlPreferences) {
@@ -296,18 +300,18 @@ export class SamlService {
 	}
 
 	async saveSamlPreferencesToDb(): Promise<SamlPreferences | undefined> {
-		const samlPreferences = await Container.get(SettingsRepository).findOne({
+		const samlPreferences = await this.settingsRepository.findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
 		const settingsValue = JSON.stringify(this.samlPreferences);
 		let result: Settings;
 		if (samlPreferences) {
 			samlPreferences.value = settingsValue;
-			result = await Container.get(SettingsRepository).save(samlPreferences, {
+			result = await this.settingsRepository.save(samlPreferences, {
 				transaction: false,
 			});
 		} else {
-			result = await Container.get(SettingsRepository).save(
+			result = await this.settingsRepository.save(
 				{
 					key: SAML_PREFERENCES_DB_KEY,
 					value: settingsValue,
@@ -332,7 +336,7 @@ export class SamlService {
 			const response = await axios.get(this._samlPreferences.metadataUrl, { httpsAgent: agent });
 			if (response.status === 200 && response.data) {
 				const xml = (await response.data) as string;
-				const validationResult = await validateMetadata(xml);
+				const validationResult = await this.validator.validateMetadata(xml);
 				if (!validationResult) {
 					throw new BadRequestError(
 						`Data received from ${this._samlPreferences.metadataUrl} is not valid SAML metadata.`,
@@ -392,6 +396,6 @@ export class SamlService {
 	 */
 	async reset() {
 		await setSamlLoginEnabled(false);
-		await Container.get(SettingsRepository).delete({ key: SAML_PREFERENCES_DB_KEY });
+		await this.settingsRepository.delete({ key: SAML_PREFERENCES_DB_KEY });
 	}
 }

@@ -125,6 +125,7 @@ export interface IUser {
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
+	icon: { type: 'emoji' | 'icon'; value: string } | null;
 	type: 'personal' | 'team' | 'public';
 	createdAt: string;
 	updatedAt: string;
@@ -1483,6 +1484,7 @@ export interface INodePropertyOptions {
 	action?: string;
 	description?: string;
 	routing?: INodePropertyRouting;
+	outputConnectionType?: NodeConnectionType;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2117,6 +2119,7 @@ export interface IRun {
 // The RunData, ExecuteData and WaitForExecution contain often the same data.
 export interface IRunExecutionData {
 	startData?: {
+		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		runNodeFilter?: string[];
 	};
@@ -2140,6 +2143,15 @@ export interface IRunExecutionData {
 	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
+
+	/** Whether this execution was started by a test webhook call. */
+	isTestWebhook?: boolean;
+
+	/** Data needed for a worker to run a manual execution. */
+	manualData?: Pick<
+		IWorkflowExecutionDataProcess,
+		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
+	>;
 }
 
 export interface IRunData {
@@ -2349,7 +2361,7 @@ export interface IWorkflowExecuteAdditionalData {
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
-	startAgentJob<T, E = unknown>(
+	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
 		settings: unknown,

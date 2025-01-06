@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { INode, IPinData } from 'n8n-workflow';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -441,6 +441,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -456,6 +457,7 @@ describe('GET /workflows', () => {
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: owner.createPersonalProjectName(),
+						icon: null,
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -833,6 +835,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],
@@ -842,6 +845,7 @@ describe('GET /workflows', () => {
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: owner.createPersonalProjectName(),
+							icon: null,
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],

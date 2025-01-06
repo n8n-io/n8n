@@ -3,17 +3,13 @@ import type express from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	ILoadOptions,
 	INodeCredentialTestRequest,
-	INodeCredentials,
-	INodeParameters,
-	INodeTypeNameVersion,
 	IPersonalizationSurveyAnswersV4,
 	IUser,
 } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project, ProjectType } from '@/databases/entities/project';
+import type { Project, ProjectIcon, ProjectType } from '@/databases/entities/project';
 import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -123,7 +119,7 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-export type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
@@ -269,47 +265,6 @@ export declare namespace OAuthRequest {
 }
 
 // ----------------------------------
-//      /dynamic-node-parameters
-// ----------------------------------
-export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<RequestBody = {}> = AuthenticatedRequest<
-		{},
-		{},
-		{
-			path: string;
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			methodName?: string;
-			credentials?: INodeCredentials;
-		} & RequestBody,
-		{}
-	>;
-
-	/** POST /dynamic-node-parameters/options */
-	type Options = BaseRequest<{
-		loadOptions?: ILoadOptions;
-	}>;
-
-	/** POST /dynamic-node-parameters/resource-locator-results */
-	type ResourceLocatorResults = BaseRequest<{
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}>;
-
-	/** POST dynamic-node-parameters/resource-mapper-fields */
-	type ResourceMapperFields = BaseRequest<{
-		methodName: string;
-	}>;
-
-	/** POST /dynamic-node-parameters/action-result */
-	type ActionResult = BaseRequest<{
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}>;
-}
-
-// ----------------------------------
 //             /tags
 // ----------------------------------
 
@@ -440,6 +395,7 @@ export declare namespace ProjectRequest {
 		Project,
 		{
 			name: string;
+			icon?: ProjectIcon;
 		}
 	>;
 
@@ -468,6 +424,7 @@ export declare namespace ProjectRequest {
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
+		icon: ProjectIcon;
 		type: ProjectType;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
@@ -477,7 +434,11 @@ export declare namespace ProjectRequest {
 	type Update = AuthenticatedRequest<
 		{ projectId: string },
 		{},
-		{ name?: string; relations?: ProjectRelationPayload[] }
+		{
+			name?: string;
+			relations?: ProjectRelationPayload[];
+			icon?: { type: 'icon' | 'emoji'; value: string };
+		}
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
 }

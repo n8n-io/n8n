@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { Logger } from 'n8n-core';
 import type {
@@ -16,7 +17,6 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -464,29 +464,12 @@ export class ExecutionService {
 	}
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
-		if (execution.mode === 'manual') {
-			// manual executions in scaling mode are processed by main
-			return await this.stopInRegularMode(execution);
-		}
-
 		if (this.activeExecutions.has(execution.id)) {
 			this.activeExecutions.stopExecution(execution.id);
 		}
 
 		if (this.waitTracker.has(execution.id)) {
 			this.waitTracker.stopExecution(execution.id);
-		}
-
-		const { ScalingService } = await import('@/scaling/scaling.service');
-		const scalingService = Container.get(ScalingService);
-		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
-
-		const job = jobs.find(({ data }) => data.executionId === execution.id);
-
-		if (job) {
-			await scalingService.stopJob(job);
-		} else {
-			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
