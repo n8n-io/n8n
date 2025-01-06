@@ -11,7 +11,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/shared-cre
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 import { CredentialsService } from './credentials.service';
@@ -87,10 +87,7 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.redact(
-				this.credentialsService.decrypt(credential),
-				credential,
-			);
+			decryptedData = this.credentialsService.decrypt(credential);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.

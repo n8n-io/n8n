@@ -10,6 +10,7 @@ import {
 
 import { logWrapper } from '@utils/logWrapper';
 import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { metadataFilterField } from '@utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
@@ -18,7 +19,6 @@ import { metadataFilterField } from '@utils/sharedFields';
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
 export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {

@@ -5,9 +5,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { loadOptions, listSearch } from './methods';
 import { description } from './actions/node.description';
 import { router } from './actions/router';
+import { loadOptions, listSearch } from './methods';
 
 export class MicrosoftOutlookV2 implements INodeType {
 	description: INodeTypeDescription;

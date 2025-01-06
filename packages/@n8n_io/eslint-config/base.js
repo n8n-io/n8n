@@ -316,6 +316,11 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/return-await': ['error', 'always'],
 
+		/**
+		 * https://typescript-eslint.io/rules/explicit-member-accessibility/
+		 */
+		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------

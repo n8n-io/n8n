@@ -69,6 +69,4 @@ export declare namespace WorkflowRequest {
 		{},
 		{ destinationProjectId: string }
 	>;
-
-	type FromUrl = AuthenticatedRequest<{}, {}, {}, { url?: string }>;
 }

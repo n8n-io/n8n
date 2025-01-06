@@ -1,10 +1,9 @@
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, Logger } from 'n8n-core';
 import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
 import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { toSaveSettings } from '@/execution-lifecycle-hooks/to-save-settings';
-import { Logger } from '@/logging/logger.service';
 
 export async function saveExecutionProgress(
 	workflowData: IWorkflowBase,

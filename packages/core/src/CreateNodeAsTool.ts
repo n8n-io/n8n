@@ -17,6 +17,9 @@ type ParserOptions = {
 	handleToolInvocation: (toolArgs: IDataObject) => Promise<unknown>;
 };
 
+// This file is temporarily duplicated in `packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/utils/FromAIParser.ts`
+// Please apply any changes in both files
+
 /**
  * AIParametersParser
  *
@@ -388,7 +391,7 @@ class AIParametersParser {
 	 * Creates a DynamicStructuredTool from a node.
 	 * @returns A DynamicStructuredTool instance.
 	 */
-	public createTool(): DynamicStructuredTool {
+	createTool(): DynamicStructuredTool {
 		const { node, nodeType } = this.options;
 		const schema = this.getSchema();
 		const description = this.getDescription();

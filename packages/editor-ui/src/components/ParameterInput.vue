@@ -1064,6 +1064,7 @@ onUpdated(async () => {
 				:expression-edit-dialog-visible="expressionEditDialogVisible"
 				:path="path"
 				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
@@ -1439,6 +1440,7 @@ onUpdated(async () => {
 					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
+					data-test-id="parameter-input-item"
 				>
 					<div class="list-option">
 						<div

@@ -1,5 +1,5 @@
+import { DateTime } from 'luxon';
 import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
-
 import type {
 	IDataObject,
 	IPollFunctions,
@@ -11,7 +11,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
 import {
 	getQuery,
 	salesforceApiRequest,

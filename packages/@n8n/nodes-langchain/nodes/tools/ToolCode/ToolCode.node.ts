@@ -26,6 +26,7 @@ export class ToolCode implements INodeType {
 		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',

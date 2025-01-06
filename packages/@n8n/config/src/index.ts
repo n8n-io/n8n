@@ -1,3 +1,4 @@
+import { AiAssistantConfig } from './configs/aiAssistant.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -121,4 +122,7 @@ export class GlobalConfig {
 
 	@Nested
 	diagnostics: DiagnosticsConfig;
+
+	@Nested
+	aiAssistant: AiAssistantConfig;
 }

@@ -11,6 +11,7 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -36,7 +37,6 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 
 interface LoadedNodesAndCredentials {
@@ -520,7 +520,7 @@ export class LoadNodesAndCredentials {
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
-				push.broadcast('nodeDescriptionUpdated', {});
+				push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
 			}, 100);
 
 			const toWatch = loader.isLazyLoaded
