@@ -87,6 +87,10 @@ const { highlightLine, readEditorValue, editor } = useCodeEditor({
 onMounted(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
 	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
+
+	if (!props.modelValue) {
+		emit('update:modelValue', placeholder.value);
+	}
 });
 
 onBeforeUnmount(() => {
