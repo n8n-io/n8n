@@ -5,18 +5,13 @@ import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
 
 import type { BaseRunnerConfig } from '@/config/base-runner-config';
+import { TimeoutError } from '@/js-task-runner/errors/timeout-error';
 import type { BrokerMessage, RunnerMessage } from '@/message-types';
 import { TaskRunnerNodeTypes } from '@/node-types';
 import type { TaskResultData } from '@/runner-types';
+import { TaskState } from '@/task-state';
 
 import { TaskCancelledError } from './js-task-runner/errors/task-cancelled-error';
-
-export interface Task<T = unknown> {
-	taskId: string;
-	settings?: T;
-	active: boolean;
-	cancelled: boolean;
-}
 
 export interface TaskOffer {
 	offerId: string;
@@ -49,6 +44,14 @@ const OFFER_VALID_EXTRA_MS = 100;
 /** Converts milliseconds to nanoseconds */
 const msToNs = (ms: number) => BigInt(ms * 1_000_000);
 
+export const noOp = () => {};
+
+/** Params the task receives when it is executed */
+export interface TaskParams<T = unknown> {
+	taskId: string;
+	settings: T;
+}
+
 export interface TaskRunnerOpts extends BaseRunnerConfig {
 	taskType: string;
 	name?: string;
@@ -61,7 +64,7 @@ export abstract class TaskRunner extends EventEmitter {
 
 	canSendOffers = false;
 
-	runningTasks: Map<Task['taskId'], Task> = new Map();
+	runningTasks: Map<TaskState['taskId'], TaskState> = new Map();
 
 	offerInterval: NodeJS.Timeout | undefined;
 
@@ -89,10 +92,9 @@ export abstract class TaskRunner extends EventEmitter {
 	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
 
-	protected taskCancellations = new Map<Task['taskId'], AbortController>();
-
 	constructor(opts: TaskRunnerOpts) {
 		super();
+
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
@@ -219,7 +221,7 @@ export abstract class TaskRunner extends EventEmitter {
 				this.offerAccepted(message.offerId, message.taskId);
 				break;
 			case 'broker:taskcancel':
-				this.taskCancelled(message.taskId, message.reason);
+				void this.taskCancelled(message.taskId, message.reason);
 				break;
 			case 'broker:tasksettings':
 				void this.receivedSettings(message.taskId, message.settings);
@@ -284,11 +286,14 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 
 		this.resetIdleTimer();
-		this.runningTasks.set(taskId, {
+		const taskState = new TaskState({
 			taskId,
-			active: false,
-			cancelled: false,
+			timeoutInS: this.taskTimeout,
+			onTimeout: () => {
+				void this.taskTimedOut(taskId);
+			},
 		});
+		this.runningTasks.set(taskId, taskState);
 
 		this.send({
 			type: 'runner:taskaccepted',
@@ -296,99 +301,103 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	taskCancelled(taskId: string, reason: string) {
-		const task = this.runningTasks.get(taskId);
-		if (!task) {
+	async taskCancelled(taskId: string, reason: string) {
+		const taskState = this.runningTasks.get(taskId);
+		if (!taskState) {
 			return;
 		}
-		task.cancelled = true;
 
-		for (const [requestId, request] of this.dataRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.dataRequests.delete(requestId);
-			}
-		}
+		await taskState.caseOf({
+			// If the cancelled task hasn't received settings yet, we can finish it
+			waitingForSettings: () => this.finishTask(taskState),
 
-		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
-			if (request.taskId === taskId) {
-				request.reject(new TaskCancelledError(reason));
-				this.nodeTypesRequests.delete(requestId);
-			}
-		}
+			// If the task has already timed out or is already cancelled, we can
+			// ignore the cancellation
+			'aborting:timeout': noOp,
+			'aborting:cancelled': noOp,
 
-		const controller = this.taskCancellations.get(taskId);
-		if (controller) {
-			controller.abort();
-			this.taskCancellations.delete(taskId);
-		}
-
-		if (!task.active) this.runningTasks.delete(taskId);
-
-		this.sendOffers();
+			running: () => {
+				taskState.status = 'aborting:cancelled';
+				taskState.abortController.abort('cancelled');
+				this.cancelTaskRequests(taskId, reason);
+			},
+		});
 	}
 
-	taskErrored(taskId: string, error: unknown) {
-		this.send({
-			type: 'runner:taskerror',
-			taskId,
-			error,
-		});
-		this.runningTasks.delete(taskId);
-		this.sendOffers();
-	}
+	async taskTimedOut(taskId: string) {
+		const taskState = this.runningTasks.get(taskId);
+		if (!taskState) {
+			return;
+		}
 
-	taskDone(taskId: string, data: RunnerMessage.ToBroker.TaskDone['data']) {
-		this.send({
-			type: 'runner:taskdone',
-			taskId,
-			data,
+		await taskState.caseOf({
+			// If we are still waiting for settings for the task, we can error the
+			// task immediately
+			waitingForSettings: () => {
+				try {
+					this.send({
+						type: 'runner:taskerror',
+						taskId,
+						error: new TimeoutError(this.taskTimeout),
+					});
+				} finally {
+					this.finishTask(taskState);
+				}
+			},
+
+			// This should never happen, the timeout timer should only fire once
+			'aborting:timeout': TaskState.throwUnexpectedTaskStatus,
+
+			// If we are currently executing the task, abort the execution and
+			// mark the task as timed out
+			running: () => {
+				taskState.status = 'aborting:timeout';
+				taskState.abortController.abort('timeout');
+				this.cancelTaskRequests(taskId, 'timeout');
+			},
+
+			// If the task is already cancelling, we can ignore the timeout
+			'aborting:cancelled': noOp,
 		});
-		this.runningTasks.delete(taskId);
-		this.sendOffers();
 	}
 
 	async receivedSettings(taskId: string, settings: unknown) {
-		const task = this.runningTasks.get(taskId);
-		if (!task) {
-			return;
-		}
-		if (task.cancelled) {
-			this.runningTasks.delete(taskId);
+		const taskState = this.runningTasks.get(taskId);
+		if (!taskState) {
 			return;
 		}
 
-		const controller = new AbortController();
-		this.taskCancellations.set(taskId, controller);
+		await taskState.caseOf({
+			// These states should never happen, as they are handled already in
+			// the other lifecycle methods and the task should be removed from the
+			// running tasks
+			'aborting:cancelled': TaskState.throwUnexpectedTaskStatus,
+			'aborting:timeout': TaskState.throwUnexpectedTaskStatus,
+			running: TaskState.throwUnexpectedTaskStatus,
 
-		const taskTimeout = setTimeout(() => {
-			if (!task.cancelled) {
-				controller.abort();
-				this.taskCancellations.delete(taskId);
-			}
-		}, this.taskTimeout * 1_000);
+			waitingForSettings: async () => {
+				taskState.status = 'running';
 
-		task.settings = settings;
-		task.active = true;
-		try {
-			const data = await this.executeTask(task, controller.signal);
-			this.taskDone(taskId, data);
-		} catch (error) {
-			if (!task.cancelled) this.taskErrored(taskId, error);
-		} finally {
-			clearTimeout(taskTimeout);
-			this.taskCancellations.delete(taskId);
-			this.resetIdleTimer();
-		}
+				await this.executeTask(
+					{
+						taskId,
+						settings,
+					},
+					taskState.abortController.signal,
+				)
+					.then(async (data) => await this.taskExecutionSucceeded(taskState, data))
+					.catch(async (error) => await this.taskExecutionFailed(taskState, error));
+			},
+		});
 	}
 
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	async executeTask(_task: Task, _signal: AbortSignal): Promise<TaskResultData> {
+	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
 	}
 
 	async requestNodeTypes<T = unknown>(
-		taskId: Task['taskId'],
+		taskId: TaskState['taskId'],
 		requestParams: RunnerMessage.ToBroker.NodeTypesRequest['requestParams'],
 	) {
 		const requestId = nanoid();
@@ -417,12 +426,12 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	async requestData<T = unknown>(
-		taskId: Task['taskId'],
+		taskId: TaskState['taskId'],
 		requestParams: RunnerMessage.ToBroker.TaskDataRequest['requestParams'],
 	): Promise<T> {
 		const requestId = nanoid();
 
-		const p = new Promise<T>((resolve, reject) => {
+		const dataRequestPromise = new Promise<T>((resolve, reject) => {
 			this.dataRequests.set(requestId, {
 				requestId,
 				taskId,
@@ -439,7 +448,7 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 
 		try {
-			return await p;
+			return await dataRequestPromise;
 		} finally {
 			this.dataRequests.delete(requestId);
 		}
@@ -526,5 +535,87 @@ export abstract class TaskRunner extends EventEmitter {
 
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
+	}
+
+	private async taskExecutionSucceeded(taskState: TaskState, data: TaskResultData) {
+		try {
+			const sendData = () => {
+				this.send({
+					type: 'runner:taskdone',
+					taskId: taskState.taskId,
+					data,
+				});
+			};
+
+			await taskState.caseOf({
+				waitingForSettings: TaskState.throwUnexpectedTaskStatus,
+
+				'aborting:cancelled': noOp,
+
+				// If the task timed out but we ended up reaching this point, we
+				// might as well send the data
+				'aborting:timeout': sendData,
+				running: sendData,
+			});
+		} finally {
+			this.finishTask(taskState);
+		}
+	}
+
+	private async taskExecutionFailed(taskState: TaskState, error: unknown) {
+		try {
+			const sendError = () => {
+				this.send({
+					type: 'runner:taskerror',
+					taskId: taskState.taskId,
+					error,
+				});
+			};
+
+			await taskState.caseOf({
+				waitingForSettings: TaskState.throwUnexpectedTaskStatus,
+
+				'aborting:cancelled': noOp,
+
+				'aborting:timeout': () => {
+					console.warn(`Task ${taskState.taskId} timed out`);
+
+					sendError();
+				},
+
+				running: sendError,
+			});
+		} finally {
+			this.finishTask(taskState);
+		}
+	}
+
+	/**
+	 * Cancels all node type and data requests made by the given task
+	 */
+	private cancelTaskRequests(taskId: string, reason: string) {
+		for (const [requestId, request] of this.dataRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new TaskCancelledError(reason));
+				this.dataRequests.delete(requestId);
+			}
+		}
+
+		for (const [requestId, request] of this.nodeTypesRequests.entries()) {
+			if (request.taskId === taskId) {
+				request.reject(new TaskCancelledError(reason));
+				this.nodeTypesRequests.delete(requestId);
+			}
+		}
+	}
+
+	/**
+	 * Finishes task by removing it from the running tasks and sending new offers
+	 */
+	private finishTask(taskState: TaskState) {
+		taskState.cleanup();
+		this.runningTasks.delete(taskState.taskId);
+		this.sendOffers();
+		this.resetIdleTimer();
 	}
 }

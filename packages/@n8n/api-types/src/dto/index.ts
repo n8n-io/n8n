@@ -21,6 +21,10 @@ export { ForgotPasswordRequestDto } from './password-reset/forgot-password-reque
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';
 
+export { SamlAcsDto } from './saml/saml-acs.dto';
+export { SamlPreferences } from './saml/saml-preferences.dto';
+export { SamlToggleDto } from './saml/saml-toggle.dto';
+
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
@@ -31,3 +35,5 @@ export { CommunityRegisteredRequestDto } from './license/community-registered-re
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
+
+export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';

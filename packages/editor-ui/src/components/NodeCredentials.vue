@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { ICredentialsResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type {
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	NodeParameterValueType,
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	type INodeCredentialDescription,
+	type INodeCredentialsDetails,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -261,7 +262,11 @@ function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 		);
 	});
 
-	return options.filter((option) => !option.isManaged);
+	if (ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
+		options = options.filter((option) => !option.isManaged);
+	}
+
+	return options;
 }
 
 function getSelectedId(type: string) {
