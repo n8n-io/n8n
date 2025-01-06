@@ -73,8 +73,7 @@ export class GSuiteAdmin implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the domains to display them to user so that they can
-			// select them easily
+			// Get all the domains
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const domains = await googleApiRequestAllItems.call(
@@ -93,8 +92,7 @@ export class GSuiteAdmin implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the schemas to display them to user so that they can
-			// select them easily
+			//Get all the schemas
 			async getSchemas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const schemas = await googleApiRequestAllItems.call(
@@ -209,8 +207,6 @@ export class GSuiteAdmin implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filter = this.getNodeParameter('filter', i, {}) as IDataObject;
 						const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
-
-						//TODO Check how to send correct query field
 						if (typeof filter.query === 'string') {
 							const query = filter.query.trim();
 

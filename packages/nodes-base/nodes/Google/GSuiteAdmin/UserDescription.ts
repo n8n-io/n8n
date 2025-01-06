@@ -95,6 +95,15 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				hint: 'Enter the user email',
 				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'By ID',
@@ -577,6 +586,15 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				hint: 'Enter the user email',
 				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'By ID',
@@ -624,6 +642,15 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				hint: 'Enter the user email',
 				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'By ID',
@@ -1015,6 +1042,15 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				hint: 'Enter the user email',
 				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'By ID',
@@ -1094,6 +1130,15 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				hint: 'Enter the user email',
 				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'By ID',

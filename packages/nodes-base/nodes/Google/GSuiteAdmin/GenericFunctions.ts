@@ -76,7 +76,6 @@ export async function searchUsers(
 		customer: 'my_customer',
 	};
 
-	// Apply a filter if provided
 	if (filter) {
 		qs.query = `name:${filter}* OR email:${filter}*`;
 	}
@@ -97,7 +96,7 @@ export async function searchUsers(
 		return { results: [] };
 	}
 
-	// Map the API response to the desired format
+	//Map the API response
 	const results: INodeListSearchItems[] = responseData.map(
 		(user: { name?: { fullName?: string }; primaryEmail?: string; id?: string }) => ({
 			name: user.name?.fullName || user.primaryEmail || 'Unnamed User',
@@ -116,7 +115,6 @@ export async function searchGroups(
 		customer: 'my_customer',
 	};
 
-	// Add filtering if a filter is provided
 	if (filter) {
 		qs.query = `name:${filter}* OR email:${filter}*`;
 	}
@@ -128,7 +126,7 @@ export async function searchGroups(
 		'GET',
 		'/directory/v1/groups',
 		{},
-		qs, // Query string
+		qs,
 	);
 
 	// Handle cases where no groups are found
@@ -137,7 +135,7 @@ export async function searchGroups(
 		return { results: [] };
 	}
 
-	// Map the API response to the desired format
+	//Map the API response
 	const results: INodeListSearchItems[] = responseData.map(
 		(group: { name?: string; email?: string; id?: string }) => ({
 			name: group.name || group.email || 'Unnamed Group',
