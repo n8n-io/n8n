@@ -257,8 +257,20 @@ export const editorKeymap: KeyBinding[] = [
 
 	{ key: 'Mod-l', run: selectLine, preventDefault: true },
 	{ key: 'Shift-Mod-\\', run: cursorMatchingBracket },
+	{
+		any(view, event) {
+			if (
+				event.key === 'Tab' ||
+				(event.key === 'Escape' && completionStatus(view.state) !== null)
+			) {
+				event.stopPropagation();
+			}
 
+			return false;
+		},
+	},
 	{ key: 'Tab', run: indentMore, shift: indentLess, preventDefault: true },
+
 	{ key: 'Mod-[', run: indentLess },
 	{ key: 'Mod-]', run: indentMore },
 
