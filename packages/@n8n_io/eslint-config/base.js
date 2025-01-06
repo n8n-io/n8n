@@ -62,11 +62,11 @@ const config = (module.exports = {
 		'eslint-config-airbnb-typescript/base',
 
 		/**
-		 * Config to disable ESLint rules covered by Prettier
+		 * Config to disable ESLint rules covered by Biome
 		 *
-		 * https://github.com/prettier/eslint-config-prettier
+		 * https://github.com/ftzi/eslint-config-biome
 		 */
-		'eslint-config-prettier',
+		'eslint-config-biome',
 	],
 
 	rules: {
@@ -105,7 +105,7 @@ const config = (module.exports = {
 		/**
 		 * https://eslint.org/docs/latest/rules/indent
 		 *
-		 * Delegated to Prettier.
+		 * Delegated to Biome.
 		 */
 		indent: 'off',
 

@@ -46,7 +46,7 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^1.9.4",
     "@n8n_io/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/node": "*",

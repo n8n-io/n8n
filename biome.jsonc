@@ -6,6 +6,16 @@
 		"useIgnoreFile": true
 	},
 	"files": {
+		"include": [
+			"**/*.js",
+			"**/*.ts",
+			"**/*.json",
+			"**/*.vue",
+			"**/*.yml",
+			"**/*.md",
+			"**/*.css",
+			"**/*.scss"
+		],
 		"ignore": [
 			"**/.turbo",
 			"**/coverage",
@@ -22,11 +32,7 @@
 		"indentWidth": 2,
 		"lineEnding": "lf",
 		"lineWidth": 100,
-		"attributePosition": "auto",
-		"ignore": [
-			// Handled by prettier
-			"**/*.vue"
-		]
+		"attributePosition": "auto"
 	},
 	"organizeImports": { "enabled": false },
 	"linter": {
