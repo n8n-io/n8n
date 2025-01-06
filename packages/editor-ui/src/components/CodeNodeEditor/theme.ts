@@ -75,7 +75,7 @@ const codeEditorSyntaxHighlighting = syntaxHighlighting(
 			tag: [tags.url, tags.escape, tags.regexp, tags.link],
 			color: 'var(--color-code-tags-keyword)',
 		},
-		{ tag: [tags.meta, tags.comment], color: 'var(--color-code-tags-comment)' },
+		{ tag: [tags.meta, tags.comment, tags.lineComment], color: 'var(--color-code-tags-comment)' },
 		{ tag: tags.strong, fontWeight: 'bold' },
 		{ tag: tags.emphasis, fontStyle: 'italic' },
 		{ tag: tags.link, textDecoration: 'underline' },

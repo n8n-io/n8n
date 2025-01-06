@@ -339,7 +339,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	});
 
 	watch(toRef(editorValue), () => {
-		if (!editor.value) return;
+		if (!editor.value || hasFocus.value) return;
 
 		const newValue = toValue(editorValue);
 		const currentValue = readEditorValue();
