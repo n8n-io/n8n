@@ -160,12 +160,12 @@ export class PubSubHandler {
 		'display-workflow-activation-error': async ({ workflowId, errorMessage }) =>
 			this.push.broadcast({ type: 'workflowFailedToActivate', data: { workflowId, errorMessage } }),
 		'relay-execution-lifecycle-event': async ({ pushRef, ...pushMsg }) => {
-			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+			if (!this.push.hasPushRef(pushRef)) return;
 
 			this.push.send(pushMsg, pushRef);
 		},
 		'clear-test-webhooks': async ({ webhookKey, workflowEntity, pushRef }) => {
-			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+			if (!this.push.hasPushRef(pushRef)) return;
 
 			this.testWebhooks.clearTimeout(webhookKey);
 
