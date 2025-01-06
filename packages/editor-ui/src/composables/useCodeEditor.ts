@@ -359,7 +359,12 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 
 		if (editor.value) {
 			const stateToStore = editor.value.state.toJSON(storedStateFields);
-			localStorage.setItem(storedStateId.value, JSON.stringify(stateToStore));
+			try {
+				localStorage.setItem(storedStateId.value, JSON.stringify(stateToStore));
+			} catch (error) {
+				// Code is too large, localStorage quota exceeded
+				localStorage.removeItem(storedStateId.value);
+			}
 			editor.value.destroy();
 		}
 	});
