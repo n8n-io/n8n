@@ -7,7 +7,7 @@ const validSerializedBuffer: SerializedBuffer = {
 	data: [65, 66, 67], // Corresponds to 'ABC' in ASCII
 };
 
-describe('serializedBufferToBuffer', () => {
+describe('toBuffer', () => {
 	it('should convert a SerializedBuffer to a Buffer', () => {
 		const buffer = toBuffer(validSerializedBuffer);
 		expect(buffer).toBeInstanceOf(Buffer);
@@ -43,7 +43,7 @@ describe('isSerializedBuffer', () => {
 	});
 });
 
-describe('Integration: serializedBufferToBuffer and isSerializedBuffer', () => {
+describe('Integration: toBuffer and isSerializedBuffer', () => {
 	it('should correctly validate and convert a SerializedBuffer', () => {
 		if (isSerializedBuffer(validSerializedBuffer)) {
 			const buffer = toBuffer(validSerializedBuffer);

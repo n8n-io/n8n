@@ -1,9 +1,11 @@
+import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
 	DirectedGraph,
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
+	Logger,
 } from 'n8n-core';
 import type {
 	IPinData,
@@ -14,9 +16,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-import { Service } from 'typedi';
-
-import { Logger } from '@/logging/logger.service';
 
 @Service()
 export class ManualExecutionService {

@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 import get from 'lodash/get';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import curlconverter from 'curlconverter';
 

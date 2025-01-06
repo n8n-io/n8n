@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
-import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import type { BinaryData } from './types';

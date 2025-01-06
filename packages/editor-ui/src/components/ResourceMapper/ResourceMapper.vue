@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { IUpdateInformation, DynamicNodeParameters } from '@/Interface';
+import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
+import type { IUpdateInformation } from '@/Interface';
 import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
@@ -294,7 +295,7 @@ const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
+	const requestParams: ResourceMapperFieldsRequestDto = {
 		nodeTypeAndVersion: {
 			name: props.node.type,
 			version: props.node.typeVersion,
@@ -320,12 +321,12 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
 			resourceMapperMethod,
-		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		) as ResourceMapperFieldsRequestDto;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else if (typeof localResourceMapperMethod === 'string') {
 		const requestParams = createRequestParams(
 			localResourceMapperMethod,
-		) as DynamicNodeParameters.ResourceMapperFieldsRequest;
+		) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}
@@ -493,14 +494,20 @@ function addField(name: string): void {
 	if (name === 'removeAllFields') {
 		return removeAllFields();
 	}
+	const schema = state.paramValue.schema;
+	const field = schema.find((f) => f.id === name);
+
 	state.paramValue.value = {
 		...state.paramValue.value,
-		[name]: null,
+		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+		// mode you get when the field exists, but is empty in `Fixed` mode.
+		[name]: field?.type === 'boolean' ? false : null,
 	};
-	const field = state.paramValue.schema.find((f) => f.id === name);
+
 	if (field) {
 		field.removed = false;
-		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
+		schema.splice(schema.indexOf(field), 1, field);
 	}
 	emitValueChanged();
 }

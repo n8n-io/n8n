@@ -851,6 +851,7 @@
     "@aws-sdk/client-sso-oidc": "3.666.0",
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "alasql": "4.4.0",
@@ -910,7 +911,6 @@
     "ssh2-sftp-client": "7.2.3",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
-    "typedi": "catalog:",
     "uuid": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:"
