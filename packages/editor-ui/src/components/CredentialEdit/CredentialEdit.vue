@@ -1106,7 +1106,7 @@ function resetCredentialData(): void {
 		</template>
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
-				<div :class="$style.sidebar">
+				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
 					<n8n-menu
 						mode="tabs"
 						:items="sidebarItems"
