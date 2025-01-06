@@ -7,9 +7,9 @@ import { testWorkflows } from '@test/nodes/Helpers';
 
 import labels from '../fixtures/labels.json';
 import messages from '../fixtures/messages.json';
-import { getGmailAliases, getLabels, getThreadMessages } from '../../v2/loadOptions';
+import { getLabels } from '../../v1/loadOptions';
 
-describe('Test Gmail Node v2', () => {
+describe('Test Gmail Node v1', () => {
 	beforeAll(() => {
 		jest
 			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
@@ -340,55 +340,6 @@ describe('Test Gmail Node v2', () => {
 					{ name: 'CHAT', value: 'CHAT' },
 					{ name: 'SENT', value: 'SENT' },
 					{ name: 'SENT', value: 'SENT' },
-				]);
-			});
-		});
-
-		describe('getThreadMessages', () => {
-			it('should return a list of Gmail thread messages', async () => {
-				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getNode: jest.fn(() => mock<INode>()),
-					helpers: mock<ILoadOptionsFunctions['helpers']>({
-						requestWithAuthentication: jest.fn(async () => ({ messages })),
-					}),
-				});
-
-				expect(await getThreadMessages.call(loadOptionsFunctions)).toEqual([
-					{
-						name: "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
-						value: 'a1b2c3d4e5f6g7h8',
-					},
-					{
-						name: 'Your friend John just shared a new photo with you! Check it out now.',
-						value: 'z9y8x7w6v5u4t3s2',
-					},
-				]);
-			});
-		});
-
-		describe('getGmailAliases', () => {
-			it('should return a list of Gmail aliases', async () => {
-				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getNode: jest.fn(() => mock<INode>()),
-					helpers: mock<ILoadOptionsFunctions['helpers']>({
-						requestWithAuthentication: jest.fn(async () => ({
-							sendAs: [
-								{ isDefault: false, sendAsEmail: 'alias1@n8n.io' },
-								{ isDefault: true, sendAsEmail: 'alias2@n8n.io' },
-							],
-						})),
-					}),
-				});
-
-				expect(await getGmailAliases.call(loadOptionsFunctions)).toEqual([
-					{
-						name: 'alias1@n8n.io',
-						value: 'alias1@n8n.io',
-					},
-					{
-						name: 'alias2@n8n.io (Default)',
-						value: 'alias2@n8n.io',
-					},
 				]);
 			});
 		});
