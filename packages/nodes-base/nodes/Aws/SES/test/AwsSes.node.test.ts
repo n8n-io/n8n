@@ -1,9 +1,10 @@
-import qs from 'node:querystring';
-import assert from 'node:assert';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { WorkflowTestData } from '@test/nodes/types';
+import assert from 'node:assert';
+import qs from 'node:querystring';
+
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('AwsSes Node', () => {
 	const tests: WorkflowTestData[] = [

@@ -39,6 +39,8 @@ const emit = defineEmits<{
 	'update:node:selected': [id: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'update:node:inputs': [id: string];
+	'update:node:outputs': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -300,6 +302,14 @@ function onDeleteNode(id: string) {
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	emit('update:node:parameters', id, parameters);
+}
+
+function onUpdateNodeInputs(id: string) {
+	emit('update:node:inputs', id);
+}
+
+function onUpdateNodeOutputs(id: string) {
+	emit('update:node:outputs', id);
 }
 
 /**
@@ -651,6 +661,7 @@ provide(CanvasKey, {
 		:min-zoom="0"
 		:max-zoom="4"
 		:selection-key-code="selectionKeyCode"
+		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		data-test-id="canvas"
@@ -679,6 +690,8 @@ provide(CanvasKey, {
 				@activate="onSetNodeActive"
 				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
+				@update:inputs="onUpdateNodeInputs"
+				@update:outputs="onUpdateNodeOutputs"
 				@move="onUpdateNodePosition"
 				@add="onClickNodeAdd"
 			>
@@ -750,6 +763,7 @@ provide(CanvasKey, {
 	width: 100%;
 	height: 100%;
 	opacity: 0;
+	transition: opacity 300ms ease;
 
 	&.ready {
 		opacity: 1;

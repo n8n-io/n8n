@@ -1,3 +1,5 @@
+import alasql from 'alasql';
+import type { Database } from 'alasql';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,10 +9,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import alasql from 'alasql';
-import type { Database } from 'alasql';
-import { numberInputsProperty } from '../../helpers/descriptions';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import { numberInputsProperty } from '../../helpers/descriptions';
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,

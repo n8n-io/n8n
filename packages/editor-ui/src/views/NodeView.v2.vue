@@ -32,6 +32,7 @@ import type {
 	IWorkflowTemplate,
 	NodeCreatorOpenSource,
 	ToggleNodeCreatorOptions,
+	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
 import type {
@@ -99,7 +100,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus, N8nCallout } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -107,6 +108,7 @@ import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -180,6 +182,8 @@ const {
 	revertCreateConnection,
 	deleteConnection,
 	revertDeleteConnection,
+	revalidateNodeInputConnections,
+	revalidateNodeOutputConnections,
 	setNodeActiveByName,
 	addConnections,
 	importWorkflowData,
@@ -313,7 +317,13 @@ async function initializeRoute(force = false) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const templateId = route.params.id;
-		await openWorkflowTemplate(templateId.toString());
+		const loadWorkflowFromJSON = route.query.fromJson === 'true';
+
+		if (loadWorkflowFromJSON) {
+			await openTemplateFromWorkflowJSON(EASY_AI_WORKFLOW_JSON);
+		} else {
+			await openWorkflowTemplate(templateId.toString());
+		}
 	} else if (isWorkflowRoute.value) {
 		if (!isAlreadyInitialized) {
 			historyStore.reset();
@@ -420,6 +430,42 @@ function trackOpenWorkflowFromOnboardingTemplate() {
 /**
  * Templates
  */
+
+async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId) {
+	if (!workflow.nodes || !workflow.connections) {
+		toast.showError(
+			new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+			i18n.baseText('nodeView.couldntImportWorkflow'),
+		);
+		await router.replace({ name: VIEWS.NEW_WORKFLOW });
+		return;
+	}
+	resetWorkspace();
+
+	canvasStore.startLoading();
+	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+	workflowsStore.currentWorkflowExecutions = [];
+	executionsStore.activeExecution = null;
+
+	isBlankRedirect.value = true;
+	await router.replace({
+		name: VIEWS.NEW_WORKFLOW,
+		query: { templateId: workflow.meta.templateId },
+	});
+
+	const convertedNodes = workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+	workflowsStore.setConnections(workflow.connections);
+	await addNodes(convertedNodes);
+	await workflowsStore.getNewWorkflowData(workflow.name, projectsStore.currentProjectId);
+
+	uiStore.stateIsDirty = true;
+
+	canvasStore.stopLoading();
+
+	fitView();
+}
 
 async function openWorkflowTemplate(templateId: string) {
 	resetWorkspace();
@@ -721,6 +767,14 @@ async function onRevertRenameNode({
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	setNodeParameters(id, parameters);
+}
+
+function onUpdateNodeInputs(id: string) {
+	revalidateNodeInputConnections(id);
+}
+
+function onUpdateNodeOutputs(id: string) {
+	revalidateNodeOutputConnections(id);
 }
 
 function onClickNodeAdd(source: string, sourceHandle: string) {
@@ -1618,6 +1672,8 @@ onBeforeUnmount(() => {
 		@update:node:enabled="onToggleNodeDisabled"
 		@update:node:name="onOpenRenameNodeModal"
 		@update:node:parameters="onUpdateNodeParameters"
+		@update:node:inputs="onUpdateNodeInputs"
+		@update:node:outputs="onUpdateNodeOutputs"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
@@ -1670,6 +1726,16 @@ onBeforeUnmount(() => {
 				@click="onClearExecutionData"
 			/>
 		</div>
+
+		<N8nCallout
+			v-if="isReadOnlyEnvironment"
+			theme="warning"
+			icon="lock"
+			:class="$style.readOnlyEnvironmentNotification"
+		>
+			{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
+		</N8nCallout>
+
 		<Suspense>
 			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
@@ -1723,5 +1789,12 @@ onBeforeUnmount(() => {
 			margin: 0;
 		}
 	}
+}
+
+.readOnlyEnvironmentNotification {
+	position: absolute;
+	bottom: 16px;
+	left: 50%;
+	transform: translateX(-50%);
 }
 </style>

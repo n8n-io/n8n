@@ -5,7 +5,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, Logger } from 'n8n-core';
 import { NodeApiError } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -24,16 +24,15 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import { Logger } from '@/logging/logger.service';
 import { hasSharing, type ListQuery } from '@/requests';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()

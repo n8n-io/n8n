@@ -77,12 +77,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle,
 				targetHandle,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -215,12 +216,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleA,
 				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -233,12 +235,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleB,
 				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
@@ -334,12 +337,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleA,
 				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -352,12 +356,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleB,
 				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[2].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -475,12 +480,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleA,
 				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -493,12 +499,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleB,
 				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 0,
 						type: NodeConnectionType.AiMemory,
 					},
 					target: {
+						node: nodes[2].name,
 						index: 1,
 						type: NodeConnectionType.AiMemory,
 					},
@@ -511,12 +518,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle: sourceHandleC,
 				targetHandle: targetHandleC,
 				data: {
-					fromNodeName: nodes[1].name,
 					source: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[2].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -587,12 +595,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle,
 				targetHandle,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},
@@ -662,12 +671,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				sourceHandle,
 				targetHandle,
 				data: {
-					fromNodeName: nodes[0].name,
 					source: {
+						node: nodes[0].name,
 						index: 1,
 						type: NodeConnectionType.Main,
 					},
 					target: {
+						node: nodes[1].name,
 						index: 0,
 						type: NodeConnectionType.Main,
 					},

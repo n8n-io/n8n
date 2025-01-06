@@ -5,7 +5,7 @@ import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { Push } from '@/push';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { RedisClientService } from '@/services/redis-client.service';

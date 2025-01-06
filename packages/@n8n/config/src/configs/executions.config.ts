@@ -6,7 +6,7 @@ class PruningIntervalsConfig {
 	@Env('EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL')
 	hardDelete: number = 15;
 
-	/** How often (minutes) execution data should be soft-deleted */
+	/** How often (minutes) execution data should be soft-deleted. */
 	@Env('EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL')
 	softDelete: number = 60;
 }

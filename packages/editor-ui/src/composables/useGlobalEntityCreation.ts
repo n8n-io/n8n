@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { VIEWS } from '@/constants';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
@@ -27,6 +27,8 @@ type Item = BaseItem & {
 
 export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
+	const WORKFLOWS_MENU_ID = 'workflow';
+	const CREDENTIALS_MENU_ID = 'credential';
 
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
@@ -35,6 +37,9 @@ export const useGlobalEntityCreation = () => {
 	const router = useRouter();
 	const i18n = useI18n();
 	const toast = useToast();
+
+	const isCreatingProject = ref(false);
+
 	const displayProjects = computed(() =>
 		sortByProperty(
 			'name',
@@ -86,66 +91,73 @@ export const useGlobalEntityCreation = () => {
 		// global
 		return [
 			{
-				id: 'workflow',
+				id: WORKFLOWS_MENU_ID,
 				title: 'Workflow',
-				submenu: [
-					{
-						id: 'workflow-title',
-						title: 'Create in',
-						disabled: true,
-					},
-					{
-						id: 'workflow-personal',
-						title: i18n.baseText('projects.menu.personal'),
-						icon: 'user',
-						disabled: disabledWorkflow(projectsStore.personalProject?.scopes),
-						route: {
-							name: VIEWS.NEW_WORKFLOW,
-							query: { projectId: projectsStore.personalProject?.id },
+				disabled: sourceControlStore.preferences.branchReadOnly,
+
+				...(!sourceControlStore.preferences.branchReadOnly && {
+					submenu: [
+						{
+							id: 'workflow-title',
+							title: 'Create in',
+							disabled: true,
 						},
-					},
-					...displayProjects.value.map((project) => ({
-						id: `workflow-${project.id}`,
-						title: project.name as string,
-						icon: 'layer-group',
-						disabled: disabledWorkflow(project.scopes),
-						route: {
-							name: VIEWS.NEW_WORKFLOW,
-							query: { projectId: project.id },
+						{
+							id: 'workflow-personal',
+							title: i18n.baseText('projects.menu.personal'),
+							icon: 'user',
+							disabled: disabledWorkflow(projectsStore.personalProject?.scopes),
+							route: {
+								name: VIEWS.NEW_WORKFLOW,
+								query: { projectId: projectsStore.personalProject?.id },
+							},
 						},
-					})),
-				],
+						...displayProjects.value.map((project) => ({
+							id: `workflow-${project.id}`,
+							title: project.name as string,
+							icon: 'layer-group',
+							disabled: disabledWorkflow(project.scopes),
+							route: {
+								name: VIEWS.NEW_WORKFLOW,
+								query: { projectId: project.id },
+							},
+						})),
+					],
+				}),
 			},
 			{
-				id: 'credential',
+				id: CREDENTIALS_MENU_ID,
 				title: 'Credential',
-				submenu: [
-					{
-						id: 'credential-title',
-						title: 'Create in',
-						disabled: true,
-					},
-					{
-						id: 'credential-personal',
-						title: i18n.baseText('projects.menu.personal'),
-						icon: 'user',
-						disabled: disabledCredential(projectsStore.personalProject?.scopes),
-						route: {
-							name: VIEWS.PROJECTS_CREDENTIALS,
-							params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
+				disabled: sourceControlStore.preferences.branchReadOnly,
+				...(!sourceControlStore.preferences.branchReadOnly && {
+					submenu: [
+						{
+							id: 'credential-title',
+							title: 'Create in',
+							disabled: true,
 						},
-					},
-					...displayProjects.value.map((project) => ({
-						id: `credential-${project.id}`,
-						title: project.name as string,
-						icon: 'layer-group',
-						disabled: disabledCredential(project.scopes),
-						route: {
-							name: VIEWS.PROJECTS_CREDENTIALS,
-							params: { projectId: project.id, credentialId: 'create' },
+						{
+							id: 'credential-personal',
+							title: i18n.baseText('projects.menu.personal'),
+							icon: 'user',
+							disabled: disabledCredential(projectsStore.personalProject?.scopes),
+							route: {
+								name: VIEWS.PROJECTS_CREDENTIALS,
+								params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
+							},
 						},
-					})),
-				],
+						...displayProjects.value.map((project) => ({
+							id: `credential-${project.id}`,
+							title: project.name as string,
+							icon: 'layer-group',
+							disabled: disabledCredential(project.scopes),
+							route: {
+								name: VIEWS.PROJECTS_CREDENTIALS,
+								params: { projectId: project.id, credentialId: 'create' },
+							},
+						})),
+					],
+				}),
 			},
 			{
 				id: CREATE_PROJECT_ID,
@@ -156,9 +168,12 @@ export const useGlobalEntityCreation = () => {
 	});
 
 	const createProject = async () => {
+		isCreatingProject.value = true;
+
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
+				icon: { type: 'icon', value: 'layer-group' },
 			});
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({
@@ -169,6 +184,8 @@ export const useGlobalEntityCreation = () => {
 			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('projects.error.title'));
+		} finally {
+			isCreatingProject.value = false;
 		}
 	};
 
@@ -207,6 +224,8 @@ export const useGlobalEntityCreation = () => {
 	});
 
 	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
+	const createWorkflowsAppendSlotName = computed(() => `item.append.${WORKFLOWS_MENU_ID}`);
+	const createCredentialsAppendSlotName = computed(() => `item.append.${CREDENTIALS_MENU_ID}`);
 
 	const upgradeLabel = computed(() => {
 		if (settingsStore.isCloudDeployment) {
@@ -224,7 +243,12 @@ export const useGlobalEntityCreation = () => {
 		menu,
 		handleSelect,
 		createProjectAppendSlotName,
+		createWorkflowsAppendSlotName,
+		createCredentialsAppendSlotName,
 		projectsLimitReachedMessage,
 		upgradeLabel,
+		createProject,
+		isCreatingProject,
+		displayProjects,
 	};
 };

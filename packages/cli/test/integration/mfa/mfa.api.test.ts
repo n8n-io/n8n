@@ -1,4 +1,4 @@
-import { randomInt, randomString } from 'n8n-workflow';
+import { randomString } from 'n8n-workflow';
 import Container from 'typedi';
 
 import { AuthService } from '@/auth/auth.service';
@@ -239,7 +239,7 @@ describe('Change password with MFA enabled', () => {
 			.send({
 				password: newPassword,
 				token: resetPasswordToken,
-				mfaCode: randomInt(10),
+				mfaCode: randomString(10),
 			})
 			.expect(404);
 	});
