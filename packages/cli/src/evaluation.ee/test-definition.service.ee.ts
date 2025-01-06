@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
