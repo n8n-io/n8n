@@ -15,6 +15,7 @@ import { oldVersionNotice } from '@utils/descriptions';
 
 import { draftFields, draftOperations } from './DraftDescription';
 import { labelFields, labelOperations } from './LabelDescription';
+import { getLabels } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
@@ -25,7 +26,6 @@ import {
 	googleApiRequestAllItems,
 	parseRawEmail,
 } from '../GenericFunctions';
-import { getLabels } from './loadOptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',

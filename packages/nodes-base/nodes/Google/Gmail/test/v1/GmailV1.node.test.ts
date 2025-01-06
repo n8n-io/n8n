@@ -5,9 +5,9 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import { getLabels } from '../../v1/loadOptions';
 import labels from '../fixtures/labels.json';
 import messages from '../fixtures/messages.json';
-import { getLabels } from '../../v1/loadOptions';
 
 describe('Test Gmail Node v1', () => {
 	beforeAll(() => {
