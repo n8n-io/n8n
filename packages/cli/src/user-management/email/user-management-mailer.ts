@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { Logger } from 'n8n-core';
 import { join as pathJoin } from 'path';
-import { Container, Service } from 'typedi';
 
 import { inTest } from '@/constants';
 import type { User } from '@/databases/entities/user';

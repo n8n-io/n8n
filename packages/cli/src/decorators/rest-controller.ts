@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import { getControllerMetadata } from './controller.registry';
 import type { Controller } from './types';

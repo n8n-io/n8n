@@ -1,6 +1,6 @@
 import type { Iso8601DateTimeString } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { Time } from '@/constants';
 import type { User } from '@/databases/entities/user';
