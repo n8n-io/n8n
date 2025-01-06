@@ -1,8 +1,8 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import fs from 'fs';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

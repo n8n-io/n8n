@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
 import { Credentials, Logger } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import { CredentialsHelper } from '@/credentials-helper';

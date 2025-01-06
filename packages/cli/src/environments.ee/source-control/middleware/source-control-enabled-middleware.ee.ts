@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
-import { Container } from 'typedi';
 
 import { isSourceControlLicensed } from '../source-control-helper.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import { Service } from '@n8n/di';
 import get from 'lodash/get';
 import {
 	ErrorReporter,
@@ -30,7 +31,6 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { VersionedNodeType, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
 import type { User } from '@/databases/entities/user';

@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 import { Logger } from 'n8n-core';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionDb, UpdateExecutionPayload } from '@/interfaces';
