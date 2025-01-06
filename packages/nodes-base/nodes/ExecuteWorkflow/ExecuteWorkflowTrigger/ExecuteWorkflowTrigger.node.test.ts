@@ -12,8 +12,8 @@ jest.mock('../../../utils/workflowInputsResourceMapping/GenericFunctions', () =>
 
 describe('ExecuteWorkflowTrigger', () => {
 	const mockInputData: INodeExecutionData[] = [
-		{ json: { item: 0, foo: 'bar' }, index: 0 },
-		{ json: { item: 1, foo: 'quz' }, index: 1 },
+		{ json: { item: 0, foo: 'bar' }, pairedItem: { item: 0 } },
+		{ json: { item: 1, foo: 'quz' }, pairedItem: { item: 1 } },
 	];
 	const mockNode = mock<INode>({ typeVersion: 1 });
 	const executeFns = mock<IExecuteFunctions>({
@@ -42,8 +42,14 @@ describe('ExecuteWorkflowTrigger', () => {
 		const result = await new ExecuteWorkflowTrigger().execute.call(executeFns);
 		const expected = [
 			[
-				{ index: 0, json: { value1: null, value2: null, foo: mockInputData[0].json.foo } },
-				{ index: 1, json: { value1: null, value2: null, foo: mockInputData[1].json.foo } },
+				{
+					pairedItem: { item: 0 },
+					json: { value1: null, value2: null, foo: mockInputData[0].json.foo },
+				},
+				{
+					pairedItem: { item: 1 },
+					json: { value1: null, value2: null, foo: mockInputData[1].json.foo },
+				},
 			],
 		];
 
