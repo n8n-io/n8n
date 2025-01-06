@@ -106,18 +106,10 @@ const onSelect = (action: string) => {
 
 <template>
 	<div>
-<<<<<<< HEAD
 		<div :class="$style.projectHeader">
-			<div :class="$style.projectDescription">
-				<div :class="[$style.icon]">
-					<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
-				</div>
-=======
-		<div :class="[$style.projectHeader]">
-			<div :class="[$style.projectDetails]">
+			<div :class="$style.projectDetails">
 				<ProjectIcon :icon="headerIcon" :border-less="true" size="medium" />
->>>>>>> origin/master
-				<div>
+				<div :class="$style.headerActions">
 					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 					<N8nText color="text-light">
 						<slot name="subtitle">
@@ -155,28 +147,6 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-//gap: var(--spacing-2xs);
-//min-height: 64px;
-//}
-//
-//.projectHeader {
-//	padding-bottom: var(--spacing-m);
-//
-//	@include mixins.breakpoint('sm-and-down') {
-//		flex-direction: column;
-//		align-items: flex-start;
-//	}
-//}
-//
-//.headerActions {
-//	margin-left: auto;
-//}
-//
-//.icon {
-//	border: 1px solid var(--color-foreground-light);
-//	padding: 6px;
-//	border-radius: var(--border-radius-base);
-
 .projectHeader,
 .projectDescription {
 	display: flex;
@@ -193,5 +163,17 @@ const onSelect = (action: string) => {
 
 .actions {
 	padding: var(--spacing-2xs) 0 var(--spacing-l);
+}
+
+@include mixins.breakpoint('xs-only') {
+	.projectHeader {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing-xs);
+	}
+
+	.headerActions {
+		margin-left: auto;
+	}
 }
 </style>

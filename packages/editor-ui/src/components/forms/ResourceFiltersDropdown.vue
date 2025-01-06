@@ -154,13 +154,12 @@ onBeforeMount(async () => {
 		}
 	}
 
-	.filter-button-text {
-		@media screen and (max-width: 480px) {
+	@media screen and (max-width: 480px) {
+		.filter-button-text {
 			text-indent: -10000px;
 		}
-	}
 
-	@include mixins.breakpoint('xs-only') {
+		// Remove icon margin when the "Filters" text is hidden
 		:global(span + span) {
 			margin: 0;
 		}

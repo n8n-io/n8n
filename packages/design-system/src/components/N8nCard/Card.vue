@@ -105,6 +105,6 @@ const classes = computed(() => ({
 	display: flex;
 	align-items: center;
 	cursor: default;
-	width: 100%;
+	width: var(--card--append--width, unset);
 }
 </style>

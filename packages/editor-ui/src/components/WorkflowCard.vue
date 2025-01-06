@@ -303,12 +303,6 @@ function moveResource() {
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
-
-	@include mixins.breakpoint('sm-and-down') {
-		--card--padding: 0 var(--spacing-s) var(--spacing-s);
-
-		flex-direction: column;
-	}
 }
 
 .cardHeading {
@@ -336,16 +330,23 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
-
-	@include mixins.breakpoint('sm-and-down') {
-		width: 100%;
-		padding: 0;
-	}
 }
 
-.cardBadge {
-	@include mixins.breakpoint('sm-and-down') {
-		margin-right: auto !important;
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--append--width: 100%;
+
+		flex-direction: column;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0 var(--spacing-s) var(--spacing-s);
+	}
+
+	.cardBadge {
+		margin-right: auto;
 	}
 }
 </style>

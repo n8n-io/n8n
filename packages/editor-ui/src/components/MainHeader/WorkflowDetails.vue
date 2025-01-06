@@ -809,7 +809,6 @@ $--header-spacing: 20px;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
-	//display: flex;
 	align-items: center;
 
 	> span {

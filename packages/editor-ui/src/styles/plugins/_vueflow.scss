@@ -113,7 +113,7 @@
 	margin: var(--spacing-s);
 
 	@include mixins.breakpoint('xs-only') {
-		max-width: calc(100% - 42px - var(--spacing-s));
+		max-width: calc(100% - 3 * var(--spacing-s) - var(--spacing-2xs));
 		overflow: auto;
 		margin-left: 0;
 		margin-right: 0;
