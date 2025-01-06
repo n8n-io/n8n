@@ -86,8 +86,9 @@ export const calendarFields: INodeProperties[] = [
 				resource: ['calendar'],
 			},
 		},
-		default: '',
-		description: 'Start of the interval, if not specified will default to now',
+		default: '={{ $now.toISO() }}',
+		description:
+			'Start of the interval, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
 		displayName: 'End Time',
@@ -100,8 +101,9 @@ export const calendarFields: INodeProperties[] = [
 				resource: ['calendar'],
 			},
 		},
-		default: '',
-		description: 'End of the interval, if not specified will default to Start Time plus 1 hour',
+		default: "={{ $now.plus(1, 'hour').toISO() }}",
+		description:
+			'End of the interval, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
 		displayName: 'Options',

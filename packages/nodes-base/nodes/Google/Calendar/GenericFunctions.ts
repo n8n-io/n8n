@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import moment from 'moment-timezone';
 import type {
 	IDataObject,
@@ -192,4 +193,9 @@ const hasTimezone = (date: string) => date.endsWith('Z') || /\+\d{2}:\d{2}$/.tes
 export function addTimezoneToDate(date: string, timezone: string) {
 	if (hasTimezone(date)) return date;
 	return moment.tz(date, timezone).utc().format();
+}
+
+export function dateTimeToIso<T>(date: T): string {
+	if (date instanceof DateTime) return date.toISO();
+	return date as string;
 }
