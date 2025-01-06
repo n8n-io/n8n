@@ -109,7 +109,6 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 				...item.json,
 				...itemFieldValues,
 			},
-			index: itemIndex,
 			pairedItem: {
 				item: itemIndex,
 			},
