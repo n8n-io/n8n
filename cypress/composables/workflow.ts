@@ -174,7 +174,7 @@ export function addVectorStoreToolToParent(nodeName: string, parentNodeName: str
 	connectNodeToParent(nodeName, 'ai_tool', parentNodeName, false);
 	getParameterInputByName('mode')
 		.find('input')
-		.should('have.value', 'Retrieve Documents (As Tool for AI Agent)');
+		.should('have.value', 'Retrieve documents for AI Agent as Tool');
 	clickGetBackToCanvas();
 	getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
 }
