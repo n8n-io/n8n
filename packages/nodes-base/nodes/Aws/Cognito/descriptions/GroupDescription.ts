@@ -3,8 +3,9 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	handleErrorPostReceive,
 	handlePagination,
-	presendOptions,
-	presendPath,
+	presendAdditionalFields,
+	presendVerifyPath,
+	processUsersForGroups,
 } from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
@@ -77,7 +78,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [processUsersForGroups, handleErrorPostReceive],
 					},
 				},
 				action: 'Get group',
@@ -101,7 +102,7 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [processUsersForGroups, handleErrorPostReceive],
 					},
 				},
 				action: 'Get many groups',
@@ -112,7 +113,7 @@ export const groupOperations: INodeProperties[] = [
 				description: 'Update an existing group',
 				routing: {
 					send: {
-						preSend: [presendOptions],
+						preSend: [presendAdditionalFields],
 					},
 					request: {
 						method: 'POST',
@@ -264,7 +265,7 @@ const createFields: INodeProperties[] = [
 					send: {
 						property: 'Path',
 						type: 'body',
-						preSend: [presendPath],
+						preSend: [presendVerifyPath],
 					},
 				},
 			},
@@ -492,6 +493,19 @@ const getFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Include User List',
+		name: 'includeUsers',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to include a list of users in the group',
+	},
 ];
 
 const getAllFields: INodeProperties[] = [
@@ -552,6 +566,19 @@ const getAllFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: { show: { resource: ['group'], operation: ['getAll'], returnAll: [false] } },
 		routing: { send: { type: 'body', property: 'Limit' } },
+	},
+	{
+		displayName: 'Include User List',
+		name: 'includeUsers',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['group'],
+				operation: ['getAll'],
+			},
+		},
+		default: true,
+		description: 'Whether to include a list of users in the group',
 	},
 ];
 
@@ -657,8 +684,8 @@ const updateFields: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		default: {},
 		displayOptions: {
 			show: {
@@ -708,7 +735,7 @@ const updateFields: INodeProperties[] = [
 					send: {
 						property: 'Path',
 						type: 'body',
-						preSend: [presendPath],
+						preSend: [presendVerifyPath],
 					},
 				},
 			},

@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { presendTest, simplifyData } from '../GenericFunctions';
 
 export const userPoolOperations: INodeProperties[] = [
 	{
@@ -13,11 +14,25 @@ export const userPoolOperations: INodeProperties[] = [
 				value: 'get',
 				action: 'Describe the configuration of a user pool',
 				routing: {
+					send: {
+						preSend: [presendTest],
+					},
 					request: {
 						method: 'POST',
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
 						},
+					},
+					output: {
+						postReceive: [
+							simplifyData,
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'UserPool',
+								},
+							},
+						],
 					},
 				},
 			},
@@ -28,7 +43,7 @@ export const userPoolOperations: INodeProperties[] = [
 
 export const userPoolFields: INodeProperties[] = [
 	{
-		displayName: 'User Pool ID',
+		displayName: 'User Pool',
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
@@ -68,5 +83,18 @@ export const userPoolFields: INodeProperties[] = [
 				placeholder: 'e.g. eu-central-1_ab12cdefgh',
 			},
 		],
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['userPool'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

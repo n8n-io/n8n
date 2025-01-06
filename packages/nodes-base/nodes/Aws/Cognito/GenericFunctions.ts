@@ -14,6 +14,14 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+export async function presendTest(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	console.log('requestOptions', requestOptions);
+	return requestOptions;
+}
+
 /*
  * Helper function which stringifies the body before sending the request.
  * It is added to the routing property in the "resource" parameter thus for all requests.
@@ -33,14 +41,20 @@ export async function presendFilter(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-	const filterAttribute = additionalFields.filterAttribute as string;
+	const filterAttribute = additionalFields.filters as string;
 	let filterType = additionalFields.filterType as string;
 	const filterValue = additionalFields.filterValue as string;
 
-	if (!filterAttribute || !filterType || !filterValue) {
+	const hasAnyFilter = filterAttribute || filterType || filterValue;
+
+	if (!hasAnyFilter) {
+		return requestOptions;
+	}
+
+	if (hasAnyFilter && (!filterAttribute || !filterType || !filterValue)) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'Please provide Filter Attribute, Filter Type, and Filter Value to use filtering.',
+			'If filtering is used, please provide Filter Attribute, Filter Type, and Filter Value.',
 		);
 	}
 
@@ -69,25 +83,25 @@ export async function presendFilter(
 	return requestOptions;
 }
 
-export async function presendOptions(
+export async function presendAdditionalFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const options = this.getNodeParameter('options', {}) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
 
-	const hasOptions = options.Description || options.Precedence || options.Path || options.RoleArn;
+	const hasOptions = Object.keys(additionalFields).length > 0;
 
 	if (!hasOptions) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'At least one of the options (Description, Precedence, Path, or RoleArn) must be provided to update the group.',
+			'At least one of the additional fields must be provided to update the group.',
 		);
 	}
 
 	return requestOptions;
 }
 
-export async function presendPath(
+export async function presendVerifyPath(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
@@ -325,7 +339,7 @@ export async function handleErrorPostReceive(
 
 /* Helper function used in listSearch methods */
 export async function awsRequest(
-	this: ILoadOptionsFunctions | IPollFunctions,
+	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IDataObject> {
 	const region = (await this.getCredentials('aws')).region as string;
@@ -376,7 +390,6 @@ export async function awsRequest(
 	}
 }
 
-/* listSearch methods */
 export async function searchUserPools(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -448,7 +461,6 @@ export async function searchUsers(
 	const users = responseData.Users as IDataObject[] | undefined;
 
 	if (!users) {
-		console.warn('No users found in the response');
 		return { results: [] };
 	}
 
@@ -528,4 +540,284 @@ export async function searchGroups(
 		});
 
 	return { results, paginationToken: responseData.NextToken };
+}
+
+export async function simplifyData(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const simple = this.getNodeParameter('simple') as boolean;
+
+	type UserPool = {
+		Arn: string;
+		CreationDate: number;
+		DeletionProtection: string;
+		Domain: string;
+		EstimatedNumberOfUsers: number;
+		Id: string;
+		LastModifiedDate: number;
+		MfaConfiguration: string;
+		Name: string;
+	};
+
+	type User = {
+		Enabled: boolean;
+		UserAttributes?: Array<{ Name: string; Value: string }>;
+		Attributes?: Array<{ Name: string; Value: string }>;
+		UserCreateDate: number;
+		UserLastModifiedDate: number;
+		UserStatus: string;
+		Username: string;
+	};
+
+	function mapUserAttributes(userAttributes: Array<{ Name: string; Value: string }>): {
+		[key: string]: string;
+	} {
+		return userAttributes?.reduce(
+			(acc, { Name, Value }) => {
+				if (Name !== 'sub') {
+					acc[Name] = Value;
+				}
+				return acc;
+			},
+			{} as { [key: string]: string },
+		);
+	}
+
+	if (!simple) {
+		return items;
+	}
+
+	const resource = this.getNodeParameter('resource');
+	const operation = this.getNodeParameter('operation');
+
+	const simplifiedItems = items
+		.map((item) => {
+			const data = item.json?.UserPool as UserPool | undefined;
+			const userData = item.json as User | undefined;
+			const users = item.json?.Users as User[] | undefined;
+
+			switch (resource) {
+				case 'userPool':
+					if (data) {
+						return {
+							json: {
+								UserPool: {
+									Arn: data.Arn,
+									CreationDate: data.CreationDate,
+									DeletionProtection: data.DeletionProtection,
+									Domain: data.Domain,
+									EstimatedNumberOfUsers: data.EstimatedNumberOfUsers,
+									Id: data.Id,
+									LastModifiedDate: data.LastModifiedDate,
+									MfaConfiguration: data.MfaConfiguration,
+									Name: data.Name,
+								},
+							},
+						};
+					}
+					break;
+
+				case 'user':
+					if (userData) {
+						if (operation === 'get') {
+							const userAttributes = userData.UserAttributes
+								? mapUserAttributes(userData.UserAttributes)
+								: {};
+							return {
+								json: {
+									User: {
+										Enabled: userData.Enabled,
+										...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
+										UserCreateDate: userData.UserCreateDate,
+										UserLastModifiedDate: userData.UserLastModifiedDate,
+										UserStatus: userData.UserStatus,
+										Username: userData.Username,
+									},
+								},
+							};
+						} else if (operation === 'getAll') {
+							if (users && Array.isArray(users)) {
+								const processedUsers: User[] = [];
+								users.forEach((user) => {
+									const userAttributes = user.Attributes ? mapUserAttributes(user.Attributes) : {};
+									processedUsers.push({
+										Enabled: userData.Enabled,
+										...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
+										UserCreateDate: userData.UserCreateDate,
+										UserLastModifiedDate: userData.UserLastModifiedDate,
+										UserStatus: userData.UserStatus,
+										Username: userData.Username,
+									});
+								});
+								return {
+									json: {
+										Users: processedUsers,
+									},
+								};
+							}
+						}
+					}
+					break;
+			}
+
+			return undefined;
+		})
+		.filter((item) => item !== undefined)
+		.flat();
+
+	return simplifiedItems;
+}
+
+export async function listUsersInGroup(
+	this: IExecuteSingleFunctions,
+	groupName: string,
+	userPoolId: string,
+): Promise<IDataObject> {
+	if (!userPoolId) {
+		throw new ApplicationError('User Pool ID is required');
+	}
+
+	const opts: IHttpRequestOptions = {
+		url: '',
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsersInGroup',
+		},
+		body: JSON.stringify({
+			UserPoolId: userPoolId,
+			GroupName: groupName,
+			MaxResults: 60,
+		}),
+	};
+
+	const responseData: IDataObject = await awsRequest.call(this, opts);
+
+	const users = responseData.Users as IDataObject[] | undefined;
+
+	if (!users) {
+		return { results: [] };
+	}
+
+	const results: INodeListSearchItems[] = users
+		.map((user) => {
+			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
+
+			const email = attributes?.find((attr) => attr.Name === 'email')?.Value;
+			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value;
+			const username = user.Username as string;
+
+			const name = email || sub || username;
+			const value = username;
+
+			return { name, value };
+		})
+		.sort((a, b) => {
+			return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+		});
+
+	return { results, paginationToken: responseData.NextToken as string | undefined };
+}
+
+export async function getUsersForGroup(
+	this: IExecuteSingleFunctions,
+	groupName: string,
+	userPoolId: string,
+): Promise<IDataObject[]> {
+	const users = await listUsersInGroup.call(this, groupName, userPoolId);
+
+	if (users && users.results && Array.isArray(users.results) && users.results.length > 0) {
+		return users.results as IDataObject[];
+	}
+
+	return [] as IDataObject[];
+}
+
+export async function processUsersForGroups(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const userPoolIdRaw = this.getNodeParameter('userPoolId') as IDataObject;
+	const userPoolId = userPoolIdRaw.value as string;
+	const include = this.getNodeParameter('includeUsers', 0) as boolean;
+
+	if (!include) {
+		return items;
+	}
+
+	const processedGroups: IDataObject[] = [];
+
+	if (response.body && typeof response.body === 'object') {
+		if ('Group' in response.body) {
+			const group = (response.body as { Group: IDataObject }).Group;
+			const usersResponse = await getUsersForGroup.call(
+				this,
+				group.GroupName as string,
+				userPoolId,
+			);
+
+			if (usersResponse.length > 0) {
+				return items.map((item) => ({
+					json: { ...item.json, Users: usersResponse },
+				}));
+			} else {
+				return items.map((item) => ({
+					json: { ...item.json },
+				}));
+			}
+		} else {
+			const groups = (response.body as { Groups: IDataObject[] }).Groups;
+
+			for (const group of groups) {
+				const usersResponse = await getUsersForGroup.call(
+					this,
+					group.GroupName as string,
+					userPoolId,
+				);
+
+				if (usersResponse.length > 0) {
+					processedGroups.push({
+						...group,
+						Users: usersResponse,
+					});
+				} else {
+					processedGroups.push(group);
+				}
+			}
+		}
+	}
+
+	return items.map((item) => ({
+		json: { ...item.json, Groups: processedGroups },
+	}));
+}
+
+//Check if needed
+export async function fetchUserPoolConfig(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const userPoolIdRaw = this.getNodeParameter('userPoolId') as IDataObject;
+	const userPoolId = userPoolIdRaw.value as string;
+
+	if (!userPoolId) {
+		throw new ApplicationError('User Pool ID is required');
+	}
+
+	const opts: IHttpRequestOptions = {
+		url: '',
+		method: 'POST',
+		body: JSON.stringify({
+			UserPoolId: userPoolId,
+		}),
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
+		},
+	};
+
+	const responseData: IDataObject = await awsRequest.call(this, opts);
+
+	return requestOptions;
 }

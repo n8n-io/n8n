@@ -1,10 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import {
+	fetchUserPoolConfig,
 	handleErrorPostReceive,
 	handlePagination,
 	presendFilter,
+	presendTest,
 	processAttributes,
+	simplifyData,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -52,6 +55,9 @@ export const userOperations: INodeProperties[] = [
 				description: 'Create a new user',
 				action: 'Create user',
 				routing: {
+					send: {
+						preSend: [presendTest, fetchUserPoolConfig],
+					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -104,7 +110,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [simplifyData, handleErrorPostReceive],
 					},
 				},
 			},
@@ -130,7 +136,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [simplifyData, handleErrorPostReceive],
 					},
 				},
 				action: 'Get many users',
@@ -167,6 +173,7 @@ export const userOperations: INodeProperties[] = [
 				description: 'Update a user',
 				action: 'Update user',
 				routing: {
+					send: { preSend: [presendTest] },
 					request: {
 						method: 'POST',
 						headers: {
@@ -246,7 +253,7 @@ const createFields: INodeProperties[] = [
 		displayName: 'User Name',
 		name: 'Username',
 		default: '',
-		description: 'The username of the new user to create',
+		description: 'The username of the new user to create. No whitespace is allowed.',
 		placeholder: 'e.g. JohnSmith',
 		displayOptions: {
 			show: {
@@ -277,60 +284,50 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			//doesn't work
 			{
-				displayName: 'Client Metadata',
-				name: 'clientMetadata',
+				displayName: 'User Attributes',
+				name: 'UserAttributes',
 				type: 'fixedCollection',
-				placeholder: 'Add Metadata',
-				default: { metadata: [] },
-				description: 'A map of custom key-value pairs for workflows triggered by this action',
+				placeholder: 'Add Attribute',
+				default: {
+					attributes: [],
+				},
+				description: 'Attributes to add for the user',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Metadata',
-						name: 'metadata',
+						displayName: 'Attributes',
+						name: 'attributes',
 						values: [
 							{
-								displayName: 'Key',
-								name: 'key',
+								displayName: 'Name',
+								name: 'Name',
 								type: 'string',
 								default: '',
-								description: 'The key of the metadata attribute',
+								description: 'The name of the attribute (e.g., custom:deliverables)',
 							},
 							{
 								displayName: 'Value',
-								name: 'value',
+								name: 'Value',
 								type: 'string',
 								default: '',
-								description: 'The value of the metadata attribute',
+								description: 'The value of the attribute',
 							},
 						],
 					},
 				],
 				routing: {
 					send: {
+						preSend: [processAttributes],
 						type: 'body',
-						property: 'ClientMetadata',
+						property: 'UserAttributes',
 						value:
-							'={{ $value.metadata && $value.metadata.length > 0 ? Object.fromEntries($value.metadata.map(attribute => [attribute.Name, attribute.Value])) : {} }}',
+							'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
 					},
 				},
-			},
-			{
-				displayName: 'Temporary Password',
-				name: 'TemporaryPassword',
-				default: '',
-				description: "The user's temporary password",
-				routing: {
-					send: {
-						property: 'TemporaryPassword',
-						type: 'body',
-					},
-				},
-				type: 'string',
-				typeOptions: { password: true },
 			},
 			{
 				displayName: 'Message Action',
@@ -396,88 +393,45 @@ const createFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'User Attributes',
-				name: 'UserAttributes',
-				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
-				default: {
-					attributes: [],
-				},
-				description: 'Attributes to add for the user',
-				typeOptions: {
-					multipleValues: true,
-				},
+				displayName: 'Temporary Password',
+				name: 'temporaryPasswordOptions',
+				type: 'options',
+				default: 'generatePassword',
+				description: 'Choose to set a password manually or one will be automatically generated',
 				options: [
 					{
-						displayName: 'Attributes',
-						name: 'attributes',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'Name',
-								type: 'string',
-								default: '',
-								description: 'The name of the attribute (e.g., custom:deliverables)',
-							},
-							{
-								displayName: 'Value',
-								name: 'Value',
-								type: 'string',
-								default: '',
-								description: 'The value of the attribute',
-							},
-						],
+						name: 'Set a Password',
+						value: 'setPassword',
+					},
+					{
+						name: 'Generate a Password',
+						value: 'generatePassword',
 					},
 				],
 				routing: {
 					send: {
-						preSend: [processAttributes],
+						property: 'TemporaryPassword',
 						type: 'body',
-						property: 'UserAttributes',
-						value:
-							'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
 					},
 				},
 			},
 			{
-				displayName: 'Validation Data',
-				name: 'ValidationData',
-				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
-				default: {
-					attributes: [],
-				},
-				description: 'Validation data to add for the user',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Data',
-						name: 'data',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'Key',
-								type: 'string',
-								default: '',
-								description: 'The name of the data (e.g., custom:deliverables)',
-							},
-							{
-								displayName: 'Value',
-								name: 'Value',
-								type: 'string',
-								default: '',
-								description: 'The value of the data',
-							},
-						],
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: { password: true },
+				default: '',
+				placeholder: 'Enter a temporary password',
+				description: "The user's temporary password",
+				displayOptions: {
+					show: {
+						temporaryPasswordOptions: ['setPassword'],
 					},
-				],
+				},
 				routing: {
 					send: {
+						property: 'TemporaryPassword',
 						type: 'body',
-						property: 'ValidationData',
-						value: '={{ $value.data?.map(data => ({ Name: data.Key, Value: data.Value })) || [] }}',
 					},
 				},
 			},
@@ -586,6 +540,19 @@ const getFields: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
 ];
 
 const getAllFields: INodeProperties[] = [
@@ -661,47 +628,34 @@ const getAllFields: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'Limit' } },
 	},
 	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: { show: { resource: ['user'], operation: ['getAll'] } },
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
 		options: [
 			{
-				displayName: 'Attributes To Get',
-				name: 'attributesToGet',
-				type: 'fixedCollection',
-				typeOptions: { multipleValues: true },
-				default: {},
-				placeholder: 'Add Attribute',
-				description: 'The attributes to return in the response',
-				options: [
-					{
-						name: 'metadataValues',
-						displayName: 'Metadata',
-						values: [
-							{
-								displayName: 'Attribute',
-								name: 'attribute',
-								type: 'string',
-								default: '',
-								description: 'The attribute name to return',
-							},
-						],
-					},
-				],
-				routing: {
-					send: {
-						type: 'body',
-						property: 'AttributesToGet',
-						value: '={{ $value.metadataValues.map(attribute => attribute.attribute) }}',
-					},
-				},
-			},
-			{
-				displayName: 'Filter Attribute',
-				name: 'filterAttribute',
+				displayName: 'Filters',
+				name: 'filters',
 				type: 'options',
 				default: 'username',
 				hint: 'Make sure to select an attribute, type, and provide a value before submitting.',
@@ -896,7 +850,7 @@ const updateFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'User',
+		displayName: 'User Name',
 		name: 'Username',
 		default: {
 			mode: 'list',
@@ -988,68 +942,13 @@ const updateFields: INodeProperties[] = [
 		],
 		routing: {
 			send: {
+				preSend: [processAttributes],
 				type: 'body',
 				property: 'UserAttributes',
 				value:
 					'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
 			},
 		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['update'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Client Metadata',
-				name: 'clientMetadata',
-				type: 'fixedCollection',
-				placeholder: 'Add Metadata Pair',
-				default: { metadata: [] },
-				description: 'A map of custom key-value pairs for workflows triggered by this action',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Metadata',
-						name: 'metadata',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'key',
-								type: 'string',
-								default: '',
-								description: 'The key of the metadata attribute',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'The value of the metadata attribute',
-							},
-						],
-					},
-				],
-				routing: {
-					send: {
-						type: 'body',
-						property: 'ClientMetadata',
-						value:
-							'={{ $value.metadata && $value.metadata.length > 0 ? Object.fromEntries($value.metadata.map(attribute => [attribute.Name, attribute.Value])) : {} }}',
-					},
-				},
-			},
-		],
 	},
 ];
 
