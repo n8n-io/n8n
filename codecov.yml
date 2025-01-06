@@ -32,25 +32,27 @@ component_management:
         - packages/@n8n/api-types/**
         - packages/@n8n/config/**
         - packages/@n8n/client-oauth2/**
+        - packages/@n8n/di/**
         - packages/@n8n/imap/**
         - packages/@n8n/permissions/**
         - packages/@n8n/task-runner/**
-        - packages/n8n-workflow/**
-        - packages/n8n-core/**
-        - packages/n8n-node-dev/**
-        - packages/n8n/**
+        - packages/workflow/**
+        - packages/core/**
+        - packages/cli/**
     - component_id: frontend_packages
       name: Frontend
       paths:
         - packages/@n8n/chat/**
         - packages/@n8n/codemirror-lang/**
-        - packages/n8n-design-system/**
-        - packages/n8n-editor-ui/**
+        - packages/design-system/**
+        - packages/editor-ui/**
     - component_id: nodes_packages
       name: Nodes
       paths:
-        - packages/n8n-nodes-base/**
-        - packages/@n8n/n8n-nodes-langchain/**
+        - packages/node-dev/**
+        - packages/nodes-base/**
+        - packages/@n8n/json-schema-to-zod/**
+        - packages/@n8n/nodes-langchain/**
 
 ignore:
   - (?s:.*/[^\/]*\.spec\.ts.*)\Z
