@@ -244,7 +244,11 @@
 	--color-button-warning-font: var(--color-text-xlight);
 	--color-button-warning-disabled-font: var(--prim-gray-0-alpha-075);
 	--color-button-danger-font: var(--color-text-xlight);
+	--color-button-danger-border: var(--color-danger);
+	--color-button-danger-focus-outline: var(--color-danger-tint-1);
 	--color-button-danger-disabled-font: var(--prim-gray-0-alpha-075);
+	--color-button-danger-disabled-border: var(--color-danger-tint-1);
+	--color-button-danger-disabled-background: var(--color-danger-tint-1);
 
 	// Text button
 	--color-text-button-secondary-font: var(--prim-gray-670);
