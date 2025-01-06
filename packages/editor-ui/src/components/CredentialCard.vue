@@ -232,7 +232,7 @@ function moveResource() {
 	}
 
 	.cardBadge {
-		margin-right: auto !important;
+		margin-right: auto;
 	}
 }
 </style>
