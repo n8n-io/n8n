@@ -5,6 +5,7 @@ import type { INode, INodesGraphResult } from 'n8n-workflow';
 import { NodeApiError, TelemetryHelpers, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
@@ -18,8 +19,6 @@ import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { isMagnetURI } from 'class-validator';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -118,6 +117,7 @@ describe('TelemetryEventRelay', () => {
 				nodeTypes,
 				sharedWorkflowRepository,
 				projectRelationRepository,
+				credentialsRepository,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
