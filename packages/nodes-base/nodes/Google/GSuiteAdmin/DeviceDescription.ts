@@ -57,6 +57,7 @@ export const deviceFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		placeholder: 'e.g. 123e4567-e89b-12d3-a456-426614174000',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                               device:getAll                                */
@@ -210,6 +211,7 @@ export const deviceFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
 				description: "Must use Google's querying syntax",
 			},
@@ -245,6 +247,7 @@ export const deviceFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The annotated User of the device',
+				placeholder: 'e.g. help desk',
 			},
 			{
 				displayName: 'Annotated Location',
@@ -252,6 +255,7 @@ export const deviceFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The annotated Location of the device',
+				placeholder: 'e.g. Mountain View help desk Chromebook',
 			},
 			{
 				displayName: 'Annotated Asset ID',
@@ -259,6 +263,7 @@ export const deviceFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The annotated Asset ID of a device',
+				placeholder: 'e.g. 1234567890',
 			},
 			{
 				displayName: 'Notes',
@@ -266,6 +271,7 @@ export const deviceFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Add notes to a device',
+				placeholder: 'e.g. Loaned from support',
 			},
 		],
 	},
