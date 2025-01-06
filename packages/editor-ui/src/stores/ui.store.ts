@@ -190,7 +190,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	// Keep track of the preferred theme and update it when the system preference changes
 	const preferredTheme = getPreferredTheme();
 	const preferredSystemTheme = ref<AppliedThemeOption>(preferredTheme.theme);
-	preferredTheme.mediaQuery.addEventListener('change', () => {
+	preferredTheme.mediaQuery?.addEventListener('change', () => {
 		preferredSystemTheme.value = getPreferredTheme().theme;
 	});
 

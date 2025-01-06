@@ -35,7 +35,7 @@ export function getPreferredTheme(): { theme: AppliedThemeOption; mediaQuery: Me
 	const isDarkModeQuery = !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
 
 	return {
-		theme: isDarkModeQuery.matches ? 'dark' : 'light',
+		theme: isDarkModeQuery?.matches ? 'dark' : 'light',
 		mediaQuery: isDarkModeQuery,
 	};
 }

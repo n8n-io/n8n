@@ -95,7 +95,7 @@ describe('TestDefinitionListView', () => {
 		testDefinitionStore.startTestRun = startTestRunMock;
 		testDefinitionStore.fetchTestRuns = fetchTestRunsMock;
 		testDefinitionStore.deleteById = deleteByIdMock;
-		testDefinitionStore.allTestDefinitionsByWorkflowId = vi.fn().mockReturnValue(testDefinitions);
+		testDefinitionStore.allTestDefinitionsByWorkflowId = { workflow1: testDefinitions };
 
 		const component = renderComponent({ pinia });
 		await waitAllPromises();
