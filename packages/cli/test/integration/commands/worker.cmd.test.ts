@@ -1,8 +1,8 @@
 process.argv[2] = 'worker';
 
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
-import Container from 'typedi';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
@@ -13,12 +13,12 @@ import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-m
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { TaskRunnerProcess } from '@/runners/task-runner-process';
-import { TaskRunnerServer } from '@/runners/task-runner-server';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
+import { TaskRunnerServer } from '@/task-runners/task-runner-server';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 

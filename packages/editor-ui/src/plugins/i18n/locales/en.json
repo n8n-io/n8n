@@ -1304,6 +1304,7 @@
 	"nodeView.confirmMessage.debug.headline": "Unpin workflow data",
 	"nodeView.confirmMessage.debug.message": "Loading this execution will unpin the data currently pinned in these nodes",
 	"nodeView.couldntImportWorkflow": "Could not import workflow",
+	"nodeView.couldntLoadWorkflow.invalidWorkflowObject": "Invalid workflow object",
 	"nodeView.deletesTheCurrentExecutionData": "Deletes the current execution data",
 	"nodeView.itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes will be lost.",
 	"nodeView.loadingTemplate": "Loading template",
@@ -1661,6 +1662,9 @@
 	"runData.aiContentBlock.tokens": "{count} Tokens",
 	"runData.aiContentBlock.tokens.prompt": "Prompt:",
 	"runData.aiContentBlock.tokens.completion": "Completion:",
+	"runData.trimmedData.title": "Data too large to display",
+	"runData.trimmedData.message": "The data is too large to be shown here. View the full details in 'Executions' tab.",
+	"runData.trimmedData.button": "See execution",
 	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saved": "Saved",
 	"saveWorkflowButton.hint": "Save workflow",
@@ -2805,5 +2809,11 @@
 	"testDefinition.notImplemented": "This feature is not implemented yet!",
 	"testDefinition.viewDetails": "View Details",
 	"testDefinition.editTest": "Edit Test",
-	"testDefinition.deleteTest": "Delete Test"
+	"testDefinition.deleteTest": "Delete Test",
+	"freeAi.credits.callout.claim.title": "Get {credits} free OpenAI API credits",
+	"freeAi.credits.callout.claim.button.label": "Claim credits",
+	"freeAi.credits.callout.success.title": "Claimed {credits} free OpenAI API credits",
+	"freeAi.credits.credentials.edit": "This is a managed credential and cannot be edited.",
+	"freeAi.credits.showError.claim.title": "Free AI credits",
+	"freeAi.credits.showError.claim.message": "Enable to claim credits"
 }
