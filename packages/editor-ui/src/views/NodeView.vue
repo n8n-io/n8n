@@ -373,6 +373,10 @@ export default defineComponent({
 				return this.i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
 			}
 
+			if (this.workflowsStore.isProcessingExecutionResults) {
+				return this.i18n.baseText('nodeView.runButtonText.processingExecutionResults');
+			}
+
 			return this.i18n.baseText('nodeView.runButtonText.executingWorkflow');
 		},
 		workflowStyle() {

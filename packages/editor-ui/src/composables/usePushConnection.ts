@@ -235,6 +235,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				const { workflowId, status, rawData } = receivedData.data;
 				executionData = { workflowId, data: parse(rawData), status };
 			} else {
+				workflowsStore.setProcessingExecutionResults(true);
 				const execution = await workflowsStore.fetchExecutionDataById(executionId);
 				if (!execution?.data) return false;
 				executionData = {
@@ -254,6 +255,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				const activeRunData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 				if (activeRunData) {
 					for (const key of Object.keys(activeRunData)) {
+						if (workflowsStore.hasTrimmedItem(activeRunData[key])) continue;
 						iRunExecutionData.resultData.runData[key] = activeRunData[key];
 					}
 				}
@@ -444,13 +446,18 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			// It does not push the runData as it got already pushed with each
 			// node that did finish. For that reason copy in here the data
-			// which we already have.
-			if (workflowsStore.getWorkflowRunData) {
+			// which we already have. But if the run data in the store is trimmed,
+			// we skip copying so we use the full data from the final message.
+			if (
+				workflowsStore.getWorkflowRunData &&
+				!workflowsStore.hasTrimmedData(workflowsStore.getWorkflowRunData)
+			) {
 				iRunExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
 			}
 
 			workflowsStore.executingNode.length = 0;
 			workflowsStore.setWorkflowExecutionData(executionData as IExecutionResponse);
+			workflowsStore.setProcessingExecutionResults(false);
 			uiStore.removeActiveAction('workflowRunning');
 
 			// Set the node execution issues on all the nodes which produced an error so that

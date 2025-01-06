@@ -137,6 +137,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
+	const isProcessingExecutionResults = ref<boolean>(false);
 	const activeExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
@@ -220,7 +221,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const isWorkflowRunning = computed(() => {
-		if (uiStore.isActionActive.workflowRunning) return true;
+		if (uiStore.isActionActive.workflowRunning || isProcessingExecutionResults.value) return true;
 
 		if (activeExecutionId.value) {
 			const execution = getWorkflowExecution;
@@ -549,6 +550,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = null;
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
+		isProcessingExecutionResults.value = false;
 	}
 
 	function addExecutingNode(nodeName: string) {
@@ -1618,6 +1620,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	/**
+	 * Check whether task data contains a trimmed item.
+	 *
+	 * In manual executions in scaling mode, the payload in push messages may be arbitrarily large.
+	 * To protect Redis as it relays run data from workers to main process, we set a limit on payload size.
+	 * If the payload is oversize, we replace it with a placeholder `__isTrimmedManualExecutionDataItem`.
+	 * This placeholder is later overridden on execution finish, when the client receives the full data.
+	 */
+	function hasTrimmedItem(taskData: ITaskData[]) {
+		return taskData[0]?.data?.main[0]?.[0].json?.__isTrimmedManualExecutionDataItem ?? false;
+	}
+
+	/**
+	 * Check whether run data contains any trimmed items.
+	 *
+	 * See {@link hasTrimmedItem} for more details.
+	 */
+	function hasTrimmedData(runData: IRunData) {
+		return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
+	}
+
+	function setProcessingExecutionResults(value: boolean) {
+		isProcessingExecutionResults.value = value;
+	}
+
 	return {
 		workflow,
 		usedCredentials,
@@ -1756,5 +1783,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		hasTrimmedItem,
+		hasTrimmedData,
+		isProcessingExecutionResults,
+		setProcessingExecutionResults,
 	};
 });

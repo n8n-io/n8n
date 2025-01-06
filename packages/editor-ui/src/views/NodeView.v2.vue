@@ -1700,6 +1700,7 @@ onBeforeUnmount(() => {
 			<CanvasRunWorkflowButton
 				v-if="isRunWorkflowButtonVisible"
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
+				:processing-execution-results="workflowsStore.isProcessingExecutionResults"
 				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
 				@mouseenter="onRunWorkflowButtonMouseEnter"
