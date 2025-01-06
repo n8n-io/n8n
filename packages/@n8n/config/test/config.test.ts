@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import { GlobalConfig } from '../src/index';
 
@@ -288,6 +288,9 @@ describe('GlobalConfig', () => {
 				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
 				apiHost: 'https://ph.n8n.io',
 			},
+		},
+		aiAssistant: {
+			baseUrl: '',
 		},
 	};
 

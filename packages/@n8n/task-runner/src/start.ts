@@ -1,7 +1,7 @@
 import './polyfills';
+import { Container } from '@n8n/di';
 import type { ErrorReporter } from 'n8n-core';
 import { ensureError, setGlobalState } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';
@@ -56,7 +56,7 @@ void (async function start() {
 
 	if (config.sentryConfig.sentryDsn) {
 		const { ErrorReporter } = await import('n8n-core');
-		errorReporter = new ErrorReporter();
+		errorReporter = Container.get(ErrorReporter);
 		await errorReporter.init('task_runner', config.sentryConfig.sentryDsn);
 	}
 

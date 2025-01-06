@@ -13,6 +13,7 @@ interface ActionBoxProps {
 	buttonText: string;
 	buttonType: ButtonType;
 	buttonDisabled?: boolean;
+	buttonIcon?: string;
 	description: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
@@ -22,6 +23,7 @@ interface ActionBoxProps {
 defineOptions({ name: 'N8nActionBox' });
 withDefaults(defineProps<ActionBoxProps>(), {
 	calloutTheme: 'info',
+	buttonIcon: undefined,
 });
 </script>
 
@@ -51,6 +53,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				:label="buttonText"
 				:type="buttonType"
 				:disabled="buttonDisabled"
+				:icon="buttonIcon"
 				size="large"
 				@click="$emit('click:button', $event)"
 			/>

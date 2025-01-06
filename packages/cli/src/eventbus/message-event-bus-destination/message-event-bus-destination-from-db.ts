@@ -1,8 +1,8 @@
+import { Container } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { EventDestinations } from '@/databases/entities/event-destinations';
-import { Logger } from '@/logging/logger.service';
 
 import { MessageEventBusDestinationSentry } from './message-event-bus-destination-sentry.ee';
 import { MessageEventBusDestinationSyslog } from './message-event-bus-destination-syslog.ee';
