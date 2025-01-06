@@ -50,7 +50,11 @@
 			]
 		},
 		"lint:nodes": {
-			"dependsOn": ["n8n-nodes-base#lint", "@n8n/n8n-nodes-langchain#lint"]
+			"dependsOn": [
+				"n8n-nodes-base#lint",
+				"@n8n/n8n-nodes-langchain#lint",
+				"@n8n/json-schema-to-zod#lint"
+			]
 		},
 		"lint": {},
 		"lintfix": {},
@@ -79,7 +83,11 @@
 			"outputs": ["coverage/**"]
 		},
 		"test:nodes": {
-			"dependsOn": ["n8n-nodes-base#test", "@n8n/n8n-nodes-langchain#test"],
+			"dependsOn": [
+				"n8n-nodes-base#test",
+				"@n8n/n8n-nodes-langchain#test",
+				"@n8n/json-schema-to-zod#test"
+			],
 			"outputs": ["coverage/**"]
 		},
 		"test": {},
