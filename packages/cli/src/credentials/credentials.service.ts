@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
@@ -14,7 +15,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';

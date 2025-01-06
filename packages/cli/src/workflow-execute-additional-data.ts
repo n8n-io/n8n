@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import {
 	ErrorReporter,
@@ -39,7 +40,6 @@ import type {
 	ExecuteWorkflowData,
 	RelatedExecution,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';

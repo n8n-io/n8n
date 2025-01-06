@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME, OPEN_AI_API_CREDENTIAL_TYPE } from '@/constants';
 import type { Project } from '@/databases/entities/project';

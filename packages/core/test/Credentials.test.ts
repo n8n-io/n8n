@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { CredentialInformation } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { Cipher } from '@/Cipher';
 import { Credentials } from '@/Credentials';
