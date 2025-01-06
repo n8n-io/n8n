@@ -7,7 +7,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import { TestRunsRequest } from '@/evaluation.ee/test-definitions.types.ee';
-import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 
