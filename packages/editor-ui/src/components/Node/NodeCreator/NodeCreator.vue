@@ -173,8 +173,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
-@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
-
 :global(strong) {
 	font-weight: var(--font-weight-bold);
 }

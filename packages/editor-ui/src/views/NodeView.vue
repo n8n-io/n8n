@@ -101,6 +101,7 @@ import type {
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
 	NodeFilterType,
+	WorkflowDataWithTemplateId,
 } from '@/Interface';
 
 import { type RouteLocation, useRoute, useRouter } from 'vue-router';
@@ -180,6 +181,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
+import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1089,6 +1091,42 @@ export default defineComponent({
 			}
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
+		},
+		async openWorkflowTemplateFromJson(data: { workflow: WorkflowDataWithTemplateId }) {
+			if (!data.workflow.nodes || !data.workflow.connections) {
+				this.showError(
+					new Error(this.i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+					this.i18n.baseText('nodeView.couldntImportWorkflow'),
+				);
+				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				return;
+			}
+			this.canvasStore.startLoading();
+			this.canvasStore.setLoadingText(this.i18n.baseText('nodeView.loadingTemplate'));
+			this.resetWorkspace();
+
+			this.workflowsStore.currentWorkflowExecutions = [];
+			this.executionsStore.activeExecution = null;
+
+			this.blankRedirect = true;
+			await this.$router.replace({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { templateId: data.workflow.meta.templateId },
+			});
+
+			const convertedNodes = data.workflow.nodes.map(
+				this.workflowsStore.convertTemplateNodeToNodeUi,
+			);
+			await this.nodeHelpers.addNodes(convertedNodes, data.workflow.connections);
+			this.workflowData =
+				(await this.workflowsStore.getNewWorkflowData(
+					data.workflow.name,
+					this.projectsStore.currentProjectId,
+				)) || {};
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = true;
+			this.canvasStore.stopLoading();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.canvasStore.startLoading();
@@ -3361,7 +3399,12 @@ export default defineComponent({
 				this.blankRedirect = false;
 			} else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 				const templateId = this.$route.params.id;
-				await this.openWorkflowTemplate(templateId.toString());
+				const loadWorkflowFromJSON = this.$route.query.fromJson === 'true';
+				if (loadWorkflowFromJSON) {
+					await this.openWorkflowTemplateFromJson({ workflow: EASY_AI_WORKFLOW_JSON });
+				} else {
+					await this.openWorkflowTemplate(templateId.toString());
+				}
 			} else {
 				if (
 					this.uiStore.stateIsDirty &&

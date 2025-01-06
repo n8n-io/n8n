@@ -475,8 +475,6 @@ const goToUpgrade = () => {
 </template>
 
 <style module lang="scss">
-@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
-
 .execListWrapper {
 	display: grid;
 	grid-template-rows: auto auto 1fr 0;

@@ -470,8 +470,6 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
-
 .filters-row {
 	display: flex;
 	flex-direction: row;

@@ -1,10 +1,15 @@
+import {
+	ChangePasswordRequestDto,
+	ForgotPasswordRequestDto,
+	ResolvePasswordTokenQueryDto,
+} from '@n8n/api-types';
 import { Response } from 'express';
-import validator from 'validator';
+import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Get, Post, RestController } from '@/decorators';
+import { Body, Get, Post, Query, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -13,12 +18,11 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { MfaService } from '@/mfa/mfa.service';
-import { PasswordResetRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { isSamlCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
@@ -40,7 +44,11 @@ export class PasswordResetController {
 	 * Send a password reset email.
 	 */
 	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3 } })
-	async forgotPassword(req: PasswordResetRequest.Email) {
+	async forgotPassword(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Body payload: ForgotPasswordRequestDto,
+	) {
 		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
 				'Request to send password reset email failed because emailing was not set up',
@@ -50,22 +58,7 @@ export class PasswordResetController {
 			);
 		}
 
-		const { email } = req.body;
-		if (!email) {
-			this.logger.debug(
-				'Request to send password reset email failed because of missing email in payload',
-				{ payload: req.body },
-			);
-			throw new BadRequestError('Email is mandatory');
-		}
-
-		if (!validator.isEmail(email)) {
-			this.logger.debug(
-				'Request to send password reset email failed because of invalid email in payload',
-				{ invalidEmail: email },
-			);
-			throw new BadRequestError('Invalid email address');
-		}
+		const { email } = payload;
 
 		// User should just be able to reset password if one is already present
 		const user = await this.userRepository.findNonShellUser(email);
@@ -138,19 +131,12 @@ export class PasswordResetController {
 	 * Verify password reset token and user ID.
 	 */
 	@Get('/resolve-password-token', { skipAuth: true })
-	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token } = req.query;
-
-		if (!token) {
-			this.logger.debug(
-				'Request to resolve password token failed because of missing password reset token',
-				{
-					queryString: req.query,
-				},
-			);
-			throw new BadRequestError('');
-		}
-
+	async resolvePasswordToken(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Query payload: ResolvePasswordTokenQueryDto,
+	) {
+		const { token } = payload;
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
@@ -170,20 +156,12 @@ export class PasswordResetController {
 	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password', { skipAuth: true })
-	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token, password, mfaCode } = req.body;
-
-		if (!token || !password) {
-			this.logger.debug(
-				'Request to change password failed because of missing user ID or password or reset password token in payload',
-				{
-					payload: req.body,
-				},
-			);
-			throw new BadRequestError('Missing user ID or password or reset password token');
-		}
-
-		const validPassword = this.passwordUtility.validate(password);
+	async changePassword(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: ChangePasswordRequestDto,
+	) {
+		const { token, password, mfaCode } = payload;
 
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
@@ -198,7 +176,7 @@ export class PasswordResetController {
 			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
-		const passwordHash = await this.passwordUtility.hash(validPassword);
+		const passwordHash = await this.passwordUtility.hash(password);
 
 		await this.userService.update(user.id, { password: passwordHash });
 

@@ -49,7 +49,7 @@ const classes = computed(() => ({
 	border-radius: var(--border-radius-large);
 	border: var(--border-base);
 	background-color: var(--color-background-xlight);
-	padding: var(--spacing-s);
+	padding: var(--card--padding, var(--spacing-s));
 	display: flex;
 	flex-direction: row;
 	width: 100%;
@@ -105,5 +105,6 @@ const classes = computed(() => ({
 	display: flex;
 	align-items: center;
 	cursor: default;
+	width: 100%;
 }
 </style>

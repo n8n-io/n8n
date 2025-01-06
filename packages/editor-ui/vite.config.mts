@@ -85,7 +85,11 @@ export default mergeConfig(
 		css: {
 			preprocessorOptions: {
 				scss: {
-					additionalData: '\n@use "@/n8n-theme-variables.scss" as *;\n',
+					additionalData: [
+						'',
+						'@use "@/n8n-theme-variables.scss" as *;',
+						'@use "n8n-design-system/css/mixins" as mixins;',
+					].join('\n'),
 				},
 			},
 		},

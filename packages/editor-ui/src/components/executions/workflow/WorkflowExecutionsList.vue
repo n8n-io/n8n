@@ -120,8 +120,6 @@ onBeforeRouteLeave(async (to, _, next) => {
 </template>
 
 <style module lang="scss">
-@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
-
 .container {
 	display: flex;
 	height: 100%;

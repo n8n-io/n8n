@@ -294,8 +294,6 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
-@use 'n8n-design-system/css/mixins/breakpoints' as mixins;
-
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -307,12 +305,9 @@ function moveResource() {
 	}
 
 	@include mixins.breakpoint('sm-and-down') {
-		flex-direction: column;
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
 
-		:global(.n8n-card-append) {
-			width: 100%;
-			padding: 0 var(--spacing-s) var(--spacing-s);
-		}
+		flex-direction: column;
 	}
 }
 
