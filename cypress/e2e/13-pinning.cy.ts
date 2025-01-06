@@ -126,7 +126,7 @@ describe('Data pinning', () => {
 		ndv.actions.close();
 		workflowPage.actions.pinNode(EDIT_FIELDS_SET_NODE_NAME);
 		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		ndv.getters.nodeOutputHint().should('exist');
+		ndv.getters.nodeOutputHint().should('ndv-output-run-node-hint');
 		ndv.actions.close();
 
 		// Unpin using shortcut

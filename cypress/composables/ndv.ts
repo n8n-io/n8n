@@ -96,6 +96,30 @@ export function getOutputPanelRelatedExecutionLink() {
 	return getOutputPanel().getByTestId('related-execution-link');
 }
 
+export function getNodeOutputHint() {
+	return cy.getByTestId('ndv-output-run-node-hint');
+}
+
+export function getWorkflowCards() {
+	return cy.getByTestId('resources-list-item');
+}
+
+export function getWorkflowCard(workflowName: string) {
+	return getWorkflowCards().contains(workflowName).parents('[data-test-id="resources-list-item"]');
+}
+
+export function getWorkflowCardContent(workflowName: string) {
+	return getWorkflowCard(workflowName).findChildByTestId('card-content');
+}
+
+export function getNodeRunInfoStale() {
+	return cy.getByTestId('node-run-info-stale');
+}
+
+export function getNodeOutputErrorMessage() {
+	return getOutputPanel().findChildByTestId('node-error-message');
+}
+
 /**
  * Actions
  */
@@ -147,6 +171,12 @@ export function addItemToFixedCollection(collectionName: string) {
 	getFixedCollection(collectionName).getByTestId('fixed-collection-add').click();
 }
 
+export function typeIntoFixedCollectionItem(collectionName: string, index: number, value: string) {
+	getFixedCollection(collectionName).within(() =>
+		cy.getByTestId('parameter-input').eq(index).type(value),
+	);
+}
+
 export function selectResourceLocatorItem(
 	resourceLocator: string,
 	index: number,
@@ -161,6 +191,37 @@ export function selectResourceLocatorItem(
 		.find('span')
 		.should('have.text', expectedText)
 		.click();
+}
+
+export function clickWorkflowCardContent(workflowName: string) {
+	getWorkflowCardContent(workflowName).click();
+}
+
+export function assertNodeOutputHintExists() {
+	getNodeOutputHint().should('exist');
+}
+
+export function assertNodeOutputErrorMessageExists() {
+	return getNodeOutputErrorMessage().should('exist');
+}
+
+// Note that this only validates the expectedContent is *included* in the output table
+export function assertOutputTableContent(expectedContent: unknown[][]) {
+	for (const [i, row] of expectedContent.entries()) {
+		for (const [j, value] of row.entries()) {
+			// + 1 to skip header
+			getOutputTbodyCell(1 + i, j).should('have.text', value);
+		}
+	}
+}
+
+export function populateMapperFields(fields: ReadonlyArray<[string, string]>) {
+	for (const [name, value] of fields) {
+		getParameterInputByName(name).type(value);
+
+		// Click on a parent to dismiss the pop up which hides the field below.
+		getParameterInputByName(name).parent().parent().parent().click('topLeft');
+	}
 }
 
 /**
