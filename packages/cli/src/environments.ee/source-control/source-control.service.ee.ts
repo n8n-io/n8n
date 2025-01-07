@@ -328,19 +328,36 @@ export class SourceControlService {
 		return files.filter((e) => e.type === 'workflow' && e.status !== 'deleted');
 	}
 
+	private getWorkflowsToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'workflow' && e.status === 'deleted');
+	}
+
 	private getCredentialsToImport(files: SourceControlledFile[]): SourceControlledFile[] {
 		return files.filter((e) => e.type === 'credential' && e.status !== 'deleted');
+	}
+
+	private getCredentialsToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'credential' && e.status === 'deleted');
 	}
 
 	private getTagsToImport(files: SourceControlledFile[]): SourceControlledFile | undefined {
 		return files.find((e) => e.type === 'tags' && e.status !== 'deleted');
 	}
 
+	private getTagsToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'tags' && e.status === 'deleted');
+	}
+
 	private getVariablesToImport(files: SourceControlledFile[]): SourceControlledFile | undefined {
 		return files.find((e) => e.type === 'variables' && e.status !== 'deleted');
 	}
 
+	private getVariablesToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'variables' && e.status === 'deleted');
+	}
+
 	async pullWorkfolder(
+		user: User,
 		options: SourceControllPullOptions,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
@@ -367,21 +384,35 @@ export class SourceControlService {
 			workflowsToBeImported,
 			options.userId,
 		);
+		const workflowsToBeDeleted = this.getWorkflowsToDelete(statusResult);
+		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
+			user,
+			workflowsToBeDeleted,
+		);
 		const credentialsToBeImported = this.getCredentialsToImport(statusResult);
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
 			options.userId,
+		);
+		const credentialsToBeDeleted = this.getCredentialsToDelete(statusResult);
+		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
+			user,
+			credentialsToBeDeleted,
 		);
 
 		const tagsToBeImported = this.getTagsToImport(statusResult);
 		if (tagsToBeImported) {
 			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
 		}
+		const tagsToBeDeleted = this.getTagsToDelete(statusResult);
+		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);
 
 		const variablesToBeImported = this.getVariablesToImport(statusResult);
 		if (variablesToBeImported) {
 			await this.sourceControlImportService.importVariablesFromWorkFolder(variablesToBeImported);
 		}
+		const variablesToBeDeleted = this.getVariablesToDelete(statusResult);
+		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
 		// #region Tracking Information
 		this.eventService.emit(

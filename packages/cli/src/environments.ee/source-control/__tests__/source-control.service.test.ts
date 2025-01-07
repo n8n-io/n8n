@@ -68,7 +68,7 @@ describe('SourceControlService', () => {
 			jest.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 
 			// ACT
-			const result = await sourceControlService.pullWorkfolder({ userId: user.id });
+			const result = await sourceControlService.pullWorkfolder(user, { userId: user.id });
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
@@ -93,7 +93,7 @@ describe('SourceControlService', () => {
 			jest.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 
 			// ACT
-			const result = await sourceControlService.pullWorkfolder({ userId: user.id });
+			const result = await sourceControlService.pullWorkfolder(user, { userId: user.id });
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
