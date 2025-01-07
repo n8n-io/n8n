@@ -237,6 +237,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				const { workflowId, status, rawData } = receivedData.data;
 				executionData = { workflowId, data: parse(rawData), status };
 			} else {
+				uiStore.setProcessingExecutionResults(true);
+
 				/**
 				 * On successful completion without data, we show a success toast
 				 * immediately, even though we still need to fetch and deserialize the
@@ -279,6 +281,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					}
 				}
 			}
+
+			uiStore.setProcessingExecutionResults(false);
 
 			let runDataExecutedErrorMessage = getExecutionError(iRunExecutionData);
 

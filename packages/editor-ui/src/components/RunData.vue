@@ -81,6 +81,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useUIStore } from '@/stores/ui.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -180,6 +181,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
 
 const toast = useToast();
 const route = useRoute();
@@ -1604,6 +1606,15 @@ defineExpose({ enterEditMode });
 					<N8nLink @click="enableNode">
 						{{ i18n.baseText('ndv.input.disabled.cta') }}
 					</N8nLink>
+				</N8nText>
+			</div>
+
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
+				:class="$style.center"
+			>
+				<N8nText bold color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.loading') }}
 				</N8nText>
 			</div>
 

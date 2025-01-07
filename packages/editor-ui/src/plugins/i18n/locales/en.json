@@ -1665,6 +1665,7 @@
 	"runData.trimmedData.title": "Data too large to display",
 	"runData.trimmedData.message": "Large amount of data will be loaded once the execution is finished.",
 	"runData.trimmedData.button": "See execution",
+	"runData.trimmedData.loading": "Loading data",
 	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saved": "Saved",
 	"saveWorkflowButton.hint": "Save workflow",
