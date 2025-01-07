@@ -1,7 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import type { OnPushMessage } from '@/push/types';

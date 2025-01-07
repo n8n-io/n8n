@@ -1,5 +1,5 @@
+import { Service as Utility } from '@n8n/di';
 import { compare, hash } from 'bcryptjs';
-import { Service as Utility } from 'typedi';
 
 const SALT_ROUNDS = 10;
 

@@ -17,7 +17,7 @@
 		},
 		"build": {
 			"dependsOn": ["^build"],
-			"outputs": ["dist/**", "coverage/**"]
+			"outputs": ["dist/**"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck"]
@@ -28,6 +28,7 @@
 			"dependsOn": [
 				"@n8n/api-types#lint",
 				"@n8n/config#lint",
+				"@n8n/di#lint",
 				"@n8n/client-oauth2#lint",
 				"@n8n/imap#lint",
 				"@n8n/permissions#lint",
@@ -49,7 +50,11 @@
 			]
 		},
 		"lint:nodes": {
-			"dependsOn": ["n8n-nodes-base#lint", "@n8n/n8n-nodes-langchain#lint"]
+			"dependsOn": [
+				"n8n-nodes-base#lint",
+				"@n8n/n8n-nodes-langchain#lint",
+				"@n8n/json-schema-to-zod#lint"
+			]
 		},
 		"lint": {},
 		"lintfix": {},
@@ -57,6 +62,7 @@
 			"dependsOn": [
 				"@n8n/api-types#test",
 				"@n8n/config#test",
+				"@n8n/di#test",
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",
 				"@n8n/permissions#test",
@@ -64,7 +70,8 @@
 				"n8n-workflow#test",
 				"n8n-core#test",
 				"n8n#test"
-			]
+			],
+			"outputs": ["coverage/**"]
 		},
 		"test:frontend": {
 			"dependsOn": [
@@ -72,10 +79,16 @@
 				"@n8n/codemirror-lang#test",
 				"n8n-design-system#test",
 				"n8n-editor-ui#test"
-			]
+			],
+			"outputs": ["coverage/**"]
 		},
 		"test:nodes": {
-			"dependsOn": ["n8n-nodes-base#test", "@n8n/n8n-nodes-langchain#test"]
+			"dependsOn": [
+				"n8n-nodes-base#test",
+				"@n8n/n8n-nodes-langchain#test",
+				"@n8n/json-schema-to-zod#test"
+			],
+			"outputs": ["coverage/**"]
 		},
 		"test": {},
 		"watch": {

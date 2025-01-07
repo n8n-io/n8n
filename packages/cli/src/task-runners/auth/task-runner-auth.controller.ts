@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
-import { Service } from 'typedi';
 
 import type { AuthlessRequest } from '@/requests';
 

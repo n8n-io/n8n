@@ -1,5 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from './default-task-runner-disconnect-analyzer';
 import { TaskRunnerOomError } from './errors/task-runner-oom-error';

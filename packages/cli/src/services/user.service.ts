@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { User, AssignableRole } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';

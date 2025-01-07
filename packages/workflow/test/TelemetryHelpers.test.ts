@@ -3,11 +3,12 @@ import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError } from '@/errors';
-import type { IRunData } from '@/Interfaces';
+import type { IRun, IRunData } from '@/Interfaces';
 import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
+	extractLastExecutedNodeCredentialData,
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
@@ -882,6 +883,50 @@ describe('generateNodesGraph', () => {
 			},
 			webhookNodeNames: [],
 		});
+	});
+});
+
+describe('extractLastExecutedNodeCredentialData', () => {
+	const cases: Array<[string, IRun]> = [
+		['no data', mock<IRun>({ data: {} })],
+		['no executionData', mock<IRun>({ data: { executionData: undefined } })],
+		[
+			'no nodeExecutionStack',
+			mock<IRun>({ data: { executionData: { nodeExecutionStack: undefined } } }),
+		],
+		[
+			'no node',
+			mock<IRun>({
+				data: { executionData: { nodeExecutionStack: [{ node: undefined }] } },
+			}),
+		],
+		[
+			'no credentials',
+			mock<IRun>({
+				data: { executionData: { nodeExecutionStack: [{ node: { credentials: undefined } }] } },
+			}),
+		],
+	];
+
+	test.each(cases)(
+		'should return credentialId and credentialsType with null if %s',
+		(_, runData) => {
+			expect(extractLastExecutedNodeCredentialData(runData)).toBeNull();
+		},
+	);
+
+	it('should return correct credentialId and credentialsType when last node executed has credential', () => {
+		const runData = mock<IRun>({
+			data: {
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+			},
+		});
+
+		expect(extractLastExecutedNodeCredentialData(runData)).toMatchObject(
+			expect.objectContaining({ credentialId: 'nhu-l8E4hX', credentialType: 'openAiApi' }),
+		);
 	});
 });
 

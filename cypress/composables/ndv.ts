@@ -2,7 +2,7 @@
  * Getters
  */
 
-import { getVisibleSelect } from '../utils';
+import { getVisibleSelect } from '../utils/popper';
 
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);

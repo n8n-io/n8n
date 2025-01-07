@@ -1484,6 +1484,7 @@ export interface INodePropertyOptions {
 	action?: string;
 	description?: string;
 	routing?: INodePropertyRouting;
+	outputConnectionType?: NodeConnectionType;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2709,7 +2710,6 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
-	ignoreTypeMismatchErrors: boolean;
 	attemptToConvertTypes: boolean;
 	convertFieldsToString: boolean;
 };

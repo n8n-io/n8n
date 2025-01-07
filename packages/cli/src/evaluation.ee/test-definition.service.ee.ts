@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
@@ -121,12 +121,25 @@ export class TestDefinitionService {
 				relations: ['workflow'],
 			});
 
-			const existingNodeNames = new Set(existingTestDefinition.workflow.nodes.map((n) => n.name));
+			const existingNodeNames = new Map(
+				existingTestDefinition.workflow.nodes.map((n) => [n.name, n]),
+			);
+			const existingNodeIds = new Map(existingTestDefinition.workflow.nodes.map((n) => [n.id, n]));
 
 			attrs.mockedNodes.forEach((node) => {
-				if (!existingNodeNames.has(node.name)) {
-					throw new BadRequestError(`Pinned node not found in the workflow: ${node.name}`);
+				if (!existingNodeIds.has(node.id) || (node.name && !existingNodeNames.has(node.name))) {
+					throw new BadRequestError(
+						`Pinned node not found in the workflow: ${node.id} (${node.name})`,
+					);
 				}
+			});
+
+			// Update the node names OR node ids if they are not provided
+			attrs.mockedNodes = attrs.mockedNodes.map((node) => {
+				return {
+					id: node.id ?? (node.name && existingNodeNames.get(node.name)?.id),
+					name: node.name ?? (node.id && existingNodeIds.get(node.id)?.name),
+				};
 			});
 		}
 

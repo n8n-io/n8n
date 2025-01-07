@@ -61,11 +61,7 @@ const validateResourceMapperValue = (
 			});
 
 			if (!validationResult.valid) {
-				if (!resourceMapperField.ignoreTypeMismatchErrors) {
-					return { ...validationResult, fieldName: key };
-				} else {
-					paramValues[key] = resolvedValue;
-				}
+				return { ...validationResult, fieldName: key };
 			} else {
 				// If it's valid, set the casted value
 				paramValues[key] = validationResult.newValue;
