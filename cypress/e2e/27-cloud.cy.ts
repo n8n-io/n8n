@@ -1,6 +1,5 @@
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
 import {
-	BannerStack,
 	MainSidebar,
 	WorkflowPage,
 	visitPublicApiPage,
@@ -8,7 +7,6 @@ import {
 } from '../pages';
 
 const mainSidebar = new MainSidebar();
-const bannerStack = new BannerStack();
 const workflowPage = new WorkflowPage();
 
 describe('Cloud', () => {
@@ -40,11 +38,11 @@ describe('Cloud', () => {
 		it('should render trial banner for opt-in cloud user', () => {
 			visitWorkflowPage();
 
-			bannerStack.getters.banner().should('be.visible');
+			cy.getByTestId('banner-stack').should('be.visible');
 
 			mainSidebar.actions.signout();
 
-			bannerStack.getters.banner().should('not.be.visible');
+			cy.getByTestId('banner-stack').should('not.be.visible');
 		});
 	});
 

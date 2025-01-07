@@ -49,6 +49,10 @@ export function getNodeByName(name: string) {
 	return cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0);
 }
 
+export function getWorkflowHistoryCloseButton() {
+	return cy.getByTestId('workflow-history-close-button')
+}
+
 export function disableNode(name: string) {
 	const target = getNodeByName(name);
 	target.rightclick(name ? 'center' : 'topLeft', { force: true });
