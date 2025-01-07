@@ -1,5 +1,5 @@
-import { capitalize } from 'lodash';
 import { Service } from '@n8n/di';
+import { capitalize } from 'lodash';
 import { Logger } from 'n8n-core';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 

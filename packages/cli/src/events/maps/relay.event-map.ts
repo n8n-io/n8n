@@ -6,13 +6,13 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
+import type { ConcurrencyType } from '@/concurrency/concurrency-control.service';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole, User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
-import { ConcurrencyType } from '@/concurrency/concurrency-control.service';
 
 export type UserLike = {
 	id: string;
