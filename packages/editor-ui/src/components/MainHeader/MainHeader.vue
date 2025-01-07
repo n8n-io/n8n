@@ -220,7 +220,7 @@ function hideGithubButton() {
 				@update:model-value="onTabSelected"
 			/>
 		</div>
-		<div v-if="showGitHubButton" class="github-button">
+		<div v-if="showGitHubButton" class="github-button hidden-sm-and-down">
 			<div class="github-button-container">
 				<GithubButton
 					href="https://github.com/n8n-io/n8n"
@@ -264,6 +264,7 @@ function hideGithubButton() {
 	font-size: 0.9em;
 	font-weight: 400;
 	padding: var(--spacing-xs) var(--spacing-m);
+	overflow: auto;
 }
 
 .github-button {

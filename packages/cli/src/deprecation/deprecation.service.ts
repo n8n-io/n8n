@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 type EnvVarName = string;
 

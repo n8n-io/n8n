@@ -365,7 +365,7 @@ const getIssues = computed<string[]>(() => {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
-				checkValues.push(displayValue.value as string);
+				checkValues = checkValues.concat(displayValue.value?.toString().split(','));
 			}
 		}
 
@@ -856,6 +856,8 @@ async function optionSelected(command: string) {
 			(!props.modelValue || props.modelValue === '[Object: null]')
 		) {
 			valueChanged('={{ 0 }}');
+		} else if (props.parameter.type === 'multiOptions') {
+			valueChanged(`={{ ${JSON.stringify(props.modelValue)} }}`);
 		} else if (
 			props.parameter.type === 'number' ||
 			props.parameter.type === 'boolean' ||

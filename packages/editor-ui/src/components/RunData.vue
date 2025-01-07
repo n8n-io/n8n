@@ -1277,10 +1277,16 @@ defineExpose({ enterEditMode });
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				!isPaneTypeInput &&
+				pinnedData.hasData.value &&
+				!editMode.enabled &&
+				!isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">

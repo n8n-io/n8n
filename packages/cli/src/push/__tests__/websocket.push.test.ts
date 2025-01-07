@@ -1,7 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
 import { Logger } from 'n8n-core';
-import { Container } from 'typedi';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';

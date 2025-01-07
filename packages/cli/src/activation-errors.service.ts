@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import { CacheService } from '@/services/cache/cache.service';
 
