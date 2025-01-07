@@ -439,7 +439,7 @@ watch(focusedMappableInput, (curr) => {
 					>
 						<N8nTooltip
 							:content="
-								i18n.baseText('runData.table.inspectSubExecution', {
+								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
 										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
 									},
@@ -575,7 +575,7 @@ watch(focusedMappableInput, (curr) => {
 					>
 						<N8nTooltip
 							:content="
-								i18n.baseText('runData.table.inspectSubExecution', {
+								i18n.baseText('runData.table.viewSubExecution', {
 									interpolate: {
 										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
 									},
