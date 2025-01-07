@@ -9,7 +9,8 @@ import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transpo
 import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 
 type CollectionOptions = {
@@ -212,7 +213,7 @@ class ExtendedPGVectorStore extends PGVectorStore {
 	}
 }
 
-export const VectorStorePGVector = createVectorStoreNode({
+export class VectorStorePGVector extends createVectorStoreNode({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
 		icon: 'file:postgres.svg',
@@ -227,7 +228,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 				testedBy: 'postgresConnectionTest',
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve'],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	sharedFields,
 	insertFields,
@@ -308,4 +309,4 @@ export const VectorStorePGVector = createVectorStoreNode({
 
 		await PGVectorStore.fromDocuments(documents, embeddings, config);
 	},
-});
+}) {}

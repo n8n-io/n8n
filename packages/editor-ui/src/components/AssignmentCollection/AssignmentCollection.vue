@@ -15,6 +15,7 @@ import ParameterOptions from '../ParameterOptions.vue';
 import Assignment from './Assignment.vue';
 import { inputDataToAssignments, typeFromExpression } from './utils';
 import { propertyNameFromExpression } from '@/utils/mappingUtils';
+import Draggable from 'vuedraggable';
 
 interface Props {
 	parameter: INodeProperties;
@@ -98,10 +99,10 @@ function getIssues(index: number): string[] {
 	return issues.value[`${props.parameter.name}.${index}`] ?? [];
 }
 
-function optionSelected(action: 'clearAll' | 'addAll') {
+function optionSelected(action: string) {
 	if (action === 'clearAll') {
 		state.paramValue.assignments = [];
-	} else {
+	} else if (action === 'addAll' && inputData.value) {
 		const newAssignments = inputDataToAssignments(inputData.value);
 		state.paramValue.assignments = state.paramValue.assignments.concat(newAssignments);
 	}
@@ -133,19 +134,27 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.assignments">
-				<div v-for="(assignment, index) of state.paramValue.assignments" :key="assignment.id">
-					<Assignment
-						:model-value="assignment"
-						:index="index"
-						:path="`${path}.${index}`"
-						:issues="getIssues(index)"
-						:class="$style.assignment"
-						:is-read-only="isReadOnly"
-						@update:model-value="(value) => onAssignmentUpdate(index, value)"
-						@remove="() => onAssignmentRemove(index)"
-					>
-					</Assignment>
-				</div>
+				<Draggable
+					v-model="state.paramValue.assignments"
+					item-key="id"
+					handle=".drag-handle"
+					:drag-class="$style.dragging"
+					:ghost-class="$style.ghost"
+				>
+					<template #item="{ index, element: assignment }">
+						<Assignment
+							:model-value="assignment"
+							:index="index"
+							:path="`${path}.${index}`"
+							:issues="getIssues(index)"
+							:class="$style.assignment"
+							:is-read-only="isReadOnly"
+							@update:model-value="(value) => onAssignmentUpdate(index, value)"
+							@remove="() => onAssignmentRemove(index)"
+						>
+						</Assignment>
+					</template>
+				</Draggable>
 			</div>
 			<div
 				v-if="!isReadOnly"
@@ -264,5 +273,19 @@ function optionSelected(action: 'clearAll' | 'addAll') {
 
 .icon {
 	font-size: var(--font-size-2xl);
+}
+.ghost,
+.dragging {
+	border-radius: var(--border-radius-base);
+	padding-right: var(--spacing-xs);
+	padding-bottom: var(--spacing-xs);
+}
+.ghost {
+	background-color: var(--color-background-base);
+	opacity: 0.5;
+}
+.dragging {
+	background-color: var(--color-background-xlight);
+	opacity: 0.7;
 }
 </style>

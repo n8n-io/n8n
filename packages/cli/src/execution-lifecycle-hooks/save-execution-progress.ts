@@ -1,10 +1,9 @@
+import { Container } from '@n8n/di';
+import { ErrorReporter, Logger } from 'n8n-core';
 import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { toSaveSettings } from '@/execution-lifecycle-hooks/to-save-settings';
-import { Logger } from '@/logging/logger.service';
 
 export async function saveExecutionProgress(
 	workflowData: IWorkflowBase,
@@ -85,7 +84,7 @@ export async function saveExecutionProgress(
 	} catch (e) {
 		const error = e instanceof Error ? e : new Error(`${e}`);
 
-		ErrorReporter.error(error);
+		Container.get(ErrorReporter).error(error);
 		// TODO: Improve in the future!
 		// Errors here might happen because of database access
 		// For busy machines, we may get "Database is locked" errors.

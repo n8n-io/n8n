@@ -1,6 +1,5 @@
-<script lang="ts">
-import { defineComponent, nextTick } from 'vue';
-import { mapStores } from 'pinia';
+<script lang="ts" setup>
+import { computed, nextTick, onBeforeMount, onMounted } from 'vue';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -14,152 +13,158 @@ import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { ref, getCurrentInstance } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
-export default defineComponent({
-	name: 'SettingsLogStreamingView',
-	components: {
-		EventDestinationCard,
-	},
-	props: {},
-	data() {
-		return {
-			eventBus: createEventBus(),
-			destinations: Array<MessageEventBusDestinationOptions>,
-			disableLicense: false,
-			allDestinations: [] as MessageEventBusDestinationOptions[],
-			documentTitle: useDocumentTitle(),
-		};
-	},
-	async mounted() {
-		this.documentTitle.set(this.$locale.baseText('settings.log-streaming.heading'));
-		if (!this.isLicensed) return;
+const environment = process.env.NODE_ENV;
 
-		// Prepare credentialsStore so modals can pick up credentials
-		await this.credentialsStore.fetchCredentialTypes(false);
-		await this.credentialsStore.fetchAllCredentials();
-		this.uiStore.nodeViewInitialized = false;
+const settingsStore = useSettingsStore();
+const logStreamingStore = useLogStreamingStore();
+const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const documentTitle = useDocumentTitle();
+const i18n = useI18n();
 
-		// fetch Destination data from the backend
-		await this.getDestinationDataFromBackend();
+const pageRedirectHelper = usePageRedirectionHelper();
 
-		// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
-		this.logStreamingStore.$onAction(({ name, after }) => {
-			if (name === 'removeDestination' || name === 'updateDestination') {
-				after(async () => {
-					this.$forceUpdate();
-				});
-			}
-		});
-		// refresh when a modal closes
-		this.eventBus.on('destinationWasSaved', this.onDestinationWasSaved);
-		// listen to remove emission
-		this.eventBus.on('remove', this.onRemove);
-		// listen to modal closing and remove nodes from store
-		this.eventBus.on('closing', this.onBusClosing);
-	},
-	beforeUnmount() {
-		this.eventBus.off('destinationWasSaved', this.onDestinationWasSaved);
-		this.eventBus.off('remove', this.onRemove);
-		this.eventBus.off('closing', this.onBusClosing);
-	},
-	computed: {
-		...mapStores(
-			useSettingsStore,
-			useLogStreamingStore,
-			useWorkflowsStore,
-			useUIStore,
-			useCredentialsStore,
-		),
-		sortedItemKeysByLabel() {
-			const sortedKeys: Array<{ label: string; key: string }> = [];
-			for (const [key, value] of Object.entries(this.logStreamingStore.items)) {
-				sortedKeys.push({ key, label: value.destination?.label ?? 'Destination' });
-			}
-			return sortedKeys.sort((a, b) => a.label.localeCompare(b.label));
-		},
-		environment() {
-			return process.env.NODE_ENV;
-		},
-		isLicensed(): boolean {
-			if (this.disableLicense) return false;
-			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.LogStreaming];
-		},
-		canManageLogStreaming(): boolean {
-			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
-		},
-	},
-	methods: {
-		onDestinationWasSaved() {
-			this.$forceUpdate();
-		},
-		onBusClosing() {
-			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
-			this.uiStore.stateIsDirty = false;
-		},
-		async getDestinationDataFromBackend(): Promise<void> {
-			this.logStreamingStore.clearEventNames();
-			this.logStreamingStore.clearDestinations();
-			this.allDestinations = [];
-			const eventNamesData = await this.logStreamingStore.fetchEventNames();
-			if (eventNamesData) {
-				for (const eventName of eventNamesData) {
-					this.logStreamingStore.addEventName(eventName);
-				}
-			}
-			const destinationData: MessageEventBusDestinationOptions[] =
-				await this.logStreamingStore.fetchDestinations();
-			if (destinationData) {
-				for (const destination of destinationData) {
-					this.logStreamingStore.addDestination(destination);
-					this.allDestinations.push(destination);
-				}
-			}
-			this.$forceUpdate();
-		},
-		goToUpgrade() {
-			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
-		},
-		storeHasItems(): boolean {
-			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
-		},
-		async addDestination() {
-			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
-			newDestination.id = uuid();
-			this.logStreamingStore.addDestination(newDestination);
-			await nextTick();
-			this.uiStore.openModalWithData({
-				name: LOG_STREAM_MODAL_KEY,
-				data: {
-					destination: newDestination,
-					isNew: true,
-					eventBus: this.eventBus,
-				},
-			});
-		},
-		async onRemove(destinationId?: string) {
-			if (!destinationId) return;
-			await this.logStreamingStore.deleteDestination(destinationId);
-			const foundNode = this.workflowsStore.getNodeByName(destinationId);
-			if (foundNode) {
-				this.workflowsStore.removeNode(foundNode);
-			}
-		},
-		async onEdit(destinationId?: string) {
-			if (!destinationId) return;
-			const editDestination = this.logStreamingStore.getDestination(destinationId);
-			if (editDestination) {
-				this.uiStore.openModalWithData({
-					name: LOG_STREAM_MODAL_KEY,
-					data: {
-						destination: editDestination,
-						isNew: false,
-						eventBus: this.eventBus,
-					},
-				});
-			}
-		},
-	},
+const eventBus = createEventBus();
+const disableLicense = ref(false);
+const allDestinations = ref<MessageEventBusDestinationOptions[]>([]);
+
+const sortedItemKeysByLabel = computed(() => {
+	const sortedKeys: Array<{ label: string; key: string }> = [];
+	for (const [key, value] of Object.entries(logStreamingStore.items)) {
+		sortedKeys.push({ key, label: value.destination?.label ?? 'Destination' });
+	}
+	return sortedKeys.sort((a, b) => a.label.localeCompare(b.label));
 });
+
+const isLicensed = computed((): boolean => {
+	if (disableLicense.value) return false;
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.LogStreaming];
+});
+
+const canManageLogStreaming = computed((): boolean => {
+	return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
+});
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.log-streaming.heading'));
+	if (!isLicensed.value) return;
+
+	// Prepare credentialsStore so modals can pick up credentials
+	await credentialsStore.fetchCredentialTypes(false);
+	await credentialsStore.fetchAllCredentials();
+	uiStore.nodeViewInitialized = false;
+
+	// fetch Destination data from the backend
+	await getDestinationDataFromBackend();
+
+	// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
+	logStreamingStore.$onAction(({ name, after }) => {
+		if (name === 'removeDestination' || name === 'updateDestination') {
+			after(async () => {
+				forceUpdateInstance();
+			});
+		}
+	});
+	// refresh when a modal closes
+	eventBus.on('destinationWasSaved', onDestinationWasSaved);
+	// listen to remove emission
+	eventBus.on('remove', onRemove);
+	// listen to modal closing and remove nodes from store
+	eventBus.on('closing', onBusClosing);
+});
+
+onBeforeMount(() => {
+	eventBus.off('destinationWasSaved', onDestinationWasSaved);
+	eventBus.off('remove', onRemove);
+	eventBus.off('closing', onBusClosing);
+});
+
+function onDestinationWasSaved() {
+	forceUpdateInstance();
+}
+
+function forceUpdateInstance() {
+	const instance = getCurrentInstance();
+	instance?.proxy?.$forceUpdate();
+}
+
+function onBusClosing() {
+	workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+	uiStore.stateIsDirty = false;
+}
+
+async function getDestinationDataFromBackend(): Promise<void> {
+	logStreamingStore.clearEventNames();
+	logStreamingStore.clearDestinations();
+	allDestinations.value = [];
+	const eventNamesData = await logStreamingStore.fetchEventNames();
+	if (eventNamesData) {
+		for (const eventName of eventNamesData) {
+			logStreamingStore.addEventName(eventName);
+		}
+	}
+	const destinationData: MessageEventBusDestinationOptions[] =
+		await logStreamingStore.fetchDestinations();
+	if (destinationData) {
+		for (const destination of destinationData) {
+			logStreamingStore.addDestination(destination);
+			allDestinations.value.push(destination);
+		}
+	}
+	forceUpdateInstance();
+}
+
+function goToUpgrade() {
+	void pageRedirectHelper.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+}
+
+function storeHasItems(): boolean {
+	return logStreamingStore.items && Object.keys(logStreamingStore.items).length > 0;
+}
+
+async function addDestination() {
+	const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
+	newDestination.id = uuid();
+	logStreamingStore.addDestination(newDestination);
+	await nextTick();
+	uiStore.openModalWithData({
+		name: LOG_STREAM_MODAL_KEY,
+		data: {
+			destination: newDestination,
+			isNew: true,
+			eventBus,
+		},
+	});
+}
+
+async function onRemove(destinationId?: string) {
+	if (!destinationId) return;
+	await logStreamingStore.deleteDestination(destinationId);
+	const foundNode = workflowsStore.getNodeByName(destinationId);
+	if (foundNode) {
+		workflowsStore.removeNode(foundNode);
+	}
+}
+
+async function onEdit(destinationId?: string) {
+	if (!destinationId) return;
+	const editDestination = logStreamingStore.getDestination(destinationId);
+	if (editDestination) {
+		uiStore.openModalWithData({
+			name: LOG_STREAM_MODAL_KEY,
+			data: {
+				destination: editDestination,
+				isNew: false,
+				eventBus,
+			},
+		});
+	}
+}
 </script>
 
 <template>
@@ -167,7 +172,7 @@ export default defineComponent({
 		<div :class="$style.header">
 			<div class="mb-2xl">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`settings.log-streaming.heading`) }}
+					{{ i18n.baseText(`settings.log-streaming.heading`) }}
 				</n8n-heading>
 				<template v-if="environment !== 'production'">
 					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
@@ -178,7 +183,7 @@ export default defineComponent({
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
@@ -200,35 +205,35 @@ export default defineComponent({
 				</el-row>
 				<div class="mt-m text-right">
 					<n8n-button v-if="canManageLogStreaming" size="large" @click="addDestination">
-						{{ $locale.baseText(`settings.log-streaming.add`) }}
+						{{ i18n.baseText(`settings.log-streaming.add`) }}
 					</n8n-button>
 				</div>
 			</template>
 			<div v-else data-test-id="action-box-licensed">
 				<n8n-action-box
-					:button-text="$locale.baseText(`settings.log-streaming.add`)"
+					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
 				>
 					<template #heading>
-						<span v-n8n-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+						<span v-n8n-html="i18n.baseText(`settings.log-streaming.addFirstTitle`)" />
 					</template>
 				</n8n-action-box>
 			</div>
 		</template>
 		<template v-else>
-			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
+			<div v-if="i18n.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<span v-n8n-html="$locale.baseText('settings.log-streaming.infoText')"></span>
+					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
-					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
-					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
+					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
+					:button-text="i18n.baseText('settings.log-streaming.actionBox.button')"
 					@click:button="goToUpgrade"
 				>
 					<template #heading>
-						<span v-n8n-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
+						<span v-n8n-html="i18n.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
 				</n8n-action-box>
 			</div>

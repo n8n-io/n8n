@@ -1,11 +1,6 @@
-import { URL } from 'url';
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
-
 import get from 'lodash/get';
-
-import { parseString } from 'xml2js';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -17,6 +12,8 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { URL } from 'url';
+import { parseString } from 'xml2js';
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params)

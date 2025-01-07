@@ -1,14 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolWolframAlpha implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,7 +50,7 @@ export class ToolWolframAlpha implements INodeType {
 		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		const credentials = await this.getCredentials('wolframAlphaApi');
 
 		return {

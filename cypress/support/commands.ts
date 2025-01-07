@@ -10,7 +10,7 @@ import {
 	N8N_AUTH_COOKIE,
 } from '../constants';
 import { WorkflowPage } from '../pages';
-import { getUniqueWorkflowName } from '../utils/workflowUtils';
+import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -24,6 +24,10 @@ Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
+});
+
+Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
+	return isCanvasV2() ? getterV2() : getterV1();
 });
 
 Cypress.Commands.add(
@@ -70,6 +74,15 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			})
 			.then((response) => {
 				Cypress.env('currentUserId', response.body.data.id);
+
+				// @TODO Remove this once the switcher is removed
+				cy.window().then((win) => {
+					win.localStorage.setItem('NodeView.migrated', 'true');
+					win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
+
+					const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
+					win.localStorage.setItem('NodeView.version', nodeViewVersion ?? '1');
+				});
 			});
 	});
 });
@@ -169,6 +182,16 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				pageY: newPosition.y,
 				force: true,
 			});
+			if (options?.moveTwice) {
+				// first move like hover to trigger object to be visible
+				// like in main panel in ndv
+				element.trigger('mousemove', {
+					which: 1,
+					pageX: newPosition.x,
+					pageY: newPosition.y,
+					force: true,
+				});
+			}
 			if (options?.clickToFinish) {
 				// Click to finish the drag
 				// For some reason, mouseup isn't working when moving nodes

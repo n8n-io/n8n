@@ -1,6 +1,7 @@
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
+import { isCanvasV2 } from '../utils/workflowUtils';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -117,15 +118,22 @@ describe('Execution', () => {
 			.canvasNodeByName('Manual')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
+
+		if (isCanvasV2()) {
+			workflowPage.getters
+				.canvasNodeByName('Wait')
+				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
+		} else {
+			workflowPage.getters
+				.canvasNodeByName('Wait')
+				.within(() => cy.get('.fa-sync-alt').should('not.be.visible'));
+		}
+
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
 		successToast().should('be.visible');
-		clearNotifications();
 
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
@@ -206,6 +214,7 @@ describe('Execution', () => {
 		workflowPage.getters.clearExecutionDataButton().should('not.exist');
 	});
 
+	// FIXME: Canvas V2: Webhook should show waiting state but it doesn't
 	it('should test webhook workflow stop', () => {
 		cy.createFixtureWorkflow('Webhook_wait_set.json');
 
@@ -267,9 +276,17 @@ describe('Execution', () => {
 			.canvasNodeByName('Webhook')
 			.within(() => cy.get('.fa-check'))
 			.should('exist');
-		workflowPage.getters
-			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt').should('not.visible'));
+
+		if (isCanvasV2()) {
+			workflowPage.getters
+				.canvasNodeByName('Wait')
+				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
+		} else {
+			workflowPage.getters
+				.canvasNodeByName('Wait')
+				.within(() => cy.get('.fa-sync-alt').should('not.be.visible'));
+		}
+
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
@@ -295,6 +312,7 @@ describe('Execution', () => {
 		});
 	});
 
+	// FIXME: Canvas V2: Missing pinned states for `edge-label-wrapper`
 	describe('connections should be colored differently for pinned data', () => {
 		beforeEach(() => {
 			cy.createFixtureWorkflow('Schedule_pinned.json');

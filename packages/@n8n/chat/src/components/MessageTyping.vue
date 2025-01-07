@@ -34,7 +34,12 @@ onMounted(() => {
 });
 </script>
 <template>
-	<Message ref="messageContainer" :class="classes" :message="message">
+	<Message
+		ref="messageContainer"
+		:class="classes"
+		:message="message"
+		data-test-id="chat-message-typing"
+	>
 		<div class="chat-message-typing-body">
 			<span class="chat-message-typing-circle"></span>
 			<span class="chat-message-typing-circle"></span>

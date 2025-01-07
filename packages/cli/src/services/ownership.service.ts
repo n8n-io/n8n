@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -45,13 +45,9 @@ export class OwnershipService {
 	 * Personal project ownership is **immutable**.
 	 */
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
-		const cachedValue = await this.cacheService.getHashValue<User | null>(
-			'project-owner',
-			projectId,
-		);
+		const cachedValue = await this.cacheService.getHashValue<User>('project-owner', projectId);
 
-		if (cachedValue) this.userRepository.create(cachedValue);
-		if (cachedValue === null) return null;
+		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
 		const owner = ownerRel[0]?.user ?? null;
@@ -91,12 +87,14 @@ export class OwnershipService {
 					id: project.id,
 					type: project.type,
 					name: project.name,
+					icon: project.icon,
 				};
 			} else {
 				entity.sharedWithProjects.push({
 					id: project.id,
 					type: project.type,
 					name: project.name,
+					icon: project.icon,
 				});
 			}
 		}

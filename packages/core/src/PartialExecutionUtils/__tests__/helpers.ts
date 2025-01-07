@@ -5,13 +5,14 @@ interface StubNode {
 	name: string;
 	parameters?: INodeParameters;
 	disabled?: boolean;
+	type?: 'n8n-nodes-base.manualTrigger' | 'n8n-nodes-base.splitInBatches' | (string & {});
 }
 
 export function createNodeData(stubData: StubNode): INode {
 	return {
 		name: stubData.name,
 		parameters: stubData.parameters ?? {},
-		type: 'test.set',
+		type: stubData.type ?? 'n8n-nodes-base.set',
 		typeVersion: 1,
 		id: 'uuid-1234',
 		position: [100, 100],

@@ -1,4 +1,5 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
 import { sshTunnelProperties } from '@utils/sshTunnel.properties';
 
 export class Postgres implements ICredentialType {
@@ -37,7 +38,7 @@ export class Postgres implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,

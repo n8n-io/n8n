@@ -23,15 +23,15 @@ const LazyRunDataJsonActions = defineAsyncComponent(
 const props = withDefaults(
 	defineProps<{
 		editMode: { enabled?: boolean; value?: string };
-		pushRef?: string;
-		paneType?: string;
+		pushRef: string;
+		paneType: string;
 		node: INodeUi;
 		inputData: INodeExecutionData[];
 		mappingEnabled?: boolean;
 		distanceFromActive: number;
-		runIndex?: number;
-		totalRuns?: number;
-		search?: string;
+		runIndex: number | undefined;
+		totalRuns: number | undefined;
+		search: string | undefined;
 	}>(),
 	{
 		editMode: () => ({}),

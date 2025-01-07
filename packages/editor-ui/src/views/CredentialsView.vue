@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout, {
+	type IResource,
+	type IFilters,
+} from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import {
@@ -19,12 +21,12 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
+import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
-import { N8nButton, N8nInputLabel, N8nSelect, N8nOption } from 'n8n-design-system';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -36,6 +38,7 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -43,10 +46,10 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const filters = ref({
+const filters = ref<IFilters>({
 	search: '',
 	homeProject: '',
-	type: '',
+	type: [],
 });
 
 const loading = ref(false);
@@ -70,12 +73,6 @@ const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.al
 
 const credentialTypesById = computed<ICredentialTypeMap>(
 	() => credentialsStore.credentialTypesById,
-);
-
-const addCredentialButtonText = computed(() =>
-	projectsStore.currentProject
-		? i18n.baseText('credentials.project.add')
-		: i18n.baseText('credentials.add'),
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -123,13 +120,11 @@ watch(
 	},
 );
 
-const onFilter = (
-	resource: ICredentialsResponse,
-	filtersToApply: { type: string[]; search: string },
-	matches: boolean,
-): boolean => {
+const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
+	const iResource = resource as ICredentialsResponse;
+	const filtersToApply = newFilters as IFilters & { type: string[] };
 	if (filtersToApply.type.length > 0) {
-		matches = matches && filtersToApply.type.includes(resource.type);
+		matches = matches && filtersToApply.type.includes(iResource.type);
 	}
 
 	if (filtersToApply.search) {
@@ -137,8 +132,8 @@ const onFilter = (
 
 		matches =
 			matches ||
-			(credentialTypesById.value[resource.type] &&
-				credentialTypesById.value[resource.type].displayName.toLowerCase().includes(searchString));
+			(credentialTypesById.value[iResource.type] &&
+				credentialTypesById.value[iResource.type].displayName.toLowerCase().includes(searchString));
 	}
 
 	return matches;
@@ -186,24 +181,10 @@ onMounted(() => {
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"
 		:disabled="readOnlyEnv || !projectPermissions.credential.create"
-		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
 		<template #header>
-			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<div>
-				<N8nButton
-					size="large"
-					block
-					:disabled="disabled"
-					data-test-id="resources-list-add"
-					@click="addCredential"
-				>
-					{{ addCredentialButtonText }}
-				</N8nButton>
-			</div>
+			<ProjectHeader />
 		</template>
 		<template #default="{ data }">
 			<CredentialCard
@@ -240,6 +221,36 @@ onMounted(() => {
 					/>
 				</N8nSelect>
 			</div>
+		</template>
+		<template #empty>
+			<n8n-action-box
+				data-test-id="empty-resources-list"
+				emoji="👋"
+				:heading="
+					i18n.baseText(
+						usersStore.currentUser?.firstName
+							? 'credentials.empty.heading'
+							: 'credentials.empty.heading.userNotSetup',
+						{
+							interpolate: { name: usersStore.currentUser?.firstName ?? '' },
+						},
+					)
+				"
+				:description="i18n.baseText('credentials.empty.description')"
+				:button-text="i18n.baseText('credentials.empty.button')"
+				button-type="secondary"
+				:button-disabled="readOnlyEnv || !projectPermissions.credential.create"
+				:button-icon="readOnlyEnv ? 'lock' : undefined"
+				@click:button="addCredential"
+			>
+				<template #disabledButtonTooltip>
+					{{
+						readOnlyEnv
+							? i18n.baseText('readOnlyEnv.cantAdd.credential')
+							: i18n.baseText('credentials.empty.button.disabled.tooltip')
+					}}
+				</template>
+			</n8n-action-box>
 		</template>
 	</ResourcesListLayout>
 </template>

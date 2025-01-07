@@ -1,11 +1,14 @@
+import { mock } from 'jest-mock-extended';
+import type { INode, INodeType, IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import { WebhookEntity } from '@/databases/entities/webhook-entity';
-import { WebhookRepository } from '@/databases/repositories/webhook.repository';
-import { CacheService } from '@/services/cache/cache.service';
+import type { WebhookRepository } from '@/databases/repositories/webhook.repository';
+import type { NodeTypes } from '@/node-types';
+import type { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/webhooks/webhook.service';
-import { mockInstance } from '@test/mocking';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {
@@ -16,9 +19,11 @@ const createWebhook = (method: string, path: string, webhookId?: string, pathSeg
 	}) as WebhookEntity;
 
 describe('WebhookService', () => {
-	const webhookRepository = mockInstance(WebhookRepository);
-	const cacheService = mockInstance(CacheService);
-	const webhookService = new WebhookService(webhookRepository, cacheService);
+	const webhookRepository = mock<WebhookRepository>();
+	const cacheService = mock<CacheService>();
+	const nodeTypes = mock<NodeTypes>();
+	const webhookService = new WebhookService(mock(), webhookRepository, cacheService, nodeTypes);
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 	beforeEach(() => {
 		config.load(config.default);
@@ -186,6 +191,173 @@ describe('WebhookService', () => {
 			await webhookService.storeWebhook(mockWebhook);
 
 			expect(webhookRepository.upsert).toHaveBeenCalledWith(mockWebhook, ['method', 'webhookPath']);
+		});
+	});
+
+	describe('getNodeWebhooks()', () => {
+		const workflow = new Workflow({
+			id: 'test-workflow',
+			nodes: [],
+			connections: {},
+			active: true,
+			nodeTypes,
+		});
+
+		test('should return empty array if node is disabled', async () => {
+			const node = { disabled: true } as INode;
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toEqual([]);
+		});
+
+		test('should return webhooks for node with webhook definitions', async () => {
+			const node = {
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+			} as INode;
+
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path: '/webhook',
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0]).toMatchObject({
+				httpMethod: 'GET',
+				node: 'Webhook',
+				workflowId: 'test-workflow',
+			});
+		});
+	});
+
+	describe('createWebhookIfNotExists()', () => {
+		const workflow = new Workflow({
+			id: 'test-workflow',
+			nodes: [
+				mock<INode>({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					parameters: {},
+				}),
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		const webhookData = mock<IWebhookData>({
+			node: 'Webhook',
+			webhookDescription: {
+				name: 'default',
+				httpMethod: 'GET',
+				path: '/webhook',
+			},
+		});
+
+		const defaultWebhookMethods = {
+			checkExists: jest.fn(),
+			create: jest.fn(),
+		};
+
+		const nodeType = mock<INodeType>({
+			webhookMethods: { default: defaultWebhookMethods },
+		});
+
+		test('should create webhook if it does not exist', async () => {
+			defaultWebhookMethods.checkExists.mockResolvedValue(false);
+			defaultWebhookMethods.create.mockResolvedValue(true);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await webhookService.createWebhookIfNotExists(workflow, webhookData, 'trigger', 'init');
+
+			expect(defaultWebhookMethods.checkExists).toHaveBeenCalled();
+			expect(defaultWebhookMethods.create).toHaveBeenCalled();
+		});
+
+		test('should not create webhook if it already exists', async () => {
+			defaultWebhookMethods.checkExists.mockResolvedValue(true);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await webhookService.createWebhookIfNotExists(workflow, webhookData, 'trigger', 'init');
+
+			expect(defaultWebhookMethods.checkExists).toHaveBeenCalled();
+			expect(defaultWebhookMethods.create).not.toHaveBeenCalled();
+		});
+
+		test('should handle case when webhook methods are not defined', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({} as INodeType);
+
+			await webhookService.createWebhookIfNotExists(workflow, webhookData, 'trigger', 'init');
+			// Test passes if no error is thrown when webhook methods are undefined
+		});
+	});
+
+	describe('deleteWebhook()', () => {
+		test('should call runWebhookMethod with delete', async () => {
+			const workflow = mock<Workflow>();
+			const webhookData = mock<IWebhookData>();
+			const runWebhookMethodSpy = jest.spyOn(webhookService as any, 'runWebhookMethod');
+
+			await webhookService.deleteWebhook(workflow, webhookData, 'trigger', 'init');
+
+			expect(runWebhookMethodSpy).toHaveBeenCalledWith(
+				'delete',
+				workflow,
+				webhookData,
+				'trigger',
+				'init',
+			);
+		});
+	});
+
+	describe('runWebhook()', () => {
+		const workflow = mock<Workflow>();
+		const webhookData = mock<IWebhookData>();
+		const node = mock<INode>();
+		const responseData = { workflowData: [] };
+
+		test('should throw error if node does not have webhooks', async () => {
+			const nodeType = {} as INodeType;
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await expect(
+				webhookService.runWebhook(workflow, webhookData, node, additionalData, 'trigger', null),
+			).rejects.toThrow('Node does not have any webhooks defined');
+		});
+
+		test('should execute webhook and return response data', async () => {
+			const nodeType = mock<INodeType>({
+				webhook: jest.fn().mockResolvedValue(responseData),
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const result = await webhookService.runWebhook(
+				workflow,
+				webhookData,
+				node,
+				additionalData,
+				'trigger',
+				null,
+			);
+
+			expect(result).toEqual(responseData);
+			expect(nodeType.webhook).toHaveBeenCalled();
 		});
 	});
 });

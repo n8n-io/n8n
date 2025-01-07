@@ -10,12 +10,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import pgPromise from 'pg-promise';
 
-import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
-
 import { oldVersionNotice } from '@utils/descriptions';
+
+import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -321,7 +320,6 @@ export class PostgresV1 implements INodeType {
 
 					const db = pgp(config);
 					await db.connect();
-					await db.$pool.end();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -410,15 +408,11 @@ export class PostgresV1 implements INodeType {
 
 			returnItems = wrapData(updateItems);
 		} else {
-			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
-
-		// shuts down the connection pool associated with the db object to allow the process to finish
-		await db.$pool.end();
 
 		return [returnItems];
 	}

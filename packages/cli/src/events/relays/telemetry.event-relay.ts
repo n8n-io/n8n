@@ -1,10 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
+import { InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -28,6 +29,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly telemetry: Telemetry,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -37,7 +39,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	async init() {
-		if (!config.getEnv('diagnostics.enabled')) return;
+		if (!this.globalConfig.diagnostics.enabled) return;
 
 		await this.telemetry.init();
 
@@ -236,10 +238,12 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private licenseCommunityPlusRegistered({
+		userId,
 		email,
 		licenseKey,
 	}: RelayEventMap['license-community-plus-registered']) {
 		this.telemetry.track('User registered for license community plus', {
+			user_id: userId,
 			email,
 			licenseKey,
 		});
@@ -758,6 +762,7 @@ export class TelemetryEventRelay extends EventRelay {
 					model: cpus[0].model,
 					speed: cpus[0].speed,
 				},
+				is_docker: this.instanceSettings.isDocker,
 			},
 			execution_variables: {
 				executions_mode: config.getEnv('executions.mode'),
@@ -769,8 +774,8 @@ export class TelemetryEventRelay extends EventRelay {
 				executions_data_save_manual_executions: config.getEnv(
 					'executions.saveDataManualExecutions',
 				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune: this.globalConfig.executions.pruneData,
+				executions_data_max_age: this.globalConfig.executions.pruneDataMaxAge,
 			},
 			n8n_deployment_type: config.getEnv('deployment.type'),
 			n8n_binary_data_mode: binaryDataConfig.mode,
@@ -778,9 +783,9 @@ export class TelemetryEventRelay extends EventRelay {
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
 			license_plan_name: this.license.getPlanName(),
-			license_tenant_id: config.getEnv('license.tenantId'),
+			license_tenant_id: this.globalConfig.license.tenantId,
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,
 				metrics_category_default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,

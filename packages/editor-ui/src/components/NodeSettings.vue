@@ -22,11 +22,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import {
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	CUSTOM_NODES_DOCS_URL,
-	SHOULD_CLEAR_NODE_OUTPUTS,
-} from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -47,11 +43,12 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
+import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -94,7 +91,6 @@ const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
-const { showMessage } = useToast();
 
 const nodeValid = ref(true);
 const openPanel = ref<'params' | 'settings'>('params');
@@ -124,7 +120,7 @@ const currentWorkflow = computed(() =>
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
-	() => currentWorkflow.value.homeProject?.type === ProjectTypes.Team,
+	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
@@ -167,7 +163,7 @@ const executeButtonTooltip = computed(() => {
 		node.value &&
 		isLatestNodeVersion.value &&
 		props.inputSize > 1 &&
-		!NodeHelpers.isSingleExecution(node.value.type, node.value.parameters)
+		!nodeHelpers.isSingleExecution(node.value.type, node.value.parameters)
 	) {
 		return i18n.baseText('nodeSettings.executeButtonTooltip.times', {
 			interpolate: { inputSize: props.inputSize },
@@ -483,20 +479,6 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			return;
 		}
 
-		if (
-			parameterData.type &&
-			workflowsStore.nodeHasOutputConnection(_node.name) &&
-			SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
-			SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
-		) {
-			workflowsStore.removeAllNodeConnection(_node, { preserveInputConnections: true });
-			showMessage({
-				type: 'warning',
-				title: i18n.baseText('nodeSettings.outputCleared.title'),
-				message: i18n.baseText('nodeSettings.outputCleared.message'),
-			});
-		}
-
 		// Get only the parameters which are different to the defaults
 		let nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType.properties,
@@ -565,6 +547,14 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			name: _node.name,
 			value: nodeParameters,
 		};
+
+		const connections = workflowsStore.allConnections;
+
+		const updatedConnections = updateDynamicConnections(_node, connections, parameterData);
+
+		if (updatedConnections) {
+			workflowsStore.setConnections(updatedConnections, true);
+		}
 
 		workflowsStore.setNodeParameters(updateInformation);
 
@@ -713,7 +703,8 @@ const populateSettings = () => {
 						},
 					],
 					default: 'stopWorkflow',
-					noDataExpression: i18n.baseText('nodeSettings.onError.description'),
+					description: i18n.baseText('nodeSettings.onError.description'),
+					noDataExpression: true,
 				},
 			] as INodeProperties[]),
 		);
@@ -973,6 +964,7 @@ onBeforeUnmount(() => {
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
 						@stop-execution="onStopExecution"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>
@@ -990,7 +982,7 @@ onBeforeUnmount(() => {
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
 				<n8n-text size="large" color="text-dark" bold>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.title') }}
 				</n8n-text>
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
@@ -1013,7 +1005,7 @@ onBeforeUnmount(() => {
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
 					@click="onMissingNodeLearnMoreLinkClick"
 				>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
 			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
@@ -1021,7 +1013,7 @@ onBeforeUnmount(() => {
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
 						target="_blank"
-						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+						v-text="i18n.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
 			</i18n-t>
@@ -1030,11 +1022,12 @@ onBeforeUnmount(() => {
 			<n8n-notice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
-					$locale.baseText('nodeSettings.hasForeignCredential', {
+					i18n.baseText('nodeSettings.hasForeignCredential', {
 						interpolate: { owner: credentialOwnerName },
 					})
 				"
 			/>
+			<FreeAiCreditsCallout />
 			<div v-show="openPanel === 'params'">
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
@@ -1062,7 +1055,7 @@ onBeforeUnmount(() => {
 				</ParameterInputList>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
 
@@ -1073,7 +1066,7 @@ onBeforeUnmount(() => {
 				>
 					<n8n-notice
 						:content="
-							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
+							i18n.baseText('nodeSettings.useTheHttpRequestNode', {
 								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
 							})
 						"
@@ -1103,7 +1096,7 @@ onBeforeUnmount(() => {
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
-						$locale.baseText('nodeSettings.nodeVersion', {
+						i18n.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
 								version: (node.typeVersion ?? latestVersion).toString(),

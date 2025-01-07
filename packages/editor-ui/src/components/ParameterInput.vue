@@ -61,7 +61,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
-import { N8nInput, N8nSelect } from 'n8n-design-system';
+import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
@@ -365,7 +365,7 @@ const getIssues = computed<string[]>(() => {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
-				checkValues.push(displayValue.value as string);
+				checkValues = checkValues.concat(displayValue.value?.toString().split(','));
 			}
 		}
 
@@ -523,7 +523,7 @@ const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 
-const isInputDataEmpty = computed(() => ndvStore.isNDVDataEmpty('input'));
+const isInputDataEmpty = computed(() => ndvStore.isInputPanelEmpty);
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
@@ -539,7 +539,8 @@ const showDragnDropTip = computed(
 		!isDropDisabled.value &&
 		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
 		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode,
+		ndvStore.isInputParentOfActiveNode &&
+		!props.isForCredential,
 );
 
 const shouldCaptureForPosthog = computed(() => {
@@ -855,6 +856,8 @@ async function optionSelected(command: string) {
 			(!props.modelValue || props.modelValue === '[Object: null]')
 		) {
 			valueChanged('={{ 0 }}');
+		} else if (props.parameter.type === 'multiOptions') {
+			valueChanged(`={{ ${JSON.stringify(props.modelValue)} }}`);
 		} else if (
 			props.parameter.type === 'number' ||
 			props.parameter.type === 'boolean' ||
@@ -982,7 +985,7 @@ watch(remoteParameterOptionsLoading, () => {
 
 // Focus input field when changing from fixed value to expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (isExpression && !wasExpression) {
+	if (!props.isReadOnly && isExpression && !wasExpression) {
 		await nextTick();
 		inputField.value?.focus();
 	}
@@ -1022,7 +1025,7 @@ onUpdated(async () => {
 			@update:model-value="expressionUpdated"
 		></ExpressionEditModal>
 
-		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
+		<div class="parameter-input ignore-key-press-canvas" :style="parameterInputWrapperStyle">
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
@@ -1058,6 +1061,7 @@ onUpdated(async () => {
 				:expression-edit-dialog-visible="expressionEditDialogVisible"
 				:path="path"
 				:parameter-issues="getIssues"
+				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
@@ -1091,13 +1095,16 @@ onUpdated(async () => {
 					:model-value="codeEditDialogVisible"
 					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					width="80%"
-					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
+					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
 					data-test-id="code-editor-fullscreen"
 				>
-					<div :key="codeEditDialogVisible.toString()" class="ignore-key-press code-edit-dialog">
+					<div
+						:key="codeEditDialogVisible.toString()"
+						class="ignore-key-press-canvas code-edit-dialog"
+					>
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
 							:mode="codeEditorMode"
@@ -1142,7 +1149,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 					</div>
@@ -1171,13 +1178,13 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1194,12 +1201,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1215,12 +1222,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1236,13 +1243,13 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1257,12 +1264,12 @@ onUpdated(async () => {
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
 							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 						/>
 					</template>
@@ -1301,7 +1308,7 @@ onUpdated(async () => {
 					@blur="onBlur"
 				>
 					<template #suffix>
-						<n8n-icon
+						<N8nIcon
 							v-if="!isReadOnly && !isSecretParameter"
 							icon="external-link-alt"
 							size="xsmall"
@@ -1421,11 +1428,12 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
+					data-test-id="parameter-input-item"
 				>
 					<div class="list-option">
 						<div
@@ -1440,7 +1448,7 @@ onUpdated(async () => {
 							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 
 			<N8nSelect
@@ -1459,9 +1467,9 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in parameterOptions"
-					:key="option.value"
+					:key="option.value.toString()"
 					:value="option.value"
 					:label="getOptionsOptionDisplayName(option)"
 				>
@@ -1473,7 +1481,7 @@ onUpdated(async () => {
 							v-n8n-html="getOptionsOptionDescription(option)"
 						></div>
 					</div>
-				</n8n-option>
+				</N8nOption>
 			</N8nSelect>
 
 			<!-- temporary state of booleans while data is mapped -->
@@ -1493,7 +1501,7 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				@update:model-value="valueChanged"
 			/>
-			<div v-if="showDragnDropTip" :class="$style.tip">
+			<div v-if="!isReadOnly && showDragnDropTip" :class="$style.tip">
 				<InlineExpressionTip />
 			</div>
 		</div>

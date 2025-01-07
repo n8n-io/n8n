@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
+import { useI18n } from '@/composables/useI18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 
@@ -20,6 +21,8 @@ const emit = defineEmits<{
 const editName = ref(false);
 const newName = ref('');
 const input = ref<HTMLInputElement>();
+
+const i18n = useI18n();
 
 const editable = computed(() => !props.readOnly && window === window.parent);
 
@@ -54,20 +57,21 @@ function onRename() {
 				@keydown.esc="editName = false"
 			>
 				<n8n-text :bold="true" color="text-base" tag="div">{{
-					$locale.baseText('ndv.title.renameNode')
+					i18n.baseText('ndv.title.renameNode')
 				}}</n8n-text>
 				<n8n-input ref="input" v-model="newName" size="small" data-test-id="node-rename-input" />
 				<div :class="$style.editButtons">
 					<n8n-button
 						type="secondary"
 						size="small"
-						:label="$locale.baseText('ndv.title.cancel')"
+						:label="i18n.baseText('ndv.title.cancel')"
 						@click="editName = false"
+						@keydown.enter.stop
 					/>
 					<n8n-button
 						type="primary"
 						size="small"
-						:label="$locale.baseText('ndv.title.rename')"
+						:label="i18n.baseText('ndv.title.rename')"
 						@click="onRename"
 					/>
 				</div>

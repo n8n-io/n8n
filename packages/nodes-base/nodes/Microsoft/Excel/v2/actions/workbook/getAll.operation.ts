@@ -4,8 +4,10 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{

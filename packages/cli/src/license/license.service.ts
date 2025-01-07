@@ -1,13 +1,13 @@
+import { Service } from '@n8n/di';
 import axios, { AxiosError } from 'axios';
+import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { UrlService } from '@/services/url.service';
 
 type LicenseError = Error & { errorId?: keyof typeof LicenseErrors };
@@ -37,7 +37,7 @@ export class LicenseService {
 
 		return {
 			usage: {
-				executions: {
+				activeWorkflowTriggers: {
 					value: triggerCount,
 					limit: this.license.getTriggerLimit(),
 					warningThreshold: 0.8,
@@ -61,11 +61,13 @@ export class LicenseService {
 	}
 
 	async registerCommunityEdition({
+		userId,
 		email,
 		instanceId,
 		instanceUrl,
 		licenseType,
 	}: {
+		userId: User['id'];
 		email: string;
 		instanceId: string;
 		instanceUrl: string;
@@ -83,7 +85,7 @@ export class LicenseService {
 					licenseType,
 				},
 			);
-			this.eventService.emit('license-community-plus-registered', { email, licenseKey });
+			this.eventService.emit('license-community-plus-registered', { userId, email, licenseKey });
 			return rest;
 		} catch (e: unknown) {
 			if (e instanceof AxiosError) {

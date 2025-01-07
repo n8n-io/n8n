@@ -1,7 +1,8 @@
 import type { PushPayload } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import type { Workflow } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import type { User } from '@/databases/entities/user';
@@ -20,6 +21,7 @@ import { parseWorkflowMessage } from './collaboration.message';
 @Service()
 export class CollaborationService {
 	constructor(
+		private readonly errorReporter: ErrorReporter,
 		private readonly push: Push,
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
@@ -31,7 +33,7 @@ export class CollaborationService {
 			try {
 				await this.handleUserMessage(event.userId, event.msg);
 			} catch (error) {
-				ErrorReporterProxy.error(
+				this.errorReporter.error(
 					new ApplicationError('Error handling CollaborationService push message', {
 						extra: {
 							msg: event.msg,
@@ -97,6 +99,6 @@ export class CollaborationService {
 			collaborators: activeCollaborators,
 		};
 
-		this.push.sendToUsers('collaboratorsChanged', msgData, userIds);
+		this.push.sendToUsers({ type: 'collaboratorsChanged', data: msgData }, userIds);
 	}
 }

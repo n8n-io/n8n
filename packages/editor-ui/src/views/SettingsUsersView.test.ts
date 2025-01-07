@@ -12,6 +12,7 @@ import { merge } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@/constants';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const loggedInUser = createUser();
 const invitedUser = createUser({
@@ -72,6 +73,15 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/composables/usePageRedirectionHelper', () => {
+	const goToUpgrade = vi.fn();
+	return {
+		usePageRedirectionHelper: () => ({
+			goToUpgrade,
+		}),
+	};
+});
+
 describe('SettingsUsersView', () => {
 	afterEach(() => {
 		copy.mockReset();
@@ -105,14 +115,17 @@ describe('SettingsUsersView', () => {
 
 		it('allows the user to upgrade', async () => {
 			const { getByTestId } = renderView({ pinia });
-			const uiStore = useUIStore();
+			const pageRedirectionHelper = usePageRedirectionHelper();
 
 			const actionBox = getByTestId('action-box');
 			expect(actionBox).toBeInTheDocument();
 
 			await userEvent.click(await within(actionBox).findByText('View plans'));
 
-			expect(uiStore.goToUpgrade).toHaveBeenCalledWith('settings-users', 'upgrade-users');
+			expect(pageRedirectionHelper.goToUpgrade).toHaveBeenCalledWith(
+				'settings-users',
+				'upgrade-users',
+			);
 		});
 	});
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
@@ -17,7 +17,7 @@
     "benchmark-locally": "pnpm benchmark --env local",
     "provision-cloud-env": "zx scripts/provision-cloud-env.mjs",
     "destroy-cloud-env": "zx scripts/destroy-cloud-env.mjs",
-    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "engines": {
     "node": ">=20.10"
@@ -41,10 +41,7 @@
   },
   "devDependencies": {
     "@types/convict": "^6.1.1",
-    "@types/k6": "^0.52.0",
-    "@types/node": "^20.14.8",
-    "tsc-alias": "^1.8.7",
-    "typescript": "^5.5.2"
+    "@types/k6": "^0.52.0"
   },
   "bin": {
     "n8n-benchmark": "./bin/n8n-benchmark"
