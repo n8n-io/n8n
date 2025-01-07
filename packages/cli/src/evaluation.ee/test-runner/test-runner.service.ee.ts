@@ -245,7 +245,8 @@ export class TestRunnerService {
 				const testCaseExecution = await this.runTestCase(
 					workflow,
 					executionData,
-					pastExecution.executionData.workflowData,test.mockedNodes,
+					pastExecution.executionData.workflowData,
+					test.mockedNodes,
 					user.id,
 				);
 
