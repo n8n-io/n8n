@@ -61,6 +61,7 @@ export class CredentialsModal extends BasePage {
 			this.getters
 				.credentialInputs()
 				.find('input[type=text], input[type=password]')
+				.filter(':not([readonly])')
 				.each(($el) => {
 					cy.wrap($el).type('test');
 				});
