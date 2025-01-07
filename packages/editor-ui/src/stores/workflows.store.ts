@@ -137,7 +137,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
-	const isProcessingExecutionResults = ref<boolean>(false);
 	const activeExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
@@ -221,7 +220,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const isWorkflowRunning = computed(() => {
-		if (uiStore.isActionActive.workflowRunning || isProcessingExecutionResults.value) return true;
+		if (uiStore.isActionActive.workflowRunning) return true;
 
 		if (activeExecutionId.value) {
 			const execution = getWorkflowExecution;
@@ -550,7 +549,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId.value = null;
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
-		isProcessingExecutionResults.value = false;
 	}
 
 	function addExecutingNode(nodeName: string) {
@@ -1641,10 +1639,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
 	}
 
-	function setProcessingExecutionResults(value: boolean) {
-		isProcessingExecutionResults.value = value;
-	}
-
 	return {
 		workflow,
 		usedCredentials,
@@ -1785,7 +1779,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		markExecutionAsStopped,
 		hasTrimmedItem,
 		hasTrimmedData,
-		isProcessingExecutionResults,
-		setProcessingExecutionResults,
 	};
 });

@@ -12,7 +12,7 @@ defineEmits<{
 const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
-	processingExecutionResults?: boolean;
+
 	disabled?: boolean;
 }>();
 
@@ -25,10 +25,6 @@ const label = computed(() => {
 
 	if (props.waitingForWebhook) {
 		return i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
-	}
-
-	if (props.processingExecutionResults) {
-		return i18n.baseText('nodeView.runButtonText.processingExecutionResults');
 	}
 
 	return i18n.baseText('nodeView.runButtonText.executingWorkflow');

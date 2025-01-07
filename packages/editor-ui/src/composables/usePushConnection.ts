@@ -235,7 +235,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				const { workflowId, status, rawData } = receivedData.data;
 				executionData = { workflowId, data: parse(rawData), status };
 			} else {
-				workflowsStore.setProcessingExecutionResults(true);
 				const execution = await workflowsStore.fetchExecutionDataById(executionId);
 				if (!execution?.data) return false;
 				executionData = {
@@ -457,7 +456,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			workflowsStore.executingNode.length = 0;
 			workflowsStore.setWorkflowExecutionData(executionData as IExecutionResponse);
-			workflowsStore.setProcessingExecutionResults(false);
 			uiStore.removeActiveAction('workflowRunning');
 
 			// Set the node execution issues on all the nodes which produced an error so that
