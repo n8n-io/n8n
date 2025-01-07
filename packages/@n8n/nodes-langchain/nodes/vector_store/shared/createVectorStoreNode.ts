@@ -80,10 +80,13 @@ export interface VectorStoreNodeConstructorArgs {
 	) => Promise<VectorStore>;
 }
 
-function transformDescriptionForOperationMode(fields: INodeProperties[], mode: NodeOperationMode) {
+function transformDescriptionForOperationMode(
+	fields: INodeProperties[],
+	mode: NodeOperationMode | NodeOperationMode[],
+) {
 	return fields.map((field) => ({
 		...field,
-		displayOptions: { show: { mode: [mode] } },
+		displayOptions: { show: { mode: Array.isArray(mode) ? mode : [mode] } },
 	}));
 }
 
@@ -299,7 +302,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						},
 					},
 				},
-				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
+				...transformDescriptionForOperationMode(args.loadFields ?? [], [
+					'load',
+					'retrieve-as-tool',
+				]),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
 			],

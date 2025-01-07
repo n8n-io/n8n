@@ -49,7 +49,11 @@ describe('createVectorStoreNode', () => {
 	const vectorStoreNodeArgs = mock<VectorStoreNodeConstructorArgs>({
 		sharedFields: [],
 		insertFields: [],
-		loadFields: [],
+		loadFields: [
+			{
+				name: 'loadField',
+			},
+		],
 		retrieveFields: [],
 		updateFields: [],
 		getVectorStoreClient: jest.fn().mockReturnValue(vectorStore),
@@ -82,6 +86,7 @@ describe('createVectorStoreNode', () => {
 			const wrappedVectorStore = (data.response as { logWrapped: VectorStore }).logWrapped;
 
 			// ASSERT
+			expect(nodeType.description).toMatchSnapshot();
 			expect(wrappedVectorStore).toEqual(vectorStore);
 			expect(vectorStoreNodeArgs.getVectorStoreClient).toHaveBeenCalled();
 		});

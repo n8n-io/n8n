@@ -1,6 +1,6 @@
 import { SecurityConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

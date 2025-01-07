@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { Redactable } from '@/decorators/redactable';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
