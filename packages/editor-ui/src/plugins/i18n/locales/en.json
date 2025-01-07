@@ -1600,8 +1600,6 @@
 	"resourceMapper.staleDataWarning.notice": "Refresh to see the updated fields",
 	"resourceMapper.attemptToConvertTypes.displayName": "Attempt to convert types",
 	"resourceMapper.attemptToConvertTypes.description": "Attempt to convert types when mapping fields",
-	"resourceMapper.ignoreTypeMismatchErrors.displayName": "Ignore type mismatch errors",
-	"resourceMapper.ignoreTypeMismatchErrors.description": "Whether type mismatches should be ignored, rather than returning an Error",
 	"runData.openSubExecution": "Inspect Sub-Execution {id}",
 	"runData.openParentExecution": "Inspect Parent Execution {id}",
 	"runData.emptyItemHint": "This is an item, but it's empty.",
