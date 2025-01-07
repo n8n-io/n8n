@@ -475,8 +475,6 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 async function openWorkflowTemplate(templateId: string) {
 	resetWorkspace();
 
-	console.log('opening workflow template', templateId);
-
 	canvasStore.startLoading();
 	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
