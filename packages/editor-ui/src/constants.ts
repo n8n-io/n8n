@@ -53,6 +53,7 @@ export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
+export const NODE_PINNING_MODAL_KEY = 'nodePinning';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
@@ -497,6 +498,9 @@ export const enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	TEST_DEFINITION = 'TestDefinition',
 	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
+	TEST_DEFINITION_RUNS = 'TestDefinitionRuns',
+	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
+	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
 	NEW_TEST_DEFINITION = 'NewTestDefinition',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
