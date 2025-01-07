@@ -187,6 +187,28 @@ describe('RunData', () => {
 		expect(pinDataButton).toBeDisabled();
 	});
 
+	it('should render callout when data is pinned in output panel', async () => {
+		const { getByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+			paneType: 'output',
+		});
+		const pinnedDataCallout = getByTestId('ndv-pinned-data-callout');
+		expect(pinnedDataCallout).toBeInTheDocument();
+	});
+
+	it('should not render callout when data is pinned in input panel', async () => {
+		const { queryByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+			paneType: 'input',
+		});
+		const pinnedDataCallout = queryByTestId('ndv-pinned-data-callout');
+		expect(pinnedDataCallout).not.toBeInTheDocument();
+	});
+
 	it('should enable pin data button when data is not pinned', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: [{ json: { name: 'Test' } }],
