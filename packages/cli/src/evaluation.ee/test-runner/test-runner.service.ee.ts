@@ -149,6 +149,7 @@ export class TestRunnerService {
 		expectedData: IRunData,
 		actualData: IRunData,
 		abortSignal: AbortSignal,
+		testRunId?: string,
 	) {
 		// Do not run if the test run is cancelled
 		if (abortSignal.aborted) {
@@ -166,7 +167,13 @@ export class TestRunnerService {
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
-
+		// FIXME: This is a hack to add the testRunId to the evaluation workflow execution data
+		// So that we can fetch all execution runs for a test run
+		if (testRunId && data.executionData) {
+			data.executionData.resultData.metadata = {
+				testRunId,
+			};
+		}
 		data.executionMode = 'evaluation';
 
 		// Trigger the evaluation workflow
@@ -300,6 +307,7 @@ export class TestRunnerService {
 					originalRunData,
 					testCaseRunData,
 					abortSignal,
+					testRun.id,
 				);
 				assert(evalExecution);
 
