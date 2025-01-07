@@ -514,6 +514,17 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		} else if (receivedData.type === 'nodeExecuteAfter') {
 			// A node finished to execute. Add its data
 			const pushData = receivedData.data;
+
+			/**
+			 * When we receive a placeholder in `nodeExecuteAfter`, we fake the items
+			 * to be the same count as the data the placeholder is standing in for.
+			 * This prevents the items count from jumping up when the execution
+			 * finishes and the full data replaces the placeholder.
+			 */
+			if (pushData.itemCount && pushData.data.data) {
+				pushData.data.data.main[0]?.push(...new Array(pushData.itemCount - 1).fill({ json: {} }));
+			}
+
 			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
