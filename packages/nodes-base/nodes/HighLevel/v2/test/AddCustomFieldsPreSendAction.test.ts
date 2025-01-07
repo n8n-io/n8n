@@ -3,7 +3,7 @@ import type { IDataObject, IExecuteSingleFunctions, IHttpRequestOptions } from '
 import { addCustomFieldsPreSendAction } from '../GenericFunctions';
 
 describe('addCustomFieldsPreSendAction', () => {
-	let mockThis: Partial<IExecuteSingleFunctions>;
+	let mockThis: any;
 
 	beforeEach(() => {
 		mockThis = {
