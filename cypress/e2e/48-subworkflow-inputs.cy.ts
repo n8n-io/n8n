@@ -217,7 +217,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		populateFields(exampleFields);
 
 		validateAndReturnToParent(
-			DEFAULT_SUBWORKFLOW_NAME_2,
+			DEFAULT_SUBWORKFLOW_NAME_1,
 			1,
 			exampleFields.map((f) => f[0]),
 		);
