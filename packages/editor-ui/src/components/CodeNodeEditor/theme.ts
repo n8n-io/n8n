@@ -39,19 +39,17 @@ const codeEditorSyntaxHighlighting = syntaxHighlighting(
 		{ tag: tags.keyword, color: 'var(--color-code-tags-keyword)' },
 		{
 			tag: [
-				tags.name,
 				tags.deleted,
 				tags.character,
 				tags.macroName,
 				tags.definition(tags.name),
-				tags.separator,
+				tags.definition(tags.variableName),
 				tags.atom,
 				tags.bool,
-				tags.special(tags.variableName),
 			],
 			color: 'var(--color-code-tags-variable)',
 		},
-		{ tag: [tags.propertyName], color: 'var(--color-code-tags-property)' },
+		{ tag: [tags.name, tags.propertyName], color: 'var(--color-code-tags-property)' },
 		{
 			tag: [tags.processingInstruction, tags.string, tags.inserted, tags.special(tags.string)],
 			color: 'var(--color-code-tags-string)',
@@ -82,6 +80,10 @@ const codeEditorSyntaxHighlighting = syntaxHighlighting(
 		{ tag: tags.heading, fontWeight: 'bold', color: 'var(--color-code-tags-heading)' },
 		{ tag: tags.invalid, color: 'var(--color-code-tags-invalid)' },
 		{ tag: tags.strikethrough, textDecoration: 'line-through' },
+		{
+			tag: [tags.derefOperator, tags.special(tags.variableName), tags.variableName, tags.separator],
+			color: 'var(--color-code-foreground)',
+		},
 	]),
 );
 
