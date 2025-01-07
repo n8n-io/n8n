@@ -86,7 +86,7 @@ describe('FreeAiCreditsCallout', () => {
 		});
 
 		(usePostHog as any).mockReturnValue({
-			isFeatureEnabled: vi.fn().mockReturnValue(true),
+			getVariant: vi.fn().mockReturnValue('variant'),
 		});
 
 		(useProjectsStore as any).mockReturnValue({
@@ -150,7 +150,7 @@ describe('FreeAiCreditsCallout', () => {
 
 	it('should not be able to claim credits if user it is not in experiment', async () => {
 		(usePostHog as any).mockReturnValue({
-			isFeatureEnabled: vi.fn().mockReturnValue(false),
+			getVariant: vi.fn().mockReturnValue('control'),
 		});
 
 		renderComponent(FreeAiCreditsCallout);
