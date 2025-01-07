@@ -27,7 +27,7 @@ const showSuccessCallout = ref(false);
 const claimingCredits = ref(false);
 
 const settingsStore = useSettingsStore();
-const postHogStore = usePostHog();
+const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const usersStore = useUsersStore();
 const ndvStore = useNDVStore();
@@ -57,7 +57,7 @@ const userCanClaimOpenAiCredits = computed(() => {
 	return (
 		settingsStore.isAiCreditsEnabled &&
 		activeNodeHasOpenAiApiCredential.value &&
-		postHogStore.isFeatureEnabled(AI_CREDITS_EXPERIMENT.name) &&
+		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant &&
 		!userHasOpenAiCredentialAlready.value &&
 		!userHasClaimedAiCreditsAlready.value
 	);
