@@ -127,9 +127,6 @@ describe('Template credentials setup', () => {
 
 		// Check workflow JSON by copying it to clipboard
 		cy.readClipboard().then((workflowJSON) => {
-			console.log('WORKFLOW');
-			console.log(workflowJSON);
-
 			const workflow = JSON.parse(workflowJSON);
 
 			expect(workflow.meta).to.haveOwnProperty('templateId', testTemplate.id.toString());
