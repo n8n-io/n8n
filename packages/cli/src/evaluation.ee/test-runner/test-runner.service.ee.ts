@@ -275,9 +275,9 @@ export class TestRunnerService {
 					evaluationWorkflow,
 					originalRunData,
 					testCaseRunData,
-				testRun.id,);
+					testRun.id,
+				);
 				assert(evalExecution);
-
 
 				metrics.addResults(this.extractEvaluationResult(evalExecution));
 
