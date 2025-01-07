@@ -472,17 +472,20 @@ export function generateNodesGraph(
 	return { nodeGraph, nameIndices, webhookNodeNames };
 }
 
-export function extractLastExecutedNodeCredentialData(runData: IRun) {
-	let id: string | null = null;
-	let credentialType: string | null = null;
-
+export function extractLastExecutedNodeCredentialData(
+	runData: IRun,
+): null | { credentialId: string; credentialType: string } {
 	const nodeCredentials = runData?.data?.executionData?.nodeExecutionStack?.[0]?.node?.credentials;
 
-	if (nodeCredentials) {
-		credentialType = Object.keys(nodeCredentials)[0] ?? null;
-		if (credentialType) {
-			({ id } = nodeCredentials[credentialType]);
-		}
-	}
+	if (!nodeCredentials) return null;
+
+	const credentialType = Object.keys(nodeCredentials)[0] ?? null;
+
+	if (!credentialType) return null;
+
+	const { id } = nodeCredentials[credentialType];
+
+	if (!id) return null;
+
 	return { credentialId: id, credentialType };
 }

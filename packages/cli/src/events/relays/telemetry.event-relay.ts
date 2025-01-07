@@ -707,17 +707,18 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				if (runData.data.startData?.destinationNode) {
-					const { credentialId, credentialType } =
-						TelemetryHelpers.extractLastExecutedNodeCredentialData(runData);
-					if (credentialId && credentialType) {
-						manualExecEventProperties.credential_type = credentialType;
-						const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
+					const credentialsData = TelemetryHelpers.extractLastExecutedNodeCredentialData(runData);
+					if (credentialsData) {
+						manualExecEventProperties.credential_type = credentialsData.credentialType;
+						const credential = await this.credentialsRepository.findOneBy({
+							id: credentialsData.credentialId,
+						});
 						if (credential) {
 							manualExecEventProperties.is_managed = credential.isManaged;
 						}
 					}
 
-					const telemetryPayload: { [key: string]: any } = {
+					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,

@@ -911,9 +911,7 @@ describe('extractLastExecutedNodeCredentialData', () => {
 	test.each(cases)(
 		'should return credentialId and credentialsType with null if %s',
 		(_, runData) => {
-			expect(extractLastExecutedNodeCredentialData(runData)).toMatchObject(
-				expect.objectContaining({ credentialId: null, credentialType: null }),
-			);
+			expect(extractLastExecutedNodeCredentialData(runData)).toBeNull();
 		},
 	);
 
