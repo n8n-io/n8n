@@ -159,8 +159,8 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = decodeURIComponent(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const timeMin = this.getNodeParameter('timeMin', i) as string;
-						const timeMax = this.getNodeParameter('timeMax', i) as string;
+						const timeMin = dateTimeToIso(this.getNodeParameter('timeMin', i));
+						const timeMax = dateTimeToIso(this.getNodeParameter('timeMax', i));
 						const options = this.getNodeParameter('options', i);
 						const outputFormat = options.outputFormat || 'availability';
 						const tz = this.getNodeParameter('options.timezone', i, '', {
@@ -211,8 +211,8 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const start = this.getNodeParameter('start', i) as string;
-						const end = this.getNodeParameter('end', i) as string;
+						const start = dateTimeToIso(this.getNodeParameter('start', i));
+						const end = dateTimeToIso(this.getNodeParameter('end', i));
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

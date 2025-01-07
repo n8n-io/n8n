@@ -271,8 +271,12 @@ export async function googleApiRequestWithRetries({
 	return await requestWithRetries(context.getNode(), requestFn, retryCount, maxRetries, itemIndex);
 }
 
-export const eventExtendYearIntoFuture = (data: ReccuringEventInstance[], timezone: string) => {
-	const thisYear = moment().tz(timezone).year();
+export const eventExtendYearIntoFuture = (
+	data: ReccuringEventInstance[],
+	timezone: string,
+	currentYear?: number, // for testing purposes
+) => {
+	const thisYear = currentYear || moment().tz(timezone).year();
 
 	return data.some((event) => {
 		if (!event.recurringEventId) return false;
