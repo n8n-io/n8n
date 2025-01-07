@@ -1,13 +1,14 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -94,11 +95,17 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		pastExecutionWorkflowData: IWorkflowBase,
 		mockedNodes: MockedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
+		const pinData = createPinData(
+			workflow,
+			mockedNodes,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
 
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -127,6 +134,7 @@ export class TestRunnerService {
 		evaluationWorkflow: WorkflowEntity,
 		expectedData: IRunData,
 		actualData: IRunData,
+		testRunId?: string,
 	) {
 		// Prepare the evaluation wf input data.
 		// Provide both the expected data and the actual data
@@ -139,7 +147,13 @@ export class TestRunnerService {
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
-
+		// FIXME: This is a hack to add the testRunId to the evaluation workflow execution data
+		// So that we can fetch all execution runs for a test run
+		if (testRunId && data.executionData) {
+			data.executionData.resultData.metadata = {
+				testRunId,
+			};
+		}
 		data.executionMode = 'evaluation';
 
 		// Trigger the evaluation workflow
@@ -235,6 +249,7 @@ export class TestRunnerService {
 			const testCaseExecution = await this.runTestCase(
 				workflow,
 				executionData,
+				pastExecution.executionData.workflowData,
 				test.mockedNodes,
 				user.id,
 			);
@@ -256,10 +271,9 @@ export class TestRunnerService {
 				evaluationWorkflow,
 				originalRunData,
 				testCaseRunData,
+				testRun.id,
 			);
 			assert(evalExecution);
-
-			// Extract the output of the last node executed in the evaluation workflow
 			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
