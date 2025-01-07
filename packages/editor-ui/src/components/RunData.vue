@@ -1263,10 +1263,13 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	}
 
 	if (task.subExecution) {
-		return i18n.baseText('runData.openSubExecution', {
-			adjustToNumber: activeTaskMetadata.value?.subExecutionsCount ?? 0,
-			interpolate: { id: task.subExecution.executionId },
-		});
+		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
 	}
 
 	return;
