@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -213,7 +213,8 @@ export class GSuiteAdmin implements INodeType {
 							// Validate the query format
 							const regex = /^(name|email):\S+$/;
 							if (!regex.test(query)) {
-								throw new ApplicationError(
+								throw new NodeOperationError(
+									this.getNode(),
 									'Invalid query format. Query must follow the format "displayName:<value>" or "email:<value>".',
 								);
 							}
@@ -316,7 +317,8 @@ export class GSuiteAdmin implements INodeType {
 						}
 
 						if (!userEmail) {
-							throw new ApplicationError(
+							throw new NodeOperationError(
+								this.getNode(),
 								'Unable to determine the user email for adding to the group.',
 							);
 						}
@@ -778,12 +780,12 @@ export class GSuiteAdmin implements INodeType {
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw error;
 				throw new NodeOperationError(
 					this.getNode(),
 					`Operation "${operation}" failed for resource "${resource}".`,
+
 					{
-						description: `Please check the input parameters and ensure the API request is correctly formatted. Details: ${error.message}`,
+						description: `Please check the input parameters and ensure the API request is correctly formatted. Details: ${error.description}`,
 						itemIndex: i,
 					},
 				);
