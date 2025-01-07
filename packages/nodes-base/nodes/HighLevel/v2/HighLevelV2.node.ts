@@ -10,10 +10,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
+import { calendarFields, calendarOperations } from './description/CalendarDescription';
 import { contactFields, contactNotes, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
-import { calendarFields, calendarOperations } from './description/CalendarDescription';
 import {
 	getContacts,
 	getPipelines,
