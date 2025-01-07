@@ -1,13 +1,14 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -94,11 +95,17 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		pastExecutionWorkflowData: IWorkflowBase,
 		mockedNodes: MockedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
+		const pinData = createPinData(
+			workflow,
+			mockedNodes,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
 
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -235,6 +242,7 @@ export class TestRunnerService {
 			const testCaseExecution = await this.runTestCase(
 				workflow,
 				executionData,
+				pastExecution.executionData.workflowData,
 				test.mockedNodes,
 				user.id,
 			);
