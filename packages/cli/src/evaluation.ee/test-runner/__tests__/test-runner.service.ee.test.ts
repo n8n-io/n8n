@@ -28,6 +28,12 @@ const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
 );
 
+const wfUnderTestRenamedNodesJson = JSON.parse(
+	readFileSync(path.join(__dirname, './mock-data/workflow.under-test-renamed-nodes.json'), {
+		encoding: 'utf-8',
+	}),
+);
+
 const wfEvaluationJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.evaluation.json'), { encoding: 'utf-8' }),
 );
@@ -61,6 +67,7 @@ const executionMocks = [
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataJson),
+			workflowData: wfUnderTestJson,
 		},
 	}),
 	mock<ExecutionEntity>({
@@ -69,6 +76,7 @@ const executionMocks = [
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataJson),
+			workflowData: wfUnderTestRenamedNodesJson,
 		},
 	}),
 ];
@@ -269,7 +277,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ name: 'When clicking ‘Test workflow’' }],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
@@ -540,7 +548,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ name: 'When clicking ‘Test workflow’' }],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
