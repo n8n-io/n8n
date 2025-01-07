@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import { ErrorReporter } from 'n8n-core';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
