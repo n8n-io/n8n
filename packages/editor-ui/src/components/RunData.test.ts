@@ -282,7 +282,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
@@ -311,7 +311,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Parent Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View parent execution');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
@@ -344,7 +344,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution 123');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 
@@ -389,7 +389,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Sub-Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('View sub-execution 123');
 
 		expect(queryByTestId('ndv-items-count')).not.toBeInTheDocument();
 		expect(getByTestId('run-selector')).toBeInTheDocument();
