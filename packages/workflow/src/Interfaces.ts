@@ -2710,7 +2710,6 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
-	ignoreTypeMismatchErrors: boolean;
 	attemptToConvertTypes: boolean;
 	convertFieldsToString: boolean;
 };
