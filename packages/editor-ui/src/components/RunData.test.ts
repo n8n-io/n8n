@@ -311,7 +311,7 @@ describe('RunData', () => {
 		});
 
 		expect(getByTestId('related-execution-link')).toBeInTheDocument();
-		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect Parent Execution 123');
+		expect(getByTestId('related-execution-link')).toHaveTextContent('Inspect parent execution 123');
 		expect(resolveRelatedExecutionUrl).toHaveBeenCalledWith(metadata);
 		expect(getByTestId('related-execution-link')).toHaveAttribute('href', MOCK_EXECUTION_URL);
 

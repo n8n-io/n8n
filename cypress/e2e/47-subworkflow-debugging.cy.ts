@@ -125,7 +125,7 @@ describe('Subworkflow debugging', () => {
 
 			getExecutionPreviewOutputPanelRelatedExecutionLink().should(
 				'include.text',
-				'Inspect Parent Execution',
+				'Inspect parent execution',
 			);
 
 			getExecutionPreviewOutputPanelRelatedExecutionLink()
