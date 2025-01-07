@@ -58,6 +58,7 @@ export type PostgresNodeCredentials = {
 	database: string;
 	user: string;
 	password: string;
+	maxConnections: number;
 	allowUnauthorizedCerts?: boolean;
 	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
 } & (

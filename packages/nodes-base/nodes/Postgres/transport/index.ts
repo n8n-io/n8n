@@ -29,6 +29,7 @@ const getPostgresConfig = (
 		user: credentials.user,
 		password: credentials.password,
 		keepAlive: true,
+		max: credentials.maxConnections,
 	};
 
 	if (options.connectionTimeout) {
