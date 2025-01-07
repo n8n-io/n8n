@@ -50,7 +50,7 @@ export function getNodeByName(name: string) {
 }
 
 export function getWorkflowHistoryCloseButton() {
-	return cy.getByTestId('workflow-history-close-button')
+	return cy.getByTestId('workflow-history-close-button');
 }
 
 export function disableNode(name: string) {

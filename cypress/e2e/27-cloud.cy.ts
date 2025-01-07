@@ -1,10 +1,5 @@
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
-import {
-	MainSidebar,
-	WorkflowPage,
-	visitPublicApiPage,
-	getPublicApiUpgradeCTA,
-} from '../pages';
+import { MainSidebar, WorkflowPage, visitPublicApiPage, getPublicApiUpgradeCTA } from '../pages';
 
 const mainSidebar = new MainSidebar();
 const workflowPage = new WorkflowPage();

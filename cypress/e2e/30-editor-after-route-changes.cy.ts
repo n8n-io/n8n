@@ -5,10 +5,7 @@ import {
 	IF_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../constants';
-import {
-	WorkflowExecutionsTab,
-	WorkflowPage as WorkflowPageClass,
-} from '../pages';
+import { WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
