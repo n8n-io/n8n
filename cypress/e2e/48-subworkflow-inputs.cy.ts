@@ -80,11 +80,17 @@ function populateFields(items: ReadonlyArray<readonly [string, TypeField]>) {
 	populateFixedCollection(items, 'workflowInputs', 1);
 }
 
-function navigateWorkflowSelectionDropdown(index: number) {
+function navigateWorkflowSelectionDropdown(index: number, expectedText: string) {
 	ndv.getters.resourceLocator('workflowId').should('be.visible');
 	ndv.getters.resourceLocatorInput('workflowId').click();
 
-	getVisiblePopper().findChildByTestId('rlc-item').eq(index).click();
+	getVisiblePopper().findChildByTestId('rlc-item').eq(0).should('exist');
+	getVisiblePopper()
+		.findChildByTestId('rlc-item')
+		.eq(index)
+		.find('span')
+		.should('have.text', expectedText)
+		.click();
 }
 
 function populateMapperFields(values: readonly string[], offset: number) {
@@ -124,7 +130,7 @@ function validateAndReturnToParent(targetChild: string, offset: number, fields: 
 
 	// Note that outside of e2e tests this will be pre-selected correctly.
 	// Due to our workaround to remain in the same tab we need to select the correct tab manually
-	navigateWorkflowSelectionDropdown(offset);
+	navigateWorkflowSelectionDropdown(offset, targetChild);
 
 	// This fails, pointing to `usePushConnection` `const triggerNode = subWorkflow?.nodes.find` being `undefined.find()`I <think>
 	ndv.actions.execute();
@@ -161,7 +167,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		navigateWorkflowSelectionDropdown(0);
+		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
@@ -221,7 +227,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		navigateWorkflowSelectionDropdown(0);
+		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
 
 		openNode('Workflow Input Trigger');
 
