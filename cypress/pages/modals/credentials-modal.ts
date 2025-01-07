@@ -60,6 +60,7 @@ export class CredentialsModal extends BasePage {
 			this.getters.credentialInputs().should('have.length.greaterThan', 0);
 			this.getters
 				.credentialInputs()
+				.find(':not([role=combobox])')
 				.find('input[type=text], input[type=password]')
 				.each(($el) => {
 					cy.wrap($el).type('test');
