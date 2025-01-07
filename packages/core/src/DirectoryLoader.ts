@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -19,7 +20,6 @@ import { ApplicationError, applyDeclarativeNodeOptionParameters, jsonParse } fro
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import * as path from 'path';
-import Container from 'typedi';
 
 import { Logger } from '@/logging/logger';
 

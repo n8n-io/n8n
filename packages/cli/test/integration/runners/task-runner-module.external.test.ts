@@ -1,6 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container from 'typedi';
 
 import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';

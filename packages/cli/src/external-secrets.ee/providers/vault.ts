@@ -1,8 +1,8 @@
+import { Container } from '@n8n/di';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import { Logger } from 'n8n-core';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
 import { SecretsProvider } from '@/interfaces';
