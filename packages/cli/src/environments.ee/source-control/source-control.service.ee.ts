@@ -331,29 +331,15 @@ export class SourceControlService {
 			preferLocalVersion: false,
 		})) as SourceControlledFile[];
 
-		// filter out items that will not effect a local change and thus should not
-		// trigger a conflict warning in the frontend
-		const filteredResult = statusResult.filter((e) => {
-			// locally created credentials will not create a conflict on pull
-			if (e.status === 'created' && e.location === 'local') {
-				return false;
-			}
-			// remotely deleted credentials will not delete local credentials
-			if (e.type === 'credential' && e.status === 'deleted') {
-				return false;
-			}
-			return true;
-		});
-
 		if (options.force !== true) {
-			const possibleConflicts = filteredResult?.filter(
+			const possibleConflicts = statusResult?.filter(
 				(file) => (file.conflict || file.status === 'modified') && file.type === 'workflow',
 			);
 			if (possibleConflicts?.length > 0) {
 				await this.gitService.resetBranch();
 				return {
 					statusCode: 409,
-					statusResult: filteredResult,
+					statusResult,
 				};
 			}
 		}
@@ -393,7 +379,7 @@ export class SourceControlService {
 
 		return {
 			statusCode: 200,
-			statusResult: filteredResult,
+			statusResult,
 		};
 	}
 
