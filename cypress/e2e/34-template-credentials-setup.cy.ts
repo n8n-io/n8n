@@ -3,6 +3,7 @@ import * as formStep from '../composables/setup-template-form-step';
 import { getSetupWorkflowCredentialsButton } from '../composables/setup-workflow-credentials-button';
 import TestTemplate1 from '../fixtures/Test_Template_1.json';
 import TestTemplate2 from '../fixtures/Test_Template_2.json';
+import { clearNotifications } from '../pages/notifications';
 import {
 	clickUseWorkflowButtonByTitle,
 	visitTemplateCollectionPage,
@@ -10,7 +11,6 @@ import {
 } from '../pages/template-collection';
 import * as templateCredentialsSetupPage from '../pages/template-credential-setup';
 import { WorkflowPage } from '../pages/workflow';
-import { clearNotifications } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 
