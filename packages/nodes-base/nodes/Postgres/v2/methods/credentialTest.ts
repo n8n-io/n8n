@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { PgpClient, PostgresNodeCredentials } from '../helpers/interfaces';
-import { configurePostgres } from '../transport';
+import { configurePostgres } from '../../transport';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,

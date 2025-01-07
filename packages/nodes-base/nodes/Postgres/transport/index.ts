@@ -16,7 +16,7 @@ import type {
 	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
-} from '../helpers/interfaces';
+} from '../v2/helpers/interfaces';
 
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
