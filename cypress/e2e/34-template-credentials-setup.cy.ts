@@ -10,6 +10,7 @@ import {
 } from '../pages/template-collection';
 import * as templateCredentialsSetupPage from '../pages/template-credential-setup';
 import { WorkflowPage } from '../pages/workflow';
+import { clearNotifications } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 
@@ -111,18 +112,24 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
 		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
 
+		clearNotifications();
+
 		templateCredentialsSetupPage.finishCredentialSetup();
 
 		workflowPage.getters.canvasNodes().should('have.length', 3);
+
+		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 
 		// Focus the canvas so the copy to clipboard works
 		workflowPage.getters.canvasNodes().eq(0).realClick();
 		workflowPage.actions.hitSelectAll();
 		workflowPage.actions.hitCopy();
 
-		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 		// Check workflow JSON by copying it to clipboard
 		cy.readClipboard().then((workflowJSON) => {
+			console.log('WORKFLOW');
+			console.log(workflowJSON);
+
 			const workflow = JSON.parse(workflowJSON);
 
 			expect(workflow.meta).to.haveOwnProperty('templateId', testTemplate.id.toString());
@@ -154,6 +161,8 @@ describe('Template credentials setup', () => {
 		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Email (IMAP)');
 		templateCredentialsSetupPage.fillInDummyCredentialsForApp('Nextcloud');
 
+		clearNotifications();
+
 		templateCredentialsSetupPage.finishCredentialSetup();
 
 		workflowPage.getters.canvasNodes().should('have.length', 3);
@@ -176,6 +185,8 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.visitTemplateCredentialSetupPage(testTemplate.id);
 			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
 
+			clearNotifications();
+
 			templateCredentialsSetupPage.finishCredentialSetup();
 
 			getSetupWorkflowCredentialsButton().should('be.visible');
@@ -191,6 +202,8 @@ describe('Template credentials setup', () => {
 			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Shopify');
 			templateCredentialsSetupPage.fillInDummyCredentialsForAppWithConfirm('X (Formerly Twitter)');
 			templateCredentialsSetupPage.fillInDummyCredentialsForApp('Telegram');
+
+			clearNotifications();
 
 			setupCredsModal.closeModalFromContinueButton();
 			setupCredsModal.getWorkflowCredentialsModal().should('not.exist');

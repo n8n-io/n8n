@@ -118,6 +118,11 @@ const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
 );
 
+const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
+	async () =>
+		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+);
+
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
@@ -469,6 +474,8 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 
 async function openWorkflowTemplate(templateId: string) {
 	resetWorkspace();
+
+	console.log('opening workflow template', templateId);
 
 	canvasStore.startLoading();
 	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
@@ -1696,6 +1703,9 @@ onBeforeUnmount(() => {
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
 	>
+		<Suspense>
+			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
+		</Suspense>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
 				v-if="isRunWorkflowButtonVisible"
@@ -1802,6 +1812,12 @@ onBeforeUnmount(() => {
 			}
 		}
 	}
+}
+
+.setupCredentialsButtonWrapper {
+	position: absolute;
+	left: var(--spacing-s);
+	top: var(--spacing-s);
 }
 
 .readOnlyEnvironmentNotification {
