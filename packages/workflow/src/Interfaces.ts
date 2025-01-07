@@ -1484,6 +1484,7 @@ export interface INodePropertyOptions {
 	action?: string;
 	description?: string;
 	routing?: INodePropertyRouting;
+	outputConnectionType?: NodeConnectionType;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {

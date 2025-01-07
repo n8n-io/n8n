@@ -1,10 +1,10 @@
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { MigrationExecutor, DataSource as Connection } from '@n8n/typeorm';
 import { Command, Flags } from '@oclif/core';
 import { Logger } from 'n8n-core';
-import { Container } from 'typedi';
 
 import { getConnectionOptions } from '@/databases/config';
 import type { Migration } from '@/databases/types';

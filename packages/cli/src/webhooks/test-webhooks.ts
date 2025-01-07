@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings } from 'n8n-core';
 import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
@@ -7,7 +8,6 @@ import type {
 	IHttpRequestMethods,
 	IRunData,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';

@@ -1,7 +1,7 @@
 import type { WorkerStatus } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import os from 'node:os';
-import { Service } from 'typedi';
 
 import { N8N_VERSION } from '@/constants';
 

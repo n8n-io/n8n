@@ -13,6 +13,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import chardet from 'chardet';
@@ -93,7 +94,6 @@ import clientOAuth1 from 'oauth-1.0a';
 import path from 'path';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
-import Container from 'typedi';
 import url, { URL, URLSearchParams } from 'url';
 
 import { Logger } from '@/logging/logger';

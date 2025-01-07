@@ -129,4 +129,14 @@ onBeforeRouteLeave(async (to, _, next) => {
 .content {
 	flex: 1;
 }
+
+@include mixins.breakpoint('sm-and-down') {
+	.container {
+		flex-direction: column;
+	}
+
+	.content {
+		flex: 1 1 50%;
+	}
+}
 </style>

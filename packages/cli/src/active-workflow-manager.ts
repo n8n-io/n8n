@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Service } from '@n8n/di';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
@@ -28,7 +29,6 @@ import {
 	WebhookPathTakenError,
 	ApplicationError,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';

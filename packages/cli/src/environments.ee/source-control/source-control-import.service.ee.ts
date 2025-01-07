@@ -1,3 +1,4 @@
+import { Container, Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
@@ -5,7 +6,6 @@ import { Credentials, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, jsonParse, ensureError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
-import { Container, Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { Project } from '@/databases/entities/project';
