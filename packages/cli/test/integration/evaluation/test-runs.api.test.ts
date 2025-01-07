@@ -1,5 +1,5 @@
-import { mockInstance } from 'n8n-core/test/utils';
 import { Container } from '@n8n/di';
+import { mockInstance } from 'n8n-core/test/utils';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
@@ -7,7 +7,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
-import { TestRunnerService } from '@/evaluation/test-runner/test-runner.service.ee';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createUserShell } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';

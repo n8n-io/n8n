@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -277,7 +276,8 @@ export class TestRunnerService {
 				const testCaseExecution = await this.runTestCase(
 					workflow,
 					executionData,
-					pastExecution.executionData.workflowData,test.mockedNodes,
+					pastExecution.executionData.workflowData,
+					test.mockedNodes,
 					user.id,
 					abortSignal,
 				);
