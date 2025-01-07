@@ -418,12 +418,7 @@ export class Form extends Node {
 			);
 		}
 
-		if (operation !== 'completion') {
-			await context.putExecutionToWait(WAIT_INDEFINITELY);
-		} else {
-			const waitTill = new Date(WAIT_INDEFINITELY);
-			await context.putExecutionToWait(waitTill);
-		}
+		await context.putExecutionToWait(WAIT_INDEFINITELY);
 
 		return [context.getInputData()];
 	}
