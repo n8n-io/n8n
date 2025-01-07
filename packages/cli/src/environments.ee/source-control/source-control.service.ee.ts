@@ -320,6 +320,26 @@ export class SourceControlService {
 		};
 	}
 
+	private getConflicts(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((file) => file.conflict || file.status === 'modified');
+	}
+
+	private getWorkflowsToImport(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'workflow' && e.status !== 'deleted');
+	}
+
+	private getCredentialsToImport(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'credential' && e.status !== 'deleted');
+	}
+
+	private getTagsToImport(files: SourceControlledFile[]): SourceControlledFile | undefined {
+		return files.find((e) => e.type === 'tags' && e.status !== 'deleted');
+	}
+
+	private getVariablesToImport(files: SourceControlledFile[]): SourceControlledFile | undefined {
+		return files.find((e) => e.type === 'variables' && e.status !== 'deleted');
+	}
+
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
@@ -332,9 +352,7 @@ export class SourceControlService {
 		})) as SourceControlledFile[];
 
 		if (options.force !== true) {
-			const possibleConflicts = statusResult?.filter(
-				(file) => (file.conflict || file.status === 'modified') && file.type === 'workflow',
-			);
+			const possibleConflicts = this.getConflicts(statusResult);
 			if (possibleConflicts?.length > 0) {
 				await this.gitService.resetBranch();
 				return {
@@ -344,28 +362,23 @@ export class SourceControlService {
 			}
 		}
 
-		const workflowsToBeImported = statusResult.filter(
-			(e) => e.type === 'workflow' && e.status !== 'deleted',
-		);
+		const workflowsToBeImported = this.getWorkflowsToImport(statusResult);
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
 			options.userId,
 		);
-
-		const credentialsToBeImported = statusResult.filter(
-			(e) => e.type === 'credential' && e.status !== 'deleted',
-		);
+		const credentialsToBeImported = this.getCredentialsToImport(statusResult);
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
 			options.userId,
 		);
 
-		const tagsToBeImported = statusResult.find((e) => e.type === 'tags');
+		const tagsToBeImported = this.getTagsToImport(statusResult);
 		if (tagsToBeImported) {
 			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
 		}
 
-		const variablesToBeImported = statusResult.find((e) => e.type === 'variables');
+		const variablesToBeImported = this.getVariablesToImport(statusResult);
 		if (variablesToBeImported) {
 			await this.sourceControlImportService.importVariablesFromWorkFolder(variablesToBeImported);
 		}
