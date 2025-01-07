@@ -9,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { deviceFields, deviceOperations } from './DeviceDescription';
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
@@ -18,6 +17,7 @@ import {
 } from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescripion';
 import { userFields, userOperations } from './UserDescription';
+import { deviceFields, deviceOperations } from './DeviceDescription';
 
 export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
@@ -440,7 +440,10 @@ export class GSuiteAdmin implements INodeType {
 						if (projection) {
 							qs.projection = projection;
 						}
-
+						qs.projection = projection;
+						if (projection === 'custom' && qs.customFieldMask) {
+							qs.customFieldMask = (qs.customFieldMask as string[]).join(',');
+						}
 						if (output === 'select') {
 							if (!fields.includes('id')) {
 								fields.push('id');
@@ -479,11 +482,23 @@ export class GSuiteAdmin implements INodeType {
 						const filter = this.getNodeParameter('filter', i, {}) as IDataObject;
 						const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
 
-						if (typeof filter.query === 'string') {
+						if (filter.customer) {
+							qs.customer = filter.customer as string;
+						}
+
+						if (filter.domain) {
+							qs.domain = filter.domain as string;
+						}
+
+						if (filter.query && typeof filter.query === 'string') {
 							const query = filter.query.trim();
 							if (query) {
 								qs.query = query;
 							}
+						}
+
+						if (filter.showDeleted) {
+							qs.showDeleted = filter.showDeleted === true ? 'true' : 'false';
 						}
 
 						if (sort.sortRules) {
@@ -500,14 +515,7 @@ export class GSuiteAdmin implements INodeType {
 						}
 
 						qs.projection = projection;
-						if (projection === 'custom' && !qs.customFieldMask) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'When projection is set to custom, the custom schemas field must be defined',
-								{ itemIndex: i },
-							);
-						}
-						if (qs.customFieldMask) {
+						if (projection === 'custom' && qs.customFieldMask) {
 							qs.customFieldMask = (qs.customFieldMask as string[]).join(',');
 						}
 
@@ -770,6 +778,7 @@ export class GSuiteAdmin implements INodeType {
 					returnData.push(...executionErrorData);
 					continue;
 				}
+				throw error;
 				throw new NodeOperationError(
 					this.getNode(),
 					`Operation "${operation}" failed for resource "${resource}".`,

@@ -129,7 +129,6 @@ export const groupFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchGroups',
-					searchable: true,
 				},
 			},
 			{
@@ -169,7 +168,6 @@ export const groupFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchGroups',
-					searchable: true,
 				},
 			},
 			{
@@ -247,9 +245,10 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				placeholder: 'e.g. name:Admins',
+				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
-				description: 'Query string to filter the results. Follow Google Admin SDK documentation.',
+				description:
+					'Query string to filter the results. Follow Google Admin SDK documentation <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups#examples"</a>.',
 			},
 			{
 				displayName: 'User ID',
@@ -335,7 +334,6 @@ export const groupFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchGroups',
-					searchable: true,
 				},
 			},
 			{

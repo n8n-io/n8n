@@ -86,7 +86,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchUsers',
-					searchable: true,
 				},
 			},
 			{
@@ -137,7 +136,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchGroups',
-					searchable: true,
 				},
 			},
 			{
@@ -577,7 +575,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchUsers',
-					searchable: true,
 				},
 			},
 			{
@@ -633,7 +630,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchUsers',
-					searchable: true,
 				},
 			},
 			{
@@ -750,6 +746,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Custom Schema Names or IDs',
 		name: 'customFieldMask',
 		type: 'multiOptions',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -887,6 +884,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Custom Schema Names or IDs',
 		name: 'customFieldMask',
 		type: 'multiOptions',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -932,9 +930,10 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				placeholder: 'e.g. name:Admins',
+				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
-				description: 'Query string to filter the results. Follow Google Admin SDK documentation.',
+				description:
+					'Query string to filter the results. Follow Google Admin SDK documentation <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users#examples"</a>.',
 			},
 			{
 				displayName: 'Show Deleted',
@@ -1033,7 +1032,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchUsers',
-					searchable: true,
 				},
 			},
 			{
@@ -1084,7 +1082,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchGroups',
-					searchable: true,
 				},
 			},
 			{
@@ -1121,7 +1118,6 @@ export const userFields: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'searchUsers',
-					searchable: true,
 				},
 			},
 			{

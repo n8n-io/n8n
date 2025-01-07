@@ -68,17 +68,10 @@ export async function googleApiRequestAllItems(
 }
 
 /* listSearch methods */
-export async function searchUsers(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-): Promise<INodeListSearchResult> {
+export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const qs: IDataObject = {
 		customer: 'my_customer',
 	};
-
-	if (filter) {
-		qs.query = `name:${filter}* OR email:${filter}*`;
-	}
 
 	// Perform the API request to list all users
 	const responseData = await googleApiRequestAllItems.call(
@@ -107,17 +100,10 @@ export async function searchUsers(
 	return { results };
 }
 
-export async function searchGroups(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-): Promise<INodeListSearchResult> {
+export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const qs: IDataObject = {
 		customer: 'my_customer',
 	};
-
-	if (filter) {
-		qs.query = `name:${filter}* OR email:${filter}*`;
-	}
 
 	// Perform the API request to list all groups
 	const responseData = await googleApiRequestAllItems.call(
