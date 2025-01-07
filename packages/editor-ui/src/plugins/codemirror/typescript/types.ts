@@ -4,6 +4,7 @@ import type { Diagnostic } from '@codemirror/lint';
 import type { CodeExecutionMode } from 'n8n-workflow';
 import type ts from 'typescript';
 import type * as Comlink from 'comlink';
+import type { ChangeSet } from '@codemirror/state';
 
 export interface HoverInfo {
 	start: number;
@@ -14,7 +15,7 @@ export interface HoverInfo {
 
 export type WorkerInitOptions = {
 	id: string;
-	content: string;
+	content: string[];
 	allNodeNames: string[];
 	inputNodeNames: string[];
 	variables: string[];
@@ -25,7 +26,7 @@ export type NodeData = { json: Schema | undefined; binary: string[]; params: Sch
 export type NodeDataFetcher = (nodeName: string) => Promise<NodeData | undefined>;
 
 export type LanguageServiceWorker = {
-	updateFile(content: string): void;
+	updateFile(changes: ChangeSet): void;
 	updateMode(mode: CodeExecutionMode): void;
 	updateNodeTypes(): void;
 	getCompletionsAtPos(pos: number): Promise<{ result: CompletionResult; isGlobal: boolean } | null>;

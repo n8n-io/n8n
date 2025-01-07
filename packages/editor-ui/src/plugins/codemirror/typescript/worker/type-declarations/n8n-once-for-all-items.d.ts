@@ -1,7 +1,7 @@
 export {};
 
 declare global {
-	interface NodeData<C, J extends N8nJson, B extends string, P> {
+	interface NodeData<C = any, J extends N8nJson = any, B extends string = string, P = any> {
 		context: C;
 		params: P;
 		all(branchIndex?: number, runIndex?: number): Array<N8nItem<J, B>>;

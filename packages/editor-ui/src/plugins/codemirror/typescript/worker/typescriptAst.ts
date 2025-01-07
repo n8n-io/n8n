@@ -30,9 +30,9 @@ export async function getUsedNodeNames(file: ts.SourceFile) {
 
 	if (callExpressions.length === 0) return [];
 
-	const nodeNames = (callExpressions as ts.CallExpression[]).map(
-		(e) => (e.arguments.at(0) as ts.StringLiteral)?.text,
-	);
+	const nodeNames = (callExpressions as ts.CallExpression[])
+		.map((e) => (e.arguments.at(0) as ts.StringLiteral)?.text)
+		.filter(Boolean);
 
 	return nodeNames;
 }

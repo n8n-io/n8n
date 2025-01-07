@@ -94,6 +94,10 @@ declare global {
 	function $min(...numbers: number[]): number;
 	function $max(...numbers: number[]): number;
 
-	// @ts-expect-error NodeName and NodeDataMap are created dynamically
-	function $<K extends NodeName>(nodeName: K): NodeDataMap[K];
+	type SomeOtherString = string & NonNullable<unknown>;
+	// @ts-expect-error NodeName is created dynamically
+	function $<K extends NodeName>(
+		nodeName: K | SomeOtherString,
+		// @ts-expect-error NodeDataMap is created dynamically
+	): K extends keyof NodeDataMap ? NodeDataMap[K] : NodeData;
 }

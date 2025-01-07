@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink';
 import type { LanguageServiceWorker, LanguageServiceWorkerInit } from '../types';
 import { indexedDbCache } from './cache';
-import { fnPrefix, wrapInFunction } from './utils';
+import { bufferChangeSets, fnPrefix } from './utils';
 
 import type { CodeExecutionMode } from 'n8n-workflow';
 
@@ -23,6 +23,8 @@ import { getUsedNodeNames } from './typescriptAst';
 import runOnceForAllItemsTypes from './type-declarations/n8n-once-for-all-items.d.ts?raw';
 import runOnceForEachItemTypes from './type-declarations/n8n-once-for-each-item.d.ts?raw';
 import { loadTypes } from './npmTypesLoader';
+import { ChangeSet, Text } from '@codemirror/state';
+import { until } from '@vueuse/core';
 
 self.process = { env: {} } as NodeJS.Process;
 
@@ -34,12 +36,13 @@ const worker: LanguageServiceWorkerInit = {
 		const allNodeNames = options.allNodeNames;
 		const codeFileName = `${options.id}.js`;
 		const mode = ref<CodeExecutionMode>(options.mode);
+		const busyApplyingChangesToCode = ref(false);
 
 		const cache = await indexedDbCache('typescript-cache', 'fs-map');
 		const env = await setupTypescriptEnv({
 			cache,
 			mode: mode.value,
-			code: { content: options.content, fileName: codeFileName },
+			code: { content: Text.of(options.content).toString(), fileName: codeFileName },
 		});
 
 		const prefix = computed(() => fnPrefix(mode.value));
@@ -149,12 +152,37 @@ const worker: LanguageServiceWorkerInit = {
 			{ immediate: true },
 		);
 
+		watch(prefix, (newPrefix, oldPrefix) => {
+			env.updateFile(codeFileName, newPrefix, { start: 0, length: oldPrefix.length });
+		});
+
+		const applyChangesToCode = bufferChangeSets((bufferedChanges) => {
+			bufferedChanges.iterChanges((start, end, _fromNew, _toNew, text) => {
+				const length = end - start;
+
+				env.updateFile(codeFileName, text.toString(), {
+					start: editorPositionToTypescript(start),
+					length,
+				});
+			});
+
+			void loadTypesIfNeeded();
+		});
+
+		const waitForChangesAppliedToCode = async () => {
+			await until(busyApplyingChangesToCode).toBe(false, { timeout: 500 });
+		};
+
 		return Comlink.proxy<LanguageServiceWorker>({
-			updateFile: async (content) => {
-				updateFile(codeFileName, wrapInFunction(content, mode.value));
-				await loadTypesIfNeeded();
+			updateFile: async (changes) => {
+				busyApplyingChangesToCode.value = true;
+				void applyChangesToCode(ChangeSet.fromJSON(changes)).then(() => {
+					busyApplyingChangesToCode.value = false;
+				});
 			},
 			async getCompletionsAtPos(pos) {
+				await waitForChangesAppliedToCode();
+
 				return await getCompletionsAtPos({
 					pos: editorPositionToTypescript(pos),
 					fileName: codeFileName,

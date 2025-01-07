@@ -14,13 +14,17 @@ import { typescriptWorkerFacet } from './facet';
 import { blockCommentSnippet, snippets } from './snippets';
 
 const START_CHARACTERS = ['"', "'", '(', '.', '@'];
+const START_CHARACTERS_REGEX = /[\.\(\'\"\@]/;
 
 export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
 
-	let word = context.matchBefore(/[\$\w]+/);
+	let word = context.matchBefore(START_CHARACTERS_REGEX);
 	if (!word?.text) {
-		word = context.matchBefore(/[\.\(\'\"\@]/);
+		word = context.matchBefore(/[\"\'].*/);
+	}
+	if (!word?.text) {
+		word = context.matchBefore(/[\$\w]+/);
 	}
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
@@ -68,7 +72,10 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 				(option) =>
 					word.text === '' ||
 					START_CHARACTERS.includes(word.text) ||
-					prefixMatch(option.label, word.text),
+					prefixMatch(
+						option.label.replace(START_CHARACTERS_REGEX, ''),
+						word.text.replace(START_CHARACTERS_REGEX, ''),
+					),
 			)
 			.map((completion) => {
 				if (completion.label.endsWith('()')) {

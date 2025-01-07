@@ -100,6 +100,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		const params = toValue(languageParams);
 		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
 	});
+	const { createWorker: createTsWorker } = useTypescript(editor, mode, toValue(id));
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {
 		switch (lang) {
@@ -117,7 +118,8 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 
 		switch (lang) {
 			case 'javaScript': {
-				langExtensions.push(await useTypescript(editor.value, mode, toValue(id)));
+				const tsExtension = await createTsWorker();
+				langExtensions.push(tsExtension);
 				break;
 			}
 			case 'python': {
