@@ -217,7 +217,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		populateFields(exampleFields);
 
 		validateAndReturnToParent(
-			DEFAULT_SUBWORKFLOW_NAME_1,
+			DEFAULT_SUBWORKFLOW_NAME_2,
 			1,
 			exampleFields.map((f) => f[0]),
 		);
@@ -251,7 +251,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		ndv.actions.execute();
 
 		validateAndReturnToParent(
-			DEFAULT_SUBWORKFLOW_NAME_1,
+			DEFAULT_SUBWORKFLOW_NAME_2,
 			2,
 			exampleFields.map((f) => f[0]),
 		);
