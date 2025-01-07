@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
-import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
+import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
@@ -13,6 +13,9 @@ export const useTestDefinitionStore = defineStore(
 		const testDefinitionsById = ref<Record<string, TestDefinitionRecord>>({});
 		const loading = ref(false);
 		const fetchedAll = ref(false);
+		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
+		const testRunsById = ref<Record<string, TestRunRecord>>({});
+		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
 
 		// Store instances
 		const posthogStore = usePostHog();
@@ -25,6 +28,19 @@ export const useTestDefinitionStore = defineStore(
 			);
 		});
 
+		const allTestDefinitionsByWorkflowId = computed(() => {
+			return Object.values(testDefinitionsById.value).reduce(
+				(acc: Record<string, TestDefinitionRecord[]>, test) => {
+					if (!acc[test.workflowId]) {
+						acc[test.workflowId] = [];
+					}
+					acc[test.workflowId].push(test);
+					return acc;
+				},
+				{},
+			);
+		});
+
 		// Enable with `window.featureFlags.override('025_workflow_evaluation', true)`
 		const isFeatureEnabled = computed(() =>
 			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT),
@@ -33,6 +49,56 @@ export const useTestDefinitionStore = defineStore(
 		const isLoading = computed(() => loading.value);
 
 		const hasTestDefinitions = computed(() => Object.keys(testDefinitionsById.value).length > 0);
+
+		const metricsByTestId = computed(() => {
+			return Object.values(metricsById.value).reduce(
+				(acc: Record<string, testDefinitionsApi.TestMetricRecord[]>, metric) => {
+					if (!acc[metric.testDefinitionId]) {
+						acc[metric.testDefinitionId] = [];
+					}
+					acc[metric.testDefinitionId].push(metric);
+					return acc;
+				},
+				{},
+			);
+		});
+
+		const testRunsByTestId = computed(() => {
+			return Object.values(testRunsById.value).reduce(
+				(acc: Record<string, TestRunRecord[]>, run) => {
+					if (!acc[run.testDefinitionId]) {
+						acc[run.testDefinitionId] = [];
+					}
+					acc[run.testDefinitionId].push(run);
+					return acc;
+				},
+				{},
+			);
+		});
+
+		const lastRunByTestId = computed(() => {
+			const grouped = Object.values(testRunsById.value).reduce(
+				(acc: Record<string, TestRunRecord[]>, run) => {
+					if (!acc[run.testDefinitionId]) {
+						acc[run.testDefinitionId] = [];
+					}
+					acc[run.testDefinitionId].push(run);
+					return acc;
+				},
+				{},
+			);
+
+			return Object.entries(grouped).reduce(
+				(acc: Record<string, TestRunRecord | null>, [testId, runs]) => {
+					acc[testId] =
+						runs.sort(
+							(a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+						)[0] || null;
+					return acc;
+				},
+				{},
+			);
+		});
 
 		// Methods
 		const setAllTestDefinitions = (definitions: TestDefinitionRecord[]) => {
@@ -69,13 +135,32 @@ export const useTestDefinitionStore = defineStore(
 			testDefinitionsById.value = rest;
 		};
 
+		const fetchRunsForAllTests = async () => {
+			const testDefinitions = Object.values(testDefinitionsById.value);
+			try {
+				await Promise.all(testDefinitions.map(async (testDef) => await fetchTestRuns(testDef.id)));
+			} catch (error) {
+				console.error('Error fetching test runs:', error);
+			}
+		};
+
+		const fetchTestDefinition = async (id: string) => {
+			const testDefinition = await testDefinitionsApi.getTestDefinition(
+				rootStore.restApiContext,
+				id,
+			);
+			testDefinitionsById.value[testDefinition.id] = testDefinition;
+
+			return testDefinition;
+		};
+
 		/**
 		 * Fetches all test definitions from the API.
 		 * @param {boolean} force - If true, fetches the definitions from the API even if they were already fetched before.
 		 */
-		const fetchAll = async (params?: { force?: boolean }) => {
-			const { force = false } = params ?? {};
-			if (!force && fetchedAll.value) {
+		const fetchAll = async (params?: { force?: boolean; workflowId?: string }) => {
+			const { force = false, workflowId } = params ?? {};
+			if (!force && fetchedAll.value && !workflowId) {
 				const testDefinitions = Object.values(testDefinitionsById.value);
 				return {
 					count: testDefinitions.length,
@@ -87,10 +172,13 @@ export const useTestDefinitionStore = defineStore(
 			try {
 				const retrievedDefinitions = await testDefinitionsApi.getTestDefinitions(
 					rootStore.restApiContext,
+					{ workflowId },
 				);
 
 				setAllTestDefinitions(retrievedDefinitions.testDefinitions);
 				fetchedAll.value = true;
+
+				await fetchRunsForAllTests();
 				return retrievedDefinitions;
 			} finally {
 				loading.value = false;
@@ -147,24 +235,142 @@ export const useTestDefinitionStore = defineStore(
 			return result.success;
 		};
 
+		const fetchMetrics = async (testId: string) => {
+			loading.value = true;
+			try {
+				const metrics = await testDefinitionsApi.getTestMetrics(rootStore.restApiContext, testId);
+				metrics.forEach((metric) => {
+					metricsById.value[metric.id] = metric;
+				});
+				return metrics;
+			} finally {
+				loading.value = false;
+			}
+		};
+
+		const createMetric = async (params: {
+			name: string;
+			testDefinitionId: string;
+		}): Promise<testDefinitionsApi.TestMetricRecord> => {
+			const metric = await testDefinitionsApi.createTestMetric(rootStore.restApiContext, params);
+			metricsById.value[metric.id] = metric;
+			return metric;
+		};
+
+		const updateMetric = async (
+			params: testDefinitionsApi.TestMetricRecord,
+		): Promise<testDefinitionsApi.TestMetricRecord> => {
+			const metric = await testDefinitionsApi.updateTestMetric(rootStore.restApiContext, params);
+			metricsById.value[metric.id] = metric;
+			return metric;
+		};
+
+		const deleteMetric = async (
+			params: testDefinitionsApi.DeleteTestMetricParams,
+		): Promise<void> => {
+			await testDefinitionsApi.deleteTestMetric(rootStore.restApiContext, params);
+			const { [params.id]: deleted, ...rest } = metricsById.value;
+			metricsById.value = rest;
+		};
+
+		// Test Runs Methods
+		const fetchTestRuns = async (testDefinitionId: string) => {
+			loading.value = true;
+			try {
+				const runs = await testDefinitionsApi.getTestRuns(
+					rootStore.restApiContext,
+					testDefinitionId,
+				);
+				runs.forEach((run) => {
+					testRunsById.value[run.id] = run;
+					if (['running', 'new'].includes(run.status)) {
+						startPollingTestRun(testDefinitionId, run.id);
+					}
+				});
+				return runs;
+			} finally {
+				loading.value = false;
+			}
+		};
+
+		const getTestRun = async (params: { testDefinitionId: string; runId: string }) => {
+			const run = await testDefinitionsApi.getTestRun(rootStore.restApiContext, params);
+			testRunsById.value[run.id] = run;
+			return run;
+		};
+
+		const startTestRun = async (testDefinitionId: string) => {
+			const result = await testDefinitionsApi.startTestRun(
+				rootStore.restApiContext,
+				testDefinitionId,
+			);
+			return result;
+		};
+
+		const deleteTestRun = async (params: { testDefinitionId: string; runId: string }) => {
+			const result = await testDefinitionsApi.deleteTestRun(rootStore.restApiContext, params);
+			if (result.success) {
+				const { [params.runId]: deleted, ...rest } = testRunsById.value;
+				testRunsById.value = rest;
+			}
+			return result;
+		};
+
+		// TODO: This is a temporary solution to poll for test run status.
+		// We should use a more efficient polling mechanism in the future.
+		const startPollingTestRun = (testDefinitionId: string, runId: string) => {
+			const poll = async () => {
+				const run = await getTestRun({ testDefinitionId, runId });
+				if (['running', 'new'].includes(run.status)) {
+					pollingTimeouts.value[runId] = setTimeout(poll, 1000);
+				} else {
+					delete pollingTimeouts.value[runId];
+				}
+			};
+			void poll();
+		};
+
+		const cleanupPolling = () => {
+			Object.values(pollingTimeouts.value).forEach((timeout) => {
+				clearTimeout(timeout);
+			});
+			pollingTimeouts.value = {};
+		};
+
 		return {
 			// State
 			fetchedAll,
 			testDefinitionsById,
+			testRunsById,
 
 			// Computed
 			allTestDefinitions,
+			allTestDefinitionsByWorkflowId,
 			isLoading,
 			hasTestDefinitions,
 			isFeatureEnabled,
+			metricsById,
+			metricsByTestId,
+			testRunsByTestId,
+			lastRunByTestId,
 
 			// Methods
+			fetchTestDefinition,
 			fetchAll,
 			create,
 			update,
 			deleteById,
 			upsertTestDefinitions,
 			deleteTestDefinition,
+			fetchMetrics,
+			createMetric,
+			updateMetric,
+			deleteMetric,
+			fetchTestRuns,
+			getTestRun,
+			startTestRun,
+			deleteTestRun,
+			cleanupPolling,
 		};
 	},
 	{},
