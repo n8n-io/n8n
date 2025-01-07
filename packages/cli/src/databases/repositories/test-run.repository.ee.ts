@@ -21,8 +21,14 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	async markAsRunning(id: string) {
-		return await this.update(id, { status: 'running', runAt: new Date() });
+	async markAsRunning(id: string, totalCases: number) {
+		return await this.update(id, {
+			status: 'running',
+			runAt: new Date(),
+			totalCases,
+			passedCases: 0,
+			failedCases: 0,
+		});
 	}
 
 	async markAsCompleted(id: string, metrics: AggregatedTestRunMetrics) {
@@ -31,6 +37,14 @@ export class TestRunRepository extends Repository<TestRun> {
 
 	async markAsCancelled(id: string) {
 		return await this.update(id, { status: 'cancelled' });
+	}
+
+	async incrementPassed(id: string) {
+		return await this.increment({ id }, 'passedCases', 1);
+	}
+
+	async incrementFailed(id: string) {
+		return await this.increment({ id }, 'failedCases', 1);
 	}
 
 	async getMany(testDefinitionId: string, options: ListQuery.Options) {

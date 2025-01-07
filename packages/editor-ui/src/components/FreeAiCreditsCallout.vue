@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { AI_CREDITS_EXPERIMENT } from '@/constants';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -27,11 +28,12 @@ const showSuccessCallout = ref(false);
 const claimingCredits = ref(false);
 
 const settingsStore = useSettingsStore();
-const postHogStore = usePostHog();
+const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const usersStore = useUsersStore();
 const ndvStore = useNDVStore();
 const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -57,7 +59,7 @@ const userCanClaimOpenAiCredits = computed(() => {
 	return (
 		settingsStore.isAiCreditsEnabled &&
 		activeNodeHasOpenAiApiCredential.value &&
-		postHogStore.isFeatureEnabled(AI_CREDITS_EXPERIMENT.name) &&
+		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant &&
 		!userHasOpenAiCredentialAlready.value &&
 		!userHasClaimedAiCreditsAlready.value
 	);
@@ -72,6 +74,8 @@ const onClaimCreditsClicked = async () => {
 		if (usersStore?.currentUser?.settings) {
 			usersStore.currentUser.settings.userClaimedAiCredits = true;
 		}
+
+		telemetry.track('User claimed OpenAI credits');
 
 		showSuccessCallout.value = true;
 	} catch (e) {
@@ -108,11 +112,16 @@ const onClaimCreditsClicked = async () => {
 			</template>
 		</n8n-callout>
 		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="check-circle">
-			{{
-				i18n.baseText('freeAi.credits.callout.success.title', {
-					interpolate: { credits: settingsStore.aiCreditsQuota },
-				})
-			}}
+			<n8n-text>
+				{{
+					i18n.baseText('freeAi.credits.callout.success.title.part1', {
+						interpolate: { credits: settingsStore.aiCreditsQuota },
+					})
+				}}</n8n-text
+			>&nbsp;
+			<n8n-text :bold="true">
+				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
+			>
 		</n8n-callout>
 	</div>
 </template>

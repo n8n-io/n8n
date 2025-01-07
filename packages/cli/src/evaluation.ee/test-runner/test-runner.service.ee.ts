@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
+import { ErrorReporter } from 'n8n-core';
 import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -48,6 +49,7 @@ export class TestRunnerService {
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testMetricRepository: TestMetricRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -260,16 +262,17 @@ export class TestRunnerService {
 			const testMetricNames = await this.getTestMetricNames(test.id);
 
 			// 2. Run over all the test cases
-			await this.testRunRepository.markAsRunning(testRun.id);
+			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
 			// Object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics(testMetricNames);
 
-			for (const { id: pastExecutionId } of pastExecutions) {
-				if (abortSignal.aborted) {
-					break;
-				}
+		for (const { id: pastExecutionId } of pastExecutions) {
+			if (abortSignal.aborted) {
+				break;
+			}
 
+			try {
 				// Fetch past execution with data
 				const pastExecution = await this.executionRepository.findOne({
 					where: { id: pastExecutionId },
@@ -290,8 +293,9 @@ export class TestRunnerService {
 				);
 
 				// In case of a permission check issue, the test case execution will be undefined.
-				// Skip them and continue with the next test case
+				// Skip them, increment the failed count and continue with the next test case
 				if (!testCaseExecution) {
+					await this.testRunRepository.incrementFailed(testRun.id);
 					continue;
 				}
 
@@ -313,7 +317,18 @@ export class TestRunnerService {
 
 				// Extract the output of the last node executed in the evaluation workflow
 				metrics.addResults(this.extractEvaluationResult(evalExecution));
+	if (evalExecution.data.resultData.error) {
+					await this.testRunRepository.incrementFailed(testRun.id);
+				} else {
+					await this.testRunRepository.incrementPassed(testRun.id);
+				}
+			} catch (e) {
+				// In case of an unexpected error, increment the failed count and continue with the next test case
+				await this.testRunRepository.incrementFailed(testRun.id);
+
+				this.errorReporter.error(e);
 			}
+		}
 
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
