@@ -172,7 +172,6 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (type === 'nodeExecuteAfter') {
 			pushMsgCopy.data.itemCount = pushMsgCopy.data.data.data?.main[0]?.length ?? 1;
 			pushMsgCopy.data.data.data = TRIMMED_TASK_DATA_CONNECTIONS;
-			pushMsgCopy.data.isPlaceholder = true;
 		} else if (type === 'executionFinished') {
 			pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
 		}
