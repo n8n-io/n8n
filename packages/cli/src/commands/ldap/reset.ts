@@ -1,8 +1,8 @@
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';

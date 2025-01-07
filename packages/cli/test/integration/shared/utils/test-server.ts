@@ -1,9 +1,9 @@
+import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
-import { Container } from 'typedi';
 import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';

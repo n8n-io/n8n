@@ -19,7 +19,6 @@ import {
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
-import { type CompletionPageConfig } from './interfaces';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
 import { prepareFormReturnItem, renderForm, resolveRawData } from '../Form/utils';
 
@@ -273,19 +272,19 @@ export class Form extends Node {
 		const method = context.getRequestObject().method;
 
 		if (operation === 'completion' && method === 'GET') {
-			const staticData = context.getWorkflowStaticData('node');
-			const id = `${context.getExecutionId()}-${context.getNode().name}`;
-			const config = staticData?.[id] as CompletionPageConfig;
-			delete staticData[id];
+			const completionTitle = context.getNodeParameter('completionTitle', '') as string;
+			const completionMessage = context.getNodeParameter('completionMessage', '') as string;
+			const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
+			const options = context.getNodeParameter('options', {}) as { formTitle: string };
 
-			if (config.redirectUrl) {
+			if (redirectUrl) {
 				res.send(
-					`<html><head><meta http-equiv="refresh" content="0; url=${config.redirectUrl}"></head></html>`,
+					`<html><head><meta http-equiv="refresh" content="0; url=${redirectUrl}"></head></html>`,
 				);
 				return { noWebhookResponse: true };
 			}
 
-			let title = config.pageTitle;
+			let title = options.formTitle;
 			if (!title) {
 				title = context.evaluateExpression(
 					`{{ $('${trigger?.name}').params.formTitle }}`,
@@ -296,8 +295,8 @@ export class Form extends Node {
 			) as boolean;
 
 			res.render('form-trigger-completion', {
-				title: config.completionTitle,
-				message: config.completionMessage,
+				title: completionTitle,
+				message: completionMessage,
 				formTitle: title,
 				appendAttribution,
 			});
@@ -419,28 +418,7 @@ export class Form extends Node {
 			);
 		}
 
-		if (operation !== 'completion') {
-			await context.putExecutionToWait(WAIT_INDEFINITELY);
-		} else {
-			const staticData = context.getWorkflowStaticData('node');
-			const completionTitle = context.getNodeParameter('completionTitle', 0, '') as string;
-			const completionMessage = context.getNodeParameter('completionMessage', 0, '') as string;
-			const redirectUrl = context.getNodeParameter('redirectUrl', 0, '') as string;
-			const options = context.getNodeParameter('options', 0, {}) as { formTitle: string };
-			const id = `${context.getExecutionId()}-${context.getNode().name}`;
-
-			const config: CompletionPageConfig = {
-				completionTitle,
-				completionMessage,
-				redirectUrl,
-				pageTitle: options.formTitle,
-			};
-
-			staticData[id] = config;
-
-			const waitTill = new Date(WAIT_INDEFINITELY);
-			await context.putExecutionToWait(waitTill);
-		}
+		await context.putExecutionToWait(WAIT_INDEFINITELY);
 
 		return [context.getInputData()];
 	}

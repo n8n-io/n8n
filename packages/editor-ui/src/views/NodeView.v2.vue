@@ -118,6 +118,11 @@ const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
 );
 
+const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
+	async () =>
+		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
+);
+
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
@@ -1696,6 +1701,9 @@ onBeforeUnmount(() => {
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
 	>
+		<Suspense>
+			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
+		</Suspense>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
 				v-if="isRunWorkflowButtonVisible"
@@ -1772,11 +1780,13 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-l);
+	bottom: var(--spacing-s);
 	width: auto;
 
-	@media (max-width: $breakpoint-2xs) {
-		bottom: 150px;
+	@include mixins.breakpoint('sm-only') {
+		left: auto;
+		right: var(--spacing-s);
+		transform: none;
 	}
 
 	button {
@@ -1788,7 +1798,24 @@ onBeforeUnmount(() => {
 		&:first-child {
 			margin: 0;
 		}
+
+		@include mixins.breakpoint('xs-only') {
+			text-indent: -10000px;
+			width: 42px;
+			height: 42px;
+			padding: 0;
+
+			span {
+				margin: 0;
+			}
+		}
 	}
+}
+
+.setupCredentialsButtonWrapper {
+	position: absolute;
+	left: var(--spacing-s);
+	top: var(--spacing-s);
 }
 
 .readOnlyEnvironmentNotification {
