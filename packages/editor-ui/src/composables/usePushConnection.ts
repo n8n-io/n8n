@@ -230,11 +230,31 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return false;
 			}
 
+			let showedSuccessToast = false;
+
 			let executionData: Pick<IExecutionResponse, 'workflowId' | 'data' | 'status'>;
 			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
 				const { workflowId, status, rawData } = receivedData.data;
 				executionData = { workflowId, data: parse(rawData), status };
 			} else {
+				/**
+				 * On successful completion without data, we show a success toast
+				 * immediately, even though we still need to fetch and deserialize the
+				 * full execution data, to minimize perceived latency.
+				 */
+				if (receivedData.type === 'executionFinished' && receivedData.data.status === 'success') {
+					workflowHelpers.setDocumentTitle(
+						workflowsStore.getWorkflowById(receivedData.data.workflowId)?.name,
+						'IDLE',
+					);
+					uiStore.removeActiveAction('workflowRunning');
+					toast.showMessage({
+						title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
+						type: 'success',
+					});
+					showedSuccessToast = true;
+				}
+
 				const execution = await workflowsStore.fetchExecutionDataById(executionId);
 				if (!execution?.data) return false;
 				executionData = {
@@ -404,7 +424,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					}
 				}
 			} else {
-				// Workflow did execute without a problem
 				workflowHelpers.setDocumentTitle(workflow.name as string, 'IDLE');
 
 				const execution = workflowsStore.getWorkflowExecution;
@@ -435,7 +454,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							type: 'success',
 						});
 					}
-				} else {
+				} else if (!showedSuccessToast) {
 					toast.showMessage({
 						title: i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
 						type: 'success',
