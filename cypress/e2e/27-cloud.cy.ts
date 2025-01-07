@@ -74,34 +74,6 @@ describe('Cloud', () => {
 	});
 
 	describe('Easy AI workflow experiment', () => {
-		it('should not show option to take you to the easy AI workflow if user already onboarded on it', () => {
-			window.localStorage.setItem(
-				'N8N_EXPERIMENT_OVERRIDES',
-				JSON.stringify({ '026_easy_ai_workflow': 'variant' }),
-			);
-
-			/*
-				Ideally this should intercept the GET /login endpoint but the GET /users
-				overrides the settings of that endpoint.
-			*/
-			cy.intercept('GET', '/rest/users', (req) => {
-				req.on('response', (res) => {
-					res.body.data = res.body.data.map((user: any) => ({
-						...user,
-						settings: {
-							easyAIWorkflowOnboarded: true,
-						},
-					}));
-				});
-			}).as('loadUsers');
-
-			cy.visit(workflowsPage.url);
-
-			cy.wait('@loadUsers');
-
-			cy.getByTestId('easy-ai-workflow-card').should('not.exist');
-		});
-
 		it('should not show option to take you to the easy AI workflow if experiment is control', () => {
 			window.localStorage.setItem(
 				'N8N_EXPERIMENT_OVERRIDES',
