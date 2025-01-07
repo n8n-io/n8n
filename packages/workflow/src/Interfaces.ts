@@ -532,7 +532,7 @@ export interface PaginationOptions {
 	binaryResult?: boolean;
 	continue: boolean | string;
 	request: IRequestOptionsSimplifiedAuth;
-	requestInterval?: number;
+	requestInterval: number;
 	maxRequests?: number;
 }
 

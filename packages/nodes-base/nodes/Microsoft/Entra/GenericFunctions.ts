@@ -70,6 +70,7 @@ export async function microsoftApiPaginateRequest(
 			request: {
 				url: '={{ $response.body?.["@odata.nextLink"] ?? $request.url }}',
 			},
+			requestInterval: 0,
 		},
 		'microsoftEntraOAuth2Api',
 	);
