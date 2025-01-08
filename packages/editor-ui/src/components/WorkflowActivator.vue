@@ -4,11 +4,13 @@ import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
-import { computed, h } from 'vue';
+import { computed, h, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { IUsedCredential } from '@/Interface';
 
 const props = defineProps<{
 	workflowActive: boolean;
@@ -20,6 +22,7 @@ const workflowActivate = useWorkflowActivate();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const credentialsStore = useCredentialsStore();
 
 const isWorkflowActive = computed((): boolean => {
 	const activeWorkflows = workflowsStore.activeWorkflows;
@@ -69,6 +72,14 @@ const disabled = computed((): boolean => {
 	return false;
 });
 
+const currentWorkflowHasFreeAiCredits = computed((): boolean => {
+	if (!workflowsStore?.workflow?.usedCredentials) return false;
+	return workflowsStore.workflow.usedCredentials.some(
+		(usedCredential: IUsedCredential) =>
+			credentialsStore.state.credentials[usedCredential.id].isManaged,
+	);
+});
+
 async function activeChanged(newActiveState: boolean) {
 	return await workflowActivate.updateWorkflowActivation(props.workflowId, newActiveState);
 }
@@ -100,6 +111,20 @@ async function displayActivationError() {
 		duration: 0,
 	});
 }
+
+watch(
+	() => props.workflowActive,
+	(workflowActive) => {
+		if (workflowActive && currentWorkflowHasFreeAiCredits.value) {
+			showMessage({
+				title: i18n.baseText('freeAi.credits.showWarning.workflow.activation.title'),
+				message: i18n.baseText('freeAi.credits.showWarning.workflow.activation.description'),
+				type: 'warning',
+				duration: 0,
+			});
+		}
+	},
+);
 </script>
 
 <template>
