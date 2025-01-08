@@ -24,6 +24,7 @@ import {
 	assertBinaryData,
 	constructExecutionMetaData,
 	copyInputItems,
+	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
 	getCheckProcessedHelperFunctions,
@@ -32,10 +33,10 @@ import {
 	getSSHTunnelFunctions,
 	normalizeItems,
 	returnJsonArray,
-	getInputConnectionData,
 } from '@/NodeExecuteFunctions';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];
@@ -87,6 +88,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
 			returnJsonArray,
 			normalizeItems,

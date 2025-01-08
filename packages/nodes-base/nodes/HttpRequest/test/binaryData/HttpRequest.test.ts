@@ -1,4 +1,5 @@
 import nock from 'nock';
+
 import {
 	setup,
 	equalityTest,

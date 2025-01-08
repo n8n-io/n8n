@@ -33,6 +33,9 @@ catalogs:
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
+    callsites:
+      specifier: 3.1.0
+      version: 3.1.0
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -54,9 +57,12 @@ catalogs:
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
-    typedi:
-      specifier: 0.10.0
-      version: 0.10.0
+    picocolors:
+      specifier: 1.0.1
+      version: 1.0.1
+    reflect-metadata:
+      specifier: 0.2.2
+      version: 0.2.2
     uuid:
       specifier: 10.0.0
       version: 10.0.0
@@ -130,9 +136,6 @@ patchedDependencies:
   pyodide@0.23.4:
     hash: kzcwsjcayy5m6iezu7r4tdimjq
     path: patches/pyodide@0.23.4.patch
-  typedi@0.10.0:
-    hash: sk6omkefrosihg7lmqbzh7vfxe
-    path: patches/typedi@0.10.0.patch
   vue-tsc@2.1.10:
     hash: z2iuqlt7ype4qnrwd5eymeecl4
     path: patches/vue-tsc@2.1.10.patch
@@ -266,8 +269,8 @@ importers:
         specifier: 'catalog:'
         version: 3.23.8
       zod-class:
-        specifier: 0.0.15
-        version: 0.0.15(zod@3.23.8)
+        specifier: 0.0.16
+        version: 0.0.16(zod@3.23.8)
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -374,12 +377,18 @@ importers:
 
   packages/@n8n/config:
     dependencies:
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
       reflect-metadata:
-        specifier: 0.2.2
-        version: 0.2.2
-      typedi:
         specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
+        version: 0.2.2
+
+  packages/@n8n/di:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
 
   packages/@n8n/imap:
     dependencies:
@@ -663,6 +672,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.42.0
@@ -672,6 +684,9 @@ importers:
       acorn-walk:
         specifier: 8.3.4
         version: 8.3.4
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -681,13 +696,13 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
     devDependencies:
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.14.195
       luxon:
         specifier: 'catalog:'
         version: 3.4.4
@@ -711,7 +726,7 @@ importers:
         version: 8.57.0
       eslint-config-airbnb-typescript:
         specifier: ^18.0.0
-        version: 18.0.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0))(eslint@8.57.0)
+        version: 18.0.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0)
       eslint-config-prettier:
         specifier: ^9.1.0
         version: 9.1.0(eslint@8.57.0)
@@ -760,6 +775,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@n8n/localtunnel':
         specifier: 3.0.0
         version: 3.0.0
@@ -776,8 +794,8 @@ importers:
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@8.42.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.7.2))
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.12.0
-        version: 1.12.0
+        specifier: 1.13.0
+        version: 1.13.0
       '@n8n_io/license-sdk':
         specifier: 2.13.1
         version: 2.13.1
@@ -805,9 +823,6 @@ importers:
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
-      callsites:
-        specifier: 3.1.0
-        version: 3.1.0
       change-case:
         specifier: 4.1.2
         version: 4.1.2
@@ -941,7 +956,7 @@ importers:
         specifier: 8.12.0
         version: 8.12.0
       picocolors:
-        specifier: 1.0.1
+        specifier: 'catalog:'
         version: 1.0.1
       pkce-challenge:
         specifier: 3.0.0
@@ -959,7 +974,7 @@ importers:
         specifier: 2.5.1
         version: 2.5.1
       reflect-metadata:
-        specifier: 0.2.2
+        specifier: 'catalog:'
         version: 0.2.2
       replacestream:
         specifier: 4.0.3
@@ -991,18 +1006,12 @@ importers:
       syslog-client:
         specifier: 1.1.1
         version: 1.1.1
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
       validator:
         specifier: 13.7.0
         version: 13.7.0
-      winston:
-        specifier: 3.14.2
-        version: 3.14.2
       ws:
         specifier: '>=8.17.1'
         version: 8.17.1
@@ -1114,13 +1123,16 @@ importers:
     dependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.19(openai@4.73.1(zod@3.23.8))
+        version: 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.42.0
@@ -1130,6 +1142,12 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.7.4
+      callsites:
+        specifier: 'catalog:'
+        version: 3.1.0
+      chardet:
+        specifier: 2.0.0
+        version: 2.0.0
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1169,6 +1187,9 @@ importers:
       p-cancelable:
         specifier: 2.1.1
         version: 2.1.1
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
       pretty-bytes:
         specifier: 5.6.0
         version: 5.6.0
@@ -1178,12 +1199,12 @@ importers:
       ssh2:
         specifier: 1.15.0
         version: 1.15.0
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      winston:
+        specifier: 3.14.2
+        version: 3.14.2
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -1224,9 +1245,15 @@ importers:
       '@fortawesome/vue-fontawesome':
         specifier: ^3.0.3
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.7.2))
+      '@vueuse/core':
+        specifier: '*'
+        version: 10.11.0(vue@3.5.13(typescript@5.7.2))
       element-plus:
         specifier: 2.4.3
         version: 2.4.3(vue@3.5.13(typescript@5.7.2))
+      is-emoji-supported:
+        specifier: ^0.0.5
+        version: 0.0.5
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -1342,6 +1369,9 @@ importers:
       '@codemirror/lint':
         specifier: ^6.8.0
         version: 6.8.0
+      '@codemirror/search':
+        specifier: ^6.5.6
+        version: 6.5.6
       '@codemirror/state':
         specifier: ^6.4.1
         version: 6.4.1
@@ -1396,9 +1426,15 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@replit/codemirror-indentation-markers':
+        specifier: ^6.5.3
+        version: 6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)
       '@sentry/vue':
         specifier: catalog:frontend
         version: 8.33.1(vue@3.5.13(typescript@5.7.2))
+      '@typescript/vfs':
+        specifier: ^1.6.0
+        version: 1.6.0(typescript@5.7.2)
       '@vue-flow/background':
         specifier: ^1.3.2
         version: 1.3.2(@vue-flow/core@1.41.6(vue@3.5.13(typescript@5.7.2)))(vue@3.5.13(typescript@5.7.2))
@@ -1435,6 +1471,9 @@ importers:
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
+      comlink:
+        specifier: ^4.4.1
+        version: 4.4.1
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -1489,6 +1528,9 @@ importers:
       timeago.js:
         specifier: ^4.0.2
         version: 4.0.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.2
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -1525,6 +1567,9 @@ importers:
       vue3-touch-events:
         specifier: ^4.1.3
         version: 4.1.3
+      vuedraggable:
+        specifier: 4.1.0
+        version: 4.1.0(vue@3.5.13(typescript@5.7.2))
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -1598,6 +1643,9 @@ importers:
 
   packages/node-dev:
     dependencies:
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -1622,9 +1670,6 @@ importers:
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
     devDependencies:
       '@types/inquirer':
         specifier: ^6.5.0
@@ -1641,6 +1686,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../@n8n/di
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
@@ -1686,6 +1734,9 @@ importers:
       fflate:
         specifier: 0.7.4
         version: 0.7.4
+      generate-schema:
+        specifier: 2.6.0
+        version: 2.6.0
       get-system-fonts:
         specifier: 2.0.2
         version: 2.0.2
@@ -1815,9 +1866,6 @@ importers:
       ts-ics:
         specifier: 1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.23.8)
-      typedi:
-        specifier: 'catalog:'
-        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -1907,8 +1955,8 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n/tournament':
-        specifier: 1.0.5
-        version: 1.0.5
+        specifier: 1.0.6
+        version: 1.0.6
       '@n8n_io/riot-tmpl':
         specifier: 4.0.0
         version: 4.0.0
@@ -1919,7 +1967,7 @@ importers:
         specifier: 'catalog:'
         version: 1.7.4
       callsites:
-        specifier: 3.1.0
+        specifier: 'catalog:'
         version: 3.1.0
       deep-equal:
         specifier: 2.2.0
@@ -1963,7 +2011,10 @@ importers:
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
-        version: 0.3.19(openai@4.73.1)
+        version: 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -3098,6 +3149,9 @@ packages:
   '@codemirror/lint@6.8.0':
     resolution: {integrity: sha512-lsFofvaw0lnPRJlQylNsC4IRt/1lI4OD/yYslrSGVndOJfStc58v+8p9dgGiD90ktOfL7OhBWns1ZETYgz0EJA==}
 
+  '@codemirror/search@6.5.6':
+    resolution: {integrity: sha512-rpMgcsh7o0GuCDUXKPvww+muLA1pDJaFrpq/CCHtpQJYz8xopu4D1hPcKRoDD0YlF8gZaqTNIRa4VRBWyhyy7Q==}
+
   '@codemirror/state@6.3.3':
     resolution: {integrity: sha512-0wufKcTw2dEwEaADajjHf6hBy1sh3M6V0e+q4JKIhLuiMSe5td5HOWpUdvKth1fT1M9VYOboajoBHpkCd7PG7A==}
 
@@ -4226,8 +4280,8 @@ packages:
     resolution: {integrity: sha512-rbnMnSdEwq2yuYMgzOQ4jTXm+oH7yjN/0ISfB/7O6pUcEPsZt9UW60BYfQ1WWHkKa/evI8vgER2zV5/RC1BupQ==}
     engines: {node: '>=18.10'}
 
-  '@n8n/tournament@1.0.5':
-    resolution: {integrity: sha512-IPBHa7gC0wwHVct/dnBquHz+uMCDZaZ05cor1D/rjlwaOe/PVu5mtoZaPHYuR98R3W1/IyxC5PuBd0JizDP9gg==}
+  '@n8n/tournament@1.0.6':
+    resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
     engines: {node: '>=20.15', pnpm: '>=9.5'}
 
   '@n8n/typeorm@0.3.20-12':
@@ -4299,8 +4353,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.12.0':
-    resolution: {integrity: sha512-ddIGzUn8icxWwl49PLSpl/Gfb0bCIGpqvWtZWqC3GIBeb51Nul6E4e3cIyDYOFlZmWWr/BDKsN0wskm2s/jkdg==}
+  '@n8n_io/ai-assistant-sdk@1.13.0':
+    resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.1':
@@ -4691,6 +4745,13 @@ packages:
   '@redocly/openapi-core@1.25.5':
     resolution: {integrity: sha512-BNgXjqesJu4L5f8F73c2hkkH5IdvjYCKYFgIl+m9oNgqGRIPBJjtiEGOx7jkQ6nElN4311z7Z4aTECtklaaHwg==}
     engines: {node: '>=14.19.0', npm: '>=7.0.0'}
+
+  '@replit/codemirror-indentation-markers@6.5.3':
+    resolution: {integrity: sha512-hL5Sfvw3C1vgg7GolLe/uxX5T3tmgOA3ZzqlMv47zjU1ON51pzNWiVbS22oh6crYhtVhv8b3gdXwoYp++2ilHw==}
+    peerDependencies:
+      '@codemirror/language': ^6.0.0
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
 
   '@rollup/pluginutils@5.1.0':
     resolution: {integrity: sha512-XTIWOPPcpvyKI6L1NHo0lFlCyznUEyPmPY1mc3KpPVDYulHSTvyeLNVW00QTLIAFNhR3kYnJTQHeGqU4M3n09g==}
@@ -5492,9 +5553,6 @@ packages:
   '@types/concat-stream@2.0.0':
     resolution: {integrity: sha512-t3YCerNM7NTVjLuICZo5gYAXYoDvpuuTceCcFQWcDQz26kxUR5uIWolxbIR5jRNIXpMqhOpW/b8imCR1LEmuJw==}
 
-  '@types/connect@3.4.35':
-    resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
-
   '@types/connect@3.4.36':
     resolution: {integrity: sha512-P63Zd/JUGq+PdrM1lv0Wv5SBYeA2+CORvbrXbngriYY0jzLUWfQMQQxOhjONEz/wlHOAxOdY7CY65rgQdTjq2w==}
 
@@ -5717,8 +5775,8 @@ packages:
   '@types/psl@1.1.0':
     resolution: {integrity: sha512-HhZnoLAvI2koev3czVPzBNRYvdrzJGLjQbWZhqFmS9Q6a0yumc5qtfSahBGb5g+6qWvA8iiQktqGkwoIXa/BNQ==}
 
-  '@types/qs@6.9.7':
-    resolution: {integrity: sha512-FGa1F62FT09qcrueBA6qYTrJPVDzah9a+493+o2PCXsesWHIn27G98TsSMs3WPNbZIEj4+VJf6saSFpvD+3Zsw==}
+  '@types/qs@6.9.15':
+    resolution: {integrity: sha512-uXHQKES6DQKKCLh441Xv/dwxOq1TVS3JPUMlEqoEglvlhR6Mxnlew/Xq/LRVHpLyk7iK3zODe1qYHIMltO7XGg==}
 
   '@types/quoted-printable@1.0.2':
     resolution: {integrity: sha512-3B28oB1rRaZNb3N5dlxysm8lH1ujzvReDuYBiIO4jvpTIg9ksrILCNgPxSGVyTWE/qwuxzgHaVehwMK3CVqAtA==}
@@ -5966,6 +6024,11 @@ packages:
   '@typescript-eslint/visitor-keys@7.2.0':
     resolution: {integrity: sha512-c6EIQRHhcpl6+tO8EMR+kjkkV+ugUNXOmeASA1rlzkd8EPIriavpWoiEz1HR/VLhbVIdhqnV6E7JZm00cBDx2A==}
     engines: {node: ^16.0.0 || >=18.0.0}
+
+  '@typescript/vfs@1.6.0':
+    resolution: {integrity: sha512-hvJUjNVeBMp77qPINuUvYXj4FyWeeMMKZkxEATEU3hqBAQ7qdTBCUFT7Sp0Zu0faeEtFf+ldXxMEDr/bk73ISg==}
+    peerDependencies:
+      typescript: ^5.7.2
 
   '@ungap/structured-clone@1.2.0':
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
@@ -6833,6 +6896,9 @@ packages:
   chardet@0.7.0:
     resolution: {integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==}
 
+  chardet@2.0.0:
+    resolution: {integrity: sha512-xVgPpulCooDjY6zH4m9YW3jbkaBe3FKIAvF5sj5t7aBNsVl2ljIE+xwJ4iNgiDZHFQvNIpjdKdVOQvvk5ZfxbQ==}
+
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==}
 
@@ -7012,6 +7078,9 @@ packages:
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
+
+  comlink@4.4.1:
+    resolution: {integrity: sha512-+1dlx0aY5Jo1vHy/tSsIGpSkN4tS9rZSW8FIhG0JH/crs9wwweswIo/POr451r7bZww3hFbPAKnTpimzL/mm4Q==}
 
   commander@10.0.1:
     resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
@@ -8923,6 +8992,9 @@ packages:
     resolution: {integrity: sha512-F+i2BKsFrH66iaUFc0woD8sLy8getkwTwtOBjvs56Cx4CgJDeKQeqfz8wAYiSb8JOprWhHH5p77PbmYCvvUuXQ==}
     engines: {node: '>=8'}
     hasBin: true
+
+  is-emoji-supported@0.0.5:
+    resolution: {integrity: sha512-WOlXUhDDHxYqcSmFZis+xWhhqXiK2SU0iYiqmth5Ip0FHLZQAt9rKL5ahnilE8/86WH8tZ3bmNNNC+bTzamqlw==}
 
   is-expression@4.0.0:
     resolution: {integrity: sha512-zMIXX63sxzG3XrkHkrAPvm/OVZVSCPNkwMHU8oTX7/U3AL78I0QXCEICXUM13BIa8TYGZ68PiTKfQz3yaTNr4A==}
@@ -11822,6 +11894,9 @@ packages:
     resolution: {integrity: sha512-l5x7VUUWbjVFbafGLxPWkYsHIhEvmF85tbIeFZWc8ZPtoMyybuEhL7Jye/ooC4/d48FgOjSJXgsF/AJPYCW8Zw==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
+  sortablejs@1.14.0:
+    resolution: {integrity: sha512-pBXvQCs5/33fdN1/39pPL0NZF20LeRbLQ5jtnheIPN9JQAaufGjKdWduZn4U7wCtVuzKhmRkI0DFYHYRbB2H1w==}
+
   source-map-js@1.2.0:
     resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
     engines: {node: '>=0.10.0'}
@@ -12573,9 +12648,6 @@ packages:
   typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  typedi@0.10.0:
-    resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
-
   typescript@5.7.2:
     resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
     engines: {node: '>=14.17'}
@@ -12963,6 +13035,9 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
+  vue-component-type-helpers@2.2.0:
+    resolution: {integrity: sha512-cYrAnv2me7bPDcg9kIcGwjJiSB6Qyi08+jLDo9yuvoFQjzHiPTzML7RnkJB1+3P6KMsX/KbCD4QE3Tv/knEllw==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -13046,6 +13121,11 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  vuedraggable@4.1.0:
+    resolution: {integrity: sha512-FU5HCWBmsf20GpP3eudURW3WdWTKIbEIQxh9/8GE806hydR9qZqRRxRE3RjqX7PkuLuMQG/A7n3cfj9rCEchww==}
+    peerDependencies:
+      vue: ^3.0.1
 
   w3c-keyname@2.2.6:
     resolution: {integrity: sha512-f+fciywl1SJEniZHD6H+kUO8gOnwIr7f4ijKA6+ZvJFjeGi1r4PDLl53Ayud9O/rk64RqgoQine0feoeOU0kXg==}
@@ -13343,8 +13423,8 @@ packages:
     resolution: {integrity: sha512-Z2Fe1bn+eLstG8DRR6FTavGD+MeAwyfmouhHsIUgaADz8jvFKbO/fXc2trJKZg+5EBjh4gGm3iU/t3onKlXHIg==}
     engines: {node: '>=10'}
 
-  zod-class@0.0.15:
-    resolution: {integrity: sha512-CD5B4e9unKPj1hiy7JOSwRV01WqbEBkFOlhws0C9s9wB0FSpECOnlKXOAkjo9tKYX2enQsXWyyOIBNPPNUHWRA==}
+  zod-class@0.0.16:
+    resolution: {integrity: sha512-3A1l81VEUOxvSTGoNPsU4fTUY9CKin/HSySnXT3bIc+TJTDGCPbzSPE8W1VvwXqyzHEIWK608eFZja2uew9Ivw==}
     peerDependencies:
       zod: ^3
 
@@ -14422,13 +14502,13 @@ snapshots:
   '@babel/code-frame@7.24.6':
     dependencies:
       '@babel/highlight': 7.24.6
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/code-frame@7.26.2':
     dependencies:
       '@babel/helper-validator-identifier': 7.25.9
       js-tokens: 4.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/compat-data@7.23.5': {}
 
@@ -14442,10 +14522,10 @@ snapshots:
       '@babel/helper-compilation-targets': 7.23.6
       '@babel/helper-module-transforms': 7.23.3(@babel/core@7.24.0)
       '@babel/helpers': 7.24.0
-      '@babel/parser': 7.26.2
+      '@babel/parser': 7.26.3
       '@babel/template': 7.24.0
       '@babel/traverse': 7.24.0
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
       convert-source-map: 2.0.0
       debug: 4.3.7
       gensync: 1.0.0-beta.2
@@ -14476,14 +14556,14 @@ snapshots:
 
   '@babel/generator@7.22.9':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
       jsesc: 2.5.2
 
   '@babel/generator@7.23.6':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
       jsesc: 2.5.2
@@ -14552,22 +14632,22 @@ snapshots:
   '@babel/helper-function-name@7.23.0':
     dependencies:
       '@babel/template': 7.24.0
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/helper-hoist-variables@7.22.5':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/helper-member-expression-to-functions@7.25.9':
     dependencies:
       '@babel/traverse': 7.26.3
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-module-imports@7.22.15':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/helper-module-imports@7.25.9':
     dependencies:
@@ -14596,7 +14676,7 @@ snapshots:
 
   '@babel/helper-optimise-call-expression@7.25.9':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/helper-plugin-utils@7.22.5': {}
 
@@ -14622,7 +14702,7 @@ snapshots:
 
   '@babel/helper-simple-access@7.22.5':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/helper-skip-transparent-expression-wrappers@7.25.9':
     dependencies:
@@ -14633,7 +14713,7 @@ snapshots:
 
   '@babel/helper-split-export-declaration@7.22.6':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/helper-string-parser@7.24.8': {}
 
@@ -14653,7 +14733,7 @@ snapshots:
     dependencies:
       '@babel/template': 7.25.9
       '@babel/traverse': 7.26.3
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
     transitivePeerDependencies:
       - supports-color
 
@@ -14661,21 +14741,21 @@ snapshots:
     dependencies:
       '@babel/template': 7.24.0
       '@babel/traverse': 7.24.0
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helpers@7.26.0':
     dependencies:
       '@babel/template': 7.25.9
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/highlight@7.24.6':
     dependencies:
       '@babel/helper-validator-identifier': 7.24.7
       chalk: 2.4.2
       js-tokens: 4.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   '@babel/parser@7.25.6':
     dependencies:
@@ -14683,7 +14763,7 @@ snapshots:
 
   '@babel/parser@7.26.2':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@babel/parser@7.26.3':
     dependencies:
@@ -15222,14 +15302,14 @@ snapshots:
   '@babel/template@7.24.0':
     dependencies:
       '@babel/code-frame': 7.24.6
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
 
   '@babel/template@7.25.9':
     dependencies:
       '@babel/code-frame': 7.26.2
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
 
   '@babel/traverse@7.24.0':
     dependencies:
@@ -15239,8 +15319,8 @@ snapshots:
       '@babel/helper-function-name': 7.23.0
       '@babel/helper-hoist-variables': 7.22.5
       '@babel/helper-split-export-declaration': 7.22.6
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
       debug: 4.3.7
       globals: 11.12.0
     transitivePeerDependencies:
@@ -15410,6 +15490,12 @@ snapshots:
       style-mod: 4.1.0
 
   '@codemirror/lint@6.8.0':
+    dependencies:
+      '@codemirror/state': 6.4.1
+      '@codemirror/view': 6.26.3
+      crelt: 1.0.5
+
+  '@codemirror/search@6.5.6':
     dependencies:
       '@codemirror/state': 6.4.1
       '@codemirror/view': 6.26.3
@@ -16200,38 +16286,6 @@ snapshots:
     transitivePeerDependencies:
       - openai
 
-  '@langchain/core@0.3.19(openai@4.73.1(zod@3.23.8))':
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.2.3(openai@4.73.1(zod@3.23.8))
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.3(zod@3.23.8)
-    transitivePeerDependencies:
-      - openai
-
-  '@langchain/core@0.3.19(openai@4.73.1)':
-    dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.2.3(openai@4.73.1)
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.3(zod@3.23.8)
-    transitivePeerDependencies:
-      - openai
-
   '@langchain/google-common@0.1.3(@langchain/core@0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8)))(zod@3.23.8)':
     dependencies:
       '@langchain/core': 0.3.19(openai@4.73.1(encoding@0.1.13)(zod@3.23.8))
@@ -16466,7 +16520,7 @@ snapshots:
       '@types/retry': 0.12.5
       retry: 0.13.1
 
-  '@n8n/tournament@1.0.5':
+  '@n8n/tournament@1.0.6':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
@@ -16540,7 +16594,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.12.0': {}
+  '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
   '@n8n_io/license-sdk@2.13.1':
     dependencies:
@@ -17088,6 +17142,12 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  '@replit/codemirror-indentation-markers@6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)':
+    dependencies:
+      '@codemirror/language': 6.10.1
+      '@codemirror/state': 6.4.1
+      '@codemirror/view': 6.26.3
 
   '@rollup/pluginutils@5.1.0(rollup@4.24.0)':
     dependencies:
@@ -18018,7 +18078,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.7.2)
-      vue-component-type-helpers: 2.1.10
+      vue-component-type-helpers: 2.2.0
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -18160,24 +18220,24 @@ snapshots:
 
   '@types/babel__core@7.20.0':
     dependencies:
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
       '@types/babel__generator': 7.6.4
       '@types/babel__template': 7.4.1
       '@types/babel__traverse': 7.18.2
 
   '@types/babel__generator@7.6.4':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@types/babel__template@7.4.1':
     dependencies:
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
 
   '@types/babel__traverse@7.18.2':
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   '@types/basic-auth@1.1.3':
     dependencies:
@@ -18189,7 +18249,7 @@ snapshots:
 
   '@types/body-parser@1.19.2':
     dependencies:
-      '@types/connect': 3.4.35
+      '@types/connect': 3.4.36
       '@types/node': 18.16.16
 
   '@types/caseless@0.12.5': {}
@@ -18203,10 +18263,6 @@ snapshots:
       '@types/express': 4.17.21
 
   '@types/concat-stream@2.0.0':
-    dependencies:
-      '@types/node': 18.16.16
-
-  '@types/connect@3.4.35':
     dependencies:
       '@types/node': 18.16.16
 
@@ -18246,7 +18302,7 @@ snapshots:
   '@types/express-serve-static-core@4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)':
     dependencies:
       '@types/node': 18.16.16
-      '@types/qs': 6.9.7
+      '@types/qs': 6.9.15
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.4
 
@@ -18254,7 +18310,7 @@ snapshots:
     dependencies:
       '@types/body-parser': 1.19.2
       '@types/express-serve-static-core': 4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)
-      '@types/qs': 6.9.7
+      '@types/qs': 6.9.15
       '@types/serve-static': 1.15.0
 
   '@types/file-saver@2.0.5': {}
@@ -18459,7 +18515,7 @@ snapshots:
 
   '@types/psl@1.1.0': {}
 
-  '@types/qs@6.9.7': {}
+  '@types/qs@6.9.15': {}
 
   '@types/quoted-printable@1.0.2': {}
 
@@ -18766,6 +18822,13 @@ snapshots:
       '@typescript-eslint/types': 7.2.0
       eslint-visitor-keys: 3.4.3
 
+  '@typescript/vfs@1.6.0(typescript@5.7.2)':
+    dependencies:
+      debug: 4.3.6(supports-color@8.1.1)
+      typescript: 5.7.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@ungap/structured-clone@1.2.0': {}
 
   '@vitejs/plugin-legacy@6.0.0(terser@5.16.1)(vite@6.0.2(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))':
@@ -18929,7 +18992,7 @@ snapshots:
 
   '@vue/compiler-sfc@3.5.13':
     dependencies:
-      '@babel/parser': 7.25.6
+      '@babel/parser': 7.26.3
       '@vue/compiler-core': 3.5.13
       '@vue/compiler-dom': 3.5.13
       '@vue/compiler-ssr': 3.5.13
@@ -19018,7 +19081,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.1.10
+      vue-component-type-helpers: 2.2.0
 
   '@vueuse/components@10.11.0(vue@3.5.13(typescript@5.7.2))':
     dependencies:
@@ -19383,7 +19446,7 @@ snapshots:
     dependencies:
       call-bind: 1.0.7
       is-nan: 1.3.2
-      object-is: 1.1.5
+      object-is: 1.1.6
       object.assign: 4.1.5
       util: 0.12.5
 
@@ -19421,7 +19484,7 @@ snapshots:
       caniuse-lite: 1.0.30001667
       fraction.js: 4.3.7
       normalize-range: 0.1.2
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       postcss: 8.4.38
       postcss-value-parser: 4.2.0
 
@@ -19510,7 +19573,7 @@ snapshots:
   babel-plugin-jest-hoist@29.5.0:
     dependencies:
       '@babel/template': 7.24.0
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
       '@types/babel__core': 7.20.0
       '@types/babel__traverse': 7.18.2
 
@@ -19562,7 +19625,7 @@ snapshots:
 
   babel-walk@3.0.0-canary-5:
     dependencies:
-      '@babel/types': 7.26.0
+      '@babel/types': 7.26.3
 
   balanced-match@1.0.2: {}
 
@@ -19609,7 +19672,7 @@ snapshots:
       '@types/readable-stream': 4.0.10
       buffer: 6.0.3
       inherits: 2.0.4
-      readable-stream: 4.4.2
+      readable-stream: 4.5.2
 
   blob-util@2.0.2: {}
 
@@ -19870,6 +19933,8 @@ snapshots:
 
   chardet@0.7.0: {}
 
+  chardet@2.0.0: {}
+
   charenc@0.0.2: {}
 
   chart.js@4.4.0:
@@ -20082,6 +20147,8 @@ snapshots:
     dependencies:
       delayed-stream: 1.0.0
 
+  comlink@4.4.1: {}
+
   commander@10.0.1: {}
 
   commander@11.1.0: {}
@@ -20174,8 +20241,8 @@ snapshots:
 
   constantinople@4.0.1:
     dependencies:
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
 
   content-disposition@0.5.4:
     dependencies:
@@ -20847,7 +20914,7 @@ snapshots:
   enzyme-shallow-equal@1.0.7:
     dependencies:
       hasown: 2.0.2
-      object-is: 1.1.5
+      object-is: 1.1.6
 
   enzyme@3.11.0:
     dependencies:
@@ -21153,7 +21220,7 @@ snapshots:
     optionalDependencies:
       source-map: 0.6.1
 
-  eslint-config-airbnb-base@15.0.0(eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0))(eslint@8.57.0):
+  eslint-config-airbnb-base@15.0.0(eslint-plugin-import@2.29.1)(eslint@8.57.0):
     dependencies:
       confusing-browser-globals: 1.0.11
       eslint: 8.57.0
@@ -21162,12 +21229,12 @@ snapshots:
       object.entries: 1.1.5
       semver: 7.6.0
 
-  eslint-config-airbnb-typescript@18.0.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0))(eslint@8.57.0):
+  eslint-config-airbnb-typescript@18.0.0(@typescript-eslint/eslint-plugin@7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2))(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0):
     dependencies:
       '@typescript-eslint/eslint-plugin': 7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint@8.57.0)(typescript@5.7.2)
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.7.2)
       eslint: 8.57.0
-      eslint-config-airbnb-base: 15.0.0(eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0))(eslint@8.57.0)
+      eslint-config-airbnb-base: 15.0.0(eslint-plugin-import@2.29.1)(eslint@8.57.0)
     transitivePeerDependencies:
       - eslint-plugin-import
 
@@ -21190,7 +21257,7 @@ snapshots:
       debug: 4.3.4
       enhanced-resolve: 5.13.0
       eslint: 8.57.0
-      eslint-module-utils: 2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0)
+      eslint-module-utils: 2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-import: 2.29.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       fast-glob: 3.3.2
       get-tsconfig: 4.5.0
@@ -21202,7 +21269,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
+  eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
       debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
@@ -21228,7 +21295,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0)
+      eslint-module-utils: 2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.7.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       hasown: 2.0.2
       is-core-module: 2.13.1
       is-glob: 4.0.3
@@ -22319,7 +22386,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.7.4(debug@4.3.7))
+      retry-axios: 2.6.0(axios@1.7.4)
       tough-cookie: 4.1.3
     transitivePeerDependencies:
       - supports-color
@@ -22521,6 +22588,8 @@ snapshots:
 
   is-docker@2.2.1: {}
 
+  is-emoji-supported@0.0.5: {}
+
   is-expression@4.0.0:
     dependencies:
       acorn: 7.4.1
@@ -22646,7 +22715,7 @@ snapshots:
   istanbul-lib-instrument@5.2.1:
     dependencies:
       '@babel/core': 7.24.0
-      '@babel/parser': 7.26.2
+      '@babel/parser': 7.26.3
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
       semver: 7.6.0
@@ -23361,28 +23430,6 @@ snapshots:
     optionalDependencies:
       openai: 4.73.1(encoding@0.1.13)(zod@3.23.8)
 
-  langsmith@0.2.3(openai@4.73.1(zod@3.23.8)):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.6.0
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.73.1(zod@3.23.8)
-
-  langsmith@0.2.3(openai@4.73.1):
-    dependencies:
-      '@types/uuid': 10.0.0
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      semver: 7.6.0
-      uuid: 10.0.0
-    optionalDependencies:
-      openai: 4.73.1(zod@3.23.8)
-
   lazy-ass@1.6.0: {}
 
   ldapts@4.2.6:
@@ -23652,8 +23699,8 @@ snapshots:
 
   magicast@0.3.5:
     dependencies:
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
       source-map-js: 1.2.1
 
   mailparser@3.6.7:
@@ -24715,22 +24762,6 @@ snapshots:
       - encoding
       - supports-color
 
-  openai@4.73.1(zod@3.23.8):
-    dependencies:
-      '@types/node': 18.16.16
-      '@types/node-fetch': 2.6.4
-      abort-controller: 3.0.0
-      agentkeepalive: 4.2.1
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-    optionalDependencies:
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-    optional: true
-
   openapi-sampler@1.5.1:
     dependencies:
       '@types/json-schema': 7.0.15
@@ -25074,13 +25105,13 @@ snapshots:
   postcss@8.4.31:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.4.38:
     dependencies:
       nanoid: 3.3.8
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       source-map-js: 1.2.0
 
   postcss@8.4.49:
@@ -25625,7 +25656,7 @@ snapshots:
   regexp.prototype.flags@1.5.0:
     dependencies:
       call-bind: 1.0.7
-      define-properties: 1.2.0
+      define-properties: 1.2.1
       functions-have-names: 1.2.3
 
   regexp.prototype.flags@1.5.2:
@@ -25726,9 +25757,9 @@ snapshots:
 
   ret@0.1.15: {}
 
-  retry-axios@2.6.0(axios@1.7.4(debug@4.3.7)):
+  retry-axios@2.6.0(axios@1.7.4):
     dependencies:
-      axios: 1.7.4(debug@4.3.7)
+      axios: 1.7.4
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -26175,6 +26206,8 @@ snapshots:
       smart-buffer: 4.2.0
     optional: true
 
+  sortablejs@1.14.0: {}
+
   source-map-js@1.2.0: {}
 
   source-map-js@1.2.1: {}
@@ -26536,7 +26569,7 @@ snapshots:
       css-tree: 2.3.1
       css-what: 6.1.0
       csso: 5.0.5
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   swagger-ui-dist@5.11.0: {}
 
@@ -26582,7 +26615,7 @@ snapshots:
       micromatch: 4.0.8
       normalize-path: 3.0.0
       object-hash: 3.0.0
-      picocolors: 1.0.1
+      picocolors: 1.1.1
       postcss: 8.4.38
       postcss-import: 15.1.0(postcss@8.4.38)
       postcss-js: 4.0.1(postcss@8.4.38)
@@ -27022,8 +27055,6 @@ snapshots:
 
   typedarray@0.0.6: {}
 
-  typedi@0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe): {}
-
   typescript@5.7.2: {}
 
   uc.micro@1.0.6: {}
@@ -27134,7 +27165,7 @@ snapshots:
     dependencies:
       browserslist: 4.23.0
       escalade: 3.1.1
-      picocolors: 1.0.1
+      picocolors: 1.1.1
 
   update-browserslist-db@1.1.1(browserslist@4.24.2):
     dependencies:
@@ -27365,6 +27396,8 @@ snapshots:
 
   vue-component-type-helpers@2.1.10: {}
 
+  vue-component-type-helpers@2.2.0: {}
+
   vue-demi@0.14.10(vue@3.5.13(typescript@5.7.2)):
     dependencies:
       vue: 3.5.13(typescript@5.7.2)
@@ -27461,6 +27494,11 @@ snapshots:
       '@vue/shared': 3.5.13
     optionalDependencies:
       typescript: 5.7.2
+
+  vuedraggable@4.1.0(vue@3.5.13(typescript@5.7.2)):
+    dependencies:
+      sortablejs: 1.14.0
+      vue: 3.5.13(typescript@5.7.2)
 
   w3c-keyname@2.2.6: {}
 
@@ -27610,8 +27648,8 @@ snapshots:
 
   with@7.0.2:
     dependencies:
-      '@babel/parser': 7.26.2
-      '@babel/types': 7.26.0
+      '@babel/parser': 7.26.3
+      '@babel/types': 7.26.3
       assert-never: 1.2.1
       babel-walk: 3.0.0-canary-5
 
@@ -27790,7 +27828,7 @@ snapshots:
       property-expr: 2.0.5
       toposort: 2.0.2
 
-  zod-class@0.0.15(zod@3.23.8):
+  zod-class@0.0.16(zod@3.23.8):
     dependencies:
       type-fest: 4.26.1
       zod: 3.23.8

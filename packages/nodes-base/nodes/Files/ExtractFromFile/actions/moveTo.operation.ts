@@ -1,21 +1,18 @@
+import iconv from 'iconv-lite';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-
 import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-
-import iconv from 'iconv-lite';
-
 import { icsCalendarToObject } from 'ts-ics';
-import { updateDisplayOptions } from '@utils/utilities';
+
 import { encodeDecodeOptions } from '@utils/descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
@@ -121,8 +118,8 @@ export async function execute(
 
 			if (!value) continue;
 
-			const encoding = (options.encoding as string) || 'utf8';
 			const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+			const encoding = (options.encoding as string) || this.helpers.detectBinaryEncoding(buffer);
 
 			if (options.keepSource && options.keepSource !== 'binary') {
 				newItem.json = deepCopy(item.json);

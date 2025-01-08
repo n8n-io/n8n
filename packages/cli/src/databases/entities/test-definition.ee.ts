@@ -9,7 +9,8 @@ import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
 
 // Entity representing a node in a workflow under test, for which data should be mocked during test execution
 export type MockedNodeItem = {
-	name: string;
+	name?: string;
+	id: string;
 };
 
 /**

@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type {
-	ExecutionStatus,
-	INodeConnections,
-	IConnection,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import type {
 	DefaultEdge,
 	Node,
@@ -15,10 +10,7 @@ import type {
 } from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
-import type { PartialBy } from '@/utils/typeHelpers';
 import type { EventBus } from 'n8n-design-system';
-
-export type CanvasConnectionPortType = NodeConnectionType;
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -31,10 +23,11 @@ export const canvasConnectionModes = [
 ] as const;
 
 export type CanvasConnectionPort = {
-	type: CanvasConnectionPortType;
+	node?: string;
+	type: NodeConnectionType;
+	index: number;
 	required?: boolean;
 	maxConnections?: number;
-	index: number;
 	label?: string;
 };
 
@@ -124,7 +117,6 @@ export type CanvasNode = Node<CanvasNodeData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
-	fromNodeName?: string;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
 }
@@ -137,8 +129,8 @@ export type CanvasConnectionCreateData = {
 	target: string;
 	targetHandle: string;
 	data: {
-		source: PartialBy<IConnection, 'node'>;
-		target: PartialBy<IConnection, 'node'>;
+		source: CanvasConnectionPort;
+		target: CanvasConnectionPort;
 	};
 };
 
@@ -152,6 +144,7 @@ export interface CanvasInjectionData {
 export type CanvasNodeEventBusEvents = {
 	'update:sticky:color': never;
 	'update:node:active': never;
+	'update:node:class': { className: string; add?: boolean };
 };
 
 export type CanvasEventBusEvents = {

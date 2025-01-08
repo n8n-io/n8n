@@ -15,7 +15,7 @@ import {
 	NDV,
 	MainSidebar,
 } from '../pages';
-import { clearNotifications } from '../pages/notifications';
+import { clearNotifications, successToast } from '../pages/notifications';
 import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
@@ -498,7 +498,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move workflow")')
+				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -506,7 +506,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(':contains("Project 1")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
 
 			workflowsPage.getters
@@ -524,7 +524,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move workflow")')
+				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -532,7 +532,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(':contains("Project 2")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 
 			// Move the workflow from Project 2 to a member user
 			projects.getMenuItems().last().click();
@@ -544,7 +544,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move workflow")')
+				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -553,7 +553,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(`:contains("${INSTANCE_MEMBERS[0].email}")`)
 				.click();
 
-			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			workflowsPage.getters.workflowCards().should('have.length', 1);
 
 			// Move the workflow from member user back to Home
@@ -569,7 +569,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move workflow")')
+				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -578,7 +578,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(`:contains("${INSTANCE_OWNER.email}")`)
 				.click();
 
-			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
 			workflowsPage.getters
 				.workflowCards()
@@ -596,7 +596,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move credential")')
+				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -604,7 +604,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(':contains("Project 2")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
 			credentialsPage.getters.credentialCards().should('not.have.length');
 
@@ -619,7 +619,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move credential")')
+				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -627,7 +627,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(`:contains("${INSTANCE_ADMIN.email}")`)
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			credentialsPage.getters.credentialCards().should('have.length', 1);
 
 			// Move the credential from admin user back to instance owner
@@ -641,7 +641,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move credential")')
+				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -649,7 +649,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(`:contains("${INSTANCE_OWNER.email}")`)
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 
 			clearNotifications();
 
@@ -666,7 +666,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move credential")')
+				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -674,7 +674,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 5)
 				.filter(':contains("Project 1")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 
 			projects.getMenuItems().first().click();
 			projects.getProjectTabCredentials().click();
@@ -721,7 +721,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Move workflow")')
+				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
@@ -729,7 +729,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 4)
 				.filter(':contains("Project 1")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 
 			workflowsPage.getters
 				.workflowCards()
@@ -829,5 +829,24 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.find('input')
 				.should('not.have.length');
 		});
+	});
+
+	it('should set and update project icon', () => {
+		const DEFAULT_ICON = 'fa-layer-group';
+		const NEW_PROJECT_NAME = 'Test Project';
+
+		cy.signinAsAdmin();
+		cy.visit(workflowsPage.url);
+		projects.createProject(NEW_PROJECT_NAME);
+		// New project should have default icon
+		projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+		// Choose another icon
+		projects.getIconPickerButton().click();
+		projects.getIconPickerTab('Emojis').click();
+		projects.getIconPickerEmojis().first().click();
+		// Project should be updated with new icon
+		successToast().contains('Project icon updated successfully');
+		projects.getIconPickerButton().should('contain', '😀');
+		projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
 	});
 });

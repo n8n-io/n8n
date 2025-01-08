@@ -125,6 +125,10 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 	},
+	aiCredits: {
+		enabled: false,
+		credits: 0,
+	},
 	betaFeatures: [],
 	easyAIWorkflowOnboarded: false,
 };

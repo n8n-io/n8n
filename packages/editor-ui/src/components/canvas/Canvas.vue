@@ -39,6 +39,8 @@ const emit = defineEmits<{
 	'update:node:selected': [id: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'update:node:inputs': [id: string];
+	'update:node:outputs': [id: string];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -78,6 +80,7 @@ const props = withDefaults(
 		executing?: boolean;
 		keyBindings?: boolean;
 		showBugReportingButton?: boolean;
+		loading?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -88,10 +91,11 @@ const props = withDefaults(
 		readOnly: false,
 		executing: false,
 		keyBindings: true,
+		loading: false,
 	},
 );
 
-const { controlKeyCode } = useDeviceSupport();
+const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 
 const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
 const {
@@ -129,7 +133,7 @@ const isPaneReady = ref(false);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
-	[$style.ready]: isPaneReady.value,
+	[$style.ready]: !props.loading && isPaneReady.value,
 }));
 
 /**
@@ -141,9 +145,10 @@ const disableKeyBindings = computed(() => !props.keyBindings);
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
  */
-const panningKeyCode = ref<string[]>([' ', controlKeyCode]);
-const panningMouseButton = ref<number[]>([1]);
-const selectionKeyCode = ref<true | null>(true);
+
+const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
+const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
+const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
 
 onKeyDown(panningKeyCode.value, () => {
 	selectionKeyCode.value = null;
@@ -300,6 +305,14 @@ function onDeleteNode(id: string) {
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	emit('update:node:parameters', id, parameters);
+}
+
+function onUpdateNodeInputs(id: string) {
+	emit('update:node:inputs', id);
+}
+
+function onUpdateNodeOutputs(id: string) {
+	emit('update:node:outputs', id);
 }
 
 /**
@@ -651,6 +664,7 @@ provide(CanvasKey, {
 		:min-zoom="0"
 		:max-zoom="4"
 		:selection-key-code="selectionKeyCode"
+		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		data-test-id="canvas"
@@ -679,9 +693,15 @@ provide(CanvasKey, {
 				@activate="onSetNodeActive"
 				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
+				@update:inputs="onUpdateNodeInputs"
+				@update:outputs="onUpdateNodeOutputs"
 				@move="onUpdateNodePosition"
 				@add="onClickNodeAdd"
-			/>
+			>
+				<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
+					<slot name="nodeToolbar" v-bind="toolbarProps" />
+				</template>
+			</Node>
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
@@ -746,6 +766,7 @@ provide(CanvasKey, {
 	width: 100%;
 	height: 100%;
 	opacity: 0;
+	transition: opacity 300ms ease;
 
 	&.ready {
 		opacity: 1;
