@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import type { ICredentialsDecrypted } from 'n8n-workflow';
 import ResourcesListLayout, {
 	type IResource,
 	type IFilters,
@@ -27,6 +28,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import { N8nCheckbox } from 'n8n-design-system';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -46,10 +48,11 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const filters = ref<IFilters>({
+const filters = ref<IFilters & { incomplete?: boolean }>({
 	search: '',
 	homeProject: '',
 	type: [],
+	incomplete: true,
 });
 
 const loading = ref(false);
@@ -66,6 +69,7 @@ const allCredentials = computed<IResource[]>(() =>
 		type: credential.type,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
+		data: credential.data,
 	})),
 );
 
@@ -121,8 +125,8 @@ watch(
 );
 
 const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iResource = resource as ICredentialsResponse;
-	const filtersToApply = newFilters as IFilters & { type: string[] };
+	const iResource = resource as Omit<ICredentialsResponse, 'data'> & ICredentialsDecrypted;
+	const filtersToApply = newFilters as IFilters & { type: string[]; incomplete: boolean };
 	if (filtersToApply.type.length > 0) {
 		matches = matches && filtersToApply.type.includes(iResource.type);
 	}
@@ -134,6 +138,10 @@ const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): 
 			matches ||
 			(credentialTypesById.value[iResource.type] &&
 				credentialTypesById.value[iResource.type].displayName.toLowerCase().includes(searchString));
+	}
+
+	if (filtersToApply.incomplete) {
+		matches = matches && Boolean(iResource.data && Object.keys(iResource.data).length === 0);
 	}
 
 	return matches;
@@ -197,6 +205,13 @@ onMounted(() => {
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
+				<N8nCheckbox
+					label="Incomplete"
+					:model-value="filters.incomplete"
+					@update:model-value="setKeyValue('incomplete', $event)"
+				>
+				</N8nCheckbox>
+
 				<N8nInputLabel
 					:label="i18n.baseText('credentials.filters.type')"
 					:bold="false"
