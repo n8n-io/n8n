@@ -271,16 +271,13 @@ const handleSelect = (key: string) => {
 };
 
 function onResize() {
-	void callDebounced(onResizeEnd, { debounceTime: 100 });
+	void callDebounced(onResizeEnd, { debounceTime: 250 });
 }
 
 async function onResizeEnd() {
 	if (window.outerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
-
-		void nextTick(() => {
-			fullyExpanded.value = !isCollapsed.value;
-		});
+		fullyExpanded.value = !isCollapsed.value;
 	} else {
 		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
 	}
