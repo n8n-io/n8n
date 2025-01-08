@@ -268,6 +268,7 @@ const goToUpgrade = () => {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	position: relative;
 }
 
 .heading {
@@ -317,9 +318,10 @@ const goToUpgrade = () => {
 	bottom: 0;
 	margin-left: calc(-1 * var(--spacing-l));
 	border-top: var(--border-base);
+	width: 100%;
 
 	& > div {
-		width: 309px;
+		width: 100%;
 		background-color: var(--color-background-light);
 		margin-top: 0 !important;
 	}

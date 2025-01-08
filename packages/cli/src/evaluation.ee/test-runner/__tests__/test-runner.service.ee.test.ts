@@ -2,7 +2,8 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
-import type { GenericValue, IRun } from 'n8n-workflow';
+import type { ErrorReporter } from 'n8n-core';
+import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -25,6 +26,12 @@ import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
+);
+
+const wfUnderTestRenamedNodesJson = JSON.parse(
+	readFileSync(path.join(__dirname, './mock-data/workflow.under-test-renamed-nodes.json'), {
+		encoding: 'utf-8',
+	}),
 );
 
 const wfEvaluationJson = JSON.parse(
@@ -60,6 +67,7 @@ const executionMocks = [
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataJson),
+			workflowData: wfUnderTestJson,
 		},
 	}),
 	mock<ExecutionEntity>({
@@ -68,6 +76,7 @@ const executionMocks = [
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataJson),
+			workflowData: wfUnderTestRenamedNodesJson,
 		},
 	}),
 ];
@@ -77,6 +86,16 @@ function mockExecutionData() {
 		data: {
 			resultData: {
 				runData: {},
+			},
+		},
+	});
+}
+
+function mockErrorExecutionData() {
+	return mock<IRun>({
+		data: {
+			resultData: {
+				error: mock<ExecutionError>(),
 			},
 		},
 	});
@@ -102,6 +121,9 @@ function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
 						},
 					],
 				},
+				// error is an optional prop, but jest-mock-extended will mock it by default,
+				// which affects the code logic. So, we need to explicitly set it to undefined.
+				error: undefined,
 			},
 		},
 	});
@@ -148,6 +170,8 @@ describe('TestRunnerService', () => {
 		testRunRepository.createTestRun.mockClear();
 		testRunRepository.markAsRunning.mockClear();
 		testRunRepository.markAsCompleted.mockClear();
+		testRunRepository.incrementFailed.mockClear();
+		testRunRepository.incrementPassed.mockClear();
 	});
 
 	test('should create an instance of TestRunnerService', async () => {
@@ -159,6 +183,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
@@ -173,6 +198,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -210,6 +236,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -250,7 +277,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ name: 'When clicking ‘Test workflow’' }],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
@@ -290,12 +317,185 @@ describe('TestRunnerService', () => {
 		// Check Test Run status was updated correctly
 		expect(testRunRepository.createTestRun).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id');
+		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id', expect.any(Number));
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
 			metric2: 0,
 		});
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
+		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
+	});
+
+	test('should properly count passed and failed executions', async () => {
+		const testRunnerService = new TestRunnerService(
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			mock<ErrorReporter>(),
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-4')
+			.mockRejectedValue(new Error('Some error'));
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
+			}),
+		);
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
+	});
+
+	test('should properly count failed test executions', async () => {
+		const testRunnerService = new TestRunnerService(
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			mock<ErrorReporter>(),
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockErrorExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
+			}),
+		);
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
+	});
+
+	test('should properly count failed evaluations', async () => {
+		const testRunnerService = new TestRunnerService(
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			mock<ErrorReporter>(),
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-4')
+			.mockResolvedValue(mockErrorExecutionData());
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [],
+			}),
+		);
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
 	});
 
 	test('should specify correct start nodes when running workflow under test', async () => {
@@ -307,6 +507,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
@@ -347,7 +548,7 @@ describe('TestRunnerService', () => {
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ name: 'When clicking ‘Test workflow’' }],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
@@ -380,6 +581,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		const startNodesData = (testRunnerService as any).getStartNodesData(
@@ -404,6 +606,7 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testMetricRepository,
 			mockNodeTypes,
+			mock<ErrorReporter>(),
 		);
 
 		const startNodesData = (testRunnerService as any).getStartNodesData(

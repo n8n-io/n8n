@@ -1263,9 +1263,13 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	}
 
 	if (task.subExecution) {
-		return i18n.baseText('runData.openSubExecution', {
-			interpolate: { id: task.subExecution.executionId },
-		});
+		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
 	}
 
 	return;
@@ -1277,10 +1281,16 @@ defineExpose({ enterEditMode });
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				!isPaneTypeInput &&
+				pinnedData.hasData.value &&
+				!editMode.enabled &&
+				!isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">

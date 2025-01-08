@@ -1184,6 +1184,11 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+
+	/**
+	 * @deprecated This key was added by accident and should not be used as it
+	 * will be removed in future. For more information see PR #12469.
+	 */
 	index?: number;
 }
 
@@ -2710,7 +2715,6 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
-	ignoreTypeMismatchErrors: boolean;
 	attemptToConvertTypes: boolean;
 	convertFieldsToString: boolean;
 };

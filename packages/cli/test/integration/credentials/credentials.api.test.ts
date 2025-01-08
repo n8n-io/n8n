@@ -4,6 +4,7 @@ import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -1270,6 +1271,23 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(secondResponse.body.data);
 		expect(secondResponse.body.data.data).toBeDefined();
+	});
+
+	test('should not redact the data when `includeData:true` is passed', async () => {
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(redactSpy).not.toHaveBeenCalled();
 	});
 
 	test('should retrieve owned cred for member', async () => {

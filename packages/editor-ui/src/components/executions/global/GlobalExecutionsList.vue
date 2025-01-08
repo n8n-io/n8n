@@ -486,6 +486,10 @@ const goToUpgrade = () => {
 	width: 100%;
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
 	max-width: var(--content-container-width);
+
+	@include mixins.breakpoint('xs-only') {
+		padding: var(--spacing-xs) var(--spacing-xs) 0;
+	}
 }
 
 .execList {
