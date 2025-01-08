@@ -61,12 +61,14 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
+
+		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
-			dsn: this.globalConfig.sentry.backendDsn,
-			environment: process.env.ENVIRONMENT ?? '',
-			release: process.env.N8N_VERSION ?? '',
-			serverName: process.env.DEPLOYMENT_NAME ?? '',
+			dsn: backendDsn,
+			environment,
+			release: n8nVersion,
+			serverName: deploymentName,
 		});
 		initExpressionEvaluator();
 
