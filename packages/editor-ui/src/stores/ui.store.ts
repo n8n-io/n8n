@@ -152,7 +152,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', true);
+	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
 	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
 	const draggable = ref<Draggable>({

@@ -277,10 +277,13 @@ function onResize() {
 async function onResizeEnd() {
 	if (window.outerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
-		fullyExpanded.value = !isCollapsed.value;
 	} else {
 		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
 	}
+
+	void nextTick(() => {
+		fullyExpanded.value = !isCollapsed.value;
+	});
 }
 
 const {
