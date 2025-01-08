@@ -776,6 +776,14 @@ export const microsoftEntraNodeResponse = {
 		},
 	],
 
+	updateUser: [
+		{
+			json: {
+				updated: true,
+			},
+		},
+	],
+
 	loadOptions: {
 		getGroupProperties: [
 			{

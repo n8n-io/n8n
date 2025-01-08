@@ -970,118 +970,180 @@ describe('Gong Node', () => {
 					],
 				},
 			},
-			// {
-			// 	description: 'should update user',
-			// 	input: {
-			// 		workflowData: {
-			// 			nodes: [
-			// 				{
-			// 					parameters: {},
-			// 					id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-			// 					name: "When clicking 'Test workflow'",
-			// 					type: 'n8n-nodes-base.manualTrigger',
-			// 					position: [820, 380],
-			// 					typeVersion: 1,
-			// 				},
-			// 				{
-			// 					parameters: {
-			// 						resource: 'user',
-			// 						operation: 'update',
-			// 						user: {
-			// 							__rl: true,
-			// 							value: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
-			// 							mode: 'id',
-			// 						},
-			// 						updateFields: {
-			// 							allowExternalSenders: true,
-			// 							assignedLabels: {
-			// 								labelValues: {
-			// 									displayName: 'Label Name',
-			// 									labelId: 'label123',
-			// 								},
-			// 							},
-			// 							autoSubscribeNewMembers: true,
-			// 							description: 'Group Description',
-			// 							displayName: 'Group Display Name',
-			// 							mailNickname: 'MailNickname',
-			// 							preferredDataLocation: 'Preferred Data Location',
-			// 							securityEnabled: true,
-			// 							uniqueName: 'UniqueName',
-			// 							visibility: 'Public',
-			// 						},
-			// 						requestOptions: {},
-			// 					},
-			// 					type: 'n8n-nodes-base.microsoftEntra',
-			// 					typeVersion: 1,
-			// 					position: [220, 0],
-			// 					id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-			// 					name: 'Micosoft Entra ID',
-			// 					credentials: {
-			// 						microsoftEntraOAuth2Api: {
-			// 							id: 'Hot2KwSMSoSmMVqd',
-			// 							name: 'Microsoft Entra ID (Azure Active Directory) account',
-			// 						},
-			// 					},
-			// 				},
-			// 			],
-			// 			connections: {
-			// 				"When clicking 'Test workflow'": {
-			// 					main: [
-			// 						[
-			// 							{
-			// 								node: 'Micosoft Entra ID',
-			// 								type: NodeConnectionType.Main,
-			// 								index: 0,
-			// 							},
-			// 						],
-			// 					],
-			// 				},
-			// 			},
-			// 		},
-			// 	},
-			// 	output: {
-			// 		nodeExecutionOrder: ['Start'],
-			// 		nodeData: {
-			// 			'Micosoft Entra ID': [[{ json: {} }]],
-			// 		},
-			// 	},
-			// 	nock: {
-			// 		baseUrl,
-			// 		mocks: [
-			// 			{
-			// 				method: 'patch',
-			// 				path: `/users/${microsoftEntraApiResponse.postUser.id}`,
-			// 				statusCode: 204,
-			// 				requestBody: {
-			// 					assignedLabels: [
-			// 						{
-			// 							displayName: 'Label Name',
-			// 							labelId: 'label123',
-			// 						},
-			// 					],
-			// 					description: 'Group Description',
-			// 					displayName: 'Group Display Name',
-			// 					mailNickname: 'MailNickname',
-			// 					preferredDataLocation: 'Preferred Data Location',
-			// 					securityEnabled: true,
-			// 					uniqueName: 'UniqueName',
-			// 					visibility: 'Public',
-			// 				},
-			// 				responseBody: {},
-			// 			},
-			// 			{
-			// 				method: 'patch',
-			// 				path: `/users/${microsoftEntraApiResponse.postGroup.id}`,
-			// 				statusCode: 204,
-			// 				requestBody: {
-			// 					allowExternalSenders: true,
-			// 					autoSubscribeNewMembers: true,
-			// 				},
-			// 				responseBody: {},
-			// 			},
-			// 		],
-			// 	},
-			// },
+			{
+				description: 'should update user',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+								name: "When clicking 'Test workflow'",
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [820, 380],
+								typeVersion: 1,
+							},
+							{
+								parameters: {
+									resource: 'user',
+									operation: 'update',
+									user: {
+										__rl: true,
+										value: '87d349ed-44d7-43e1-9a83-5f2406dee5bd',
+										mode: 'id',
+									},
+									updateFields: {
+										aboutMe: 'About me',
+										accountEnabled: true,
+										ageGroup: 'Adult',
+										birthday: '2024-11-12T00:00:00Z',
+										businessPhones: '0123456789',
+										city: 'New York',
+										companyName: 'Contoso',
+										consentProvidedForMinor: 'Granted',
+										country: 'US',
+										department: 'IT',
+										displayName: 'Group Display Name',
+										employeeId: 'employee-id-123',
+										employeeType: 'Contractor',
+										forceChangePassword: 'forceChangePasswordNextSignInWithMfa',
+										givenName: 'John',
+										employeeHireDate: '2024-11-13T00:00:00Z',
+										employeeLeaveDateTime: '2024-11-18T00:00:00Z',
+										employeeOrgData: {
+											employeeOrgValues: {
+												costCenter: 'Cost Center 1',
+												division: 'Division 1',
+											},
+										},
+										interests: ['interest1', 'interest2'],
+										jobTitle: 'Project manager',
+										surname: 'Doe',
+										mail: 'johndoe@contoso.com',
+										mailNickname: 'MailNickname',
+										mobilePhone: '+123456789',
+										mySite: 'My Site',
+										officeLocation: 'New York',
+										onPremisesImmutableId: 'premiseid123',
+										otherMails: ['johndoe2@contoso.com', 'johndoe3@contoso.com'],
+										password: 'Test!12345',
+										passwordPolicies: ['DisablePasswordExpiration', 'DisableStrongPassword'],
+										pastProjects: ['project1', 'project2'],
+										postalCode: '0123456',
+										preferredLanguage: 'en-US',
+										responsibilities: ['responsibility1', 'responsibility2'],
+										schools: ['school1', 'school2'],
+										skills: ['skill1', 'skill2'],
+										state: 'New York',
+										streetAddress: 'Street 123',
+										usageLocation: 'US',
+										userPrincipalName: 'johndoe@contoso.com',
+										userType: 'Guest',
+									},
+									requestOptions: {},
+								},
+								type: 'n8n-nodes-base.microsoftEntra',
+								typeVersion: 1,
+								position: [220, 0],
+								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
+								name: 'Micosoft Entra ID',
+								credentials: {
+									microsoftEntraOAuth2Api: {
+										id: 'Hot2KwSMSoSmMVqd',
+										name: 'Microsoft Entra ID (Azure Active Directory) account',
+									},
+								},
+							},
+						],
+						connections: {
+							"When clicking 'Test workflow'": {
+								main: [
+									[
+										{
+											node: 'Micosoft Entra ID',
+											type: NodeConnectionType.Main,
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start'],
+					nodeData: {
+						'Micosoft Entra ID': [microsoftEntraNodeResponse.updateUser],
+					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'patch',
+							path: `/users/${microsoftEntraApiResponse.postUser.id}`,
+							statusCode: 204,
+							requestBody: {
+								accountEnabled: true,
+								ageGroup: 'Adult',
+								businessPhones: ['0123456789'],
+								city: 'New York',
+								companyName: 'Contoso',
+								consentProvidedForMinor: 'Granted',
+								country: 'US',
+								department: 'IT',
+								displayName: 'Group Display Name',
+								employeeId: 'employee-id-123',
+								employeeType: 'Contractor',
+								givenName: 'John',
+								employeeHireDate: null,
+								employeeLeaveDateTime: null,
+								employeeOrgData: {
+									costCenter: 'Cost Center 1',
+									division: 'Division 1',
+								},
+								jobTitle: 'Project manager',
+								surname: 'Doe',
+								mail: 'johndoe@contoso.com',
+								mailNickname: 'MailNickname',
+								mobilePhone: '+123456789',
+								officeLocation: 'New York',
+								onPremisesImmutableId: 'premiseid123',
+								otherMails: ['johndoe2@contoso.com', 'johndoe3@contoso.com'],
+								passwordProfile: {
+									password: 'Test!12345',
+									forceChangePasswordNextSignInWithMfa: true,
+								},
+								passwordPolicies: 'DisablePasswordExpiration,DisableStrongPassword',
+								postalCode: '0123456',
+								preferredLanguage: 'en-US',
+								state: 'New York',
+								streetAddress: 'Street 123',
+								usageLocation: 'US',
+								userPrincipalName: 'johndoe@contoso.com',
+								userType: 'Guest',
+							},
+							responseBody: {},
+						},
+						{
+							method: 'patch',
+							path: `/users/${microsoftEntraApiResponse.postUser.id}`,
+							statusCode: 204,
+							requestBody: {
+								aboutMe: 'About me',
+								birthday: '2024-11-12T00:00:00.000Z',
+								interests: ['interest1', 'interest2'],
+								mySite: 'My Site',
+								pastProjects: ['project1', 'project2'],
+								responsibilities: ['responsibility1', 'responsibility2'],
+								schools: ['school1', 'school2'],
+								skills: ['skill1', 'skill2'],
+							},
+							responseBody: {},
+						},
+					],
+				},
+			},
 		];
 
 		const nodeTypes = Helpers.setup(tests);
