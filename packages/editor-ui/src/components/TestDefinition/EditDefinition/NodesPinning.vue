@@ -138,8 +138,8 @@ onMounted(loadData);
 							size="large"
 							icon="thumbtack"
 							:class="$style.pinButton"
-							@click="onPinButtonClick(data)"
 							data-test-id="node-pin-button"
+							@click="onPinButtonClick(data)"
 						/>
 					</N8nTooltip>
 				</div>
