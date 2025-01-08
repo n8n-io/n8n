@@ -223,8 +223,9 @@ export abstract class DirectoryLoader {
 			className: tempCredential.constructor.name,
 			sourcePath: filePath,
 			extends: tempCredential.extends,
-			supportedNodes: this.nodesByCredential[credentialType],
 		};
+
+		tempCredential.supportedNodes = this.nodesByCredential[credentialType];
 
 		this.credentialTypes[credentialType] = {
 			type: tempCredential,
@@ -476,9 +477,8 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 	}
 
 	private inferSupportedNodes() {
-		const knownCredentials = this.known.credentials;
 		for (const { type: credentialType } of Object.values(this.credentialTypes)) {
-			const supportedNodes = knownCredentials[credentialType.name].supportedNodes ?? [];
+			const supportedNodes = this.credentialTypes[credentialType.name].type.supportedNodes ?? [];
 			if (supportedNodes.length > 0 && credentialType.httpRequestNode) {
 				credentialType.httpRequestNode.hidden = true;
 			}

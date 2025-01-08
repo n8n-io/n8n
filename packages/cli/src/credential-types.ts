@@ -17,7 +17,7 @@ export class CredentialTypes implements ICredentialTypes {
 	}
 
 	getSupportedNodes(type: string): string[] {
-		return this.loadNodesAndCredentials.knownCredentials[type]?.supportedNodes ?? [];
+		return this.getByName(type)?.supportedNodes ?? [];
 	}
 
 	/**

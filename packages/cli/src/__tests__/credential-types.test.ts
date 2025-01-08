@@ -39,7 +39,7 @@ describe('CredentialTypes', () => {
 			const credentialTypes = new CredentialTypes(
 				mock<LoadNodesAndCredentials>({
 					loadedCredentials: {},
-					knownCredentials: { testCredential: mock({ supportedNodes: [] }) },
+					knownCredentials: { testCredential: mock() },
 				}),
 			);
 
@@ -63,19 +63,24 @@ describe('CredentialTypes', () => {
 	});
 
 	describe('getSupportedNodes', () => {
+		const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+
 		test('Should return supported nodes for known credential type', () => {
 			const supportedNodes = ['node1', 'node2'];
-			const credentialTypes = new CredentialTypes(
-				mock<LoadNodesAndCredentials>({
-					knownCredentials: { testCredential: mock({ supportedNodes }) },
-				}),
-			);
+			const credentialTypes = new CredentialTypes(loadNodesAndCredentials);
+
+			loadNodesAndCredentials.getCredential.calledWith('testCredential').mockReturnValue({
+				type: mock<ICredentialType>({ supportedNodes }),
+				sourcePath: '',
+			});
 
 			expect(credentialTypes.getSupportedNodes('testCredential')).toEqual(supportedNodes);
 		});
 
-		test('Should return empty array for unknown credential type supported nodes', () => {
-			expect(credentialTypes.getSupportedNodes('unknownCredential')).toBeEmptyArray();
+		test('Should throw UnrecognizedCredentialTypeError unknown credential type', () => {
+			expect(() => credentialTypes.getSupportedNodes('unknownCredential')).toThrow(
+				UnrecognizedCredentialTypeError,
+			);
 		});
 	});
 

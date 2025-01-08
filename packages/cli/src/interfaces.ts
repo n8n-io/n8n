@@ -12,7 +12,6 @@ import type {
 	IRunExecutionData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	CredentialLoadingDetails,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionSummary,
@@ -39,10 +38,6 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-
-export interface ICredentialsTypeData {
-	[key: string]: CredentialLoadingDetails;
-}
 
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;

@@ -2086,7 +2086,6 @@ export type LoadingDetails = {
 };
 
 export type CredentialLoadingDetails = LoadingDetails & {
-	supportedNodes?: string[];
 	extends?: string[];
 };
 

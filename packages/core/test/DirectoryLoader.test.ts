@@ -162,6 +162,7 @@ describe('DirectoryLoader', () => {
 		it('should hide httpRequestNode property when credential has supported nodes', async () => {
 			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
 			mockCredential1.httpRequestNode = mock<ICredentialType['httpRequestNode']>({ hidden: false });
+			mockCredential1.supportedNodes = ['node1'];
 
 			const loader = new PackageDirectoryLoader(directory);
 			await loader.loadAll();
@@ -183,6 +184,7 @@ describe('DirectoryLoader', () => {
 		it('should inherit iconUrl from supported node when credential has no icon', async () => {
 			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
 			mockCredential1.icon = undefined;
+			mockCredential1.supportedNodes = ['node1'];
 
 			const loader = new PackageDirectoryLoader(directory);
 			await loader.loadAll();
@@ -538,8 +540,8 @@ describe('DirectoryLoader', () => {
 				className: extendingCred.constructor.name,
 				sourcePath: filePath,
 				extends: ['baseCredential'],
-				supportedNodes: ['node1', 'node2'],
 			});
+			expect(extendingCred.supportedNodes).toEqual(['node1', 'node2']);
 		});
 
 		it('should throw error if credential class cannot be loaded', () => {

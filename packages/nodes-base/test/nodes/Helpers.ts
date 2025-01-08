@@ -89,7 +89,7 @@ class CredentialType implements ICredentialTypes {
 	}
 
 	getSupportedNodes(type: string): string[] {
-		return knownCredentials[type]?.supportedNodes ?? [];
+		return this.getByName(type)?.supportedNodes ?? [];
 	}
 
 	getParentTypes(_typeName: string): string[] {

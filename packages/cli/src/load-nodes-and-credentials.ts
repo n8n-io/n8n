@@ -299,13 +299,11 @@ export class LoadNodesAndCredentials {
 			this.types.nodes.push(wrapped);
 			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
 
-			const credentialNames = Object.entries(this.known.credentials)
-				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
-				.map(([credentialName]) => credentialName);
-
-			credentialNames.forEach((name) =>
-				this.known.credentials[name]?.supportedNodes?.push(wrapped.name),
-			);
+			this.types.credentials
+				.filter(({ supportedNodes }) => supportedNodes?.includes(usableNode.name))
+				.forEach((credential) => {
+					(credential.supportedNodes ??= []).push(wrapped.name);
+				});
 		}
 	}
 
@@ -351,19 +349,10 @@ export class LoadNodesAndCredentials {
 			}
 
 			for (const type in known.credentials) {
-				const {
-					className,
-					sourcePath,
-					supportedNodes,
-					extends: extendsArr,
-				} = known.credentials[type];
+				const { className, sourcePath, extends: extendsArr } = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
 					extends: extendsArr,
 				};
 			}
