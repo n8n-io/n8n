@@ -10,8 +10,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';
-
-const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
 const LANGCHAIN_NODES_PREFIX = '@n8n/n8n-nodes-langchain.';
 

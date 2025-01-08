@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
 import { STICKY_NODE_TYPE } from '@/Constants';
-import { ApplicationError } from '@/errors';
+import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
 import type { IRun, IRunData } from '@/Interfaces';
 import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
@@ -12,6 +12,7 @@ import {
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
+	userInInstanceRanOutOfFreeAiCredits,
 } from '@/TelemetryHelpers';
 import { randomInt } from '@/utils';
 
@@ -927,6 +928,227 @@ describe('extractLastExecutedNodeCredentialData', () => {
 		expect(extractLastExecutedNodeCredentialData(runData)).toMatchObject(
 			expect.objectContaining({ credentialId: 'nhu-l8E4hX', credentialType: 'openAiApi' }),
 		);
+	});
+});
+
+describe('userInInstanceRanOutOfFreeAiCredits', () => {
+	it('should return false if could not find node credentials', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: {} } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'free_ai_credits_request_error',
+									code: 200,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'free_ai_credits_request_error',
+								code: 200,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return false if could not credential type it is not openAiApi', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { jiraApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'free_ai_credits_request_error',
+									code: 200,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'free_ai_credits_request_error',
+								code: 200,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return false if error is not NodeApiError', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new ExpressionError('error'),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return false if error is not a free ai credit error', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'error_type',
+									code: 200,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'error_type',
+								code: 200,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return true if the user has ran out of free AI credits', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'free_ai_credits_request_error',
+									code: 400,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'free_ai_credits_request_error',
+								code: 400,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(true);
 	});
 });
 
