@@ -31,6 +31,10 @@ const props = defineProps({
 	multiple: {
 		type: Boolean,
 	},
+	multipleLimit: {
+		type: Number,
+		default: 0,
+	},
 	filterMethod: {
 		type: Function,
 	},
@@ -120,6 +124,7 @@ defineExpose({
 		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
 			ref="innerSelect"
+			:multiple-limit="props.multipleLimit"
 			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
 			:popper-class="props.popperClass"
