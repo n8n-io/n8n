@@ -22,6 +22,33 @@ export async function presendTest(
 	return requestOptions;
 }
 
+type User = {
+	Arn: string;
+	CreateDate: number;
+	PasswordLastUsed?: number;
+	Path?: string;
+	PermissionsBoundary?: string;
+	Tags: Array<{ Key: string; Value: string }>;
+	UserId: string;
+	UserName: string;
+};
+
+type GetUserResponseBody = {
+	GetUserResponse: {
+		GetUserResult: {
+			User: IDataObject;
+		};
+	};
+};
+
+type GetAllUsersResponseBody = {
+	ListUsersResponse: {
+		ListUsersResult: {
+			Users: IDataObject[];
+		};
+	};
+};
+
 /*
  * Helper function which stringifies the body before sending the request.
  * It is added to the routing property in the "resource" parameter thus for all requests.
@@ -170,20 +197,36 @@ export async function processUsersResponse(
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const responseBody = response.body as {
-		ListUsersResponse: { ListUsersResult: { Users: IDataObject[] } };
-	};
-	const data = responseBody.ListUsersResponse.ListUsersResult.Users;
+	const actionType = this.getNodeParameter('operation');
+	let responseBody;
+	let data;
 
-	if (!responseBody || !Array.isArray(data)) {
-		throw new ApplicationError('Unexpected response format: No users found.');
+	if (!response.body) {
+		return [];
 	}
 
-	const executionData: INodeExecutionData[] = data.map((user) => ({
+	if (actionType === 'get') {
+		responseBody = response.body as GetUserResponseBody;
+		data = responseBody.GetUserResponse.GetUserResult.User as User;
+		return [
+			{
+				json: data,
+			},
+		];
+	} else if (actionType === 'getAll') {
+		responseBody = response.body as GetAllUsersResponseBody;
+		data = responseBody.ListUsersResponse.ListUsersResult.Users as User[];
+	}
+
+	if (!Array.isArray(data)) {
+		return [];
+	}
+
+	const userData: INodeExecutionData[] = data.map((user) => ({
 		json: user,
 	}));
 
-	return executionData;
+	return userData;
 }
 
 export async function handlePagination(
@@ -485,7 +528,6 @@ export async function searchUsers(
 	const users = responseBody.ListUsersResponse.ListUsersResult.Users;
 
 	if (!users) {
-		console.warn('No users found in the response');
 		return { results: [] };
 	}
 
@@ -519,7 +561,6 @@ export async function searchGroups(
 	const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups;
 
 	if (!groups) {
-		console.warn('No groups found in the response');
 		return { results: [] };
 	}
 
@@ -534,4 +575,32 @@ export async function searchGroups(
 	return {
 		results,
 	};
+}
+
+export async function simplifyData(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const simple = this.getNodeParameter('simple') as boolean;
+
+	if (!simple) {
+		return items;
+	}
+
+	const processedUsers: User[] = [];
+
+	items.forEach((item) => {
+		const user = item.json as User;
+		processedUsers.push({
+			Arn: user.Arn,
+			CreateDate: user.CreateDate,
+			Tags: user.Tags ? user.Tags.slice(0, 6) : user.Tags,
+			UserId: user.UserId,
+			UserName: user.UserName,
+		});
+	});
+
+	return processedUsers.map((user) => ({
+		json: user,
+	}));
 }

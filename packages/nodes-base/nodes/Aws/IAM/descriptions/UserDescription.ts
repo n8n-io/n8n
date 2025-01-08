@@ -5,6 +5,7 @@ import {
 	handlePagination,
 	presendFields,
 	processUsersResponse,
+	simplifyData,
 } from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
@@ -92,7 +93,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [processUsersResponse, simplifyData, handleErrorPostReceive],
 					},
 				},
 			},
@@ -117,7 +118,7 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive, processUsersResponse],
+						postReceive: [processUsersResponse, simplifyData, handleErrorPostReceive],
 					},
 				},
 				action: 'Get many users',
@@ -290,6 +291,19 @@ const getFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
 ];
 
 const getAllFields: INodeProperties[] = [
@@ -323,6 +337,19 @@ const getAllFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		validateType: 'number',
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
