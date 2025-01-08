@@ -1613,7 +1613,8 @@ defineExpose({ enterEditMode });
 				v-else-if="isTrimmedManualExecutionDataItem && uiStore.isProcessingExecutionResults"
 				:class="$style.center"
 			>
-				<N8nText bold color="text-dark" size="large">
+				<div :class="$style.spinner"><N8nSpinner type="ring" /></div>
+				<N8nText color="text-dark" size="large">
 					{{ i18n.baseText('runData.trimmedData.loading') }}
 				</N8nText>
 			</div>
