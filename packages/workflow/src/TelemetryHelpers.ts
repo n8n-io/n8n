@@ -35,7 +35,7 @@ import type {
 import { getNodeParameters } from './NodeHelpers';
 import { jsonParse } from './utils';
 
-const isNodeApiError = (error: any): error is NodeApiError =>
+const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
