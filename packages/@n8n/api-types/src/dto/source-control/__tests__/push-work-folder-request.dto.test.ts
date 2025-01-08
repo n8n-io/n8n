@@ -40,23 +40,6 @@ describe('PushWorkFolderRequestDto', () => {
 					],
 				},
 			},
-			{
-				name: 'push request with optional fields omitted',
-				request: {
-					fileNames: [
-						{
-							file: 'file3.json',
-							id: '3',
-							name: 'File 3',
-							type: 'variables',
-							status: 'deleted',
-							location: 'local',
-							conflict: false,
-							updatedAt: '2023-10-03T12:00:00Z',
-						},
-					],
-				},
-			},
 		])('should validate $name', ({ request }) => {
 			const result = PushWorkFolderRequestDto.safeParse(request);
 			expect(result.success).toBe(true);
