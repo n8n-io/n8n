@@ -102,11 +102,9 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 	const usedCredentials = workflowsStore?.usedCredentials;
 	if (!usedCredentials) return false;
 
-	// Find any managed OpenAI credentials being used
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
 	if (!managedOpenAiCredentialId) return false;
 
-	// Check if any non-disabled node uses these credentials
 	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
 });
 
