@@ -645,7 +645,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'After',
 		name: 'timeMin',
 		type: 'dateTime',
-		default: '',
+		default: '={{ $now }}',
 		description:
 			'At least some part of the event must be after this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 		displayOptions: {
@@ -660,7 +660,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Before',
 		name: 'timeMax',
 		type: 'dateTime',
-		default: '',
+		default: '={{ $now.plus({ week: 1 }) }}',
 		description:
 			'At least some part of the event must be before this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 		displayOptions: {

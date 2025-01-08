@@ -24,7 +24,7 @@ import type { IEvent, ReccuringEventInstance } from './EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
-	dateTimeToIso,
+	dateObjectToISO,
 	encodeURIComponentOnce,
 	eventExtendYearIntoFuture,
 	getCalendars,
@@ -34,6 +34,7 @@ import {
 	googleApiRequestWithRetries,
 	type RecurentEvent,
 } from './GenericFunctions';
+import { sortItemKeysByPriorityList } from '../../../utils/utilities';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -159,8 +160,8 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = decodeURIComponent(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const timeMin = dateTimeToIso(this.getNodeParameter('timeMin', i));
-						const timeMax = dateTimeToIso(this.getNodeParameter('timeMax', i));
+						const timeMin = dateObjectToISO(this.getNodeParameter('timeMin', i));
+						const timeMax = dateObjectToISO(this.getNodeParameter('timeMax', i));
 						const options = this.getNodeParameter('options', i);
 						const outputFormat = options.outputFormat || 'availability';
 						const tz = this.getNodeParameter('options.timezone', i, '', {
@@ -211,8 +212,8 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const start = dateTimeToIso(this.getNodeParameter('start', i));
-						const end = dateTimeToIso(this.getNodeParameter('end', i));
+						const start = dateObjectToISO(this.getNodeParameter('start', i));
+						const end = dateObjectToISO(this.getNodeParameter('end', i));
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -431,8 +432,8 @@ export class GoogleCalendar implements INodeType {
 						}) as string;
 
 						if (nodeVersion >= 1.3) {
-							const timeMin = dateTimeToIso(this.getNodeParameter('timeMin', i));
-							const timeMax = dateTimeToIso(this.getNodeParameter('timeMax', i));
+							const timeMin = dateObjectToISO(this.getNodeParameter('timeMin', i));
+							const timeMax = dateObjectToISO(this.getNodeParameter('timeMax', i));
 							if (timeMin) {
 								qs.timeMin = addTimezoneToDate(timeMin as string, tz || timezone);
 							}
@@ -467,16 +468,19 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = addTimezoneToDate(dateTimeToIso(options.timeMax), tz || timezone);
+							qs.timeMax = addTimezoneToDate(dateObjectToISO(options.timeMax), tz || timezone);
 						}
 						if (options.timeMin) {
-							qs.timeMin = addTimezoneToDate(dateTimeToIso(options.timeMin), tz || timezone);
+							qs.timeMin = addTimezoneToDate(dateObjectToISO(options.timeMin), tz || timezone);
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = addTimezoneToDate(dateTimeToIso(options.updatedMin), tz || timezone);
+							qs.updatedMin = addTimezoneToDate(
+								dateObjectToISO(options.updatedMin),
+								tz || timezone,
+							);
 						}
 						if (options.fields) {
 							qs.fields = options.fields as string;
@@ -787,10 +791,29 @@ export class GoogleCalendar implements INodeType {
 			}
 		}
 
-		if (hints.length) {
-			return new NodeExecutionOutput([returnData], hints);
+		const keysPriorityList = [
+			'id',
+			'summary',
+			'start',
+			'end',
+			'attendees',
+			'creator',
+			'organizer',
+			'description',
+			'location',
+			'created',
+			'updated',
+		];
+
+		let nodeExecutionData = returnData;
+		if (nodeVersion >= 1.3) {
+			nodeExecutionData = sortItemKeysByPriorityList(returnData, keysPriorityList);
 		}
 
-		return [returnData];
+		if (hints.length) {
+			return new NodeExecutionOutput([nodeExecutionData], hints);
+		}
+
+		return [nodeExecutionData];
 	}
 }

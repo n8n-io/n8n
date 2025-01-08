@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 
 import type { ReccuringEventInstance } from '../EventInterface';
-import { addTimezoneToDate, dateTimeToIso, eventExtendYearIntoFuture } from '../GenericFunctions';
+import { addTimezoneToDate, dateObjectToISO, eventExtendYearIntoFuture } from '../GenericFunctions';
 
 describe('addTimezoneToDate', () => {
 	it('should add timezone to date', () => {
@@ -22,16 +22,22 @@ describe('addTimezoneToDate', () => {
 	});
 });
 
-describe('dateTimeToIso', () => {
+describe('dateObjectToISO', () => {
 	test('should return ISO string for DateTime instance', () => {
 		const mockDateTime = DateTime.fromISO('2025-01-07T12:00:00');
-		const result = dateTimeToIso(mockDateTime);
+		const result = dateObjectToISO(mockDateTime);
 		expect(result).toBe('2025-01-07T12:00:00.000+00:00');
 	});
 
-	test('should return string when input is not a DateTime instance', () => {
+	test('should return ISO string for Date instance', () => {
+		const mockDate = new Date('2025-01-07T12:00:00Z');
+		const result = dateObjectToISO(mockDate);
+		expect(result).toBe('2025-01-07T12:00:00.000Z');
+	});
+
+	test('should return string when input is not a DateTime or Date instance', () => {
 		const inputString = '2025-01-07T12:00:00';
-		const result = dateTimeToIso(inputString);
+		const result = dateObjectToISO(inputString);
 		expect(result).toBe(inputString);
 	});
 });

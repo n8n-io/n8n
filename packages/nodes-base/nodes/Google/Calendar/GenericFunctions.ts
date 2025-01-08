@@ -296,7 +296,8 @@ export const eventExtendYearIntoFuture = (
 	});
 };
 
-export function dateTimeToIso<T>(date: T): string {
+export function dateObjectToISO<T>(date: T): string {
 	if (date instanceof DateTime) return date.toISO();
+	if (date instanceof Date) return date.toISOString();
 	return date as string;
 }
