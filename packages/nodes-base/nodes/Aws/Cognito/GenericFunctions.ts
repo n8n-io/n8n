@@ -62,6 +62,10 @@ export async function presendFilters(
 	const filterAttribute = filterToSend?.attribute as string;
 	const filterValue = filterToSend?.value as string;
 
+	if (!filterValue) {
+		throw new NodeOperationError(this.getNode(), 'Please provide Value to use filtering.');
+	}
+
 	let body: IDataObject;
 	if (typeof requestOptions.body === 'string') {
 		try {

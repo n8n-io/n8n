@@ -1,7 +1,8 @@
-import { presendOptions } from '../GenericFunctions';
 import { NodeOperationError } from 'n8n-workflow';
 
-describe('presendOptions', () => {
+import { presendAdditionalFields } from '../GenericFunctions';
+
+describe('presendAdditionalFields', () => {
 	let mockContext: any;
 
 	beforeEach(() => {
@@ -25,7 +26,7 @@ describe('presendOptions', () => {
 			headers: {},
 		};
 
-		const result = await presendOptions.call(mockContext, requestOptions);
+		const result = await presendAdditionalFields.call(mockContext, requestOptions);
 
 		expect(result).toEqual(requestOptions);
 	});
@@ -40,10 +41,10 @@ describe('presendOptions', () => {
 			headers: {},
 		};
 
-		await expect(presendOptions.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(presendAdditionalFields.call(mockContext, requestOptions)).rejects.toThrow(
 			new NodeOperationError(
 				mockContext.getNode(),
-				'At least one of the options (Description, Precedence, Path, or RoleArn) must be provided to update the group.',
+				'At least one of the additional fields must be provided to update the group.',
 			),
 		);
 	});
@@ -58,10 +59,10 @@ describe('presendOptions', () => {
 			headers: {},
 		};
 
-		await expect(presendOptions.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(presendAdditionalFields.call(mockContext, requestOptions)).rejects.toThrow(
 			new NodeOperationError(
 				mockContext.getNode(),
-				'At least one of the options (Description, Precedence, Path, or RoleArn) must be provided to update the group.',
+				'At least one of the additional fields must be provided to update the group.',
 			),
 		);
 	});

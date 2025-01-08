@@ -1,7 +1,8 @@
-import { presendPath } from '../GenericFunctions';
 import { NodeOperationError } from 'n8n-workflow';
 
-describe('presendPath', () => {
+import { presendVerifyPath } from '../GenericFunctions';
+
+describe('presendVerifyPath', () => {
 	let mockContext: any;
 	let mockGetNodeParameter: jest.Mock;
 
@@ -23,7 +24,7 @@ describe('presendPath', () => {
 			body: {},
 		};
 
-		const result = await presendPath.call(mockContext, requestOptions);
+		const result = await presendVerifyPath.call(mockContext, requestOptions);
 
 		expect(result).toEqual(requestOptions);
 	});
@@ -38,7 +39,7 @@ describe('presendPath', () => {
 			body: {},
 		};
 
-		await expect(presendPath.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
 			new NodeOperationError(mockContext.getNode(), 'Path must be between 1 and 512 characters.'),
 		);
 	});
@@ -53,7 +54,7 @@ describe('presendPath', () => {
 			body: {},
 		};
 
-		await expect(presendPath.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
 			new NodeOperationError(mockContext.getNode(), 'Path must be between 1 and 512 characters.'),
 		);
 	});
@@ -69,7 +70,7 @@ describe('presendPath', () => {
 			body: {},
 		};
 
-		await expect(presendPath.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
 			new NodeOperationError(
 				mockContext.getNode(),
 				'Path must begin and end with a forward slash and contain valid ASCII characters.',
@@ -87,7 +88,7 @@ describe('presendPath', () => {
 			body: {},
 		};
 
-		await expect(presendPath.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(presendVerifyPath.call(mockContext, requestOptions)).rejects.toThrow(
 			new NodeOperationError(
 				mockContext.getNode(),
 				'Path must begin and end with a forward slash and contain valid ASCII characters.',

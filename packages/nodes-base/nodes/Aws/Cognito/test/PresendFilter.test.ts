@@ -1,7 +1,8 @@
-import { presendFilter } from '../GenericFunctions';
 import { NodeOperationError } from 'n8n-workflow';
 
-describe('presendFilter', () => {
+import { presendFilters } from '../GenericFunctions';
+
+describe('presendFilters', () => {
 	let mockContext: any;
 
 	beforeEach(() => {
@@ -15,8 +16,8 @@ describe('presendFilter', () => {
 
 	test('should return request options with applied filter when all parameters are provided', async () => {
 		mockContext.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'additionalFields') {
-				return { filterAttribute: 'name', filterType: 'exactMatch', filterValue: 'John' };
+			if (param === 'filters') {
+				return { filter: { attribute: 'name', value: 'John' } };
 			}
 			return {};
 		});
@@ -28,19 +29,19 @@ describe('presendFilter', () => {
 			headers: {},
 		};
 
-		const result = await presendFilter.call(mockContext, requestOptions);
+		const result = await presendFilters.call(mockContext, requestOptions);
 
 		expect(result.body).toBe(
 			JSON.stringify({
-				Filter: 'name = "John"',
+				Filter: '"name"^="John"',
 			}),
 		);
 	});
 
 	test('should throw an error if any filter parameter is missing', async () => {
 		mockContext.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'additionalFields') {
-				return { filterAttribute: 'name', filterType: 'exactMatch' };
+			if (param === 'filters') {
+				return { filter: { attribute: 'name' } }; // Missing value
 			}
 			return {};
 		});
@@ -52,18 +53,15 @@ describe('presendFilter', () => {
 			headers: {},
 		};
 
-		await expect(presendFilter.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(
-				mockContext.getNode(),
-				'Please provide Filter Attribute, Filter Type, and Filter Value to use filtering.',
-			),
+		await expect(presendFilters.call(mockContext, requestOptions)).rejects.toThrow(
+			new NodeOperationError(mockContext.getNode(), 'Please provide Value to use filtering.'),
 		);
 	});
 
 	test('should parse requestOptions.body if it is a string', async () => {
 		mockContext.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'additionalFields') {
-				return { filterAttribute: 'name', filterType: 'startsWith', filterValue: 'Jo' };
+			if (param === 'filters') {
+				return { filter: { attribute: 'name', value: 'Jo' } };
 			}
 			return {};
 		});
@@ -75,24 +73,40 @@ describe('presendFilter', () => {
 			headers: {},
 		};
 
-		const result = await presendFilter.call(mockContext, requestOptions);
+		const result = await presendFilters.call(mockContext, requestOptions);
 
 		expect(result.body).toBe(
 			JSON.stringify({
 				key: 'value',
-				Filter: 'name ^= "Jo"',
+				Filter: '"name"^="Jo"',
 			}),
+		);
+	});
+
+	test('should throw an error if requestOptions.body is an invalid JSON string', async () => {
+		mockContext.getNodeParameter.mockImplementation((param: string) => {
+			if (param === 'filters') {
+				return { filter: { attribute: 'name', value: 'John' } };
+			}
+			return {};
+		});
+
+		const requestOptions = {
+			method: 'POST' as const,
+			url: '/example-endpoint',
+			body: '{invalidJson}',
+			headers: {},
+		};
+
+		await expect(presendFilters.call(mockContext, requestOptions)).rejects.toThrow(
+			new NodeOperationError(mockContext.getNode(), 'Failed to parse requestOptions body'),
 		);
 	});
 
 	test('should not parse requestOptions.body if it is already an object', async () => {
 		mockContext.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'additionalFields') {
-				return {
-					filterAttribute: 'email',
-					filterType: 'exactMatch',
-					filterValue: 'test@example.com',
-				};
+			if (param === 'filters') {
+				return { filter: { attribute: 'email', value: 'test@example.com' } };
 			}
 			return {};
 		});
@@ -104,37 +118,12 @@ describe('presendFilter', () => {
 			headers: {},
 		};
 
-		const result = await presendFilter.call(mockContext, requestOptions);
+		const result = await presendFilters.call(mockContext, requestOptions);
 
 		expect(result.body).toBe(
 			JSON.stringify({
 				key: 'value',
-				Filter: 'email = "test@example.com"',
-			}),
-		);
-	});
-
-	test('should handle unsupported filterType values by defaulting to the provided filterType', async () => {
-		mockContext.getNodeParameter.mockImplementation((param: string) => {
-			if (param === 'additionalFields') {
-				return { filterAttribute: 'name', filterType: 'unknownType', filterValue: 'John' };
-			}
-			return {};
-		});
-
-		const requestOptions = {
-			method: 'POST' as const,
-			url: '/example-endpoint',
-			body: { key: 'value' },
-			headers: {},
-		};
-
-		const result = await presendFilter.call(mockContext, requestOptions);
-
-		expect(result.body).toBe(
-			JSON.stringify({
-				key: 'value',
-				Filter: 'name unknownType "John"',
+				Filter: '"email"^="test@example.com"',
 			}),
 		);
 	});
