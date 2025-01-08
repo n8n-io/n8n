@@ -44,7 +44,11 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init(instanceType: InstanceType | 'task_runner', dsn: string) {
+	async init(
+		instanceType: InstanceType | 'task_runner',
+		dsn: string,
+		opts: { release?: string; environment?: string; serverName?: string } = {},
+	) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
@@ -54,11 +58,9 @@ export class ErrorReporter {
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
 
-		const {
-			N8N_VERSION: release,
-			ENVIRONMENT: environment,
-			DEPLOYMENT_NAME: serverName,
-		} = process.env;
+		const release = opts.release ?? process.env.N8N_VERSION;
+		const environment = opts.environment ?? process.env.ENVIRONMENT;
+		const serverName = opts.serverName ?? process.env.DEPLOYMENT_NAME;
 
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
