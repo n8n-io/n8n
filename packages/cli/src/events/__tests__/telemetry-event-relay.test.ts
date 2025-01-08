@@ -1622,5 +1622,74 @@ describe('TelemetryEventRelay', () => {
 				}),
 			);
 		});
+
+		it('should call telemetry.track when user ran out of free AI credits', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: true }),
+			);
+
+			const runData = {
+				status: 'error',
+				mode: 'trigger',
+				data: {
+					startData: {
+						destinationNode: 'OpenAI',
+						runNodeFilter: ['OpenAI'],
+					},
+					executionData: {
+						nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+					},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'OpenAI',
+						error: new NodeApiError(
+							{
+								id: '1',
+								typeVersion: 1,
+								name: 'OpenAI',
+								type: 'n8n-nodes-base.openAi',
+								parameters: {},
+								position: [100, 200],
+							},
+							{
+								message: `400 - ${JSON.stringify({
+									error: {
+										message: 'error message',
+										type: 'error_type',
+										code: 200,
+									},
+								})}`,
+								error: {
+									message: 'error message',
+									type: 'error_type',
+									code: 200,
+								},
+							},
+							{
+								httpCode: '400',
+							},
+						),
+					},
+				},
+			} as unknown as IRun;
+
+			jest
+				.spyOn(TelemetryHelpers, 'userInInstanceRanOutOfFreeAiCredits')
+				.mockImplementation(() => true);
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
+		});
 	});
 });
