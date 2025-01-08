@@ -18,7 +18,6 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
@@ -32,6 +31,7 @@ import {
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -50,7 +50,6 @@ import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vu
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
@@ -67,6 +66,8 @@ import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentials
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
+import type { EventBus } from 'n8n-design-system';
 </script>
 
 <template>
@@ -120,10 +121,6 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 			<template #default="{ active }">
 				<NpsSurvey :is-active="active" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="WORKFLOW_LM_CHAT_MODAL_KEY">
-			<WorkflowLMChat />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
@@ -181,7 +178,15 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 		</ModalRoot>
 
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template #default="{ modalName, data }">
+			<template
+				#default="{
+					modalName,
+					data,
+				}: {
+					modalName: string;
+					data: { destination: Object; isNew: boolean; eventBus: EventBus };
+				}"
+			>
 				<EventDestinationSettingsModal
 					:modal-name="modalName"
 					:destination="data.destination"
@@ -250,6 +255,12 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
 			<template #default="{ modalName, data }">
 				<NewAssistantSessionModal :name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="COMMUNITY_PLUS_ENROLLMENT_MODAL">
+			<template #default="{ modalName, data }">
+				<CommunityPlusEnrollmentModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

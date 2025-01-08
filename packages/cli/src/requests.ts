@@ -1,26 +1,20 @@
 import type { Scope } from '@n8n/permissions';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import type express from 'express';
 import type {
-	BannerName,
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	ILoadOptions,
 	INodeCredentialTestRequest,
-	INodeCredentials,
-	INodeParameters,
-	INodeTypeNameVersion,
 	IPersonalizationSurveyAnswersV4,
 	IUser,
 } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project, ProjectType } from '@/databases/entities/project';
+import type { Project, ProjectIcon, ProjectType } from '@/databases/entities/project';
 import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
+import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
 
 import type { ProjectRole } from './databases/entities/project-relation';
 import type { ScopesField } from './services/role.service';
@@ -125,7 +119,7 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-export type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
@@ -144,6 +138,7 @@ export declare namespace CredentialRequest {
 		type: string;
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
+		isManaged?: boolean;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
@@ -196,69 +191,21 @@ export declare namespace MeRequest {
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
-export interface UserSetupPayload {
-	email: string;
-	password: string;
-	firstName: string;
-	lastName: string;
-	mfaEnabled?: boolean;
-	mfaSecret?: string;
-	mfaRecoveryCodes?: string[];
-}
-
-// ----------------------------------
-//             /owner
-// ----------------------------------
-
-export declare namespace OwnerRequest {
-	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
-
-	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
-}
-
-// ----------------------------------
-//     password reset endpoints
-// ----------------------------------
-
-export declare namespace PasswordResetRequest {
-	export type Email = AuthlessRequest<{}, {}, Pick<PublicUser, 'email'>>;
-
-	export type Credentials = AuthlessRequest<{}, {}, {}, { userId?: string; token?: string }>;
-
-	export type NewPassword = AuthlessRequest<
-		{},
-		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaToken?: string }
-	>;
-}
-
 // ----------------------------------
 //             /users
 // ----------------------------------
 
 export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<
-		{},
-		{},
-		Array<{ email: string; role?: AssignableRole }>
-	>;
-
 	export type InviteResponse = {
-		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		user: {
+			id: string;
+			email: string;
+			inviteAcceptUrl?: string;
+			emailSent: boolean;
+			role: AssignableRole;
+		};
 		error?: string;
 	};
-
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
 
 	export type Delete = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -275,44 +222,16 @@ export declare namespace UserRequest {
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
-	export type Update = AuthlessRequest<
-		{ id: string },
-		{},
-		{
-			inviterId: string;
-			firstName: string;
-			lastName: string;
-			password: string;
-		}
-	>;
 }
-
-// ----------------------------------
-//             /login
-// ----------------------------------
-
-export type LoginRequest = AuthlessRequest<
-	{},
-	{},
-	{
-		email: string;
-		password: string;
-		mfaToken?: string;
-		mfaRecoveryCode?: string;
-	}
->;
 
 // ----------------------------------
 //          MFA endpoints
 // ----------------------------------
 
 export declare namespace MFA {
-	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
-	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
-	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Verify = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { mfaCode: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { mfaCode?: string; mfaRecoveryCode?: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},
@@ -329,7 +248,7 @@ export declare namespace MFA {
 export declare namespace OAuthRequest {
 	namespace OAuth1Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthlessRequest<
+		type Callback = AuthenticatedRequest<
 			{},
 			{},
 			{},
@@ -341,49 +260,8 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthlessRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
 	}
-}
-
-// ----------------------------------
-//      /dynamic-node-parameters
-// ----------------------------------
-export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<RequestBody = {}> = AuthenticatedRequest<
-		{},
-		{},
-		{
-			path: string;
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			methodName?: string;
-			credentials?: INodeCredentials;
-		} & RequestBody,
-		{}
-	>;
-
-	/** POST /dynamic-node-parameters/options */
-	type Options = BaseRequest<{
-		loadOptions?: ILoadOptions;
-	}>;
-
-	/** POST /dynamic-node-parameters/resource-locator-results */
-	type ResourceLocatorResults = BaseRequest<{
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}>;
-
-	/** POST dynamic-node-parameters/resource-mapper-fields */
-	type ResourceMapperFields = BaseRequest<{
-		methodName: string;
-	}>;
-
-	/** POST /dynamic-node-parameters/action-result */
-	type ActionResult = BaseRequest<{
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}>;
 }
 
 // ----------------------------------
@@ -479,15 +357,6 @@ export declare namespace ExternalSecretsRequest {
 }
 
 // ----------------------------------
-//           /orchestration
-// ----------------------------------
-//
-export declare namespace OrchestrationRequest {
-	type GetAll = AuthenticatedRequest;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-}
-
-// ----------------------------------
 //           /workflow-history
 // ----------------------------------
 
@@ -526,6 +395,7 @@ export declare namespace ProjectRequest {
 		Project,
 		{
 			name: string;
+			icon?: ProjectIcon;
 		}
 	>;
 
@@ -554,6 +424,7 @@ export declare namespace ProjectRequest {
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
+		icon: ProjectIcon;
 		type: ProjectType;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];
@@ -563,7 +434,11 @@ export declare namespace ProjectRequest {
 	type Update = AuthenticatedRequest<
 		{ projectId: string },
 		{},
-		{ name?: string; relations?: ProjectRelationPayload[] }
+		{
+			name?: string;
+			relations?: ProjectRelationPayload[];
+			icon?: { type: 'icon' | 'emoji'; value: string };
+		}
 	>;
 	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
 }
@@ -576,15 +451,4 @@ export declare namespace NpsSurveyRequest {
 	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
 	// once some schema validation is added
 	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
-}
-
-// ----------------------------------
-//             /ai-assistant
-// ----------------------------------
-
-export declare namespace AiAssistantRequest {
-	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
-
-	type SuggestionPayload = { sessionId: string; suggestionId: string };
-	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
 }

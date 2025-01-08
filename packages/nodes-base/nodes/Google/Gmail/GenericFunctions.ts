@@ -1,5 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import { DateTime } from 'luxon';
 import { simpleParser } from 'mailparser';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -13,33 +14,17 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
-import { DateTime } from 'luxon';
-
-import isEmpty from 'lodash/isEmpty';
-
-export interface IEmail {
-	from?: string;
-	to?: string;
-	cc?: string;
-	bcc?: string;
-	replyTo?: string;
-	inReplyTo?: string;
-	reference?: string;
-	subject: string;
-	body: string;
-	htmlBody?: string;
-	attachments?: IDataObject[];
-}
+import type { IEmail } from '../../../utils/sendAndWait/interfaces';
+import { escapeHtml } from '../../../utils/utilities';
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export interface IAttachments {
 	type: string;
 	name: string;
 	content: string;
 }
-
-import MailComposer from 'nodemailer/lib/mail-composer';
-import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -516,22 +501,7 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
 		const snippet = item.json.snippet as string;
 		if (snippet) {
-			item.json.snippet = snippet.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
-				switch (match) {
-					case '&amp;':
-						return '&';
-					case '&lt;':
-						return '<';
-					case '&gt;':
-						return '>';
-					case '&#39;':
-						return "'";
-					case '&quot;':
-						return '"';
-					default:
-						return match;
-				}
-			});
+			item.json.snippet = escapeHtml(snippet);
 		}
 		return item;
 	});

@@ -1,8 +1,9 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 
 import type { User } from '@/databases/entities/user';
-import type { Logger } from '@/logging/logger.service';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -16,6 +17,7 @@ export interface AbstractPushEvents {
  *
  * @emits message when a message is received from a client
  */
+@Service()
 export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPushEvents> {
 	protected connections: Record<string, Connection> = {};
 
@@ -23,9 +25,15 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 
 	protected abstract close(connection: Connection): void;
 	protected abstract sendToOneConnection(connection: Connection, data: string): void;
+	protected abstract ping(connection: Connection): void;
 
-	constructor(protected readonly logger: Logger) {
+	constructor(
+		protected readonly logger: Logger,
+		protected readonly errorReporter: ErrorReporter,
+	) {
 		super();
+		// Ping all connected clients every 60 seconds
+		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
 	protected add(pushRef: string, userId: User['id'], connection: Connection) {
@@ -60,8 +68,8 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRefs: string[]) {
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
+	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
+		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
 		});
@@ -75,30 +83,32 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		}
 	}
 
-	sendToAll<Type extends PushType>(type: Type, data: PushPayload<Type>) {
-		this.sendTo(type, data, Object.keys(this.connections));
+	private pingAll() {
+		for (const pushRef in this.connections) {
+			this.ping(this.connections[pushRef]);
+		}
 	}
 
-	sendToOne<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
+	sendToAll(pushMsg: PushMessage) {
+		this.sendTo(pushMsg, Object.keys(this.connections));
+	}
+
+	sendToOne(pushMsg: PushMessage, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendTo(type, data, [pushRef]);
+		this.sendTo(pushMsg, [pushRef]);
 	}
 
-	sendToUsers<Type extends PushType>(
-		type: Type,
-		data: PushPayload<Type>,
-		userIds: Array<User['id']>,
-	) {
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
 		const { connections } = this;
 		const userPushRefs = Object.keys(connections).filter((pushRef) =>
 			userIds.includes(this.userIdByPushRef[pushRef]),
 		);
 
-		this.sendTo(type, data, userPushRefs);
+		this.sendTo(pushMsg, userPushRefs);
 	}
 
 	closeAllConnections() {

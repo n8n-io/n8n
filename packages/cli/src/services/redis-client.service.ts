@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import { Service } from 'typedi';
+import { Logger } from 'n8n-core';
 
 import { Debounce } from '@/decorators/debounce';
-import { Logger } from '@/logging/logger.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
@@ -37,7 +37,14 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
+
+		this.logger = this.logger.scoped(['redis', 'scaling']);
+
 		this.registerListeners();
+	}
+
+	isConnected() {
+		return !this.lostConnection;
 	}
 
 	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
@@ -95,9 +102,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		options.host = host;
 		options.port = port;
 
-		this.logger.debug('[Redis] Initializing regular client', { type, host, port });
+		const client = new ioRedis(options);
 
-		return new ioRedis(options);
+		this.logger.debug(`Started Redis client ${type}`, { type, host, port });
+
+		return client;
 	}
 
 	private createClusterClient({
@@ -111,12 +120,14 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const clusterNodes = this.clusterNodes();
 
-		this.logger.debug('[Redis] Initializing cluster client', { type, clusterNodes });
-
-		return new ioRedis.Cluster(clusterNodes, {
+		const clusterClient = new ioRedis.Cluster(clusterNodes, {
 			redisOptions: options,
 			clusterRetryStrategy: this.retryStrategy(),
 		});
+
+		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
+
+		return clusterClient;
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {

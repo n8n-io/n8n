@@ -1,8 +1,6 @@
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
-
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-
 import type {
 	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -15,6 +13,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
 import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
@@ -229,7 +228,6 @@ export class Kafka implements INodeType {
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
-							// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 							throw new ApplicationError('Username and password are required for authentication', {
 								level: 'warning',
 							});

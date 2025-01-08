@@ -4,16 +4,20 @@ import {
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
+	FREE_AI_CREDITS_ERROR_TYPE,
+	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
 	MERGE_NODE_TYPE,
+	OPEN_AI_API_CREDENTIAL_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './Constants';
 import { ApplicationError } from './errors/application.error';
+import type { NodeApiError } from './errors/node-api.error';
 import type {
 	IConnection,
 	INode,
@@ -24,8 +28,15 @@ import type {
 	IWorkflowBase,
 	INodeTypes,
 	IDataObject,
+	IRunData,
+	ITaskData,
+	IRun,
 } from './Interfaces';
 import { getNodeParameters } from './NodeHelpers';
+import { jsonParse } from './utils';
+
+const isNodeApiError = (error: unknown): error is NodeApiError =>
+	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
 	return workflow.nodes.find((node) => node.name === nodeName);
@@ -131,6 +142,21 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	}
 }
 
+function getNumberOfItemsInRuns(runs: ITaskData[]): number {
+	return runs.reduce((total, run) => {
+		const data = run.data ?? {};
+		let count = 0;
+		Object.keys(data).forEach((type) => {
+			const conn = data[type] ?? [];
+			conn.forEach((branch) => {
+				count += (branch ?? []).length;
+			});
+		});
+
+		return total + count;
+	}, 0);
+}
+
 export function generateNodesGraph(
 	workflow: Partial<IWorkflowBase>,
 	nodeTypes: INodeTypes,
@@ -138,8 +164,10 @@ export function generateNodesGraph(
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
 		isCloudDeployment?: boolean;
+		runData?: IRunData;
 	},
 ): INodesGraphResult {
+	const { runData } = options ?? {};
 	const nodeGraph: INodesGraph = {
 		node_types: [],
 		node_connections: [],
@@ -199,6 +227,13 @@ export function generateNodesGraph(
 			version: node.typeVersion,
 			position: node.position,
 		};
+
+		if (runData?.[node.name]) {
+			const runs = runData[node.name] ?? [];
+			nodeItem.runs = runs.length;
+
+			nodeItem.items_total = getNumberOfItemsInRuns(runs);
+		}
 
 		if (options?.sourceInstanceId) {
 			nodeItem.src_instance_id = options.sourceInstanceId;
@@ -444,3 +479,49 @@ export function generateNodesGraph(
 
 	return { nodeGraph, nameIndices, webhookNodeNames };
 }
+
+export function extractLastExecutedNodeCredentialData(
+	runData: IRun,
+): null | { credentialId: string; credentialType: string } {
+	const nodeCredentials = runData?.data?.executionData?.nodeExecutionStack?.[0]?.node?.credentials;
+
+	if (!nodeCredentials) return null;
+
+	const credentialType = Object.keys(nodeCredentials)[0] ?? null;
+
+	if (!credentialType) return null;
+
+	const { id } = nodeCredentials[credentialType];
+
+	if (!id) return null;
+
+	return { credentialId: id, credentialType };
+}
+
+export const userInInstanceRanOutOfFreeAiCredits = (runData: IRun): boolean => {
+	const credentials = extractLastExecutedNodeCredentialData(runData);
+
+	if (!credentials) return false;
+
+	if (credentials.credentialType !== OPEN_AI_API_CREDENTIAL_TYPE) return false;
+
+	const { error } = runData.data.resultData;
+
+	if (!isNodeApiError(error) || !error.messages[0]) return false;
+
+	const rawErrorResponse = error.messages[0].replace(`${error.httpCode} -`, '');
+
+	try {
+		const errorResponse = jsonParse<{ error: { code: number; type: string } }>(rawErrorResponse);
+		if (
+			errorResponse?.error?.type === FREE_AI_CREDITS_ERROR_TYPE &&
+			errorResponse.error.code === FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE
+		) {
+			return true;
+		}
+	} catch {
+		return false;
+	}
+
+	return false;
+};

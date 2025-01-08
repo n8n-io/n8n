@@ -1,12 +1,14 @@
+import { Container } from '@n8n/di';
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
-import path from 'path';
-import { tmpdir } from 'os';
-import nock from 'nock';
-import { isEmpty } from 'lodash';
-import { get } from 'lodash';
-import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import { get } from 'lodash';
+import { isEmpty } from 'lodash';
+import {
+	BinaryDataService,
+	Credentials,
+	UnrecognizedNodeTypeError,
+	constructExecutionMetaData,
+} from 'n8n-core';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -34,8 +36,11 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
-import { executeWorkflow } from './ExecuteWorkflow';
+import nock from 'nock';
+import { tmpdir } from 'os';
+import path from 'path';
 
+import { executeWorkflow } from './ExecuteWorkflow';
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
 
 const baseDir = path.resolve(__dirname, '../..');
@@ -94,7 +99,7 @@ class CredentialType implements ICredentialTypes {
 
 const credentialTypes = new CredentialType();
 
-class CredentialsHelper extends ICredentialsHelper {
+export class CredentialsHelper extends ICredentialsHelper {
 	getCredentialsProperties() {
 		return [];
 	}
@@ -167,6 +172,8 @@ export function WorkflowExecuteAdditionalData(
 	return mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+		// Get from node.parameters
+		currentNodeParameters: undefined,
 	});
 }
 
@@ -249,12 +256,9 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 
 	const nodeNames = nodes.map((n) => n.type);
 	for (const nodeName of nodeNames) {
-		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
-		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
@@ -328,7 +332,7 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
-	expect(result.finished).toEqual(true);
+	expect(result.finished || result.status === 'waiting').toEqual(true);
 };
 
 const preparePinData = (pinData: IDataObject) => {

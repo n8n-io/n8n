@@ -1,6 +1,8 @@
 import type { INode } from 'n8n-workflow';
-import { validateInputData } from '../utils';
+
 import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
+
+import { validateInputData } from '../utils';
 
 const workflows = getWorkflowFilenames(__dirname);
 

@@ -1,20 +1,20 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
+import { Logger } from 'n8n-core';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -70,7 +70,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly orchestrationService: OrchestrationService,
+		private readonly publisher: Publisher,
 		private readonly recoveryService: ExecutionRecoveryService,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
@@ -210,7 +210,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restart-event-bus');
+			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
 		return destination;
 	}
@@ -236,7 +236,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.orchestrationService.publish('restart-event-bus');
+			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
 		return result;
 	}

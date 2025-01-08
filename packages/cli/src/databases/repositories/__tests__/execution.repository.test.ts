@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { Not, LessThanOrEqual } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
 import { nanoid } from 'nanoid';
-import Container from 'typedi';
 
 import { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -12,7 +12,9 @@ import { mockInstance, mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
-	const globalConfig = mockInstance(GlobalConfig, { logging: { outputs: ['console'] } });
+	const globalConfig = mockInstance(GlobalConfig, {
+		logging: { outputs: ['console'], scopes: [] },
+	});
 	const binaryDataService = mockInstance(BinaryDataService);
 	const executionRepository = Container.get(ExecutionRepository);
 	const mockDate = new Date('2023-12-28 12:34:56.789Z');

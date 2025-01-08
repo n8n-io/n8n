@@ -10,9 +10,7 @@ import type {
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
-
 import { onfleetApiRequest } from './GenericFunctions';
-
 import { webhookMapping } from './WebhookMapping';
 
 export class OnfleetTrigger implements INodeType {

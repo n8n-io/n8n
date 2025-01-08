@@ -1,11 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
-import { strict as assert } from 'node:assert';
-import { Service } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { Logger } from '@/logging/logger.service';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -68,11 +67,9 @@ export class SubworkflowPolicyChecker {
 
 		const owner = await this.ownershipService.getPersonalProjectOwnerCached(subworkflowProject.id);
 
-		assert(owner !== null); // only `null` if not personal
-
 		return {
 			hasReadAccess,
-			ownerName: owner.firstName + ' ' + owner.lastName,
+			ownerName: owner ? owner.firstName + ' ' + owner.lastName : 'No owner (team project)',
 		};
 	}
 

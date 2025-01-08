@@ -1,65 +1,59 @@
-<script lang="ts">
+<script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
 import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 
-export default defineComponent({
-	name: 'CommunityPackageCard',
-	props: {
-		communityPackage: {
-			type: Object as () => PublicInstalledPackage | null,
-			required: false,
-			default: null,
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			packageActions: [
-				{
-					label: this.$locale.baseText('settings.communityNodes.viewDocsAction.label'),
-					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
-					type: 'external-link',
-				},
-				{
-					label: this.$locale.baseText('settings.communityNodes.uninstallAction.label'),
-					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
-				},
-			],
-		};
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-	methods: {
-		async onAction(value: string) {
-			if (!this.communityPackage) return;
-			switch (value) {
-				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
-					this.$telemetry.track('user clicked to browse the cnr package documentation', {
-						package_name: this.communityPackage.packageName,
-						package_version: this.communityPackage.installedVersion,
-					});
-					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
-					break;
-				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-					this.uiStore.openCommunityPackageUninstallConfirmModal(this.communityPackage.packageName);
-					break;
-				default:
-					break;
-			}
-		},
-		onUpdateClick() {
-			if (!this.communityPackage) return;
-			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
-		},
-	},
+interface Props {
+	communityPackage?: PublicInstalledPackage | null;
+	loading?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	communityPackage: null,
+	loading: false,
 });
+
+const { openCommunityPackageUpdateConfirmModal, openCommunityPackageUninstallConfirmModal } =
+	useUIStore();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const packageActions = [
+	{
+		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
+		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
+		type: 'external-link',
+	},
+	{
+		label: i18n.baseText('settings.communityNodes.uninstallAction.label'),
+		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
+	},
+];
+
+async function onAction(value: string) {
+	if (!props.communityPackage) return;
+	switch (value) {
+		case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
+			telemetry.track('user clicked to browse the cnr package documentation', {
+				package_name: props.communityPackage.packageName,
+				package_version: props.communityPackage.installedVersion,
+			});
+			window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${props.communityPackage.packageName}`, '_blank');
+			break;
+		case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
+			openCommunityPackageUninstallConfirmModal(props.communityPackage.packageName);
+			break;
+		default:
+			break;
+	}
+}
+
+function onUpdateClick() {
+	if (!props.communityPackage) return;
+	openCommunityPackageUpdateConfirmModal(props.communityPackage.packageName);
+}
 </script>
 
 <template>
@@ -76,7 +70,7 @@ export default defineComponent({
 				<div :class="$style.cardSubtitle">
 					<n8n-text :bold="true" size="small" color="text-light">
 						{{
-							$locale.baseText('settings.communityNodes.packageNodes.label', {
+							i18n.baseText('settings.communityNodes.packageNodes.label', {
 								adjustToNumber: communityPackage.installedNodes.length,
 							})
 						}}:&nbsp;
@@ -96,7 +90,7 @@ export default defineComponent({
 				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
 					<template #content>
 						<div>
-							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+							{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
 						</div>
 					</template>
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
@@ -104,7 +98,7 @@ export default defineComponent({
 				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
 					<template #content>
 						<div>
-							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
 					<n8n-button outline label="Update" @click="onUpdateClick" />
@@ -112,7 +106,7 @@ export default defineComponent({
 				<n8n-tooltip v-else placement="top">
 					<template #content>
 						<div>
-							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+							{{ i18n.baseText('settings.communityNodes.upToDate.tooltip') }}
 						</div>
 					</template>
 					<n8n-icon icon="check-circle" color="text-light" size="large" />

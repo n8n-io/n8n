@@ -1,3 +1,4 @@
+import type { FrontendBetaFeatures } from '@n8n/config';
 import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 export interface IVersionNotificationSettings {
@@ -26,13 +27,15 @@ export interface IUserManagementSettings {
 }
 
 export interface FrontendSettings {
-	isDocker?: boolean;
+	inE2ETests: boolean;
+	isDocker: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -106,6 +109,9 @@ export interface FrontendSettings {
 	aiAssistant: {
 		enabled: boolean;
 	};
+	askAi: {
+		enabled: boolean;
+	};
 	deployment: {
 		type: string;
 	};
@@ -153,14 +159,15 @@ export interface FrontendSettings {
 	banners: {
 		dismissed: string[];
 	};
-	ai: {
-		enabled: boolean;
-	};
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
 	};
-	pruning: {
+	aiCredits: {
+		enabled: boolean;
+		credits: number;
+	};
+	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;
 		maxCount: number;
@@ -168,4 +175,6 @@ export interface FrontendSettings {
 	security: {
 		blockFileAccessToN8nFiles: boolean;
 	};
+	betaFeatures: FrontendBetaFeatures[];
+	easyAIWorkflowOnboarded: boolean;
 }

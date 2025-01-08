@@ -1,3 +1,5 @@
+/// <reference types="vite-plugin-comlink/client" />
+
 import type { VNode, ComponentPublicInstance } from 'vue';
 import type { PartialDeep } from 'type-fest';
 import type { ExternalHooks } from '@/types/externalHooks';
@@ -18,7 +20,7 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
-		sentry?: { dsn?: string; environment: string; release: string };
+		sentry?: { dsn?: string; environment: string; release: string; serverName?: string };
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;

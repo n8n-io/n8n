@@ -49,7 +49,7 @@ export interface Props {
 	inactiveLabel?: string;
 	inactiveColor?: string;
 	teleported?: boolean;
-	tagSize?: 'small' | 'medium';
+	tagSize?: 'small' | 'medium' | 'large';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -59,7 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showRequiredAsterisk: true,
 	validateOnBlur: true,
 	teleported: true,
-	tagSize: 'small',
+	tagSize: 'large',
 });
 
 const emit = defineEmits<{

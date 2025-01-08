@@ -9,6 +9,7 @@ vi.mock('vue-router', () => ({
 		params: {},
 	}),
 	RouterLink: vi.fn(),
+	useRouter: vi.fn(),
 }));
 
 const initialState = {

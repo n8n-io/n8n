@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUIStore } from '@/stores/ui.store';
 
 function onUpdatePlanClick() {
-	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void usePageRedirectionHelper().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 

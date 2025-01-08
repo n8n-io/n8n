@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
-import Container from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
@@ -246,6 +246,7 @@ describe('InvitationController', () => {
 			const { user } = response.body.data[0];
 
 			expect(user.inviteAcceptUrl).toBeDefined();
+			expect(user).toHaveProperty('role', 'global:member');
 
 			const inviteUrl = new URL(user.inviteAcceptUrl);
 

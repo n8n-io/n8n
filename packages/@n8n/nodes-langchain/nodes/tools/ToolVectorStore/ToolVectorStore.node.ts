@@ -1,23 +1,29 @@
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import { VectorDBQAChain } from 'langchain/chains';
+import { VectorStoreQATool } from 'langchain/tools';
+import type {
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
+} from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { VectorStoreQATool } from 'langchain/tools';
-import type { VectorStore } from '@langchain/core/vectorstores';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { VectorDBQAChain } from 'langchain/chains';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store Tool',
+		displayName: 'Vector Store Question Answer Tool',
 		name: 'toolVectorStore',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1],
-		description: 'Retrieve context from vector store',
+		description: 'Answer questions with a vector store',
 		defaults: {
-			name: 'Vector Store Tool',
+			name: 'Answer questions with a vector store',
 		},
 		codex: {
 			categories: ['AI'],
@@ -54,20 +60,23 @@ export class ToolVectorStore implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
-				displayName: 'Name',
+				displayName: 'Data Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. state_of_union_address',
+				placeholder: 'e.g. users_info',
 				validateType: 'string-alphanumeric',
-				description: 'Name of the vector store',
+				description:
+					'Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
 			},
 			{
-				displayName: 'Description',
+				displayName: 'Description of Data',
 				name: 'description',
 				type: 'string',
 				default: '',
-				placeholder: 'The most recent state of the Union address',
+				placeholder: "[Describe your data here, e.g. a user's name, email, etc.]",
+				description:
+					'Describe the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
 				typeOptions: {
 					rows: 3,
 				},
@@ -82,7 +91,7 @@ export class ToolVectorStore implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;

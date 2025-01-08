@@ -1,5 +1,5 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap.ee/constants';
 
 export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 	async up({ escape, dbType, isMysql, runQuery }: MigrationContext) {

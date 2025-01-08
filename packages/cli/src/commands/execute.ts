@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -31,6 +31,7 @@ export class Execute extends BaseCommand {
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();
+		await this.initDataDeduplicationService();
 		await this.initExternalHooks();
 	}
 

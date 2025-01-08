@@ -47,6 +47,7 @@ const formConfig: IFormBoxConfig = reactive({
 	title: locale.baseText('auth.signin'),
 	buttonText: locale.baseText('auth.signin'),
 	redirectText: locale.baseText('forgotPassword'),
+	redirectLink: '/forgot-password',
 	inputs: [
 		{
 			name: 'email',
@@ -59,6 +60,7 @@ const formConfig: IFormBoxConfig = reactive({
 				validateOnBlur: false,
 				autocomplete: 'email',
 				capitalize: true,
+				focusInitially: true,
 			},
 		},
 		{
@@ -76,12 +78,12 @@ const formConfig: IFormBoxConfig = reactive({
 	],
 });
 
-const onMFASubmitted = async (form: { token?: string; recoveryCode?: string }) => {
+const onMFASubmitted = async (form: { mfaCode?: string; mfaRecoveryCode?: string }) => {
 	await login({
 		email: email.value,
 		password: password.value,
-		token: form.token,
-		recoveryCode: form.recoveryCode,
+		mfaCode: form.mfaCode,
+		mfaRecoveryCode: form.mfaRecoveryCode,
 	});
 };
 
@@ -112,16 +114,16 @@ const getRedirectQueryParameter = () => {
 const login = async (form: {
 	email: string;
 	password: string;
-	token?: string;
-	recoveryCode?: string;
+	mfaCode?: string;
+	mfaRecoveryCode?: string;
 }) => {
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
 			email: form.email,
 			password: form.password,
-			mfaToken: form.token,
-			mfaRecoveryCode: form.recoveryCode,
+			mfaCode: form.mfaCode,
+			mfaRecoveryCode: form.mfaRecoveryCode,
 		});
 		loading.value = false;
 		if (settingsStore.isCloudDeployment) {

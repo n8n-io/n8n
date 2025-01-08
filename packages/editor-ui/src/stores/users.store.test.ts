@@ -2,15 +2,20 @@ import type { CurrentUserResponse } from '@/Interface';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { loginCurrentUser, identify } = vi.hoisted(() => {
+const { loginCurrentUser, identify, inviteUsers } = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
+		inviteUsers: vi.fn(),
 	};
 });
 
 vi.mock('@/api/users', () => ({
 	loginCurrentUser,
+}));
+
+vi.mock('@/api/invitation', () => ({
+	inviteUsers,
 }));
 
 vi.mock('@/composables/useTelemetry', () => ({
@@ -56,6 +61,33 @@ describe('users.store', () => {
 			});
 
 			expect(identify).toHaveBeenCalledWith('test-instance-id', mockUser.id);
+		});
+	});
+
+	describe('inviteUsers', () => {
+		it('should add pending user to the store', async () => {
+			const usersStore = useUsersStore();
+
+			inviteUsers.mockResolvedValueOnce([
+				{
+					user: { id: 'random-id', email: 'test@n8n.io', emailSent: true, role: 'global:member' },
+				},
+			]);
+
+			await usersStore.inviteUsers([{ email: 'test@n8n.io', role: 'global:member' }]);
+
+			expect(usersStore.allUsers[0]).toMatchObject(
+				expect.objectContaining({
+					id: 'random-id',
+					email: 'test@n8n.io',
+					role: 'global:member',
+					isPending: true,
+					isDefaultUser: false,
+					isPendingUser: true,
+					fullName: undefined,
+					emailSent: true,
+				}),
+			);
 		});
 	});
 });

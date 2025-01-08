@@ -37,8 +37,7 @@ body {
 		4. Prevent font size adjustment after orientation changes (IE, iOS)
 		5. Prevent overflow from long words (all)
 	*/
-	font-size: 125%; /* 2 */
-	line-height: 1.6; /* 3 */
+	line-height: 1.4; /* 3 */
 	-webkit-text-size-adjust: 100%; /* 4 */
 	word-break: break-word; /* 5 */
 
@@ -407,7 +406,7 @@ body {
 	h4,
 	h5,
 	h6 {
-		margin: 3.2rem 0 0.8em;
+		margin: 2rem 0 0.8em;
 	}
 
 	/*
@@ -596,7 +595,7 @@ body {
 
 	pre code {
 		display: block;
-		padding: 0.3em 0.7em;
+		padding: 0 0 0.5rem 0.5rem;
 		word-break: normal;
 		overflow-x: auto;
 	}
@@ -640,5 +639,16 @@ body {
 
 	body > a:first-child:focus {
 		top: 1rem;
+	}
+
+	// Lists
+	ul,
+	ol {
+		padding-left: 1.5rem;
+		margin-bottom: 1rem;
+
+		li {
+			margin-bottom: 0.5rem;
+		}
 	}
 }

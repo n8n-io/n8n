@@ -20,6 +20,7 @@ const handleClasses = 'source';
 const classes = computed(() => ({
 	'canvas-node-handle-main-output': true,
 	[$style.handle]: true,
+	[$style.connected]: isConnected.value,
 	[$style.required]: isRequired.value,
 }));
 
@@ -27,8 +28,10 @@ const isHovered = ref(false);
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
+const runDataTotal = computed(() => runData.value?.total ?? 0);
+
 const runDataLabel = computed(() =>
-	runData.value
+	!isConnected.value && runData.value && runData.value.total > 0
 		? i18n.baseText('ndv.output.items', {
 				adjustToNumber: runData.value.total,
 				interpolate: { count: String(runData.value.total) },
@@ -38,7 +41,7 @@ const runDataLabel = computed(() =>
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
-const plusType = computed(() => (runData.value ? 'success' : 'default'));
+const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
 
 const plusLineSize = computed(
 	() =>
@@ -46,8 +49,18 @@ const plusLineSize = computed(
 			small: 46,
 			medium: 66,
 			large: 80,
-		})[(renderOptions.value.outputs?.labelSize ?? runData.value) ? 'large' : 'small'],
+		})[(runDataTotal.value > 0 ? 'large' : renderOptions.value.outputs?.labelSize) ?? 'small'],
 );
+
+const outputLabelClasses = computed(() => ({
+	[$style.label]: true,
+	[$style.outputLabel]: true,
+}));
+
+const runDataLabelClasses = computed(() => ({
+	[$style.label]: true,
+	[$style.runDataLabel]: true,
+}));
 
 function onMouseEnter() {
 	isHovered.value = true;
@@ -63,14 +76,15 @@ function onClickAdd() {
 </script>
 <template>
 	<div :class="classes">
-		<div v-if="label" :class="[$style.label, $style.outputLabel]">{{ label }}</div>
-		<div v-else-if="runData" :class="[$style.label, $style.runDataLabel]">{{ runDataLabel }}</div>
+		<div v-if="label" :class="outputLabelClasses">{{ label }}</div>
+		<div v-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
 		<Transition name="canvas-node-handle-main-output">
 			<CanvasHandlePlus
 				v-if="!isConnected && !isReadOnly"
 				v-show="isHandlePlusVisible"
 				data-test-id="canvas-handle-plus"
+				:data-plus-type="plusType"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
 				:type="plusType"
@@ -88,6 +102,10 @@ function onClickAdd() {
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
+
+	&.connected .label {
+		max-width: 96px;
+	}
 }
 
 .label {

@@ -117,6 +117,11 @@ defineExpose({ open, close });
 							<span :class="$style.label">
 								{{ item.label }}
 							</span>
+							<span v-if="item.badge">
+								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
+									{{ item.badge }}
+								</N8nBadge>
+							</span>
 							<N8nKeyboardShortcut
 								v-if="item.shortcut"
 								v-bind="item.shortcut"

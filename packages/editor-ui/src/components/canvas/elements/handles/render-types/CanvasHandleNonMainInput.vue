@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import CanvasHandlePlus from '@/components/canvas/elements/handles/render-types/parts/CanvasHandlePlus.vue';
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
-import { NodeConnectionType } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
 
 const emit = defineEmits<{
@@ -10,7 +9,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { label, isConnected, isConnecting, isRequired, type, runData } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isRequired, maxConnections } = useCanvasNodeHandle();
 
 const handleClasses = 'target';
 
@@ -20,17 +19,13 @@ const classes = computed(() => ({
 	[$style.required]: isRequired.value,
 }));
 
-const supportsMultipleConnections = computed(() => type.value === NodeConnectionType.AiTool);
-
 const isHandlePlusAvailable = computed(
-	() => !isConnected.value || supportsMultipleConnections.value,
+	() => !isConnected.value || !maxConnections.value || maxConnections.value > 1,
 );
 
 const isHandlePlusVisible = computed(
-	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
+	() => !isConnecting.value || isHovered.value || !maxConnections.value || maxConnections.value > 1,
 );
-
-const plusType = computed(() => (runData.value ? 'success' : 'ai'));
 
 const isHovered = ref(false);
 
@@ -55,7 +50,7 @@ function onClickAdd() {
 				v-if="isHandlePlusAvailable"
 				v-show="isHandlePlusVisible"
 				:handle-classes="handleClasses"
-				:type="plusType"
+				type="secondary"
 				position="bottom"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"

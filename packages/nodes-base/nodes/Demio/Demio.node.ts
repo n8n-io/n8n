@@ -9,10 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { demioApiRequest } from './GenericFunctions';
-
 import { eventFields, eventOperations } from './EventDescription';
-
+import { demioApiRequest } from './GenericFunctions';
 import { reportFields, reportOperations } from './ReportDescription';
 
 export class Demio implements INodeType {

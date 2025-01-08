@@ -1,5 +1,6 @@
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
-import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { Project } from '@/databases/entities/project';
@@ -11,7 +12,6 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import * as Db from '@/db';
 import type { ICredentialsDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()
@@ -88,8 +88,7 @@ export class ImportService {
 		try {
 			await replaceInvalidCredentials(workflow);
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.error('Failed to replace invalid credential', error);
+			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
 	}
 

@@ -21,6 +21,10 @@ describe('Telemetry', () => {
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
+	const globalConfig = mock<GlobalConfig>({
+		diagnostics: { enabled: true },
+		logging: { level: 'info', outputs: ['console'] },
+	});
 
 	beforeAll(() => {
 		// @ts-expect-error Spying on private method
@@ -28,7 +32,6 @@ describe('Telemetry', () => {
 
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
-		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
 	});
 
@@ -45,14 +48,7 @@ describe('Telemetry', () => {
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(
-			mock(),
-			postHog,
-			mock(),
-			instanceSettings,
-			mock(),
-			mock<GlobalConfig>({ logging: { level: 'info', outputs: ['console'] } }),
-		);
+		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock(), globalConfig);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});
@@ -265,6 +261,44 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime2);
 			expect(execBuffer['1'].prod_success?.first).toEqual(execTime1);
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
+		});
+	});
+
+	describe('Rudderstack', () => {
+		test("should call rudderStack.identify() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const traits = {
+				name: 'Test User',
+				age: 30,
+				isActive: true,
+			};
+
+			telemetry.identify(traits);
+
+			const expectedArgs = {
+				userId: instanceId,
+				traits: { ...traits, instanceId },
+				context: {
+					ip: '0.0.0.0', // RudderStack anonymized IP
+				},
+			};
+
+			expect(mockRudderStack.identify).toHaveBeenCalledWith(expectedArgs);
+		});
+
+		test("should call rudderStack.track() with a fake IP address to instruct Rudderstack to not use the user's IP address", () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					context: {
+						ip: '0.0.0.0', // RudderStack anonymized IP
+					},
+				}),
+			);
 		});
 	});
 });

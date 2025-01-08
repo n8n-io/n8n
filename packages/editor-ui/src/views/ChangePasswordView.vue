@@ -9,7 +9,7 @@ import { useToast } from '@/composables/useToast';
 import { useUsersStore } from '@/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
+import { MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 
 const usersStore = useUsersStore();
 
@@ -47,12 +47,7 @@ const getMfaEnabled = () => {
 	return router.currentRoute.value.query.mfaEnabled === 'true' ? true : false;
 };
 
-const isFormWithMFAToken = (values: { [key: string]: string }): values is { mfaToken: string } => {
-	return 'mfaToken' in values;
-};
-
 const onSubmit = async (values: { [key: string]: string }) => {
-	if (!isFormWithMFAToken(values)) return;
 	try {
 		loading.value = true;
 		const token = getResetToken();
@@ -61,7 +56,7 @@ const onSubmit = async (values: { [key: string]: string }) => {
 			const changePasswordParameters = {
 				token,
 				password: password.value,
-				...(values.mfaToken && { mfaToken: values.mfaToken }),
+				...(values.mfaCode && { mfaCode: values.mfaCode }),
 			};
 
 			await usersStore.changePassword(changePasswordParameters);
@@ -134,13 +129,13 @@ onMounted(async () => {
 
 	if (mfaEnabled) {
 		form.inputs.push({
-			name: 'mfaToken',
+			name: 'mfaCode',
 			initialValue: '',
 			properties: {
 				required: true,
 				label: locale.baseText('mfa.code.input.label'),
 				placeholder: locale.baseText('mfa.code.input.placeholder'),
-				maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+				maxlength: MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 				capitalize: true,
 				validateOnBlur: true,
 			},

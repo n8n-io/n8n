@@ -7,20 +7,14 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { forceParse } from '@/utils/forceParse';
-import { completionStatus } from '@codemirror/autocomplete';
 import { inputTheme } from './theme';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
-import {
-	autocompleteKeyMap,
-	enterKeyMap,
-	historyKeyMap,
-	tabKeyMap,
-} from '@/plugins/codemirror/keymap';
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
 
 type Props = {
 	modelValue: string;
@@ -41,24 +35,7 @@ const emit = defineEmits<{
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	inputTheme(props.isReadOnly),
-	Prec.highest(
-		keymap.of([
-			...tabKeyMap(),
-			...historyKeyMap,
-			...enterKeyMap,
-			...autocompleteKeyMap,
-			{
-				any: (view, event) => {
-					if (event.key === 'Escape' && completionStatus(view.state) === null) {
-						event.stopPropagation();
-						emit('close');
-					}
-
-					return false;
-				},
-			},
-		]),
-	),
+	Prec.highest(keymap.of(editorKeymap)),
 	n8nLang(),
 	n8nAutocompletion(),
 	mappingDropCursor(),
@@ -66,7 +43,7 @@ const extensions = computed(() => [
 	history(),
 	expressionInputHandler(),
 	EditorView.lineWrapping,
-	EditorView.domEventHandlers({ scroll: forceParse }),
+	EditorView.domEventHandlers({ scroll: (_, view) => forceParse(view) }),
 	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
@@ -74,7 +51,7 @@ const { segments, readEditorValue, editor, hasFocus, focus } = useExpressionEdit
 	editorRef: root,
 	editorValue,
 	extensions,
-	isReadOnly: props.isReadOnly,
+	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 });
 
@@ -110,7 +87,15 @@ defineExpose({ editor });
 </template>
 
 <style lang="scss" module>
-:global(.cm-content) {
-	border-radius: var(--border-radius-base);
+.editor {
+	:global(.cm-content) {
+		border-radius: var(--border-radius-base);
+		&[aria-readonly='true'] {
+			--disabled-fill: var(--color-background-base);
+			background-color: var(--disabled-fill, var(--color-background-light));
+			color: var(--disabled-color, var(--color-text-base));
+			cursor: not-allowed;
+		}
+	}
 }
 </style>

@@ -1,40 +1,46 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
-import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
-import { Container } from 'typedi';
+import {
+	BinaryDataService,
+	InstanceSettings,
+	Logger,
+	ObjectStoreService,
+	DataDeduplicationService,
+	ErrorReporter,
+} from 'n8n-core';
+import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import { generateHostInstanceId } from '@/databases/utils/generators';
 import * as Db from '@/db';
-import { initErrorHandling } from '@/error-reporting';
+import { getDataDeduplicationService } from '@/deduplication';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
+
+	protected errorReporter: ErrorReporter;
 
 	protected externalHooks?: ExternalHooks;
 
 	protected nodeTypes: NodeTypes;
 
 	protected instanceSettings: InstanceSettings = Container.get(InstanceSettings);
-
-	queueModeId: string;
 
 	protected server?: AbstractServer;
 
@@ -47,13 +53,18 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS =
+		Container.get(GlobalConfig).generic.gracefulShutdownTimeout;
 
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
-		await initErrorHandling();
+		this.errorReporter = Container.get(ErrorReporter);
+		await this.errorReporter.init(
+			this.instanceSettings.instanceType,
+			this.globalConfig.sentry.backendDsn,
+		);
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
@@ -79,33 +90,14 @@ export abstract class BaseCommand extends Command {
 				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
-		const { type: dbType } = this.globalConfig.database;
-
-		if (['mysqldb', 'mariadb'].includes(dbType)) {
-			this.logger.warn(
-				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
-			);
-		}
-
-		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
-			this.logger.warn(
-				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
-			);
-		}
-
-		if (config.getEnv('executions.mode') === 'queue' && dbType === 'sqlite') {
-			this.logger.warn(
-				'Queue mode is not officially supported with sqlite. Please switch to PostgreSQL.',
-			);
-		}
+		Container.get(DeprecationService).warn();
 
 		if (
-			process.env.N8N_BINARY_DATA_TTL ??
-			process.env.N8N_PERSISTED_BINARY_DATA_TTL ??
-			process.env.EXECUTIONS_DATA_PRUNE_TIMEOUT
+			config.getEnv('executions.mode') === 'queue' &&
+			this.globalConfig.database.type === 'sqlite'
 		) {
 			this.logger.warn(
-				'The env vars N8N_BINARY_DATA_TTL and N8N_PERSISTED_BINARY_DATA_TTL and EXECUTIONS_DATA_PRUNE_TIMEOUT no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.',
+				'Scaling mode is not officially supported with sqlite. Please use PostgreSQL instead.',
 			);
 		}
 
@@ -120,16 +112,6 @@ export abstract class BaseCommand extends Command {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
-	}
-
-	protected setInstanceQueueModeId() {
-		if (config.get('redis.queueModeId')) {
-			this.queueModeId = config.get('redis.queueModeId');
-			return;
-		}
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-		this.queueModeId = generateHostInstanceId(this.instanceSettings.instanceType!);
-		config.set('redis.queueModeId', this.queueModeId);
 	}
 
 	protected async stopProcess() {
@@ -149,7 +131,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async exitWithCrash(message: string, error: unknown) {
-		ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
 	}
@@ -261,6 +243,11 @@ export abstract class BaseCommand extends Command {
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}
 
+	protected async initDataDeduplicationService() {
+		const dataDeduplicationService = getDataDeduplicationService();
+		await DataDeduplicationService.init(dataDeduplicationService);
+	}
+
 	async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
@@ -270,7 +257,7 @@ export abstract class BaseCommand extends Command {
 		this.license = Container.get(License);
 		await this.license.init();
 
-		const activationKey = config.getEnv('license.activationKey');
+		const { activationKey } = this.globalConfig.license;
 
 		if (activationKey) {
 			const hasCert = (await this.license.loadCertStr()).length > 0;
@@ -283,8 +270,9 @@ export abstract class BaseCommand extends Command {
 				this.logger.debug('Attempting license activation');
 				await this.license.activate(activationKey);
 				this.logger.debug('License init complete');
-			} catch (e) {
-				this.logger.error('Could not activate license', e as Error);
+			} catch (e: unknown) {
+				const error = ensureError(e);
+				this.logger.error('Could not activate license', { error });
 			}
 		}
 	}

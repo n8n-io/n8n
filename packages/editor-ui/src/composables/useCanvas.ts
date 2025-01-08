@@ -1,12 +1,6 @@
-import { computed, inject } from 'vue';
 import { CanvasKey } from '@/constants';
+import { injectStrict } from '@/utils/injectStrict';
 
 export function useCanvas() {
-	const canvas = inject(CanvasKey);
-
-	const connectingHandle = computed(() => canvas?.connectingHandle.value);
-
-	return {
-		connectingHandle,
-	};
+	return injectStrict(CanvasKey);
 }

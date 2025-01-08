@@ -1,3 +1,4 @@
+import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 import type {
 	IDataObject,
 	IDisplayOptions,
@@ -5,10 +6,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-
 import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
-
-import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -404,3 +402,28 @@ export const sanitizeDataPathKey = (item: IDataObject, key: string) => {
 	}
 	return key;
 };
+
+/**
+ * Escape HTML
+ *
+ * @param {string} text The text to escape
+ */
+export function escapeHtml(text: string): string {
+	if (!text) return '';
+	return text.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
+		switch (match) {
+			case '&amp;':
+				return '&';
+			case '&lt;':
+				return '<';
+			case '&gt;':
+				return '>';
+			case '&#39;':
+				return "'";
+			case '&quot;':
+				return '"';
+			default:
+				return match;
+		}
+	});
+}

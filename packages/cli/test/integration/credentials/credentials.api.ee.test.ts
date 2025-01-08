@@ -1,14 +1,15 @@
+import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { Container } from 'typedi';
 
 import config from '@/config';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 
@@ -540,6 +541,7 @@ describe('GET /credentials/:id', () => {
 			id: ownerPersonalProject.id,
 			name: owner.createPersonalProjectName(),
 			type: ownerPersonalProject.type,
+			icon: null,
 		});
 		expect(firstCredential.sharedWithProjects).toHaveLength(0);
 
@@ -552,6 +554,22 @@ describe('GET /credentials/:id', () => {
 		const { data: secondCredential } = secondResponse.body;
 		validateMainCredentialData(secondCredential);
 		expect(secondCredential.data).toBeDefined();
+	});
+
+	test('should not redact the data when `includeData:true` is passed', async () => {
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(redactSpy).not.toHaveBeenCalled();
 	});
 
 	test('should retrieve non-owned cred for owner', async () => {
@@ -629,17 +647,20 @@ describe('GET /credentials/:id', () => {
 			homeProject: {
 				id: member1PersonalProject.id,
 				name: member1.createPersonalProjectName(),
+				icon: null,
 				type: 'personal',
 			},
 			sharedWithProjects: expect.arrayContaining([
 				{
 					id: member2PersonalProject.id,
 					name: member2.createPersonalProjectName(),
+					icon: null,
 					type: member2PersonalProject.type,
 				},
 				{
 					id: member3PersonalProject.id,
 					name: member3.createPersonalProjectName(),
+					icon: null,
 					type: member3PersonalProject.type,
 				},
 			]),

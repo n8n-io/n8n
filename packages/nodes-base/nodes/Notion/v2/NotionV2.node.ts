@@ -8,13 +8,15 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import { loadOptions } from './methods';
+import { versionDescription } from './VersionDescription';
 import type { SortData, FileRecord } from '../shared/GenericFunctions';
 import {
 	downloadFiles,
 	extractBlockId,
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
-	extractPageId,
+	getPageId,
 	formatBlocks,
 	formatTitle,
 	mapFilters,
@@ -28,10 +30,7 @@ import {
 	simplifyObjects,
 	validateJSON,
 } from '../shared/GenericFunctions';
-
 import { listSearch } from '../shared/methods';
-import { loadOptions } from './methods';
-import { versionDescription } from './VersionDescription';
 
 export class NotionV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -401,9 +400,8 @@ export class NotionV2 implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const pageId = extractPageId(
-							this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
-						);
+						const pageId = getPageId.call(this, i);
+
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 						if (simple) {
@@ -526,9 +524,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'update') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const pageId = extractPageId(
-							this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
-						);
+						const pageId = getPageId.call(this, i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const properties = this.getNodeParameter(
 							'propertiesUi.propertyValues',
@@ -635,9 +631,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'archive') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const pageId = extractPageId(
-							this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
-						);
+						const pageId = getPageId.call(this, i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, {
 							archived: true,
@@ -672,9 +666,7 @@ export class NotionV2 implements INodeType {
 							parent: {},
 							properties: {},
 						};
-						body.parent.page_id = extractPageId(
-							this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
-						);
+						body.parent.page_id = getPageId.call(this, i);
 						body.properties = formatTitle(this.getNodeParameter('title', i) as string);
 						const blockValues = this.getNodeParameter(
 							'blockUi.blockValues',

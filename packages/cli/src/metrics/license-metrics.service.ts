@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -21,6 +21,8 @@ export class LicenseMetricsService {
 			manualExecutions,
 		} = await this.licenseMetricsRepository.getLicenseRenewalMetrics();
 
+		const activeTriggerCount = await this.workflowRepository.getActiveTriggerCount();
+
 		return [
 			{ name: 'activeWorkflows', value: activeWorkflows },
 			{ name: 'totalWorkflows', value: totalWorkflows },
@@ -29,6 +31,7 @@ export class LicenseMetricsService {
 			{ name: 'totalCredentials', value: totalCredentials },
 			{ name: 'productionExecutions', value: productionExecutions },
 			{ name: 'manualExecutions', value: manualExecutions },
+			{ name: 'activeWorkflowTriggers', value: activeTriggerCount },
 		];
 	}
 

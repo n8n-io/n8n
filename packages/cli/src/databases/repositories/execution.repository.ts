@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -21,21 +22,15 @@ import {
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
-import { BinaryDataService } from 'n8n-core';
-import {
-	ExecutionCancelledError,
-	ErrorReporterProxy as ErrorReporter,
-	ApplicationError,
-} from 'n8n-workflow';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
-import config from '@/config';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
@@ -47,7 +42,6 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -126,6 +120,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
@@ -164,7 +159,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData', 'metadata');
+
+			if (Array.isArray(queryParams.relations)) {
+				queryParams.relations.push('executionData', 'metadata');
+			} else {
+				queryParams.relations.executionData = true;
+				queryParams.relations.metadata = true;
+			}
 		}
 
 		const executions = await this.find(queryParams);
@@ -204,7 +205,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
 		if (executions.length === 0) return;
 
-		ErrorReporter.error(
+		this.errorReporter.error(
 			new ApplicationError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
@@ -304,16 +305,34 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Insert a new execution and its execution data using a transaction.
 	 */
 	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
-		const { data, workflowData, ...rest } = execution;
-		const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
-		const { id: executionId } = inserted[0] as { id: string };
-		const { connections, nodes, name, settings } = workflowData ?? {};
-		await this.executionDataRepository.insert({
-			executionId,
-			workflowData: { connections, nodes, name, settings, id: workflowData.id },
-			data: stringify(data),
-		});
-		return String(executionId);
+		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
+		const { connections, nodes, name, settings } = currentWorkflow ?? {};
+		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
+		const data = stringify(dataObj);
+
+		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
+		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
+			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
+			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
+			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
+			const { id: executionId } = inserted[0] as { id: string };
+			await this.executionDataRepository.insert({ executionId, workflowData, data });
+			return String(executionId);
+		} else {
+			// All other database drivers should create executions and execution-data atomically
+			return await this.manager.transaction(async (transactionManager) => {
+				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
+					...rest,
+					createdAt: new Date(),
+				});
+				const { id: executionId } = inserted[0] as { id: string };
+				await this.executionDataRepository.createExecutionDataForExecution(
+					{ executionId, workflowData, data },
+					transactionManager,
+				);
+				return String(executionId);
+			});
+		}
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
@@ -338,10 +357,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.delete(ids.executionId),
 			this.binaryDataService.deleteMany([ids]),
 		]);
-	}
-
-	async updateStatus(executionId: string, status: ExecutionStatus) {
-		await this.update({ id: executionId }, { status });
 	}
 
 	async setRunning(executionId: string) {
@@ -446,8 +461,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async softDeletePrunableExecutions() {
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
 		const annotatedExecutionsSubQuery = this.manager
@@ -458,18 +472,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
+		date.setHours(date.getHours() - pruneDataMaxAge);
 
 		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
 			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
 
-		if (maxCount > 0) {
+		if (pruneDataMaxCount > 0) {
 			const executions = await this.createQueryBuilder('execution')
 				.select('execution.id')
 				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(maxCount)
+				.skip(pruneDataMaxCount)
 				.take(1)
 				.orderBy('execution.id', 'DESC')
 				.getMany();
@@ -501,9 +515,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.execute();
 	}
 
-	async hardDeleteSoftDeletedExecutions() {
+	async findSoftDeletedExecutions() {
 		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
@@ -969,7 +983,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (projectId) {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
-				.where('sw.projectId = :projectId', { projectId });
+				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
 		return qb;

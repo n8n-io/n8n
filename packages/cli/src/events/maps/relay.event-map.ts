@@ -8,7 +8,7 @@ import type {
 
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { GlobalRole } from '@/databases/entities/user';
+import type { GlobalRole, User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
@@ -418,6 +418,12 @@ export type RelayEventMap = {
 
 	'license-renewal-attempted': {
 		success: boolean;
+	};
+
+	'license-community-plus-registered': {
+		userId: User['id'];
+		email: string;
+		licenseKey: string;
 	};
 
 	// #endregion

@@ -1,28 +1,24 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
+import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
-
 import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import {
-	inputSchemaField,
-	jsonSchemaExampleField,
-	schemaTypeField,
-} from '../../../utils/descriptions';
-import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
-import type { JSONSchema7 } from 'json-schema';
+import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import type { DynamicZodObject } from '../../../types/zod.types';
 
 export class ToolCode implements INodeType {
@@ -30,6 +26,7 @@ export class ToolCode implements INodeType {
 		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',
@@ -176,7 +173,7 @@ export class ToolCode implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const node = this.getNode();
 		const workflowMode = this.getMode();
 
@@ -199,9 +196,9 @@ export class ToolCode implements INodeType {
 
 			let sandbox: Sandbox;
 			if (language === 'javaScript') {
-				sandbox = new JavaScriptSandbox(context, code, index, this.helpers);
+				sandbox = new JavaScriptSandbox(context, code, this.helpers);
 			} else {
-				sandbox = new PythonSandbox(context, code, index, this.helpers);
+				sandbox = new PythonSandbox(context, code, this.helpers);
 			}
 
 			sandbox.on(
@@ -216,7 +213,7 @@ export class ToolCode implements INodeType {
 
 		const runFunction = async (query: string | IDataObject): Promise<string> => {
 			const sandbox = getSandbox(query, itemIndex);
-			return await (sandbox.runCode() as Promise<string>);
+			return await sandbox.runCode<string>();
 		};
 
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {
@@ -273,10 +270,9 @@ export class ToolCode implements INodeType {
 						? generateSchema(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
-				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
-				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 
-				tool = new DynamicStructuredTool<typeof zodSchema>({
+				tool = new DynamicStructuredTool({
 					schema: zodSchema,
 					...commonToolOptions,
 				});

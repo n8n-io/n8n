@@ -56,7 +56,12 @@ describe('ScheduledTaskManager', () => {
 		scheduledTaskManager.registerCron(workflow, everyMinute, onTick);
 		scheduledTaskManager.registerCron(workflow, everyMinute, onTick);
 		scheduledTaskManager.registerCron(workflow, everyMinute, onTick);
+
+		expect(scheduledTaskManager.cronJobs.get(workflow.id)?.length).toBe(3);
+
 		scheduledTaskManager.deregisterCrons(workflow.id);
+
+		expect(scheduledTaskManager.cronJobs.get(workflow.id)?.length).toBe(0);
 
 		expect(onTick).not.toHaveBeenCalled();
 		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes

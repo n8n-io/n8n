@@ -1,9 +1,8 @@
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { ApplicationError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 
 import { AbstractPush } from './abstract.push';
 
@@ -13,13 +12,6 @@ function heartbeat(this: WebSocket) {
 
 @Service()
 export class WebSocketPush extends AbstractPush<WebSocket> {
-	constructor(logger: Logger) {
-		super(logger);
-
-		// Ping all connected clients every 60 seconds
-		setInterval(() => this.pingAll(), 60 * 1000);
-	}
-
 	add(pushRef: string, userId: User['id'], connection: WebSocket) {
 		connection.isAlive = true;
 		connection.on('pong', heartbeat);
@@ -32,7 +24,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
 			} catch (error) {
-				ErrorReporterProxy.error(
+				this.errorReporter.error(
 					new ApplicationError('Error parsing push message', {
 						extra: {
 							userId,
@@ -67,17 +59,12 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.send(data);
 	}
 
-	private pingAll() {
-		for (const pushRef in this.connections) {
-			const connection = this.connections[pushRef];
-			// If a connection did not respond with a `PONG` in the last 60 seconds, disconnect
-			if (!connection.isAlive) {
-				delete this.connections[pushRef];
-				return connection.terminate();
-			}
-
-			connection.isAlive = false;
-			connection.ping();
+	protected ping(connection: WebSocket): void {
+		// If a connection did not respond with a `PONG` in the last 60 seconds, disconnect
+		if (!connection.isAlive) {
+			return connection.terminate();
 		}
+		connection.isAlive = false;
+		connection.ping();
 	}
 }

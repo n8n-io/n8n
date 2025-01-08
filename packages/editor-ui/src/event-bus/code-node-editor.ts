@@ -1,6 +1,6 @@
 import { createEventBus } from 'n8n-design-system/utils';
 
-export type HighlightLineEvent = number | 'final';
+export type HighlightLineEvent = number | 'last';
 
 export interface CodeNodeEditorEventBusEvents {
 	/** Event that a diff have been applied to the code node editor */

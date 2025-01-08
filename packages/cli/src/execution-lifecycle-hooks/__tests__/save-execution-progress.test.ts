@@ -1,19 +1,15 @@
-import {
-	ErrorReporterProxy,
-	type IRunExecutionData,
-	type ITaskData,
-	type IWorkflowBase,
-} from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-core';
+import { Logger } from 'n8n-core';
+import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { saveExecutionProgress } from '@/execution-lifecycle-hooks/save-execution-progress';
 import * as fnModule from '@/execution-lifecycle-hooks/to-save-settings';
 import type { IExecutionResponse } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import { mockInstance } from '@test/mocking';
 
 mockInstance(Logger);
-
+const errorReporter = mockInstance(ErrorReporter);
 const executionRepository = mockInstance(ExecutionRepository);
 
 afterEach(() => {
@@ -57,13 +53,11 @@ test('should ignore on leftover async call', async () => {
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
 });
 
-test('should update execution', async () => {
+test('should update execution when saving progress is enabled', async () => {
 	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
 		...commonSettings,
 		progress: true,
 	});
-
-	const reporterSpy = jest.spyOn(ErrorReporterProxy, 'error');
 
 	executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
 
@@ -83,7 +77,7 @@ test('should update execution', async () => {
 		status: 'running',
 	});
 
-	expect(reporterSpy).not.toHaveBeenCalled();
+	expect(errorReporter.error).not.toHaveBeenCalled();
 });
 
 test('should report error on failure', async () => {
@@ -91,8 +85,6 @@ test('should report error on failure', async () => {
 		...commonSettings,
 		progress: true,
 	});
-
-	const reporterSpy = jest.spyOn(ErrorReporterProxy, 'error');
 
 	const error = new Error('Something went wrong');
 
@@ -103,5 +95,5 @@ test('should report error on failure', async () => {
 	await saveExecutionProgress(...commonArgs);
 
 	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-	expect(reporterSpy).toHaveBeenCalledWith(error);
+	expect(errorReporter.error).toHaveBeenCalledWith(error);
 });

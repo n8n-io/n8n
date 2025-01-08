@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { diff } from 'json-diff';
@@ -7,7 +8,6 @@ import type { IRun, ITaskData, IWorkflowExecutionDataProcess } from 'n8n-workflo
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import os from 'os';
 import { sep } from 'path';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { User } from '@/databases/entities/user';
@@ -167,6 +167,7 @@ export class ExecuteBatch extends BaseCommand {
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();
+		await this.initDataDeduplicationService();
 		await this.initExternalHooks();
 	}
 
@@ -821,6 +822,11 @@ export class ExecuteBatch extends BaseCommand {
 					}
 				}
 			} catch (e) {
+				this.errorReporter.error(e, {
+					extra: {
+						workflowId: workflowData.id,
+					},
+				});
 				executionResult.error = `Workflow failed to execute: ${(e as Error).message}`;
 				executionResult.executionStatus = 'error';
 			}

@@ -1,10 +1,10 @@
 import type { Migration, MigrationExecutor } from '@n8n/typeorm';
 import { type DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+import { Logger } from 'n8n-core';
 
 import { main } from '@/commands/db/revert';
 import type { IrreversibleMigration, ReversibleMigration } from '@/databases/types';
-import { Logger } from '@/logging/logger.service';
 import { mockInstance } from '@test/mocking';
 
 const logger = mockInstance(Logger);
@@ -169,4 +169,39 @@ test('revert the last migration if it has a down migration', async () => {
 	expect(logger.error).not.toHaveBeenCalled();
 	expect(dataSource.undoLastMigration).toHaveBeenCalled();
 	expect(dataSource.destroy).toHaveBeenCalled();
+});
+
+test("don't use transaction if the last migration has transaction = false", async () => {
+	//
+	// ARRANGE
+	//
+	class TestMigration implements ReversibleMigration {
+		name = 'ReversibleMigration';
+
+		transaction = false as const;
+
+		async up() {}
+
+		async down() {}
+	}
+
+	const migrationsInDb: Migration[] = [
+		{ id: 1, timestamp: Date.now(), name: 'ReversibleMigration' },
+	];
+	const dataSource = mock<DataSource>({ migrations: [new TestMigration()] });
+
+	const migrationExecutor = mock<MigrationExecutor>();
+	migrationExecutor.getExecutedMigrations.mockResolvedValue(migrationsInDb);
+
+	//
+	// ACT
+	//
+	await main(logger, dataSource, migrationExecutor);
+
+	//
+	// ASSERT
+	//
+	expect(dataSource.undoLastMigration).toHaveBeenCalledWith({
+		transaction: 'none',
+	});
 });

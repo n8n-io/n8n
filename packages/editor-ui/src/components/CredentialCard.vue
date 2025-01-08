@@ -21,6 +21,10 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	MOVE: 'move',
 };
 
+const emit = defineEmits<{
+	click: [credentialId: string];
+}>();
+
 const props = withDefaults(
 	defineProps<{
 		data: ICredentialsResponse;
@@ -35,6 +39,7 @@ const props = withDefaults(
 			name: '',
 			sharedWithProjects: [],
 			homeProject: {} as ProjectSharingData,
+			isManaged: false,
 		}),
 		readOnly: false,
 	},
@@ -83,7 +88,7 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 function onClick() {
-	uiStore.openExistingCredential(props.data.id);
+	emit('click', props.data.id);
 }
 
 async function onAction(action: string) {
@@ -131,7 +136,7 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click.stop="onClick">
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
@@ -157,6 +162,7 @@ function moveResource() {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
@@ -175,9 +181,10 @@ function moveResource() {
 
 <style lang="scss" module>
 .cardLink {
+	--card--padding: 0 0 0 var(--spacing-s);
+
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
-	padding: 0 0 0 var(--spacing-s);
 	align-items: stretch;
 
 	&:hover {
@@ -209,5 +216,23 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing-s) var(--spacing-s);
+		--card--append--width: 100%;
+
+		flex-wrap: wrap;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0;
+	}
+
+	.cardBadge {
+		margin-right: auto;
+	}
 }
 </style>

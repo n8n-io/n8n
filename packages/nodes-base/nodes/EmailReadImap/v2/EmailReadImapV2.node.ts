@@ -1,3 +1,9 @@
+import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
+import { connect as imapConnect, getParts } from '@n8n/imap';
+import find from 'lodash/find';
+import isEmpty from 'lodash/isEmpty';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
@@ -14,14 +20,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
-
-import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
-import { connect as imapConnect, getParts } from '@n8n/imap';
-import type { Source as ParserSource } from 'mailparser';
-import { simpleParser } from 'mailparser';
 import rfc2047 from 'rfc2047';
-import isEmpty from 'lodash/isEmpty';
-import find from 'lodash/find';
 
 import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
 import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
@@ -677,7 +676,6 @@ export class EmailReadImapV2 implements INodeType {
 				if (connection.closeBox) await connection.closeBox(false);
 				connection.end();
 			} catch (error) {
-				// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
 			}
 		};

@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { CronJob } from 'cron';
 import type { CronExpression, Workflow } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { InstanceSettings } from './InstanceSettings';
 
@@ -30,8 +30,9 @@ export class ScheduledTaskManager {
 
 	deregisterCrons(workflowId: string) {
 		const cronJobs = this.cronJobs.get(workflowId) ?? [];
-		for (const cronJob of cronJobs) {
-			cronJob.stop();
+		while (cronJobs.length) {
+			const cronJob = cronJobs.pop();
+			if (cronJob) cronJob.stop();
 		}
 	}
 
