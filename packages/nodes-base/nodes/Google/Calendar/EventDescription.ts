@@ -112,9 +112,40 @@ export const eventFields: INodeProperties[] = [
 			show: {
 				operation: ['create'],
 				resource: ['event'],
+				'@version': [{ _cnd: { lt: 1.3 } }],
 			},
 		},
-		default: '={{ $now.toISO() }}',
+		default: '',
+		description: 'Start time of the eventt',
+	},
+	{
+		displayName: 'End',
+		name: 'end',
+		type: 'dateTime',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['event'],
+				'@version': [{ _cnd: { lt: 1.3 } }],
+			},
+		},
+		default: '',
+		description: 'End time of the event',
+	},
+	{
+		displayName: 'Start',
+		name: 'start',
+		type: 'dateTime',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['event'],
+				'@version': [{ _cnd: { gte: 1.3 } }],
+			},
+		},
+		default: '={{ $now }}',
 		description:
 			'Start time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
@@ -127,9 +158,10 @@ export const eventFields: INodeProperties[] = [
 			show: {
 				operation: ['create'],
 				resource: ['event'],
+				'@version': [{ _cnd: { gte: 1.3 } }],
 			},
 		},
-		default: "={{ $now.plus(1, 'hour').toISO() }}",
+		default: "={{ $now.plus(1, 'hour') }}",
 		description:
 			'End time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
@@ -820,6 +852,7 @@ export const eventFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to include hidden invitations in the result',
 			},
+
 			{
 				displayName: 'Timezone',
 				name: 'timeZone',
