@@ -17,7 +17,9 @@ jobs:
   build:
     name: Install & Build
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
+    if: |
+      (github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')) &&
+      !contains(github.event.pull_request.labels.*.name, 'community')
     steps:
       - uses: actions/checkout@v4.1.1
       - run: corepack enable

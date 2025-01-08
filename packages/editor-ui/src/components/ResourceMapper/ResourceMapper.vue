@@ -63,7 +63,6 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
-		ignoreTypeMismatchErrors: false,
 		attemptToConvertTypes: false,
 		// This should always be true if `showTypeConversionOptions` is provided
 		// It's used to avoid accepting any value as string without casting it
@@ -660,23 +659,6 @@ defineExpose({
 				@update="
 					(x: IUpdateInformation<NodeParameterValueType>) => {
 						state.paramValue.attemptToConvertTypes = x.value as boolean;
-						emitValueChanged();
-					}
-				"
-			/>
-			<ParameterInputFull
-				:parameter="{
-					name: 'ignoreTypeMismatchErrors',
-					type: 'boolean',
-					displayName: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.displayName'),
-					default: false,
-					description: locale.baseText('resourceMapper.ignoreTypeMismatchErrors.description'),
-				}"
-				:path="props.path + '.ignoreTypeMismatchErrors'"
-				:value="state.paramValue.ignoreTypeMismatchErrors"
-				@update="
-					(x: IUpdateInformation<NodeParameterValueType>) => {
-						state.paramValue.ignoreTypeMismatchErrors = x.value as boolean;
 						emitValueChanged();
 					}
 				"
