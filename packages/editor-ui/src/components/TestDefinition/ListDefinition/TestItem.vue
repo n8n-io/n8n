@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TestListItem } from '@/components/TestDefinition/types';
+import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
 
@@ -20,21 +21,25 @@ const emit = defineEmits<{
 const actions = [
 	{
 		icon: 'play',
+		id: 'run',
 		event: () => emit('run-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.runTest'),
 	},
 	{
 		icon: 'list',
+		id: 'view',
 		event: () => emit('view-details', props.test.id),
 		tooltip: locale.baseText('testDefinition.viewDetails'),
 	},
 	{
 		icon: 'pen',
+		id: 'edit',
 		event: () => emit('edit-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.editTest'),
 	},
 	{
 		icon: 'trash',
+		id: 'delete',
 		event: () => emit('delete-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.deleteTest'),
 	},
@@ -42,20 +47,27 @@ const actions = [
 </script>
 
 <template>
-	<div :class="$style.testItem" @click="$emit('view-details', test.id)">
+	<div
+		:class="$style.testItem"
+		:data-test-id="`test-item-${test.id}`"
+		@click="$emit('view-details', test.id)"
+	>
 		<div :class="$style.testInfo">
 			<div :class="$style.testName">
 				{{ test.name }}
-				<n8n-tag v-if="test.tagName" :text="test.tagName" />
 			</div>
 			<div :class="$style.testCases">
-				{{ locale.baseText('testDefinition.list.testCases', { adjustToNumber: test.testCases }) }}
-				<n8n-loading v-if="!test.execution.lastRun" :loading="true" :rows="1" />
-				<span v-else>{{
-					locale.baseText('testDefinition.list.lastRun', {
-						interpolate: { lastRun: test.execution.lastRun },
-					})
-				}}</span>
+				<n8n-text size="small">
+					{{ locale.baseText('testDefinition.list.testRuns', { adjustToNumber: test.testCases }) }}
+				</n8n-text>
+				<template v-if="test.execution.status === 'running'">
+					{{ locale.baseText('testDefinition.list.running') }}
+					<n8n-spinner />
+				</template>
+				<span v-else-if="test.execution.lastRun">
+					{{ locale.baseText('testDefinition.list.lastRun') }}
+					<TimeAgo :date="test.execution.lastRun" />
+				</span>
 			</div>
 		</div>
 
@@ -68,7 +80,7 @@ const actions = [
 				}}
 			</div>
 			<div v-for="(value, key) in test.execution.metrics" :key="key" :class="$style.metric">
-				{{ key }}: {{ value ?? '-' }}
+				{{ key }}: {{ value.toFixed(2) ?? '-' }}
 			</div>
 		</div>
 
@@ -80,6 +92,7 @@ const actions = [
 				<component
 					:is="n8nIconButton"
 					:icon="action.icon"
+					:data-test-id="`${action.id}-test-button-${test.id}`"
 					type="tertiary"
 					size="mini"
 					@click.stop="action.event"
@@ -115,7 +128,6 @@ const actions = [
 	align-items: center;
 	gap: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-4xs);
 	font-size: var(--font-size-s);
 }
 

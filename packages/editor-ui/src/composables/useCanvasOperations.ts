@@ -1887,6 +1887,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
+		workflowData.meta = {
+			...workflowData.meta,
+			...workflowsStore.workflow.meta,
+			instanceId: rootStore.instanceId,
+		};
+
 		await clipboard.copy(JSON.stringify(workflowData, null, 2));
 
 		telemetry.track('User copied nodes', {

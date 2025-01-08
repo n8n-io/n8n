@@ -19,17 +19,22 @@ const toast = useToast();
 const locale = useI18n();
 
 const tests = computed<TestListItem[]>(() => {
-	return testDefinitionStore.allTestDefinitions
+	return (
+		testDefinitionStore.allTestDefinitionsByWorkflowId[
+			router.currentRoute.value.params.name as string
+		] ?? []
+	)
 		.filter((test): test is TestDefinitionRecord => test.id !== undefined)
 		.sort((a, b) => new Date(b?.updatedAt ?? '').getTime() - new Date(a?.updatedAt ?? '').getTime())
 		.map((test) => ({
 			id: test.id,
 			name: test.name ?? '',
 			tagName: test.annotationTagId ? getTagName(test.annotationTagId) : '',
-			testCases: 0, // TODO: This should come from the API
+			testCases: testDefinitionStore.testRunsByTestId[test.id]?.length ?? 0,
 			execution: getTestExecution(test.id),
 		}));
 });
+
 const hasTests = computed(() => tests.value.length > 0);
 const allTags = computed(() => tagsStore.allTags);
 
@@ -39,21 +44,25 @@ function getTagName(tagId: string) {
 	return matchingTag?.name ?? '';
 }
 
-// TODO: Replace with actual API call once implemented
-function getTestExecution(_testId: string): TestExecution {
+function getTestExecution(testId: string): TestExecution {
+	const lastRun = testDefinitionStore.lastRunByTestId[testId];
+	if (!lastRun) {
+		return {
+			lastRun: null,
+			errorRate: 0,
+			metrics: {},
+			status: 'new',
+		};
+	}
+
 	const mockExecutions = {
-		lastRun: 'an hour ago',
+		lastRun: lastRun.updatedAt ?? '',
 		errorRate: 0,
-		metrics: { metric1: 0.12, metric2: 0.99, metric3: 0.87 },
+		metrics: lastRun.metrics ?? {},
+		status: lastRun.status ?? 'running',
 	};
 
-	return (
-		mockExecutions || {
-			lastRun: null,
-			errorRate: null,
-			metrics: { metric1: null, metric2: null, metric3: null },
-		}
-	);
+	return mockExecutions;
 }
 
 // Action handlers
@@ -61,20 +70,27 @@ function onCreateTest() {
 	void router.push({ name: VIEWS.NEW_TEST_DEFINITION });
 }
 
-function onRunTest(_testId: string) {
-	// TODO: Implement test run logic
-	toast.showMessage({
-		title: locale.baseText('testDefinition.notImplemented'),
-		type: 'warning',
-	});
+async function onRunTest(testId: string) {
+	try {
+		const result = await testDefinitionStore.startTestRun(testId);
+		if (result.success) {
+			toast.showMessage({
+				title: locale.baseText('testDefinition.list.testStarted'),
+				type: 'success',
+			});
+
+			// Optionally fetch the updated test runs
+			await testDefinitionStore.fetchTestRuns(testId);
+		} else {
+			throw new Error('Test run failed to start');
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('testDefinition.list.testStartError'));
+	}
 }
 
-function onViewDetails(_testId: string) {
-	// TODO: Implement test details view
-	toast.showMessage({
-		title: locale.baseText('testDefinition.notImplemented'),
-		type: 'warning',
-	});
+async function onViewDetails(testId: string) {
+	void router.push({ name: VIEWS.TEST_DEFINITION_RUNS, params: { testId } });
 }
 
 function onEditTest(testId: number) {
@@ -92,12 +108,22 @@ async function onDeleteTest(testId: string) {
 
 // Load initial data
 async function loadInitialData() {
-	isLoading.value = true;
-	try {
-		await tagsStore.fetchAll();
-		await testDefinitionStore.fetchAll();
-	} finally {
-		isLoading.value = false;
+	if (!isLoading.value) {
+		// Add guard to prevent multiple loading states
+		isLoading.value = true;
+		try {
+			await Promise.all([
+				tagsStore.fetchAll(),
+				testDefinitionStore.fetchAll({
+					workflowId: router.currentRoute.value.params.name as string,
+				}),
+			]);
+			isLoading.value = false;
+		} catch (error) {
+			toast.showError(error, locale.baseText('testDefinition.list.loadError'));
+		} finally {
+			isLoading.value = false;
+		}
 	}
 }
 
@@ -112,7 +138,9 @@ onMounted(() => {
 			name: VIEWS.WORKFLOW,
 			params: { name: router.currentRoute.value.params.name },
 		});
+		return; // Add early return to prevent loading if feature is disabled
 	}
+
 	void loadInitialData();
 });
 </script>
@@ -124,7 +152,11 @@ onMounted(() => {
 		</div>
 
 		<template v-else>
-			<EmptyState v-if="!hasTests" @create-test="onCreateTest" />
+			<EmptyState
+				v-if="!hasTests"
+				data-test-id="test-definition-empty-state"
+				@create-test="onCreateTest"
+			/>
 			<TestsList
 				v-else
 				:tests="tests"
