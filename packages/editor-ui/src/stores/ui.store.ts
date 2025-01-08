@@ -65,6 +65,7 @@ import {
 } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
+import { useLocalStorage } from '@vueuse/core';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -151,7 +152,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsed = ref<boolean>(true);
+	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
+	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
 	const draggable = ref<Draggable>({
 		isDragging: false,
@@ -502,7 +504,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const toggleSidebarMenuCollapse = () => {
-		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
+		const newCollapsedState = !sidebarMenuCollapsed.value;
+		sidebarMenuCollapsedPreference.value = newCollapsedState;
+		sidebarMenuCollapsed.value = newCollapsedState;
 	};
 
 	const getCurlToJson = async (curlCommand: string) => {
@@ -592,6 +596,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
+		sidebarMenuCollapsedPreference,
 		bannerStack,
 		theme,
 		modalsById,
