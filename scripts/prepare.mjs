@@ -8,7 +8,4 @@ if (process.env.CI || process.env.DOCKER_BUILD) {
 	process.exit(0);
 }
 
-const isWindows = process.platform === 'win32';
-const lefthookExecutable = isWindows ? 'lefthook.cmd' : 'lefthook';
-const executablePath = path.resolve(path.join('./node_modules/.bin/', lefthookExecutable));
-execSync(`${executablePath} install`, { stdio: 'inherit' });
+execSync('pnpm lefthook install', { stdio: 'inherit' });
