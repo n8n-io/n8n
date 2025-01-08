@@ -4,7 +4,7 @@ import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
 import type { IRun, IRunData } from '@/Interfaces';
-import { NodeConnectionType, NodeExecutionOutput, type IWorkflowBase } from '@/Interfaces';
+import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
