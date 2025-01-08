@@ -11,7 +11,6 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { get } from 'lodash-es';
 import type { ExecutionSummaryWithScopes } from '@/Interface';
 import { VIEWS } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables/useToast';
 
 interface TestCase extends ExecutionSummaryWithScopes {
@@ -22,7 +21,6 @@ const router = useRouter();
 const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
 const executionsStore = useExecutionsStore();
-const workflowStore = useWorkflowsStore();
 const locale = useI18n();
 
 const isLoading = ref(true);
@@ -33,9 +31,6 @@ const testId = computed(() => router.currentRoute.value.params.testId as string)
 
 const run = computed(() => testDefinitionStore.testRunsById[runId.value]);
 const test = computed(() => testDefinitionStore.testDefinitionsById[testId.value]);
-const workflow = computed(
-	() => workflowStore.workflowsById[test.value?.evaluationWorkflowId ?? ''],
-);
 const filteredTestCases = computed(() => {
 	return testCases.value;
 });
@@ -51,7 +46,7 @@ const columns = computed(
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: row.workflowId, executionId: row.id },
 			}),
-			formatter: (row: TestCase) => `[${row.id}] ${workflow.value?.name}`,
+			formatter: (row: TestCase) => `[${row.id}] ${row.workflowName}`,
 			openInNewTab: true,
 		},
 		{
