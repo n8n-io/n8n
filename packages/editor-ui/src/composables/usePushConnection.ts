@@ -18,7 +18,7 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { AI_CREDITS_EXPERIMENT, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -36,8 +36,9 @@ import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
-import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
 import { clearPopupWindowState } from '../utils/executionUtils';
+import { usePostHog } from '@/stores/posthog.store';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -54,6 +55,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const assistantStore = useAssistantStore();
+	const posthogStore = usePostHog();
 
 	const retryTimeout = ref<NodeJS.Timeout | null>(null);
 	const pushMessageQueue = ref<PushMessageQueueItem[]>([]);
@@ -205,8 +207,13 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				clearPopupWindowState();
 				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
 				if (workflow?.meta?.templateId) {
-					const isEasyAIWorkflow =
-						workflow.meta.templateId === EASY_AI_WORKFLOW_JSON.meta.templateId;
+					const isAiCreditsExperimentEnabled =
+						posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
+					const easyAiWorkflowJson = getEasyAiWorkflowJson({
+						isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
+						withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
+					});
+					const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 					if (isEasyAIWorkflow) {
 						telemetry.track(
 							'User executed test AI workflow',
@@ -274,7 +281,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			const lineNumber = iRunExecutionData.resultData?.error?.lineNumber;
 
-			codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'final');
+			codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
 
 			const workflow = workflowHelpers.getCurrentWorkflow();
 			if (executionData.data?.waitTill !== undefined) {

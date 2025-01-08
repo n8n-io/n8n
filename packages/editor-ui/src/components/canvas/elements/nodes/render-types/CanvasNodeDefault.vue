@@ -201,6 +201,12 @@ function openContextMenu(event: MouseEvent) {
 				var(--configurable-node--input-width)
 		);
 
+		justify-content: flex-start;
+
+		:global(.n8n-node-icon) {
+			margin-left: var(--configurable-node--icon-offset);
+		}
+
 		.description {
 			top: unset;
 			position: relative;

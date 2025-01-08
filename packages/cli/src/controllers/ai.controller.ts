@@ -6,10 +6,11 @@ import {
 } from '@n8n/api-types';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
-import { FREE_AI_CREDITS_CREDENTIAL_NAME, OPEN_AI_API_CREDENTIAL_TYPE } from '@/constants';
+import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Body, Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

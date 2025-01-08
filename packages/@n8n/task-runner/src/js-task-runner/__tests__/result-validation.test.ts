@@ -28,6 +28,7 @@ describe('result validation', () => {
 			['binary', {}],
 			['pairedItem', {}],
 			['error', {}],
+			['index', {}], // temporarily allowed until refactored out
 		])(
 			'should not throw an error if the output item has %s key in addition to json',
 			(key, value) => {
