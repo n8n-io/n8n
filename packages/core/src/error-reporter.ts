@@ -9,6 +9,14 @@ import { createHash } from 'node:crypto';
 import type { InstanceType } from './InstanceSettings';
 import { Logger } from './logging/logger';
 
+type ErrorReporterInitOptions = {
+	serverType: InstanceType | 'task_runner';
+	dsn: string;
+	release?: string;
+	environment?: string;
+	serverName?: string;
+};
+
 @Service()
 export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
@@ -44,23 +52,15 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init(
-		instanceType: InstanceType | 'task_runner',
-		dsn: string,
-		opts: { release?: string; environment?: string; serverName?: string } = {},
-	) {
+	async init(opts: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
 
-		if (!dsn) return;
+		if (!opts.dsn) return;
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
-
-		const release = opts.release ?? process.env.N8N_VERSION;
-		const environment = opts.environment ?? process.env.ENVIRONMENT;
-		const serverName = opts.serverName ?? process.env.DEPLOYMENT_NAME;
 
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
@@ -74,11 +74,11 @@ export class ErrorReporter {
 		];
 
 		init({
-			dsn,
-			release,
-			environment,
+			dsn: opts.dsn,
+			release: opts.release ?? process.env.N8N_VERSION,
+			environment: opts.environment ?? process.env.ENVIRONMENT,
 			enableTracing: false,
-			serverName,
+			serverName: opts.serverName ?? process.env.DEPLOYMENT_NAME,
 			beforeBreadcrumb: () => null,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
@@ -97,7 +97,7 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', instanceType);
+		setTag('server_type', opts.serverType);
 
 		this.report = (error, options) => captureException(error, options);
 	}

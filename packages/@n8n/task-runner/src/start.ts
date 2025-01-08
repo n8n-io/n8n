@@ -54,12 +54,12 @@ void (async function start() {
 		defaultTimezone: config.baseRunnerConfig.timezone,
 	});
 
-	const { sentryDsn, ...opts } = config.sentryConfig;
+	const { dsn } = config.sentryConfig;
 
-	if (sentryDsn) {
+	if (dsn) {
 		const { ErrorReporter } = await import('n8n-core');
 		errorReporter = Container.get(ErrorReporter);
-		await errorReporter.init('task_runner', sentryDsn, opts);
+		await errorReporter.init({ serverType: 'task_runner', ...config.sentryConfig });
 	}
 
 	runner = new JsTaskRunner(config);
