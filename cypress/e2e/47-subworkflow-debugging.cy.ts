@@ -40,7 +40,7 @@ describe('Subworkflow debugging', () => {
 			openNode('Execute Workflow with param');
 
 			getOutputPanelItemsCount().should('contain.text', '2 items, 1 sub-execution');
-			getOutputPanelRelatedExecutionLink().should('contain.text', 'Inspect Sub-Execution');
+			getOutputPanelRelatedExecutionLink().should('contain.text', 'View sub-execution');
 			getOutputPanelRelatedExecutionLink().should('have.attr', 'href');
 
 			// ensure workflow executed and waited on output
@@ -64,7 +64,7 @@ describe('Subworkflow debugging', () => {
 			openNode('Execute Workflow with param2');
 
 			getOutputPanelItemsCount().should('not.exist');
-			getOutputPanelRelatedExecutionLink().should('contain.text', 'Inspect Sub-Execution');
+			getOutputPanelRelatedExecutionLink().should('contain.text', 'View sub-execution');
 			getOutputPanelRelatedExecutionLink().should('have.attr', 'href');
 
 			// ensure workflow executed but returned same data as input
@@ -109,7 +109,7 @@ describe('Subworkflow debugging', () => {
 			openNode('Execute Workflow with param');
 
 			getOutputPanelItemsCount().should('contain.text', '2 items, 1 sub-execution');
-			getOutputPanelRelatedExecutionLink().should('contain.text', 'Inspect Sub-Execution');
+			getOutputPanelRelatedExecutionLink().should('contain.text', 'View sub-execution');
 			getOutputPanelRelatedExecutionLink().should('have.attr', 'href');
 
 			// ensure workflow executed and waited on output
@@ -125,7 +125,7 @@ describe('Subworkflow debugging', () => {
 
 			getExecutionPreviewOutputPanelRelatedExecutionLink().should(
 				'include.text',
-				'Inspect Parent Execution',
+				'View parent execution',
 			);
 
 			getExecutionPreviewOutputPanelRelatedExecutionLink()

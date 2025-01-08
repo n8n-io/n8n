@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import config from '@/config';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';

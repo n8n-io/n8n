@@ -1,8 +1,8 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
-import Container, { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';

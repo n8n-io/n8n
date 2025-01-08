@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import axios from 'axios';
 import { InstanceSettings, Logger } from 'n8n-core';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { getN8nPackageJson, inDevelopment } from '@/constants';

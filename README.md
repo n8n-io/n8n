@@ -18,11 +18,16 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 
 Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (requires [Node.js](https://nodejs.org/en/)):
 
-`npx n8n`
+```
+npx n8n
+```
 
 Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):
 
-`docker run -it --rm --name n8n -p 5678:5678 docker.n8n.io/n8nio/n8n`
+```
+docker volume create n8n_data
+docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+```
 
 Access the editor at http://localhost:5678
 

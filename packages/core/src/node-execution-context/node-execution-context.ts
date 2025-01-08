@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { get } from 'lodash';
 import type {
 	FunctionsBase,
@@ -26,7 +27,6 @@ import {
 	NodeHelpers,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/Constants';
 import { Memoized } from '@/decorators';

@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import { GlobalConfig } from '../src/index';
 
@@ -229,8 +229,8 @@ describe('GlobalConfig', () => {
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
 			maxOldSpaceSize: '',
-			maxConcurrency: 5,
-			taskTimeout: 60,
+			maxConcurrency: 10,
+			taskTimeout: 300,
 			heartbeatInterval: 30,
 		},
 		sentry: {

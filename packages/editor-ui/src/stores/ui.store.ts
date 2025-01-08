@@ -16,6 +16,7 @@ import {
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
+	NODE_PINNING_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -45,6 +46,7 @@ import type {
 	NotificationOptions,
 	ModalState,
 	ModalKey,
+	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
@@ -98,6 +100,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_SELECT_MODAL_KEY,
 				DUPLICATE_MODAL_KEY,
 				PERSONALIZATION_MODAL_KEY,
+				NODE_PINNING_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
 				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -184,8 +187,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
 
+	// Keep track of the preferred theme and update it when the system preference changes
+	const preferredTheme = getPreferredTheme();
+	const preferredSystemTheme = ref<AppliedThemeOption>(preferredTheme.theme);
+	preferredTheme.mediaQuery?.addEventListener('change', () => {
+		preferredSystemTheme.value = getPreferredTheme().theme;
+	});
+
 	const appliedTheme = computed(() => {
-		return theme.value === 'system' ? getPreferredTheme() : theme.value;
+		return theme.value === 'system' ? preferredSystemTheme.value : theme.value;
 	});
 
 	const contextBasedTranslationKeys = computed(() => {

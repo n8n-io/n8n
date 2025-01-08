@@ -1,5 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 

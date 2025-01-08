@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
-import { Container } from 'typedi';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { User } from '@/databases/entities/user';
@@ -405,13 +405,14 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
 			mockedNodes: [
 				{
+					id: 'uuid-1234',
 					name: 'Schedule Trigger',
 				},
 			],
 		});
 
 		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data.mockedNodes).toEqual([{ name: 'Schedule Trigger' }]);
+		expect(resp.body.data.mockedNodes).toEqual([{ id: 'uuid-1234', name: 'Schedule Trigger' }]);
 	});
 
 	test('should return error if pinned nodes are invalid', async () => {
