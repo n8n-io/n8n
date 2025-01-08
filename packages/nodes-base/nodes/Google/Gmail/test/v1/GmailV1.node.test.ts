@@ -136,7 +136,7 @@ describe('Test Gmail Node v1', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/messages.workflow.json']);
+		testWorkflows(['nodes/Google/Gmail/test/v1/messages.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			gmailNock.done();
@@ -161,7 +161,7 @@ describe('Test Gmail Node v1', () => {
 			});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/labels.workflow.json']);
+		testWorkflows(['nodes/Google/Gmail/test/v1/labels.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			gmailNock.done();
@@ -251,70 +251,7 @@ describe('Test Gmail Node v1', () => {
 				});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/drafts.workflow.json']);
-
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
-	});
-
-	describe('Threads', () => {
-		const gmailNock = nock('https://www.googleapis.com/gmail');
-
-		beforeAll(() => {
-			gmailNock.get('/v1/users/me/threads').query({ maxResults: 2 }).reply(200, {
-				threads: messages,
-			});
-			gmailNock
-				.get('/v1/users/me/threads')
-				.query((query) => {
-					return (
-						query.includeSpamTrash === 'true' &&
-						query.labelIds === 'CHAT' &&
-						!!query.q &&
-						query.q.includes('has:attachment') &&
-						query.q.includes('before:') &&
-						query.q.includes('after:')
-					);
-				})
-				.reply(200, { threads: messages });
-			gmailNock
-				.post('/v1/users/me/threads/test-thread-id/modify', { addLabelIds: ['CHAT'] })
-				.reply(200, messages[0]);
-			gmailNock
-				.post('/v1/users/me/threads/test-thread-id/modify', { removeLabelIds: ['CHAT'] })
-				.reply(200, messages[0]);
-			gmailNock.delete('/v1/users/me/threads/test-thread-id').reply(200, messages[0]);
-			gmailNock
-				.get('/v1/users/me/threads/test-thread-id')
-				.query({
-					format: 'metadata',
-					metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'],
-				})
-				.reply(200, messages[0]);
-			gmailNock.get('/v1/users/me/labels').times(2).reply(200, { labels });
-			gmailNock
-				.get('/v1/users/me/threads/test-thread-id')
-				.query({ format: 'full' })
-				.reply(200, messages[0]);
-			gmailNock.post('/v1/users/me/threads/test-thread-id/trash').reply(200, messages[0]);
-			gmailNock.post('/v1/users/me/threads/test-thread-id/untrash').reply(200, messages[0]);
-			gmailNock
-				.get('/v1/users/me/messages/test%20snippet')
-				.query({
-					userId: 'me',
-					uploadType: 'media',
-					format: 'metadata',
-				})
-				.reply(200, messages[0]);
-			gmailNock.get('/v1/users/me/profile').reply(200, { emailAddress: 'test@n8n.io' });
-			gmailNock
-				.post('/v1/users/me/messages/send')
-				.query({ userId: 'me', uploadType: 'media', format: 'metadata' })
-				.reply(200, messages[0]);
-		});
-
-		testWorkflows(['nodes/Google/Gmail/test/v2/threads.workflow.json']);
+		testWorkflows(['nodes/Google/Gmail/test/v1/drafts.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			gmailNock.done();
