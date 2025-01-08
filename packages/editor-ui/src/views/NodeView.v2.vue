@@ -697,6 +697,11 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
+	const workflowIsSaved = !uiStore.stateIsDirty;
+
+	if (workflowIsSaved) {
+		return;
+	}
 	const saved = await workflowHelpers.saveCurrentWorkflow();
 	if (saved) {
 		canvasEventBus.emit('saved:workflow');
