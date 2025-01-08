@@ -10,7 +10,8 @@ import type { PermissionsRecord } from '@/permissions';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { IUsedCredential } from '@/Interface';
+import type { INodeUi, IUsedCredential } from '@/Interface';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
 const props = defineProps<{
 	workflowActive: boolean;
@@ -72,11 +73,39 @@ const disabled = computed((): boolean => {
 	return false;
 });
 
-const currentWorkflowHasFreeAiCredits = computed((): boolean => {
-	if (!workflowsStore?.workflow?.usedCredentials) return false;
-	return Object.keys(workflowsStore.usedCredentials).some(
-		(id: string) => credentialsStore.state.credentials[id].isManaged,
+function findManagedOpenAiCredentialId(
+	usedCredentials: Record<string, IUsedCredential>,
+): string | undefined {
+	return Object.keys(usedCredentials).find((credentialId) => {
+		const credential = credentialsStore.state.credentials[credentialId];
+		return credential.isManaged && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
+	});
+}
+
+function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): boolean {
+	return nodes.some(
+		(node) =>
+			node?.credentials?.[OPEN_AI_API_CREDENTIAL_TYPE]?.id === credentialId && !node.disabled,
 	);
+}
+
+/**
+ * Computed property to determine if the warning for free AI credits should be shown.
+ *
+ * This function checks if the current workflow uses any managed credentials of type `OPEN_AI_API_CREDENTIAL_TYPE`.
+ * If such credentials are found and are associated with any non-disabled node in the workflow, the warning will be shown.
+ *
+ */
+const shouldShowFreeAiCreditsWarning = computed((): boolean => {
+	const usedCredentials = workflowsStore?.usedCredentials;
+	if (!usedCredentials) return false;
+
+	// Find any managed OpenAI credentials being used
+	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
+	if (!managedOpenAiCredentialId) return false;
+
+	// Check if any non-disabled node uses these credentials
+	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
 });
 
 async function activeChanged(newActiveState: boolean) {
@@ -114,7 +143,7 @@ async function displayActivationError() {
 watch(
 	() => props.workflowActive,
 	(workflowActive) => {
-		if (workflowActive && currentWorkflowHasFreeAiCredits.value) {
+		if (workflowActive && shouldShowFreeAiCreditsWarning.value) {
 			showMessage({
 				title: i18n.baseText('freeAi.credits.showWarning.workflow.activation.title'),
 				message: i18n.baseText('freeAi.credits.showWarning.workflow.activation.description'),
