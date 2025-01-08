@@ -85,6 +85,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
+	const lastChange = ref<ViewUpdate>();
 	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
@@ -163,6 +164,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 
 		if (update.docChanged) {
 			hasChanges.value = true;
+			lastChange.value = update;
 			emitChanges(update);
 		}
 	}
@@ -367,6 +369,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 				// Code is too large, localStorage quota exceeded
 				localStorage.removeItem(storedStateId.value);
 			}
+			if (lastChange.value) onChange(lastChange.value);
 			editor.value.destroy();
 		}
 	});
