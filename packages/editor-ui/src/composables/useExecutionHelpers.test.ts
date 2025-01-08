@@ -3,6 +3,22 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
+const { resolve, track } = vi.hoisted(() => ({
+	resolve: vi.fn(),
+	track: vi.fn(),
+}));
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve,
+	}),
+	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
 describe('useExecutionHelpers()', () => {
 	describe('getUIDetails()', () => {
 		it.each([
@@ -66,6 +82,72 @@ describe('useExecutionHelpers()', () => {
 			expect(
 				isExecutionRetriable({ status: 'crashed', retrySuccessId: '123' } as ExecutionSummary),
 			).toEqual(false);
+		});
+	});
+
+	describe('openExecutionInNewTab', () => {
+		const executionId = '123';
+		const workflowId = 'xyz';
+		const href = 'test.com';
+		global.window.open = vi.fn();
+
+		it('opens execution in new tab', () => {
+			const { openExecutionInNewTab } = useExecutionHelpers();
+			resolve.mockReturnValue({ href });
+			openExecutionInNewTab(executionId, workflowId);
+			expect(window.open).toHaveBeenCalledWith(href, '_blank');
+		});
+	});
+
+	describe('trackOpeningRelatedExecution', () => {
+		it('tracks sub execution click', () => {
+			const { trackOpeningRelatedExecution } = useExecutionHelpers();
+
+			trackOpeningRelatedExecution(
+				{ subExecution: { executionId: '123', workflowId: 'xyz' } },
+				'table',
+			);
+
+			expect(track).toHaveBeenCalledWith('User clicked inspect sub-workflow', { view: 'table' });
+		});
+
+		it('tracks parent execution click', () => {
+			const { trackOpeningRelatedExecution } = useExecutionHelpers();
+
+			trackOpeningRelatedExecution(
+				{ parentExecution: { executionId: '123', workflowId: 'xyz' } },
+				'json',
+			);
+
+			expect(track).toHaveBeenCalledWith('User clicked parent execution button', { view: 'json' });
+		});
+	});
+
+	describe('resolveRelatedExecutionUrl', () => {
+		it('resolves sub execution url', () => {
+			const fullPath = 'test.com';
+			resolve.mockReturnValue({ fullPath });
+			const { resolveRelatedExecutionUrl } = useExecutionHelpers();
+
+			expect(
+				resolveRelatedExecutionUrl({ subExecution: { executionId: '123', workflowId: 'xyz' } }),
+			).toEqual(fullPath);
+		});
+
+		it('resolves parent execution url', () => {
+			const fullPath = 'test.com';
+			resolve.mockReturnValue({ fullPath });
+			const { resolveRelatedExecutionUrl } = useExecutionHelpers();
+
+			expect(
+				resolveRelatedExecutionUrl({ parentExecution: { executionId: '123', workflowId: 'xyz' } }),
+			).toEqual(fullPath);
+		});
+
+		it('returns empty if no related execution url', () => {
+			const { resolveRelatedExecutionUrl } = useExecutionHelpers();
+
+			expect(resolveRelatedExecutionUrl({})).toEqual('');
 		});
 	});
 });

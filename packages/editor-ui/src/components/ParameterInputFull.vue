@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -167,7 +167,6 @@ function onDrop(newParamValue: string) {
 					title: i18n.baseText('dataMapping.success.title'),
 					message: i18n.baseText('dataMapping.success.moreInfo'),
 					type: 'success',
-					dangerouslyUseHTMLString: true,
 				});
 
 				ndvStore.setMappingOnboarded();
@@ -189,6 +188,17 @@ function onDrop(newParamValue: string) {
 		forceShowExpression.value = false;
 	}, 200);
 }
+
+// When switching to read-only mode, reset the value to the default value
+watch(
+	() => props.isReadOnly,
+	(isReadOnly) => {
+		// Patch fix, see https://linear.app/n8n/issue/ADO-2974/resource-mapper-values-are-emptied-when-refreshing-the-columns
+		if (isReadOnly && props.parameter.disabledOptions !== undefined) {
+			valueChanged({ name: props.path, value: props.parameter.default });
+		}
+	},
+);
 </script>
 
 <template>

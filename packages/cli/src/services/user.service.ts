@@ -1,13 +1,13 @@
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
 
 import type { User, AssignableRole } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation, PublicUser } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import type { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
@@ -213,9 +213,8 @@ export class UserService {
 					),
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
 			this.logger.error('Failed to create user shells', { userShells: createdUsers });
-			throw new InternalServerError('An error occurred during user creation');
+			throw new InternalServerError('An error occurred during user creation', error);
 		}
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));

@@ -1,4 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { SafetySetting } from '@google/generative-ai';
+import { ProjectsClient } from '@google-cloud/resource-manager';
+import { ChatVertexAI } from '@langchain/google-vertexai';
+import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -9,14 +13,13 @@ import {
 	type JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { ChatVertexAI } from '@langchain/google-vertexai';
-import type { SafetySetting } from '@google/generative-ai';
-import { ProjectsClient } from '@google-cloud/resource-manager';
-import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
-import { additionalOptions } from '../gemini-common/additional-options';
+
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeErrorFromStatus } from './error-handling';
+import { additionalOptions } from '../gemini-common/additional-options';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -128,6 +131,7 @@ export class LmChatGoogleVertex implements INodeType {
 		const credentials = await this.getCredentials('googleApi');
 		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
+		const region = credentials.region as string;
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -162,6 +166,7 @@ export class LmChatGoogleVertex implements INodeType {
 						private_key: privateKey,
 					},
 				},
+				location: region,
 				model: modelName,
 				topK: options.topK,
 				topP: options.topP,
@@ -170,7 +175,8 @@ export class LmChatGoogleVertex implements INodeType {
 				safetySettings,
 				callbacks: [new N8nLlmTracing(this)],
 				// Handle ChatVertexAI invocation errors to provide better error messages
-				onFailedAttempt: (error: any) => {
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: any) => {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					const customError = makeErrorFromStatus(Number(error?.response?.status), {
 						modelName,
 					});
@@ -180,7 +186,7 @@ export class LmChatGoogleVertex implements INodeType {
 					}
 
 					throw error;
-				},
+				}),
 			});
 
 			return {

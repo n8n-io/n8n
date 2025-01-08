@@ -9,7 +9,7 @@ import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } f
 
 const getBrowserId = () => {
 	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId && 'randomUUID' in crypto) {
+	if (!browserId) {
 		browserId = crypto.randomUUID();
 		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
 	}

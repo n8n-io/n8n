@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { IUpdateInformation, DynamicNodeParameters } from '@/Interface';
+import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
+import type { IUpdateInformation } from '@/Interface';
 import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
@@ -7,7 +8,9 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeParameterValueType,
 	ResourceMapperField,
+	ResourceMapperFields,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -15,11 +18,17 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import {
+	fieldCannotBeDeleted,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
+import { N8nButton, N8nCallout } from 'n8n-design-system';
 
 type Props = {
 	parameter: INodeProperties;
@@ -42,6 +51,8 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 });
 
+const { onDocumentVisible } = useDocumentVisibility();
+
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
@@ -52,11 +63,17 @@ const state = reactive({
 		value: {},
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
+		attemptToConvertTypes: false,
+		// This should always be true if `showTypeConversionOptions` is provided
+		// It's used to avoid accepting any value as string without casting it
+		// Which is the legacy behavior without these type options.
+		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
 	loading: false,
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
+	hasStaleFields: false,
 });
 
 // Reload fields to map when dependent parameters change
@@ -75,6 +92,21 @@ watch(
 		}
 	},
 );
+
+onDocumentVisible(async () => {
+	await checkStaleFields();
+});
+
+async function checkStaleFields(): Promise<void> {
+	const fetchedFields = await fetchFields();
+	if (fetchedFields) {
+		const isSchemaStale = isResourceMapperFieldListStale(
+			state.paramValue.schema,
+			fetchedFields.fields,
+		);
+		state.hasStaleFields = isSchemaStale;
+	}
+}
 
 // Reload fields to map when node is executed
 watch(
@@ -97,6 +129,10 @@ onMounted(async () => {
 			...state.parameterValues,
 			parameters: props.node.parameters,
 		};
+
+		if (showTypeConversionOptions.value) {
+			state.paramValue.convertFieldsToString = true;
+		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
@@ -138,6 +174,8 @@ onMounted(async () => {
 	if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
+	} else {
+		await checkStaleFields();
 	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
@@ -161,11 +199,19 @@ const showMappingModeSelect = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
 });
 
+const showTypeConversionOptions = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.showTypeConversionOptions === true;
+});
+
+const hasFields = computed<boolean>(() => {
+	return state.paramValue.schema.length > 0;
+});
+
 const showMatchingColumnsSelector = computed<boolean>(() => {
 	return (
 		!state.loading &&
-		props.parameter.typeOptions?.resourceMapper?.mode !== 'add' &&
-		state.paramValue.schema.length > 0
+		['upsert', 'update'].includes(props.parameter.typeOptions?.resourceMapper?.mode ?? '') &&
+		hasFields.value
 	);
 });
 
@@ -174,7 +220,7 @@ const showMappingFields = computed<boolean>(() => {
 		state.paramValue.mappingMode === 'defineBelow' &&
 		!state.loading &&
 		!state.loadingError &&
-		state.paramValue.schema.length > 0 &&
+		hasFields.value &&
 		hasAvailableMatchingColumns.value
 	);
 });
@@ -190,7 +236,11 @@ const matchingColumns = computed<string[]>(() => {
 });
 
 const hasAvailableMatchingColumns = computed<boolean>(() => {
-	if (resourceMapperMode.value !== 'add') {
+	// 'map' mode doesn't require matching columns
+	if (resourceMapperMode.value === 'map') {
+		return true;
+	}
+	if (resourceMapperMode.value !== 'add' && resourceMapperMode.value !== 'upsert') {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
@@ -227,10 +277,11 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		state.loading = true;
 	}
 	try {
-		await loadFieldsToMap();
+		await loadAndSetFieldsToMap();
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
+		state.hasStaleFields = false;
 	} catch (error) {
 		state.loadingError = true;
 	} finally {
@@ -239,19 +290,13 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
-async function loadFieldsToMap(): Promise<void> {
+const createRequestParams = (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
-
-	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
-	if (typeof methodName !== 'string') {
-		return;
-	}
-
-	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
+	const requestParams: ResourceMapperFieldsRequestDto = {
 		nodeTypeAndVersion: {
-			name: props.node?.type,
+			name: props.node.type,
 			version: props.node.typeVersion,
 		},
 		currentNodeParameters: resolveRequiredParameters(
@@ -262,7 +307,38 @@ async function loadFieldsToMap(): Promise<void> {
 		methodName,
 		credentials: props.node.credentials,
 	};
-	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+
+	return requestParams;
+};
+
+async function fetchFields(): Promise<ResourceMapperFields | null> {
+	const { resourceMapperMethod, localResourceMapperMethod } =
+		props.parameter.typeOptions?.resourceMapper ?? {};
+
+	let fetchedFields = null;
+
+	if (typeof resourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			resourceMapperMethod,
+		) as ResourceMapperFieldsRequestDto;
+		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+	} else if (typeof localResourceMapperMethod === 'string') {
+		const requestParams = createRequestParams(
+			localResourceMapperMethod,
+		) as ResourceMapperFieldsRequestDto;
+
+		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
+	}
+	return fetchedFields;
+}
+
+async function loadAndSetFieldsToMap(): Promise<void> {
+	if (!props.node) {
+		return;
+	}
+
+	const fetchedFields = await fetchFields();
+
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
 			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
@@ -417,14 +493,20 @@ function addField(name: string): void {
 	if (name === 'removeAllFields') {
 		return removeAllFields();
 	}
+	const schema = state.paramValue.schema;
+	const field = schema.find((f) => f.id === name);
+
 	state.paramValue.value = {
 		...state.paramValue.value,
-		[name]: null,
+		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+		// mode you get when the field exists, but is empty in `Fixed` mode.
+		[name]: field?.type === 'boolean' ? false : null,
 	};
-	const field = state.paramValue.schema.find((f) => f.id === name);
+
 	if (field) {
 		field.removed = false;
-		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
+		schema.splice(schema.indexOf(field), 1, field);
 	}
 	emitValueChanged();
 }
@@ -531,11 +613,26 @@ defineExpose({
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
 			:is-read-only="isReadOnly"
+			:is-data-stale="state.hasStaleFields"
 			@field-value-changed="fieldValueChanged"
 			@remove-field="removeField"
 			@add-field="addField"
 			@refresh-field-list="initFetching(true)"
 		/>
+		<N8nCallout v-else-if="state.hasStaleFields" theme="info" :iconless="true">
+			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
+			<template #trailingContent>
+				<N8nButton
+					size="mini"
+					icon="refresh"
+					type="secondary"
+					:loading="state.refreshInProgress"
+					@click="initFetching(true)"
+				>
+					{{ locale.baseText('generic.refresh') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
 		<N8nNotice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
 		>
@@ -548,5 +645,32 @@ defineExpose({
 				})
 			}}
 		</N8nNotice>
+		<div v-if="showTypeConversionOptions && hasFields" :class="$style.typeConversionOptions">
+			<ParameterInputFull
+				:parameter="{
+					name: 'attemptToConvertTypes',
+					type: 'boolean',
+					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
+					default: false,
+					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+				}"
+				:path="props.path + '.attemptToConvertTypes'"
+				:value="state.paramValue.attemptToConvertTypes"
+				@update="
+					(x: IUpdateInformation<NodeParameterValueType>) => {
+						state.paramValue.attemptToConvertTypes = x.value as boolean;
+						emitValueChanged();
+					}
+				"
+			/>
+		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.typeConversionOptions {
+	display: grid;
+	padding: var(--spacing-m);
+	gap: var(--spacing-2xs);
+}
+</style>

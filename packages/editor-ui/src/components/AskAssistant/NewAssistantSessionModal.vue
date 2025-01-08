@@ -66,9 +66,9 @@ const startNewSession = async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button :label="$locale.baseText('generic.cancel')" type="secondary" @click="close" />
+				<n8n-button :label="i18n.baseText('generic.cancel')" type="secondary" @click="close" />
 				<n8n-button
-					:label="$locale.baseText('aiAssistant.newSessionModal.confirm')"
+					:label="i18n.baseText('aiAssistant.newSessionModal.confirm')"
 					@click="startNewSession"
 				/>
 			</div>

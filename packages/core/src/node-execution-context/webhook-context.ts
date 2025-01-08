@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 import type {
+	AINodeConnectionType,
 	CloseFunction,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
-	IGetNodeParameterOptions,
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
@@ -12,8 +12,6 @@ import type {
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
-	NodeParameterValueType,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
@@ -23,17 +21,14 @@ import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
 	copyBinaryFile,
-	getAdditionalKeys,
 	getBinaryHelperFunctions,
-	getCredentials,
-	getInputConnectionData,
-	getNodeParameter,
 	getNodeWebhookUrl,
 	getRequestHelperFunctions,
 	returnJsonArray,
 } from '@/NodeExecuteFunctions';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { getInputConnectionData } from './utils/getInputConnectionData';
 
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
@@ -47,9 +42,28 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		mode: WorkflowExecuteMode,
 		private readonly webhookData: IWebhookData,
 		private readonly closeFunctions: CloseFunction[],
-		private readonly runExecutionData: IRunExecutionData | null,
+		runExecutionData: IRunExecutionData | null,
 	) {
-		super(workflow, node, additionalData, mode);
+		let connectionInputData: INodeExecutionData[] = [];
+		let executionData: IExecuteData | undefined;
+
+		if (runExecutionData?.executionData !== undefined) {
+			executionData = runExecutionData.executionData.nodeExecutionStack[0];
+			if (executionData !== undefined) {
+				connectionInputData = executionData.data.main[0]!;
+			}
+		}
+
+		super(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			0,
+			connectionInputData,
+			executionData,
+		);
 
 		this.helpers = {
 			createDeferredPromise,
@@ -71,7 +85,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await getCredentials<T>(this.workflow, this.node, type, this.additionalData, this.mode);
+		return await this._getCredentials<T>(type);
 	}
 
 	getBodyData() {
@@ -116,7 +130,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.node,
 			this.additionalData,
 			this.mode,
-			getAdditionalKeys(this.additionalData, this.mode, null),
+			this.additionalKeys,
 		);
 	}
 
@@ -124,7 +138,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	async getInputConnectionData(inputName: NodeConnectionType, itemIndex: number): Promise<unknown> {
+	async getInputConnectionData(
+		connectionType: AINodeConnectionType,
+		itemIndex: number,
+	): Promise<unknown> {
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data.
@@ -144,90 +161,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			node: this.node,
 			source: null,
 		};
-		const runIndex = 0;
 
 		return await getInputConnectionData.call(
 			this,
 			this.workflow,
 			runExecutionData,
-			runIndex,
+			this.runIndex,
 			connectionInputData,
 			{} as ITaskDataConnections,
 			this.additionalData,
 			executeData,
 			this.mode,
 			this.closeFunctions,
-			inputName,
+			connectionType,
 			itemIndex,
-		);
-	}
-
-	evaluateExpression(expression: string, evaluateItemIndex?: number) {
-		const itemIndex = evaluateItemIndex ?? 0;
-		const runIndex = 0;
-
-		let connectionInputData: INodeExecutionData[] = [];
-		let executionData: IExecuteData | undefined;
-
-		if (this.runExecutionData?.executionData !== undefined) {
-			executionData = this.runExecutionData.executionData.nodeExecutionStack[0];
-
-			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0]!;
-			}
-		}
-
-		const additionalKeys = getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);
-
-		return this.workflow.expression.resolveSimpleParameterValue(
-			`=${expression}`,
-			{},
-			this.runExecutionData,
-			runIndex,
-			itemIndex,
-			this.node.name,
-			connectionInputData,
-			this.mode,
-			additionalKeys,
-			executionData,
-		);
-	}
-
-	getNodeParameter(
-		parameterName: string,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object {
-		const itemIndex = 0;
-		const runIndex = 0;
-
-		let connectionInputData: INodeExecutionData[] = [];
-		let executionData: IExecuteData | undefined;
-
-		if (this.runExecutionData?.executionData !== undefined) {
-			executionData = this.runExecutionData.executionData.nodeExecutionStack[0];
-
-			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0]!;
-			}
-		}
-
-		const additionalKeys = getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);
-
-		return getNodeParameter(
-			this.workflow,
-			this.runExecutionData,
-			runIndex,
-			connectionInputData,
-			this.node,
-			parameterName,
-			itemIndex,
-			this.mode,
-			additionalKeys,
-			executionData,
-			fallbackValue,
-			options,
 		);
 	}
 }

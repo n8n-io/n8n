@@ -6,6 +6,16 @@ import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { hoverTooltipSource, infoBoxTooltips } from './InfoBoxTooltip';
 import * as utils from '@/plugins/codemirror/completions/utils';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import { completionStatus } from '@codemirror/autocomplete';
+
+vi.mock('@codemirror/autocomplete', async (importOriginal) => {
+	const actual = await importOriginal<{}>();
+
+	return {
+		...actual,
+		completionStatus: vi.fn(() => null),
+	};
+});
 
 describe('Infobox tooltips', () => {
 	beforeEach(() => {
@@ -98,6 +108,13 @@ describe('Infobox tooltips', () => {
 			const tooltip = hoverTooltip('{{ $json.str.includ|es() }}');
 			expect(tooltip).not.toBeNull();
 			expect(infoBoxHeader(tooltip?.view)).toHaveTextContent('includes(searchString, start?)');
+		});
+
+		test('should not show a tooltip when autocomplete is open', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue('foo');
+			vi.mocked(completionStatus).mockReturnValue('active');
+			const tooltip = hoverTooltip('{{ $json.str.includ|es() }}');
+			expect(tooltip).toBeNull();
 		});
 	});
 });

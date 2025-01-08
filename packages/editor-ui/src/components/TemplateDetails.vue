@@ -63,7 +63,7 @@ const redirectToSearchPage = (node: ITemplatesNode) => {
 
 		<TemplateDetailsBlock
 			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
-			:title="$locale.baseText('template.details.categories')"
+			:title="i18n.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
 		</TemplateDetailsBlock>

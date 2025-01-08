@@ -2,11 +2,14 @@
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useI18n } from '@/composables/useI18n';
 
 export interface Props {
 	showTooltip: boolean;
 	position: XYPosition;
 }
+
+const i18n = useI18n();
 
 const props = defineProps<Props>();
 
@@ -35,10 +38,10 @@ const containerCssVars = computed(() => ({
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>
-				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
+				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
 		</n8n-tooltip>
-		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
+		<p :class="$style.label" v-text="i18n.baseText('nodeView.canvasAddButton.addFirstStep')" />
 	</div>
 </template>
 

@@ -39,7 +39,7 @@ const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const isHtmlEditor = computed(() => getArgument('editor') === 'htmlEditor');
 const shouldShowExpressionSelector = computed(
-	() => !props.parameter.noDataExpression && props.showExpressionSelector,
+	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
 const shouldShowOptions = computed(() => {
 	if (props.isReadOnly) {

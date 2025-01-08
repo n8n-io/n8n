@@ -12,7 +12,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 const modelField: INodeProperties = {
@@ -214,6 +216,7 @@ export class LmChatAnthropic implements INodeType {
 			topK: options.topK,
 			topP: options.topP,
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

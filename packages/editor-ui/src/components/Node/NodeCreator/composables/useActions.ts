@@ -19,7 +19,6 @@ import {
 	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
@@ -204,8 +203,6 @@ export const useActions = () => {
 		);
 	}
 	function shouldPrependChatTrigger(addedNodes: AddedNode[]): boolean {
-		const { allNodes } = useWorkflowsStore();
-
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
 			AGENT_NODE_TYPE,
@@ -214,13 +211,11 @@ export const useActions = () => {
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 		];
 
-		const isChatTriggerMissing =
-			allNodes.find((node) =>
-				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type),
-			) === undefined;
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
+		if (!isCompatibleNode) return false;
 
-		return isCompatibleNode && isChatTriggerMissing;
+		const { allNodes } = useWorkflowsStore();
+		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
 	// AI-226: Prepend LLM Chain node when adding a language model

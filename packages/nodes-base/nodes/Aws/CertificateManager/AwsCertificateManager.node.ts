@@ -8,7 +8,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { certificateFields, certificateOperations } from './CertificateDescription';
-
 import { awsApiRequestAllItems, awsApiRequestREST } from './GenericFunctions';
 
 export class AwsCertificateManager implements INodeType {

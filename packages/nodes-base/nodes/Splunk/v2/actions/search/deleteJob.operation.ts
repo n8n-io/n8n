@@ -1,7 +1,8 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { splunkApiRequest } from '../../transport';
 import { searchJobRLC } from '../../helpers/descriptions';
+import { splunkApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [searchJobRLC];
 

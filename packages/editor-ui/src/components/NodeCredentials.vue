@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { ICredentialsResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type {
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	NodeParameterValueType,
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	type INodeCredentialDescription,
+	type INodeCredentialsDetails,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -75,7 +76,6 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
 const nodeHelpers = useNodeHelpers();
-
 const toast = useToast();
 
 const subscribedToCredentialType = ref('');
@@ -261,6 +261,11 @@ function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 			),
 		);
 	});
+
+	if (ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
+		options = options.filter((option) => !option.isManaged);
+	}
+
 	return options;
 }
 
@@ -558,7 +563,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 						<N8nTooltip placement="top">
 							<template #content>
 								<TitledList
-									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
+									:title="`${i18n.baseText('nodeCredentials.issues')}:`"
 									:items="getIssues(type.name)"
 								/>
 							</template>
@@ -574,7 +579,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 						<font-awesome-icon
 							icon="pen"
 							class="clickable"
-							:title="$locale.baseText('nodeCredentials.updateCredential')"
+							:title="i18n.baseText('nodeCredentials.updateCredential')"
 							@click="editCredential(type.name)"
 						/>
 					</div>

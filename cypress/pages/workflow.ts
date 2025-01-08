@@ -1,10 +1,20 @@
 import { BasePage } from './base';
 import { NodeCreator } from './features/node-creator';
 import { META_KEY } from '../constants';
+import type { OpenContextMenuOptions } from '../types';
 import { getVisibleSelect } from '../utils';
 import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
 
 const nodeCreator = new NodeCreator();
+
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 
@@ -17,7 +27,8 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () =>
 			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.el-tag'),
+		tagPills: () =>
+			cy.get('[data-test-id="workflow-tags-container"] span.el-tag:not(.count-container)'),
 		nthTagPill: (n: number) =>
 			cy.get(`[data-test-id="workflow-tags-container"] span.el-tag:nth-child(${n})`),
 		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
@@ -30,7 +41,11 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.getByTestId('canvas-node'),
-				() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
+				() =>
+					cy
+						.getByTestId('canvas-node')
+						.not('[data-node-type="n8n-nodes-internal.addNodes"]')
+						.not('[data-node-type="n8n-nodes-base.stickyNote"]'),
 			),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
@@ -95,7 +110,7 @@ export class WorkflowPage extends BasePage {
 		disabledNodes: () =>
 			cy.ifCanvasVersion(
 				() => cy.get('.node-box.disabled'),
-				() => cy.get('[data-test-id="canvas-trigger-node"][class*="disabled"]'),
+				() => cy.get('[data-test-id*="node"][class*="disabled"]'),
 			),
 		selectedNodes: () =>
 			cy.ifCanvasVersion(
@@ -271,14 +286,14 @@ export class WorkflowPage extends BasePage {
 		},
 		openContextMenu: (
 			nodeTypeName?: string,
-			method: 'right-click' | 'overflow-button' = 'right-click',
+			{ method = 'right-click', anchor = 'center' }: OpenContextMenuOptions = {},
 		) => {
 			const target = nodeTypeName
 				? this.getters.canvasNodeByName(nodeTypeName)
 				: this.getters.nodeViewBackground();
 
 			if (method === 'right-click') {
-				target.rightclick(nodeTypeName ? 'center' : 'topLeft', { force: true });
+				target.rightclick(nodeTypeName ? anchor : 'topLeft', { force: true });
 			} else {
 				target.realHover();
 				target.find('[data-test-id="overflow-node-button"]').click({ force: true });
@@ -295,8 +310,8 @@ export class WorkflowPage extends BasePage {
 			this.actions.openContextMenu(nodeTypeName);
 			this.actions.contextMenuAction('delete');
 		},
-		executeNode: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
+		executeNode: (nodeTypeName: string, options?: OpenContextMenuOptions) => {
+			this.actions.openContextMenu(nodeTypeName, options);
 			this.actions.contextMenuAction('execute');
 		},
 		addStickyFromContextMenu: () => {
@@ -323,7 +338,7 @@ export class WorkflowPage extends BasePage {
 			this.actions.contextMenuAction('toggle_pin');
 		},
 		openNodeFromContextMenu: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName, 'overflow-button');
+			this.actions.openContextMenu(nodeTypeName, { method: 'overflow-button' });
 			this.actions.contextMenuAction('open');
 		},
 		selectAllFromContextMenu: () => {
@@ -331,8 +346,14 @@ export class WorkflowPage extends BasePage {
 			this.actions.contextMenuAction('select_all');
 		},
 		deselectAll: () => {
-			this.actions.openContextMenu();
-			this.actions.contextMenuAction('deselect_all');
+			cy.ifCanvasVersion(
+				() => {
+					this.actions.openContextMenu();
+					this.actions.contextMenuAction('deselect_all');
+				},
+				// rightclick doesn't work with vueFlow canvas
+				() => this.getters.nodeViewBackground().click('topLeft'),
+			);
 		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();

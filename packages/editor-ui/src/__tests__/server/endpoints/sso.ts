@@ -1,16 +1,17 @@
+import type { SamlPreferences } from '@n8n/api-types';
 import type { Server, Request } from 'miragejs';
 import { Response } from 'miragejs';
-import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
+import type { SamlPreferencesExtractedData } from '@/Interface';
 import { faker } from '@faker-js/faker';
 import type { AppSchema } from '@/__tests__/server/types';
 import { jsonParse } from 'n8n-workflow';
 
-let samlConfig: SamlPreferences & SamlPreferencesExtractedData = {
+let samlConfig = {
 	metadata: '<?xml version="1.0"?>',
 	metadataUrl: '',
 	entityID: faker.internet.url(),
 	returnUrl: faker.internet.url(),
-};
+} as SamlPreferences & SamlPreferencesExtractedData;
 
 export function routesForSSO(server: Server) {
 	server.get('/rest/sso/saml/config', () => {

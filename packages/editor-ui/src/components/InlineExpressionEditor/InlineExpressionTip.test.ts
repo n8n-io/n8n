@@ -26,7 +26,8 @@ describe('InlineExpressionTip.vue', () => {
 	beforeEach(() => {
 		mockNdvState = {
 			hasInputData: true,
-			isNDVDataEmpty: vi.fn(() => true),
+			isInputPanelEmpty: true,
+			isOutputPanelEmpty: true,
 			setHighlightDraggables: vi.fn(),
 		};
 	});
@@ -42,7 +43,8 @@ describe('InlineExpressionTip.vue', () => {
 		test('should show the drag-n-drop tip', async () => {
 			mockNdvState = {
 				hasInputData: true,
-				isNDVDataEmpty: vi.fn(() => false),
+				isInputPanelEmpty: false,
+				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
 				setHighlightDraggables: vi.fn(),
 			};
@@ -62,7 +64,8 @@ describe('InlineExpressionTip.vue', () => {
 			mockNdvState = {
 				hasInputData: false,
 				isInputParentOfActiveNode: true,
-				isNDVDataEmpty: vi.fn(() => false),
+				isInputPanelEmpty: false,
+				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
 				setHighlightDraggables: vi.fn(),
 			};
@@ -77,7 +80,8 @@ describe('InlineExpressionTip.vue', () => {
 		test('should show the correct tip for objects', async () => {
 			mockNdvState = {
 				hasInputData: true,
-				isNDVDataEmpty: vi.fn(() => false),
+				isInputPanelEmpty: false,
+				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
 				setHighlightDraggables: vi.fn(),
 			};
@@ -106,7 +110,8 @@ describe('InlineExpressionTip.vue', () => {
 		test('should show the correct tip for primitives', async () => {
 			mockNdvState = {
 				hasInputData: true,
-				isNDVDataEmpty: vi.fn(() => false),
+				isInputPanelEmpty: false,
+				isOutputPanelEmpty: false,
 				focusedMappableInput: 'Some Input',
 				setHighlightDraggables: vi.fn(),
 			};

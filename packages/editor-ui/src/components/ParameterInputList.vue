@@ -36,6 +36,7 @@ import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
 import { captureException } from '@sentry/vue';
 import { N8nNotice, N8nIconButton, N8nInputLabel, N8nText, N8nIcon } from 'n8n-design-system';
+import { useI18n } from '@/composables/useI18n';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -69,6 +70,7 @@ const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers({ router });
+const i18n = useI18n();
 
 onErrorCaptured((e, component) => {
 	if (
@@ -322,7 +324,10 @@ function mustHideDuringCustomApiCall(
 	return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 }
 
-function displayNodeParameter(parameter: INodeProperties): boolean {
+function displayNodeParameter(
+	parameter: INodeProperties,
+	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
+): boolean {
 	if (parameter.type === 'hidden') {
 		return false;
 	}
@@ -343,7 +348,7 @@ function displayNodeParameter(parameter: INodeProperties): boolean {
 		return false;
 	}
 
-	if (parameter.displayOptions === undefined) {
+	if (parameter[displayKey] === undefined) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
@@ -402,13 +407,19 @@ function displayNodeParameter(parameter: INodeProperties): boolean {
 		if (props.path) {
 			rawValues = deepCopy(props.nodeValues);
 			set(rawValues, props.path, nodeValues);
-			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value);
+			return nodeHelpers.displayParameter(rawValues, parameter, props.path, node.value, displayKey);
 		} else {
-			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value);
+			return nodeHelpers.displayParameter(nodeValues, parameter, '', node.value, displayKey);
 		}
 	}
 
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, node.value);
+	return nodeHelpers.displayParameter(
+		props.nodeValues,
+		parameter,
+		props.path,
+		node.value,
+		displayKey,
+	);
 }
 
 function valueChanged(parameterData: IUpdateInformation): void {
@@ -502,7 +513,7 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 			<N8nNotice
 				v-else-if="parameter.type === 'notice'"
 				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
-				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				:content="i18n.nodeText().inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
 
@@ -520,19 +531,9 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
-					type="tertiary"
-					text
-					size="mini"
-					icon="trash"
-					class="delete-option"
-					:title="$locale.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></N8nIconButton>
 				<N8nInputLabel
-					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-					:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
+					:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
+					:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
 					color="text-dark"
@@ -561,14 +562,24 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					<template #fallback>
 						<N8nText size="small" class="async-notice">
 							<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
-							{{ $locale.baseText('parameterInputList.loadingFields') }}
+							{{ i18n.baseText('parameterInputList.loadingFields') }}
 						</N8nText>
 					</template>
 				</Suspense>
 				<N8nText v-else size="small" color="danger" class="async-notice">
 					<N8nIcon icon="exclamation-triangle" size="xsmall" />
-					{{ $locale.baseText('parameterInputList.loadingError') }}
+					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
+				<N8nIconButton
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					type="tertiary"
+					text
+					size="mini"
+					icon="trash"
+					class="icon-button"
+					:title="i18n.baseText('parameterInputList.delete')"
+					@click="deleteOption(parameter.name)"
+				></N8nIconButton>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -609,8 +620,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					text
 					size="mini"
 					icon="trash"
-					class="delete-option"
-					:title="$locale.baseText('parameterInputList.delete')"
+					class="icon-button"
+					:title="i18n.baseText('parameterInputList.delete')"
 					@click="deleteOption(parameter.name)"
 				></N8nIconButton>
 
@@ -620,7 +631,10 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 					:value="getParameterValue(parameter.name)"
 					:display-options="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
-					:is-read-only="isReadOnly"
+					:is-read-only="
+						isReadOnly ||
+						(parameter.disabledOptions && displayNodeParameter(parameter, 'disabledOptions'))
+					"
 					:hide-label="false"
 					:node-values="nodeValues"
 					@update="valueChanged"
@@ -636,12 +650,19 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 
 <style lang="scss">
 .parameter-input-list-wrapper {
-	.delete-option {
+	--disabled-fill: var(--color-background-base);
+	.icon-button {
 		position: absolute;
 		opacity: 0;
 		top: 0;
-		left: calc(-1 * var(--spacing-2xs));
+		left: calc(-0.5 * var(--spacing-2xs));
 		transition: opacity 100ms ease-in;
+		Button {
+			color: var(--color-icon-base);
+		}
+	}
+	.icon-button > Button:hover {
+		color: var(--color-icon-hover);
 	}
 
 	.indent > div {
@@ -661,8 +682,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 		position: relative;
 		margin: var(--spacing-xs) 0;
 	}
-	.parameter-item:hover > .delete-option,
-	.multi-parameter:hover > .delete-option {
+	.parameter-item:hover > .icon-button,
+	.multi-parameter:hover > .icon-button {
 		opacity: 1;
 	}
 

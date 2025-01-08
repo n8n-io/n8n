@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Credentials, NodeExecuteFunctions } from 'n8n-core';
+import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
@@ -26,7 +27,6 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -379,7 +379,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null, {
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseSecrets,
 		});
 

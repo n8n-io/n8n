@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import WorkflowSettingsVue from '@/components/WorkflowSettings.vue';
 
 import { setupServer } from '@/__tests__/server';
+import type { MockInstance } from 'vitest';
 import { afterAll, beforeAll } from 'vitest';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -23,6 +24,8 @@ let pinia: ReturnType<typeof createPinia>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let uiStore: ReturnType<typeof useUIStore>;
+
+let fetchAllWorkflowsSpy: MockInstance<(typeof workflowsStore)['fetchAllWorkflows']>;
 
 const createComponent = createComponentRenderer(WorkflowSettingsVue);
 
@@ -46,6 +49,18 @@ describe('WorkflowSettingsVue', () => {
 
 		vi.spyOn(workflowsStore, 'workflowName', 'get').mockReturnValue('Test Workflow');
 		vi.spyOn(workflowsStore, 'workflowId', 'get').mockReturnValue('1');
+		fetchAllWorkflowsSpy = vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue([
+			{
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				nodes: [],
+				connections: {},
+				createdAt: 1,
+				updatedAt: 1,
+				versionId: '123',
+			},
+		]);
 		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
 			name: 'Test Workflow',
@@ -113,6 +128,20 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
+	it('should fetch all workflows and render them in the error workflows dropdown', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		const { getByTestId } = createComponent({ pinia });
+
+		await nextTick();
+		const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+		// first is `- No Workflow -`, second is the workflow returned by
+		// `workflowsStore.fetchAllWorkflows`
+		expect(dropdownItems).toHaveLength(2);
+		expect(fetchAllWorkflowsSpy).toHaveBeenCalledTimes(1);
+		expect(fetchAllWorkflowsSpy).toHaveBeenCalledWith();
+	});
+
 	it('should not remove valid workflow ID characters', async () => {
 		const validWorkflowList = '1234567890, abcde, efgh, 1234';
 
@@ -145,4 +174,50 @@ describe('WorkflowSettingsVue', () => {
 
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toHaveValue(cleanedUpWorkflowList);
 	});
+
+	test.each([
+		['workflow-settings-save-failed-executions', 'Default - Save', () => {}],
+		[
+			'workflow-settings-save-failed-executions',
+			'Default - Do not save',
+			() => {
+				settingsStore.saveDataErrorExecution = 'none';
+			},
+		],
+		['workflow-settings-save-success-executions', 'Default - Save', () => {}],
+		[
+			'workflow-settings-save-success-executions',
+			'Default - Do not save',
+			() => {
+				settingsStore.saveDataSuccessExecution = 'none';
+			},
+		],
+		[
+			'workflow-settings-save-manual-executions',
+			'Default - Save',
+			() => {
+				settingsStore.saveManualExecutions = true;
+			},
+		],
+		['workflow-settings-save-manual-executions', 'Default - Do not save', () => {}],
+		[
+			'workflow-settings-save-execution-progress',
+			'Default - Save',
+			() => {
+				settingsStore.saveDataProgressExecution = true;
+			},
+		],
+		['workflow-settings-save-execution-progress', 'Default - Do not save', () => {}],
+	])(
+		'should show %s dropdown correct default value as %s',
+		async (testId, optionText, storeSetter) => {
+			storeSetter();
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId(testId));
+
+			expect(dropdownItems[0]).toHaveTextContent(optionText);
+		},
+	);
 });

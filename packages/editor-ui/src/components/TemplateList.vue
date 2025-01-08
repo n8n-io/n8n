@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import TemplateCard from './TemplateCard.vue';
 import type { ITemplatesWorkflow } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
 interface Props {
 	workflows?: ITemplatesWorkflow[];
@@ -28,6 +29,8 @@ const props = withDefaults(defineProps<Props>(), {
 	simpleView: false,
 	totalCount: 0,
 });
+
+const i18n = useI18n();
 
 const loader = ref<HTMLElement | null>(null);
 
@@ -76,7 +79,7 @@ function onUseWorkflow(event: MouseEvent, id: number) {
 	<div v-if="loading || workflows.length" :class="$style.list">
 		<div v-if="!simpleView" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
-				{{ $locale.baseText('templates.workflows') }}
+				{{ i18n.baseText('templates.workflows') }}
 				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>

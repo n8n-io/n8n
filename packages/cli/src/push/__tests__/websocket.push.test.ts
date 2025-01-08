@@ -1,25 +1,25 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
-import { Container } from 'typedi';
+import { Logger } from 'n8n-core';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 
 jest.useFakeTimers();
 
 class MockWebSocket extends EventEmitter {
-	public isAlive = true;
+	isAlive = true;
 
-	public ping = jest.fn();
+	ping = jest.fn();
 
-	public send = jest.fn();
+	send = jest.fn();
 
-	public terminate = jest.fn();
+	terminate = jest.fn();
 
-	public close = jest.fn();
+	close = jest.fn();
 }
 
 const createMockWebSocket = () => new MockWebSocket() as unknown as jest.Mocked<WebSocket>;
@@ -73,7 +73,7 @@ describe('WebSocketPush', () => {
 	it('sends data to one connection', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToOne(pushMessage.type, pushMessage.data, pushRef1);
+		webSocketPush.sendToOne(pushMessage, pushRef1);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
@@ -82,7 +82,7 @@ describe('WebSocketPush', () => {
 	it('sends data to all connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToAll(pushMessage.type, pushMessage.data);
+		webSocketPush.sendToAll(pushMessage);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
@@ -101,7 +101,7 @@ describe('WebSocketPush', () => {
 	it('sends data to all users connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToUsers(pushMessage.type, pushMessage.data, [userId]);
+		webSocketPush.sendToUsers(pushMessage, [userId]);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);

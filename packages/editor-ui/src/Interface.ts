@@ -2,6 +2,7 @@ import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { Connection } from '@jsplumb/core';
 import type {
+	BannerName,
 	FrontendSettings,
 	Iso8601DateTimeString,
 	IUserManagementSettings,
@@ -26,9 +27,6 @@ import type {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	INodeTypeNameVersion,
-	ILoadOptions,
-	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
 	IDisplayOptions,
@@ -38,7 +36,6 @@ import type {
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	IUserSettings,
-	BannerName,
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
@@ -46,6 +43,7 @@ import type {
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
+	ITaskData,
 } from 'n8n-workflow';
 
 import type {
@@ -58,7 +56,6 @@ import type {
 	ROLE,
 } from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 
@@ -182,6 +179,10 @@ export interface IAiDataContent {
 	metadata: {
 		executionTime: number;
 		startTime: number;
+		subExecution?: {
+			workflowId: string;
+			executionId: string;
+		};
 	};
 }
 
@@ -196,12 +197,21 @@ export interface IStartRunData {
 	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
+	dirtyNodeNames?: string[];
+	triggerToStartFrom?: {
+		name: string;
+		data?: ITaskData;
+	};
 }
 
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
+	metadata: {
+		hasExecutionIds: boolean;
+		data: Array<INodeExecutionData['metadata'] | undefined>;
+	};
 }
 
 // Simple version of n8n-workflow.Workflow
@@ -231,13 +241,26 @@ export interface IWorkflowDataUpdate {
 	meta?: WorkflowMetadata;
 }
 
+export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
+	projectId?: string;
+}
+
+/**
+ * Workflow data with mandatory `templateId`
+ * This is used to identify sample workflows that we create for onboarding
+ */
+export interface WorkflowDataWithTemplateId extends Omit<IWorkflowDataCreate, 'meta'> {
+	meta: WorkflowMetadata & {
+		templateId: Required<WorkflowMetadata>['templateId'];
+	};
+}
+
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta: WorkflowMetadata;
 }
 
 export interface NewWorkflowResponse {
 	name: string;
-	onboardingFlowEnabled?: boolean;
 	defaultSettings: IWorkflowSettings;
 }
 
@@ -264,7 +287,6 @@ export interface IWorkflowTemplate {
 
 export interface INewWorkflowData {
 	name: string;
-	onboardingFlowEnabled: boolean;
 }
 
 export interface WorkflowMetadata {
@@ -338,6 +360,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	currentUserHasAccess?: boolean;
 	scopes?: Scope[];
 	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
+	isManaged: boolean;
 }
 
 export interface ICredentialsBase {
@@ -357,6 +380,7 @@ export interface IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
+	createdAt: Date;
 	stoppedAt?: Date;
 	workflowId?: string; // To be able to filter executions easily //
 }
@@ -392,15 +416,10 @@ export interface IExecutionsListResponse {
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;
-	finished?: boolean;
 	status: ExecutionStatus;
 	mode: WorkflowExecuteMode;
-	retryOf?: string | null;
-	retrySuccessId?: string | null;
 	startedAt: Date;
-	stoppedAt?: Date;
 	workflowId: string;
-	workflowName?: string;
 }
 
 export interface IExecutionsStopData {
@@ -626,7 +645,6 @@ export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromA
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
 	maxExecutionTimeout?: number;
@@ -702,6 +720,7 @@ export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
 	actionKey: string;
+	outputConnectionType?: NodeConnectionType;
 	codex: {
 		label: string;
 		categories: string[];
@@ -840,14 +859,12 @@ export interface IUsedCredential {
 }
 
 export interface WorkflowsState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeWorkflowExecution: ExecutionSummary | null;
 	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
-	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
@@ -1084,11 +1101,6 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
-export interface IWorkflowsState {
-	currentWorkflowExecutions: ExecutionSummary[];
-	activeWorkflowExecution: ExecutionSummary | null;
-	finishedExecutionsCount: number;
-}
 export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
@@ -1129,8 +1141,8 @@ export interface IInviteResponse {
 	error?: string;
 }
 
-export interface ITab {
-	value: string | number;
+export interface ITab<Value extends string | number = string | number> {
+	value: Value;
 	label?: string;
 	href?: string;
 	icon?: string;
@@ -1251,35 +1263,6 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export declare namespace DynamicNodeParameters {
-	interface BaseRequest {
-		path: string;
-		nodeTypeAndVersion: INodeTypeNameVersion;
-		currentNodeParameters: INodeParameters;
-		methodName?: string;
-		credentials?: INodeCredentials;
-	}
-
-	interface OptionsRequest extends BaseRequest {
-		loadOptions?: ILoadOptions;
-	}
-
-	interface ResourceLocatorResultsRequest extends BaseRequest {
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}
-
-	interface ResourceMapperFieldsRequest extends BaseRequest {
-		methodName: string;
-	}
-
-	interface ActionResultRequest extends BaseRequest {
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}
-}
-
 export interface EnvironmentVariable {
 	id: string;
 	key: string;
@@ -1306,6 +1289,7 @@ export type ExecutionFilterType = {
 
 export type ExecutionsQueryFilter = {
 	status?: ExecutionStatus[];
+	projectId?: string;
 	workflowId?: string;
 	finished?: boolean;
 	waitTill?: boolean;
@@ -1316,90 +1300,10 @@ export type ExecutionsQueryFilter = {
 	vote?: ExecutionFilterVote;
 };
 
-export type SamlAttributeMapping = {
-	email: string;
-	firstName: string;
-	lastName: string;
-	userPrincipalName: string;
-};
-
-export type SamlLoginBinding = 'post' | 'redirect';
-
-export type SamlSignatureConfig = {
-	prefix: 'ds';
-	location: {
-		reference: '/samlp:Response/saml:Issuer';
-		action: 'after';
-	};
-};
-
-export type SamlPreferencesLoginEnabled = {
-	loginEnabled: boolean;
-};
-
-export type SamlPreferences = {
-	mapping?: SamlAttributeMapping;
-	metadata?: string;
-	metadataUrl?: string;
-	ignoreSSL?: boolean;
-	loginBinding?: SamlLoginBinding;
-	acsBinding?: SamlLoginBinding;
-	authnRequestsSigned?: boolean;
-	loginLabel?: string;
-	wantAssertionsSigned?: boolean;
-	wantMessageSigned?: boolean;
-	signatureConfig?: SamlSignatureConfig;
-} & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
-
 export type SamlPreferencesExtractedData = {
 	entityID: string;
 	returnUrl: string;
 };
-
-export type SshKeyTypes = ['ed25519', 'rsa'];
-
-export type SourceControlPreferences = {
-	connected: boolean;
-	repositoryUrl: string;
-	branchName: string;
-	branches: string[];
-	branchReadOnly: boolean;
-	branchColor: string;
-	publicKey?: string;
-	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
-	currentBranch?: string;
-};
-
-export interface SourceControlStatus {
-	ahead: number;
-	behind: number;
-	conflicted: string[];
-	created: string[];
-	current: string;
-	deleted: string[];
-	detached: boolean;
-	files: Array<{
-		path: string;
-		index: string;
-		working_dir: string;
-	}>;
-	modified: string[];
-	not_added: string[];
-	renamed: string[];
-	staged: string[];
-	tracking: null;
-}
-
-export interface SourceControlAggregatedFile {
-	conflict: boolean;
-	file: string;
-	id: string;
-	location: string;
-	name: string;
-	status: string;
-	type: string;
-	updatedAt?: string;
-}
 
 export declare namespace Cloud {
 	export interface PlanData {
@@ -1473,6 +1377,7 @@ export interface ExternalSecretsProvider {
 export type CloudUpdateLinkSourceType =
 	| 'advanced-permissions'
 	| 'canvas-nav'
+	| 'concurrency'
 	| 'custom-data-filter'
 	| 'workflow_sharing'
 	| 'credential_sharing'
@@ -1495,6 +1400,7 @@ export type CloudUpdateLinkSourceType =
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
+	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
 	| 'upgrade-api'
@@ -1585,3 +1491,42 @@ export type ApiKey = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+export type InputPanel = {
+	nodeName?: string;
+	run?: number;
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+};
+
+export type OutputPanel = {
+	branch?: number;
+	data: {
+		isEmpty: boolean;
+	};
+	editMode: {
+		enabled: boolean;
+		value: string;
+	};
+};
+
+export type Draggable = {
+	isDragging: boolean;
+	type: string;
+	data: string;
+	dimensions: DOMRect | null;
+	activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
+};
+
+export type MainPanelType = 'regular' | 'dragless' | 'inputless' | 'unknown' | 'wide';
+
+export type MainPanelDimensions = Record<
+	MainPanelType,
+	{
+		relativeLeft: number;
+		relativeRight: number;
+		relativeWidth: number;
+	}
+>;

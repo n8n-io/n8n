@@ -27,7 +27,8 @@ export interface IUserManagementSettings {
 }
 
 export interface FrontendSettings {
-	isDocker?: boolean;
+	inE2ETests: boolean;
+	isDocker: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
@@ -162,7 +163,11 @@ export interface FrontendSettings {
 		pruneTime: number;
 		licensePruneTime: number;
 	};
-	pruning: {
+	aiCredits: {
+		enabled: boolean;
+		credits: number;
+	};
+	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;
 		maxCount: number;
@@ -171,4 +176,5 @@ export interface FrontendSettings {
 		blockFileAccessToN8nFiles: boolean;
 	};
 	betaFeatures: FrontendBetaFeatures[];
+	easyAIWorkflowOnboarded: boolean;
 }

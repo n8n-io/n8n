@@ -1,3 +1,7 @@
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -5,11 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
 
 interface IRenameKey {
 	currentKey: string;

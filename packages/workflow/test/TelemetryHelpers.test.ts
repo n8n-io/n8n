@@ -2,15 +2,17 @@ import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
 import { STICKY_NODE_TYPE } from '@/Constants';
-import { ApplicationError } from '@/errors';
-import type { IRunData } from '@/Interfaces';
+import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
+import type { IRun, IRunData } from '@/Interfaces';
 import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
+	extractLastExecutedNodeCredentialData,
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
+	userInInstanceRanOutOfFreeAiCredits,
 } from '@/TelemetryHelpers';
 import { randomInt } from '@/utils';
 
@@ -885,6 +887,271 @@ describe('generateNodesGraph', () => {
 	});
 });
 
+describe('extractLastExecutedNodeCredentialData', () => {
+	const cases: Array<[string, IRun]> = [
+		['no data', mock<IRun>({ data: {} })],
+		['no executionData', mock<IRun>({ data: { executionData: undefined } })],
+		[
+			'no nodeExecutionStack',
+			mock<IRun>({ data: { executionData: { nodeExecutionStack: undefined } } }),
+		],
+		[
+			'no node',
+			mock<IRun>({
+				data: { executionData: { nodeExecutionStack: [{ node: undefined }] } },
+			}),
+		],
+		[
+			'no credentials',
+			mock<IRun>({
+				data: { executionData: { nodeExecutionStack: [{ node: { credentials: undefined } }] } },
+			}),
+		],
+	];
+
+	test.each(cases)(
+		'should return credentialId and credentialsType with null if %s',
+		(_, runData) => {
+			expect(extractLastExecutedNodeCredentialData(runData)).toBeNull();
+		},
+	);
+
+	it('should return correct credentialId and credentialsType when last node executed has credential', () => {
+		const runData = mock<IRun>({
+			data: {
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+			},
+		});
+
+		expect(extractLastExecutedNodeCredentialData(runData)).toMatchObject(
+			expect.objectContaining({ credentialId: 'nhu-l8E4hX', credentialType: 'openAiApi' }),
+		);
+	});
+});
+
+describe('userInInstanceRanOutOfFreeAiCredits', () => {
+	it('should return false if could not find node credentials', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: {} } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'free_ai_credits_request_error',
+									code: 200,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'free_ai_credits_request_error',
+								code: 200,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return false if could not credential type it is not openAiApi', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { jiraApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'free_ai_credits_request_error',
+									code: 200,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'free_ai_credits_request_error',
+								code: 200,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return false if error is not NodeApiError', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new ExpressionError('error'),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return false if error is not a free ai credit error', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'error_type',
+									code: 200,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'error_type',
+								code: 200,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(false);
+	});
+
+	it('should return true if the user has ran out of free AI credits', () => {
+		const runData = {
+			status: 'error',
+			mode: 'manual',
+			data: {
+				startData: {
+					destinationNode: 'OpenAI',
+					runNodeFilter: ['OpenAI'],
+				},
+				executionData: {
+					nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
+				},
+				resultData: {
+					runData: {},
+					lastNodeExecuted: 'OpenAI',
+					error: new NodeApiError(
+						{
+							id: '1',
+							typeVersion: 1,
+							name: 'OpenAI',
+							type: 'n8n-nodes-base.openAi',
+							parameters: {},
+							position: [100, 200],
+						},
+						{
+							message: `400 - ${JSON.stringify({
+								error: {
+									message: 'error message',
+									type: 'free_ai_credits_request_error',
+									code: 400,
+								},
+							})}`,
+							error: {
+								message: 'error message',
+								type: 'free_ai_credits_request_error',
+								code: 400,
+							},
+						},
+						{
+							httpCode: '400',
+						},
+					),
+				},
+			},
+		} as unknown as IRun;
+
+		expect(userInInstanceRanOutOfFreeAiCredits(runData)).toBe(true);
+	});
+});
+
 function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	const firstId = idMaker();
 	const secondId = idMaker();
@@ -990,11 +1257,8 @@ function alphanumericId() {
 
 const chooseRandomly = <T>(array: T[]) => array[randomInt(array.length)];
 
-function generateTestWorkflowAndRunData(): { workflow: IWorkflowBase; runData: IRunData } {
-	const workflow: IWorkflowBase = {
-		meta: {
-			instanceId: 'a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0',
-		},
+function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; runData: IRunData } {
+	const workflow: Partial<IWorkflowBase> = {
 		nodes: [
 			{
 				parameters: {},
@@ -1096,9 +1360,7 @@ function generateTestWorkflowAndRunData(): { workflow: IWorkflowBase; runData: I
 			},
 			Switch: {
 				main: [
-					// @ts-ignore
 					null,
-					// @ts-ignore
 					null,
 					[
 						{

@@ -70,14 +70,14 @@ const helpTexts = computed(() => ({
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 }));
-const defaultValues = computed(() => ({
+const defaultValues = ref({
 	timezone: 'America/New_York',
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveExecutionProgress: false,
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
-}));
+});
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
@@ -145,8 +145,7 @@ const loadWorkflowCallerPolicyOptions = async () => {
 };
 
 const loadSaveDataErrorExecutionOptions = async () => {
-	saveDataErrorExecutionOptions.value.length = 0;
-	saveDataErrorExecutionOptions.value.push.apply(saveDataErrorExecutionOptions.value, [
+	saveDataErrorExecutionOptions.value = [
 		{
 			key: 'DEFAULT',
 			value: i18n.baseText('workflowSettings.saveDataErrorExecutionOptions.defaultSave', {
@@ -166,12 +165,11 @@ const loadSaveDataErrorExecutionOptions = async () => {
 			key: 'none',
 			value: i18n.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
 		},
-	]);
+	];
 };
 
 const loadSaveDataSuccessExecutionOptions = async () => {
-	saveDataSuccessExecutionOptions.value.length = 0;
-	saveDataSuccessExecutionOptions.value.push.apply(saveDataSuccessExecutionOptions.value, [
+	saveDataSuccessExecutionOptions.value = [
 		{
 			key: 'DEFAULT',
 			value: i18n.baseText('workflowSettings.saveDataSuccessExecutionOptions.defaultSave', {
@@ -191,12 +189,11 @@ const loadSaveDataSuccessExecutionOptions = async () => {
 			key: 'none',
 			value: i18n.baseText('workflowSettings.saveDataSuccessExecutionOptions.doNotSave'),
 		},
-	]);
+	];
 };
 
 const loadSaveExecutionProgressOptions = async () => {
-	saveExecutionProgressOptions.value.length = 0;
-	saveExecutionProgressOptions.value.push.apply(saveExecutionProgressOptions.value, [
+	saveExecutionProgressOptions.value = [
 		{
 			key: 'DEFAULT',
 			value: i18n.baseText('workflowSettings.saveExecutionProgressOptions.defaultSave', {
@@ -215,29 +212,30 @@ const loadSaveExecutionProgressOptions = async () => {
 			key: false,
 			value: i18n.baseText('workflowSettings.saveExecutionProgressOptions.doNotSave'),
 		},
-	]);
+	];
 };
 
 const loadSaveManualOptions = async () => {
-	saveManualOptions.value.length = 0;
-	saveManualOptions.value.push({
-		key: 'DEFAULT',
-		value: i18n.baseText('workflowSettings.saveManualOptions.defaultSave', {
-			interpolate: {
-				defaultValue: defaultValues.value.saveManualExecutions
-					? i18n.baseText('workflowSettings.saveManualOptions.save')
-					: i18n.baseText('workflowSettings.saveManualOptions.doNotSave'),
-			},
-		}),
-	});
-	saveManualOptions.value.push({
-		key: true,
-		value: i18n.baseText('workflowSettings.saveManualOptions.save'),
-	});
-	saveManualOptions.value.push({
-		key: false,
-		value: i18n.baseText('workflowSettings.saveManualOptions.doNotSave'),
-	});
+	saveManualOptions.value = [
+		{
+			key: 'DEFAULT',
+			value: i18n.baseText('workflowSettings.saveManualOptions.defaultSave', {
+				interpolate: {
+					defaultValue: defaultValues.value.saveManualExecutions
+						? i18n.baseText('workflowSettings.saveManualOptions.save')
+						: i18n.baseText('workflowSettings.saveManualOptions.doNotSave'),
+				},
+			}),
+		},
+		{
+			key: true,
+			value: i18n.baseText('workflowSettings.saveManualOptions.save'),
+		},
+		{
+			key: false,
+			value: i18n.baseText('workflowSettings.saveManualOptions.doNotSave'),
+		},
+	];
 };
 
 const loadTimezones = async () => {
@@ -268,9 +266,7 @@ const loadTimezones = async () => {
 };
 
 const loadWorkflows = async () => {
-	const workflowsData = (await workflowsStore.fetchAllWorkflows(
-		workflow.value.homeProject?.id,
-	)) as IWorkflowShortResponse[];
+	const workflowsData = (await workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
 			return -1;
@@ -400,6 +396,7 @@ onMounted(async () => {
 	defaultValues.value.saveDataErrorExecution = settingsStore.saveDataErrorExecution;
 	defaultValues.value.saveDataSuccessExecution = settingsStore.saveDataSuccessExecution;
 	defaultValues.value.saveManualExecutions = settingsStore.saveManualExecutions;
+	defaultValues.value.saveExecutionProgress = settingsStore.saveDataProgressExecution;
 	defaultValues.value.timezone = rootStore.timezone;
 	defaultValues.value.workflowCallerPolicy = settingsStore.workflowCallerPolicyDefaultOption;
 
@@ -423,7 +420,7 @@ onMounted(async () => {
 		);
 	}
 
-	const workflowSettingsData = deepCopy(workflowsStore.workflowSettings) as IWorkflowSettings;
+	const workflowSettingsData = deepCopy(workflowsStore.workflowSettings);
 
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
@@ -438,7 +435,7 @@ onMounted(async () => {
 		workflowSettingsData.saveExecutionProgress = 'DEFAULT';
 	}
 	if (workflowSettingsData.saveManualExecutions === undefined) {
-		workflowSettingsData.saveManualExecutions = defaultValues.value.saveManualExecutions;
+		workflowSettingsData.saveManualExecutions = 'DEFAULT';
 	}
 	if (workflowSettingsData.callerPolicy === undefined) {
 		workflowSettingsData.callerPolicy = defaultValues.value
@@ -473,7 +470,7 @@ onMounted(async () => {
 		width="65%"
 		max-height="80%"
 		:title="
-			$locale.baseText('workflowSettings.settingsFor', {
+			i18n.baseText('workflowSettings.settingsFor', {
 				interpolate: { workflowName, workflowId },
 			})
 		"
@@ -484,9 +481,9 @@ onMounted(async () => {
 			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.executionOrder') + ':' }}
+						{{ i18n.baseText('workflowSettings.executionOrder') + ':' }}
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.executionOrder"
 							placeholder="Select Execution Order"
@@ -507,9 +504,9 @@ onMounted(async () => {
 					</el-col>
 				</el-row>
 
-				<el-row>
+				<el-row data-test-id="error-workflow">
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
+						{{ i18n.baseText('workflowSettings.errorWorkflow') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-n8n-html="helpTexts.errorWorkflow"></div>
@@ -517,7 +514,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
@@ -539,7 +536,7 @@ onMounted(async () => {
 				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
+							{{ i18n.baseText('workflowSettings.callerPolicy') + ':' }}
 							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
@@ -548,11 +545,11 @@ onMounted(async () => {
 							</n8n-tooltip>
 						</el-col>
 
-						<el-col :span="14" class="ignore-key-press">
+						<el-col :span="14" class="ignore-key-press-canvas">
 							<n8n-select
 								v-model="workflowSettings.callerPolicy"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:placeholder="$locale.baseText('workflowSettings.selectOption')"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
 							>
@@ -568,7 +565,7 @@ onMounted(async () => {
 					</el-row>
 					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<el-col :span="10" class="setting-name">
-							{{ $locale.baseText('workflowSettings.callerIds') + ':' }}
+							{{ i18n.baseText('workflowSettings.callerIds') + ':' }}
 							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
@@ -580,7 +577,7 @@ onMounted(async () => {
 							<n8n-input
 								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
-								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
+								:placeholder="i18n.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								data-test-id="workflow-caller-policy-workflow-ids"
 								@update:model-value="onCallerIdsInput"
@@ -590,7 +587,7 @@ onMounted(async () => {
 				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.timezone') + ':' }}
+						{{ i18n.baseText('workflowSettings.timezone') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
@@ -598,7 +595,7 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
@@ -619,7 +616,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
@@ -627,10 +624,10 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveDataErrorExecution"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
@@ -648,7 +645,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
@@ -656,10 +653,10 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveDataSuccessExecution"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
@@ -677,7 +674,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveManualExecutions') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
@@ -685,10 +682,10 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveManualExecutions"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
@@ -706,7 +703,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveExecutionProgress') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
@@ -714,10 +711,10 @@ onMounted(async () => {
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
-					<el-col :span="14" class="ignore-key-press">
+					<el-col :span="14" class="ignore-key-press-canvas">
 						<n8n-select
 							v-model="workflowSettings.saveExecutionProgress"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							:placeholder="i18n.baseText('workflowSettings.selectOption')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
@@ -735,7 +732,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ':' }}
+						{{ i18n.baseText('workflowSettings.timeoutWorkflow') + ':' }}
 						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
@@ -762,7 +759,7 @@ onMounted(async () => {
 				>
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
+							{{ i18n.baseText('workflowSettings.timeoutAfter') + ':' }}
 							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
@@ -777,7 +774,7 @@ onMounted(async () => {
 								:min="0"
 								@update:model-value="(value: string) => setTheTimeout('hours', value)"
 							>
-								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
+								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
@@ -788,7 +785,7 @@ onMounted(async () => {
 								:max="60"
 								@update:model-value="(value: string) => setTheTimeout('minutes', value)"
 							>
-								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
+								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
@@ -799,7 +796,7 @@ onMounted(async () => {
 								:max="60"
 								@update:model-value="(value: string) => setTheTimeout('seconds', value)"
 							>
-								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
+								<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
 						</el-col>
 					</el-row>
@@ -810,7 +807,7 @@ onMounted(async () => {
 			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
 					:disabled="readOnlyEnv || !workflowPermissions.update"
-					:label="$locale.baseText('workflowSettings.save')"
+					:label="i18n.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
 					@click="saveSettings"

@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BufferWindowMemoryInput } from 'langchain/memory';
+import { BufferWindowMemory } from 'langchain/memory';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,12 +8,17 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { BufferWindowMemoryInput } from 'langchain/memory';
-import { BufferWindowMemory } from 'langchain/memory';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
-import { getSessionId } from '../../../utils/helpers';
+
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import {
+	sessionIdOption,
+	sessionKeyProperty,
+	contextWindowLengthProperty,
+	expressionSessionKeyProperty,
+} from '../descriptions';
 
 class MemoryChatBufferSingleton {
 	private static instance: MemoryChatBufferSingleton;
@@ -25,14 +32,14 @@ class MemoryChatBufferSingleton {
 		this.memoryBuffer = new Map();
 	}
 
-	public static getInstance(): MemoryChatBufferSingleton {
+	static getInstance(): MemoryChatBufferSingleton {
 		if (!MemoryChatBufferSingleton.instance) {
 			MemoryChatBufferSingleton.instance = new MemoryChatBufferSingleton();
 		}
 		return MemoryChatBufferSingleton.instance;
 	}
 
-	public async getMemory(
+	async getMemory(
 		sessionKey: string,
 		memoryParams: BufferWindowMemoryInput,
 	): Promise<BufferWindowMemory> {
@@ -71,8 +78,9 @@ export class MemoryBufferWindow implements INodeType {
 		displayName: 'Window Buffer Memory (easiest)',
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
 			name: 'Window Buffer Memory',
@@ -129,6 +137,7 @@ export class MemoryBufferWindow implements INodeType {
 					},
 				},
 			},
+			expressionSessionKeyProperty(1.3),
 			sessionKeyProperty,
 			contextWindowLengthProperty,
 		],

@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 
+import { directionsCursorMaps, type Direction, type ResizeData } from 'n8n-design-system/types';
+
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
 	const n1 = divisor * q;
@@ -20,19 +22,6 @@ function getSize(min: number, virtual: number, gridSize: number): number {
 
 	return min;
 }
-
-const directionsCursorMaps = {
-	right: 'ew-resize',
-	top: 'ns-resize',
-	bottom: 'ns-resize',
-	left: 'ew-resize',
-	topLeft: 'nw-resize',
-	topRight: 'ne-resize',
-	bottomLeft: 'sw-resize',
-	bottomRight: 'se-resize',
-} as const;
-
-type Direction = keyof typeof directionsCursorMaps;
 
 interface ResizeProps {
 	isResizingEnabled?: boolean;
@@ -55,16 +44,6 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	gridSize: 20,
 	supportedDirections: () => [],
 });
-
-export interface ResizeData {
-	height: number;
-	width: number;
-	dX: number;
-	dY: number;
-	x: number;
-	y: number;
-	direction: Direction;
-}
 
 const emit = defineEmits<{
 	resizestart: [];

@@ -292,7 +292,7 @@ onMounted(() => {
 						data-test-id="resources-list-add"
 						@click="addTemporaryVariable"
 					>
-						{{ $locale.baseText(`variables.add`) }}
+						{{ i18n.baseText(`variables.add`) }}
 					</n8n-button>
 				</div>
 				<template #content>
@@ -309,15 +309,15 @@ onMounted(() => {
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
 				"
 				:description="
-					$locale.baseText(
+					i18n.baseText(
 						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
 					)
 				"
 				:button-text="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
 				"
 				button-type="secondary"
 				@click:button="goToUpgrade"
@@ -329,15 +329,15 @@ onMounted(() => {
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.title as BaseTextKey)
 				"
 				:description="
-					$locale.baseText(
+					i18n.baseText(
 						contextBasedTranslationKeys.variables.unavailable.description as BaseTextKey,
 					)
 				"
 				:button-text="
-					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
+					i18n.baseText(contextBasedTranslationKeys.variables.unavailable.button as BaseTextKey)
 				"
 				button-type="secondary"
 				@click:button="goToUpgrade"
@@ -347,11 +347,11 @@ onMounted(() => {
 				data-test-id="cannot-create-variables"
 				emoji="👋"
 				:heading="
-					$locale.baseText('variables.empty.notAllowedToCreate.heading', {
+					i18n.baseText('variables.empty.notAllowedToCreate.heading', {
 						interpolate: { name: usersStore.currentUser?.firstName ?? '' },
 					})
 				"
-				:description="$locale.baseText('variables.empty.notAllowedToCreate.description')"
+				:description="i18n.baseText('variables.empty.notAllowedToCreate.description')"
 				@click="goToUpgrade"
 			/>
 		</template>

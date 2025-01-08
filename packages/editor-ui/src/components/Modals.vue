@@ -18,7 +18,6 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
@@ -51,7 +50,6 @@ import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vu
 import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.ee.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
@@ -123,10 +121,6 @@ import type { EventBus } from 'n8n-design-system';
 			<template #default="{ active }">
 				<NpsSurvey :is-active="active" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="WORKFLOW_LM_CHAT_MODAL_KEY">
-			<WorkflowLMChat />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">

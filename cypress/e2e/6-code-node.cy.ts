@@ -57,7 +57,7 @@ for (const item of $input.all()) {
 
 return
 `);
-			getParameter().get('.cm-lint-marker-error').should('have.length', 6);
+			getParameter().get('.cm-lintRange-error').should('have.length', 6);
 			getParameter().contains('itemMatching').realHover();
 			cy.get('.cm-tooltip-lint').should(
 				'have.text',
@@ -81,7 +81,7 @@ $input.item()
 return []
 `);
 
-			getParameter().get('.cm-lint-marker-error').should('have.length', 5);
+			getParameter().get('.cm-lintRange-error').should('have.length', 5);
 			getParameter().contains('all').realHover();
 			cy.get('.cm-tooltip-lint').should(
 				'have.text',

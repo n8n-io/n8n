@@ -16,6 +16,7 @@ import {
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
+	NODE_PINNING_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -23,7 +24,6 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -46,6 +46,7 @@ import type {
 	NotificationOptions,
 	ModalState,
 	ModalKey,
+	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/root.store';
@@ -54,7 +55,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { BannerName } from 'n8n-workflow';
+import type { BannerName } from '@n8n/api-types';
 import {
 	addThemeToBody,
 	getPreferredTheme,
@@ -99,12 +100,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_SELECT_MODAL_KEY,
 				DUPLICATE_MODAL_KEY,
 				PERSONALIZATION_MODAL_KEY,
+				NODE_PINNING_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
 				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 				NPS_SURVEY_MODAL_KEY,
 				VERSIONS_MODAL_KEY,
-				WORKFLOW_LM_CHAT_MODAL_KEY,
 				WORKFLOW_SETTINGS_MODAL_KEY,
 				WORKFLOW_SHARE_MODAL_KEY,
 				WORKFLOW_ACTIVE_MODAL_KEY,
@@ -186,16 +187,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
 
-	const appliedTheme = computed(() => {
-		return theme.value === 'system' ? getPreferredTheme() : theme.value;
+	// Keep track of the preferred theme and update it when the system preference changes
+	const preferredTheme = getPreferredTheme();
+	const preferredSystemTheme = ref<AppliedThemeOption>(preferredTheme.theme);
+	preferredTheme.mediaQuery?.addEventListener('change', () => {
+		preferredSystemTheme.value = getPreferredTheme().theme;
 	});
 
-	const logo = computed(() => {
-		const { releaseChannel } = settingsStore.settings;
-		const suffix = appliedTheme.value === 'dark' ? '-dark.svg' : '.svg';
-		return `static/logo/${
-			releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
-		}${suffix}`;
+	const appliedTheme = computed(() => {
+		return theme.value === 'system' ? preferredSystemTheme.value : theme.value;
 	});
 
 	const contextBasedTranslationKeys = computed(() => {
@@ -565,7 +565,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	return {
 		appGridWidth,
 		appliedTheme,
-		logo,
 		contextBasedTranslationKeys,
 		getLastSelectedNode,
 		isVersionsOpen,

@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import { TagRepository } from '@/databases/repositories/tag.repository';
