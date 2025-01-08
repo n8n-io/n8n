@@ -50,7 +50,7 @@ describe('JsTaskRunner', () => {
 				...jsRunnerOpts,
 			},
 			sentryConfig: {
-				sentryDsn: '',
+				dsn: '',
 				deploymentName: '',
 				environment: '',
 				n8nVersion: '',
