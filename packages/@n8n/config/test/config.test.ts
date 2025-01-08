@@ -229,8 +229,8 @@ describe('GlobalConfig', () => {
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
 			maxOldSpaceSize: '',
-			maxConcurrency: 5,
-			taskTimeout: 60,
+			maxConcurrency: 10,
+			taskTimeout: 300,
 			heartbeatInterval: 30,
 		},
 		sentry: {
