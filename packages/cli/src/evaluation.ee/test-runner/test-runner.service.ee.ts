@@ -1,14 +1,16 @@
+import { Service } from '@n8n/di';
 import { parse } from 'flatted';
+import { ErrorReporter } from 'n8n-core';
+import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
-import { Service } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
@@ -44,6 +46,7 @@ export class TestRunnerService {
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testMetricRepository: TestMetricRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -94,11 +97,17 @@ export class TestRunnerService {
 	private async runTestCase(
 		workflow: WorkflowEntity,
 		pastExecutionData: IRunExecutionData,
+		pastExecutionWorkflowData: IWorkflowBase,
 		mockedNodes: MockedNodeItem[],
 		userId: string,
 	): Promise<IRun | undefined> {
 		// Create pin data from the past execution data
-		const pinData = createPinData(workflow, mockedNodes, pastExecutionData);
+		const pinData = createPinData(
+			workflow,
+			mockedNodes,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
 
 		// Prepare the data to run the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -127,6 +136,7 @@ export class TestRunnerService {
 		evaluationWorkflow: WorkflowEntity,
 		expectedData: IRunData,
 		actualData: IRunData,
+		testRunId?: string,
 	) {
 		// Prepare the evaluation wf input data.
 		// Provide both the expected data and the actual data
@@ -139,7 +149,13 @@ export class TestRunnerService {
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
-
+		// FIXME: This is a hack to add the testRunId to the evaluation workflow execution data
+		// So that we can fetch all execution runs for a test run
+		if (testRunId && data.executionData) {
+			data.executionData.resultData.metadata = {
+				testRunId,
+			};
+		}
 		data.executionMode = 'evaluation';
 
 		// Trigger the evaluation workflow
@@ -216,51 +232,66 @@ export class TestRunnerService {
 
 		// 2. Run over all the test cases
 
-		await this.testRunRepository.markAsRunning(testRun.id);
+		await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
 		// Object to collect the results of the evaluation workflow executions
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
-			// Fetch past execution with data
-			const pastExecution = await this.executionRepository.findOne({
-				where: { id: pastExecutionId },
-				relations: ['executionData', 'metadata'],
-			});
-			assert(pastExecution, 'Execution not found');
+			try {
+				// Fetch past execution with data
+				const pastExecution = await this.executionRepository.findOne({
+					where: { id: pastExecutionId },
+					relations: ['executionData', 'metadata'],
+				});
+				assert(pastExecution, 'Execution not found');
 
-			const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
+				const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
 
-			// Run the test case and wait for it to finish
-			const testCaseExecution = await this.runTestCase(
-				workflow,
-				executionData,
-				test.mockedNodes,
-				user.id,
-			);
+				// Run the test case and wait for it to finish
+				const testCaseExecution = await this.runTestCase(
+					workflow,
+					executionData,
+					pastExecution.executionData.workflowData,
+					test.mockedNodes,
+					user.id,
+				);
 
-			// In case of a permission check issue, the test case execution will be undefined.
-			// Skip them and continue with the next test case
-			if (!testCaseExecution) {
-				continue;
+				// In case of a permission check issue, the test case execution will be undefined.
+				// Skip them, increment the failed count and continue with the next test case
+				if (!testCaseExecution) {
+					await this.testRunRepository.incrementFailed(testRun.id);
+					continue;
+				}
+
+				// Collect the results of the test case execution
+				const testCaseRunData = testCaseExecution.data.resultData.runData;
+
+				// Get the original runData from the test case execution data
+				const originalRunData = executionData.resultData.runData;
+
+				// Run the evaluation workflow with the original and new run data
+				const evalExecution = await this.runTestCaseEvaluation(
+					evaluationWorkflow,
+					originalRunData,
+					testCaseRunData,
+					testRun.id,
+				);
+				assert(evalExecution);
+
+				metrics.addResults(this.extractEvaluationResult(evalExecution));
+
+				if (evalExecution.data.resultData.error) {
+					await this.testRunRepository.incrementFailed(testRun.id);
+				} else {
+					await this.testRunRepository.incrementPassed(testRun.id);
+				}
+			} catch (e) {
+				// In case of an unexpected error, increment the failed count and continue with the next test case
+				await this.testRunRepository.incrementFailed(testRun.id);
+
+				this.errorReporter.error(e);
 			}
-
-			// Collect the results of the test case execution
-			const testCaseRunData = testCaseExecution.data.resultData.runData;
-
-			// Get the original runData from the test case execution data
-			const originalRunData = executionData.resultData.runData;
-
-			// Run the evaluation workflow with the original and new run data
-			const evalExecution = await this.runTestCaseEvaluation(
-				evaluationWorkflow,
-				originalRunData,
-				testCaseRunData,
-			);
-			assert(evalExecution);
-
-			// Extract the output of the last node executed in the evaluation workflow
-			metrics.addResults(this.extractEvaluationResult(evalExecution));
 		}
 
 		const aggregatedMetrics = metrics.getAggregatedMetrics();

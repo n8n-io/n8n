@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import { Logger } from 'n8n-core';
-import { Service } from 'typedi';
 
 import { Debounce } from '@/decorators/debounce';
 import { TypedEmitter } from '@/typed-emitter';

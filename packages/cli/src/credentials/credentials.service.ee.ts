@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { Project } from '@/databases/entities/project';
@@ -87,7 +87,7 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.decrypt(credential);
+			decryptedData = this.credentialsService.decrypt(credential, true);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.

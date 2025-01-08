@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import { ApplicationError, type IWorkflowBase, type IWorkflowLoader } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 

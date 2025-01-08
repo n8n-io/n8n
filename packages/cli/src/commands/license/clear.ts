@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';

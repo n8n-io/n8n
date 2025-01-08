@@ -149,7 +149,7 @@ const outputError = computed(() => {
 						>
 							<N8nIcon icon="external-link-alt" size="xsmall" />
 							{{
-								i18n.baseText('runData.openSubExecution', {
+								i18n.baseText('runData.openSubExecutionWithId', {
 									interpolate: {
 										id: runMeta.subExecution?.executionId,
 									},

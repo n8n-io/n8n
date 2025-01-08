@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
 	IDeferredPromise,
@@ -13,7 +14,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
@@ -147,6 +147,12 @@ export class WorkflowExecutionService {
 			triggerToStartFrom,
 		};
 
+		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
+
+		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
+			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
+		}
+
 		/**
 		 * Historically, manual executions in scaling mode ran in the main process,
 		 * so some execution details were never persisted in the database.
@@ -160,7 +166,7 @@ export class WorkflowExecutionService {
 		) {
 			data.executionData = {
 				startData: {
-					startNodes,
+					startNodes: data.startNodes,
 					destinationNode,
 				},
 				resultData: {
@@ -174,12 +180,6 @@ export class WorkflowExecutionService {
 					triggerToStartFrom,
 				},
 			};
-		}
-
-		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
-
-		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
-			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
 		}
 
 		const executionId = await this.workflowRunner.run(data);

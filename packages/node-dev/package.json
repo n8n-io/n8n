@@ -1,6 +1,6 @@
 {
   "name": "n8n-node-dev",
-  "version": "1.73.0",
+  "version": "1.74.0",
   "description": "CLI to simplify n8n credentials/node development",
   "main": "dist/src/index",
   "types": "dist/src/index.d.ts",
@@ -39,6 +39,7 @@
     "@types/inquirer": "^6.5.0"
   },
   "dependencies": {
+    "@n8n/di": "workspace:*",
     "@oclif/core": "4.0.7",
     "change-case": "^4.1.1",
     "fast-glob": "catalog:",
@@ -46,7 +47,6 @@
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "replace-in-file": "^6.0.0",
-    "tmp-promise": "^3.0.3",
-    "typedi": "catalog:"
+    "tmp-promise": "^3.0.3"
   }
 }

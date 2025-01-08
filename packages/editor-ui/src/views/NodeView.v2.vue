@@ -62,6 +62,7 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
+	AI_CREDITS_EXPERIMENT,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -85,6 +86,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
+import { usePostHog } from '@/stores/posthog.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -108,7 +110,7 @@ import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { EASY_AI_WORKFLOW_JSON } from '@/constants.workflows';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -116,6 +118,11 @@ const LazyNodeCreation = defineAsyncComponent(
 
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
+);
+
+const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
+	async () =>
+		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
 
 const $style = useCssModule();
@@ -150,6 +157,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const posthogStore = usePostHog();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -320,7 +328,14 @@ async function initializeRoute(force = false) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
-			await openTemplateFromWorkflowJSON(EASY_AI_WORKFLOW_JSON);
+			const isAiCreditsExperimentEnabled =
+				posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
+
+			const easyAiWorkflowJson = getEasyAiWorkflowJson({
+				isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
+				withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
+			});
+			await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
@@ -682,6 +697,11 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
+	const workflowIsSaved = !uiStore.stateIsDirty;
+
+	if (workflowIsSaved) {
+		return;
+	}
 	const saved = await workflowHelpers.saveCurrentWorkflow();
 	if (saved) {
 		canvasEventBus.emit('saved:workflow');
@@ -1696,6 +1716,9 @@ onBeforeUnmount(() => {
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
 	>
+		<Suspense>
+			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
+		</Suspense>
 		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
 				v-if="isRunWorkflowButtonVisible"
@@ -1772,11 +1795,13 @@ onBeforeUnmount(() => {
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-l);
+	bottom: var(--spacing-s);
 	width: auto;
 
-	@media (max-width: $breakpoint-2xs) {
-		bottom: 150px;
+	@include mixins.breakpoint('sm-only') {
+		left: auto;
+		right: var(--spacing-s);
+		transform: none;
 	}
 
 	button {
@@ -1788,7 +1813,24 @@ onBeforeUnmount(() => {
 		&:first-child {
 			margin: 0;
 		}
+
+		@include mixins.breakpoint('xs-only') {
+			text-indent: -10000px;
+			width: 42px;
+			height: 42px;
+			padding: 0;
+
+			span {
+				margin: 0;
+			}
+		}
 	}
+}
+
+.setupCredentialsButtonWrapper {
+	position: absolute;
+	left: var(--spacing-s);
+	top: var(--spacing-s);
 }
 
 .readOnlyEnvironmentNotification {
