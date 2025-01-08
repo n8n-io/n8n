@@ -1,3 +1,4 @@
+import { get } from 'lodash';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,9 +6,7 @@ import type {
 	INode,
 	INodeParameters,
 } from 'n8n-workflow';
-
-import { get } from 'lodash';
-import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
+import pgPromise from 'pg-promise';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
@@ -15,6 +14,8 @@ import * as insert from '../../v2/actions/database/insert.operation';
 import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
+import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
+import * as utils from '../../v2/helpers/utils';
 
 const runQueries: QueriesRunner = jest.fn();
 
@@ -361,6 +362,99 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			nodeOptions,
 		);
 	});
+
+	it('should execute queries with multiple json key/value pairs', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement:
+					'={{ JSON.stringify({id: "7",id2: "848da11d-e72e-44c5-yyyy-c6fb9f17d366"}) }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should execute queries with single json key/value pair', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)',
+			options: {
+				queryReplacement: '={{ {"id": "7"} }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		expect(async () => {
+			await executeQuery.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				items,
+				nodeOptions,
+			);
+		}).not.toThrow();
+	});
+
+	it('should not parse out expressions if there are valid JSON query parameters', async () => {
+		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query,
+			options: {
+				queryReplacement: '={{ {"id": "7"} }}',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		jest.spyOn(utils, 'isJSON');
+		jest.spyOn(utils, 'stringToArray');
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(utils.isJSON).toHaveBeenCalledTimes(1);
+		expect(utils.stringToArray).toHaveBeenCalledTimes(0);
+	});
+
+	it('should parse out expressions if is invalid JSON in query parameters', async () => {
+		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query,
+			options: {
+				queryReplacement: '={{ JSON.stringify({"id": "7"}}) }}',
+				nodeVersion: 2.6,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		jest.spyOn(utils, 'isJSON');
+		jest.spyOn(utils, 'stringToArray');
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(utils.isJSON).toHaveBeenCalledTimes(1);
+		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {
@@ -413,6 +507,7 @@ describe('Test PostgresV2, insert operation', () => {
 			items,
 			nodeOptions,
 			createMockDb(columnsInfo),
+			pgPromise(),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -486,6 +581,7 @@ describe('Test PostgresV2, insert operation', () => {
 			inputItems,
 			nodeOptions,
 			createMockDb(columnsInfo),
+			pgPromise(),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -506,6 +602,96 @@ describe('Test PostgresV2, insert operation', () => {
 			inputItems,
 			nodeOptions,
 		);
+	});
+
+	it('dataMode: define, should accept an array with values if column is of type json', async () => {
+		const convertValuesToJsonWithPgpSpy = jest.spyOn(utils, 'convertValuesToJsonWithPgp');
+		const hasJsonDataTypeInSchemaSpy = jest.spyOn(utils, 'hasJsonDataTypeInSchema');
+
+		const values = [
+			{ value: { id: 1, json: [], foo: 'data 1' }, expected: { id: 1, json: '[]', foo: 'data 1' } },
+			{
+				value: {
+					id: 2,
+					json: [0, 1],
+					foo: 'data 2',
+				},
+				expected: {
+					id: 2,
+					json: '[0,1]',
+					foo: 'data 2',
+				},
+			},
+			{
+				value: {
+					id: 2,
+					json: [0],
+					foo: 'data 2',
+				},
+				expected: {
+					id: 2,
+					json: '[0]',
+					foo: 'data 2',
+				},
+			},
+		];
+
+		values.forEach(async (value) => {
+			const valuePassedIn = value.value;
+			const nodeParameters: IDataObject = {
+				schema: {
+					__rl: true,
+					mode: 'list',
+					value: 'public',
+				},
+				table: {
+					__rl: true,
+					value: 'my_table',
+					mode: 'list',
+				},
+				columns: {
+					mappingMode: 'defineBelow',
+					value: valuePassedIn,
+				},
+				options: { nodeVersion: 2.5 },
+			};
+			const columnsInfo: ColumnInfo[] = [
+				{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+				{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+				{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
+			];
+
+			const inputItems = [
+				{
+					json: valuePassedIn,
+				},
+			];
+
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const pg = pgPromise();
+
+			await insert.execute.call(
+				createMockExecuteFunction(nodeParameters),
+				runQueries,
+				inputItems,
+				nodeOptions,
+				createMockDb(columnsInfo),
+				pg,
+			);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query: 'INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv) RETURNING *',
+						values: ['public', 'my_table', value.expected],
+					},
+				],
+				inputItems,
+				nodeOptions,
+			);
+			expect(convertValuesToJsonWithPgpSpy).toHaveBeenCalledWith(pg, columnsInfo, valuePassedIn);
+			expect(hasJsonDataTypeInSchemaSpy).toHaveBeenCalledWith(columnsInfo);
+		});
 	});
 });
 

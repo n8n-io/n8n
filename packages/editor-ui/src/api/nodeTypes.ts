@@ -1,5 +1,11 @@
+import type {
+	ActionResultRequestDto,
+	OptionsRequestDto,
+	ResourceLocatorRequestDto,
+	ResourceMapperFieldsRequestDto,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { DynamicNodeParameters, INodeTranslationHeaders, IRestApiContext } from '@/Interface';
+import type { INodeTranslationHeaders, IRestApiContext } from '@/Interface';
 import type {
 	INodeListSearchResult,
 	INodePropertyOptions,
@@ -30,14 +36,14 @@ export async function getNodesInformation(
 
 export async function getNodeParameterOptions(
 	context: IRestApiContext,
-	sendData: DynamicNodeParameters.OptionsRequest,
+	sendData: OptionsRequestDto,
 ): Promise<INodePropertyOptions[]> {
 	return await makeRestApiRequest(context, 'POST', '/dynamic-node-parameters/options', sendData);
 }
 
 export async function getResourceLocatorResults(
 	context: IRestApiContext,
-	sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
+	sendData: ResourceLocatorRequestDto,
 ): Promise<INodeListSearchResult> {
 	return await makeRestApiRequest(
 		context,
@@ -49,7 +55,7 @@ export async function getResourceLocatorResults(
 
 export async function getResourceMapperFields(
 	context: IRestApiContext,
-	sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
+	sendData: ResourceMapperFieldsRequestDto,
 ): Promise<ResourceMapperFields> {
 	return await makeRestApiRequest(
 		context,
@@ -59,9 +65,21 @@ export async function getResourceMapperFields(
 	);
 }
 
+export async function getLocalResourceMapperFields(
+	context: IRestApiContext,
+	sendData: ResourceMapperFieldsRequestDto,
+): Promise<ResourceMapperFields> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/dynamic-node-parameters/local-resource-mapper-fields',
+		sendData,
+	);
+}
+
 export async function getNodeParameterActionResult(
 	context: IRestApiContext,
-	sendData: DynamicNodeParameters.ActionResultRequest,
+	sendData: ActionResultRequestDto,
 ): Promise<NodeParameterValueType> {
 	return await makeRestApiRequest(
 		context,

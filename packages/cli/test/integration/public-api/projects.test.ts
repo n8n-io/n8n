@@ -131,6 +131,7 @@ describe('Projects in Public API', () => {
 			expect(response.status).toBe(201);
 			expect(response.body).toEqual({
 				name: 'some-project',
+				icon: null,
 				type: 'team',
 				id: expect.any(String),
 				createdAt: expect.any(String),

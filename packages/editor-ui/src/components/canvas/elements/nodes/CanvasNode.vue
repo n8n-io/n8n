@@ -42,6 +42,14 @@ type Props = NodeProps<CanvasNodeData> & {
 	hovered?: boolean;
 };
 
+const slots = defineSlots<{
+	toolbar?: (props: {
+		inputs: (typeof mainInputs)['value'];
+		outputs: (typeof mainOutputs)['value'];
+		data: CanvasNodeData;
+	}) => void;
+}>();
+
 const emit = defineEmits<{
 	add: [id: string, handle: string];
 	delete: [id: string];
@@ -65,6 +73,10 @@ const contextMenu = useContextMenu();
 
 const { connectingHandle } = useCanvas();
 
+/*
+  Toolbar slot classes
+*/
+const nodeClasses = ref<string[]>([]);
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
@@ -92,6 +104,7 @@ const classes = computed(() => ({
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
 	selected: props.selected,
+	...Object.fromEntries([...nodeClasses.value].map((c) => [c, true])),
 }));
 
 /**
@@ -101,7 +114,7 @@ const classes = computed(() => ({
 const canvasNodeEventBus = ref(createEventBus<CanvasNodeEventBusEvents>());
 
 function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
-	if (event.ids.includes(props.id)) {
+	if (event.ids.includes(props.id) && canvasNodeEventBus.value) {
 		canvasNodeEventBus.value.emit(event.action, event.payload);
 	}
 }
@@ -250,6 +263,12 @@ function onMove(position: XYPosition) {
 	emit('move', props.id, position);
 }
 
+function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
+	nodeClasses.value = add
+		? [...new Set([...nodeClasses.value, className])]
+		: nodeClasses.value.filter((c) => c !== className);
+}
+
 /**
  * Provide
  */
@@ -299,15 +318,22 @@ watch(outputs, (newValue, oldValue) => {
 
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
+	canvasNodeEventBus.value?.on('update:node:class', onUpdateClass);
 });
 
 onBeforeUnmount(() => {
 	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
+	canvasNodeEventBus.value?.off('update:node:class', onUpdateClass);
 });
 </script>
 
 <template>
-	<div :class="classes" data-test-id="canvas-node" :data-node-type="data.type">
+	<div
+		:class="classes"
+		data-test-id="canvas-node"
+		:data-node-name="data.name"
+		:data-node-type="data.type"
+	>
 		<template
 			v-for="source in mappedOutputs"
 			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
@@ -317,7 +343,7 @@ onBeforeUnmount(() => {
 				:mode="CanvasConnectionMode.Output"
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
-				:data-node-name="label"
+				:data-node-name="data.name"
 				data-test-id="canvas-node-output-handle"
 				:data-handle-index="source.index"
 				@add="onAdd"
@@ -335,13 +361,18 @@ onBeforeUnmount(() => {
 				:is-valid-connection="isValidConnection"
 				data-test-id="canvas-node-input-handle"
 				:data-handle-index="target.index"
-				:data-node-name="label"
+				:data-node-name="data.name"
 				@add="onAdd"
 			/>
 		</template>
 
+		<template v-if="slots.toolbar">
+			<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
+		</template>
+
 		<CanvasNodeToolbar
-			v-if="nodeTypeDescription"
+			v-else-if="nodeTypeDescription"
+			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"

@@ -9,7 +9,7 @@ export class AddMockedNodesColumnToTestDefinition1733133775640 implements Revers
 		const mockedNodesColumnName = escape.columnName('mockedNodes');
 
 		await runQuery(
-			`ALTER TABLE ${tableName} ADD COLUMN ${mockedNodesColumnName} JSON DEFAULT '[]' NOT NULL`,
+			`ALTER TABLE ${tableName} ADD COLUMN ${mockedNodesColumnName} JSON DEFAULT ('[]') NOT NULL`,
 		);
 	}
 

@@ -1,9 +1,9 @@
+import { Container, Service } from '@n8n/di';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
-import Container, { Service } from 'typedi';
 
 import type { BinaryData } from './types';
 import { areConfigModes, binaryToBuffer } from './utils';

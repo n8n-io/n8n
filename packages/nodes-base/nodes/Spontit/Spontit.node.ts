@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,9 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { spontitApiRequest } from './GenericFunctions';
-
 import { pushFields, pushOperations } from './PushDescription';
 
 export class Spontit implements INodeType {

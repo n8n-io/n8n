@@ -1,10 +1,9 @@
-import type { PushPayload, PushType } from '@n8n/api-types';
-import { ErrorReporter } from 'n8n-core';
+import type { PushMessage } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
-import { Logger } from '@/logging/logger.service';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -69,7 +68,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRefs: string[]) {
+	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
@@ -90,30 +89,26 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		}
 	}
 
-	sendToAll<Type extends PushType>(type: Type, data: PushPayload<Type>) {
-		this.sendTo(type, data, Object.keys(this.connections));
+	sendToAll(pushMsg: PushMessage) {
+		this.sendTo(pushMsg, Object.keys(this.connections));
 	}
 
-	sendToOne<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
+	sendToOne(pushMsg: PushMessage, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendTo(type, data, [pushRef]);
+		this.sendTo(pushMsg, [pushRef]);
 	}
 
-	sendToUsers<Type extends PushType>(
-		type: Type,
-		data: PushPayload<Type>,
-		userIds: Array<User['id']>,
-	) {
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
 		const { connections } = this;
 		const userPushRefs = Object.keys(connections).filter((pushRef) =>
 			userIds.includes(this.userIdByPushRef[pushRef]),
 		);
 
-		this.sendTo(type, data, userPushRefs);
+		this.sendTo(pushMsg, userPushRefs);
 	}
 
 	closeAllConnections() {

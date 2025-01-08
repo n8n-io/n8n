@@ -1,5 +1,6 @@
+import { snakeCase } from 'change-case';
 import { createHash } from 'crypto';
-
+import omit from 'lodash/omit';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -11,9 +12,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
-
-import omit from 'lodash/omit';
 import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
 export async function woocommerceApiRequest(

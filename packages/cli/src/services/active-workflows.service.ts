@@ -1,11 +1,11 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import type { User } from '@/databases/entities/user';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Logger } from '@/logging/logger.service';
 
 @Service()
 export class ActiveWorkflowsService {
