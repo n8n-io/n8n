@@ -34,7 +34,15 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [
+							handleErrorPostReceive,
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'Group',
+								},
+							},
+						],
 					},
 				},
 				action: 'Create group',
@@ -215,8 +223,8 @@ const createFields: INodeProperties[] = [
 		validateType: 'string',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		default: {},
 		displayOptions: {
 			show: {

@@ -1,11 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import {
-	fetchUserPoolConfig,
 	handleErrorPostReceive,
 	handlePagination,
-	presendFilter,
-	presendTest,
+	presendFilters,
 	processAttributes,
 	simplifyData,
 } from '../GenericFunctions';
@@ -55,9 +53,6 @@ export const userOperations: INodeProperties[] = [
 				description: 'Create a new user',
 				action: 'Create user',
 				routing: {
-					send: {
-						preSend: [presendTest, fetchUserPoolConfig],
-					},
 					request: {
 						method: 'POST',
 						headers: {
@@ -121,7 +116,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					send: {
 						paginate: true,
-						preSend: [presendFilter],
+						preSend: [presendFilters],
 					},
 					operations: { pagination: handlePagination },
 					request: {
@@ -173,7 +168,6 @@ export const userOperations: INodeProperties[] = [
 				description: 'Update a user',
 				action: 'Update user',
 				routing: {
-					send: { preSend: [presendTest] },
 					request: {
 						method: 'POST',
 						headers: {
@@ -395,39 +389,11 @@ const createFields: INodeProperties[] = [
 			{
 				displayName: 'Temporary Password',
 				name: 'temporaryPasswordOptions',
-				type: 'options',
-				default: 'generatePassword',
-				description: 'Choose to set a password manually or one will be automatically generated',
-				options: [
-					{
-						name: 'Set a Password',
-						value: 'setPassword',
-					},
-					{
-						name: 'Generate a Password',
-						value: 'generatePassword',
-					},
-				],
-				routing: {
-					send: {
-						property: 'TemporaryPassword',
-						type: 'body',
-					},
-				},
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
 				type: 'string',
 				typeOptions: { password: true },
 				default: '',
-				placeholder: 'Enter a temporary password',
-				description: "The user's temporary password",
-				displayOptions: {
-					show: {
-						temporaryPasswordOptions: ['setPassword'],
-					},
-				},
+				description:
+					"The user's temporary password that will be valid only once. If not set, Amazon Cognito will automatically generate one for you.",
 				routing: {
 					send: {
 						property: 'TemporaryPassword',
@@ -641,11 +607,11 @@ const getAllFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'fixedCollection',
+		placeholder: 'Add Filter',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -654,42 +620,36 @@ const getAllFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Filters',
-				name: 'filters',
-				type: 'options',
-				default: 'username',
-				hint: 'Make sure to select an attribute, type, and provide a value before submitting.',
-				description: 'The attribute to search for',
-				options: [
-					{ name: 'Cognito User Status', value: 'cognito:user_status' },
-					{ name: 'Email', value: 'email' },
-					{ name: 'Family Name', value: 'family_name' },
-					{ name: 'Given Name', value: 'given_name' },
-					{ name: 'Name', value: 'name' },
-					{ name: 'Phone Number', value: 'phone_number' },
-					{ name: 'Preferred Username', value: 'preferred_username' },
-					{ name: 'Status (Enabled)', value: 'status' },
-					{ name: 'Sub', value: 'sub' },
-					{ name: 'Username', value: 'username' },
+				displayName: 'Filter',
+				name: 'filter',
+				values: [
+					{
+						displayName: 'Attribute',
+						name: 'attribute',
+						type: 'options',
+						default: 'email',
+						description: 'The attribute to search for',
+						options: [
+							{ name: 'Cognito User Status', value: 'cognito:user_status' },
+							{ name: 'Email', value: 'email' },
+							{ name: 'Family Name', value: 'family_name' },
+							{ name: 'Given Name', value: 'given_name' },
+							{ name: 'Name', value: 'name' },
+							{ name: 'Phone Number', value: 'phone_number' },
+							{ name: 'Preferred Username', value: 'preferred_username' },
+							{ name: 'Status (Enabled)', value: 'status' },
+							{ name: 'Sub', value: 'sub' },
+							{ name: 'Username', value: 'username' },
+						],
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'The value of the attribute to search for',
+					},
 				],
-			},
-			{
-				displayName: 'Filter Type',
-				name: 'filterType',
-				type: 'options',
-				default: 'exactMatch',
-				description: 'The matching strategy of the filter',
-				options: [
-					{ name: 'Exact Match', value: 'exactMatch' },
-					{ name: 'Starts With', value: 'startsWith' },
-				],
-			},
-			{
-				displayName: 'Filter Value',
-				name: 'filterValue',
-				type: 'string',
-				default: '',
-				description: 'The value of the attribute to search for',
 			},
 		],
 	},

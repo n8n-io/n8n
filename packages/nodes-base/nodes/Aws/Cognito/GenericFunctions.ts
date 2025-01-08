@@ -14,13 +14,27 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function presendTest(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	console.log('requestOptions', requestOptions);
-	return requestOptions;
-}
+type UserPool = {
+	Arn: string;
+	CreationDate: number;
+	DeletionProtection: string;
+	Domain: string;
+	EstimatedNumberOfUsers: number;
+	Id: string;
+	LastModifiedDate: number;
+	MfaConfiguration: string;
+	Name: string;
+};
+
+type User = {
+	Enabled: boolean;
+	UserAttributes?: Array<{ Name: string; Value: string }>;
+	Attributes?: Array<{ Name: string; Value: string }>;
+	UserCreateDate: number;
+	UserLastModifiedDate: number;
+	UserStatus: string;
+	Username: string;
+};
 
 /*
  * Helper function which stringifies the body before sending the request.
@@ -36,33 +50,17 @@ export async function presendStringifyBody(
 	return requestOptions;
 }
 
-export async function presendFilter(
+export async function presendFilters(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-	const filterAttribute = additionalFields.filters as string;
-	let filterType = additionalFields.filterType as string;
-	const filterValue = additionalFields.filterValue as string;
+	const filters = this.getNodeParameter('filters') as IDataObject;
 
-	const hasAnyFilter = filterAttribute || filterType || filterValue;
+	if (filters.length === 0) return requestOptions;
 
-	if (!hasAnyFilter) {
-		return requestOptions;
-	}
-
-	if (hasAnyFilter && (!filterAttribute || !filterType || !filterValue)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'If filtering is used, please provide Filter Attribute, Filter Type, and Filter Value.',
-		);
-	}
-
-	const filterTypeMapping: { [key: string]: string } = {
-		exactMatch: '=',
-		startsWith: '^=',
-	};
-	filterType = filterTypeMapping[filterType] || filterType;
+	const filterToSend = filters.filter as IDataObject;
+	const filterAttribute = filterToSend?.attribute as string;
+	const filterValue = filterToSend?.value as string;
 
 	let body: IDataObject;
 	if (typeof requestOptions.body === 'string') {
@@ -72,12 +70,17 @@ export async function presendFilter(
 			throw new NodeOperationError(this.getNode(), 'Failed to parse requestOptions body');
 		}
 	} else {
-		body = requestOptions.body as IDataObject;
+		body = (requestOptions.body as IDataObject) || {};
+	}
+
+	let filter = '';
+	if (filterAttribute && filterValue) {
+		filter = `"${filterAttribute}"^="${filterValue}"`;
 	}
 
 	requestOptions.body = JSON.stringify({
 		...body,
-		Filter: `${filterAttribute} ${filterType} "${filterValue}"`,
+		Filter: filter,
 	});
 
 	return requestOptions;
@@ -121,7 +124,6 @@ export async function presendVerifyPath(
 	return requestOptions;
 }
 
-/* Helper function to process attributes in UserAttributes */
 export async function processAttributes(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -156,7 +158,6 @@ export async function processAttributes(
 	return requestOptions;
 }
 
-/* Helper function to handle pagination */
 const possibleRootProperties = ['Users', 'Groups'];
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
@@ -207,7 +208,6 @@ export async function handlePagination(
 	return aggregatedResult.map((item) => ({ json: item }));
 }
 
-/* Helper functions to handle errors */
 export async function handleErrorPostReceive(
 	this: IExecuteSingleFunctions,
 	data: INodeExecutionData[],
@@ -337,7 +337,6 @@ export async function handleErrorPostReceive(
 	return data;
 }
 
-/* Helper function used in listSearch methods */
 export async function awsRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
@@ -542,48 +541,26 @@ export async function searchGroups(
 	return { results, paginationToken: responseData.NextToken };
 }
 
+export function mapUserAttributes(userAttributes: Array<{ Name: string; Value: string }>): {
+	[key: string]: string;
+} {
+	return userAttributes?.reduce(
+		(acc, { Name, Value }) => {
+			if (Name !== 'sub') {
+				acc[Name] = Value;
+			}
+			return acc;
+		},
+		{} as { [key: string]: string },
+	);
+}
+
 export async function simplifyData(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
-
-	type UserPool = {
-		Arn: string;
-		CreationDate: number;
-		DeletionProtection: string;
-		Domain: string;
-		EstimatedNumberOfUsers: number;
-		Id: string;
-		LastModifiedDate: number;
-		MfaConfiguration: string;
-		Name: string;
-	};
-
-	type User = {
-		Enabled: boolean;
-		UserAttributes?: Array<{ Name: string; Value: string }>;
-		Attributes?: Array<{ Name: string; Value: string }>;
-		UserCreateDate: number;
-		UserLastModifiedDate: number;
-		UserStatus: string;
-		Username: string;
-	};
-
-	function mapUserAttributes(userAttributes: Array<{ Name: string; Value: string }>): {
-		[key: string]: string;
-	} {
-		return userAttributes?.reduce(
-			(acc, { Name, Value }) => {
-				if (Name !== 'sub') {
-					acc[Name] = Value;
-				}
-				return acc;
-			},
-			{} as { [key: string]: string },
-		);
-	}
 
 	if (!simple) {
 		return items;
@@ -643,12 +620,12 @@ export async function simplifyData(
 								users.forEach((user) => {
 									const userAttributes = user.Attributes ? mapUserAttributes(user.Attributes) : {};
 									processedUsers.push({
-										Enabled: userData.Enabled,
+										Enabled: user.Enabled,
 										...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
-										UserCreateDate: userData.UserCreateDate,
-										UserLastModifiedDate: userData.UserLastModifiedDate,
-										UserStatus: userData.UserStatus,
-										Username: userData.Username,
+										UserCreateDate: user.UserCreateDate,
+										UserLastModifiedDate: user.UserLastModifiedDate,
+										UserStatus: user.UserStatus,
+										Username: user.Username,
 									});
 								});
 								return {
@@ -792,32 +769,4 @@ export async function processUsersForGroups(
 	return items.map((item) => ({
 		json: { ...item.json, Groups: processedGroups },
 	}));
-}
-
-//Check if needed
-export async function fetchUserPoolConfig(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const userPoolIdRaw = this.getNodeParameter('userPoolId') as IDataObject;
-	const userPoolId = userPoolIdRaw.value as string;
-
-	if (!userPoolId) {
-		throw new ApplicationError('User Pool ID is required');
-	}
-
-	const opts: IHttpRequestOptions = {
-		url: '',
-		method: 'POST',
-		body: JSON.stringify({
-			UserPoolId: userPoolId,
-		}),
-		headers: {
-			'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
-		},
-	};
-
-	const responseData: IDataObject = await awsRequest.call(this, opts);
-
-	return requestOptions;
 }
