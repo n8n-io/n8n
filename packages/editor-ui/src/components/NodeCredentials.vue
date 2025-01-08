@@ -2,11 +2,12 @@
 import type { ICredentialsResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
 	HTTP_REQUEST_NODE_TYPE,
+	type ICredentialType,
 	type INodeCredentialDescription,
 	type INodeCredentialsDetails,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
@@ -82,6 +83,7 @@ const toast = useToast();
 const subscribedToCredentialType = ref('');
 const filter = ref('');
 const listeningForAuthChange = ref(false);
+const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
 const credentialTypesNode = computed(() =>
 	credentialTypesNodeDescription.value.map(
@@ -510,6 +512,12 @@ function setFilter(newFilter = '') {
 function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle);
 }
+
+async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
+	selectRefs.value.forEach((select) => select.blur());
+	await nextTick();
+	createNewCredential(type.name, true, showMixedCredentials(type));
+}
 </script>
 
 <template>
@@ -539,6 +547,7 @@ function matches(needle: string, haystack: string) {
 					data-test-id="node-credentials-select"
 				>
 					<N8nSelect
+						ref="selectRefs"
 						:model-value="getSelectedId(type.name)"
 						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 						size="small"
@@ -567,7 +576,7 @@ function matches(needle: string, haystack: string) {
 							<div
 								data-test-id="node-credentials-select-item-new"
 								:class="['clickable', $style.newCredential]"
-								@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+								@click="onClickCreateCredential(type)"
 							>
 								<N8nIcon size="xsmall" icon="plus" />
 								<N8nText bold>{{ NEW_CREDENTIALS_TEXT }}</N8nText>
