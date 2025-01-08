@@ -28,7 +28,10 @@ import { useContextMenu } from '@/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { useCanvas } from '@/composables/useCanvas';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import {
+	createCanvasConnectionHandleString,
+	insertSpacersBetweenEndpoints,
+} from '@/utils/canvasUtilsV2';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { isEqual } from 'lodash-es';
@@ -77,12 +80,18 @@ const nodeClasses = ref<string[]>([]);
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
-	useNodeConnections({
-		inputs,
-		outputs,
-		connections,
-	});
+const {
+	mainInputs,
+	nonMainInputs,
+	requiredNonMainInputs,
+	mainOutputs,
+	nonMainOutputs,
+	isValidConnection,
+} = useNodeConnections({
+	inputs,
+	outputs,
+	connections,
+});
 
 const isDisabled = computed(() => props.data.disabled);
 
@@ -114,23 +123,15 @@ function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
  * Inputs
  */
 
+const nonMainInputsWithSpacer = computed(() =>
+	insertSpacersBetweenEndpoints(nonMainInputs.value, requiredNonMainInputs.value.length),
+);
+
 const mappedInputs = computed(() => {
 	return [
-		...mainInputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Input,
-				position: Position.Left,
-				offsetAxis: 'top',
-			}),
-		),
-		...nonMainInputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Input,
-				position: Position.Bottom,
-				offsetAxis: 'left',
-			}),
-		),
-	];
+		...mainInputs.value.map(mainInputsMappingFn),
+		...nonMainInputsWithSpacer.value.map(nonMainInputsMappingFn),
+	].filter((endpoint) => !!endpoint);
 });
 
 /**
@@ -139,21 +140,9 @@ const mappedInputs = computed(() => {
 
 const mappedOutputs = computed(() => {
 	return [
-		...mainOutputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Output,
-				position: Position.Right,
-				offsetAxis: 'top',
-			}),
-		),
-		...nonMainOutputs.value.map(
-			createEndpointMappingFn({
-				mode: CanvasConnectionMode.Output,
-				position: Position.Top,
-				offsetAxis: 'left',
-			}),
-		),
-	];
+		...mainOutputs.value.map(mainOutputsMappingFn),
+		...nonMainOutputs.value.map(nonMainOutputsMappingFn),
+	].filter((endpoint) => !!endpoint);
 });
 
 /**
@@ -179,10 +168,14 @@ const createEndpointMappingFn =
 		offsetAxis: 'top' | 'left';
 	}) =>
 	(
-		endpoint: CanvasConnectionPort,
+		endpoint: CanvasConnectionPort | null,
 		index: number,
-		endpoints: CanvasConnectionPort[],
-	): CanvasElementPortWithRenderData => {
+		endpoints: Array<CanvasConnectionPort | null>,
+	): CanvasElementPortWithRenderData | undefined => {
+		if (!endpoint) {
+			return;
+		}
+
 		const handleId = createCanvasConnectionHandleString({
 			mode,
 			type: endpoint.type,
@@ -206,6 +199,30 @@ const createEndpointMappingFn =
 			},
 		};
 	};
+
+const mainInputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Input,
+	position: Position.Left,
+	offsetAxis: 'top',
+});
+
+const nonMainInputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Input,
+	position: Position.Bottom,
+	offsetAxis: 'left',
+});
+
+const mainOutputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Output,
+	position: Position.Right,
+	offsetAxis: 'top',
+});
+
+const nonMainOutputsMappingFn = createEndpointMappingFn({
+	mode: CanvasConnectionMode.Output,
+	position: Position.Top,
+	offsetAxis: 'left',
+});
 
 /**
  * Events
