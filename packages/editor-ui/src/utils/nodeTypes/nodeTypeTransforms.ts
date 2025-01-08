@@ -31,23 +31,21 @@ export function groupNodeTypesByNameAndType(
 ): NodeTypesByTypeNameAndVersion {
 	const groupedNodeTypes = nodeTypes.reduce<NodeTypesByTypeNameAndVersion>((groups, nodeType) => {
 		const newNodeVersions = getNodeVersions(nodeType);
+		const nodeName = nodeType.name.split('.').pop() as string;
 
 		if (newNodeVersions.length === 0) {
 			const singleVersion = { [DEFAULT_NODETYPE_VERSION]: nodeType };
 
-			groups[nodeType.name] = singleVersion;
+			groups[nodeName] = singleVersion;
 			return groups;
 		}
 
 		for (const version of newNodeVersions) {
 			// Node exists with the same name
-			if (groups[nodeType.name]) {
-				groups[nodeType.name][version] = Object.assign(
-					groups[nodeType.name][version] ?? {},
-					nodeType,
-				);
+			if (groups[nodeName]) {
+				groups[nodeName][version] = Object.assign(groups[nodeName][version] ?? {}, nodeType);
 			} else {
-				groups[nodeType.name] = Object.assign(groups[nodeType.name] ?? {}, {
+				groups[nodeName] = Object.assign(groups[nodeName] ?? {}, {
 					[version]: nodeType,
 				});
 			}
