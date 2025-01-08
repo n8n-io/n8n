@@ -22,11 +22,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
-import {
-	getExpressionErrorMessage,
-	getResolvableState,
-	isEmptyExpression,
-} from '@/utils/expressions';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
@@ -129,6 +125,12 @@ export const useExpressionEditor = ({
 
 			return acc;
 		}, []);
+		if (
+			segments.value.length === 1 &&
+			segments.value[0]?.kind === 'resolvable' &&
+			segments.value[0]?.resolved === ''
+		)
+			segments.value[0].resolved = i18n.baseText('expressionModalInput.empty');
 	};
 
 	function readEditorValue(): string {
@@ -312,14 +314,6 @@ export const useExpressionEditor = ({
 			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
-		}
-
-		if (result.resolved === '') {
-			result.resolved = i18n.baseText('expressionModalInput.empty');
-		}
-
-		if (result.resolved === undefined && isEmptyExpression(resolvable)) {
-			result.resolved = i18n.baseText('expressionModalInput.empty');
 		}
 
 		if (result.resolved === undefined) {
