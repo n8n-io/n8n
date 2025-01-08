@@ -74,9 +74,8 @@ const disabled = computed((): boolean => {
 
 const currentWorkflowHasFreeAiCredits = computed((): boolean => {
 	if (!workflowsStore?.workflow?.usedCredentials) return false;
-	return workflowsStore.workflow.usedCredentials.some(
-		(usedCredential: IUsedCredential) =>
-			credentialsStore.state.credentials[usedCredential.id].isManaged,
+	return Object.keys(workflowsStore.usedCredentials).some(
+		(id: string) => credentialsStore.state.credentials[id].isManaged,
 	);
 });
 

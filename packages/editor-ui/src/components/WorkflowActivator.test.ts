@@ -98,14 +98,14 @@ describe('WorkflowActivator', () => {
 	it('Should show warning toast if the workflow to be activated has free OpenAI credentials', async () => {
 		const toast = useToast();
 
-		mockWorkflowsStore.workflow.usedCredentials = [
-			{
+		mockWorkflowsStore.usedCredentials = {
+			'1': {
 				id: '1',
 				name: '',
 				credentialType: '',
 				currentUserHasAccess: false,
 			},
-		];
+		};
 
 		mockCredentialsStore.state.credentials = {
 			'1': {
