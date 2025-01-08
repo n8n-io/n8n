@@ -8,7 +8,6 @@ interface EvaluationStep {
 	warning?: boolean;
 	small?: boolean;
 	expanded?: boolean;
-	tooltip?: string;
 	description?: string;
 }
 
@@ -17,7 +16,6 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	warning: false,
 	small: false,
 	expanded: true,
-	tooltip: '',
 });
 
 const locale = useI18n();
