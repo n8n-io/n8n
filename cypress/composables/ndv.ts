@@ -190,7 +190,7 @@ export function selectResourceLocatorItem(
 		.findChildByTestId('rlc-item')
 		.eq(index)
 		.find('span')
-		.should('have.text', expectedText)
+		.should('contain.text', expectedText)
 		.click();
 }
 

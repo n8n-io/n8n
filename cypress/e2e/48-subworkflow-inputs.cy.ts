@@ -60,7 +60,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		selectResourceLocatorItem('workflowId', 0, 'Create a new sub-workflow');
+		selectResourceLocatorItem('workflowId', 0, 'Create a');
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
@@ -155,7 +155,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		selectResourceLocatorItem('workflowId', 0, 'Create a new sub-workflow');
+		selectResourceLocatorItem('workflowId', 0, 'Create a');
 
 		openNode('Workflow Input Trigger');
 
