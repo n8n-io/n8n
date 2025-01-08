@@ -90,10 +90,12 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
 }
 
 /**
- * Computed property to determine if the warning for free AI credits should be shown.
+ * Determines if the warning for free AI credits should be shown in the workflow.
  *
- * This function checks if the current workflow uses any managed credentials of type `OPEN_AI_API_CREDENTIAL_TYPE`.
- * If such credentials are found and are associated with any non-disabled node in the workflow, the warning will be shown.
+ * This computed property evaluates whether to display a warning about free AI credits
+ * in the workflow. The warning is shown when both conditions are met:
+ * 1. The workflow uses managed OpenAI API credentials
+ * 2. Those credentials are associated with at least one enabled node
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
