@@ -64,6 +64,9 @@ export abstract class BaseCommand extends Command {
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
 			dsn: this.globalConfig.sentry.backendDsn,
+			environment: process.env.ENVIRONMENT ?? '',
+			release: process.env.N8N_VERSION ?? '',
+			serverName: process.env.DEPLOYMENT_NAME ?? '',
 		});
 		initExpressionEvaluator();
 

@@ -12,9 +12,9 @@ import { Logger } from './logging/logger';
 type ErrorReporterInitOptions = {
 	serverType: InstanceType | 'task_runner';
 	dsn: string;
-	release?: string;
-	environment?: string;
-	serverName?: string;
+	release: string;
+	environment: string;
+	serverName: string;
 };
 
 @Service()
@@ -52,12 +52,12 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init(opts: ErrorReporterInitOptions) {
+	async init({ dsn, serverType, release, environment, serverName }: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
 
-		if (!opts.dsn) return;
+		if (!dsn) return;
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
@@ -74,11 +74,11 @@ export class ErrorReporter {
 		];
 
 		init({
-			dsn: opts.dsn,
-			release: opts.release ?? process.env.N8N_VERSION,
-			environment: opts.environment ?? process.env.ENVIRONMENT,
+			dsn,
+			release,
+			environment,
 			enableTracing: false,
-			serverName: opts.serverName ?? process.env.DEPLOYMENT_NAME,
+			serverName,
 			beforeBreadcrumb: () => null,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
@@ -97,7 +97,7 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', opts.serverType);
+		setTag('server_type', serverType);
 
 		this.report = (error, options) => captureException(error, options);
 	}

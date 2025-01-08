@@ -59,7 +59,14 @@ void (async function start() {
 	if (dsn) {
 		const { ErrorReporter } = await import('n8n-core');
 		errorReporter = Container.get(ErrorReporter);
-		await errorReporter.init({ serverType: 'task_runner', ...config.sentryConfig });
+		const { deploymentName, environment, n8nVersion } = config.sentryConfig;
+		await errorReporter.init({
+			serverType: 'task_runner',
+			dsn,
+			serverName: deploymentName,
+			environment,
+			release: n8nVersion,
+		});
 	}
 
 	runner = new JsTaskRunner(config);
