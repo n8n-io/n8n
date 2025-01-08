@@ -634,6 +634,10 @@ export class TelemetryEventRelay extends EventRelay {
 			let nodeGraphResult: INodesGraphResult | null = null;
 
 			if (!telemetryProperties.success && runData?.data.resultData.error) {
+				if (TelemetryHelpers.userInInstanceRanOutOfFreeAiCredits(runData)) {
+					this.telemetry.track('User ran out of free AI credits');
+				}
+
 				telemetryProperties.error_message = runData?.data.resultData.error.message;
 				let errorNodeName =
 					'node' in runData?.data.resultData.error

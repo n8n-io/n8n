@@ -195,4 +195,3 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
-export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';
