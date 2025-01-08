@@ -114,8 +114,9 @@ export const eventFields: INodeProperties[] = [
 				resource: ['event'],
 			},
 		},
-		default: '',
-		description: 'Start time of the event',
+		default: '={{ $now.toISO() }}',
+		description:
+			'Start time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
 		displayName: 'End',
@@ -128,8 +129,9 @@ export const eventFields: INodeProperties[] = [
 				resource: ['event'],
 			},
 		},
-		default: '',
-		description: 'End time of the event',
+		default: "={{ $now.plus(1, 'hour').toISO() }}",
+		description:
+			'End time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
 		displayName: 'Use Default Reminders',
