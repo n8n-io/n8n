@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { createHash } from 'crypto';
 import {
 	type ICheckProcessedContextData,
@@ -10,7 +11,6 @@ import {
 	tryToParseDateTime,
 } from 'n8n-workflow';
 import * as assert from 'node:assert/strict';
-import { Container } from 'typedi';
 
 import type { ProcessedData } from '@/databases/entities/processed-data';
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';

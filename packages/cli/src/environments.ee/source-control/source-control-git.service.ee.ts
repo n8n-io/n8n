@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
@@ -12,7 +13,6 @@ import type {
 	SimpleGitOptions,
 	StatusResult,
 } from 'simple-git';
-import { Service } from 'typedi';
 
 import type { User } from '@/databases/entities/user';
 import { OwnershipService } from '@/services/ownership.service';

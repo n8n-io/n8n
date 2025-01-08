@@ -11,9 +11,14 @@ import { useRootStore } from '@/stores/root.store';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 vi.mock('@/composables/useToast', () => ({
 	useToast: vi.fn(),
+}));
+
+vi.mock('@/composables/useTelemetry', () => ({
+	useTelemetry: vi.fn(),
 }));
 
 vi.mock('@/stores/settings.store', () => ({
@@ -55,7 +60,17 @@ const assertUserCanClaimCredits = () => {
 };
 
 const assertUserClaimedCredits = () => {
-	expect(screen.getByText('Claimed 100 free OpenAI API credits')).toBeInTheDocument();
+	expect(
+		screen.getByText(
+			'Claimed 100 free OpenAI API credits! Please note these free credits are only for the following models:',
+		),
+	).toBeInTheDocument();
+
+	expect(
+		screen.getByText(
+			'gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
+		),
+	).toBeInTheDocument();
 };
 
 describe('FreeAiCreditsCallout', () => {
@@ -86,7 +101,7 @@ describe('FreeAiCreditsCallout', () => {
 		});
 
 		(usePostHog as any).mockReturnValue({
-			isFeatureEnabled: vi.fn().mockReturnValue(true),
+			getVariant: vi.fn().mockReturnValue('variant'),
 		});
 
 		(useProjectsStore as any).mockReturnValue({
@@ -99,6 +114,10 @@ describe('FreeAiCreditsCallout', () => {
 
 		(useToast as any).mockReturnValue({
 			showError: vi.fn(),
+		});
+
+		(useTelemetry as any).mockReturnValue({
+			track: vi.fn(),
 		});
 	});
 
@@ -120,6 +139,7 @@ describe('FreeAiCreditsCallout', () => {
 		await fireEvent.click(claimButton);
 
 		expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalledWith('test-project-id');
+		expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits');
 		assertUserClaimedCredits();
 	});
 
@@ -150,7 +170,7 @@ describe('FreeAiCreditsCallout', () => {
 
 	it('should not be able to claim credits if user it is not in experiment', async () => {
 		(usePostHog as any).mockReturnValue({
-			isFeatureEnabled: vi.fn().mockReturnValue(false),
+			getVariant: vi.fn().mockReturnValue('control'),
 		});
 
 		renderComponent(FreeAiCreditsCallout);

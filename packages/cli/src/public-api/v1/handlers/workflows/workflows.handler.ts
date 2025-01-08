@@ -1,9 +1,9 @@
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
 import type express from 'express';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 

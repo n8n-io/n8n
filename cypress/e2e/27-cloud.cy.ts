@@ -5,11 +5,15 @@ import {
 	WorkflowPage,
 	visitPublicApiPage,
 	getPublicApiUpgradeCTA,
+	WorkflowsPage,
 } from '../pages';
+
+const NUMBER_OF_AI_CREDITS = 100;
 
 const mainSidebar = new MainSidebar();
 const bannerStack = new BannerStack();
 const workflowPage = new WorkflowPage();
+const workflowsPage = new WorkflowsPage();
 
 describe('Cloud', () => {
 	before(() => {
@@ -22,6 +26,10 @@ describe('Cloud', () => {
 		cy.overrideSettings({
 			deployment: { type: 'cloud' },
 			n8nMetadata: { userId: '1' },
+			aiCredits: {
+				enabled: true,
+				credits: NUMBER_OF_AI_CREDITS,
+			},
 		});
 		cy.intercept('GET', '/rest/admin/cloud-plan', planData).as('getPlanData');
 		cy.intercept('GET', '/rest/cloud/proxy/user/me', {}).as('getCloudUserInfo');
@@ -62,6 +70,68 @@ describe('Cloud', () => {
 			cy.wait(['@loadSettings', '@projects', '@roles', '@getPlanData']);
 
 			getPublicApiUpgradeCTA().should('be.visible');
+		});
+	});
+
+	describe('Easy AI workflow experiment', () => {
+		it('should not show option to take you to the easy AI workflow if experiment is control', () => {
+			window.localStorage.setItem(
+				'N8N_EXPERIMENT_OVERRIDES',
+				JSON.stringify({ '026_easy_ai_workflow': 'control' }),
+			);
+
+			cy.visit(workflowsPage.url);
+
+			cy.getByTestId('easy-ai-workflow-card').should('not.exist');
+		});
+
+		it('should show option to take you to the easy AI workflow if experiment is variant', () => {
+			window.localStorage.setItem(
+				'N8N_EXPERIMENT_OVERRIDES',
+				JSON.stringify({ '026_easy_ai_workflow': 'variant' }),
+			);
+
+			cy.visit(workflowsPage.url);
+
+			cy.getByTestId('easy-ai-workflow-card').should('to.exist');
+		});
+
+		it('should show default instructions if free AI credits experiment is control', () => {
+			window.localStorage.setItem(
+				'N8N_EXPERIMENT_OVERRIDES',
+				JSON.stringify({ '027_free_openai_calls': 'control', '026_easy_ai_workflow': 'variant' }),
+			);
+
+			cy.visit(workflowsPage.url);
+
+			cy.getByTestId('easy-ai-workflow-card').click();
+
+			workflowPage.getters
+				.stickies()
+				.eq(0)
+				.should(($el) => {
+					expect($el).contains.text('Set up your OpenAI credentials in the OpenAI Model node');
+				});
+		});
+
+		it('should show updated instructions if free AI credits experiment is variant', () => {
+			window.localStorage.setItem(
+				'N8N_EXPERIMENT_OVERRIDES',
+				JSON.stringify({ '027_free_openai_calls': 'variant', '026_easy_ai_workflow': 'variant' }),
+			);
+
+			cy.visit(workflowsPage.url);
+
+			cy.getByTestId('easy-ai-workflow-card').click();
+
+			workflowPage.getters
+				.stickies()
+				.eq(0)
+				.should(($el) => {
+					expect($el).contains.text(
+						`Claim your free ${NUMBER_OF_AI_CREDITS} OpenAI calls in the OpenAI model node`,
+					);
+				});
 		});
 	});
 });

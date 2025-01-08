@@ -800,6 +800,7 @@ $--header-spacing: 20px;
 .name {
 	color: $custom-font-dark;
 	font-size: 15px;
+	display: block;
 }
 
 .activator {
@@ -807,7 +808,6 @@ $--header-spacing: 20px;
 	font-weight: 400;
 	font-size: 13px;
 	line-height: $--text-line-height;
-	display: flex;
 	align-items: center;
 
 	> span {
@@ -845,24 +845,32 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-m);
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+}
+
+@include mixins.breakpoint('xs-only') {
+	.name {
+		:deep(input) {
+			min-width: 180px;
+		}
+	}
 }
 </style>
 
 <style module lang="scss">
 .container {
 	position: relative;
-	top: -1px;
 	width: 100%;
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 }
 
 .group {
 	display: flex;
 	gap: var(--spacing-xs);
 }
+
 .hiddenInput {
 	display: none;
 }

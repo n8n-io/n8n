@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+import { Container } from '@n8n/di';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import { Agent as HTTPSAgent } from 'https';
@@ -11,7 +12,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import * as SecretsHelpers from '@/external-secrets.ee/external-secrets-helper.ee';

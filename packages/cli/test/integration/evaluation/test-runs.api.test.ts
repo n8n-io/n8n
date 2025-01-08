@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
@@ -93,7 +93,7 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
 		const testRunRepository = Container.get(TestRunRepository);
 		const testRun1 = await testRunRepository.createTestRun(testDefinition.id);
 		// Mark as running just to make a slight delay between the runs
-		await testRunRepository.markAsRunning(testRun1.id);
+		await testRunRepository.markAsRunning(testRun1.id, 10);
 		const testRun2 = await testRunRepository.createTestRun(testDefinition.id);
 
 		// Fetch the first page
