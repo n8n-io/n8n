@@ -43,6 +43,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				items,
 				options,
 				db,
+				pgp,
 			);
 			break;
 		default:
