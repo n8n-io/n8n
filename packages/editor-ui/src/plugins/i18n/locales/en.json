@@ -2848,5 +2848,7 @@
 	"freeAi.credits.callout.success.title.part2": "gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest",
 	"freeAi.credits.credentials.edit": "This is a managed credential and cannot be edited.",
 	"freeAi.credits.showError.claim.title": "Free AI credits",
-	"freeAi.credits.showError.claim.message": "Enable to claim credits"
+	"freeAi.credits.showError.claim.message": "Enable to claim credits",
+	"freeAi.credits.showWarning.workflow.activation.title": "You're using free OpenAI API credits",
+	"freeAi.credits.showWarning.workflow.activation.description": "To make sure your workflow runs smoothly in the future, replace the free OpenAI API credits with your own API key."
 }
