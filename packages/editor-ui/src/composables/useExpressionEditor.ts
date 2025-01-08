@@ -3,6 +3,7 @@ import {
 	onBeforeUnmount,
 	onMounted,
 	ref,
+	toRef,
 	toValue,
 	watch,
 	watchEffect,
@@ -47,7 +48,7 @@ export const useExpressionEditor = ({
 	autocompleteTelemetry,
 	isReadOnly = false,
 }: {
-	editorRef: Ref<HTMLElement | undefined>;
+	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
@@ -178,7 +179,7 @@ export const useExpressionEditor = ({
 		dragging.value = false;
 	}
 
-	watch(editorRef, () => {
+	watch(toRef(editorRef), () => {
 		const parent = toValue(editorRef);
 
 		if (!parent) return;

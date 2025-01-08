@@ -98,6 +98,9 @@ export default mergeConfig(
 			sourcemap: !!release,
 			target: browserslistToEsbuild(browsers),
 		},
+		worker: {
+			format: 'es',
+		},
 	}),
 	vitestConfig,
 );
