@@ -52,6 +52,10 @@ export function getNodeByName(name: string) {
 	);
 }
 
+export function getWorkflowHistoryCloseButton() {
+	return cy.getByTestId('workflow-history-close-button');
+}
+
 export function disableNode(name: string) {
 	const target = getNodeByName(name);
 	target.rightclick(name ? 'center' : 'topLeft', { force: true });
