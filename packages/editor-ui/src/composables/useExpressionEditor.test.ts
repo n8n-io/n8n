@@ -132,6 +132,109 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
+	test('render [empty] when expression evaluates to an empty string', async () => {
+		mockResolveExpression().mockReturnValueOnce('');
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: "{{ '' }}",
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.all)).toEqual([
+				{
+					error: null,
+					from: 0,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '[empty]',
+					state: 'valid',
+					to: 8,
+				},
+			]);
+
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: null,
+					from: 0,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '[empty]',
+					state: 'valid',
+					to: 8,
+				},
+			]);
+
+			expect(toValue(segments.plaintext)).toEqual([]);
+		});
+	});
+
+	test('does not render [empty] when expression evaluates to an empty string within a string', async () => {
+		mockResolveExpression().mockReturnValueOnce('');
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: "before {{ '' }} after",
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.all)).toEqual([
+				{
+					from: 0,
+					kind: 'plaintext',
+					plaintext: 'before ',
+					to: 7,
+				},
+				{
+					error: null,
+					from: 7,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '',
+					state: 'valid',
+					to: 15,
+				},
+				{
+					from: 15,
+					kind: 'plaintext',
+					plaintext: ' after',
+					to: 21,
+				},
+			]);
+
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: null,
+					from: 7,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '',
+					state: 'valid',
+					to: 15,
+				},
+			]);
+
+			expect(toValue(segments.plaintext)).toEqual([
+				{
+					from: 0,
+					kind: 'plaintext',
+					plaintext: 'before ',
+					to: 7,
+				},
+				{
+					from: 15,
+					kind: 'plaintext',
+					plaintext: ' after',
+					to: 21,
+				},
+			]);
+		});
+	});
+
 	describe('readEditorValue()', () => {
 		test('should return the full editor value (unresolved)', async () => {
 			mockResolveExpression().mockReturnValueOnce(15);
