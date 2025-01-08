@@ -19,7 +19,6 @@ import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
 import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
-import { v4 as uuid } from 'uuid';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -38,7 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 	language: 'javaScript',
 	isReadOnly: false,
 	rows: 4,
-	id: uuid(),
+	id: crypto.randomUUID(),
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];

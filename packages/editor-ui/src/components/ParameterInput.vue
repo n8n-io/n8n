@@ -65,7 +65,6 @@ import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from 'n8n-des
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
-import { v4 as uuid } from 'uuid';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -478,7 +477,7 @@ const shortPath = computed<string>(() => {
 });
 
 const parameterId = computed(() => {
-	return `${node.value?.id ?? uuid()}${props.path}`;
+	return `${node.value?.id ?? crypto.randomUUID()}${props.path}`;
 });
 
 const isResourceLocatorParameter = computed<boolean>(() => {
