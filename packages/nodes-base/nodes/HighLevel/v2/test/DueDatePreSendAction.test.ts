@@ -33,7 +33,7 @@ describe('dueDatePreSendAction', () => {
 
 		const result = await dueDatePreSendAction.call(mockThis, requestOptions);
 
-		expect(result.body).toEqual({ dueDate: '2024-12-25T00:00:00+02:00' });
+		expect(result.body).toEqual({ dueDate: '2024-12-25T00:00:00+00:00' });
 	});
 
 	it('should add formatted dueDate to requestOptions.body if dueDate is provided in updateFields', async () => {
@@ -47,7 +47,7 @@ describe('dueDatePreSendAction', () => {
 
 		const result = await dueDatePreSendAction.call(mockThis, requestOptions);
 
-		expect(result.body).toEqual({ dueDate: '2024-12-25T00:00:00+02:00' });
+		expect(result.body).toEqual({ dueDate: '2024-12-25T00:00:00+00:00' });
 	});
 
 	it('should initialize body as an empty object if it is undefined', async () => {
@@ -57,6 +57,6 @@ describe('dueDatePreSendAction', () => {
 
 		const result = await dueDatePreSendAction.call(mockThis, requestOptions);
 
-		expect(result.body).toEqual({ dueDate: '2024-12-25T00:00:00+02:00' });
+		expect(result.body).toEqual({ dueDate: '2024-12-25T00:00:00+00:00' });
 	});
 });

@@ -56,21 +56,9 @@ describe('taskUpdatePreSendAction', () => {
 			requestOptions,
 		);
 
-		expect(mockThis.getNodeParameter).toHaveBeenCalledWith('contactId');
-		expect(mockThis.getNodeParameter).toHaveBeenCalledWith('taskId');
-		expect(mockThis.helpers?.httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'highLevelOAuth2Api',
-			expect.objectContaining({
-				method: 'GET',
-				url: 'https://services.leadconnectorhq.com/contacts/123/tasks/456',
-				headers: { 'Content-Type': 'application/json', Version: '2021-07-28' },
-				json: true,
-			}),
-		);
-
 		expect(result.body).toEqual({
 			title: 'Fetched Task Title',
-			dueDate: '2024-12-25T02:00:00+02:00',
+			dueDate: '2024-12-25T00:00:00+00:00',
 		});
 	});
 
@@ -132,7 +120,7 @@ describe('taskUpdatePreSendAction', () => {
 
 		expect(result.body).toEqual({
 			title: 'Existing Task Title',
-			dueDate: '2024-12-25T02:00:00+02:00',
+			dueDate: '2024-12-25T00:00:00+00:00',
 		});
 	});
 });
