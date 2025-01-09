@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, h, nextTick, ref } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -8,8 +8,11 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import { type SourceControlAggregatedFile } from '@/types/sourceControl.types';
+import { groupBy } from 'lodash-es';
+import { RouterLink } from 'vue-router';
+import { VIEWS } from '@/constants';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -64,6 +67,66 @@ async function pushWorkfolder() {
 	}
 }
 
+const variablesToast = {
+	title: 'Finish setting up your new variables to use in workflows',
+	message: h(RouterLink, { to: { name: VIEWS.VARIABLES } }, () => 'Review Variables'),
+	type: 'info' as const,
+	closeOnClick: true,
+	duration: 0,
+};
+
+const credentialsToast = {
+	title: 'Finish setting up your new credentials to use in workflows',
+	message: h(
+		RouterLink,
+		{ to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } } },
+		() => 'Review credentials',
+	),
+	type: 'info' as const,
+	closeOnClick: true,
+	duration: 0,
+};
+
+const pullMessage = ({
+	credential,
+	tags,
+	variables,
+	workflow,
+}: Partial<Record<SourceControlAggregatedFile['type'], SourceControlAggregatedFile[]>>) => {
+	const messages: string[] = [];
+
+	if (workflow?.length) {
+		messages.push(
+			i18n.baseText('generic.workflow', {
+				adjustToNumber: workflow.length,
+				interpolate: { count: workflow.length },
+			}),
+		);
+	}
+
+	if (credential?.length) {
+		messages.push(
+			i18n.baseText('generic.credential', {
+				adjustToNumber: credential.length,
+				interpolate: { count: credential.length },
+			}),
+		);
+	}
+
+	if (variables?.length) {
+		messages.push(i18n.baseText('generic.variable_plural'));
+	}
+
+	if (tags?.length) {
+		messages.push(i18n.baseText('generic.tag_plural'));
+	}
+
+	return [
+		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
+		'were pulled',
+	].join(' ');
+};
+
 async function pullWorkfolder() {
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
@@ -74,40 +137,30 @@ async function pullWorkfolder() {
 				false,
 			)) as unknown as SourceControlAggregatedFile[]) || [];
 
-		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
-			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
-		});
+		const { credential, tags, variables, workflow } = groupBy(status, 'type');
 
-		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
-			toast.showMessage({
-				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
-				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
-				type: 'success',
-			});
-		} else {
-			toast.showMessage({
+		const toastMessages = [
+			...(variables?.length ? [variablesToast] : []),
+			...(credential?.length ? [credentialsToast] : []),
+			{
 				title: i18n.baseText('settings.sourceControl.pull.success.title'),
-				type: 'success',
-			});
+				message: pullMessage({ credential, tags, variables, workflow }),
+				type: 'success' as const,
+			},
+		];
 
-			const incompleteFileTypes = ['variables', 'credential'];
-			const hasVariablesOrCredentials = (status || []).some((file) => {
-				return incompleteFileTypes.includes(file.type);
-			});
-
-			if (hasVariablesOrCredentials) {
-				void nextTick(() => {
-					toast.showMessage({
-						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-						type: 'info',
-						duration: 0,
-						showClose: true,
-						offset: 0,
-					});
-				});
-			}
+		for (const message of toastMessages) {
+			/**
+			 * the toasts stack in a reversed way, resulting in
+			 * Success
+			 * Credentials
+			 * Variables
+			 */
+			//
+			toast.showToast(message);
+			await nextTick();
 		}
+
 		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		const errorResponse = error.response;
