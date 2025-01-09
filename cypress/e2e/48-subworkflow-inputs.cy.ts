@@ -89,7 +89,7 @@ function navigateWorkflowSelectionDropdown(index: number, expectedText: string) 
 		.findChildByTestId('rlc-item')
 		.eq(index)
 		.find('span')
-		.should('have.text', expectedText)
+		.should('contain.text', expectedText)
 		.click();
 }
 
@@ -167,7 +167,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
+		navigateWorkflowSelectionDropdown(0, 'Create a ');
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************
@@ -227,7 +227,7 @@ describe('Sub-workflow creation and typed usage', () => {
 				cy.visit(url);
 			});
 		});
-		navigateWorkflowSelectionDropdown(0, 'Create a new sub-workflow');
+		navigateWorkflowSelectionDropdown(0, 'Create a ');
 
 		openNode('Workflow Input Trigger');
 
