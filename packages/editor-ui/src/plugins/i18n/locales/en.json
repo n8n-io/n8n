@@ -625,6 +625,7 @@
 	"credentials.item.created": "Created",
 	"credentials.item.owner": "Owner",
 	"credentials.item.readonly": "Read only",
+	"credentials.item.incomplete": "Incomplete",
 	"credentials.search.placeholder": "Search credentials...",
 	"credentials.filters.type": "Type",
 	"credentials.filters.setup": "Needs first setup",

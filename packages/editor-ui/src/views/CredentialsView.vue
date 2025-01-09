@@ -2,13 +2,12 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import type { ICredentialsDecrypted } from 'n8n-workflow';
+import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import ResourcesListLayout, {
 	type IResource,
 	type IFilters,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
-import type { ICredentialType } from 'n8n-workflow';
 import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -60,6 +59,12 @@ const filters = computed<Filters>(
 );
 const loading = ref(false);
 
+const needsSetup = (data: string | undefined): boolean => {
+	const dataObject = data as unknown as ICredentialsDecrypted['data'];
+	if (!dataObject) return false;
+	return Object.keys(dataObject).length === 0;
+};
+
 const allCredentials = computed<IResource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
 		id: credential.id,
@@ -72,7 +77,7 @@ const allCredentials = computed<IResource[]>(() =>
 		type: credential.type,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
-		data: credential.data,
+		incomplete: needsSetup(credential.data),
 	})),
 );
 
@@ -128,7 +133,7 @@ watch(
 );
 
 const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iResource = resource as Omit<ICredentialsResponse, 'data'> & ICredentialsDecrypted;
+	const iResource = resource as ICredentialsResponse & { incomplete: boolean };
 	const filtersToApply = newFilters as Filters;
 	if (filtersToApply.type && filtersToApply.type.length > 0) {
 		matches = matches && filtersToApply.type.includes(iResource.type);
@@ -144,7 +149,7 @@ const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): 
 	}
 
 	if (filtersToApply.setupNeeded) {
-		matches = matches && Boolean(iResource.data && Object.keys(iResource.data).length === 0);
+		matches = matches && iResource.incomplete;
 	}
 
 	return matches;
@@ -211,6 +216,7 @@ onMounted(() => {
 				class="mb-2xs"
 				:data="data"
 				:read-only="data.readOnly"
+				:incomplete="data.incomplete"
 				@click="setRouteCredentialId"
 			/>
 		</template>
