@@ -7,6 +7,7 @@ import { ROUTES } from '../constants';
  */
 
 export type EndpointType =
+	| 'main'
 	| 'ai_chain'
 	| 'ai_document'
 	| 'ai_embedding'
@@ -24,8 +25,15 @@ export type EndpointType =
  */
 
 export function getAddInputEndpointByType(nodeName: string, endpointType: EndpointType) {
-	return cy.get(
-		`.add-input-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
+	return cy.ifCanvasVersion(
+		() =>
+			cy.get(
+				`.add-input-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
+			),
+		() =>
+			cy.get(
+				`[data-test-id="canvas-node-input-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			),
 	);
 }
 
@@ -63,10 +71,18 @@ export function disableNode(name: string) {
 }
 
 export function getConnectionBySourceAndTarget(source: string, target: string) {
-	return cy
-		.get('.jtk-connector')
-		.filter(`[data-source-node="${source}"][data-target-node="${target}"]`)
-		.eq(0);
+	return cy.ifCanvasVersion(
+		() =>
+			cy
+				.get('.jtk-connector')
+				.filter(`[data-source-node="${source}"][data-target-node="${target}"]`)
+				.eq(0),
+		() =>
+			cy
+				.getByTestId('edge')
+				.filter(`[data-source-node-name="${source}"][data-target-node-name="${target}"]`)
+				.eq(0),
+	);
 }
 
 export function getNodeCreatorSearchBar() {
@@ -158,7 +174,19 @@ export function addSupplementalNodeToParent(
 	exactMatch = false,
 ) {
 	connectNodeToParent(nodeName, endpointType, parentNodeName, exactMatch);
-	getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+
+	cy.ifCanvasVersion(
+		() => {
+			getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+		},
+		() => {
+			if (endpointType === 'main') {
+				getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+			} else {
+				getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
+			}
+		},
+	);
 }
 
 export function addLanguageModelNodeToParent(
