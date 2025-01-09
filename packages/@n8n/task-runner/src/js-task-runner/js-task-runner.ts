@@ -158,7 +158,7 @@ export class JsTaskRunner extends TaskRunner {
 
 	private getNativeVariables() {
 		return {
-			// Exposed Node.js globals in vm2
+			// Exposed Node.js globals
 			Buffer,
 			setTimeout,
 			setInterval,
