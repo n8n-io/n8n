@@ -6,7 +6,7 @@ import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
 
 let response: IDataObject[] | undefined = [];
-let responsewithRetries: IDataObject | undefined = {};
+let responseWithRetries: IDataObject | undefined = {};
 
 jest.mock('../../GenericFunctions', () => {
 	const originalModule = jest.requireActual('../../GenericFunctions');
@@ -18,7 +18,7 @@ jest.mock('../../GenericFunctions', () => {
 			return (() => response)();
 		}),
 		googleApiRequestWithRetries: jest.fn(async function () {
-			return (() => responsewithRetries)();
+			return (() => responseWithRetries)();
 		}),
 		addNextOccurrence: jest.fn(function (data: IDataObject[]) {
 			return data;
@@ -42,7 +42,7 @@ describe('Google Calendar Node', () => {
 			},
 		});
 		response = undefined;
-		responsewithRetries = undefined;
+		responseWithRetries = undefined;
 	});
 
 	afterEach(() => {
@@ -122,7 +122,7 @@ describe('Google Calendar Node', () => {
 				},
 			];
 
-			responsewithRetries = { items: [] };
+			responseWithRetries = { items: [] };
 
 			const result = await googleCalendar.execute.call(mockExecuteFunctions);
 

@@ -20,7 +20,7 @@ import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
 import { eventFields, eventOperations } from './EventDescription';
-import type { IEvent, ReccuringEventInstance } from './EventInterface';
+import type { IEvent, RecurringEventInstance } from './EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
@@ -32,7 +32,7 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	googleApiRequestWithRetries,
-	type RecurentEvent,
+	type RecurrentEvent,
 } from './GenericFunctions';
 import { sortItemKeysByPriorityList } from '../../../utils/utilities';
 
@@ -416,7 +416,7 @@ export class GoogleCalendar implements INodeType {
 									).items as IDataObject[]) || [];
 								responseData = eventInstances[0] ? [eventInstances[0]] : [responseData];
 							} else {
-								responseData = addNextOccurrence([responseData as RecurentEvent]);
+								responseData = addNextOccurrence([responseData as RecurrentEvent]);
 							}
 						}
 					}
@@ -566,7 +566,7 @@ export class GoogleCalendar implements INodeType {
 								(!options.recurringEventHandling || options.recurringEventHandling === 'expand')
 							) {
 								const suggestTrim = eventExtendYearIntoFuture(
-									responseData as ReccuringEventInstance[],
+									responseData as RecurringEventInstance[],
 									timezone,
 								);
 

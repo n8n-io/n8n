@@ -15,7 +15,7 @@ import type {
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 import { RRule } from 'rrule';
 
-import type { ReccuringEventInstance } from './EventInterface';
+import type { RecurringEventInstance } from './EventInterface';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -130,7 +130,7 @@ export async function getTimezones(
 	return { results };
 }
 
-export type RecurentEvent = {
+export type RecurrentEvent = {
 	start: {
 		date?: string;
 		dateTime?: string;
@@ -154,7 +154,7 @@ export type RecurentEvent = {
 	};
 };
 
-export function addNextOccurrence(items: RecurentEvent[]) {
+export function addNextOccurrence(items: RecurrentEvent[]) {
 	for (const item of items) {
 		if (item.recurrence) {
 			let eventRecurrence;
@@ -227,6 +227,7 @@ async function requestWithRetries(
 		if (!(error instanceof NodeApiError)) {
 			throw new NodeOperationError(node, error.message, { itemIndex });
 		}
+
 		if (retryCount >= maxRetries) throw error;
 
 		if (error.httpCode === '403' || error.httpCode === '429') {
@@ -236,9 +237,9 @@ async function requestWithRetries(
 
 			await sleep(delay);
 			return await requestWithRetries(node, requestFn, retryCount + 1, maxRetries, itemIndex);
-		} else {
-			throw error;
 		}
+
+		throw error;
 	}
 }
 
@@ -272,7 +273,7 @@ export async function googleApiRequestWithRetries({
 }
 
 export const eventExtendYearIntoFuture = (
-	data: ReccuringEventInstance[],
+	data: RecurringEventInstance[],
 	timezone: string,
 	currentYear?: number, // for testing purposes
 ) => {

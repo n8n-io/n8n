@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 
-import type { ReccuringEventInstance } from '../EventInterface';
+import type { RecurringEventInstance } from '../EventInterface';
 import { addTimezoneToDate, dateObjectToISO, eventExtendYearIntoFuture } from '../GenericFunctions';
 
 describe('addTimezoneToDate', () => {
@@ -51,7 +51,7 @@ describe('eventExtendYearIntoFuture', () => {
 				recurringEventId: '123',
 				start: { dateTime: '2026-01-01T00:00:00Z', date: null },
 			},
-		] as unknown as ReccuringEventInstance[];
+		] as unknown as RecurringEventInstance[];
 
 		const result = eventExtendYearIntoFuture(events, timezone, 2025);
 		expect(result).toBe(true);
@@ -63,7 +63,7 @@ describe('eventExtendYearIntoFuture', () => {
 				recurringEventId: '123',
 				start: { dateTime: '2025-12-31T23:59:59Z', date: null },
 			},
-		] as unknown as ReccuringEventInstance[];
+		] as unknown as RecurringEventInstance[];
 
 		const result = eventExtendYearIntoFuture(events, timezone, 2025);
 		expect(result).toBe(false);
@@ -75,7 +75,7 @@ describe('eventExtendYearIntoFuture', () => {
 				recurringEventId: '123',
 				start: { dateTime: 'invalid-date', date: null },
 			},
-		] as unknown as ReccuringEventInstance[];
+		] as unknown as RecurringEventInstance[];
 
 		const result = eventExtendYearIntoFuture(events, timezone, 2025);
 		expect(result).toBe(false);
@@ -87,7 +87,7 @@ describe('eventExtendYearIntoFuture', () => {
 				recurringEventId: null,
 				start: { dateTime: '2025-01-01T00:00:00Z', date: null },
 			},
-		] as unknown as ReccuringEventInstance[];
+		] as unknown as RecurringEventInstance[];
 
 		const result = eventExtendYearIntoFuture(events, timezone, 2025);
 		expect(result).toBe(false);
@@ -99,7 +99,7 @@ describe('eventExtendYearIntoFuture', () => {
 				recurringEventId: '123',
 				start: { dateTime: null, date: '2026-01-01' },
 			},
-		] as unknown as ReccuringEventInstance[];
+		] as unknown as RecurringEventInstance[];
 
 		const result = eventExtendYearIntoFuture(events, timezone, 2025);
 		expect(result).toBe(true);

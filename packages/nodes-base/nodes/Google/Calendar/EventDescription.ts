@@ -926,11 +926,11 @@ export const eventFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Reccuring Event Instance',
+				name: 'Recurring Event Instance',
 				value: 'instance',
 			},
 			{
-				name: 'Reccuring Event',
+				name: 'Recurring Event',
 				value: 'event',
 			},
 		],

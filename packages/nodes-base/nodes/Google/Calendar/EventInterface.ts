@@ -35,7 +35,7 @@ export interface IEvent {
 	conferenceData?: IConferenceData;
 }
 
-export type ReccuringEventInstance = {
+export type RecurringEventInstance = {
 	recurringEventId?: string;
 	start: { dateTime: string; date: string };
 };
