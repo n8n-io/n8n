@@ -112,6 +112,15 @@ export class E2EController {
 		[LICENSE_QUOTAS.AI_CREDITS]: 0,
 	};
 
+	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
+		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
+		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+	};
+
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
@@ -180,6 +189,11 @@ export class E2EController {
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
+		}
+
+		for (const feature of Object.keys(this.numericFeatures)) {
+			this.numericFeatures[feature as NumericLicenseFeature] =
+				E2EController.numericFeaturesDefaults[feature as NumericLicenseFeature];
 		}
 	}
 
