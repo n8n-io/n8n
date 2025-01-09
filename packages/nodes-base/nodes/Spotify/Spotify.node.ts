@@ -1085,10 +1085,9 @@ export class Spotify implements INodeType {
 
 							const trackIdParameter = this.getNodeParameter('trackID', i) as string;
 
-							const trackIds =
-								typeof trackIdParameter === 'string' && trackIdParameter.includes(',')
-									? trackIdParameter.split(',').map((trackId) => trackId.trim())
-									: [trackIdParameter];
+							const trackIds = trackIdParameter.includes(',')
+								? trackIdParameter.split(',').map((trackId) => trackId.trim())
+								: [trackIdParameter];
 
 							body.tracks = trackIds.map((trackId) => ({ uri: trackId }));
 
