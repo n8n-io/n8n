@@ -241,10 +241,16 @@ onMounted(() => {
 				</N8nSelect>
 			</div>
 			<div class="mb-s">
-				<N8nInputLabel label="Status" :bold="false" size="small" color="text-base" class="mb-3xs" />
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.status')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
 
 				<N8nCheckbox
-					label="Needs first setup"
+					:label="i18n.baseText('credentials.filters.setup')"
 					data-test-id="credential-filter-setup-needed"
 					:model-value="filters.setupNeeded"
 					@update:model-value="setKeyValue('setupNeeded', $event)"

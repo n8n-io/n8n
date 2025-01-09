@@ -68,19 +68,19 @@ async function pushWorkfolder() {
 }
 
 const variablesToast = {
-	title: 'Finish setting up your new variables to use in workflows',
-	message: h(RouterLink, { to: { name: VIEWS.VARIABLES } }, () => 'Review Variables'),
+	title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
+	message: h(RouterLink, { to: { name: VIEWS.VARIABLES } }, () =>
+		i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
+	),
 	type: 'info' as const,
 	closeOnClick: true,
 	duration: 0,
 };
 
 const credentialsToast = {
-	title: 'Finish setting up your new credentials to use in workflows',
-	message: h(
-		RouterLink,
-		{ to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } } },
-		() => 'Review credentials',
+	title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
+	message: h(RouterLink, { to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } } }, () =>
+		i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
 	),
 	type: 'info' as const,
 	closeOnClick: true,
