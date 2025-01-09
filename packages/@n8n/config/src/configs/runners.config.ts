@@ -39,13 +39,23 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE')
 	maxOldSpaceSize: string = '';
 
-	/** How many concurrent tasks can a runner execute at a time */
+	/**
+	 * How many concurrent tasks can a runner execute at a time
+	 *
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `5`
+	 */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
-	maxConcurrency: number = 5;
+	maxConcurrency: number = 10;
 
-	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. (In internal mode, the runner will also be restarted.) Must be greater than 0. */
+	/**
+	 * How long (in seconds) a task is allowed to take for completion, else the
+	 * task will be aborted. (In internal mode, the runner will also be
+	 * restarted.) Must be greater than 0.
+	 *
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
+	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 60;
+	taskTimeout: number = 300; // 5 minutes
 
 	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')

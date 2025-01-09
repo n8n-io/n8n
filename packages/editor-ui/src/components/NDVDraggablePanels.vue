@@ -375,6 +375,7 @@ function onDragEnd() {
 				:min-width="MIN_PANEL_WIDTH"
 				:grid-size="20"
 				:supported-directions="supportedResizeDirections"
+				outset
 				@resize="onResizeThrottle"
 				@resizeend="onResizeEnd"
 			>

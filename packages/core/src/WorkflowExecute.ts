@@ -1210,7 +1210,27 @@ export class WorkflowExecute {
 
 		this.status = 'running';
 
-		const startNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
+		if (!this.runExecutionData.executionData) {
+			throw new ApplicationError('Failed to run workflow due to missing execution data', {
+				extra: {
+					workflowId: workflow.id,
+					executionid: this.additionalData.executionId,
+					mode: this.mode,
+				},
+			});
+		}
+
+		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
+
+		if (!startNode) {
+			throw new ApplicationError('Failed to run workflow due to empty node execution stack', {
+				extra: {
+					workflowId: workflow.id,
+					executionId: this.additionalData.executionId,
+					mode: this.mode,
+				},
+			});
+		}
 
 		let destinationNode: string | undefined;
 		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
@@ -1245,7 +1265,7 @@ export class WorkflowExecute {
 
 		if (this.runExecutionData.waitTill) {
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
-			this.runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
+			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
 			this.runExecutionData.waitTill = undefined;
 			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
 		}
