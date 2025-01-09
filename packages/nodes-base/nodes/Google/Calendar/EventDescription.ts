@@ -116,7 +116,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Start time of the eventt',
+		description: 'Start time of the event',
 	},
 	{
 		displayName: 'End',
