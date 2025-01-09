@@ -437,7 +437,6 @@ onMounted(async () => {
 					ref="listWrapperRef"
 					:class="$style.listWrapper"
 				>
-					{{ resources.length }} / {{ filteredAndSortedResources.length }}
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
