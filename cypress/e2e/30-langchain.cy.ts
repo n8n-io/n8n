@@ -28,7 +28,7 @@ import {
 	clickGetBackToCanvas,
 	getRunDataInfoCallout,
 	getOutputPanelTable,
-	toggleParameterCheckboxInputByName,
+	checkParameterCheckboxInputByName,
 } from '../composables/ndv';
 import {
 	addLanguageModelNodeToParent,
@@ -97,7 +97,7 @@ describe('Langchain Integration', () => {
 	it('should add nodes to all Agent node input types', () => {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
-		toggleParameterCheckboxInputByName('hasOutputParser');
+		checkParameterCheckboxInputByName('hasOutputParser');
 		clickGetBackToCanvas();
 
 		addLanguageModelNodeToParent(

@@ -2,14 +2,13 @@
 import { useI18n } from '@/composables/useI18n';
 import { ElCollapseTransition } from 'element-plus';
 import { ref, nextTick } from 'vue';
-import N8nTooltip from 'n8n-design-system/components/N8nTooltip';
 
 interface EvaluationStep {
 	title: string;
 	warning?: boolean;
 	small?: boolean;
 	expanded?: boolean;
-	tooltip?: string;
+	description?: string;
 }
 
 const props = withDefaults(defineProps<EvaluationStep>(), {
@@ -17,14 +16,12 @@ const props = withDefaults(defineProps<EvaluationStep>(), {
 	warning: false,
 	small: false,
 	expanded: true,
-	tooltip: '',
 });
 
 const locale = useI18n();
 const isExpanded = ref(props.expanded);
 const contentRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
-const isTooltipVisible = ref(false);
 
 const toggleExpand = async () => {
 	isExpanded.value = !isExpanded.value;
@@ -35,14 +32,6 @@ const toggleExpand = async () => {
 		}
 	}
 };
-
-const showTooltip = () => {
-	isTooltipVisible.value = true;
-};
-
-const hideTooltip = () => {
-	isTooltipVisible.value = false;
-};
 </script>
 
 <template>
@@ -51,16 +40,7 @@ const hideTooltip = () => {
 		:class="[$style.evaluationStep, small && $style.small]"
 		data-test-id="evaluation-step"
 	>
-		<N8nTooltip :disabled="!tooltip" placement="right" :offset="25" :visible="isTooltipVisible">
-			<template #content>
-				{{ tooltip }}
-			</template>
-			<!-- This empty div is needed to ensure the tooltip trigger area spans the full width of the step.
-			     Without it, the tooltip would only show when hovering over the content div, which is narrower.
-			     The contentPlaceholder creates an invisible full-width area that can trigger the tooltip. -->
-			<div :class="$style.contentPlaceholder"></div>
-		</N8nTooltip>
-		<div :class="$style.content" @mouseenter="showTooltip" @mouseleave="hideTooltip">
+		<div :class="$style.content">
 			<div :class="$style.header">
 				<div :class="[$style.icon, warning && $style.warning]">
 					<slot name="icon" />
@@ -83,6 +63,7 @@ const hideTooltip = () => {
 					<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 				</button>
 			</div>
+			<div v-if="description" :class="$style.description">{{ description }}</div>
 			<ElCollapseTransition v-if="$slots.cardContent">
 				<div v-show="isExpanded" :class="$style.cardContentWrapper">
 					<div ref="contentRef" :class="$style.cardContent" data-test-id="evaluation-step-content">
@@ -110,14 +91,6 @@ const hideTooltip = () => {
 	&.small {
 		width: 80%;
 	}
-}
-.contentPlaceholder {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	z-index: -1;
 }
 .icon {
 	display: flex;
@@ -172,5 +145,11 @@ const hideTooltip = () => {
 }
 .cardContentWrapper {
 	height: max-content;
+}
+
+.description {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
+	line-height: 1rem;
 }
 </style>
