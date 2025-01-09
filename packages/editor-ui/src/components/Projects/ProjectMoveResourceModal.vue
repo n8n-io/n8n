@@ -82,6 +82,7 @@ const moveResource = async () => {
 			props.data.resourceType,
 			props.data.resource.id,
 			selectedProject.value.id,
+			shareUsedCredentials.value ? usedCredentials.value.map((c) => c.id) : undefined,
 		);
 		closeModal();
 		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
@@ -221,7 +222,7 @@ onMounted(async () => {
 										}}
 									</span>
 									<template #content>
-										<ul>
+										<ul :class="$style.credentialsList">
 											<li v-for="credential in usedCredentials" :key="credential.id">
 												<router-link
 													target="_blank"
@@ -275,5 +276,19 @@ onMounted(async () => {
 .textBlock {
 	display: block;
 	margin-top: var(--spacing-s);
+}
+
+.credentialsList {
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+
+	li {
+		padding: 0 0 var(--spacing-3xs);
+
+		&:last-child {
+			padding-bottom: 0;
+		}
+	}
 }
 </style>
