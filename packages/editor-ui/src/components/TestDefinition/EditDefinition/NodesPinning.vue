@@ -22,11 +22,11 @@ const eventBus = createEventBus<CanvasEventBusEvents>();
 const style = useCssModule();
 const uuid = crypto.randomUUID();
 const props = defineProps<{
-	modelValue: Array<{ name: string }>;
+	modelValue: Array<{ name: string; id: string }>;
 }>();
 
 const emit = defineEmits<{
-	'update:modelValue': [value: Array<{ name: string }>];
+	'update:modelValue': [value: Array<{ name: string; id: string }>];
 }>();
 
 const isLoading = ref(true);
@@ -84,14 +84,7 @@ function disableAllNodes() {
 	const ids = mappedNodes.value.map((node) => node.id);
 	updateNodeClasses(ids, false);
 
-	const pinnedNodes = props.modelValue
-		.map((node) => {
-			const matchedNode = mappedNodes.value.find(
-				(mappedNode) => mappedNode?.data?.name === node.name,
-			);
-			return matchedNode?.id ?? null;
-		})
-		.filter((n) => n !== null);
+	const pinnedNodes = props.modelValue.map((node) => node.id).filter((id) => id !== null);
 
 	if (pinnedNodes.length > 0) {
 		updateNodeClasses(pinnedNodes, true);
@@ -101,10 +94,10 @@ function onPinButtonClick(data: CanvasNodeData) {
 	const nodeName = getNodeNameById(data.id);
 	if (!nodeName) return;
 
-	const isPinned = props.modelValue.some((node) => node.name === nodeName);
+	const isPinned = props.modelValue.some((node) => node.id === data.id);
 	const updatedNodes = isPinned
-		? props.modelValue.filter((node) => node.name !== nodeName)
-		: [...props.modelValue, { name: nodeName }];
+		? props.modelValue.filter((node) => node.id !== data.id)
+		: [...props.modelValue, { name: nodeName, id: data.id }];
 
 	emit('update:modelValue', updatedNodes);
 	updateNodeClasses([data.id], !isPinned);
@@ -145,6 +138,7 @@ onMounted(loadData);
 							size="large"
 							icon="thumbtack"
 							:class="$style.pinButton"
+							data-test-id="node-pin-button"
 							@click="onPinButtonClick(data)"
 						/>
 					</N8nTooltip>

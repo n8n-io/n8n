@@ -63,6 +63,8 @@ const TestDefinitionListView = async () =>
 	await import('./views/TestDefinition/TestDefinitionListView.vue');
 const TestDefinitionEditView = async () =>
 	await import('./views/TestDefinition/TestDefinitionEditView.vue');
+const TestDefinitionRootView = async () =>
+	await import('./views/TestDefinition/TestDefinitionRootView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -257,6 +259,11 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/workflow/:name/evaluation',
+		components: {
+			default: TestDefinitionRootView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -267,8 +274,6 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION,
 				components: {
 					default: TestDefinitionListView,
-					header: MainHeader,
-					sidebar: MainSidebar,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -280,8 +285,6 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.NEW_TEST_DEFINITION,
 				components: {
 					default: TestDefinitionEditView,
-					header: MainHeader,
-					sidebar: MainSidebar,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -293,8 +296,6 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_EDIT,
 				components: {
 					default: TestDefinitionEditView,
-					header: MainHeader,
-					sidebar: MainSidebar,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -306,8 +307,6 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_RUNS,
 				components: {
 					default: TestDefinitionRunsListView,
-					header: MainHeader,
-					sidebar: MainSidebar,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -319,8 +318,6 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
 				components: {
 					default: TestDefinitionRunDetailView,
-					header: MainHeader,
-					sidebar: MainSidebar,
 				},
 				meta: {
 					keepWorkflowAlive: true,
