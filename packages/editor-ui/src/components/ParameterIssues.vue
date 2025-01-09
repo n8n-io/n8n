@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TitledList from '@/components/TitledList.vue';
 import { useI18n } from '@/composables/useI18n';
+import { N8nTooltip, N8nIcon } from 'n8n-design-system';
 
 defineProps<{
 	issues: string[];
@@ -11,22 +12,21 @@ const i18n = useI18n();
 
 <template>
 	<div v-if="issues.length" :class="$style['parameter-issues']" data-test-id="parameter-issues">
-		<n8n-tooltip placement="top">
+		<N8nTooltip placement="top">
 			<template #content>
 				<TitledList :title="`${i18n.baseText('parameterInput.issues')}:`" :items="issues" />
 			</template>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</n8n-tooltip>
+			<N8nIcon icon="exclamation-triangle" />
+		</N8nTooltip>
 	</div>
 </template>
 
 <style module lang="scss">
 .parameter-issues {
-	width: 20px;
 	text-align: right;
 	float: right;
-	color: #ff8080;
+	color: var(--color-danger-light);
 	font-size: var(--font-size-s);
-	padding-left: var(--spacing-4xs);
+	padding-left: var(--spacing-3xs);
 }
 </style>

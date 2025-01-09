@@ -623,14 +623,19 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	}
 }
 
-.selectPopper :global(.el-select-dropdown__list) {
-	padding: 0;
+.selectPopper {
+	:global(.el-select-dropdown__list) {
+		padding: 0;
+	}
+
+	:has(.newCredential:hover) :global(.hover) {
+		background-color: transparent;
+	}
 }
 
 .warning {
-	min-width: 20px;
-	margin-left: 5px;
-	color: #ff8080;
+	margin-left: var(--spacing-4xs);
+	color: var(--color-danger-light);
 	font-size: var(--font-size-s);
 }
 
@@ -639,8 +644,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	justify-content: center;
 	align-items: center;
 	color: var(--color-text-base);
-	min-width: 20px;
-	margin-left: 5px;
+	margin-left: var(--spacing-3xs);
 	font-size: var(--font-size-s);
 }
 
@@ -676,7 +680,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	}
 }
 
-:global(.is-empty) + div > .newCredential {
+:global(.is-empty) + :global(.el-select-dropdown__footer) > .newCredential {
 	border-top: none;
 	box-shadow: none;
 	border-radius: var(--border-radius-base);
