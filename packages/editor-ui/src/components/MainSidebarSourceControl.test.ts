@@ -239,7 +239,7 @@ describe('MainSidebarSourceControl', () => {
 			});
 		});
 
-		it.only('should show feedback where there are no change to pull', async () => {
+		it('should show feedback where there are no change to pull', async () => {
 			vi.spyOn(sourceControlStore, 'pullWorkfolder').mockResolvedValueOnce([]);
 
 			const { getAllByRole } = renderComponent({
