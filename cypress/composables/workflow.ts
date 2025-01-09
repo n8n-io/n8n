@@ -175,11 +175,18 @@ export function addSupplementalNodeToParent(
 ) {
 	connectNodeToParent(nodeName, endpointType, parentNodeName, exactMatch);
 
-	if (endpointType === 'main') {
-		getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
-	} else {
-		getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
-	}
+	cy.ifCanvasVersion(
+		() => {
+			getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+		},
+		() => {
+			if (endpointType === 'main') {
+				getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+			} else {
+				getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
+			}
+		},
+	);
 }
 
 export function addLanguageModelNodeToParent(
