@@ -132,10 +132,10 @@ const evaluatedExpression = computed<Result<unknown, Error>>(() => {
 		}
 
 		if (props.isForCredential) opts.additionalKeys = resolvedAdditionalExpressionData.value;
-		const stringifyExpressionResult = props.parameter.type !== 'multiOptions';
+		const stringifyObject = props.parameter.type !== 'multiOptions';
 		return {
 			ok: true,
-			result: workflowHelpers.resolveExpression(value, undefined, opts, stringifyExpressionResult),
+			result: workflowHelpers.resolveExpression(value, undefined, opts, stringifyObject),
 		};
 	} catch (error) {
 		return { ok: false, error };
