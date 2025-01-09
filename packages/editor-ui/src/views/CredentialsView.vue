@@ -77,7 +77,7 @@ const allCredentials = computed<IResource[]>(() =>
 		type: credential.type,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
-		incomplete: needsSetup(credential.data),
+		needsSetup: needsSetup(credential.data),
 	})),
 );
 
@@ -133,7 +133,7 @@ watch(
 );
 
 const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
-	const iResource = resource as ICredentialsResponse & { incomplete: boolean };
+	const iResource = resource as ICredentialsResponse & { needsSetup: boolean };
 	const filtersToApply = newFilters as Filters;
 	if (filtersToApply.type && filtersToApply.type.length > 0) {
 		matches = matches && filtersToApply.type.includes(iResource.type);
@@ -149,7 +149,7 @@ const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): 
 	}
 
 	if (filtersToApply.setupNeeded) {
-		matches = matches && iResource.incomplete;
+		matches = matches && iResource.needsSetup;
 	}
 
 	return matches;
@@ -216,7 +216,7 @@ onMounted(() => {
 				class="mb-2xs"
 				:data="data"
 				:read-only="data.readOnly"
-				:incomplete="data.incomplete"
+				:needs-setup="data.needsSetup"
 				@click="setRouteCredentialId"
 			/>
 		</template>

@@ -29,7 +29,7 @@ const props = withDefaults(
 	defineProps<{
 		data: ICredentialsResponse;
 		readOnly?: boolean;
-		incomplete?: boolean;
+		needsSetup?: boolean;
 	}>(),
 	{
 		data: () => ({
@@ -147,8 +147,8 @@ function moveResource() {
 				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="incomplete" class="ml-3xs" theme="warning">
-					{{ locale.baseText('credentials.item.incomplete') }}
+				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
 			</n8n-heading>
 		</template>
