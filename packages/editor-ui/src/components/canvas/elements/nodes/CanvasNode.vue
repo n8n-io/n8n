@@ -345,7 +345,8 @@ onBeforeUnmount(() => {
 				:is-valid-connection="isValidConnection"
 				:data-node-name="data.name"
 				data-test-id="canvas-node-output-handle"
-				:data-handle-index="source.index"
+				:data-index="source.index"
+				:data-connection-type="source.type"
 				@add="onAdd"
 			/>
 		</template>
@@ -360,7 +361,8 @@ onBeforeUnmount(() => {
 				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				data-test-id="canvas-node-input-handle"
-				:data-handle-index="target.index"
+				:data-index="target.index"
+				:data-connection-type="target.type"
 				:data-node-name="data.name"
 				@add="onAdd"
 			/>
