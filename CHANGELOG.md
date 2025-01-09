@@ -1,3 +1,12 @@
+## [1.74.1](https://github.com/n8n-io/n8n/compare/n8n@1.74.0...n8n@1.74.1) (2025-01-09)
+
+
+### Bug Fixes
+
+* **editor:** Fix parameter input validation ([#12532](https://github.com/n8n-io/n8n/issues/12532)) ([6f757f1](https://github.com/n8n-io/n8n/commit/6f757f10bd9102394d2a0b6bbc795f90444f66d2))
+
+
+
 # [1.74.0](https://github.com/n8n-io/n8n/compare/n8n@1.73.0...n8n@1.74.0) (2025-01-08)
 
 
