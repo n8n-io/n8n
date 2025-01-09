@@ -120,13 +120,15 @@ const hasAiMetadata = computed(() => {
 	return false;
 });
 
-// Determine the initial output mode to logs if the node has an error and the logs are available
-const defaultOutputMode = computed<OutputType>(() => {
-	const hasError =
+const hasError = computed(
+	() =>
 		workflowRunData.value &&
 		node.value &&
-		(workflowRunData.value[node.value.name]?.[props.runIndex]?.error as NodeError);
+		(workflowRunData.value[node.value.name]?.[props.runIndex]?.error as NodeError),
+);
 
+// Determine the initial output mode to logs if the node has an error and the logs are available
+const defaultOutputMode = computed<OutputType>(() => {
 	return Boolean(hasError) && hasAiMetadata.value ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
 });
 
@@ -216,7 +218,7 @@ const canPinData = computed(() => {
 });
 
 const allToolsWereUnusedNotice = computed(() => {
-	if (!node.value || runsCount.value === 0) return undefined;
+	if (!node.value || runsCount.value === 0 || hasError) return undefined;
 
 	// With pinned data there's no clear correct answer for whether
 	// we should use historic or current parents, so we don't show the notice,
