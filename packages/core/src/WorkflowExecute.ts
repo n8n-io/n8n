@@ -1216,7 +1216,6 @@ export class WorkflowExecute {
 					workflowId: workflow.id,
 					executionid: this.additionalData.executionId,
 					mode: this.mode,
-					runExecutionData: this.runExecutionData,
 				},
 			});
 		}
@@ -1229,7 +1228,6 @@ export class WorkflowExecute {
 					workflowId: workflow.id,
 					executionId: this.additionalData.executionId,
 					mode: this.mode,
-					runExecutionData: this.runExecutionData,
 				},
 			});
 		}
