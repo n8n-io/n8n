@@ -106,7 +106,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	startNode(grantToken: string, taskBrokerUri: string) {
 		const startScript = require.resolve('@n8n/task-runner/start');
 
-		return spawn('node', [startScript], {
+		return spawn('node', ['--disallow-code-generation-from-strings', startScript], {
 			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
 		});
 	}
