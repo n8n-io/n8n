@@ -213,7 +213,7 @@ onMounted(async () => {
 						<i18n-t keypath="projects.move.resource.modal.message.usedCredentials">
 							<template #usedCredentials>
 								<N8nTooltip placement="top">
-									<span>
+									<span :class="$style.tooltipText">
 										{{
 											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
 												adjustToNumber: usedCredentials.length,
@@ -276,6 +276,10 @@ onMounted(async () => {
 .textBlock {
 	display: block;
 	margin-top: var(--spacing-s);
+}
+
+.tooltipText {
+	text-decoration: underline;
 }
 
 .credentialsList {
