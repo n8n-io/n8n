@@ -154,8 +154,12 @@ export function setParameterInputByName(name: string, value: string) {
 	getParameterInputByName(name).clear().type(value);
 }
 
-export function toggleParameterCheckboxInputByName(name: string) {
-	getParameterInputByName(name).find('input[type="checkbox"]').realClick();
+export function checkParameterCheckboxInputByName(name: string) {
+	getParameterInputByName(name).find('input[type="checkbox"]').check({ force: true });
+}
+
+export function uncheckParameterCheckboxInputByName(name: string) {
+	getParameterInputByName(name).find('input[type="checkbox"]').uncheck({ force: true });
 }
 
 export function setParameterSelectByContent(name: string, content: string) {

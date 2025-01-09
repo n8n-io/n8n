@@ -14,7 +14,8 @@ import {
 	populateMapperFields,
 	getNodeRunInfoStale,
 	assertNodeOutputErrorMessageExists,
-	toggleParameterCheckboxInputByName,
+	checkParameterCheckboxInputByName,
+	uncheckParameterCheckboxInputByName,
 } from '../composables/ndv';
 import {
 	clickExecuteWorkflowButton,
@@ -102,7 +103,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		assertNodeOutputErrorMessageExists();
 
 		// attemptToConvertTypes enabled
-		toggleParameterCheckboxInputByName('attemptToConvertTypes');
+		checkParameterCheckboxInputByName('attemptToConvertTypes');
 
 		getNodeRunInfoStale().should('exist');
 		clickExecuteNode();
@@ -115,7 +116,7 @@ describe('Sub-workflow creation and typed usage', () => {
 		assertOutputTableContent(expected2);
 
 		// disabled again
-		toggleParameterCheckboxInputByName('attemptToConvertTypes');
+		uncheckParameterCheckboxInputByName('attemptToConvertTypes');
 
 		getNodeRunInfoStale().should('exist');
 		clickExecuteNode();
