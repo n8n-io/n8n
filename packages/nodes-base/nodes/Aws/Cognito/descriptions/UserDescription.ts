@@ -278,51 +278,6 @@ const createFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			//doesn't work
-			{
-				displayName: 'User Attributes',
-				name: 'UserAttributes',
-				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
-				default: {
-					attributes: [],
-				},
-				description: 'Attributes to add for the user',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Attributes',
-						name: 'attributes',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'Name',
-								type: 'string',
-								default: '',
-								description: 'The name of the attribute (e.g., custom:deliverables)',
-							},
-							{
-								displayName: 'Value',
-								name: 'Value',
-								type: 'string',
-								default: '',
-								description: 'The value of the attribute',
-							},
-						],
-					},
-				],
-				routing: {
-					send: {
-						preSend: [processAttributes],
-						type: 'body',
-						property: 'UserAttributes',
-						value:
-							'={{ $value.attributes?.map(attribute => ({ Name: attribute.Name, Value: attribute.Value })) || [] }}',
-					},
-				},
-			},
 			{
 				displayName: 'Message Action',
 				name: 'MessageAction',
