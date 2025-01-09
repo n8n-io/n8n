@@ -167,6 +167,14 @@ const initialize = async () => {
 	loading.value = false;
 };
 
+credentialsStore.$onAction(({ name, after }) => {
+	if (name === 'createNewCredential') {
+		after(() => {
+			void credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined);
+		});
+	}
+});
+
 sourceControlStore.$onAction(({ name, after }) => {
 	if (name !== 'pullWorkfolder') return;
 	after(() => {
