@@ -517,7 +517,7 @@ describe('Node Creator', () => {
 		const actions = [
 			'Get ranked documents from vector store',
 			'Add documents to vector store',
-			'Retrieve documents for AI processing',
+			'Retrieve documents for Chain/Tool as Vector Store',
 		];
 
 		nodeCreatorFeature.actions.openNodeCreator();

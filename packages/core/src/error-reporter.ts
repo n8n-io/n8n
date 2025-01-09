@@ -9,6 +9,14 @@ import { createHash } from 'node:crypto';
 import type { InstanceType } from './InstanceSettings';
 import { Logger } from './logging/logger';
 
+type ErrorReporterInitOptions = {
+	serverType: InstanceType | 'task_runner';
+	dsn: string;
+	release: string;
+	environment: string;
+	serverName: string;
+};
+
 @Service()
 export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
@@ -44,7 +52,7 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init(instanceType: InstanceType | 'task_runner', dsn: string) {
+	async init({ dsn, serverType, release, environment, serverName }: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
@@ -53,12 +61,6 @@ export class ErrorReporter {
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
-
-		const {
-			N8N_VERSION: release,
-			ENVIRONMENT: environment,
-			DEPLOYMENT_NAME: serverName,
-		} = process.env;
 
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
@@ -95,7 +97,7 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', instanceType);
+		setTag('server_type', serverType);
 
 		this.report = (error, options) => captureException(error, options);
 	}
