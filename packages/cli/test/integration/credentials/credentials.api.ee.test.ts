@@ -1,10 +1,10 @@
+import type { ProjectRole } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -226,12 +226,12 @@ describe('GET /credentials', () => {
 		//
 		// ARRANGE
 		//
-		const project1 = await projectService.createTeamProject('Team Project', member);
+		const project1 = await projectService.createTeamProject(member, { name: 'Team Project' });
 		await projectService.addUser(project1.id, anotherMember.id, 'project:editor');
 		// anotherMember should see this one
 		const credential1 = await saveCredential(randomCredentialPayload(), { project: project1 });
 
-		const project2 = await projectService.createTeamProject('Team Project', member);
+		const project2 = await projectService.createTeamProject(member, { name: 'Team Project' });
 		// anotherMember should NOT see this one
 		await saveCredential(randomCredentialPayload(), { project: project2 });
 
