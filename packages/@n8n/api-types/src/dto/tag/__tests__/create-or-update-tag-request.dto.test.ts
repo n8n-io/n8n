@@ -1,6 +1,6 @@
 import { CreateOrUpdateTagRequestDto } from '../create-or-update-tag-request.dto';
 
-describe('BaseTagRequestDto', () => {
+describe('CreateOrUpdateTagRequestDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
