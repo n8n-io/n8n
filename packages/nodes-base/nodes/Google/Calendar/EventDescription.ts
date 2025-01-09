@@ -592,7 +592,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'returnNextInstance',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return the next instance of a recurring event instead of the event itself.',
+				description:
+					'Whether to return the next instance of a recurring event instead of the event itself',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.3 } }],
