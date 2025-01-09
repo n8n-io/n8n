@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import mock from 'jest-mock-extended/lib/Mock';
 import { Cipher, type InstanceSettings } from 'n8n-core';
@@ -9,7 +10,6 @@ import { SharedCredentialsRepository } from '@/databases/repositories/shared-cre
 import { mockInstance } from '@test/mocking';
 
 import { SourceControlExportService } from '../source-control-export.service.ee';
-import type { SourceControlledFile } from '../types/source-controlled-file';
 
 // https://github.com/jestjs/jest/issues/4715
 function deepSpyOn<O extends object, M extends keyof O>(object: O, methodName: M) {
