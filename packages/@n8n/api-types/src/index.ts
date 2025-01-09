@@ -11,7 +11,7 @@ export type { SendWorkerStatusMessage } from './push/worker';
 export type { BannerName } from './schemas/bannerName.schema';
 export { passwordSchema } from './schemas/password.schema';
 
-export {
+export type {
 	ProjectType,
 	ProjectIcon,
 	ProjectRole,
