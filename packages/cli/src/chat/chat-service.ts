@@ -1,10 +1,10 @@
+import { Service } from '@n8n/di';
 import type { Application, Request } from 'express';
 import type { Server } from 'http';
 import { ServerResponse } from 'http';
 import type { IWorkflowDataProxyAdditionalKeys } from 'n8n-workflow';
 import { jsonParse, jsonStringify, Workflow } from 'n8n-workflow';
 import type { Socket } from 'net';
-import { Service } from 'typedi';
 import { parse as parseUrl } from 'url';
 import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
 
@@ -39,7 +39,7 @@ export class ChatService {
 	setup(server: Server, app: Application) {
 		const wsServer = new WebSocketServer({ noServer: true });
 		server.on('upgrade', (request: ChatRequest, socket: Socket, head) => {
-			if (parseUrl(request.url).pathname === '/chat') {
+			if (parseUrl(request.url).pathname?.startsWith('/chat')) {
 				wsServer.handleUpgrade(request, socket, head, (ws) => {
 					request.ws = ws;
 
@@ -56,7 +56,7 @@ export class ChatService {
 			}
 		});
 
-		app.use('/chat', async (req: ChatRequest) => await this.startSession(req));
+		app.use('/chat/:workflowId', async (req: ChatRequest) => await this.startSession(req));
 	}
 
 	async startSession(req: ChatRequest) {
@@ -96,13 +96,21 @@ export class ChatService {
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});
-		// @ts-expect-error TODO: get the chat node here
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const startNode = {} as unknown as INode;
+
+		const startNode = workflowData.nodes.find(
+			(node) => node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		);
+
+		if (startNode === undefined) {
+			ws.send('Could not find chat node in workflow');
+			ws.close(1008);
+			return;
+		}
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: session.executionId,
 		};
+		console.log(workflow, startNode, additionalKeys);
 
 		// TODO: setup a trigger context to call `.trigger` on the chat node on every message
 
