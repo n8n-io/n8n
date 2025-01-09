@@ -9,6 +9,7 @@ import { CREDENTIAL_SELECT_MODAL_KEY, STORES, VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
+import { flushPromises } from '@vue/test-utils';
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
@@ -139,6 +140,75 @@ describe('CredentialsView', () => {
 					expect.objectContaining({ params: { credentialId: '1' } }),
 				),
 			);
+		});
+	});
+
+	describe('filters', () => {
+		it('should filter by type', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { type: ['test'] } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = [
+				{
+					name: 'test',
+					displayName: 'test',
+					properties: [],
+				},
+			];
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'test',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '1',
+					name: 'test',
+					type: 'another',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+			const { getAllByTestId } = renderComponent();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+		});
+
+		it('should filter by setupNeeded', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'test',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: {} as unknown as string,
+				},
+				{
+					id: '1',
+					name: 'test',
+					type: 'another',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: 'any' } as unknown as string,
+				},
+			];
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+
+			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
+			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
 		});
 	});
 });

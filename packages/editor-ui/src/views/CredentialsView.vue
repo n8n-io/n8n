@@ -245,6 +245,7 @@ onMounted(() => {
 
 				<N8nCheckbox
 					label="Needs first setup"
+					data-test-id="credential-filter-setup-needed"
 					:model-value="filters.setupNeeded"
 					@update:model-value="setKeyValue('setupNeeded', $event)"
 				>
