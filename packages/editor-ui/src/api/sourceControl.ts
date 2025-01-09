@@ -30,7 +30,7 @@ export const pushWorkfolder = async (
 export const pullWorkfolder = async (
 	context: IRestApiContext,
 	data: IDataObject,
-): Promise<void> => {
+): Promise<SourceControlAggregatedFile[]> => {
 	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/pull-workfolder`, data);
 };
 
