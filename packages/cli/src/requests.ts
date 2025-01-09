@@ -265,47 +265,6 @@ export declare namespace OAuthRequest {
 }
 
 // ----------------------------------
-//      /dynamic-node-parameters
-// ----------------------------------
-export declare namespace DynamicNodeParametersRequest {
-	type BaseRequest<RequestBody = {}> = AuthenticatedRequest<
-		{},
-		{},
-		{
-			path: string;
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			currentNodeParameters: INodeParameters;
-			methodName?: string;
-			credentials?: INodeCredentials;
-		} & RequestBody,
-		{}
-	>;
-
-	/** POST /dynamic-node-parameters/options */
-	type Options = BaseRequest<{
-		loadOptions?: ILoadOptions;
-	}>;
-
-	/** POST /dynamic-node-parameters/resource-locator-results */
-	type ResourceLocatorResults = BaseRequest<{
-		methodName: string;
-		filter?: string;
-		paginationToken?: string;
-	}>;
-
-	/** POST dynamic-node-parameters/resource-mapper-fields */
-	type ResourceMapperFields = BaseRequest<{
-		methodName: string;
-	}>;
-
-	/** POST /dynamic-node-parameters/action-result */
-	type ActionResult = BaseRequest<{
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}>;
-}
-
-// ----------------------------------
 //             /annotation-tags
 // ----------------------------------
 

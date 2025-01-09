@@ -1,8 +1,7 @@
-import { z } from 'zod';
 import { Z } from 'zod-class';
 
-const StringBooleanEnum = z.enum(['true', 'false']).optional();
+import { booleanFromString } from '../../schemas/booleanFromString';
 
 export class RetrieveTagQueryDto extends Z.class({
-	withUsageCount: StringBooleanEnum,
+	withUsageCount: booleanFromString,
 }) {}

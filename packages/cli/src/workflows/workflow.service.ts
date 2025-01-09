@@ -1,5 +1,5 @@
-import { Service } from '@n8n/di';
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -9,7 +9,6 @@ import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService, Logger } from 'n8n-core';
 import { NodeApiError } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -56,6 +55,7 @@ export class WorkflowService {
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
@@ -204,7 +204,7 @@ export class WorkflowService {
 			]),
 		);
 
-		const tagsDisabled = Container.get(GlobalConfig).tags.workflowTagsDisabled;
+		const tagsDisabled = this.globalConfig.tags.workflowTagsDisabled;
 
 		if (tagIds && !tagsDisabled) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);

@@ -1,4 +1,4 @@
-import { BaseTagRequestDto } from '../base-tag-request.dto';
+import { CreateOrUpdateTagRequestDto } from '../create-or-update-tag-request.dto';
 
 describe('BaseTagRequestDto', () => {
 	describe('Valid requests', () => {
@@ -10,7 +10,7 @@ describe('BaseTagRequestDto', () => {
 				},
 			},
 		])('should validate $name', ({ request }) => {
-			const result = BaseTagRequestDto.safeParse(request);
+			const result = CreateOrUpdateTagRequestDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
 	});
@@ -25,7 +25,7 @@ describe('BaseTagRequestDto', () => {
 				expectedErrorPath: ['name'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
-			const result = BaseTagRequestDto.safeParse(request);
+			const result = CreateOrUpdateTagRequestDto.safeParse(request);
 
 			expect(result.success).toBe(false);
 

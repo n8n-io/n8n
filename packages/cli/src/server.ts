@@ -135,6 +135,9 @@ export class Server extends AbstractServer {
 			await import('@/controllers/cta.controller');
 		}
 
+		if (!this.globalConfig.tags.workflowTagsDisabled) {
+			await import('@/controllers/tags.controller');
+		}
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------

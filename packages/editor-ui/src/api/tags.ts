@@ -1,13 +1,17 @@
 import type { IRestApiContext, ITag } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { CreateTagRequestDto, RetrieveTagQueryDto, UpdateTagRequestDto } from '@n8n/api-types';
+import type { CreateOrUpdateTagRequestDto, RetrieveTagQueryDto } from '@n8n/api-types';
 
 type TagsApiEndpoint = '/tags' | '/annotation-tags';
 
 export interface ITagsApi {
 	getTags: (context: IRestApiContext, params: RetrieveTagQueryDto) => Promise<ITag[]>;
-	createTag: (context: IRestApiContext, params: CreateTagRequestDto) => Promise<ITag>;
-	updateTag: (context: IRestApiContext, id: string, params: UpdateTagRequestDto) => Promise<ITag>;
+	createTag: (context: IRestApiContext, params: CreateOrUpdateTagRequestDto) => Promise<ITag>;
+	updateTag: (
+		context: IRestApiContext,
+		id: string,
+		params: CreateOrUpdateTagRequestDto,
+	) => Promise<ITag>;
 	deleteTag: (context: IRestApiContext, id: string) => Promise<boolean>;
 }
 
