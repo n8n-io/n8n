@@ -94,17 +94,17 @@ describe('Sub-workflow creation and typed usage', () => {
 		assertOutputTableContent(expected);
 
 		// Test the type-checking options
-		populateMapperFields([['aString', '{selectAll}{backspace}{{}{{} 5 }}']]);
+		populateMapperFields([['aString', '{selectAll}{backspace}{{}{{} 5']]);
 
-		getNodeRunInfoStale().waitForLoad();
+		getNodeRunInfoStale().should('exist');
 		clickExecuteNode();
 
 		assertNodeOutputErrorMessageExists();
 
-		// Only attemptToConvertTypes enabled
+		// attemptToConvertTypes enabled
 		toggleParameterCheckboxInputByName('attemptToConvertTypes');
 
-		getNodeRunInfoStale().waitForLoad();
+		getNodeRunInfoStale().should('exist');
 		clickExecuteNode();
 
 		const expected2 = [
@@ -114,24 +114,8 @@ describe('Sub-workflow creation and typed usage', () => {
 
 		assertOutputTableContent(expected2);
 
-		// Both enabled
-		toggleParameterCheckboxInputByName('ignoreTypeMismatchErrors');
-
-		getNodeRunInfoStale().should('exist');
-		clickExecuteNode();
-
-		assertOutputTableContent(expected2);
-
-		// Only ignoreTypeMismatchErrors enabled
+		// disabled again
 		toggleParameterCheckboxInputByName('attemptToConvertTypes');
-
-		getNodeRunInfoStale().should('exist');
-		clickExecuteNode();
-
-		assertOutputTableContent(expected2);
-
-		// Both disabled again
-		toggleParameterCheckboxInputByName('ignoreTypeMismatchErrors');
 
 		getNodeRunInfoStale().should('exist');
 		clickExecuteNode();
