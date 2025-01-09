@@ -236,6 +236,9 @@ describe('GlobalConfig', () => {
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
+			n8nVersion: '',
+			environment: '',
+			deploymentName: '',
 		},
 		logging: {
 			level: 'info',

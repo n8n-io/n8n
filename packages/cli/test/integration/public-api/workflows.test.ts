@@ -263,8 +263,12 @@ describe('GET /workflows', () => {
 
 	test('for owner, should return all workflows filtered by `projectId`', async () => {
 		license.setQuota('quota:maxTeamProjects', -1);
-		const firstProject = await Container.get(ProjectService).createTeamProject('First', owner);
-		const secondProject = await Container.get(ProjectService).createTeamProject('Second', member);
+		const firstProject = await Container.get(ProjectService).createTeamProject(owner, {
+			name: 'First',
+		});
+		const secondProject = await Container.get(ProjectService).createTeamProject(member, {
+			name: 'Second',
+		});
 
 		await Promise.all([
 			createWorkflow({ name: 'First workflow' }, firstProject),
@@ -285,10 +289,9 @@ describe('GET /workflows', () => {
 
 	test('for member, should return all member-accessible workflows filtered by `projectId`', async () => {
 		license.setQuota('quota:maxTeamProjects', -1);
-		const otherProject = await Container.get(ProjectService).createTeamProject(
-			'Other project',
-			member,
-		);
+		const otherProject = await Container.get(ProjectService).createTeamProject(member, {
+			name: 'Other project',
+		});
 
 		await Promise.all([
 			createWorkflow({}, member),
