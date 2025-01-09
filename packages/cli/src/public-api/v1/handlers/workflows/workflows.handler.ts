@@ -1,5 +1,5 @@
-import { Container } from '@n8n/di';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
