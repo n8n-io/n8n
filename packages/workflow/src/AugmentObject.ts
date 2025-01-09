@@ -2,6 +2,9 @@ import type { IDataObject } from './Interfaces';
 
 const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const { hasOwnProperty } = Object.prototype;
+
 const augmentedObjects = new WeakSet<object>();
 
 function augment<T>(value: T): T {
@@ -84,7 +87,7 @@ export function augmentObject<T extends object>(data: T): T {
 				return undefined;
 			}
 
-			if (newData[key] !== undefined) {
+			if (hasOwnProperty.call(newData, key)) {
 				return newData[key];
 			}
 
@@ -102,11 +105,11 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return value;
 		},
-		deleteProperty(target, key: string) {
-			if (key in newData) {
+		deleteProperty(_target, key: string) {
+			if (hasOwnProperty.call(newData, key)) {
 				delete newData[key];
 			}
-			if (key in target) {
+			if (hasOwnProperty.call(data, key)) {
 				deletedProperties.add(key);
 			}
 
@@ -131,9 +134,10 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return true;
 		},
-		has(target, key) {
+		has(_target, key) {
 			if (deletedProperties.has(key)) return false;
-			return Reflect.has(newData, key) || Reflect.has(target, key);
+			const target = hasOwnProperty.call(newData, key) ? newData : data;
+			return Reflect.has(target, key);
 		},
 		ownKeys(target) {
 			const originalKeys = Reflect.ownKeys(target);
@@ -145,7 +149,8 @@ export function augmentObject<T extends object>(data: T): T {
 
 		getOwnPropertyDescriptor(_target, key) {
 			if (deletedProperties.has(key)) return undefined;
-			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
+			const target = hasOwnProperty.call(newData, key) ? newData : data;
+			return Object.getOwnPropertyDescriptor(target, key);
 		},
 	});
 
