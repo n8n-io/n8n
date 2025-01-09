@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, h } from 'vue';
-import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -13,6 +13,7 @@ import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuc
 import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
 import { sortByProperty } from '@/utils/sortUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -27,10 +28,13 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const toast = useToast();
 const projectsStore = useProjectsStore();
+const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 
 const filter = ref('');
 const projectId = ref<string | null>(null);
+const usedCredentials = ref<IUsedCredential[]>([]);
+const shareUsedCredentials = ref(false);
 const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
@@ -49,6 +53,7 @@ const selectedProject = computed(() =>
 	availableProjects.value.find((p) => p.id === projectId.value),
 );
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
+const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -90,10 +95,7 @@ const moveResource = async () => {
 				},
 			}),
 			message: h(ProjectMoveSuccessToastMessage, {
-				routeName:
-					props.data.resourceType === ResourceType.Workflow
-						? VIEWS.PROJECTS_WORKFLOWS
-						: VIEWS.PROJECTS_CREDENTIALS,
+				routeName: isResourceWorkflow.value ? VIEWS.PROJECTS_WORKFLOWS : VIEWS.PROJECTS_CREDENTIALS,
 				resource: props.data.resource,
 				resourceType: props.data.resourceType,
 				resourceTypeLabel: props.data.resourceTypeLabel,
@@ -115,11 +117,16 @@ const moveResource = async () => {
 	}
 };
 
-onMounted(() => {
+onMounted(async () => {
 	telemetry.track(`User clicked to move a ${props.data.resourceType}`, {
 		[`${props.data.resourceType}_id`]: props.data.resource.id,
 		project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
 	});
+
+	if (isResourceWorkflow.value) {
+		const data = await workflowsStore.fetchWorkflow(props.data.resource.id);
+		usedCredentials.value = data.usedCredentials ?? [];
+	}
 });
 </script>
 <template>
@@ -184,8 +191,10 @@ onMounted(() => {
 						>
 						<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
 					</i18n-t>
-					<span v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0">
-						<br />
+					<span
+						v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
+						:class="$style.textBlock"
+					>
 						{{
 							i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
 								adjustToNumber: props.data.resource.sharedWithProjects?.length,
@@ -195,6 +204,43 @@ onMounted(() => {
 							})
 						}}</span
 					>
+					<N8nCheckbox
+						v-if="usedCredentials.length"
+						v-model="shareUsedCredentials"
+						:class="$style.textBlock"
+					>
+						<i18n-t keypath="projects.move.resource.modal.message.usedCredentials">
+							<template #usedCredentials>
+								<N8nTooltip placement="top">
+									<span>
+										{{
+											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
+												adjustToNumber: usedCredentials.length,
+												interpolate: { number: usedCredentials.length },
+											})
+										}}
+									</span>
+									<template #content>
+										<ul>
+											<li v-for="credential in usedCredentials" :key="credential.id">
+												<router-link
+													target="_blank"
+													:to="{
+														name: projectsStore.currentProjectId
+															? VIEWS.PROJECTS_CREDENTIALS
+															: VIEWS.CREDENTIALS,
+														params: { credentialId: credential.id },
+													}"
+												>
+													{{ credential.name }}
+												</router-link>
+											</li>
+										</ul>
+									</template>
+								</N8nTooltip>
+							</template>
+						</i18n-t>
+					</N8nCheckbox>
 				</N8nText>
 			</div>
 			<N8nText v-else>{{
@@ -224,5 +270,10 @@ onMounted(() => {
 .buttons {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.textBlock {
+	display: block;
+	margin-top: var(--spacing-s);
 }
 </style>
