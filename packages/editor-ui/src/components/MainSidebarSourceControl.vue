@@ -9,10 +9,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { type SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { groupBy } from 'lodash-es';
 import { RouterLink } from 'vue-router';
 import { VIEWS } from '@/constants';
+import type { SourceControlledFile } from '@n8n/api-types';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -92,7 +92,7 @@ const pullMessage = ({
 	tags,
 	variables,
 	workflow,
-}: Partial<Record<SourceControlAggregatedFile['type'], SourceControlAggregatedFile[]>>) => {
+}: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
 	const messages: string[] = [];
 
 	if (workflow?.length) {
