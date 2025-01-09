@@ -132,10 +132,16 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		const status: SourceControlAggregatedFile[] =
-			((await sourceControlStore.pullWorkfolder(
-				false,
-			)) as unknown as SourceControlAggregatedFile[]) || [];
+		const status = await sourceControlStore.pullWorkfolder(false);
+
+		if (!status.length) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
+				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+				type: 'success',
+			});
+			return;
+		}
 
 		const { credential, tags, variables, workflow } = groupBy(status, 'type');
 
