@@ -5,28 +5,25 @@ import CredentialsView from '@/views/CredentialsView.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
-import { CREDENTIAL_SELECT_MODAL_KEY, STORES } from '@/constants';
+import { CREDENTIAL_SELECT_MODAL_KEY, STORES, VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
-import { useRouter } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
 	}),
 }));
 
-vi.mock('vue-router', async () => {
-	const actual = await vi.importActual('vue-router');
-	const push = vi.fn();
-	const replace = vi.fn();
-	return {
-		...actual,
-		// your mocked methods
-		useRouter: () => ({
-			push,
-			replace,
-		}),
-	};
+const router = createRouter({
+	history: createWebHistory(),
+	routes: [
+		{
+			path: '/:credentialId?',
+			name: VIEWS.CREDENTIALS,
+			component: { template: '<div></div>' },
+		},
+	],
 });
 
 const initialState = {
@@ -36,14 +33,14 @@ const initialState = {
 };
 
 const renderComponent = createComponentRenderer(CredentialsView, {
-	global: { stubs: { ProjectHeader: true } },
+	global: { stubs: { ProjectHeader: true }, plugins: [router] },
 });
-let router: ReturnType<typeof useRouter>;
 
 describe('CredentialsView', () => {
-	beforeEach(() => {
+	beforeEach(async () => {
 		createTestingPinia({ initialState });
-		router = useRouter();
+		await router.push('/');
+		await router.isReady();
 	});
 
 	afterEach(() => {
@@ -115,6 +112,7 @@ describe('CredentialsView', () => {
 		});
 
 		it('should update credentialId route param when opened', async () => {
+			const replaceSpy = vi.spyOn(router, 'replace');
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isProjectHome = false;
 			projectsStore.currentProject = { scopes: ['credential:read'] } as Project;
@@ -137,7 +135,9 @@ describe('CredentialsView', () => {
 			 */
 			await fireEvent.click(getByTestId('resources-list-item'));
 			await waitFor(() =>
-				expect(router.replace).toHaveBeenCalledWith({ params: { credentialId: '1' } }),
+				expect(replaceSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ params: { credentialId: '1' } }),
+				),
 			);
 		});
 	});
