@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import type { ICredentialsDecrypted } from 'n8n-workflow';
 import ResourcesListLayout, {
@@ -29,6 +29,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { N8nCheckbox } from 'n8n-design-system';
+import { pickBy } from 'lodash-es';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -48,13 +49,15 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const filters = ref<IFilters & { incomplete?: boolean }>({
-	search: '',
-	homeProject: '',
-	type: [],
-	incomplete: true,
-});
+type Filters = IFilters & { type?: string[]; setupNeeded?: boolean };
+const updateFilter = (state: Filters) => {
+	void router.replace({ query: pickBy(state) as LocationQueryRaw });
+};
 
+const filters = computed<Filters>(
+	() =>
+		({ ...route.query, setupNeeded: route.query.setupNeeded?.toString() === 'true' }) as Filters,
+);
 const loading = ref(false);
 
 const allCredentials = computed<IResource[]>(() =>
@@ -88,7 +91,7 @@ const projectPermissions = computed(() =>
 );
 
 const setRouteCredentialId = (credentialId?: string) => {
-	void router.replace({ params: { credentialId } });
+	void router.replace({ params: { credentialId }, query: route.query });
 };
 
 const addCredential = () => {
@@ -102,7 +105,7 @@ listenForModalChanges({
 	store: uiStore,
 	onModalClosed(modalName) {
 		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
-			void router.replace({ params: { credentialId: '' } });
+			void router.replace({ params: { credentialId: '' }, query: route.query });
 		}
 	},
 });
@@ -126,8 +129,8 @@ watch(
 
 const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): boolean => {
 	const iResource = resource as Omit<ICredentialsResponse, 'data'> & ICredentialsDecrypted;
-	const filtersToApply = newFilters as IFilters & { type: string[]; incomplete: boolean };
-	if (filtersToApply.type.length > 0) {
+	const filtersToApply = newFilters as Filters;
+	if (filtersToApply.type && filtersToApply.type.length > 0) {
 		matches = matches && filtersToApply.type.includes(iResource.type);
 	}
 
@@ -140,7 +143,7 @@ const onFilter = (resource: IResource, newFilters: IFilters, matches: boolean): 
 				credentialTypesById.value[iResource.type].displayName.toLowerCase().includes(searchString));
 	}
 
-	if (filtersToApply.incomplete) {
+	if (filtersToApply.setupNeeded) {
 		matches = matches && Boolean(iResource.data && Object.keys(iResource.data).length === 0);
 	}
 
@@ -189,7 +192,7 @@ onMounted(() => {
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"
 		:disabled="readOnlyEnv || !projectPermissions.credential.create"
-		@update:filters="filters = $event"
+		@update:filters="updateFilter"
 	>
 		<template #header>
 			<ProjectHeader />
@@ -205,13 +208,6 @@ onMounted(() => {
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
-				<N8nCheckbox
-					label="Incomplete"
-					:model-value="filters.incomplete"
-					@update:model-value="setKeyValue('incomplete', $event)"
-				>
-				</N8nCheckbox>
-
 				<N8nInputLabel
 					:label="i18n.baseText('credentials.filters.type')"
 					:bold="false"
@@ -235,6 +231,16 @@ onMounted(() => {
 						:label="credentialType.displayName"
 					/>
 				</N8nSelect>
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel label="Status" :bold="false" size="small" color="text-base" class="mb-3xs" />
+
+				<N8nCheckbox
+					label="Needs first setup"
+					:model-value="filters.setupNeeded"
+					@update:model-value="setKeyValue('setupNeeded', $event)"
+				>
+				</N8nCheckbox>
 			</div>
 		</template>
 		<template #empty>
