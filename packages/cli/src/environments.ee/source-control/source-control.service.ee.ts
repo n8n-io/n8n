@@ -563,7 +563,7 @@ export class SourceControlService {
 				type: 'workflow',
 				status: options.direction === 'push' ? 'created' : 'deleted',
 				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
+				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
 			});
@@ -644,7 +644,7 @@ export class SourceControlService {
 				type: 'credential',
 				status: options.direction === 'push' ? 'created' : 'deleted',
 				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
+				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
 			});
@@ -696,26 +696,47 @@ export class SourceControlService {
 			}
 		});
 
-		if (
-			varMissingInLocal.length > 0 ||
-			varMissingInRemote.length > 0 ||
-			varModifiedInEither.length > 0
-		) {
-			if (options.direction === 'pull' && varRemoteIds.length === 0) {
-				// if there's nothing to pull, don't show difference as modified
-			} else {
-				sourceControlledFiles.push({
-					id: 'variables',
-					name: 'variables',
-					type: 'variables',
-					status: 'modified',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: false,
-					file: getVariablesPath(this.gitFolder),
-					updatedAt: new Date().toISOString(),
-				});
-			}
-		}
+		varMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.key,
+				type: 'variables',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getVariablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		varMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.key,
+				type: 'variables',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				// if the we pull and the file is missing in the remote, we will delete
+				// it locally, which is communicated by marking this as a conflict
+				conflict: options.direction === 'push' ? false : true,
+				file: getVariablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
+		varModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.key,
+				type: 'variables',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getVariablesPath(this.gitFolder),
+				updatedAt: new Date().toISOString(),
+			});
+		});
+
 		return {
 			varMissingInLocal,
 			varMissingInRemote,
@@ -770,32 +791,44 @@ export class SourceControlService {
 				) === -1,
 		);
 
-		if (
-			tagsMissingInLocal.length > 0 ||
-			tagsMissingInRemote.length > 0 ||
-			tagsModifiedInEither.length > 0 ||
-			mappingsMissingInLocal.length > 0 ||
-			mappingsMissingInRemote.length > 0
-		) {
-			if (
-				options.direction === 'pull' &&
-				tagMappingsRemote.tags.length === 0 &&
-				tagMappingsRemote.mappings.length === 0
-			) {
-				// if there's nothing to pull, don't show difference as modified
-			} else {
-				sourceControlledFiles.push({
-					id: 'mappings',
-					name: 'tags',
-					type: 'tags',
-					status: 'modified',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: false,
-					file: getTagsPath(this.gitFolder),
-					updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
-				});
-			}
-		}
+		tagsMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'tags',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getTagsPath(this.gitFolder),
+				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+			});
+		});
+		tagsMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'tags',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: options.direction === 'push' ? false : true,
+				file: getTagsPath(this.gitFolder),
+				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		tagsModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'tags',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getTagsPath(this.gitFolder),
+				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+			});
+		});
+
 		return {
 			tagsMissingInLocal,
 			tagsMissingInRemote,
