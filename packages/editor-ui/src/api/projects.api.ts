@@ -1,12 +1,7 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type {
-	Project,
-	ProjectCreateRequest,
-	ProjectListItem,
-	ProjectUpdateRequest,
-	ProjectsCount,
-} from '@/types/projects.types';
+import type { Project, ProjectListItem, ProjectsCount } from '@/types/projects.types';
+import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects');
@@ -28,17 +23,17 @@ export const getProject = async (context: IRestApiContext, id: string): Promise<
 
 export const createProject = async (
 	context: IRestApiContext,
-	req: ProjectCreateRequest,
+	payload: CreateProjectDto,
 ): Promise<Project> => {
-	return await makeRestApiRequest(context, 'POST', '/projects', req);
+	return await makeRestApiRequest(context, 'POST', '/projects', payload);
 };
 
 export const updateProject = async (
 	context: IRestApiContext,
-	req: ProjectUpdateRequest,
+	id: Project['id'],
+	payload: UpdateProjectDto,
 ): Promise<void> => {
-	const { id, name, icon, relations } = req;
-	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, { name, icon, relations });
+	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, payload);
 };
 
 export const deleteProject = async (
