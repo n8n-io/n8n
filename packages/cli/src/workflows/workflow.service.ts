@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { GlobalConfig } from '@n8n/config';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import

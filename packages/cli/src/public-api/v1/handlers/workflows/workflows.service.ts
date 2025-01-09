@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { Container } from 'typedi';
 
 import type { Project } from '@/databases/entities/project';
 import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';

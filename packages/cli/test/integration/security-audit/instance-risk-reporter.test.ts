@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionType } from 'n8n-workflow';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

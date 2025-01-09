@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import {
 	DataSource,
 	Repository,

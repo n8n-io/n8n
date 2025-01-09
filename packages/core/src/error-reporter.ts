@@ -1,13 +1,21 @@
+import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, type ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Service } from 'typedi';
 
 import type { InstanceType } from './InstanceSettings';
 import { Logger } from './logging/logger';
+
+type ErrorReporterInitOptions = {
+	serverType: InstanceType | 'task_runner';
+	dsn: string;
+	release: string;
+	environment: string;
+	serverName: string;
+};
 
 @Service()
 export class ErrorReporter {
@@ -29,7 +37,10 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [e.message + context, e.stack ? `\n${e.stack}\n` : ''].join('');
+				const msg = [
+					e.message + context,
+					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
+				].join('');
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
 				this.logger.error(msg, meta);
 				e = e.cause as Error;
@@ -41,7 +52,7 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init(instanceType: InstanceType | 'task_runner', dsn: string) {
+	async init({ dsn, serverType, release, environment, serverName }: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
@@ -50,12 +61,6 @@ export class ErrorReporter {
 
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
-
-		const {
-			N8N_VERSION: release,
-			ENVIRONMENT: environment,
-			DEPLOYMENT_NAME: serverName,
-		} = process.env;
 
 		const { init, captureException, setTag } = await import('@sentry/node');
 		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
@@ -92,7 +97,7 @@ export class ErrorReporter {
 			],
 		});
 
-		setTag('server_type', instanceType);
+		setTag('server_type', serverType);
 
 		this.report = (error, options) => captureException(error, options);
 	}
@@ -143,6 +148,7 @@ export class ErrorReporter {
 	}
 
 	error(e: unknown, options?: ReportingOptions) {
+		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);
 	}

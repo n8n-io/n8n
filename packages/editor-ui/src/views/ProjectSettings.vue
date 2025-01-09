@@ -7,6 +7,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectIcon } from '@/types/projects.types';
 import { type Project, type ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
@@ -18,6 +19,8 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+
+import { getAllIconNames } from '@/plugins/icons';
 
 type FormDataDiff = {
 	name?: string;
@@ -51,6 +54,13 @@ const projectRoleTranslations = ref<{ [key: string]: string }>({
 	'project:admin': i18n.baseText('projects.settings.role.admin'),
 });
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
+
+const availableProjectIcons: string[] = getAllIconNames();
+
+const projectIcon = ref<ProjectIcon>({
+	type: 'icon',
+	value: 'layer-group',
+});
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -177,31 +187,38 @@ const sendTelemetry = (diff: FormDataDiff) => {
 	}
 };
 
-const onSubmit = async () => {
+const updateProject = async () => {
+	if (!projectsStore.currentProject) {
+		return;
+	}
 	try {
-		if (isDirty.value && projectsStore.currentProject) {
-			const diff = makeFormDataDiff();
-
-			await projectsStore.updateProject({
-				id: projectsStore.currentProject.id,
-				name: formData.value.name,
-				relations: formData.value.relations.map((r: ProjectRelation) => ({
-					userId: r.id,
-					role: r.role,
-				})),
-			});
-			sendTelemetry(diff);
-			isDirty.value = false;
-			toast.showMessage({
-				title: i18n.baseText('projects.settings.save.successful.title', {
-					interpolate: { projectName: formData.value.name ?? '' },
-				}),
-				type: 'success',
-			});
-		}
+		await projectsStore.updateProject(projectsStore.currentProject.id, {
+			name: formData.value.name!,
+			icon: projectIcon.value,
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
+		});
+		isDirty.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 	}
+};
+
+const onSubmit = async () => {
+	if (!isDirty.value) {
+		return;
+	}
+	await updateProject();
+	const diff = makeFormDataDiff();
+	sendTelemetry(diff);
+	toast.showMessage({
+		title: i18n.baseText('projects.settings.save.successful.title', {
+			interpolate: { projectName: formData.value.name ?? '' },
+		}),
+		type: 'success',
+	});
 };
 
 const onDelete = async () => {
@@ -235,6 +252,14 @@ const selectProjectNameIfMatchesDefault = () => {
 	}
 };
 
+const onIconUpdated = async () => {
+	await updateProject();
+	toast.showMessage({
+		title: i18n.baseText('projects.settings.icon.update.successful.title'),
+		type: 'success',
+	});
+};
+
 watch(
 	() => projectsStore.currentProject,
 	async () => {
@@ -244,6 +269,9 @@ watch(
 			: [];
 		await nextTick();
 		selectProjectNameIfMatchesDefault();
+		if (projectsStore.currentProject?.icon) {
+			projectIcon.value = projectsStore.currentProject.icon;
+		}
 	},
 	{ immediate: true },
 );
@@ -266,18 +294,27 @@ onMounted(() => {
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
-				<N8nFormInput
-					id="projectName"
-					ref="nameInput"
-					v-model="formData.name"
-					label=""
-					type="text"
-					name="name"
-					required
-					data-test-id="project-settings-name-input"
-					@input="onNameInput"
-					@validate="isValid = $event"
-				/>
+				<div :class="$style['project-name']">
+					<N8nIconPicker
+						v-model="projectIcon"
+						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+						:available-icons="availableProjectIcons"
+						@update:model-value="onIconUpdated"
+					/>
+					<N8nFormInput
+						id="projectName"
+						ref="nameInput"
+						v-model="formData.name"
+						label=""
+						type="text"
+						name="name"
+						required
+						data-test-id="project-settings-name-input"
+						:class="$style['project-name-input']"
+						@input="onNameInput"
+						@validate="isValid = $event"
+					/>
+				</div>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
@@ -428,5 +465,15 @@ onMounted(() => {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+}
+
+.project-name {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: center;
+
+	.project-name-input {
+		flex: 1;
+	}
 }
 </style>

@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService, Logger } from 'n8n-core';
-import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
@@ -255,6 +255,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ASK_AI);
 	}
 
+	isAiCreditsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.AI_CREDITS);
+	}
+
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
@@ -363,6 +367,10 @@ export class License {
 
 	getVariablesLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getAiCredits() {
+		return this.getFeatureValue(LICENSE_QUOTAS.AI_CREDITS) ?? 0;
 	}
 
 	getWorkflowHistoryPruneLimit() {

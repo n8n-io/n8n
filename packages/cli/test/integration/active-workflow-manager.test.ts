@@ -1,8 +1,8 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
 import { NodeApiError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';

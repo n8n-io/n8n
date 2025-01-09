@@ -112,23 +112,19 @@ export function expressionWithFirstItem(syntaxTree: Tree, expression: string): s
 }
 
 export function longestCommonPrefix(...strings: string[]) {
-	if (strings.length < 2) {
-		throw new Error('Expected at least two strings');
-	}
+	if (strings.length < 2) return '';
 
-	return strings.reduce((acc, next) => {
-		let i = 0;
-
-		while (acc[i] && next[i] && acc[i] === next[i]) {
-			i++;
+	return strings.reduce((prefix, str) => {
+		while (!str.startsWith(prefix)) {
+			prefix = prefix.slice(0, -1);
+			if (prefix === '') return '';
 		}
-
-		return acc.slice(0, i);
-	}, '');
+		return prefix;
+	}, strings[0]);
 }
 
 export const prefixMatch = (first: string, second: string) =>
-	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase()) && first !== second;
+	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase());
 
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed

@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import type {
-	IBinaryData,
-	IConnectedNode,
-	IDataObject,
-	INodeExecutionData,
-	INodeOutputConfiguration,
-	IRunData,
-	IRunExecutionData,
-	ITaskMetadata,
-	NodeError,
-	NodeHint,
-	Workflow,
+import {
+	type IBinaryData,
+	type IConnectedNode,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeOutputConfiguration,
+	type IRunData,
+	type IRunExecutionData,
+	type ITaskMetadata,
+	type NodeError,
+	type NodeHint,
+	type Workflow,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -64,6 +65,7 @@ import { isEqual, isObject } from 'lodash-es';
 import {
 	N8nBlockUi,
 	N8nButton,
+	N8nRoute,
 	N8nCallout,
 	N8nIconButton,
 	N8nInfoTip,
@@ -273,6 +275,10 @@ const hasNodeRun = computed(() =>
 
 const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
+);
+
+const isTrimmedManualExecutionDataItem = computed(
+	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
 );
 
 const subworkflowExecutionError = computed(() => {
@@ -1245,6 +1251,10 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
+function onExecutionHistoryNavigate() {
+	ndvStore.setActiveNodeName(null);
+}
+
 function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	if (task.parentExecution) {
 		return i18n.baseText('runData.openParentExecution', {
@@ -1253,9 +1263,13 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	}
 
 	if (task.subExecution) {
-		return i18n.baseText('runData.openSubExecution', {
-			interpolate: { id: task.subExecution.executionId },
-		});
+		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
 	}
 
 	return;
@@ -1267,10 +1281,16 @@ defineExpose({ enterEditMode });
 <template>
 	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<N8nCallout
-			v-if="pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview"
+			v-if="
+				!isPaneTypeInput &&
+				pinnedData.hasData.value &&
+				!editMode.enabled &&
+				!isProductionExecutionPreview
+			"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
 			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
@@ -1310,7 +1330,7 @@ defineExpose({ enterEditMode });
 			<slot name="header"></slot>
 
 			<div
-				v-show="!hasRunError"
+				v-show="!hasRunError && !isTrimmedManualExecutionDataItem"
 				:class="$style.displayModes"
 				data-test-id="run-data-pane-header"
 				@click.stop
@@ -1589,6 +1609,20 @@ defineExpose({ enterEditMode });
 						{{ i18n.baseText('ndv.input.disabled.cta') }}
 					</N8nLink>
 				</N8nText>
+			</div>
+
+			<div v-else-if="isTrimmedManualExecutionDataItem" :class="$style.center">
+				<N8nText bold color="text-dark" size="large">
+					{{ i18n.baseText('runData.trimmedData.title') }}
+				</N8nText>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.message') }}
+				</N8nText>
+				<N8nButton size="small" @click="onExecutionHistoryNavigate">
+					<N8nRoute :to="`/workflow/${workflowsStore.workflowId}/executions`">
+						{{ i18n.baseText('runData.trimmedData.button') }}
+					</N8nRoute>
+				</N8nButton>
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">

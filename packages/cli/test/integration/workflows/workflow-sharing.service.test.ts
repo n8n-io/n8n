@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
@@ -72,7 +72,7 @@ describe('WorkflowSharingService', () => {
 			//
 			// ARRANGE
 			//
-			const project = await projectService.createTeamProject('Team Project', member);
+			const project = await projectService.createTeamProject(member, { name: 'Team Project' });
 			await projectService.addUser(project.id, anotherMember.id, 'project:admin');
 			const workflow = await createWorkflow(undefined, project);
 
@@ -93,9 +93,9 @@ describe('WorkflowSharingService', () => {
 			//
 			// ARRANGE
 			//
-			const project1 = await projectService.createTeamProject('Team Project 1', member);
+			const project1 = await projectService.createTeamProject(member, { name: 'Team Project 1' });
 			const workflow1 = await createWorkflow(undefined, project1);
-			const project2 = await projectService.createTeamProject('Team Project 2', member);
+			const project2 = await projectService.createTeamProject(member, { name: 'Team Project 2' });
 			const workflow2 = await createWorkflow(undefined, project2);
 			await projectService.addUser(project1.id, anotherMember.id, 'project:admin');
 			await projectService.addUser(project2.id, anotherMember.id, 'project:viewer');

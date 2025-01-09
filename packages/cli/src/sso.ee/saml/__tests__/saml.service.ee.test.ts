@@ -1,10 +1,8 @@
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UrlService } from '@/services/url.service';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
 import { mockInstance } from '@test/mocking';
@@ -13,10 +11,8 @@ import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
 
 describe('SamlService', () => {
-	const logger = mockInstance(Logger);
-	const urlService = mockInstance(UrlService);
-	const samlService = new SamlService(logger, urlService);
 	const settingsRepository = mockInstance(SettingsRepository);
+	const samlService = new SamlService(mock(), mock(), mock(), mock(), settingsRepository);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
