@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -37,7 +38,6 @@ import { getCredentialExportPath, getWorkflowExportPath } from './source-control
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
 
 @Service()
