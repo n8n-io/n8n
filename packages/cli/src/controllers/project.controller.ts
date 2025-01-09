@@ -1,9 +1,4 @@
-import {
-	CreateProjectDto,
-	DeleteProjectDto,
-	GetMyProjectsDto,
-	UpdateProjectDto,
-} from '@n8n/api-types';
+import { CreateProjectDto, DeleteProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { combineScopes } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -91,7 +86,6 @@ export class ProjectController {
 	async getMyProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query query: GetMyProjectsDto,
 	): Promise<ProjectRequest.GetMyProjectsResponse> {
 		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
 		const otherTeamProject = req.user.hasGlobalScope('project:read')
@@ -106,10 +100,7 @@ export class ProjectController {
 		for (const pr of relations) {
 			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
 				this.projectRepository.create(pr.project),
-				{
-					role: pr.role,
-					scopes: query.includeScopes ? ([] as Scope[]) : undefined,
-				},
+				{ role: pr.role, scopes: [] },
 			);
 
 			if (result.scopes) {
@@ -132,7 +123,7 @@ export class ProjectController {
 					// own this relationship in that case we use the global user role
 					// instead of the relation role, which is for another user.
 					role: req.user.role,
-					scopes: query.includeScopes ? [] : undefined,
+					scopes: [],
 				},
 			);
 

@@ -8,9 +8,7 @@ export const getAllProjects = async (context: IRestApiContext): Promise<ProjectL
 };
 
 export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
-	return await makeRestApiRequest(context, 'GET', '/projects/my-projects', {
-		includeScopes: true,
-	});
+	return await makeRestApiRequest(context, 'GET', '/projects/my-projects');
 };
 
 export const getPersonalProject = async (context: IRestApiContext): Promise<Project> => {

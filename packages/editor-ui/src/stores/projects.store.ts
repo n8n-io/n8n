@@ -16,7 +16,6 @@ import { STORES } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
-import { ApplicationError } from 'n8n-workflow';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -115,13 +114,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		return newProject;
 	};
 
-	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
+	const updateProject = async (
+		id: Project['id'],
+		projectData: Required<UpdateProjectDto>,
+	): Promise<void> => {
 		await projectsApi.updateProject(rootStore.restApiContext, id, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
 		const { name, icon } = projectData;
-		if (!name || !icon) {
-			throw new ApplicationError('Invalid project update payload');
-		}
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = name;
 			myProjects.value[projectIndex].icon = icon;

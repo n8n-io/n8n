@@ -177,11 +177,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer
-			.authAgentFor(testUser1)
-			.get('/projects/my-projects')
-			.query({ includeScopes: true })
-			.expect(200);
+		const resp = await testServer.authAgentFor(testUser1).get('/projects/my-projects').expect(200);
 		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
 			resp.body.data;
 
@@ -258,11 +254,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer
-			.authAgentFor(ownerUser)
-			.get('/projects/my-projects')
-			.query({ includeScopes: true })
-			.expect(200);
+		const resp = await testServer.authAgentFor(ownerUser).get('/projects/my-projects').expect(200);
 		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
 			resp.body.data;
 

@@ -24,7 +24,6 @@ export { ChangePasswordRequestDto } from './password-reset/change-password-reque
 export { CreateProjectDto } from './project/create-project.dto';
 export { UpdateProjectDto } from './project/update-project.dto';
 export { DeleteProjectDto } from './project/delete-project.dto';
-export { GetMyProjectsDto } from './project/get-my-projects.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
