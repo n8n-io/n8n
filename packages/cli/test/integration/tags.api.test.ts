@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { TagRepository } from '@/databases/repositories/tag.repository';
