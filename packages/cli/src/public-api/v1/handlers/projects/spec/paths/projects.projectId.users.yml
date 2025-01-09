@@ -19,9 +19,9 @@ post:
         schema:
           type: object
           properties:
-            users:
+            relations:
               type: array
-              description: A list of users and roles to add to the project.
+              description: A list of userIds and roles to add to the project.
               items:
                 type: object
                 properties:
@@ -37,7 +37,7 @@ post:
                   - userId
                   - role
           required:
-            - users
+            - relations
   responses:
     '201':
       description: Operation successful.

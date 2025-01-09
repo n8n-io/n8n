@@ -488,7 +488,7 @@ describe('Projects in Public API', () => {
 					.delete(`/projects/123456/users/${member.id}`);
 
 				expect(response.status).toBe(404);
-				expect(response.body).toHaveProperty('message', 'Not found');
+				expect(response.body).toHaveProperty('message', 'Project not found.');
 			});
 
 			it('should remain unchanged if user if not in project', async () => {
@@ -535,7 +535,7 @@ describe('Projects in Public API', () => {
 			const member = await createMember();
 
 			const payload = {
-				users: [
+				relations: [
 					{
 						userId: member.id,
 						role: 'project:viewer',
@@ -562,7 +562,7 @@ describe('Projects in Public API', () => {
 			const project = await createTeamProject();
 
 			const payload = {
-				users: [
+				relations: [
 					{
 						userId: member.id,
 						role: 'project:viewer',
@@ -590,7 +590,7 @@ describe('Projects in Public API', () => {
 				const member = await createMember();
 
 				const payload = {
-					users: [
+					relations: [
 						{
 							userId: member.id,
 							role: 'project:viewer',
@@ -600,11 +600,11 @@ describe('Projects in Public API', () => {
 
 				const response = await testServer
 					.publicApiAgentFor(owner)
-					.post('/projects/123456/users/')
+					.post('/projects/123456/users')
 					.send(payload);
 
 				expect(response.status).toBe(404);
-				expect(response.body).toHaveProperty('message', 'Not found');
+				expect(response.body).toHaveProperty('message', 'Project not found.');
 			});
 
 			it('should add expected users to project', async () => {
@@ -619,7 +619,7 @@ describe('Projects in Public API', () => {
 				});
 
 				const payload = {
-					users: [
+					relations: [
 						{
 							userId: member.id,
 							role: 'project:viewer',
@@ -662,7 +662,7 @@ describe('Projects in Public API', () => {
 				const member = await createMember();
 
 				const payload = {
-					users: [
+					relations: [
 						{
 							userId: member.id,
 							role: 'project:viewer',
