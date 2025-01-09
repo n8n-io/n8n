@@ -631,6 +631,12 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	:has(.newCredential:hover) :global(.hover) {
 		background-color: transparent;
 	}
+
+	&:not(:has(li)) .newCredential {
+		border-top: none;
+		box-shadow: none;
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .warning {
@@ -678,11 +684,5 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	&:hover {
 		color: var(--color-primary);
 	}
-}
-
-:global(.is-empty) + :global(.el-select-dropdown__footer) > .newCredential {
-	border-top: none;
-	box-shadow: none;
-	border-radius: var(--border-radius-base);
 }
 </style>
