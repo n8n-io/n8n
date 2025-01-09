@@ -44,3 +44,6 @@ export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
+
+export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
+export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
