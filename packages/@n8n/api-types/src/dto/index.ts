@@ -36,6 +36,9 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
+export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
+export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
+
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';

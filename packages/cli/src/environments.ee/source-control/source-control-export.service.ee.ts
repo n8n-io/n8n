@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
@@ -29,7 +30,6 @@ import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { ResourceOwner } from './types/resource-owner';
-import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
 
 @Service()
