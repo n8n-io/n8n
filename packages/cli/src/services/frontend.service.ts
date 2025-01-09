@@ -154,7 +154,7 @@ export class FrontendService {
 					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
-			workflowTagsDisabled: this.globalConfig.tags.workflowTagsDisabled,
+			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {

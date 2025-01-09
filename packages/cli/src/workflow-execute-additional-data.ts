@@ -733,7 +733,7 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = Container.get(GlobalConfig).tags.workflowTagsDisabled ? [] : ['tags'];
+		const relations = Container.get(GlobalConfig).tags.disabled ? [] : ['tags'];
 
 		workflowData = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },

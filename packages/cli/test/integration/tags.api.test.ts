@@ -96,8 +96,8 @@ describe('POST /tags', () => {
 		});
 	});
 
-	test('should throw error if workflowTagsDisabled is true', async () => {
-		Container.get(GlobalConfig).tags.workflowTagsDisabled = true;
+	test('should throw error if N8N_WORKFLOW_TAGS_DISABLED is true', async () => {
+		Container.get(GlobalConfig).tags.disabled = true;
 
 		const resp = await authOwnerAgent.post('/tags').send({ name: 'new tag' });
 		expect(resp.status).toBe(400);

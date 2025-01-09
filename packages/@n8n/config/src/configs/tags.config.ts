@@ -7,5 +7,5 @@ export class TagsConfig {
 	*/
 
 	@Env('N8N_WORKFLOW_TAGS_DISABLED')
-	workflowTagsDisabled: boolean = false;
+	disabled: boolean = false;
 }

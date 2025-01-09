@@ -296,7 +296,7 @@ describe('GlobalConfig', () => {
 			baseUrl: '',
 		},
 		tags: {
-			workflowTagsDisabled: false,
+			disabled: false,
 		},
 	};
 

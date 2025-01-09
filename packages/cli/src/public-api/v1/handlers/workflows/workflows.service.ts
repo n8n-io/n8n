@@ -47,7 +47,7 @@ export async function getSharedWorkflow(
 			...(workflowId && { workflowId }),
 		},
 		relations: [
-			...insertIf(!Container.get(GlobalConfig).tags.workflowTagsDisabled, ['workflow.tags']),
+			...insertIf(!Container.get(GlobalConfig).tags.disabled, ['workflow.tags']),
 			'workflow',
 		],
 	});

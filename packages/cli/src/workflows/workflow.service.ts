@@ -204,7 +204,7 @@ export class WorkflowService {
 			]),
 		);
 
-		const tagsDisabled = this.globalConfig.tags.workflowTagsDisabled;
+		const tagsDisabled = this.globalConfig.tags.disabled;
 
 		if (tagIds && !tagsDisabled) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);

@@ -72,7 +72,7 @@ beforeEach(async () => {
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
-	globalConfig.tags.workflowTagsDisabled = false;
+	globalConfig.tags.disabled = false;
 });
 
 afterEach(async () => {
@@ -1291,8 +1291,8 @@ describe('GET /workflows/:id/tags', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2/tags', 'abcXYZ'));
 
-	test('should fail if workflowTagsDisabled', async () => {
-		globalConfig.tags.workflowTagsDisabled = true;
+	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
+		globalConfig.tags.disabled = true;
 
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
@@ -1345,8 +1345,8 @@ describe('PUT /workflows/:id/tags', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/2/tags', 'abcXYZ'));
 
-	test('should fail if workflowTagsDisabled', async () => {
-		globalConfig.tags.workflowTagsDisabled = true;
+	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
+		globalConfig.tags.disabled = true;
 
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
 

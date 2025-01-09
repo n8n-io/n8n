@@ -111,7 +111,7 @@ export = {
 				id,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !Container.get(GlobalConfig).tags.workflowTagsDisabled },
+				{ includeTags: !Container.get(GlobalConfig).tags.disabled },
 			);
 
 			if (!workflow) {
@@ -209,7 +209,7 @@ export = {
 				skip: offset,
 				take: limit,
 				where,
-				...(!Container.get(GlobalConfig).tags.workflowTagsDisabled && { relations: ['tags'] }),
+				...(!Container.get(GlobalConfig).tags.disabled && { relations: ['tags'] }),
 			});
 
 			if (excludePinnedData) {
@@ -379,7 +379,7 @@ export = {
 		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			if (Container.get(GlobalConfig).tags.workflowTagsDisabled) {
+			if (Container.get(GlobalConfig).tags.disabled) {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
@@ -406,7 +406,7 @@ export = {
 			const { id } = req.params;
 			const newTags = req.body.map((newTag) => newTag.id);
 
-			if (Container.get(GlobalConfig).tags.workflowTagsDisabled) {
+			if (Container.get(GlobalConfig).tags.disabled) {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 

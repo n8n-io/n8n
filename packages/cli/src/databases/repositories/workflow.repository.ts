@@ -131,7 +131,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const relations: string[] = [];
 
-		const areTagsEnabled = !this.globalConfig.tags.workflowTagsDisabled;
+		const areTagsEnabled = !this.globalConfig.tags.disabled;
 		const isDefaultSelect = options?.select === undefined;
 		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
 		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;
