@@ -365,7 +365,7 @@ const getIssues = computed<string[]>(() => {
 			if (Array.isArray(displayValue.value)) {
 				checkValues = checkValues.concat(displayValue.value);
 			} else {
-				checkValues = checkValues.concat(displayValue.value?.toString().split(','));
+				checkValues.push(displayValue.value);
 			}
 		}
 

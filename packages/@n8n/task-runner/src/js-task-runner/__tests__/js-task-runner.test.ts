@@ -302,6 +302,7 @@ describe('JsTaskRunner', () => {
 				['typeof clearInterval', 'function'],
 				['typeof clearImmediate', 'function'],
 			],
+			eval: [['eval("1+2")', 3]],
 			'JS built-ins': [
 				['typeof btoa', 'function'],
 				['typeof atob', 'function'],

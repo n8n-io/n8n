@@ -95,17 +95,17 @@ describe('WorkflowActivator', () => {
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 
-	it('Should show warning toast if the workflow to be activated has free OpenAI credentials', async () => {
+	it('Should show warning toast if the workflow to be activated has non-disabled node using free OpenAI credentials', async () => {
 		const toast = useToast();
 
-		mockWorkflowsStore.workflow.usedCredentials = [
-			{
+		mockWorkflowsStore.usedCredentials = {
+			'1': {
 				id: '1',
 				name: '',
 				credentialType: '',
 				currentUserHasAccess: false,
 			},
-		];
+		};
 
 		mockCredentialsStore.state.credentials = {
 			'1': {
@@ -121,6 +121,24 @@ describe('WorkflowActivator', () => {
 
 		mockWorkflowsStore.workflowTriggerNodes = [
 			{ type: WOOCOMMERCE_TRIGGER_NODE_TYPE, disabled: false } as never,
+		];
+
+		mockWorkflowsStore.allNodes = [
+			{
+				credentials: {
+					openAiApi: {
+						name: 'OpenAI',
+						id: '1',
+					},
+				},
+				disabled: false,
+				position: [1, 1],
+				name: '',
+				id: '',
+				typeVersion: 0,
+				type: '',
+				parameters: {},
+			},
 		];
 
 		const { rerender } = renderComponent({
@@ -142,5 +160,105 @@ describe('WorkflowActivator', () => {
 				duration: 0,
 			}),
 		);
+	});
+
+	it('Should not show warning toast if the workflow to be activated has disabled node using free OpenAI credentials', async () => {
+		const toast = useToast();
+
+		mockWorkflowsStore.usedCredentials = {
+			'1': {
+				id: '1',
+				name: '',
+				credentialType: '',
+				currentUserHasAccess: false,
+			},
+		};
+
+		mockCredentialsStore.state.credentials = {
+			'1': {
+				id: '1',
+				name: 'OpenAI',
+				type: 'openAiApi',
+				data: '',
+				isManaged: true,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+		};
+
+		mockWorkflowsStore.workflowTriggerNodes = [
+			{ type: WOOCOMMERCE_TRIGGER_NODE_TYPE, disabled: false } as never,
+		];
+
+		mockWorkflowsStore.allNodes = [
+			{
+				credentials: {
+					openAiApi: {
+						name: 'OpenAI',
+						id: '1',
+					},
+				},
+				disabled: true,
+				position: [1, 1],
+				name: '',
+				id: '',
+				typeVersion: 0,
+				type: '',
+				parameters: {},
+			},
+		];
+
+		const { rerender } = renderComponent({
+			props: {
+				workflowActive: false,
+				workflowId: '1',
+				workflowPermissions: { update: true },
+			},
+		});
+
+		await rerender({ workflowActive: true });
+
+		expect(toast.showMessage).not.toHaveBeenCalled();
+	});
+
+	it('Should not show warning toast if the workflow to be activated has no node with free OpenAI credential', async () => {
+		const toast = useToast();
+
+		mockWorkflowsStore.usedCredentials = {
+			'1': {
+				id: '1',
+				name: '',
+				credentialType: '',
+				currentUserHasAccess: false,
+			},
+		};
+
+		mockCredentialsStore.state.credentials = {
+			'1': {
+				id: '1',
+				name: 'Jira',
+				type: 'jiraApi',
+				data: '',
+				isManaged: true,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+		};
+
+		mockWorkflowsStore.workflowTriggerNodes = [
+			{ type: WOOCOMMERCE_TRIGGER_NODE_TYPE, disabled: false } as never,
+		];
+
+		const { rerender } = renderComponent({
+			props: {
+				workflowActive: false,
+				workflowId: '1',
+				workflowPermissions: { update: true },
+			},
+		});
+
+		await rerender({ workflowActive: true });
+
+		expect(toast.showMessage).not.toHaveBeenCalled();
 	});
 });
