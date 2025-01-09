@@ -8,8 +8,8 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import type { SourceControlledFile } from '@n8n/api-types';
 
 defineProps<{
 	isCollapsed: boolean;
@@ -69,10 +69,8 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		const status: SourceControlAggregatedFile[] =
-			((await sourceControlStore.pullWorkfolder(
-				false,
-			)) as unknown as SourceControlAggregatedFile[]) || [];
+		const status: SourceControlledFile[] =
+			((await sourceControlStore.pullWorkfolder(false)) as unknown as SourceControlledFile[]) || [];
 
 		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
 			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
