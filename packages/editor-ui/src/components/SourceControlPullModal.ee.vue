@@ -1,21 +1,28 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
-import { SOURCE_CONTROL_PULL_MODAL_KEY } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import type { EventBus } from 'n8n-design-system/utils';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
+import {
+	type SourceControlAggregatedFile,
+	type SourceControlledFileType,
+} from '@/types/sourceControl.types';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import { orderBy, groupBy } from 'lodash-es';
+import { N8nBadge, N8nText } from 'n8n-design-system';
+import { RouterLink } from 'vue-router';
+import { getStatusText, getStatusTheme, getPullPriorityByStatus } from '@/utils/sourceControlUtils';
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
 }>();
-
-const incompleteFileTypes = ['variables', 'credential'];
 
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
@@ -23,14 +30,62 @@ const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 
-const files = ref<SourceControlAggregatedFile[]>(props.data.status || []);
+const sortedFiles = computed(() =>
+	orderBy(
+		props.data.status,
+		[({ status }) => getPullPriorityByStatus(status), ({ name }) => name.toLowerCase()],
+		['desc', 'asc'],
+	),
+);
 
-const workflowFiles = computed(() => {
-	return files.value.filter((file) => file.type === 'workflow' || file.conflict);
-});
+const groupedChangesByType = computed<
+	Partial<Record<SourceControlledFileType, SourceControlAggregatedFile[]>>
+>(() => groupBy(sortedFiles.value, 'type'));
 
-const modifiedWorkflowFiles = computed(() => {
-	return workflowFiles.value.filter((file) => file.status === 'modified' || file.conflict);
+type HeaderItem = { type: 'render-title'; title: string; id: string };
+type ItemsList = Array<HeaderItem | SourceControlAggregatedFile>;
+const files = computed<ItemsList>(() => {
+	const { workflow, credential, tags, variables } = groupedChangesByType.value;
+
+	const output: ItemsList = [];
+
+	if (workflow) {
+		output.push({
+			type: 'render-title',
+			title: 'Workflows',
+			id: 'workflow',
+		});
+		output.push(...workflow);
+	}
+
+	if (credential) {
+		output.push({
+			type: 'render-title',
+			title: 'Credentials',
+			id: 'credential',
+		});
+		output.push(...credential);
+	}
+
+	if (variables) {
+		output.push({
+			type: 'render-title',
+			title: 'Variables',
+			id: 'variable',
+		});
+		output.push(...variables);
+	}
+
+	if (tags) {
+		output.push({
+			type: 'render-title',
+			title: 'Tags',
+			id: 'tag',
+		});
+		output.push(...tags);
+	}
+
+	return output;
 });
 
 function close() {
@@ -44,9 +99,8 @@ async function pullWorkfolder() {
 	try {
 		await sourceControlStore.pullWorkfolder(true);
 
-		const hasVariablesOrCredentials = files.value.some((file) => {
-			return incompleteFileTypes.includes(file.type) && file.status === 'created';
-		});
+		const hasVariablesOrCredentials =
+			groupedChangesByType.value.credential?.length || groupedChangesByType.value.variables?.length;
 
 		toast.showMessage({
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
@@ -82,59 +136,51 @@ async function pullWorkfolder() {
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 	>
 		<template #content>
+			<N8nText tag="div" class="mb-xs">
+				These resources will be updated or deleted, and any local changes to them will be lost. To
+				keep the local version, push it before pulling. <br /><RouterLink>More info</RouterLink>
+			</N8nText>
 			<div :class="$style.container">
-				<n8n-text>
-					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
-					<n8n-link :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-						{{ i18n.baseText('settings.sourceControl.modals.pull.description.learnMore') }}
-					</n8n-link>
-				</n8n-text>
-
-				<div v-if="modifiedWorkflowFiles.length > 0" class="mt-l">
-					<ul :class="$style.filesList">
-						<li v-for="file in modifiedWorkflowFiles" :key="file.id">
-							<n8n-link
-								v-if="file.type === 'workflow'"
-								:class="$style.fileLink"
-								new-window
-								:to="`/home/workflow/${file.id}`"
-							>
-								Workflow: {{ file.name }} (will be {{ file.status }})
-								<n8n-icon icon="external-link-alt" />
-							</n8n-link>
-
-							<n8n-link
-								v-else-if="file.type === 'credential'"
-								:class="$style.fileLink"
-								new-window
-								:to="`/home/credentials/${file.id}`"
-							>
-								Credential: {{ file.name }} (will be {{ file.status }})
-								<n8n-icon icon="external-link-alt" />
-							</n8n-link>
-
-							<n8n-link
-								v-else-if="file.type === 'variables'"
-								:class="$style.fileLink"
-								new-window
-								:to="'/variables'"
-							>
-								Variable: {{ file.name }} (will be {{ file.status }})
-								<n8n-icon icon="external-link-alt" />
-							</n8n-link>
-
-							<n8n-link
-								v-else-if="file.type === 'tags'"
-								:class="$style.fileLink"
-								new-window
-								:to="`/home/workflows?tags=${file.id}`"
-							>
-								Tag: {{ file.name }} (will be {{ file.status }})
-								<n8n-icon icon="external-link-alt" />
-							</n8n-link>
-						</li>
-					</ul>
-				</div>
+				<DynamicScroller
+					ref="scroller"
+					:items="files"
+					:min-item-size="30"
+					class="full-height scroller"
+					style="max-height: 440px"
+				>
+					<template #default="{ item, index, active }">
+						<DynamicScrollerItem
+							:item="item"
+							:active="active"
+							:size-dependencies="[item.name]"
+							:data-index="index"
+						>
+							<div v-if="item.type === 'render-title'" :class="$style.listHeader">
+								<N8nText bold>{{ item.title }}</N8nText>
+							</div>
+							<div v-else :class="$style.listItem">
+								<RouterLink
+									v-if="item.type === 'credential'"
+									target="_blank"
+									:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: item.id } }"
+								>
+									<N8nText>{{ item.name }}</N8nText>
+								</RouterLink>
+								<RouterLink
+									v-else-if="item.type === 'workflow'"
+									target="_blank"
+									:to="{ name: VIEWS.WORKFLOW, params: { name: item.id } }"
+								>
+									<N8nText>{{ item.name }}</N8nText>
+								</RouterLink>
+								<N8nText v-else>{{ item.name }}</N8nText>
+								<N8nBadge :theme="getStatusTheme(item.status)" :class="$style.listBadge">
+									{{ getStatusText(item.status) }}
+								</N8nBadge>
+							</div>
+						</DynamicScrollerItem>
+					</template>
+				</DynamicScroller>
 			</div>
 		</template>
 
@@ -174,6 +220,32 @@ async function pullWorkfolder() {
 
 	&:hover svg {
 		display: inline-flex;
+	}
+}
+
+.listHeader {
+	padding-top: 16px;
+	padding-bottom: 12px;
+}
+
+.listBadge {
+	margin-left: auto;
+	align-self: flex-start;
+	margin-top: 2px;
+}
+
+.listItem {
+	display: flex;
+	padding-bottom: 10px;
+	&::before {
+		display: block;
+		content: '';
+		width: 5px;
+		height: 5px;
+		background-color: var(--color-foreground-xdark);
+		border-radius: 100%;
+		margin: 7px 8px 6px 2px;
+		flex-shrink: 0;
 	}
 }
 

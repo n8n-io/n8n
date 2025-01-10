@@ -12,7 +12,6 @@ import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
 import { RecycleScroller } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { refDebounced } from '@vueuse/core';
 import {
 	N8nHeading,
@@ -38,6 +37,7 @@ import {
 	type SourceControlAggregatedFile,
 } from '@/types/sourceControl.types';
 import { orderBy, groupBy } from 'lodash-es';
+import { getStatusText, getStatusTheme, getPushPriorityByStatus } from '@/utils/sourceControlUtils';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
@@ -187,22 +187,13 @@ const filteredWorkflows = computed(() => {
 	});
 });
 
-const statusPriority: Partial<Record<SourceControlledFileStatus, number>> = {
-	[SOURCE_CONTROL_FILE_STATUS.MODIFIED]: 1,
-	[SOURCE_CONTROL_FILE_STATUS.RENAMED]: 2,
-	[SOURCE_CONTROL_FILE_STATUS.CREATED]: 3,
-	[SOURCE_CONTROL_FILE_STATUS.DELETED]: 4,
-} as const;
-const getPriorityByStatus = (status: SourceControlledFileStatus): number =>
-	statusPriority[status] ?? 0;
-
 const sortedWorkflows = computed(() => {
 	const sorted = orderBy(
 		filteredWorkflows.value,
 		[
 			// keep the current workflow at the top of the list
 			({ id }) => id === changes.value.currentWorkflow?.id,
-			({ status }) => getPriorityByStatus(status),
+			({ status }) => getPushPriorityByStatus(status),
 			'updatedAt',
 		],
 		['desc', 'asc', 'desc'],
@@ -331,19 +322,6 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
-
-const getStatusText = (status: SourceControlledFileStatus) =>
-	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
-const getStatusTheme = (status: SourceControlledFileStatus) => {
-	const statusToBadgeThemeMap: Partial<
-		Record<SourceControlledFileStatus, 'success' | 'danger' | 'warning'>
-	> = {
-		[SOURCE_CONTROL_FILE_STATUS.CREATED]: 'success',
-		[SOURCE_CONTROL_FILE_STATUS.DELETED]: 'danger',
-		[SOURCE_CONTROL_FILE_STATUS.MODIFIED]: 'warning',
-	} as const;
-	return statusToBadgeThemeMap[status];
-};
 </script>
 
 <template>

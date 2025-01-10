@@ -4,7 +4,11 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import * as vcApi from '@/api/sourceControl';
-import type { SourceControlPreferences, SshKeyTypes } from '@/types/sourceControl.types';
+import type {
+	SourceControlAggregatedFile,
+	SourceControlPreferences,
+	SshKeyTypes,
+} from '@/types/sourceControl.types';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
@@ -39,16 +43,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const pushWorkfolder = async (data: {
 		commitMessage: string;
-		fileNames?: Array<{
-			conflict: boolean;
-			file: string;
-			id: string;
-			location: string;
-			name: string;
-			status: string;
-			type: string;
-			updatedAt?: string | undefined;
-		}>;
+		fileNames?: SourceControlAggregatedFile[];
 		force: boolean;
 	}) => {
 		state.commitMessage = data.commitMessage;
