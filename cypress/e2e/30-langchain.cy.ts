@@ -47,6 +47,7 @@ import {
 } from '../composables/workflow';
 import { NDV, WorkflowPage } from '../pages';
 import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
+import { ExecutionError } from 'n8n-workflow';
 
 describe('Langchain Integration', () => {
 	beforeEach(() => {
