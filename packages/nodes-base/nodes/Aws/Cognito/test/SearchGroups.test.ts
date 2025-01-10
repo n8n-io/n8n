@@ -1,50 +1,57 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { searchGroups, awsRequest } from '../GenericFunctions';
+import { searchGroups } from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	awsRequest: jest.fn(),
-}));
+describe('GenericFunctions - searchGroups', () => {
+	const mockRequestWithAuthentication = jest.fn();
 
-describe('searchGroups', () => {
-	let mockFunctions: ILoadOptionsFunctions;
+	const mockContext = {
+		helpers: {
+			requestWithAuthentication: mockRequestWithAuthentication,
+		},
+		getNodeParameter: jest.fn(),
+		getCredentials: jest.fn(),
+	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		mockFunctions = {
-			getNodeParameter: jest.fn(),
-		} as unknown as ILoadOptionsFunctions;
-
-		(awsRequest as jest.Mock).mockReset();
+		jest.clearAllMocks();
 	});
 
-	test('should throw an error if User Pool ID is missing', async () => {
-		(mockFunctions.getNodeParameter as jest.Mock).mockReturnValueOnce(undefined);
+	it('should throw an error if User Pool ID is missing', async () => {
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({});
 
-		await expect(searchGroups.call(mockFunctions)).rejects.toThrow(
+		await expect(searchGroups.call(mockContext)).rejects.toThrow(
 			'User Pool ID is required to search groups',
 		);
 	});
 
-	test('should make a POST request to search groups and return results', async () => {
-		(mockFunctions.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+	it('should make a POST request to search groups and return results', async () => {
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
 
-		(awsRequest as jest.Mock).mockResolvedValueOnce({
+		mockRequestWithAuthentication.mockResolvedValueOnce({
 			Groups: [{ GroupName: 'Admin' }, { GroupName: 'User' }],
 			NextToken: 'nextTokenValue',
 		});
 
-		const response = await searchGroups.call(mockFunctions);
+		const response = await searchGroups.call(mockContext);
 
-		expect(awsRequest).toHaveBeenCalledWith({
-			url: '',
-			method: 'POST',
-			headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
-			body: JSON.stringify({
-				UserPoolId: 'mockUserPoolId',
-				MaxResults: 60,
-				NextToken: undefined,
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'aws',
+			expect.objectContaining({
+				baseURL: 'https://cognito-idp.us-east-1.amazonaws.com',
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-amz-json-1.1',
+					'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
+				},
+				body: JSON.stringify({
+					UserPoolId: 'mockUserPoolId',
+					MaxResults: 60,
+					NextToken: undefined,
+				}),
 			}),
-		});
+		);
 
 		expect(response).toEqual({
 			results: [
@@ -55,42 +62,51 @@ describe('searchGroups', () => {
 		});
 	});
 
-	test('should handle pagination and return all results', async () => {
-		(mockFunctions.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+	it('should handle pagination and return all results', async () => {
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
 
-		(awsRequest as jest.Mock)
-			.mockResolvedValueOnce({
-				Groups: [{ GroupName: 'Admin' }, { GroupName: 'User' }],
-				NextToken: 'nextTokenValue',
-			})
-			.mockResolvedValueOnce({
-				Groups: [{ GroupName: 'Manager' }],
-				NextToken: undefined,
-			});
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			Groups: [{ GroupName: 'Admin' }, { GroupName: 'User' }],
+			NextToken: undefined,
+		});
 
-		const response = await searchGroups.call(mockFunctions, '', 'prevTokenValue');
+		const response = await searchGroups.call(mockContext, '', 'prevTokenValue');
 
-		expect(awsRequest).toHaveBeenCalledTimes(2);
+		expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+
+		expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+			1,
+			'aws',
+			expect.objectContaining({
+				body: JSON.stringify({
+					UserPoolId: 'mockUserPoolId',
+					MaxResults: 60,
+					NextToken: 'prevTokenValue',
+				}),
+			}),
+		);
+
 		expect(response).toEqual({
 			results: [
 				{ name: 'Admin', value: 'Admin' },
 				{ name: 'User', value: 'User' },
-				{ name: 'Manager', value: 'Manager' },
 			],
 			paginationToken: undefined,
 		});
 	});
 
-	test('should return empty results if no groups are found', async () => {
-		(mockFunctions.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+	it('should handle empty results', async () => {
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
 
-		(awsRequest as jest.Mock).mockResolvedValueOnce({
+		mockRequestWithAuthentication.mockResolvedValueOnce({
 			Groups: [],
 			NextToken: undefined,
 		});
 
-		const response = await searchGroups.call(mockFunctions);
+		const response = await searchGroups.call(mockContext);
 
-		expect(response).toEqual({ results: [] });
+		expect(response).toEqual({ results: [], paginationToken: undefined });
 	});
 });
