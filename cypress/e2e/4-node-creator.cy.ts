@@ -76,11 +76,21 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		WorkflowPage.actions.addNodeToCanvas('Manual', false);
 
-		nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
-		nodeCreatorFeature.getters.nodeCreator().should('not.exist');
+		cy.ifCanvasVersion(
+			() => {
+				nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
+				nodeCreatorFeature.getters.nodeCreator().should('not.exist');
+				// TODO: Replace once we have canvas feature utils
+				cy.get('div').contains('Add first step').should('be.hidden');
+			},
+			() => {
+				nodeCreatorFeature.getters.canvasAddButton().should('not.exist');
+				nodeCreatorFeature.getters.nodeCreator().should('not.exist');
+				// TODO: Replace once we have canvas feature utils
+				cy.get('div').contains('Add first step').should('not.exist');
+			},
+		);
 
-		// TODO: Replace once we have canvas feature utils
-		cy.get('div').contains('Add first step').should('be.hidden');
 		nodeCreatorFeature.actions.openNodeCreator();
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 
@@ -346,7 +356,15 @@ describe('Node Creator', () => {
 
 	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
 		WorkflowPage.actions.addNodeToCanvas('Manual');
-		cy.get('.plus-endpoint').should('be.visible').click();
+
+		cy.ifCanvasVersion(
+			() => {
+				cy.get('.plus-endpoint').click();
+			},
+			() => {
+				cy.getByTestId('canvas-handle-plus').click();
+			},
+		);
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
 		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
@@ -531,7 +549,7 @@ describe('Node Creator', () => {
 			vectorStores.each((_i, vectorStore) => {
 				nodeCreatorFeature.getters.getCreatorItem(vectorStore).click();
 				actions.forEach((action) => {
-					nodeCreatorFeature.getters.getCreatorItem(action).should('be.visible');
+					nodeCreatorFeature.getters.getCreatorItem(action).should('be.visible').realHover();
 				});
 				cy.realPress('ArrowLeft');
 			});
