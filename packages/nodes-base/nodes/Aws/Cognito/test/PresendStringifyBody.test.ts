@@ -34,7 +34,7 @@ describe('presendStringifyBody', () => {
 		expect(result.body).toBeUndefined();
 	});
 
-	test('should handle an empty body gracefully', async () => {
+	test('should handle an empty body', async () => {
 		const requestOptions = {
 			method: 'POST' as const,
 			url: '/example-endpoint',

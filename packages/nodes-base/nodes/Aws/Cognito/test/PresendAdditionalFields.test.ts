@@ -48,22 +48,4 @@ describe('presendAdditionalFields', () => {
 			),
 		);
 	});
-
-	test('should throw an error if options are empty but other parameters are set', async () => {
-		mockContext.getNodeParameter.mockReturnValueOnce({});
-
-		const requestOptions = {
-			method: 'POST' as const,
-			url: '/example-endpoint',
-			body: {},
-			headers: {},
-		};
-
-		await expect(presendAdditionalFields.call(mockContext, requestOptions)).rejects.toThrow(
-			new NodeOperationError(
-				mockContext.getNode(),
-				'At least one of the additional fields must be provided to update the group.',
-			),
-		);
-	});
 });

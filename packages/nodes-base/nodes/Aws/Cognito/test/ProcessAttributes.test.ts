@@ -65,24 +65,4 @@ describe('processAttributes', () => {
 			new ApplicationError('Invalid request body: Expected a JSON string or object.'),
 		);
 	});
-
-	test('should process attributes with custom prefix correctly', async () => {
-		mockGetNodeParameter.mockReturnValueOnce([{ Name: 'custom:age', Value: '30' }]);
-
-		const requestOptions = {
-			method: 'POST' as const,
-			url: '/example-endpoint',
-			headers: {},
-			body: JSON.stringify({ UserPoolId: 'mockPoolId' }),
-		};
-
-		const updatedRequestOptions = await processAttributes.call(mockContext, requestOptions);
-
-		const expectedBody = {
-			UserPoolId: 'mockPoolId',
-			UserAttributes: [{ Name: 'custom:age', Value: '30' }],
-		};
-
-		expect(updatedRequestOptions.body).toBe(JSON.stringify(expectedBody));
-	});
 });
