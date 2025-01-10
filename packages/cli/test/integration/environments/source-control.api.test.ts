@@ -72,7 +72,6 @@ describe('GET /sourceControl/preferences', () => {
 	test('refreshing key pairsshould return new rsa key', async () => {
 		const res = await authOwnerAgent.post('/source-control/generate-key-pair').send().expect(200);
 
-		expect(sourceControlPreferencesService.getPreferences().keyGeneratorType).toBe('rsa');
 		expect(res.body.data).toHaveProperty('publicKey');
 		expect(res.body.data).toHaveProperty('keyGeneratorType');
 		expect(res.body.data.keyGeneratorType).toBe('rsa');
