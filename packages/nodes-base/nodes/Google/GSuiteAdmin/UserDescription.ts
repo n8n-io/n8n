@@ -532,18 +532,36 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'string',
+								displayName: 'Schema Name or ID',
+								name: 'schemaName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getSchemas',
+								},
 								default: '',
-								description: 'The name of the custom field',
+								description:
+									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Field Name or ID',
+								name: 'fieldName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsDependsOn: ['schemaName.value'],
+									loadOptionsMethod: 'getSchemaFields',
+								},
+								default: '',
+								required: true,
+								description:
+									'Select the field from the selected schema. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value for the custom field',
+								required: true,
+								description: 'Provide a value for the selected field',
 							},
 						],
 					},

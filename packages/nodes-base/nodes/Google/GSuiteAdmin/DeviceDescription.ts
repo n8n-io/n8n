@@ -46,8 +46,8 @@ export const deviceFields: INodeProperties[] = [
 	/*                               device:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'UUID',
-		name: 'uuid',
+		displayName: 'Device ID',
+		name: 'deviceId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -217,6 +217,9 @@ export const deviceFields: INodeProperties[] = [
 			},
 		],
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                               device:update......                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update Fields',
 		name: 'updateOptions',
@@ -275,6 +278,10 @@ export const deviceFields: INodeProperties[] = [
 			},
 		],
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                               device:changeStatus                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Action',
 		name: 'action',

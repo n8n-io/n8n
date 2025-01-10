@@ -7,8 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { deviceFields, deviceOperations } from './DeviceDescription';
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
@@ -17,7 +18,6 @@ import {
 } from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescripion';
 import { userFields, userOperations } from './UserDescription';
-import { deviceFields, deviceOperations } from './DeviceDescription';
 
 export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,36 +94,87 @@ export class GSuiteAdmin implements INodeType {
 			},
 			//Get all the schemas
 			async getSchemas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
 				const schemas = await googleApiRequestAllItems.call(
 					this,
 					'schemas',
 					'GET',
 					'/directory/v1/customer/my_customer/schemas',
 				);
-				for (const schema of schemas) {
-					const schemaName = schema.displayName;
-					const schemaId = schema.schemaName;
-					returnData.push({
-						name: schemaName,
-						value: schemaId,
-					});
+				return schemas.map((schema: { schemaName: string; displayName: string }) => ({
+					name: schema.displayName || schema.schemaName,
+					value: schema.schemaName,
+				}));
+			},
+			async getSchemaFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
+				console.log('additionalFields', JSON.stringify(additionalFields));
+
+				if (additionalFields.customFields) {
+				} else {
+					console.warn('No Custom Fields found in additionalFields.');
+					return [
+						{
+							name: 'Please Select a Schema First.',
+							value: '',
+						},
+					];
 				}
-				return returnData;
+				const customFields = (additionalFields.customFields as IDataObject)
+					.fieldValues as IDataObject[];
+				console.log('customFields', customFields);
+				const schemaName = customFields?.[0]?.schemaName as string;
+				console.log('Schema Name:', schemaName);
+
+				try {
+					const schema = await googleApiRequest.call(
+						this,
+						'GET',
+						`/directory/v1/customer/my_customer/schemas/${schemaName}`,
+						//'/directory/v1/customer/my_customer/schemas/new',
+					);
+
+					if (schema.fields && Array.isArray(schema.fields)) {
+						return schema.fields.map((field: { fieldName: string; displayName: string }) => ({
+							name: field.displayName || field.fieldName,
+							value: field.fieldName,
+						}));
+					} else {
+						console.warn('No fields found for the schema.');
+					}
+				} catch (error) {
+					console.error('Error fetching schema fields:', error);
+				}
+
+				return [];
 			},
 			async getOrgUnits(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const orgUnits = await googleApiRequest.call(
 					this,
 					'GET',
-					'/directory/v1/customer/my_customer/orgunits?orgUnitPath=/&type=all',
+					'/directory/v1/customer/my_customer/orgunits',
+					{},
+					{ orgUnitPath: '/', type: 'all' },
 				);
-				for (const orgUnit of orgUnits.organizationUnits) {
-					const orgUnitName = orgUnit.orgUnitPath;
-					returnData.push({
-						name: orgUnitName,
-						value: orgUnitName,
-					});
+
+				// Check if organizationUnits exist and are iterable
+				if (orgUnits.organizationUnits && Array.isArray(orgUnits.organizationUnits)) {
+					if (orgUnits.organizationUnits.length === 0) {
+						throw new ApplicationError(
+							'No organizational units found. Please create organizational units in the Google Admin Console under "Directory > Organizational units".',
+						);
+					}
+
+					for (const unit of orgUnits.organizationUnits) {
+						returnData.push({
+							name: unit.name,
+							value: unit.orgUnitPath,
+						});
+					}
+				} else {
+					throw new ApplicationError(
+						'Failed to retrieve organizational units. Ensure your account has organizational units configured.',
+					);
 				}
 				return returnData;
 			},
@@ -207,7 +258,16 @@ export class GSuiteAdmin implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filter = this.getNodeParameter('filter', i, {}) as IDataObject;
 						const sort = this.getNodeParameter('sort', i, {}) as IDataObject;
-						if (typeof filter.query === 'string') {
+
+						if (filter.customer) {
+							qs.customer = filter.customer as string;
+						}
+
+						if (filter.domain) {
+							qs.domain = filter.domain as string;
+						}
+
+						if (filter.query && typeof filter.query === 'string') {
 							const query = filter.query.trim();
 
 							// Validate the query format
@@ -220,6 +280,10 @@ export class GSuiteAdmin implements INodeType {
 							}
 
 							qs.query = query;
+						}
+
+						if (filter.userId) {
+							qs.userId = filter.userId as string;
 						}
 
 						// Handle sort options
@@ -389,6 +453,35 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
+						if (additionalFields.customFields) {
+							const customFields = (additionalFields.customFields as IDataObject)
+								.fieldValues as IDataObject[];
+							console.log('Custom Fields:', customFields);
+							const customSchemas: IDataObject = {};
+							customFields.forEach((field) => {
+								const { schemaName, fieldName, value } = field as {
+									schemaName: string;
+									fieldName: string;
+									value: any;
+								};
+
+								if (!schemaName || !fieldName || value === undefined || value === '') {
+									console.error('Missing schemaName, fieldName, or value in customFields:', field);
+									return;
+								}
+
+								if (!customSchemas[schemaName]) {
+									customSchemas[schemaName] = {};
+								}
+
+								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
+							});
+
+							if (Object.keys(customSchemas).length > 0) {
+								body.customSchemas = customSchemas;
+							}
+						}
+						// Send the final request to create the user
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
@@ -669,28 +762,29 @@ export class GSuiteAdmin implements INodeType {
 				}
 
 				if (resource === 'device') {
-					//https://developers.google.com/admin-sdk/directory/v1/customer/my_customer/devices/chromeos/uuid
+					//https://developers.google.com/admin-sdk/directory/v1/customer/my_customer/devices/chromeos/deviceId
 					if (operation === 'get') {
-						const uuid = this.getNodeParameter('uuid', i) as string;
+						const deviceId = this.getNodeParameter('deviceId', i) as string;
 						const projection = this.getNodeParameter('projection', 1);
 
-						// Validate uuid
-						if (!uuid) {
+						// Validate deviceId
+						if (!deviceId) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'uuid is required but was not provided.',
+								'deviceId is required but was not provided.',
 								{ itemIndex: i },
 							);
 						}
+						console.log('deviceId', deviceId);
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/directory/v1/customer/my_customer/devices/chromeos/${uuid}?projection=${projection}`,
+							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}?projection=${projection}`,
 							{},
 						);
 					}
 
-					//https://developers.google.com/admin-sdk/directory/v1/customer/my_customer/devices/chromeos/
+					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/chromeosdevices/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const projection = this.getNodeParameter('projection', 1);
@@ -724,18 +818,23 @@ export class GSuiteAdmin implements INodeType {
 								qs,
 							);
 						}
+						if (!responseData || responseData.length === 0) {
+							return [this.helpers.returnJsonArray({})];
+						}
+
+						return [this.helpers.returnJsonArray(responseData)];
 					}
 
 					if (operation === 'update') {
-						const uuid = this.getNodeParameter('uuid', i) as string;
+						const deviceId = this.getNodeParameter('deviceId', i) as string;
 						const projection = this.getNodeParameter('projection', 1);
 						const updateOptions = this.getNodeParameter('updateOptions', 1);
 
-						// Validate uuid
-						if (!uuid) {
+						// Validate deviceId
+						if (!deviceId) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'uuid is required but was not provided.',
+								'deviceId is required but was not provided.',
 								{ itemIndex: i },
 							);
 						}
@@ -743,20 +842,20 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/directory/v1/customer/my_customer/devices/chromeos/${uuid}?projection=${projection}`,
+							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}?projection=${projection}`,
 							qs,
 						);
 					}
 
 					if (operation === 'changeStatus') {
-						const uuid = this.getNodeParameter('uuid', i) as string;
+						const deviceId = this.getNodeParameter('deviceId', i) as string;
 						const action = this.getNodeParameter('action', 1);
 
 						qs.action = action;
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/directory/v1/customer/my_customer/devices/chromeos/${uuid}/action`,
+							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}/action`,
 							qs,
 						);
 					}
