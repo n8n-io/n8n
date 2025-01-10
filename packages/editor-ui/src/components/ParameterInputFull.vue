@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ComputedRef, ref, useTemplateRef, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -17,7 +17,7 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nInputLabel } from 'n8n-design-system';
+import { N8nButton, N8nInputLabel } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -121,7 +121,7 @@ const canBeContentOverride = computed(() =>
 		: nodeTypesStore
 				.getNodeType(node.value.type, node.value.typeVersion)
 				?.codex?.categories?.includes('AI') &&
-			!props.parameter.noDataExpression &&
+			(!props.parameter.noDataExpression || props.parameter.typeOptions?.editor !== undefined) &&
 			props.parameter.type !== 'options',
 );
 // const canBeContentOverride = computed(() => getNodeTypeDescription().codex?.ai?.subcategories.contains('Tool'));
@@ -278,10 +278,18 @@ watch(
 		}
 	},
 );
+
+const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
+
+const isSingleLineInput: ComputedRef<boolean> = computed(() => {
+	console.log('D', parameterInputWrapper.value);
+	return (parameterInputWrapper.value?.inputValueHeight ?? 0) <= 45;
+});
 </script>
 
 <template>
 	<N8nInputLabel
+		ref="inputLabel"
 		:class="[$style.wrapper, { [$style.displayFlex]: canBeContentOverride }]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
@@ -292,6 +300,26 @@ watch(
 		:size="label.size"
 		color="text-dark"
 	>
+		<template
+			v-if="canBeContentOverride && !isSingleLineInput && optionsPosition === 'top'"
+			#persistentOptions
+		>
+			<N8nButton
+				:class="['n8n-input', $style.overrideButton, $style.cornersRight]"
+				type="tertiary"
+				@click="
+					() => {
+						valueChanged({
+							name: props.path,
+							value: buildValueFromOverride(fromAiOverride.extraProps, true),
+						});
+					}
+				"
+			>
+				<AiStarsIcon />
+			</N8nButton>
+		</template>
+
 		<template v-if="displayOptions && optionsPosition === 'top'" #options>
 			<ParameterOptions
 				:parameter="parameter"
@@ -341,6 +369,7 @@ watch(
 				</div>
 				<div v-else :class="$style.displayFlex">
 					<ParameterInputWrapper
+						ref="parameterInputWrapper"
 						:parameter="parameter"
 						:model-value="value"
 						:path="path"
@@ -364,7 +393,7 @@ watch(
 					>
 						<template #overrideButton>
 							<N8nButton
-								v-if="canBeContentOverride"
+								v-if="canBeContentOverride && isSingleLineInput"
 								:class="['n8n-input', $style.overrideButton, $style.cornersRight]"
 								type="tertiary"
 								@click="

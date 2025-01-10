@@ -20,7 +20,7 @@ import { stringifyExpressionResult } from '@/utils/expressions';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -193,6 +193,13 @@ function onValueChanged(parameterData: IUpdateInformation) {
 function onTextInput(parameterData: IUpdateInformation) {
 	emit('textInput', parameterData);
 }
+
+const inputValueHeight = computed(() => param.value?.inputValueHeight);
+
+const param = useTemplateRef('param');
+defineExpose({
+	inputValueHeight,
+});
 </script>
 
 <template>

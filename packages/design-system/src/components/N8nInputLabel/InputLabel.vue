@@ -89,6 +89,12 @@ const addTargetBlank = (html: string) =>
 			>
 				<slot name="options" />
 			</div>
+			<div
+				v-if="$slots.persistentOptions"
+				:data-test-id="`${inputName}-parameter-input-options-container-1`"
+			>
+				<slot name="persistentOptions" />
+			</div>
 		</label>
 		<slot />
 	</div>

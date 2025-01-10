@@ -127,8 +127,6 @@ const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 
-// ESLint: false positive
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
 
@@ -956,6 +954,38 @@ onMounted(() => {
 	});
 });
 
+// const ivh = ref(0);
+
+// onUpdated(() => {});
+
+const inputValueHeight = computed(() => {
+	const inputField = wrapper;
+	console.log('A');
+	if (!inputField.value) return -1;
+	console.log('B');
+
+	if ('offsetHeight' in inputField.value && !Number.isNaN(inputField.value.offsetHeight)) {
+		console.log('offsetHeight', inputField.value.offsetHeight);
+		return inputField.value.offsetHeight;
+	}
+	if (
+		'$el' in inputField.value &&
+		!!inputField.value.$el &&
+		typeof inputField.value.$el === 'object' &&
+		'clientHeight' in inputField.value.$el &&
+		!Number.isNaN(inputField.value.$el?.['clientHeight'])
+	) {
+		console.log('clientHeight', inputField.value.$el.clientHeight);
+		return inputField.value.$el?.clientHeight;
+	}
+	console.log('C');
+	return -1;
+});
+
+defineExpose({
+	inputValueHeight,
+});
+
 onBeforeUnmount(() => {
 	props.eventBus.off('optionSelected', optionSelected);
 });
@@ -1125,6 +1155,7 @@ onUpdated(async () => {
 					>
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
+							ref="inputField"
 							:mode="codeEditorMode"
 							:model-value="modelValueString"
 							:default-value="parameter.default"
@@ -1135,6 +1166,7 @@ onUpdated(async () => {
 						/>
 						<HtmlEditor
 							v-else-if="editorType === 'htmlEditor'"
+							ref="inputField"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1145,6 +1177,7 @@ onUpdated(async () => {
 						/>
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor'"
+							ref="inputField"
 							:model-value="modelValueString"
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
@@ -1154,6 +1187,7 @@ onUpdated(async () => {
 						/>
 						<JsEditor
 							v-else-if="editorType === 'jsEditor'"
+							ref="inputField"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1164,6 +1198,7 @@ onUpdated(async () => {
 
 						<JsonEditor
 							v-else-if="parameter.type === 'json'"
+							ref="inputField"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1185,6 +1220,7 @@ onUpdated(async () => {
 
 				<CodeNodeEditor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode"
+					ref="inputField"
 					:key="'code-' + codeEditDialogVisible.toString()"
 					:mode="codeEditorMode"
 					:model-value="modelValueString"
@@ -1210,6 +1246,7 @@ onUpdated(async () => {
 
 				<HtmlEditor
 					v-else-if="editorType === 'htmlEditor'"
+					ref="inputField"
 					:key="'html-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
@@ -1232,6 +1269,7 @@ onUpdated(async () => {
 
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
+					ref="inputField"
 					:key="'sql-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:dialect="getArgument('sqlDialect')"
@@ -1253,6 +1291,7 @@ onUpdated(async () => {
 
 				<JsEditor
 					v-else-if="editorType === 'jsEditor'"
+					ref="inputField"
 					:key="'js-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
@@ -1275,6 +1314,7 @@ onUpdated(async () => {
 
 				<JsonEditor
 					v-else-if="parameter.type === 'json'"
+					ref="inputField"
 					:key="'json-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
@@ -1341,7 +1381,6 @@ onUpdated(async () => {
 						/>
 					</template>
 				</N8nInput>
-				HERE???
 			</div>
 
 			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
