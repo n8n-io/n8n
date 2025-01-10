@@ -1,22 +1,26 @@
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Application, Request } from 'express';
 import type { Server } from 'http';
 import { ServerResponse } from 'http';
-import type { IWorkflowDataProxyAdditionalKeys } from 'n8n-workflow';
-import { jsonParse, jsonStringify, Workflow } from 'n8n-workflow';
+import type { IExecuteData, INode, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { NodeTypes } from '@/node-types';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowRunner } from '@/workflow-runner';
+
+import type { Project } from '../databases/entities/project';
+import { OwnershipService } from '../services/ownership.service';
 
 type ChatRequest = Request<{ workflowId: string }, {}, {}, { sessionId: string }> & {
 	ws: WebSocket;
 };
 type Session = {
 	connection: WebSocket;
-	workflowId: string;
 	executionId?: string;
 };
 
@@ -28,12 +32,16 @@ function heartbeat(this: WebSocket) {
 export class ChatService {
 	private readonly sessions = new Map<string, Session>();
 
-	constructor(
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly nodeTypes: NodeTypes,
-	) {
+	constructor(private readonly executionRepository: ExecutionRepository) {
 		// Ping all connected clients every 60 seconds
-		setInterval(() => this.pingAll(), 60 * 1000);
+		setInterval(async () => await this.pingAll(), 60 * 1000);
+	}
+
+	private async getExecution(executionId: string) {
+		return await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 	}
 
 	getConnection(executionID: string | undefined) {
@@ -64,14 +72,13 @@ export class ChatService {
 			}
 		});
 
-		app.use('/chat/:workflowId', async (req: ChatRequest) => await this.startSession(req));
+		app.use('/chat', async (req: ChatRequest) => await this.startSession(req));
 	}
 
 	async startSession(req: ChatRequest) {
 		const {
 			ws,
 			query: { sessionId },
-			params: { workflowId },
 		} = req;
 		if (!sessionId) {
 			ws.send('The query parameter "sessionId" is missing!');
@@ -79,60 +86,23 @@ export class ChatService {
 			return;
 		}
 
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations: { shared: { project: { projectRelations: true } } },
-		});
-
-		if (workflowData === null) {
-			ws.send(`Could not find workflow with id "${workflowId}"`);
-			ws.close(1008);
-			return;
-		}
-
-		const session: Session = this.sessions.get(sessionId) ?? { connection: ws, workflowId };
+		const session: Session = this.sessions.get(sessionId) ?? { connection: ws };
 		// Make sure that the session always points to the latest websocket connection
 		session.connection = ws;
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-
-		const startNode = workflowData.nodes.find(
-			(node) => node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-		);
-
-		if (startNode === undefined) {
-			ws.send('Could not find chat node in workflow');
-			ws.close(1008);
-			return;
-		}
-
-		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-			$executionId: session.executionId,
-		};
-		console.log(workflow, startNode, additionalKeys);
-
-		// TODO: setup a trigger context to call `.trigger` on the chat node on every message
 
 		ws.isAlive = true;
 		ws.on('pong', heartbeat);
 		this.sessions.set(sessionId, session);
 
-		const onMessage = this.messageHandler(sessionId, session);
-		ws.once('close', () => {
+		const onMessage = this.messageHandler(sessionId);
+
+		ws.once('close', async () => {
 			ws.off('pong', heartbeat);
-			ws.off('message', onMessage);
+			ws.off('message', await onMessage);
 			this.sessions.delete(sessionId);
 		});
-		ws.on('message', onMessage);
+
+		ws.on('message', await onMessage);
 
 		ws.send(
 			jsonStringify({
@@ -142,25 +112,84 @@ export class ChatService {
 		);
 	}
 
-	private messageHandler(sessionId: string, { workflowId, executionId }: Session) {
-		return (data: RawData) => {
-			// TODO: handle closed sessions
-			const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
-			// TODO: start a new execution, or resume an existing one
-			// TODO: Add executionId to the session
-			// TODO: Call `.trigger` on the chat node
-			console.log(sessionId, workflowId, executionId, jsonParse(buffer.toString('utf8')));
+	private async messageHandler(sessionId: string) {
+		return async (data: RawData) => {
+			const executionId = this.sessions.get(sessionId)?.executionId;
+
+			if (executionId) {
+				await this.resumeExecution(executionId, data);
+			}
 		};
 	}
 
-	private pingAll() {
+	private async resumeExecution(executionId: string, data: RawData) {
+		const execution = await this.getExecution(executionId ?? '');
+
+		if (!execution) {
+			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+		}
+
+		if (execution.status === 'running') {
+			throw new ConflictError(`The execution "${executionId}" is running already.`);
+		}
+
+		if (execution.data?.resultData?.error) {
+			throw new ConflictError(`The execution "${executionId}" has finished with error.`);
+		}
+
+		if (execution.finished) {
+			throw new ConflictError(`The execution "${executionId} has finished already.`);
+		}
+
+		const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+		const message = jsonParse<string>(buffer.toString('utf8'));
+
+		const workflowStartNode = execution.workflowData.nodes.find(
+			(node) => node.name === (execution.data.resultData.lastNodeExecuted as string),
+		);
+
+		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
+
+		const nodeExecutionStack: IExecuteData[] = [];
+		nodeExecutionStack.push({
+			node: workflowStartNode as INode,
+			data: {
+				main: [[{ json: { message } }]],
+			},
+			source: null,
+		});
+
+		let project: Project | undefined = undefined;
+		try {
+			project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+		} catch (error) {
+			throw new NotFoundError('Cannot find workflow');
+		}
+
+		const runData: IWorkflowExecutionDataProcess = {
+			executionMode,
+			executionData: runExecutionData,
+			pushRef: runExecutionData.pushRef,
+			workflowData,
+			pinData: runExecutionData.resultData.pinData,
+			projectId: project?.id,
+		};
+
+		await Container.get(WorkflowRunner).run(runData, true, true, executionId);
+	}
+
+	private async cancelExecution(executionId: string) {
+		await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
+	}
+
+	private async pingAll() {
 		for (const { connection, executionId } of this.sessions.values()) {
 			// If a connection did not respond with a `PONG` in the last 60 seconds, disconnect
 			if (!connection.isAlive) {
-				return connection.terminate();
 				if (executionId) {
-					// TODO: schedule the execution for cancellation
+					await this.cancelExecution(executionId);
 				}
+				connection.terminate();
 			}
 			connection.isAlive = false;
 			connection.ping();
