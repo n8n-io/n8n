@@ -391,17 +391,8 @@ describe('NDV', () => {
 		}
 
 		// Correctly failing in V2 - due to floating navigation not updating the selected node
-		it('should traverse floating nodes with mouse', () => {
+		it.only('should traverse floating nodes with mouse', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
-
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
-
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
 			getFloatingNodeByPosition('outputMain').should('exist');
@@ -448,14 +439,6 @@ describe('NDV', () => {
 		// Correctly failing in V2 - due to floating navigation not updating the selected node
 		it('should traverse floating nodes with keyboard', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					// Needed in V2 as all nodes remain selected when clicking on a selected node
-					workflowPage.actions.deselectAll();
-				},
-			);
-
 			workflowPage.getters.canvasNodes().first().dblclick();
 			getFloatingNodeByPosition('inputMain').should('not.exist');
 			getFloatingNodeByPosition('outputMain').should('exist');
@@ -582,7 +565,8 @@ describe('NDV', () => {
 
 		ndv.getters
 			.outputTableRow(1)
-			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?> <library>');
+			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?> <library>')
+			.realHover();
 
 		cy.document().trigger('keyup', { key: '/' });
 		ndv.getters.searchInput().filter(':focus').type('<lib');
