@@ -118,16 +118,21 @@ export class ErrorReporter {
 	}
 
 	async beforeSend(event: ErrorEvent, hint: EventHint) {
-		if (this.beforeSendFilter && this.beforeSendFilter(event, hint)) {
-			return null;
-		}
-
 		let { originalException } = hint;
 
 		if (!originalException) return null;
 
 		if (originalException instanceof Promise) {
 			originalException = await originalException.catch((error) => error as Error);
+		}
+
+		if (
+			this.beforeSendFilter?.(event, {
+				...hint,
+				originalException,
+			})
+		) {
+			return null;
 		}
 
 		if (originalException instanceof AxiosError) return null;
