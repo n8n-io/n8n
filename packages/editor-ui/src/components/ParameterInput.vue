@@ -65,6 +65,7 @@ import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from 'n8n-des
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
+import { useElementSize } from '@vueuse/core';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -431,6 +432,9 @@ const parameterInputClasses = computed(() => {
 
 	if (!isTextarea && !isSwitch) {
 		classes['parameter-value-container'] = true;
+	} else {
+		// todo bring the fromAi button inline
+		classes['parameter-simple'] = true;
 	}
 
 	if (
@@ -451,7 +455,6 @@ const isNormalBoolParameter = computed(
 
 const parameterInputWrapperStyle = computed(() => {
 	let deductWidth = 0;
-	let width;
 
 	const styles = {
 		width: '100%',
@@ -954,36 +957,20 @@ onMounted(() => {
 	});
 });
 
-// const ivh = ref(0);
+const { height } = useElementSize(wrapper);
 
-// onUpdated(() => {});
-
-const inputValueHeight = computed(() => {
-	const inputField = wrapper;
-	console.log('A');
-	if (!inputField.value) return -1;
-	console.log('B');
-
-	if ('offsetHeight' in inputField.value && !Number.isNaN(inputField.value.offsetHeight)) {
-		console.log('offsetHeight', inputField.value.offsetHeight);
-		return inputField.value.offsetHeight;
+const isSingleLineInput = computed(() => {
+	// if (props.rows > 2) return false;
+	console.log(props.rows, editorRows.value);
+	if (isSingleLineInput.value) {
+		return height.value <= 70;
+	} else {
+		return height.value <= 35;
 	}
-	if (
-		'$el' in inputField.value &&
-		!!inputField.value.$el &&
-		typeof inputField.value.$el === 'object' &&
-		'clientHeight' in inputField.value.$el &&
-		!Number.isNaN(inputField.value.$el?.['clientHeight'])
-	) {
-		console.log('clientHeight', inputField.value.$el.clientHeight);
-		return inputField.value.$el?.clientHeight;
-	}
-	console.log('C');
-	return -1;
 });
 
 defineExpose({
-	inputValueHeight,
+	isSingleLineInput,
 });
 
 onBeforeUnmount(() => {
@@ -1064,15 +1051,9 @@ onUpdated(async () => {
 		></ExpressionEditModal>
 
 		<div
-			:class="[
-				$style.parameterInput,
-				'ignore-key-press-canvas',
-				{
-					// [$style.parameterInputWidth]: !isNormalBoolParameter,
-					// [$style.parameterInputBoolWidth]: isNormalBoolParameter,
-				},
-			]"
+			:class="[$style.parameterInput, 'ignore-key-press-canvas']"
 			:style="parameterInputWrapperStyle"
+			data-test-id="parameter-input-wrapper-in-input"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"
@@ -1138,6 +1119,7 @@ onUpdated(async () => {
 					['json', 'string'].includes(parameter.type) ||
 					remoteParameterOptionsLoadingIssues !== null
 				"
+				:class="[$style.parameterInput]"
 			>
 				<el-dialog
 					:model-value="codeEditDialogVisible"
@@ -1588,6 +1570,10 @@ onUpdated(async () => {
 .parameter-actions {
 	display: inline-flex;
 	align-items: center;
+}
+
+.parameter-simple {
+	display: inline-flex;
 }
 
 .parameter-input {

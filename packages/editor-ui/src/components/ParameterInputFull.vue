@@ -280,11 +280,9 @@ watch(
 );
 
 const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
-
-const isSingleLineInput: ComputedRef<boolean> = computed(() => {
-	console.log('D', parameterInputWrapper.value);
-	return (parameterInputWrapper.value?.inputValueHeight ?? 0) <= 45;
-});
+const isSingleLineInput: ComputedRef<boolean> = computed(
+	() => parameterInputWrapper.value?.isSingleLineInput ?? isSingleLineInput.value ?? false,
+);
 </script>
 
 <template>

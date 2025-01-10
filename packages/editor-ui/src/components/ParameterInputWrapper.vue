@@ -194,11 +194,10 @@ function onTextInput(parameterData: IUpdateInformation) {
 	emit('textInput', parameterData);
 }
 
-const inputValueHeight = computed(() => param.value?.inputValueHeight);
-
 const param = useTemplateRef('param');
+const isSingleLineInput = computed(() => param.value?.isSingleLineInput);
 defineExpose({
-	inputValueHeight,
+	isSingleLineInput,
 });
 </script>
 
