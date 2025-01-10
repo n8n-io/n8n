@@ -208,4 +208,11 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	getParentCallbackManager(): CallbackManager | undefined {
 		return this.additionalData.parentCallbackManager;
 	}
+
+	sendChatMessage(message: string) {
+		const connection = this.additionalData.getChatConnection?.(this.additionalData.executionId);
+		if (connection) connection.send(message);
+
+		throw new ApplicationError('WebSocket connection is not available');
+	}
 }

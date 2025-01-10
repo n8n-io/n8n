@@ -36,6 +36,14 @@ export class ChatService {
 		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
+	getConnection(executionID: string | undefined) {
+		if (!executionID) return undefined;
+		for (const { connection, executionId } of this.sessions.values()) {
+			if (executionId === executionID) return connection;
+		}
+		return undefined;
+	}
+
 	setup(server: Server, app: Application) {
 		const wsServer = new WebSocketServer({ noServer: true });
 		server.on('upgrade', (request: ChatRequest, socket: Socket, head) => {
