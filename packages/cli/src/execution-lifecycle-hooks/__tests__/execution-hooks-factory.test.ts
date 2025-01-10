@@ -43,6 +43,7 @@ describe('ExecutionHooksFactory', () => {
 		executionMetadataService,
 		eventService,
 		push,
+		mock(),
 	);
 
 	const workflowId = 'workflow_id';
@@ -82,11 +83,11 @@ describe('ExecutionHooksFactory', () => {
 			const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
 
 			const registeredHooks = (hooks as any).registered;
-			expect(registeredHooks.nodeExecuteBefore).toHaveLength(1);
-			expect(registeredHooks.nodeExecuteAfter).toHaveLength(2);
-			expect(registeredHooks.workflowExecuteBefore).toHaveLength(2);
+			expect(registeredHooks.nodeExecuteBefore).toHaveLength(2);
+			expect(registeredHooks.nodeExecuteAfter).toHaveLength(3);
+			expect(registeredHooks.workflowExecuteBefore).toHaveLength(3);
 			expect(registeredHooks.workflowExecuteAfter).toHaveLength(2);
-			expect(registeredHooks.nodeFetchedData).toHaveLength(0);
+			expect(registeredHooks.nodeFetchedData).toHaveLength(1);
 			expect(registeredHooks.sendResponse).toHaveLength(0);
 		});
 
@@ -363,11 +364,11 @@ describe('ExecutionHooksFactory', () => {
 
 			const registeredHooks = (hooks as any).registered;
 
-			expect(registeredHooks.nodeExecuteBefore).toHaveLength(0);
-			expect(registeredHooks.nodeExecuteAfter).toHaveLength(1);
-			expect(registeredHooks.workflowExecuteBefore).toHaveLength(1);
-			expect(registeredHooks.workflowExecuteAfter).toHaveLength(1);
-			expect(registeredHooks.nodeFetchedData).toHaveLength(0);
+			expect(registeredHooks.nodeExecuteBefore).toHaveLength(2);
+			expect(registeredHooks.nodeExecuteAfter).toHaveLength(3);
+			expect(registeredHooks.workflowExecuteBefore).toHaveLength(3);
+			expect(registeredHooks.workflowExecuteAfter).toHaveLength(2);
+			expect(registeredHooks.nodeFetchedData).toHaveLength(1);
 			expect(registeredHooks.sendResponse).toHaveLength(0);
 		});
 
@@ -495,10 +496,10 @@ describe('ExecutionHooksFactory', () => {
 
 			const registeredHooks = (hooks as any).registered;
 
-			expect(registeredHooks.nodeExecuteBefore).toHaveLength(1);
-			expect(registeredHooks.nodeExecuteAfter).toHaveLength(2);
-			expect(registeredHooks.workflowExecuteBefore).toHaveLength(2);
-			expect(registeredHooks.workflowExecuteAfter).toHaveLength(1);
+			expect(registeredHooks.nodeExecuteBefore).toHaveLength(2);
+			expect(registeredHooks.nodeExecuteAfter).toHaveLength(3);
+			expect(registeredHooks.workflowExecuteBefore).toHaveLength(3);
+			expect(registeredHooks.workflowExecuteAfter).toHaveLength(2);
 			expect(registeredHooks.nodeFetchedData).toHaveLength(1);
 			expect(registeredHooks.sendResponse).toHaveLength(0);
 		});

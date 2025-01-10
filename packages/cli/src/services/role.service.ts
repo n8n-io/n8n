@@ -1,9 +1,10 @@
+import type { ProjectRole } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
 import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
+import type { ProjectRelation } from '@/databases/entities/project-relation';
 import type {
 	CredentialSharingRole,
 	SharedCredentials,

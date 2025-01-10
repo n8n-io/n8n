@@ -1,7 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -103,13 +103,26 @@ export class E2EController {
 		[LICENSE_FEATURES.AI_CREDITS]: false,
 	};
 
-	private numericFeatures: Record<NumericLicenseFeature, number> = {
+	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
 		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
 		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
 		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+	};
+
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TRIGGER_LIMIT],
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.VARIABLES_LIMIT],
+		[LICENSE_QUOTAS.USERS_LIMIT]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.USERS_LIMIT],
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT],
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
+		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
 	};
 
 	constructor(
@@ -180,6 +193,11 @@ export class E2EController {
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
+		}
+
+		for (const feature of Object.keys(this.numericFeatures)) {
+			this.numericFeatures[feature as NumericLicenseFeature] =
+				E2EController.numericFeaturesDefaults[feature as NumericLicenseFeature];
 		}
 	}
 

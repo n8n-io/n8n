@@ -1,13 +1,14 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
+import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
 import { parse as parseUrl } from 'node:url';
-import { Service } from 'typedi';
 import { Server as WSServer } from 'ws';
 
 import { inTest } from '@/constants';
@@ -147,8 +148,16 @@ export class TaskRunnerServer {
 	}
 
 	private configureRoutes() {
+		const createRateLimiter = () =>
+			expressRateLimit({
+				windowMs: 1000,
+				limit: 5,
+				message: { message: 'Too many requests' },
+			});
+
 		this.app.use(
 			this.upgradeEndpoint,
+			createRateLimiter(),
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.taskRunnerAuthController.authMiddleware,
 			(req: TaskRunnerServerInitRequest, res: TaskRunnerServerInitResponse) =>
@@ -158,6 +167,7 @@ export class TaskRunnerServer {
 		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
 		this.app.post(
 			authEndpoint,
+			createRateLimiter(),
 			send(async (req) => await this.taskRunnerAuthController.createGrantToken(req)),
 		);
 

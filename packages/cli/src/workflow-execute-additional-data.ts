@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import type {
@@ -29,10 +30,8 @@ import type {
 	RelatedExecution,
 	Workflow,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -232,7 +231,7 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
+		const relations = Container.get(GlobalConfig).tags.disabled ? [] : ['tags'];
 
 		workflowData = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },

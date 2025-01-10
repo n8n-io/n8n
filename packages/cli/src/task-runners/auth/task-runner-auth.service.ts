@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import { randomBytes } from 'crypto';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { randomBytes, timingSafeEqual } from 'crypto';
 
 import { Time } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
@@ -9,6 +9,8 @@ const GRANT_TOKEN_TTL = 15 * Time.seconds.toMilliseconds;
 
 @Service()
 export class TaskRunnerAuthService {
+	private readonly authToken = Buffer.from(this.globalConfig.taskRunners.authToken);
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly cacheService: CacheService,
@@ -17,7 +19,10 @@ export class TaskRunnerAuthService {
 	) {}
 
 	isValidAuthToken(token: string) {
-		return token === this.globalConfig.taskRunners.authToken;
+		const tokenBuffer = Buffer.from(token);
+		if (tokenBuffer.length !== this.authToken.length) return false;
+
+		return timingSafeEqual(tokenBuffer, this.authToken);
 	}
 
 	/**

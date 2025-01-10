@@ -1,14 +1,20 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import { ErrorReporter, InstanceSettings, WorkflowExecute, Logger } from 'n8n-core';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import { InstanceSettings, WorkflowExecute, ErrorReporter, Logger } from 'n8n-core';
+import type {
+	ExecutionStatus,
+	IExecuteResponsePromiseData,
+	IRun,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -36,6 +42,7 @@ export class JobProcessor {
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionHooksFactory: ExecutionHooksFactory,
+		private readonly manualExecutionService: ManualExecutionService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -117,12 +124,19 @@ export class JobProcessor {
 			executionTimeoutTimestamp,
 		);
 
+		const { pushRef } = job.data;
+
 		additionalData.hooks = this.executionHooksFactory.forSubExecution(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,
-			{ retryOf: execution.retryOf },
+			{ retryOf: execution.retryOf as string, pushRef },
 		);
+
+		if (pushRef) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
+		}
 
 		additionalData.hooks.addHook('sendResponse', async (response) => {
 			const msg: RespondToWebhookMessage = {
@@ -131,7 +145,6 @@ export class JobProcessor {
 				response: this.encodeWebhookResponse(response),
 				workerId: this.instanceSettings.hostId,
 			};
-
 			await job.progress(msg);
 		});
 
@@ -146,7 +159,31 @@ export class JobProcessor {
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
-		if (execution.data !== undefined) {
+
+		const { startData, resultData, manualData, isTestWebhook } = execution.data;
+
+		if (execution.mode === 'manual' && !isTestWebhook) {
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: execution.mode,
+				workflowData: execution.workflowData,
+				destinationNode: startData?.destinationNode,
+				startNodes: startData?.startNodes,
+				runData: resultData.runData,
+				pinData: resultData.pinData,
+				partialExecutionVersion: manualData?.partialExecutionVersion,
+				dirtyNodeNames: manualData?.dirtyNodeNames,
+				triggerToStartFrom: manualData?.triggerToStartFrom,
+				userId: manualData?.userId,
+			};
+
+			workflowRun = this.manualExecutionService.runManually(
+				data,
+				workflow,
+				additionalData,
+				executionId,
+				resultData.pinData,
+			);
+		} else if (execution.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {

@@ -1,9 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -631,25 +632,25 @@ describe('GET /credentials', () => {
 			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
 		});
 
-		test('should return all credentials to instance owners when working on their own personal project', async () => {
+		test('should not ignore the project filter when the request is done by an owner and also includes the scopes', async () => {
 			const ownerCredential = await saveCredential(payload(), {
 				user: owner,
 				role: 'credential:owner',
 			});
-			const memberCredential = await saveCredential(payload(), {
-				user: member,
-				role: 'credential:owner',
-			});
+			// should not show up
+			await saveCredential(payload(), { user: member, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
-				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }&includeScopes=true`)
+				.query({
+					filter: JSON.stringify({ projectId: ownerPersonalProject.id }),
+					includeScopes: true,
+				})
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
-			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(ownerCredential.id);
 		});
 	});
 
@@ -1270,6 +1271,23 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(secondResponse.body.data);
 		expect(secondResponse.body.data.data).toBeDefined();
+	});
+
+	test('should not redact the data when `includeData:true` is passed', async () => {
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(redactSpy).not.toHaveBeenCalled();
 	});
 
 	test('should retrieve owned cred for member', async () => {

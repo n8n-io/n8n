@@ -1,10 +1,11 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import path from 'path';
-import { Container } from 'typedi';
 
 import { License } from '@/license';
 import { isContainedWithin } from '@/utils/path-util';
@@ -16,7 +17,6 @@ import {
 } from './constants';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
-import type { SourceControlledFile } from './types/source-controlled-file';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);

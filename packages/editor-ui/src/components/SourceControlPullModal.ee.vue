@@ -2,7 +2,6 @@
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PULL_MODAL_KEY } from '@/constants';
 import type { EventBus } from 'n8n-design-system/utils';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
@@ -10,9 +9,10 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { computed, nextTick, ref } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import type { SourceControlledFile } from '@n8n/api-types';
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+	data: { eventBus: EventBus; status: SourceControlledFile[] };
 }>();
 
 const incompleteFileTypes = ['variables', 'credential'];
@@ -23,7 +23,7 @@ const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 
-const files = ref<SourceControlAggregatedFile[]>(props.data.status || []);
+const files = ref<SourceControlledFile[]>(props.data.status || []);
 
 const workflowFiles = computed(() => {
 	return files.value.filter((file) => file.type === 'workflow');

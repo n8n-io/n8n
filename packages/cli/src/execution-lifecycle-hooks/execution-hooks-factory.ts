@@ -1,7 +1,8 @@
+import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { pick } from 'lodash';
 import type { ExecutionHooksOptionalParameters } from 'n8n-core';
-import { ErrorReporter, ExecutionHooks, Logger } from 'n8n-core';
+import { ErrorReporter, ExecutionHooks, InstanceSettings, Logger } from 'n8n-core';
 import type {
 	IRun,
 	ExecutionStatus,
@@ -10,7 +11,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
@@ -40,6 +40,7 @@ export class ExecutionHooksFactory {
 		private readonly executionMetadataService: ExecutionMetadataService,
 		private readonly eventService: EventService,
 		private readonly push: Push,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/** Returns ExecutionHooks instance for running the main workflow */
@@ -52,6 +53,7 @@ export class ExecutionHooksFactory {
 			retryOf,
 		});
 		this.addPreExecuteHooks(hooks);
+		this.addEventHooks(hooks);
 		this.addSavingHooks(hooks, false);
 		this.addPushHooks(hooks);
 		return hooks;
@@ -66,6 +68,10 @@ export class ExecutionHooksFactory {
 	) {
 		const hooks = new ExecutionHooks(mode, executionId, workflowData, optionalParameters);
 		this.addPreExecuteHooks(hooks);
+		this.addEventHooks(hooks);
+		if (mode === 'manual' && this.instanceSettings.isWorker) {
+			this.addPushHooks(hooks);
+		}
 
 		// When running with worker mode, main process executes
 		// Only workflowExecuteBefore + workflowExecuteAfter
@@ -109,6 +115,9 @@ export class ExecutionHooksFactory {
 		this.addPreExecuteHooks(hooks);
 		this.addEventHooks(hooks);
 		this.addSavingHooks(hooks, false);
+		if (mode === 'manual' && this.instanceSettings.isWorker) {
+			this.addPushHooks(hooks);
+		}
 		return hooks;
 	}
 

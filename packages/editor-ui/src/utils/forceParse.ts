@@ -3,7 +3,7 @@ import type { EditorView } from '@codemirror/view';
 /**
  * Simulate user action to force parser to catch up during scroll.
  */
-export function forceParse(_: Event, view: EditorView) {
+export function forceParse(view: EditorView) {
 	view.dispatch({
 		changes: { from: view.viewport.to, insert: '_' },
 	});

@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
 import type {
@@ -8,7 +9,6 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-import Container from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';

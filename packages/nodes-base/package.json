@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.73.0",
+  "version": "1.74.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -626,6 +626,7 @@
       "dist/nodes/MessageBird/MessageBird.node.js",
       "dist/nodes/Metabase/Metabase.node.js",
       "dist/nodes/Microsoft/Dynamics/MicrosoftDynamicsCrm.node.js",
+      "dist/nodes/Microsoft/Entra/MicrosoftEntra.node.js",
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
       "dist/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
@@ -851,6 +852,7 @@
     "@aws-sdk/client-sso-oidc": "3.666.0",
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "alasql": "4.4.0",
@@ -910,7 +912,6 @@
     "ssh2-sftp-client": "7.2.3",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
-    "typedi": "catalog:",
     "uuid": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:"

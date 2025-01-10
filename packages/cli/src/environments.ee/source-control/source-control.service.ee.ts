@@ -1,9 +1,14 @@
+import type {
+	PullWorkFolderRequestDto,
+	PushWorkFolderRequestDto,
+	SourceControlledFile,
+} from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
-import { Service } from 'typedi';
 
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
@@ -34,10 +39,7 @@ import type { ExportableCredential } from './types/exportable-credential';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
-import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
-import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { SourceControlledFile } from './types/source-controlled-file';
 
 @Service()
 export class SourceControlService {
@@ -207,7 +209,7 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(options: SourceControlPushWorkFolder): Promise<{
+	async pushWorkfolder(options: PushWorkFolderRequestDto): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
@@ -299,7 +301,7 @@ export class SourceControlService {
 			}
 		}
 
-		await this.gitService.commit(options.message ?? 'Updated Workfolder');
+		await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 
 		const pushResult = await this.gitService.push({
 			branch: this.sourceControlPreferencesService.getBranchName(),
@@ -321,7 +323,8 @@ export class SourceControlService {
 	}
 
 	async pullWorkfolder(
-		options: SourceControllPullOptions,
+		userId: User['id'],
+		options: PullWorkFolderRequestDto,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
@@ -345,7 +348,7 @@ export class SourceControlService {
 			return true;
 		});
 
-		if (options.force !== true) {
+		if (!options.force) {
 			const possibleConflicts = filteredResult?.filter(
 				(file) => (file.conflict || file.status === 'modified') && file.type === 'workflow',
 			);
@@ -363,7 +366,7 @@ export class SourceControlService {
 		);
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
-			options.userId,
+			userId,
 		);
 
 		const credentialsToBeImported = statusResult.filter(
@@ -371,7 +374,7 @@ export class SourceControlService {
 		);
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
-			options.userId,
+			userId,
 		);
 
 		const tagsToBeImported = statusResult.find((e) => e.type === 'tags');

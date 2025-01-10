@@ -1,17 +1,17 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
-import Container from 'typedi';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
-import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 
 import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';

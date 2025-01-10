@@ -1,7 +1,8 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { constants as fsConstants, accessSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';
-import Container from 'typedi';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
@@ -17,7 +18,6 @@ import {
 } from '@/environments.ee/source-control/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '@/environments.ee/source-control/types/source-control-preferences';
-import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 import { License } from '@/license';
 import { mockInstance } from '@test/mocking';
 

@@ -20,6 +20,7 @@ describe('JobProcessor', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const result = await jobProcessor.processJob(mock<Job>());

@@ -1,9 +1,10 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { Container, Service } from '@n8n/di';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
 import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
-import Container, { Service } from 'typedi';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -29,7 +30,6 @@ import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { ResourceOwner } from './types/resource-owner';
-import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
 
 @Service()

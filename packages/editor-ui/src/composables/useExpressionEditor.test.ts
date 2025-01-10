@@ -1,17 +1,16 @@
+import { renderComponent } from '@/__tests__/render';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
-import { EditorView, keymap } from '@codemirror/view';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import { EditorSelection } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor, fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
-import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { useExpressionEditor } from './useExpressionEditor';
 import { useRouter } from 'vue-router';
-import { EditorSelection } from '@codemirror/state';
-import userEvent from '@testing-library/user-event';
-import { renderComponent } from '@/__tests__/render';
-import { tabKeyMap } from '@/plugins/codemirror/keymap';
+import { useExpressionEditor } from './useExpressionEditor';
 
 vi.mock('@/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
@@ -127,6 +126,109 @@ describe('useExpressionEditor', () => {
 					kind: 'plaintext',
 					plaintext: ' after',
 					to: 36,
+				},
+			]);
+		});
+	});
+
+	test('render [empty] when expression evaluates to an empty string', async () => {
+		mockResolveExpression().mockReturnValueOnce('');
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: "{{ '' }}",
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.all)).toEqual([
+				{
+					error: null,
+					from: 0,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '[empty]',
+					state: 'valid',
+					to: 8,
+				},
+			]);
+
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: null,
+					from: 0,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '[empty]',
+					state: 'valid',
+					to: 8,
+				},
+			]);
+
+			expect(toValue(segments.plaintext)).toEqual([]);
+		});
+	});
+
+	test('does not render [empty] when expression evaluates to an empty string within a string', async () => {
+		mockResolveExpression().mockReturnValueOnce('');
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: "before {{ '' }} after",
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.all)).toEqual([
+				{
+					from: 0,
+					kind: 'plaintext',
+					plaintext: 'before ',
+					to: 7,
+				},
+				{
+					error: null,
+					from: 7,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '',
+					state: 'valid',
+					to: 15,
+				},
+				{
+					from: 15,
+					kind: 'plaintext',
+					plaintext: ' after',
+					to: 21,
+				},
+			]);
+
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: null,
+					from: 7,
+					kind: 'resolvable',
+					resolvable: "{{ '' }}",
+					resolved: '',
+					state: 'valid',
+					to: 15,
+				},
+			]);
+
+			expect(toValue(segments.plaintext)).toEqual([
+				{
+					from: 0,
+					kind: 'plaintext',
+					plaintext: 'before ',
+					to: 7,
+				},
+				{
+					from: 15,
+					kind: 'plaintext',
+					plaintext: ' after',
+					to: 21,
 				},
 			]);
 		});
@@ -253,34 +355,6 @@ describe('useExpressionEditor', () => {
 
 			await fireEvent(document, new MouseEvent('click'));
 			expect(expressionEditor.editor.value?.hasFocus).toBe(true);
-		});
-	});
-
-	describe('keymap', () => {
-		const TEST_EDITOR_VALUE = '{{ { "foo": "bar" } }}';
-
-		test('should indent on tab if blurOnTab is false', async () => {
-			const { renderResult, expressionEditor } = await renderExpressionEditor({
-				editorValue: TEST_EDITOR_VALUE,
-				extensions: [keymap.of([...tabKeyMap(false)])],
-			});
-			const root = renderResult.getByTestId('editor-root');
-			const input = root.querySelector('.cm-line') as HTMLDivElement;
-
-			await userEvent.type(input, '{tab}');
-			expect(expressionEditor.editor.value?.state.doc.toString()).toEqual(`  ${TEST_EDITOR_VALUE}`);
-		});
-
-		test('should NOT indent on tab if blurOnTab is true', async () => {
-			const { renderResult, expressionEditor } = await renderExpressionEditor({
-				editorValue: TEST_EDITOR_VALUE,
-				extensions: [keymap.of([...tabKeyMap(true)])],
-			});
-			const root = renderResult.getByTestId('editor-root');
-			const input = root.querySelector('.cm-line') as HTMLDivElement;
-
-			await userEvent.type(input, '{tab}');
-			expect(expressionEditor.editor.value?.state.doc.toString()).toEqual(TEST_EDITOR_VALUE);
 		});
 	});
 });

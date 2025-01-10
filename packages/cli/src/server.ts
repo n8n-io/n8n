@@ -1,10 +1,10 @@
+import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
-import { Container, Service } from 'typedi';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -135,6 +135,9 @@ export class Server extends AbstractServer {
 			await import('@/controllers/cta.controller');
 		}
 
+		if (!this.globalConfig.tags.disabled) {
+			await import('@/controllers/tags.controller');
+		}
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------

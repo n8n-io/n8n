@@ -1,9 +1,9 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
-import { Service } from 'typedi';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
 
@@ -106,7 +106,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	startNode(grantToken: string, taskBrokerUri: string) {
 		const startScript = require.resolve('@n8n/task-runner/start');
 
-		return spawn('node', [startScript], {
+		return spawn('node', ['--disallow-code-generation-from-strings', startScript], {
 			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
 		});
 	}

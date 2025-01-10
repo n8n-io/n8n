@@ -572,5 +572,22 @@ describe('AugmentObject', () => {
 			expect('z' in augmentedObject.x).toBe(true);
 			expect('y' in augmentedObject.x).toBe(true);
 		});
+
+		test('should ignore non-enumerable keys', () => {
+			const originalObject: { toString?: string } = { toString: '123' };
+			const augmentedObject = augmentObject(originalObject);
+			expect('toString' in augmentedObject).toBe(true);
+			expect(Object.keys(augmentedObject)).toEqual(['toString']);
+			expect(Object.getOwnPropertyDescriptor(augmentedObject, 'toString')?.value).toEqual(
+				originalObject.toString,
+			);
+			expect(augmentedObject.toString).toEqual(originalObject.toString);
+
+			augmentedObject.toString = '456';
+			expect(augmentedObject.toString).toBe('456');
+
+			delete augmentedObject.toString;
+			expect(augmentedObject.toString).toBeUndefined();
+		});
 	});
 });
