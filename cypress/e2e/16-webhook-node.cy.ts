@@ -250,7 +250,7 @@ describe('Webhook Trigger node', () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 
@@ -293,7 +293,7 @@ describe('Webhook Trigger node', () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 

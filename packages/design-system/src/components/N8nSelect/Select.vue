@@ -136,6 +136,12 @@ defineExpose({
 			<template v-if="$slots.suffix" #suffix>
 				<slot name="suffix" />
 			</template>
+			<template v-if="$slots.footer" #footer>
+				<slot name="footer" />
+			</template>
+			<template v-if="$slots.empty" #empty>
+				<slot name="empty" />
+			</template>
 			<slot></slot>
 		</ElSelect>
 	</div>
