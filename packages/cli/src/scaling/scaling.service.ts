@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
 import {
 	ApplicationError,
 	BINARY_ENCODING,
@@ -93,6 +93,12 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				if (!this.hasValidJobData(job)) {
+					throw new ApplicationError('Worker received invalid job', {
+						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
+					});
+				}
+
 				await this.jobProcessor.processJob(job);
 			} catch (error) {
 				await this.reportJobProcessingError(ensureError(error), job);
@@ -501,6 +507,10 @@ export class ScalingService {
 		return error instanceof Error
 			? error.message
 			: jsonStringify(error, { replaceCircularRefs: true });
+	}
+
+	private hasValidJobData(job: Job) {
+		return isObjectLiteral(job.data) && 'executionId' in job.data && 'loadStaticData' in job.data;
 	}
 
 	// #endregion
