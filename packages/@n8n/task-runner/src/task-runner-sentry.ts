@@ -15,14 +15,16 @@ export class TaskRunnerSentry {
 	) {}
 
 	async initIfEnabled() {
-		if (!this.config.dsn) return;
+		const { dsn, n8nVersion, environment, deploymentName } = this.config;
+
+		if (!dsn) return;
 
 		await this.errorReporter.init({
 			serverType: 'task_runner',
-			dsn: this.config.dsn,
-			release: this.config.n8nVersion,
-			environment: this.config.environment,
-			serverName: this.config.deploymentName,
+			dsn,
+			release: n8nVersion,
+			environment,
+			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
 		});
 	}
@@ -40,7 +42,6 @@ export class TaskRunnerSentry {
 	 */
 	filterOutUserCodeErrors = (event: ErrorEvent) => {
 		const error = event?.exception?.values?.[0];
-		if (!error) return false;
 
 		return error ? this.isUserCodeError(error) : false;
 	};
@@ -50,9 +51,7 @@ export class TaskRunnerSentry {
 	 * It is possible for users to create code that causes unhandledrejections
 	 * that end up in the sentry error reporting.
 	 */
-	private isUserCodeError(error?: Exception) {
-		if (!error) return false;
-
+	private isUserCodeError(error: Exception) {
 		const frames = error.stacktrace?.frames;
 		if (!frames) return false;
 
