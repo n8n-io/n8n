@@ -101,6 +101,37 @@ describe('ErrorReporter', () => {
 			const result = await errorReporter.beforeSend(event, { originalException });
 			expect(result).toBeNull();
 		});
+
+		describe('beforeSendFilter', () => {
+			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: jest.Mock) => {
+				const errorReporter = new ErrorReporter(mock());
+				// @ts-expect-error - beforeSendFilter is private
+				errorReporter.beforeSendFilter = beforeSendFilter;
+				return errorReporter;
+			};
+
+			it('should filter out based on the beforeSendFilter', async () => {
+				const beforeSendFilter = jest.fn().mockReturnValue(true);
+				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
+				const hint = { originalException: new Error() };
+
+				const result = await errorReporter.beforeSend(event, hint);
+
+				expect(result).toBeNull();
+				expect(beforeSendFilter).toHaveBeenCalledWith(event, hint);
+			});
+
+			it('should not filter out when beforeSendFilter returns false', async () => {
+				const beforeSendFilter = jest.fn().mockReturnValue(false);
+				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
+				const hint = { originalException: new Error() };
+
+				const result = await errorReporter.beforeSend(event, hint);
+
+				expect(result).toEqual(event);
+				expect(beforeSendFilter).toHaveBeenCalledWith(event, hint);
+			});
+		});
 	});
 
 	describe('error', () => {
