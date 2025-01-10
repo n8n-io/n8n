@@ -295,6 +295,9 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		tags: {
+			disabled: false,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
