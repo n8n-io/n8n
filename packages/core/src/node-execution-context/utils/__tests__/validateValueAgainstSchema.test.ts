@@ -246,4 +246,67 @@ describe('validateValueAgainstSchema', () => {
 		// value should be type number
 		expect(typeof result).toEqual('number');
 	});
+
+	describe('when the mode is in Fixed mode, and the node is a resource mapper', () => {
+		const nodeType = {
+			description: {
+				properties: [
+					{
+						name: 'operation',
+						type: 'resourceMapper',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							},
+						},
+					},
+				],
+			},
+		} as unknown as INodeType;
+
+		const node = {
+			parameters: {
+				operation: {
+					schema: [
+						{ id: 'num', type: 'number', required: true },
+						{ id: 'str', type: 'string', required: true },
+						{ id: 'obj', type: 'object', required: true },
+						{ id: 'arr', type: 'array', required: true },
+					],
+					attemptToConvertTypes: true,
+					mappingMode: '',
+					value: '',
+				},
+			},
+		} as unknown as INode;
+
+		const parameterName = 'operation.value';
+
+		describe('should correctly validate values for', () => {
+			test.each([
+				{ num: 0 },
+				{ num: 23 },
+				{ num: -0 },
+				{ num: -Infinity },
+				{ num: Infinity },
+				{ str: '' },
+				{ str: ' ' },
+				{ str: 'hello' },
+				{ arr: [] },
+				{ obj: {} },
+			])('%s', (value) => {
+				expect(() =>
+					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+				).not.toThrow();
+			});
+		});
+
+		describe('should throw an error for', () => {
+			test.each([{ num: NaN }, { num: undefined }, { num: null }])('%s', (value) => {
+				expect(() =>
+					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+				).toThrow();
+			});
+		});
+	});
 });
