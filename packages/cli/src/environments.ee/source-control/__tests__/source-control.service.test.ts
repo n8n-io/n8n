@@ -10,6 +10,8 @@ describe('SourceControlService', () => {
 		Container.get(InstanceSettings),
 		mock(),
 		mock(),
+		mock(),
+		mock(),
 	);
 	const sourceControlService = new SourceControlService(
 		mock(),
