@@ -279,7 +279,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	if (event.ctrlKey || event.metaKey) {
+	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
 	}
 
