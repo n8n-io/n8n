@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
-import type { ConcurrencyType } from '@/concurrency/concurrency-control.service';
+import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import {
 	CLOUD_TEMP_PRODUCTION_LIMIT,
 	CLOUD_TEMP_REPORTABLE_THRESHOLDS,
@@ -34,7 +34,7 @@ describe('ConcurrencyControlService', () => {
 	describe('constructor', () => {
 		it.each(['production', 'evaluation'])(
 			'should be enabled if %s cap is positive',
-			(type: ConcurrencyType) => {
+			(type: ConcurrencyQueueType) => {
 				/**
 				 * Arrange
 				 */
@@ -64,7 +64,7 @@ describe('ConcurrencyControlService', () => {
 
 		it.each(['production', 'evaluation'])(
 			'should throw if %s cap is 0',
-			(type: ConcurrencyType) => {
+			(type: ConcurrencyQueueType) => {
 				/**
 				 * Arrange
 				 */
@@ -110,7 +110,7 @@ describe('ConcurrencyControlService', () => {
 
 		it.each(['production', 'evaluation'])(
 			'should be disabled if %s cap is lower than -1',
-			(type: ConcurrencyType) => {
+			(type: ConcurrencyQueueType) => {
 				/**
 				 * Arrange
 				 */
@@ -410,7 +410,7 @@ describe('ConcurrencyControlService', () => {
 		describe('removeAll', () => {
 			it.each(['production', 'evaluation'])(
 				'should remove all executions from the %s queue',
-				async (type: ConcurrencyType) => {
+				async (type: ConcurrencyQueueType) => {
 					/**
 					 * Arrange
 					 */
@@ -701,7 +701,7 @@ describe('ConcurrencyControlService', () => {
 					 */
 					expect(telemetry.track).toHaveBeenCalledWith('User hit concurrency limit', {
 						threshold,
-						concurrencyType: 'production',
+						concurrencyQueue: 'production',
 					});
 				},
 			);

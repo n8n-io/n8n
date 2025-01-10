@@ -6,7 +6,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
-import type { ConcurrencyType } from '@/concurrency/concurrency-control.service';
+import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole, User } from '@/databases/entities/user';
@@ -339,7 +339,7 @@ export type RelayEventMap = {
 
 	'execution-throttled': {
 		executionId: string;
-		type: ConcurrencyType;
+		type: ConcurrencyQueueType;
 	};
 
 	'execution-started-during-bootup': {
