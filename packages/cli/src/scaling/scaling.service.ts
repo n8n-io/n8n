@@ -7,8 +7,8 @@ import {
 	jsonStringify,
 	ErrorReporterProxy,
 	ensureError,
+	type IExecuteResponsePromiseData,
 } from 'n8n-workflow';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { strict } from 'node:assert';
 import Container, { Service } from 'typedi';
 
@@ -21,7 +21,7 @@ import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { EventService } from '@/events/event.service';
 import { Logger } from '@/logging/logger.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { assertNever } from '@/utils';
+import { assertNever, isObjectLiteral } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
@@ -91,6 +91,12 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				if (!this.hasValidJobData(job)) {
+					throw new ApplicationError('Worker received invalid job', {
+						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
+					});
+				}
+
 				await this.jobProcessor.processJob(job);
 			} catch (error) {
 				await this.reportJobProcessingError(ensureError(error), job);
@@ -491,6 +497,10 @@ export class ScalingService {
 		return error instanceof Error
 			? error.message
 			: jsonStringify(error, { replaceCircularRefs: true });
+	}
+
+	private hasValidJobData(job: Job) {
+		return isObjectLiteral(job.data) && 'executionId' in job.data && 'loadStaticData' in job.data;
 	}
 
 	// #endregion
