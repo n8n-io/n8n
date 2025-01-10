@@ -16,15 +16,15 @@ import { ConcurrencyQueue } from './concurrency-queue';
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
 
-export type ConcurrencyType = 'production' | 'evaluation';
+export type ConcurrencyQueueType = 'production' | 'evaluation';
 
 @Service()
 export class ConcurrencyControlService {
 	private isEnabled: boolean;
 
-	private readonly limits: Map<ConcurrencyType, number>;
+	private readonly limits: Map<ConcurrencyQueueType, number>;
 
-	private readonly queues: Map<ConcurrencyType, ConcurrencyQueue>;
+	private readonly queues: Map<ConcurrencyQueueType, ConcurrencyQueue>;
 
 	private readonly limitsToReport = CLOUD_TEMP_REPORTABLE_THRESHOLDS.map(
 		(t) => CLOUD_TEMP_PRODUCTION_LIMIT - t,
@@ -77,7 +77,7 @@ export class ConcurrencyControlService {
 				if (this.shouldReport(capacity)) {
 					this.telemetry.track('User hit concurrency limit', {
 						threshold: CLOUD_TEMP_PRODUCTION_LIMIT - capacity,
-						concurrencyType: type,
+						concurrencyQueue: type,
 					});
 				}
 			});
@@ -87,7 +87,7 @@ export class ConcurrencyControlService {
 				this.eventService.emit('execution-throttled', { executionId, type });
 			});
 
-			queue.on('execution-released', async (executionId) => {
+			queue.on('execution-released', (executionId) => {
 				this.logger.debug('Execution released', { executionId, type });
 			});
 		});
@@ -108,11 +108,7 @@ export class ConcurrencyControlService {
 	async throttle({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
-		const queue = this.getQueue(mode);
-
-		if (queue) {
-			await queue.enqueue(executionId);
-		}
+		await this.getQueue(mode)?.enqueue(executionId);
 	}
 
 	/**
@@ -121,11 +117,7 @@ export class ConcurrencyControlService {
 	release({ mode }: { mode: ExecutionMode }) {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
-		const queue = this.getQueue(mode);
-
-		if (queue) {
-			queue.dequeue();
-		}
+		this.getQueue(mode)?.dequeue();
 	}
 
 	/**
@@ -134,11 +126,7 @@ export class ConcurrencyControlService {
 	remove({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
-		const queue = this.getQueue(mode);
-
-		if (queue) {
-			queue.remove(executionId);
-		}
+		this.getQueue(mode)?.remove(executionId);
 	}
 
 	/**
@@ -190,9 +178,7 @@ export class ConcurrencyControlService {
 	}
 
 	private isUnlimited(mode: ExecutionMode) {
-		const queue = this.getQueue(mode);
-
-		return queue === undefined;
+		return this.getQueue(mode) === undefined;
 	}
 
 	private shouldReport(capacity: number) {

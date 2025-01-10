@@ -54,6 +54,10 @@ const executionListRef = ref<HTMLElement | null>(null);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
+/**
+ * Calculate the number of executions counted towards the production executions concurrency limit.
+ * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
+ */
 const runningExecutionsCount = computed(() => {
 	return props.executions.filter(
 		(execution) =>
