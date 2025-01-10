@@ -307,17 +307,13 @@ watch(
 			/>
 		</div>
 		<!-- Past Runs Table -->
-		<div v-if="runs.length > 0" :class="$style.runsTable">
-			<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
-				locale.baseText('testDefinition.edit.pastRuns')
-			}}</N8nHeading>
-			<TestRunsTable
-				:runs="runs"
-				:selectable="true"
-				data-test-id="past-runs-table"
-				@delete-runs="onDeleteRuns"
-			/>
-		</div>
+		<TestRunsTable
+			v-if="runs.length > 0"
+			:runs="runs"
+			:selectable="true"
+			data-test-id="past-runs-table"
+			@delete-runs="onDeleteRuns"
+		/>
 
 		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
 			<template #header>
@@ -363,7 +359,6 @@ watch(
 .runsTable {
 	flex-shrink: 1;
 	max-width: 100%;
-	max-height: 80vh;
 	overflow: auto;
 }
 .runsTableHeading {

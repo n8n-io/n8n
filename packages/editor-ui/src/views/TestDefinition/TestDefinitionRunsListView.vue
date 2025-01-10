@@ -118,6 +118,8 @@ onMounted(async () => {
 	height: 100%;
 	width: 100%;
 	max-width: var(--content-container-width);
+	display: flex;
+	flex-direction: column;
 }
 .backButton {
 	color: var(--color-text-base);

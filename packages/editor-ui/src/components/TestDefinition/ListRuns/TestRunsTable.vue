@@ -80,7 +80,10 @@ function deleteRuns() {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.footer">
+		<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading">{{
+			locale.baseText('testDefinition.edit.pastRuns')
+		}}</N8nHeading>
+		<div :class="$style.header">
 			<n8n-button
 				v-show="selectedRows.length > 0"
 				type="danger"
@@ -115,5 +118,6 @@ function deleteRuns() {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	flex: 1;
 }
 </style>
