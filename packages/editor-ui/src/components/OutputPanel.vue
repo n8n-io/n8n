@@ -4,7 +4,6 @@ import {
 	NodeConnectionType,
 	type IRunData,
 	type IRunExecutionData,
-	type NodeError,
 	type Workflow,
 } from 'n8n-workflow';
 import RunData from './RunData.vue';
