@@ -137,8 +137,12 @@ export class ErrorReporter {
 
 		if (originalException instanceof AxiosError) return null;
 
-		if (this.handleSqliteError(originalException)) return null;
-		if (this.handleApplicationError(event, originalException)) return null;
+		if (this.isIgnoredSqliteError(originalException)) return null;
+		if (this.isApplicationError(originalException)) {
+			if (this.isIgnoredApplicationError(originalException)) return null;
+
+			this.extractEventDetailsFromApplicationError(event, originalException);
+		}
 
 		if (
 			originalException instanceof Error &&
@@ -181,7 +185,7 @@ export class ErrorReporter {
 	}
 
 	/** @returns true if the error should be filtered out */
-	private handleSqliteError(error: unknown) {
+	private isIgnoredSqliteError(error: unknown) {
 		return (
 			error instanceof Error &&
 			error.name === 'QueryFailedError' &&
@@ -189,16 +193,21 @@ export class ErrorReporter {
 		);
 	}
 
-	/** @returns true if the error should be filtered out */
-	private handleApplicationError(event: ErrorEvent, originalException: unknown) {
-		if (originalException instanceof ApplicationError) {
-			const { level, extra, tags } = originalException;
-			if (level === 'warning') return true;
-			event.level = level;
-			if (extra) event.extra = { ...event.extra, ...extra };
-			if (tags) event.tags = { ...event.tags, ...tags };
-		}
+	private isApplicationError(error: unknown): error is ApplicationError {
+		return error instanceof ApplicationError;
+	}
 
-		return false;
+	private isIgnoredApplicationError(error: ApplicationError) {
+		return error.level === 'warning';
+	}
+
+	private extractEventDetailsFromApplicationError(
+		event: ErrorEvent,
+		originalException: ApplicationError,
+	) {
+		const { level, extra, tags } = originalException;
+		event.level = level;
+		if (extra) event.extra = { ...event.extra, ...extra };
+		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 }
