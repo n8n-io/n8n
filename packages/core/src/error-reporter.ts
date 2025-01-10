@@ -177,15 +177,11 @@ export class ErrorReporter {
 
 	/** @returns true if the error should be filtered out */
 	private handleSqliteError(error: unknown) {
-		if (
+		return (
 			error instanceof Error &&
 			error.name === 'QueryFailedError' &&
 			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => error.message.includes(errMsg))
-		) {
-			return true;
-		}
-
-		return false;
+		);
 	}
 
 	/** @returns true if the error should be filtered out */
