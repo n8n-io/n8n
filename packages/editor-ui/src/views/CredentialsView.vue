@@ -29,6 +29,7 @@ import { useI18n } from '@/composables/useI18n';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { N8nCheckbox } from 'n8n-design-system';
 import { pickBy } from 'lodash-es';
+import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -62,7 +63,10 @@ const loading = ref(false);
 const needsSetup = (data: string | undefined): boolean => {
 	const dataObject = data as unknown as ICredentialsDecrypted['data'];
 	if (!dataObject) return false;
-	return Object.keys(dataObject).length === 0;
+
+	if (Object.keys(dataObject).length === 0) return true;
+
+	return Object.values(dataObject).some((value) => !value || value === CREDENTIAL_EMPTY_VALUE);
 };
 
 const allCredentials = computed<IResource[]>(() =>

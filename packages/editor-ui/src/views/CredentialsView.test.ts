@@ -10,6 +10,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { Project } from '@/types/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
+import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
@@ -206,6 +207,74 @@ describe('CredentialsView', () => {
 			const { getAllByTestId, getByTestId } = renderComponent();
 			await flushPromises();
 			expect(getAllByTestId('resources-list-item').length).toBe(1);
+
+			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
+			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+
+		it('should filter by setupNeeded when object keys are empty', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'credential needs setup',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: '' } as unknown as string,
+				},
+				{
+					id: '2',
+					name: 'random',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: 'any value' } as unknown as string,
+				},
+			];
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
+
+			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
+			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+
+		it('should filter by setupNeeded when object keys are "CREDENTIAL_EMPTY_VALUE"', async () => {
+			await router.push({ name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } });
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'credential needs setup',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: CREDENTIAL_EMPTY_VALUE } as unknown as string,
+				},
+				{
+					id: '2',
+					name: 'random',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+					data: { anyKey: 'any value' } as unknown as string,
+				},
+			];
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+			expect(getAllByTestId('resources-list-item').length).toBe(1);
+			expect(getByTestId('resources-list-item').textContent).toContain('credential needs setup');
 
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
