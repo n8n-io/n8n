@@ -1,24 +1,10 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-	IHttpRequestMethods,
-	IRequestOptions,
-	JsonObject,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+import { googleApiRequest } from '../GenericFunctions';
 
 describe('googleApiRequest', () => {
 	let mockContext: IExecuteFunctions | ILoadOptionsFunctions;
-	let googleApiRequest: (
-		this: IExecuteFunctions | ILoadOptionsFunctions,
-		method: IHttpRequestMethods,
-		resource: string,
-		body?: any,
-		qs?: IDataObject,
-		uri?: string,
-		headers?: IDataObject,
-	) => Promise<any>;
 
 	beforeEach(() => {
 		mockContext = {
@@ -27,39 +13,6 @@ describe('googleApiRequest', () => {
 			},
 			getNode: jest.fn(),
 		} as unknown as IExecuteFunctions | ILoadOptionsFunctions;
-
-		googleApiRequest = async function (
-			this: IExecuteFunctions | ILoadOptionsFunctions,
-			method: IHttpRequestMethods,
-			resource: string,
-			body: any = {},
-			qs: IDataObject = {},
-			uri?: string,
-			headers: IDataObject = {},
-		): Promise<any> {
-			const options: IRequestOptions = {
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				method,
-				body,
-				qs,
-				uri: uri || `https://www.googleapis.com/admin${resource}`,
-				json: true,
-			};
-			try {
-				if (Object.keys(headers).length !== 0) {
-					options.headers = Object.assign({}, options.headers, headers);
-				}
-				if (Object.keys(body as IDataObject).length === 0) {
-					delete options.body;
-				}
-				//@ts-ignore
-				return await this.helpers.requestOAuth2.call(this, 'gSuiteAdminOAuth2Api', options);
-			} catch (error) {
-				throw new NodeApiError(this.getNode(), error as JsonObject);
-			}
-		};
 
 		jest.clearAllMocks();
 	});

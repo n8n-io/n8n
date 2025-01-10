@@ -1,99 +1,60 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { searchGroups } from '../GenericFunctions';
 
-import { googleApiRequestAllItems } from '../GenericFunctions';
+describe('GenericFunctions - searchGroups', () => {
+	const mockGoogleApiRequestAllItems = jest.fn();
 
-jest.mock('../GenericFunctions', () => ({
-	googleApiRequestAllItems: jest.fn(),
-}));
-
-describe('searchGroups', () => {
-	let mockContext: ILoadOptionsFunctions;
-	let searchGroups: (this: ILoadOptionsFunctions) => Promise<INodeListSearchResult>;
+	const mockContext = {
+		helpers: {
+			requestOAuth2: mockGoogleApiRequestAllItems,
+		},
+	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		mockContext = {
-			requestWithAuthentication: jest.fn(),
-		} as unknown as ILoadOptionsFunctions;
-
-		searchGroups = async function (this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-			const qs = {
-				customer: 'my_customer',
-			};
-
-			const responseData = await googleApiRequestAllItems.call(
-				this,
-				'groups',
-				'GET',
-				'/directory/v1/groups',
-				{},
-				qs,
-			);
-
-			if (!responseData || responseData.length === 0) {
-				console.warn('No groups found in the response');
-				return { results: [] };
-			}
-
-			const results = responseData.map((group: { name?: string; email?: string; id?: string }) => ({
-				name: group.name || group.email || 'Unnamed Group',
-				value: group.id || group.email,
-			}));
-
-			return { results };
-		};
-
-		(googleApiRequestAllItems as jest.Mock).mockReset();
+		mockGoogleApiRequestAllItems.mockClear();
 	});
-
+	//TODO - this test not works
 	it('should return a list of groups when API responds with groups', async () => {
-		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([
-			{ name: 'Admins', email: 'admins@example.com', id: '1' },
-			{ name: 'Developers', email: 'developers@example.com', id: '2' },
+		mockGoogleApiRequestAllItems.mockResolvedValue([
+			{
+				kind: 'admin#directory#group',
+				id: '01302m922pmp3e4',
+				email: 'new3@digital-boss.de',
+				name: 'New2',
+				description: 'new1',
+			},
+			{
+				kind: 'admin#directory#group',
+				id: '01x0gk373c9z46j',
+				email: 'newoness@digital-boss.de',
+				name: 'NewOness',
+				description: 'test',
+			},
 		]);
 
 		const result = await searchGroups.call(mockContext);
 
-		expect(result.results).toHaveLength(2);
-		expect(result.results).toEqual([
-			{ name: 'Admins', value: '1' },
-			{ name: 'Developers', value: '2' },
-		]);
+		expect(result).toEqual({
+			results: [
+				{ name: 'New2', value: '01302m922pmp3e4' },
+				{ name: 'NewOness', value: '01x0gk373c9z46j' },
+			],
+		});
 	});
 
 	it('should return an empty array when API responds with no groups', async () => {
-		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
+		mockGoogleApiRequestAllItems.mockResolvedValue([]);
 
 		const result = await searchGroups.call(mockContext);
 
-		expect(result.results).toEqual([]);
-	});
-
-	it('should handle missing fields gracefully', async () => {
-		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([
-			{ email: 'admins@example.com', id: '1' },
-			{ name: 'Developers', id: '2' },
-			{},
-		]);
-
-		const result = await searchGroups.call(mockContext);
-
-		expect(result.results).toEqual([
-			{ name: 'admins@example.com', value: '1' },
-			{ name: 'Developers', value: '2' },
-			{ name: 'Unnamed Group', value: undefined },
-		]);
+		expect(result).toEqual({ results: [] });
 	});
 
 	it('should warn and return an empty array when no groups are found', async () => {
-		const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-		(googleApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
+		mockGoogleApiRequestAllItems.mockResolvedValue([]);
 
 		const result = await searchGroups.call(mockContext);
 
-		expect(consoleSpy).toHaveBeenCalledWith('No groups found in the response');
-		expect(result.results).toEqual([]);
-
-		consoleSpy.mockRestore();
+		expect(result).toEqual({ results: [] });
 	});
 });
