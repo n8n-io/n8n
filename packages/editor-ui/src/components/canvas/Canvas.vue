@@ -6,7 +6,13 @@ import type {
 	CanvasEventBusEvents,
 	ConnectStartEvent,
 } from '@/types';
-import type { Connection, XYPosition, NodeDragEvent, GraphNode } from '@vue-flow/core';
+import type {
+	Connection,
+	XYPosition,
+	NodeDragEvent,
+	NodeMouseEvent,
+	GraphNode,
+} from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
@@ -270,6 +276,14 @@ function onUpdateNodePosition(id: string, position: XYPosition) {
 
 function onNodeDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
+function onNodeClick({ event, node }: NodeMouseEvent) {
+	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
+		return;
+	}
+
+	onSelectNodes({ ids: [node.id] });
 }
 
 function onSelectionDragStop(event: NodeDragEvent) {
@@ -676,6 +690,7 @@ provide(CanvasKey, {
 		@move-start="onPaneMoveStart"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
+		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
 		@dragover="onDragOver"
 		@drop="onDrop"
