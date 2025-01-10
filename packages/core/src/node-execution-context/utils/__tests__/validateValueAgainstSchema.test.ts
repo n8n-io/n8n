@@ -247,7 +247,7 @@ describe('validateValueAgainstSchema', () => {
 		expect(typeof result).toEqual('number');
 	});
 
-	test('should validate when the value to be validated is 0, the mode is in Fixed mode, and the node is a resource mapper', () => {
+	test('should correctly validate values when the mode is in Fixed mode, and the node is a resource mapper', () => {
 		const nodeType = {
 			description: {
 				properties: [
@@ -273,6 +273,21 @@ describe('validateValueAgainstSchema', () => {
 							type: 'number',
 							required: true,
 						},
+						{
+							id: 'str',
+							type: 'string',
+							required: true,
+						},
+						{
+							id: 'obj',
+							type: 'object',
+							required: true,
+						},
+						{
+							id: 'arr',
+							type: 'array',
+							required: true,
+						},
 					],
 					attemptToConvertTypes: true,
 					mappingMode: '',
@@ -281,12 +296,63 @@ describe('validateValueAgainstSchema', () => {
 			},
 		} as unknown as INode;
 
-		const value = { num: 0 };
+		const zeroValue = { num: 0 };
+		const normalNumberValue = { num: 23 };
+		const negativeZeroValue = { num: -0 };
+		const negativeInfinityValue = { num: -Infinity };
+		const infinityValue = { num: Infinity };
+		const nanValue = { num: NaN };
+		const undefinedValue = { num: undefined };
+		const nullValue = { num: null };
+		const emptyStringValue = { str: '' };
+		const emptyStringWithSpaceValue = { str: ' ' };
+		const stringValue = { str: 'hello' };
+		const emptyArrayValue = { arr: [] };
+		const emptyObjectValue = { obj: {} };
 
 		const parameterName = 'operation.value';
 
 		expect(() =>
-			validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+			validateValueAgainstSchema(node, nodeType, zeroValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, negativeZeroValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, negativeInfinityValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, infinityValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, normalNumberValue, parameterName, 0, 0),
+		).not.toThrow();
+
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, nanValue, parameterName, 0, 0),
+		).toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, undefinedValue, parameterName, 0, 0),
+		).toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, nullValue, parameterName, 0, 0),
+		).toThrow();
+
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, emptyStringValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, emptyStringWithSpaceValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, stringValue, parameterName, 0, 0),
+		).not.toThrow();
+
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, emptyArrayValue, parameterName, 0, 0),
+		).not.toThrow();
+		expect(() =>
+			validateValueAgainstSchema(node, nodeType, emptyObjectValue, parameterName, 0, 0),
 		).not.toThrow();
 	});
 });
