@@ -4195,4 +4195,57 @@ describe('NodeHelpers', () => {
 			});
 		}
 	});
+
+	describe('getParameterIssues, required parameters validation', () => {
+		const testNode: INode = {
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters: {},
+		};
+
+		it('Should validate required dateTime parameters if empty string', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Date Time',
+				name: 'testDateTime',
+				type: 'dateTime',
+				default: '',
+				required: true,
+			};
+			const nodeValues: INodeParameters = {
+				testDateTime: '',
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode);
+
+			expect(result).toEqual({
+				parameters: {
+					testDateTime: ['Parameter "Date Time" is required.'],
+				},
+			});
+		});
+
+		it('Should validate required dateTime parameters if empty undefined', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Date Time',
+				name: 'testDateTime',
+				type: 'dateTime',
+				default: '',
+				required: true,
+			};
+			const nodeValues: INodeParameters = {
+				testDateTime: undefined,
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode);
+
+			expect(result).toEqual({
+				parameters: {
+					testDateTime: ['Parameter "Date Time" is required.'],
+				},
+			});
+		});
+	});
 });
