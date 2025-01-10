@@ -54,6 +54,7 @@ const selectedProject = computed(() =>
 );
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
+const isResourceCredential = computed(() => props.data.resourceType === ResourceType.Credential);
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -184,7 +185,10 @@ onMounted(async () => {
 					></N8nOption>
 				</N8nSelect>
 				<N8nText>
-					<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
+					<i18n-t
+						v-if="isResourceCredential"
+						keypath="projects.move.resource.modal.message.sharingNote"
+					>
 						<template #note
 							><strong>{{
 								i18n.baseText('projects.move.resource.modal.message.note')
@@ -209,6 +213,7 @@ onMounted(async () => {
 						v-if="usedCredentials.length"
 						v-model="shareUsedCredentials"
 						:class="$style.textBlock"
+						data-test-id="project-move-resource-modal-checkbox-all"
 					>
 						<i18n-t keypath="projects.move.resource.modal.message.usedCredentials">
 							<template #usedCredentials>
@@ -255,7 +260,12 @@ onMounted(async () => {
 				<N8nButton type="secondary" text class="mr-2xs" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton :disabled="!projectId" type="primary" @click="moveResource">
+				<N8nButton
+					:disabled="!projectId"
+					type="primary"
+					data-test-id="project-move-resource-modal-button"
+					@click="moveResource"
+				>
 					{{
 						i18n.baseText('projects.move.resource.modal.button', {
 							interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
