@@ -381,6 +381,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			return;
 		}
 
+		workflowsStore.setNodePristine(node.name, false);
 		setNodeActiveByName(node.name);
 	}
 
