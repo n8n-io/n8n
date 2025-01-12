@@ -1,3 +1,4 @@
+import {EJSON} from 'bson';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import { MongoClient, ObjectId } from 'mongodb';
@@ -143,6 +144,10 @@ export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	});
 
 	return items;
+}
+
+export function parseJsonToEjson(query: unknown) {
+		return EJSON.parse(JSON.stringify(query)) as Record<string, unknown>
 }
 
 export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {
