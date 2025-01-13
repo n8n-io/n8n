@@ -1,4 +1,4 @@
-import { ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import { ImportWorkflowFromUrlDto, TransferWorkflowBodyDto } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
@@ -7,7 +7,6 @@ import express from 'express';
 import { Logger } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
@@ -19,7 +18,18 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
-import { Delete, Get, Patch, Post, ProjectScope, Put, Query, RestController } from '@/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	Query,
+	RestController,
+} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -471,12 +481,15 @@ export class WorkflowsController {
 
 	@Put('/:workflowId/transfer')
 	@ProjectScope('workflow:move')
-	async transfer(req: WorkflowRequest.Transfer) {
-		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
-
+	async transfer(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: TransferWorkflowBodyDto,
+	) {
 		return await this.enterpriseWorkflowService.transferOne(
 			req.user,
-			req.params.workflowId,
+			workflowId,
 			body.destinationProjectId,
 		);
 	}

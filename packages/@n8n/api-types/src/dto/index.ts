@@ -37,3 +37,4 @@ export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
+export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
