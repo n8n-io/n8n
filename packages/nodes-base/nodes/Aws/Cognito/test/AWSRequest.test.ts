@@ -17,11 +17,9 @@ describe('GenericFunctions - awsRequest', () => {
 	});
 
 	test('should make a successful request with correct options', async () => {
-		// Mock credentials and response
 		mockGetCredentials.mockResolvedValueOnce({ region: 'us-west-2' });
 		mockRequestWithAuthentication.mockResolvedValueOnce({ success: true });
 
-		// Define request options with correct type for method
 		const requestOptions = {
 			method: 'POST' as const,
 			url: '/example-endpoint',
@@ -33,7 +31,6 @@ describe('GenericFunctions - awsRequest', () => {
 
 		const result = await awsRequest.call(mockContext, requestOptions);
 
-		// Validate the request call
 		expect(mockGetCredentials).toHaveBeenCalledWith('aws');
 		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 			'aws',
@@ -53,7 +50,6 @@ describe('GenericFunctions - awsRequest', () => {
 	});
 
 	test('should throw an error if AWS credentials are invalid (403)', async () => {
-		// Mock credentials and response
 		mockGetCredentials.mockResolvedValueOnce({ region: 'us-west-2' });
 		mockRequestWithAuthentication.mockRejectedValueOnce({
 			statusCode: 403,
@@ -76,7 +72,6 @@ describe('GenericFunctions - awsRequest', () => {
 	});
 
 	test('should throw a descriptive error for other AWS errors', async () => {
-		// Mock credentials and response
 		mockGetCredentials.mockResolvedValueOnce({ region: 'us-east-1' });
 		mockRequestWithAuthentication.mockRejectedValueOnce({
 			statusCode: 400,
@@ -97,7 +92,6 @@ describe('GenericFunctions - awsRequest', () => {
 	});
 
 	test('should handle unexpected error structures gracefully', async () => {
-		// Mock credentials and response
 		mockGetCredentials.mockResolvedValueOnce({ region: 'us-east-1' });
 		mockRequestWithAuthentication.mockRejectedValueOnce({
 			cause: { error: { message: 'Something went wrong' } },
@@ -115,7 +109,6 @@ describe('GenericFunctions - awsRequest', () => {
 	});
 
 	test('should throw a generic error if no meaningful information is provided', async () => {
-		// Mock credentials and response
 		mockGetCredentials.mockResolvedValueOnce({ region: 'us-east-1' });
 		mockRequestWithAuthentication.mockRejectedValueOnce({
 			statusCode: 500,

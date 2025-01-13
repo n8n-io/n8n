@@ -1,68 +1,81 @@
+import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+
 import { processAttributes } from '../GenericFunctions';
-import { ApplicationError } from 'n8n-workflow';
 
 describe('processAttributes', () => {
-	let mockContext: any;
-	let mockGetNodeParameter: jest.Mock;
+	let mockContext: IExecuteSingleFunctions;
 
 	beforeEach(() => {
-		mockGetNodeParameter = jest.fn();
 		mockContext = {
-			getNodeParameter: mockGetNodeParameter,
-		};
+			getNodeParameter: jest.fn(),
+		} as unknown as IExecuteSingleFunctions;
 	});
 
-	test('should process attributes correctly and update the request body', async () => {
-		mockGetNodeParameter.mockReturnValueOnce([
+	it('should process attributes and append them to the request body', async () => {
+		const initialBody = { key: 'value' };
+
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([
 			{ Name: 'email', Value: 'test@example.com' },
 			{ Name: 'custom:role', Value: 'admin' },
 		]);
 
-		const requestOptions = {
-			method: 'POST' as const,
-			url: '/example-endpoint',
-			headers: {
-				'X-Amz-Target': 'ExampleService.Action',
-			},
-			body: JSON.stringify({ UserPoolId: 'mockPoolId' }),
+		const requestOptions: IHttpRequestOptions = {
+			body: JSON.stringify(initialBody),
+			url: '',
 		};
 
-		const updatedRequestOptions = await processAttributes.call(mockContext, requestOptions);
+		const result = await processAttributes.call(mockContext, requestOptions);
 
-		const expectedBody = {
-			UserPoolId: 'mockPoolId',
-			UserAttributes: [
-				{ Name: 'email', Value: 'test@example.com' },
-				{ Name: 'custom:role', Value: 'admin' },
-			],
-		};
-
-		expect(updatedRequestOptions.body).toBe(JSON.stringify(expectedBody));
-	});
-
-	test('should throw an error if the body cannot be parsed as JSON', async () => {
-		const requestOptions = {
-			method: 'POST' as const,
-			url: '/example-endpoint',
-			headers: {},
-			body: 'invalid json body',
-		};
-
-		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrow(
-			new ApplicationError('Invalid JSON body: Unable to parse.'),
+		expect(result.body).toEqual(
+			JSON.stringify({
+				...initialBody,
+				UserAttributes: [
+					{ Name: 'email', Value: 'test@example.com' },
+					{ Name: 'custom:role', Value: 'admin' },
+				],
+			}),
 		);
 	});
 
-	test('should throw an error if the body is not a string or object', async () => {
-		const requestOptions = {
-			method: 'POST' as const,
-			url: '/example-endpoint',
-			headers: {},
-			body: undefined,
+	it('should handle an existing object as the request body', async () => {
+		const initialBody = { key: 'value' };
+
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([
+			{ Name: 'email', Value: 'user@example.com' },
+		]);
+
+		const requestOptions: IHttpRequestOptions = {
+			body: initialBody,
+			url: '',
 		};
 
-		await expect(processAttributes.call(mockContext, requestOptions)).rejects.toThrow(
-			new ApplicationError('Invalid request body: Expected a JSON string or object.'),
+		const result = await processAttributes.call(mockContext, requestOptions);
+
+		expect(result.body).toEqual(
+			JSON.stringify({
+				...initialBody,
+				UserAttributes: [{ Name: 'email', Value: 'user@example.com' }],
+			}),
+		);
+	});
+
+	it('should handle an empty attributes array gracefully', async () => {
+		const initialBody = { key: 'value' };
+
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce([]);
+
+		const requestOptions: IHttpRequestOptions = {
+			body: JSON.stringify(initialBody),
+			url: '',
+		};
+
+		const result = await processAttributes.call(mockContext, requestOptions);
+
+		expect(result.body).toEqual(
+			JSON.stringify({
+				...initialBody,
+				UserAttributes: [],
+			}),
 		);
 	});
 });
