@@ -13,7 +13,7 @@ import type PCancelable from 'p-cancelable';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
+import { ExecutionLifecycleHooksFactory } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks-factory';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -41,7 +41,7 @@ export class JobProcessor {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly executionHooksFactory: ExecutionHooksFactory,
+		private readonly executionLifecycleHooksFactory: ExecutionLifecycleHooksFactory,
 		private readonly manualExecutionService: ManualExecutionService,
 	) {
 		this.logger = this.logger.scoped('scaling');
@@ -126,7 +126,7 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		additionalData.hooks = this.executionHooksFactory.forSubExecution(
+		additionalData.hooks = this.executionLifecycleHooksFactory.forSubExecution(
 			execution.mode,
 			job.data.executionId,
 			execution.workflowData,

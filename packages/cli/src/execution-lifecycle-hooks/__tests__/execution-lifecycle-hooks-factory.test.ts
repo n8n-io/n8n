@@ -13,7 +13,7 @@ import type {
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { EventService } from '@/events/event.service';
-import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
+import { ExecutionLifecycleHooksFactory } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks-factory';
 import type { ExternalHooks } from '@/external-hooks';
 import type { IExecutionResponse } from '@/interfaces';
 import type { Push } from '@/push';
@@ -23,7 +23,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { mockInstance } from '@test/mocking';
 
-describe('ExecutionHooksFactory', () => {
+describe('ExecutionLifecycleHooksFactory', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const executionRepository = mockInstance(ExecutionRepository);
 	const externalHooks = mock<ExternalHooks>();
@@ -33,7 +33,7 @@ describe('ExecutionHooksFactory', () => {
 	const eventService = mock<EventService>();
 	const push = mock<Push>();
 
-	const hooksFactory = new ExecutionHooksFactory(
+	const hooksFactory = new ExecutionLifecycleHooksFactory(
 		mock(),
 		errorReporter,
 		executionRepository,

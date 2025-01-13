@@ -29,7 +29,7 @@ import { determineFinalExecutionStatus } from './shared/shared-hook-functions';
 import { toSaveSettings } from './to-save-settings';
 
 @Service()
-export class ExecutionHooksFactory {
+export class ExecutionLifecycleHooksFactory {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,

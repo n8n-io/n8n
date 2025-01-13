@@ -9,7 +9,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventService } from '@/events/event.service';
-import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
+import { ExecutionLifecycleHooksFactory } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks-factory';
 import type { IExecutionResponse } from '@/interfaces';
 import { Push } from '@/push';
 
@@ -26,7 +26,7 @@ export class ExecutionRecoveryService {
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
-		private readonly executionHooksFactory: ExecutionHooksFactory,
+		private readonly executionLifecycleHooksFactory: ExecutionLifecycleHooksFactory,
 	) {}
 
 	/**
@@ -183,7 +183,7 @@ export class ExecutionRecoveryService {
 			runData: execution,
 		});
 
-		const lifecycleHooks = this.executionHooksFactory.forExecutionOnMain(
+		const lifecycleHooks = this.executionLifecycleHooksFactory.forExecutionOnMain(
 			{
 				userId: '',
 				workflowData: execution.workflowData,

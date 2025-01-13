@@ -26,7 +26,7 @@ import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { EventService } from '@/events/event.service';
-import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
+import { ExecutionLifecycleHooksFactory } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks-factory';
 import { ExternalHooks } from '@/external-hooks';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -142,10 +142,10 @@ export class WorkflowRunner {
 		try {
 			await this.permissionChecker.check(workflowId, nodes);
 		} catch (error) {
-			const executionHooksFactory = Container.get(ExecutionHooksFactory);
+			const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
-			const hooks = executionHooksFactory.forExecutionOnMain(data, executionId);
+			const hooks = executionLifecycleHooksFactory.forExecutionOnMain(data, executionId);
 			await hooks.executeHook('workflowExecuteBefore', [undefined, data.executionData]);
 			await hooks.executeHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
@@ -271,8 +271,8 @@ export class WorkflowRunner {
 		await this.executionRepository.setRunning(executionId); // write
 
 		try {
-			const executionHooksFactory = Container.get(ExecutionHooksFactory);
-			additionalData.hooks = executionHooksFactory.forExecutionOnMain(data, executionId);
+			const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
+			additionalData.hooks = executionLifecycleHooksFactory.forExecutionOnMain(data, executionId);
 
 			additionalData.hooks.addHook('sendResponse', async (response) => {
 				this.activeExecutions.resolveResponsePromise(executionId, response);
@@ -364,7 +364,7 @@ export class WorkflowRunner {
 			this.scalingService = Container.get(ScalingService);
 		}
 
-		const executionHooksFactory = Container.get(ExecutionHooksFactory);
+		const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
@@ -372,7 +372,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 
-			lifecycleHooks = executionHooksFactory.forExecutionOnWorker(
+			lifecycleHooks = executionLifecycleHooksFactory.forExecutionOnWorker(
 				data.executionMode,
 				executionId,
 				data.workflowData,
@@ -385,7 +385,7 @@ export class WorkflowRunner {
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
-			const hooks = executionHooksFactory.forExecutionOnWorker(
+			const hooks = executionLifecycleHooksFactory.forExecutionOnWorker(
 				data.executionMode,
 				executionId,
 				data.workflowData,
@@ -403,7 +403,7 @@ export class WorkflowRunner {
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooksWorker = executionHooksFactory.forExecutionOnWorker(
+					const hooksWorker = executionLifecycleHooksFactory.forExecutionOnWorker(
 						data.executionMode,
 						executionId,
 						data.workflowData,
@@ -421,7 +421,7 @@ export class WorkflowRunner {
 				} catch (error) {
 					// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
-					const hooks = executionHooksFactory.forExecutionOnWorker(
+					const hooks = executionLifecycleHooksFactory.forExecutionOnWorker(
 						data.executionMode,
 						executionId,
 						data.workflowData,
@@ -510,12 +510,12 @@ export class WorkflowRunner {
 				additionalData.userId,
 			);
 
-			const executionHooksFactory = Container.get(ExecutionHooksFactory);
+			const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
 
 			// Create new additionalData to have different workflow loaded and to call
 			// different webhooks
 			const additionalDataIntegrated = await WorkflowExecuteAdditionalData.getBase();
-			additionalDataIntegrated.hooks = executionHooksFactory.forSubExecution(
+			additionalDataIntegrated.hooks = executionLifecycleHooksFactory.forSubExecution(
 				runData.executionMode,
 				executionId,
 				workflowData,

@@ -17,7 +17,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
-import { ExecutionHooksFactory } from '@/execution-lifecycle-hooks/execution-hooks-factory';
+import { ExecutionLifecycleHooksFactory } from '@/execution-lifecycle-hooks/execution-lifecycle-hooks-factory';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { SecretsHelper } from '@/secrets-helpers.ee';
@@ -81,7 +81,7 @@ jest.mock('n8n-core', () => ({
 
 describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(Push);
-	mockInstance(ExecutionHooksFactory);
+	mockInstance(ExecutionLifecycleHooksFactory);
 	const variablesService = mockInstance(VariablesService);
 	variablesService.getAllCached.mockResolvedValue([]);
 	const credentialsHelper = mockInstance(CredentialsHelper);
