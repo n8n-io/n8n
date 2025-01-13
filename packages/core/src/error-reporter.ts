@@ -15,6 +15,11 @@ type ErrorReporterInitOptions = {
 	release: string;
 	environment: string;
 	serverName: string;
+	/**
+	 * Function to allow filtering out errors before they are sent to Sentry.
+	 * Return true if the error should be filtered out.
+	 */
+	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
 @Service()
@@ -23,6 +28,8 @@ export class ErrorReporter {
 	private seenErrors = new Set<string>();
 
 	private report: (error: Error | string, options?: ReportingOptions) => void;
+
+	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
 	constructor(private readonly logger: Logger) {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
@@ -52,7 +59,14 @@ export class ErrorReporter {
 		await close(timeoutInMs);
 	}
 
-	async init({ dsn, serverType, release, environment, serverName }: ErrorReporterInitOptions) {
+	async init({
+		beforeSendFilter,
+		dsn,
+		serverType,
+		release,
+		environment,
+		serverName,
+	}: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
@@ -100,31 +114,34 @@ export class ErrorReporter {
 		setTag('server_type', serverType);
 
 		this.report = (error, options) => captureException(error, options);
+		this.beforeSendFilter = beforeSendFilter;
 	}
 
-	async beforeSend(event: ErrorEvent, { originalException }: EventHint) {
+	async beforeSend(event: ErrorEvent, hint: EventHint) {
+		let { originalException } = hint;
+
 		if (!originalException) return null;
 
 		if (originalException instanceof Promise) {
 			originalException = await originalException.catch((error) => error as Error);
 		}
 
-		if (originalException instanceof AxiosError) return null;
-
 		if (
-			originalException instanceof Error &&
-			originalException.name === 'QueryFailedError' &&
-			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => originalException.message.includes(errMsg))
+			this.beforeSendFilter?.(event, {
+				...hint,
+				originalException,
+			})
 		) {
 			return null;
 		}
 
-		if (originalException instanceof ApplicationError) {
-			const { level, extra, tags } = originalException;
-			if (level === 'warning') return null;
-			event.level = level;
-			if (extra) event.extra = { ...event.extra, ...extra };
-			if (tags) event.tags = { ...event.tags, ...tags };
+		if (originalException instanceof AxiosError) return null;
+
+		if (this.isIgnoredSqliteError(originalException)) return null;
+		if (this.isApplicationError(originalException)) {
+			if (this.isIgnoredApplicationError(originalException)) return null;
+
+			this.extractEventDetailsFromApplicationError(event, originalException);
 		}
 
 		if (
@@ -165,5 +182,32 @@ export class ErrorReporter {
 		if (e instanceof Error) return e;
 		if (typeof e === 'string') return new ApplicationError(e);
 		return;
+	}
+
+	/** @returns true if the error should be filtered out */
+	private isIgnoredSqliteError(error: unknown) {
+		return (
+			error instanceof Error &&
+			error.name === 'QueryFailedError' &&
+			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => error.message.includes(errMsg))
+		);
+	}
+
+	private isApplicationError(error: unknown): error is ApplicationError {
+		return error instanceof ApplicationError;
+	}
+
+	private isIgnoredApplicationError(error: ApplicationError) {
+		return error.level === 'warning';
+	}
+
+	private extractEventDetailsFromApplicationError(
+		event: ErrorEvent,
+		originalException: ApplicationError,
+	) {
+		const { level, extra, tags } = originalException;
+		event.level = level;
+		if (extra) event.extra = { ...event.extra, ...extra };
+		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 }

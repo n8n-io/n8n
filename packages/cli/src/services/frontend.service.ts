@@ -12,7 +12,6 @@ import config from '@/config';
 import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getVariablesLimit } from '@/environments.ee/variables/environment-helpers';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -326,7 +325,7 @@ export class FrontendService {
 		}
 
 		if (this.license.isVariablesEnabled()) {
-			this.settings.variables.limit = getVariablesLimit();
+			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
 		if (this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled')) {
