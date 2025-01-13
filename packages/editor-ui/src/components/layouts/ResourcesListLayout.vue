@@ -168,13 +168,19 @@ const focusSearchInput = () => {
 };
 
 const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find(
-		(key) =>
-			key !== 'search' &&
-			(Array.isArray(props.filters[key])
-				? props.filters[key].length > 0
-				: props.filters[key] !== ''),
-	);
+	return !!filterKeys.value.find((key) => {
+		if (key === 'search') return false;
+
+		if (typeof props.filters[key] === 'boolean') {
+			return props.filters[key];
+		}
+
+		if (Array.isArray(props.filters[key])) {
+			return props.filters[key].length > 0;
+		}
+
+		return props.filters[key] !== '';
+	});
 };
 
 const setRowsPerPage = (numberOfRowsPerPage: number) => {

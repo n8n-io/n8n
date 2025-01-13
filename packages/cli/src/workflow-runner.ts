@@ -234,7 +234,7 @@ export class WorkflowRunner {
 		}
 
 		let pinData: IPinData | undefined;
-		if (data.executionMode === 'manual') {
+		if (['manual', 'evaluation'].includes(data.executionMode)) {
 			pinData = data.pinData ?? data.workflowData.pinData;
 		}
 
