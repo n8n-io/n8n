@@ -967,7 +967,7 @@ const isSingleLineInput = computed(() => {
 
 	/**
 	 * There is an awkward edge case here with text boxes that automatically
-	 * adjust their rowCount based on content:
+	 * adjust their row count based on their content:
 	 *
 	 * If we move the overrideButton to the options row due to going multiline,
 	 * the text area gains more width and might return to single line.
@@ -1782,7 +1782,7 @@ onUpdated(async () => {
 
 .overrideButtonStandalone {
 	position: relative;
-	// This is to balance for the extra margin on the switch
+	/* This is to balance for the extra margin on the switch */
 	top: -2px;
 }
 
