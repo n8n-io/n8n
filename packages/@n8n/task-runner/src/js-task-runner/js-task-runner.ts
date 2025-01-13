@@ -105,6 +105,46 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
+	private preventPrototypePollution() {
+		if (process.env.NODE_ENV === 'test') return; // needed for Jest
+
+		const prototypes = [
+			Object,
+			Array,
+			Buffer,
+			Function,
+			RegExp,
+			Error,
+			Number,
+			String,
+			Promise,
+			Date,
+			Map,
+			Set,
+			BigInt,
+			Symbol,
+			WeakMap,
+			WeakSet,
+			Int8Array,
+			Uint8Array,
+			Int16Array,
+			Uint16Array,
+			Int32Array,
+			Uint32Array,
+			Float32Array,
+			Float64Array,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		].map((constructor) => constructor.prototype);
+
+		prototypes.forEach(Object.freeze);
+
+		Object.setPrototypeOf = () => false;
+		Reflect.setPrototypeOf = () => false;
+
+		Object.setPrototypeOf = () => false;
+		Reflect.setPrototypeOf = () => false;
+	}
+
 	async executeTask(
 		taskParams: TaskParams<JSExecSettings>,
 		abortSignal: AbortSignal,
@@ -468,6 +508,8 @@ export class JsTaskRunner extends TaskRunner {
 		dataProxy: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
+		this.preventPrototypePollution();
+
 		return createContext({
 			[inspect.custom]: () => '[[ExecutionContext]]',
 			require: this.requireResolver,

@@ -1342,4 +1342,22 @@ describe('JsTaskRunner', () => {
 			task.cleanup();
 		});
 	});
+
+	describe('prototype pollution prevention', () => {
+		test('should prevent Object.setPrototypeOf in runOnceForAllItems', async () => {
+			const outcome = await executeForAllItems({
+				code: 'Object.setPrototypeOf({}, {}); return [{json: {result: true}}]',
+				inputItems: [{ a: 1 }],
+			});
+			expect(outcome.result).toEqual([wrapIntoJson({ result: true })]);
+		});
+
+		test('should prevent Reflect.setPrototypeOf in runOnceForEachItem', async () => {
+			const outcome = await executeForEachItem({
+				code: 'Reflect.setPrototypeOf({}, {}); return {json: {result: true}}',
+				inputItems: [{ a: 1 }],
+			});
+			expect(outcome.result).toEqual([withPairedItem(0, wrapIntoJson({ result: true }))]);
+		});
+	});
 });
