@@ -80,7 +80,7 @@ export class ExecutionLifecycleHooksFactory {
 		const { executionRepository } = this;
 		// TODO: >>> clear all nodeExecuteAfter hooks <<<
 		// hookFunctions.nodeExecuteAfter = [];
-		hooks.addHook('workflowExecuteAfter', async function (fullRunData) {
+		hooks.addCallback('workflowExecuteAfter', async function (fullRunData) {
 			// Don't delete executions before they are finished
 			if (!fullRunData.finished) return;
 
@@ -124,12 +124,12 @@ export class ExecutionLifecycleHooksFactory {
 	private addPreExecuteHooks(hooks: ExecutionLifecycleHooks) {
 		const { externalHooks } = this;
 
-		hooks.addHook('workflowExecuteBefore', async function (workflow) {
+		hooks.addCallback('workflowExecuteBefore', async function (workflow) {
 			await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 		});
 
 		// TODO: skip this if saveSettings.progress is not true
-		hooks.addHook('nodeExecuteAfter', async function (nodeName, data, executionData) {
+		hooks.addCallback('nodeExecuteAfter', async function (nodeName, data, executionData) {
 			await saveExecutionProgress(
 				this.workflowData,
 				this.executionId,
@@ -143,22 +143,22 @@ export class ExecutionLifecycleHooksFactory {
 
 	private addEventHooks(hooks: ExecutionLifecycleHooks) {
 		const { eventService, workflowStatisticsService } = this;
-		hooks.addHook('nodeExecuteBefore', async function (nodeName) {
+		hooks.addCallback('nodeExecuteBefore', async function (nodeName) {
 			const { executionId, workflowData: workflow } = this;
 			eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
 		});
 
-		hooks.addHook('nodeExecuteAfter', async function (nodeName) {
+		hooks.addCallback('nodeExecuteAfter', async function (nodeName) {
 			const { executionId, workflowData: workflow } = this;
 			eventService.emit('node-post-execute', { executionId, workflow, nodeName });
 		});
 
-		hooks.addHook('workflowExecuteBefore', async function () {
+		hooks.addCallback('workflowExecuteBefore', async function () {
 			const { executionId, workflowData } = this;
 			eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
 		});
 
-		hooks.addHook('nodeFetchedData', async (workflowId, node) => {
+		hooks.addCallback('nodeFetchedData', async (workflowId, node) => {
 			workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 		});
 	}
@@ -176,7 +176,7 @@ export class ExecutionLifecycleHooksFactory {
 		const factory = this;
 
 		// eslint-disable-next-line complexity
-		hooks.addHook('workflowExecuteAfter', async function (fullRunData, newStaticData) {
+		hooks.addCallback('workflowExecuteAfter', async function (fullRunData, newStaticData) {
 			logger.debug('Executing hook (hookFunctionsSave)', {
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -303,7 +303,7 @@ export class ExecutionLifecycleHooksFactory {
 	private addPushHooks(hooks: ExecutionLifecycleHooks) {
 		const { logger, push } = this;
 
-		hooks.addHook('nodeExecuteBefore', async function (nodeName) {
+		hooks.addCallback('nodeExecuteBefore', async function (nodeName) {
 			const { pushRef, executionId } = this;
 			// Push data to session which started workflow before each
 			// node which starts rendering
@@ -320,7 +320,7 @@ export class ExecutionLifecycleHooksFactory {
 			push.send({ type: 'nodeExecuteBefore', data: { executionId, nodeName } }, pushRef);
 		});
 
-		hooks.addHook('nodeExecuteAfter', async function (nodeName, data) {
+		hooks.addCallback('nodeExecuteAfter', async function (nodeName, data) {
 			const { pushRef, executionId } = this;
 			// Push data to session which started workflow after each rendered node
 			if (pushRef === undefined) {
@@ -336,7 +336,7 @@ export class ExecutionLifecycleHooksFactory {
 			push.send({ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } }, pushRef);
 		});
 
-		hooks.addHook('workflowExecuteBefore', async function (_workflow, data) {
+		hooks.addCallback('workflowExecuteBefore', async function (_workflow, data) {
 			const { pushRef, executionId } = this;
 			const { id: workflowId, name: workflowName } = this.workflowData;
 			logger.debug('Executing hook (hookFunctionsPush)', {
@@ -367,7 +367,7 @@ export class ExecutionLifecycleHooksFactory {
 			);
 		});
 
-		hooks.addHook('workflowExecuteAfter', async function (fullRunData) {
+		hooks.addCallback('workflowExecuteAfter', async function (fullRunData) {
 			const { pushRef, executionId } = this;
 			if (pushRef === undefined) return;
 

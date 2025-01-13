@@ -55,10 +55,12 @@ export class TriggersAndPollers {
 						donePromise?: IDeferredPromise<IRun>,
 					) => {
 						if (responsePromise) {
-							hooks.addHook('sendResponse', async (response) => responsePromise.resolve(response));
+							hooks.addCallback('sendResponse', async (response) =>
+								responsePromise.resolve(response),
+							);
 						}
 						if (donePromise) {
-							hooks.addHook('workflowExecuteAfter', async (runData) =>
+							hooks.addCallback('workflowExecuteAfter', async (runData) =>
 								donePromise.resolve(runData),
 							);
 						}
@@ -70,7 +72,7 @@ export class TriggersAndPollers {
 					(rejectEmit) =>
 					(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>) => {
 						if (responsePromise) {
-							hooks.addHook('sendResponse', async () => responsePromise.reject(error));
+							hooks.addCallback('sendResponse', async () => responsePromise.reject(error));
 						}
 
 						rejectEmit(error);

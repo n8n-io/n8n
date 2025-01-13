@@ -1226,7 +1226,7 @@ describe('WorkflowExecute', () => {
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
 
-			jest.spyOn(additionalData.hooks, 'executeHook').mockResolvedValue(undefined);
+			jest.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
 			jest.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation();
 		});
 
@@ -1294,7 +1294,7 @@ describe('WorkflowExecute', () => {
 			// Verify static data handling
 			expect(result).toBeDefined();
 			expect(workflowExecute.moveNodeMetadata).toHaveBeenCalled();
-			expect(additionalData.hooks!.executeHook).toHaveBeenCalledWith('workflowExecuteAfter', [
+			expect(additionalData.hooks!.runHook).toHaveBeenCalledWith('workflowExecuteAfter', [
 				result,
 				workflow.staticData,
 			]);

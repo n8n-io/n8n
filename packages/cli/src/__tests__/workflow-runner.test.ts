@@ -64,7 +64,7 @@ describe('processError', () => {
 		workflow = await createWorkflow({}, owner);
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
 		hooks = new core.ExecutionLifecycleHooks('webhook', execution.id, workflow);
-		hooks.addHook('workflowExecuteAfter', watcher.workflowExecuteAfter);
+		hooks.addCallback('workflowExecuteAfter', watcher.workflowExecuteAfter);
 	});
 
 	test('processError should return early in Bull stalled edge case', async () => {

@@ -91,7 +91,7 @@ describe('TriggersAndPollers', () => {
 
 				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise);
 
-				await hooks.executeHook('sendResponse', [{ testResponse: true }]);
+				await hooks.runHook('sendResponse', [{ testResponse: true }]);
 				expect(responsePromise.resolve).toHaveBeenCalledWith({ testResponse: true });
 			});
 
@@ -103,10 +103,10 @@ describe('TriggersAndPollers', () => {
 				await runTriggerHelper('manual');
 				getMockTriggerFunctions()?.emit?.(mockEmitData, responsePromise, donePromise);
 
-				await hooks.executeHook('sendResponse', [{ testResponse: true }]);
+				await hooks.runHook('sendResponse', [{ testResponse: true }]);
 				expect(responsePromise.resolve).toHaveBeenCalledWith({ testResponse: true });
 
-				await hooks.executeHook('workflowExecuteAfter', [mockRunData, {}]);
+				await hooks.runHook('workflowExecuteAfter', [mockRunData, {}]);
 				expect(donePromise.resolve).toHaveBeenCalledWith(mockRunData);
 			});
 		});

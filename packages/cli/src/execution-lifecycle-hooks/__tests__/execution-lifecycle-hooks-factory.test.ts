@@ -95,11 +95,11 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 			// Test workflowExecuteBefore hook
-			await hooks.executeHook('workflowExecuteBefore', []);
+			await hooks.runHook('workflowExecuteBefore', []);
 			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [undefined, 'manual']);
 
 			// Test nodeExecuteBefore hook
-			await hooks.executeHook('nodeExecuteBefore', ['testNode']);
+			await hooks.runHook('nodeExecuteBefore', ['testNode']);
 			expect(push.send).toHaveBeenCalledWith(
 				{
 					type: 'nodeExecuteBefore',
@@ -113,7 +113,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			const taskData = mock<ITaskData>({});
 			const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 
-			await hooks.executeHook('nodeExecuteAfter', ['testNode', taskData, runExecutionData]);
+			await hooks.runHook('nodeExecuteAfter', ['testNode', taskData, runExecutionData]);
 
 			expect(push.send).toHaveBeenCalledWith(
 				{
@@ -125,7 +125,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			push.send.mockClear();
 
 			// Test workflowExecuteAfter hook
-			await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+			await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 			expect(push.send).toHaveBeenCalledWith(
 				{
@@ -148,7 +148,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 		it('should handle waiting status in workflowExecuteAfter', async () => {
 			const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
-			await hooks.executeHook('workflowExecuteAfter', [
+			await hooks.runHook('workflowExecuteAfter', [
 				{
 					...fullRunData,
 					status: 'waiting',
@@ -167,7 +167,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			it('should not update for manual executions', async () => {
 				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
-				await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 				expect(workflowStaticDataService.saveStaticDataById).not.toHaveBeenCalled();
 			});
@@ -181,7 +181,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					executionId,
 				);
 
-				await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 				expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith(
 					workflowData.id,
@@ -197,7 +197,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				// Mock workflow settings to not save manual executions
 				workflowData.settings = { saveManualExecutions: false };
 
-				await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 				expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
 			});
@@ -223,7 +223,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					.calledWith(executionId)
 					.mockResolvedValue(fullExecutionData);
 
-				await hooks.executeHook('nodeExecuteAfter', ['testNode', taskData, runExecutionData]);
+				await hooks.runHook('nodeExecuteAfter', ['testNode', taskData, runExecutionData]);
 
 				expect(fullExecutionData.data.resultData.lastNodeExecuted).toBe('testNode');
 				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
@@ -262,7 +262,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					},
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [failedRunData, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [failedRunData, newStaticData]);
 
 				// Verify error workflow execution
 				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(
@@ -288,7 +288,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				const error = new Error('Static data save failed');
 				workflowStaticDataService.saveStaticDataById.mockRejectedValueOnce(error);
 
-				await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 			});
@@ -299,7 +299,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				const error = new Error('DB save failed');
 				executionRepository.updateExistingExecution.mockRejectedValueOnce(error);
 
-				await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 			});
@@ -321,7 +321,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					},
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [runDataWithMetadata, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [runDataWithMetadata, newStaticData]);
 
 				expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
 					someMetadata: 'value',
@@ -346,7 +346,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					},
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [runDataWithMetadata, newStaticData]);
+				await hooks.runHook('workflowExecuteAfter', [runDataWithMetadata, newStaticData]);
 
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 			});
@@ -380,7 +380,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				optionalParameters,
 			);
 
-			await hooks.executeHook('workflowExecuteBefore', []);
+			await hooks.runHook('workflowExecuteBefore', []);
 			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [undefined, 'manual']);
 		});
 
@@ -396,7 +396,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: false,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [unfinishedRunData]);
+				await hooks.runHook('workflowExecuteAfter', [unfinishedRunData]);
 
 				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
 			});
@@ -415,7 +415,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [successRunData]);
+				await hooks.runHook('workflowExecuteAfter', [successRunData]);
 
 				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
 					workflowId,
@@ -437,7 +437,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [errorRunData]);
+				await hooks.runHook('workflowExecuteAfter', [errorRunData]);
 
 				expect(executionRepository.hardDelete).toHaveBeenCalledWith({
 					workflowId,
@@ -459,7 +459,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [successRunData]);
+				await hooks.runHook('workflowExecuteAfter', [successRunData]);
 
 				expect(executionRepository.hardDelete).not.toHaveBeenCalled();
 			});
@@ -477,7 +477,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 						finished: true,
 					};
 
-					await hooks.executeHook('workflowExecuteAfter', [runData]);
+					await hooks.runHook('workflowExecuteAfter', [runData]);
 
 					expect(runData.status).toBe('success');
 				},
@@ -513,7 +513,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					optionalParameters,
 				);
 
-				await hooks.executeHook('workflowExecuteBefore', []);
+				await hooks.runHook('workflowExecuteBefore', []);
 
 				expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
 					undefined,
@@ -547,7 +547,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					.calledWith(executionId)
 					.mockResolvedValue(fullExecutionData);
 
-				await hooks.executeHook('nodeExecuteAfter', ['testNode', taskData, runExecutionData]);
+				await hooks.runHook('nodeExecuteAfter', ['testNode', taskData, runExecutionData]);
 
 				expect(fullExecutionData.data.resultData.lastNodeExecuted).toBe('testNode');
 				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
@@ -566,14 +566,14 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					optionalParameters,
 				);
 
-				await hooks.executeHook('nodeExecuteBefore', ['testNode']);
+				await hooks.runHook('nodeExecuteBefore', ['testNode']);
 				expect(eventService.emit).toHaveBeenCalledWith('node-pre-execute', {
 					executionId,
 					workflow: workflowData,
 					nodeName: 'testNode',
 				});
 
-				await hooks.executeHook('nodeExecuteAfter', ['testNode']);
+				await hooks.runHook('nodeExecuteAfter', ['testNode']);
 				expect(eventService.emit).toHaveBeenCalledWith('node-post-execute', {
 					executionId,
 					workflow: workflowData,
@@ -589,7 +589,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					optionalParameters,
 				);
 
-				await hooks.executeHook('workflowExecuteBefore', []);
+				await hooks.runHook('workflowExecuteBefore', []);
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
 					executionId,
 					data: workflowData,
@@ -605,7 +605,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				);
 				const testNode = { name: 'Test Node' };
 
-				await hooks.executeHook('nodeFetchedData', [workflowId, testNode]);
+				await hooks.runHook('nodeFetchedData', [workflowId, testNode]);
 				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
 					workflowId,
 					node: testNode,
@@ -630,7 +630,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [successRunData, {}]);
+				await hooks.runHook('workflowExecuteAfter', [successRunData, {}]);
 
 				expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
 				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
@@ -661,7 +661,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [errorRunData, {}]);
+				await hooks.runHook('workflowExecuteAfter', [errorRunData, {}]);
 
 				expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
 				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
@@ -693,7 +693,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [runDataWithMetadata, {}]);
+				await hooks.runHook('workflowExecuteAfter', [runDataWithMetadata, {}]);
 
 				expect(executionMetadataService.save).toHaveBeenCalledWith(executionId, {
 					parameter: 'test',
@@ -709,7 +709,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				);
 				const newStaticData = { newKey: 'newValue' };
 
-				await hooks.executeHook('workflowExecuteAfter', [
+				await hooks.runHook('workflowExecuteAfter', [
 					{
 						data: { resultData: { runData: {} } },
 						mode: 'webhook',
@@ -739,7 +739,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				const error = new Error('Save failed');
 				executionRepository.updateExistingExecution.mockRejectedValueOnce(error);
 
-				await hooks.executeHook('workflowExecuteAfter', [
+				await hooks.runHook('workflowExecuteAfter', [
 					{
 						data: { resultData: { runData: {} } },
 						mode: 'manual',
@@ -777,7 +777,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 					finished: true,
 				};
 
-				await hooks.executeHook('workflowExecuteAfter', [runDataWithMetadata, {}]);
+				await hooks.runHook('workflowExecuteAfter', [runDataWithMetadata, {}]);
 
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 			});

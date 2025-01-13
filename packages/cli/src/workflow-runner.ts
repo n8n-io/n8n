@@ -122,7 +122,7 @@ export class WorkflowRunner {
 		// set the execution to failed.
 		this.activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await hooks?.executeHook('workflowExecuteAfter', [fullRunData]);
+		await hooks?.runHook('workflowExecuteAfter', [fullRunData]);
 	}
 
 	/** Run the workflow
@@ -146,8 +146,8 @@ export class WorkflowRunner {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
 			const hooks = executionLifecycleHooksFactory.forMainProcess(data, executionId);
-			await hooks.executeHook('workflowExecuteBefore', [undefined, data.executionData]);
-			await hooks.executeHook('workflowExecuteAfter', [runData]);
+			await hooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
+			await hooks.runHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
 			this.activeExecutions.finalizeExecution(executionId);
 			return executionId;
@@ -274,7 +274,7 @@ export class WorkflowRunner {
 			const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
 			additionalData.hooks = executionLifecycleHooksFactory.forMainProcess(data, executionId);
 
-			additionalData.hooks.addHook('sendResponse', async (response) => {
+			additionalData.hooks.addCallback('sendResponse', async (response) => {
 				this.activeExecutions.resolveResponsePromise(executionId, response);
 			});
 
@@ -381,7 +381,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			await lifecycleHooks.executeHook('workflowExecuteBefore', [undefined, data.executionData]);
+			await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getLifecycleHooksForWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -453,7 +453,7 @@ export class WorkflowRunner {
 
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
-				await lifecycleHooks.executeHook('workflowExecuteAfter', [runData]);
+				await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 
 				resolve(runData);
 			},

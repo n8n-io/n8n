@@ -10,7 +10,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
-import type { ExecutionLifecycleHookName, RegisteredHooks } from '@/execution-lifecycle-hooks';
+import type { ExecutionLifecycleHookName, Callbacks } from '@/execution-lifecycle-hooks';
 import { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 
 describe('ExecutionLifecycleHooks', () => {
@@ -36,7 +36,7 @@ describe('ExecutionLifecycleHooks', () => {
 			expect(hooks.pushRef).toBe(pushRef);
 			expect(hooks.retryOf).toBe(retryOf);
 			// @ts-expect-error private property
-			expect(hooks.registered).toEqual({
+			expect(hooks.callbacks).toEqual({
 				nodeExecuteAfter: [],
 				nodeExecuteBefore: [],
 				nodeFetchedData: [],
@@ -50,7 +50,7 @@ describe('ExecutionLifecycleHooks', () => {
 	describe('addHook()', () => {
 		const hooksHandler =
 			mock<{
-				[K in keyof RegisteredHooks]: RegisteredHooks[K][number];
+				[K in keyof Callbacks]: Callbacks[K][number];
 			}>();
 
 		const testCases: Array<{ hook: ExecutionLifecycleHookName; args: unknown[] }> = [
@@ -66,8 +66,8 @@ describe('ExecutionLifecycleHooks', () => {
 		];
 
 		test.each(testCases)('should add and process $hook hooks', async ({ hook, args }) => {
-			hooks.addHook(hook, hooksHandler[hook]);
-			await hooks.executeHook(hook, args);
+			hooks.addCallback(hook, hooksHandler[hook]);
+			await hooks.runHook(hook, args);
 			expect(hooksHandler[hook]).toHaveBeenCalledWith(...args);
 		});
 	});
@@ -82,8 +82,8 @@ describe('ExecutionLifecycleHooks', () => {
 				executionOrder.push('hook2');
 			});
 
-			hooks.addHook('nodeExecuteBefore', hook1, hook2);
-			await hooks.executeHook('nodeExecuteBefore', ['testNode']);
+			hooks.addCallback('nodeExecuteBefore', hook1, hook2);
+			await hooks.runHook('nodeExecuteBefore', ['testNode']);
 
 			expect(executionOrder).toEqual(['hook1', 'hook2']);
 			expect(hook1).toHaveBeenCalled();
@@ -96,19 +96,17 @@ describe('ExecutionLifecycleHooks', () => {
 				expect(this.mode).toBe('internal');
 			});
 
-			hooks.addHook('nodeExecuteBefore', hook);
-			await hooks.executeHook('nodeExecuteBefore', ['testNode']);
+			hooks.addCallback('nodeExecuteBefore', hook);
+			await hooks.runHook('nodeExecuteBefore', ['testNode']);
 
 			expect(hook).toHaveBeenCalled();
 		});
 
 		it('should handle errors in hooks', async () => {
 			const errorHook = jest.fn().mockRejectedValue(new Error('Hook failed'));
-			hooks.addHook('nodeExecuteBefore', errorHook);
+			hooks.addCallback('nodeExecuteBefore', errorHook);
 
-			await expect(hooks.executeHook('nodeExecuteBefore', ['testNode'])).rejects.toThrow(
-				'Hook failed',
-			);
+			await expect(hooks.runHook('nodeExecuteBefore', ['testNode'])).rejects.toThrow('Hook failed');
 		});
 	});
 });

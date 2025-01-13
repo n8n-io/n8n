@@ -138,7 +138,7 @@ export class JobProcessor {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
 		}
 
-		additionalData.hooks.addHook('sendResponse', async (response) => {
+		additionalData.hooks.addCallback('sendResponse', async (response) => {
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,

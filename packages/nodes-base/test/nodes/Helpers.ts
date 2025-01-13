@@ -157,10 +157,10 @@ export function WorkflowExecuteAdditionalData(
 	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
-	hooks.addHook('nodeExecuteAfter', async (nodeName) => {
+	hooks.addCallback('nodeExecuteAfter', async (nodeName) => {
 		nodeExecutionOrder.push(nodeName);
 	});
-	hooks.addHook('workflowExecuteAfter', async (fullRunData) => {
+	hooks.addCallback('workflowExecuteAfter', async (fullRunData) => {
 		waitPromise.resolve(fullRunData);
 	});
 

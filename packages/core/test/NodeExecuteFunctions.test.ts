@@ -406,7 +406,7 @@ describe('NodeExecuteFunctions', () => {
 		const node = mock<INode>();
 
 		beforeEach(() => {
-			hooks.executeHook.mockClear();
+			hooks.runHook.mockClear();
 		});
 
 		test('should rethrow an error with `status` property', async () => {
@@ -422,7 +422,7 @@ describe('NodeExecuteFunctions', () => {
 		test('should not throw if the response status is 200', async () => {
 			nock(baseUrl).get('/test').reply(200);
 			await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
-			expect(hooks.executeHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
+			expect(hooks.runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
 		});
 
 		test('should throw if the response status is 403', async () => {
@@ -442,7 +442,7 @@ describe('NodeExecuteFunctions', () => {
 				expect(error.config).toBeUndefined();
 				expect(error.message).toEqual('403 - "Forbidden"');
 			}
-			expect(hooks.executeHook).not.toHaveBeenCalled();
+			expect(hooks.runHook).not.toHaveBeenCalled();
 		});
 
 		test('should not throw if the response status is 404, but `simple` option is set to `false`', async () => {
@@ -453,7 +453,7 @@ describe('NodeExecuteFunctions', () => {
 			});
 
 			expect(response).toEqual('Not Found');
-			expect(hooks.executeHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
+			expect(hooks.runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
 		});
 
 		test('should return full response when `resolveWithFullResponse` is set to true', async () => {
@@ -470,7 +470,7 @@ describe('NodeExecuteFunctions', () => {
 				statusCode: 404,
 				statusMessage: null,
 			});
-			expect(hooks.executeHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
+			expect(hooks.runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
 		});
 
 		describe('redirects', () => {

@@ -773,7 +773,7 @@ export async function proxyRequestToAxios(
 		} else if (body === '') {
 			body = axiosConfig.responseType === 'arraybuffer' ? Buffer.alloc(0) : undefined;
 		}
-		await additionalData?.hooks?.executeHook('nodeFetchedData', [workflow?.id, node]);
+		await additionalData?.hooks?.runHook('nodeFetchedData', [workflow?.id, node]);
 		return configObject.resolveWithFullResponse
 			? {
 					body,

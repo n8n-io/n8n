@@ -10,7 +10,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-export interface RegisteredHooks {
+export type Callbacks = {
 	nodeExecuteBefore: Array<(this: ExecutionLifecycleHooks, nodeName: string) => Promise<void>>;
 
 	nodeExecuteAfter: Array<
@@ -35,13 +35,13 @@ export interface RegisteredHooks {
 		(this: ExecutionLifecycleHooks, response: IExecuteResponsePromiseData) => Promise<void>
 	>;
 
-	/** Executed when a node fetches data */
+	/** Executed after a node fetches data */
 	nodeFetchedData: Array<
 		(this: ExecutionLifecycleHooks, workflowId: string, node: INode) => Promise<void>
 	>;
-}
+};
 
-export type ExecutionLifecycleHookName = keyof RegisteredHooks;
+export type ExecutionLifecycleHookName = keyof Callbacks;
 
 export interface ExecutionHooksOptionalParameters {
 	retryOf?: string;
@@ -49,8 +49,7 @@ export interface ExecutionHooksOptionalParameters {
 }
 
 /**
- * This class serves as a container for execution lifecycle hooks that get triggered during different stages of an execution.
- * It manages and executes callback functions registered for specific execution events.
+ * Contains hooks that trigger at specific events in an execution's lifecycle. Every hook has an array of callbacks to run.
  *
  * Common use cases include:
  * - Saving execution progress to database
@@ -63,16 +62,18 @@ export interface ExecutionHooksOptionalParameters {
  * ```typescript
  * const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
  * hooks.add('workflowExecuteAfter, async function(fullRunData) {
- *  await saveToDatabase(this.executionId, fullRunData);
+ *  await saveToDatabase(executionId, fullRunData);
  *});
  * ```
  */
 export class ExecutionLifecycleHooks {
+	/** Session ID of the client that started the execution. */
 	pushRef?: string;
 
+	/** Execution ID of a precious execution, if this is a retry of that execution. */
 	retryOf?: string;
 
-	private readonly registered: RegisteredHooks = {
+	private readonly callbacks: Callbacks = {
 		nodeExecuteAfter: [],
 		nodeExecuteBefore: [],
 		nodeFetchedData: [],
@@ -92,11 +93,19 @@ export class ExecutionLifecycleHooks {
 		this.retryOf = optionalParameters.retryOf ?? undefined;
 	}
 
-	async executeHook<
-		Hook extends keyof RegisteredHooks,
-		Params extends unknown[] = Parameters<Exclude<RegisteredHooks[Hook], undefined>[number]>,
+	addCallback<Hook extends keyof Callbacks>(
+		hookName: Hook,
+		...hookFunctions: Array<Callbacks[Hook][number]>
+	): void {
+		// @ts-expect-error FIX THIS
+		this.callbacks[hookName].push(...hookFunctions);
+	}
+
+	async runHook<
+		Hook extends keyof Callbacks,
+		Params extends unknown[] = Parameters<Exclude<Callbacks[Hook], undefined>[number]>,
 	>(hookName: Hook, parameters: Params) {
-		const hooks = this.registered[hookName];
+		const hooks = this.callbacks[hookName];
 		for (const hookFunction of hooks) {
 			const typedHookFunction = hookFunction as unknown as (
 				this: ExecutionLifecycleHooks,
@@ -104,13 +113,5 @@ export class ExecutionLifecycleHooks {
 			) => Promise<void>;
 			await typedHookFunction.apply(this, parameters);
 		}
-	}
-
-	addHook<Hook extends keyof RegisteredHooks>(
-		hookName: Hook,
-		...hookFunctions: Array<RegisteredHooks[Hook][number]>
-	): void {
-		// @ts-expect-error FIX THIS
-		this.registered[hookName].push(...hookFunctions);
 	}
 }
