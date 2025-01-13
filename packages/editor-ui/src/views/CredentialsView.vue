@@ -66,7 +66,7 @@ const needsSetup = (data: string | undefined): boolean => {
 
 	if (Object.keys(dataObject).length === 0) return true;
 
-	return Object.values(dataObject).some((value) => !value || value === CREDENTIAL_EMPTY_VALUE);
+	return Object.values(dataObject).every((value) => !value || value === CREDENTIAL_EMPTY_VALUE);
 };
 
 const allCredentials = computed<IResource[]>(() =>
