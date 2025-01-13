@@ -56,7 +56,6 @@ const locale = useI18n();
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
-	margin-bottom: var(--spacing-l);
 
 	&:hover {
 		.editInputButton {
