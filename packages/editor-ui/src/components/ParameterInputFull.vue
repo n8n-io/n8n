@@ -124,7 +124,6 @@ const canBeContentOverride = computed(() =>
 			!isResourceLocator.value &&
 			'options' !== props.parameter.type,
 );
-// const canBeContentOverride = computed(() => getNodeTypeDescription().codex?.ai?.subcategories.contains('Tool'));
 
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -281,14 +280,14 @@ watch(
 
 const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
 const isSingleLineInput: ComputedRef<boolean> = computed(
-	() => parameterInputWrapper.value?.isSingleLineInput ?? isSingleLineInput.value ?? false,
+	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
 );
 </script>
 
 <template>
 	<N8nInputLabel
 		ref="inputLabel"
-		:class="[$style.wrapper, { [$style.displayFlex]: canBeContentOverride }]"
+		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
@@ -343,9 +342,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 		>
 			<template #default="{ droppable, activeDrop }">
 				<div v-if="canBeContentOverride && isContentOverride" :class="$style.contentOverride">
-					<div
-						:class="[$style['prepend-section'], 'el-input-group__prepend', $style.noCornersRight]"
-					>
+					<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
 						<AiStarsIcon />
 					</div>
 					<N8nInput
@@ -356,7 +353,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					/>
 					<N8nIconButton
 						type="tertiary"
-						:class="['n8n-input', $style.closeButton /*$style.noCornersRight*/]"
+						:class="['n8n-input', $style.closeButton]"
 						outline="false"
 						icon="xmark"
 						size="xsmall"
@@ -371,7 +368,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						"
 					/>
 				</div>
-				<div v-else :class="$style.displayFlex">
+				<div v-else>
 					<ParameterInputWrapper
 						ref="parameterInputWrapper"
 						:parameter="parameter"
@@ -398,12 +395,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					>
 						<template v-if="canBeContentOverride && isSingleLineInput" #overrideButton>
 							<N8nButton
-								:class="[
-									'n8n-input',
-									$style.overrideButton,
-									// $style.overrideButtonInLine,
-									// $style.noCornersLeft,
-								]"
+								:class="[$style.overrideButton]"
 								type="tertiary"
 								@click="
 									() => {
@@ -453,10 +445,6 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	}
 }
 
-.displayFlex {
-	display: flex;
-}
-
 .contentOverride {
 	display: flex;
 	gap: var(--spacing-4xs);
@@ -484,6 +472,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 
 .overrideButtonInOptions {
 	position: relative;
+	// To connect to input panel below the button
 	top: 1px;
 }
 
@@ -497,7 +486,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	border-bottom-left-radius: 0;
 }
 
-.prepend-section {
+.iconStars {
 	align-self: center;
 	padding-left: 8px;
 	width: 22px;

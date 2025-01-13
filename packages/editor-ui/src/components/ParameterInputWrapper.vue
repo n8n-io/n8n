@@ -258,7 +258,6 @@ defineExpose({
 .parameterInput {
 	display: flex;
 	flex-direction: column;
-	flex-grow: 1;
 	gap: var(--spacing-4xs);
 }
 

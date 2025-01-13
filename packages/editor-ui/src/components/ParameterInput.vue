@@ -425,20 +425,20 @@ const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
 );
 
+const isTextarea = computed(
+	() => props.parameter.type === 'string' && editorRows.value !== undefined,
+);
+
 const parameterInputClasses = computed(() => {
 	const classes: { [c: string]: boolean } = {
 		droppable: props.droppable,
 		activeDrop: props.activeDrop,
 	};
 
-	const rows = editorRows.value;
-	const isTextarea = props.parameter.type === 'string' && rows !== undefined;
-
-	if (!isTextarea && !isSwitch.value) {
-		classes['parameter-value-container'] = true;
-	} else if (isSwitch.value) {
-		// todo bring the fromAi button inline
+	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
+	} else {
+		classes['parameter-value-container'] = true;
 	}
 
 	if (
@@ -455,7 +455,6 @@ const parameterInputClasses = computed(() => {
 
 const parameterInputWrapperStyle = computed(() => {
 	let deductWidth = 0;
-
 	const styles = {
 		width: '100%',
 	};
@@ -956,10 +955,20 @@ onMounted(() => {
 const { height } = useElementSize(wrapper);
 
 const isSingleLineInput = computed(() => {
-	if (getStringInputType.value === 'textarea' && !expressionDisplayValue.value) {
+	if (isTextarea.value && !isModelValueExpression.value) {
 		return false;
 	}
 
+	/**
+	 * There is an awkward edge case here with text boxes that automatically
+	 * adjust their rowCount based on content:
+	 *
+	 * If we move the overrideButton to the options row due to going multiline,
+	 * the text area gains more width and might return to single line.
+	 * This then causes the overrideButton to move inline, causing a loop and flickering UI.
+	 *
+	 * To avoid this, we treat 2 rows of input as single line, if we are already single line.
+	 */
 	if (isSingleLineInput.value) {
 		return height.value <= 70;
 	} else {
@@ -1142,7 +1151,6 @@ onUpdated(async () => {
 					>
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
-							ref="inputField"
 							:mode="codeEditorMode"
 							:model-value="modelValueString"
 							:default-value="parameter.default"
@@ -1153,7 +1161,6 @@ onUpdated(async () => {
 						/>
 						<HtmlEditor
 							v-else-if="editorType === 'htmlEditor'"
-							ref="inputField"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1164,7 +1171,6 @@ onUpdated(async () => {
 						/>
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor'"
-							ref="inputField"
 							:model-value="modelValueString"
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
@@ -1174,7 +1180,6 @@ onUpdated(async () => {
 						/>
 						<JsEditor
 							v-else-if="editorType === 'jsEditor'"
-							ref="inputField"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1185,7 +1190,6 @@ onUpdated(async () => {
 
 						<JsonEditor
 							v-else-if="parameter.type === 'json'"
-							ref="inputField"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1756,6 +1760,7 @@ onUpdated(async () => {
 
 .overrideButtonStandalone {
 	position: relative;
+	// This is to balance for the extra margin on the switch
 	top: -2px;
 }
 
