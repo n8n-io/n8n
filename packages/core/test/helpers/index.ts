@@ -17,7 +17,7 @@ import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import path from 'path';
 
 import { UnrecognizedNodeTypeError } from '@/errors';
-import { ExecutionHooks } from '@/execution-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 
 import { predefinedNodesTypes } from './constants';
 
@@ -53,7 +53,7 @@ export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
-	const hooks = new ExecutionHooks('trigger', '1', mock());
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
 	hooks.addHook('nodeExecuteAfter', async (nodeName): Promise<void> => {
 		nodeExecutionOrder.push(nodeName);
 	});

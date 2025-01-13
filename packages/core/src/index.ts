@@ -12,7 +12,10 @@ export * from './DirectoryLoader';
 export * from './Interfaces';
 export { InstanceSettings, InstanceType } from './InstanceSettings';
 export { Logger } from './logging/logger';
-export { ExecutionHooks, ExecutionHooksOptionalParameters } from './execution-hooks';
+export {
+	ExecutionLifecycleHooks,
+	ExecutionHooksOptionalParameters,
+} from './execution-lifecycle-hooks';
 export * from './NodeExecuteFunctions';
 export * from './RoutingNode';
 export * from './WorkflowExecute';

@@ -8,7 +8,7 @@ import {
 	Credentials,
 	UnrecognizedNodeTypeError,
 	constructExecutionMetaData,
-	ExecutionHooks,
+	ExecutionLifecycleHooks,
 } from 'n8n-core';
 import type {
 	CredentialLoadingDetails,
@@ -156,7 +156,7 @@ export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
-	const hooks = new ExecutionHooks('trigger', '1', mock());
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
 	hooks.addHook('nodeExecuteAfter', async (nodeName) => {
 		nodeExecutionOrder.push(nodeName);
 	});

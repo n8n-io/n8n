@@ -55,7 +55,7 @@ beforeEach(async () => {
 describe('processError', () => {
 	let workflow: WorkflowEntity;
 	let execution: ExecutionEntity;
-	let hooks: core.ExecutionHooks;
+	let hooks: core.ExecutionLifecycleHooks;
 
 	const watcher = mock<{ workflowExecuteAfter: () => Promise<void> }>();
 
@@ -63,7 +63,7 @@ describe('processError', () => {
 		jest.clearAllMocks();
 		workflow = await createWorkflow({}, owner);
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
-		hooks = new core.ExecutionHooks('webhook', execution.id, workflow);
+		hooks = new core.ExecutionLifecycleHooks('webhook', execution.id, workflow);
 		hooks.addHook('workflowExecuteAfter', watcher.workflowExecuteAfter);
 	});
 

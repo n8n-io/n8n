@@ -12,7 +12,7 @@ import type {
 	IRun,
 } from 'n8n-workflow';
 
-import { ExecutionHooks } from '@/execution-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 import { TriggersAndPollers } from '@/TriggersAndPollers';
 
 describe('TriggersAndPollers', () => {
@@ -23,7 +23,7 @@ describe('TriggersAndPollers', () => {
 	});
 	const nodeTypes = mock<INodeTypes>();
 	const workflow = mock<Workflow>({ nodeTypes });
-	const hooks = new ExecutionHooks('internal', '123', mock());
+	const hooks = new ExecutionLifecycleHooks('internal', '123', mock());
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
 	const triggersAndPollers = new TriggersAndPollers();
 

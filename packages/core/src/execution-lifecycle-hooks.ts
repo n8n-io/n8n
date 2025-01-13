@@ -10,41 +10,38 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-/** This defines the types of hooks that can be executed at different stages of a workflow execution. */
 export interface RegisteredHooks {
-	/** Executed before a node starts executing */
-	nodeExecuteBefore: Array<(this: ExecutionHooks, nodeName: string) => Promise<void>>;
+	nodeExecuteBefore: Array<(this: ExecutionLifecycleHooks, nodeName: string) => Promise<void>>;
 
-	/** Executed after a node finishes executing */
 	nodeExecuteAfter: Array<
 		(
-			this: ExecutionHooks,
+			this: ExecutionLifecycleHooks,
 			nodeName: string,
 			data: ITaskData,
 			executionData: IRunExecutionData,
 		) => Promise<void>
 	>;
 
-	/** Executed before workflow execution starts */
 	workflowExecuteBefore: Array<
-		(this: ExecutionHooks, workflow?: Workflow, data?: IRunExecutionData) => Promise<void>
+		(this: ExecutionLifecycleHooks, workflow?: Workflow, data?: IRunExecutionData) => Promise<void>
 	>;
 
-	/** Executed after workflow execution completes */
 	workflowExecuteAfter: Array<
-		(this: ExecutionHooks, data: IRun, newStaticData: IDataObject) => Promise<void>
+		(this: ExecutionLifecycleHooks, data: IRun, newStaticData: IDataObject) => Promise<void>
 	>;
 
 	/** Used by trigger and webhook nodes to respond back to the request */
 	sendResponse: Array<
-		(this: ExecutionHooks, response: IExecuteResponsePromiseData) => Promise<void>
+		(this: ExecutionLifecycleHooks, response: IExecuteResponsePromiseData) => Promise<void>
 	>;
 
 	/** Executed when a node fetches data */
-	nodeFetchedData: Array<(this: ExecutionHooks, workflowId: string, node: INode) => Promise<void>>;
+	nodeFetchedData: Array<
+		(this: ExecutionLifecycleHooks, workflowId: string, node: INode) => Promise<void>
+	>;
 }
 
-export type ExecutionHookName = keyof RegisteredHooks;
+export type ExecutionLifecycleHookName = keyof RegisteredHooks;
 
 export interface ExecutionHooksOptionalParameters {
 	retryOf?: string;
@@ -64,13 +61,13 @@ export interface ExecutionHooksOptionalParameters {
  *
  * Example usage:
  * ```typescript
- * const hooks = new ExecutionHooks(mode, executionId, workflowData);
+ * const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
  * hooks.add('workflowExecuteAfter, async function(fullRunData) {
  *  await saveToDatabase(this.executionId, fullRunData);
  *});
  * ```
  */
-export class ExecutionHooks {
+export class ExecutionLifecycleHooks {
 	pushRef?: string;
 
 	retryOf?: string;
@@ -102,7 +99,7 @@ export class ExecutionHooks {
 		const hooks = this.registered[hookName];
 		for (const hookFunction of hooks) {
 			const typedHookFunction = hookFunction as unknown as (
-				this: ExecutionHooks,
+				this: ExecutionLifecycleHooks,
 				...args: Params
 			) => Promise<void>;
 			await typedHookFunction.apply(this, parameters);

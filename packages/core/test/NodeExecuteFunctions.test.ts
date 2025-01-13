@@ -21,7 +21,7 @@ import { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
-import type { ExecutionHooks } from '@/execution-hooks';
+import type { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 import { InstanceSettings } from '@/InstanceSettings';
 import {
 	binaryToString,
@@ -401,7 +401,7 @@ describe('NodeExecuteFunctions', () => {
 	describe('proxyRequestToAxios', () => {
 		const baseUrl = 'http://example.de';
 		const workflow = mock<Workflow>();
-		const hooks = mock<ExecutionHooks>();
+		const hooks = mock<ExecutionLifecycleHooks>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
 		const node = mock<INode>();
 

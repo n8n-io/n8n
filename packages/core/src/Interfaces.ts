@@ -4,7 +4,7 @@ import type {
 	ValidationResult,
 } from 'n8n-workflow';
 
-import type { ExecutionHooks } from '@/execution-hooks';
+import type { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 
 export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
@@ -39,7 +39,7 @@ export namespace n8n {
 
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
-		hooks?: ExecutionHooks;
+		hooks?: ExecutionLifecycleHooks;
 	}
 }
 

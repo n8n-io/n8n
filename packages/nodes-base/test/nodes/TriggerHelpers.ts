@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
-import type { InstanceSettings, ExecutionHooks } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
 import type {
 	IBinaryData,
@@ -212,7 +212,7 @@ export async function testPollingTriggerNode(
 					return options as IHttpRequestOptions;
 				},
 			}),
-			hooks: mock<ExecutionHooks>(),
+			hooks: mock<ExecutionLifecycleHooks>(),
 		}),
 		mode,
 		'init',

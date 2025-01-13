@@ -37,7 +37,7 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import type { ExecutionHooks } from '@/execution-hooks';
+import type { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 import { DirectedGraph } from '@/PartialExecutionUtils';
 import * as partialExecutionUtils from '@/PartialExecutionUtils';
 import { createNodeData, toITaskData } from '@/PartialExecutionUtils/__tests__/helpers';
@@ -1223,7 +1223,7 @@ describe('WorkflowExecute', () => {
 				},
 			};
 			additionalData = mock();
-			additionalData.hooks = mock<ExecutionHooks>();
+			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
 
 			jest.spyOn(additionalData.hooks, 'executeHook').mockResolvedValue(undefined);

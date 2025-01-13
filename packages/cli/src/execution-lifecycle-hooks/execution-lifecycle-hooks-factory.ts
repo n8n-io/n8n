@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { pick } from 'lodash';
 import type { ExecutionHooksOptionalParameters } from 'n8n-core';
-import { ErrorReporter, ExecutionHooks, InstanceSettings, Logger } from 'n8n-core';
+import { ErrorReporter, ExecutionLifecycleHooks, InstanceSettings, Logger } from 'n8n-core';
 import type {
 	IRun,
 	ExecutionStatus,
@@ -48,7 +48,7 @@ export class ExecutionLifecycleHooksFactory {
 		{ executionMode, workflowData, pushRef, retryOf }: IWorkflowExecutionDataProcess,
 		executionId: string,
 	) {
-		const hooks = new ExecutionHooks(executionMode, executionId, workflowData, {
+		const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData, {
 			pushRef,
 			retryOf,
 		});
@@ -59,14 +59,14 @@ export class ExecutionLifecycleHooksFactory {
 		return hooks;
 	}
 
-	/** Returns ExecutionHooks instance for main process if workflow runs via worker */
+	/** Returns ExecutionLifecycleHooks instance for main process if workflow runs via worker */
 	forExecutionOnWorker(
 		mode: WorkflowExecuteMode,
 		executionId: string,
 		workflowData: IWorkflowBase,
 		optionalParameters: ExecutionHooksOptionalParameters = {},
 	) {
-		const hooks = new ExecutionHooks(mode, executionId, workflowData, optionalParameters);
+		const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData, optionalParameters);
 		this.addPreExecuteHooks(hooks);
 		this.addEventHooks(hooks);
 		if (mode === 'manual' && this.instanceSettings.isWorker) {
@@ -104,14 +104,14 @@ export class ExecutionLifecycleHooksFactory {
 		return hooks;
 	}
 
-	/** Returns ExecutionHooks instance for running sub-workflows */
+	/** Returns ExecutionLifecycleHooks instance for running sub-workflows */
 	forSubExecution(
 		mode: WorkflowExecuteMode,
 		executionId: string,
 		workflowData: IWorkflowBase,
 		optionalParameters: ExecutionHooksOptionalParameters,
 	) {
-		const hooks = new ExecutionHooks(mode, executionId, workflowData, optionalParameters);
+		const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData, optionalParameters);
 		this.addPreExecuteHooks(hooks);
 		this.addEventHooks(hooks);
 		this.addSavingHooks(hooks, false);
@@ -121,7 +121,7 @@ export class ExecutionLifecycleHooksFactory {
 		return hooks;
 	}
 
-	private addPreExecuteHooks(hooks: ExecutionHooks) {
+	private addPreExecuteHooks(hooks: ExecutionLifecycleHooks) {
 		const { externalHooks } = this;
 
 		hooks.addHook('workflowExecuteBefore', async function (workflow) {
@@ -141,7 +141,7 @@ export class ExecutionLifecycleHooksFactory {
 		});
 	}
 
-	private addEventHooks(hooks: ExecutionHooks) {
+	private addEventHooks(hooks: ExecutionLifecycleHooks) {
 		const { eventService, workflowStatisticsService } = this;
 		hooks.addHook('nodeExecuteBefore', async function (nodeName) {
 			const { executionId, workflowData: workflow } = this;
@@ -164,7 +164,7 @@ export class ExecutionLifecycleHooksFactory {
 	}
 
 	/** Returns hook functions to save workflow execution and call error workflow */
-	private addSavingHooks(hooks: ExecutionHooks, isWorker: boolean) {
+	private addSavingHooks(hooks: ExecutionLifecycleHooks, isWorker: boolean) {
 		const {
 			errorReporter,
 			executionRepository,
@@ -300,7 +300,7 @@ export class ExecutionLifecycleHooksFactory {
 	}
 
 	/** Returns hook functions to push data to Editor-UI */
-	private addPushHooks(hooks: ExecutionHooks) {
+	private addPushHooks(hooks: ExecutionLifecycleHooks) {
 		const { logger, push } = this;
 
 		hooks.addHook('nodeExecuteBefore', async function (nodeName) {

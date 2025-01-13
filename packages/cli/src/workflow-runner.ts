@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from '@n8n/di';
-import type { ExecutionHooks } from 'n8n-core';
+import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -67,7 +67,7 @@ export class WorkflowRunner {
 		startedAt: Date,
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
-		hooks?: ExecutionHooks,
+		hooks?: ExecutionLifecycleHooks,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -368,7 +368,7 @@ export class WorkflowRunner {
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
-		let lifecycleHooks: ExecutionHooks;
+		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
 

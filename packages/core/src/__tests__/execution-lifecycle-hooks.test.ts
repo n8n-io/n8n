@@ -10,19 +10,19 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
-import type { ExecutionHookName, RegisteredHooks } from '@/execution-hooks';
-import { ExecutionHooks } from '@/execution-hooks';
+import type { ExecutionLifecycleHookName, RegisteredHooks } from '@/execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-lifecycle-hooks';
 
-describe('ExecutionHooks', () => {
+describe('ExecutionLifecycleHooks', () => {
 	const executionId = '123';
 	const pushRef = 'test-ref';
 	const retryOf = 'test-retry';
 	const workflowData = mock<IWorkflowBase>();
 
-	let hooks: ExecutionHooks;
+	let hooks: ExecutionLifecycleHooks;
 	beforeEach(() => {
 		jest.clearAllMocks();
-		hooks = new ExecutionHooks('internal', executionId, workflowData, {
+		hooks = new ExecutionLifecycleHooks('internal', executionId, workflowData, {
 			pushRef,
 			retryOf,
 		});
@@ -53,7 +53,7 @@ describe('ExecutionHooks', () => {
 				[K in keyof RegisteredHooks]: RegisteredHooks[K][number];
 			}>();
 
-		const testCases: Array<{ hook: ExecutionHookName; args: unknown[] }> = [
+		const testCases: Array<{ hook: ExecutionLifecycleHookName; args: unknown[] }> = [
 			{ hook: 'nodeExecuteBefore', args: ['testNode'] },
 			{
 				hook: 'nodeExecuteAfter',
@@ -91,7 +91,7 @@ describe('ExecutionHooks', () => {
 		});
 
 		it('should maintain correct "this" context', async () => {
-			const hook = jest.fn().mockImplementation(async function (this: ExecutionHooks) {
+			const hook = jest.fn().mockImplementation(async function (this: ExecutionLifecycleHooks) {
 				expect(this.executionId).toBe(executionId);
 				expect(this.mode).toBe('internal');
 			});
