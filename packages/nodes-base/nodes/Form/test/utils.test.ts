@@ -17,12 +17,25 @@ import {
 } from '../utils';
 
 describe('FormTrigger, formWebhook', () => {
+	const executeFunctions = mock<IWebhookFunctions>();
+	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+	executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+	executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+	executeFunctions.getNodeParameter
+		.calledWith('formDescription')
+		.mockReturnValue('Test Description');
+	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+	executeFunctions.getMode.mockReturnValue('manual');
+	executeFunctions.getInstanceId.mockReturnValue('instanceId');
+	executeFunctions.getBodyData.mockReturnValue({ data: {}, files: {} });
+	executeFunctions.getChildNodes.mockReturnValue([]);
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	it('should call response render', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
 		const mockRender = jest.fn();
 
 		const formFields: FormFieldsParameter = [
@@ -43,20 +56,8 @@ describe('FormTrigger, formWebhook', () => {
 			},
 		];
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
-		executeFunctions.getNodeParameter
-			.calledWith('formDescription')
-			.mockReturnValue('Test Description');
-		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
-		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
-		executeFunctions.getMode.mockReturnValue('manual');
-		executeFunctions.getInstanceId.mockReturnValue('instanceId');
-		executeFunctions.getBodyData.mockReturnValue({ data: {}, files: {} });
-		executeFunctions.getChildNodes.mockReturnValue([]);
 
 		await formWebhook(executeFunctions);
 
@@ -118,7 +119,6 @@ describe('FormTrigger, formWebhook', () => {
 	});
 
 	it('should return workflowData on POST request', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
 		const mockStatus = jest.fn();
 		const mockEnd = jest.fn();
 
@@ -132,15 +132,9 @@ describe('FormTrigger, formWebhook', () => {
 			'field-1': '30',
 		};
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-		executeFunctions.getChildNodes.mockReturnValue([]);
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ status: mockStatus, end: mockEnd } as any);
 		executeFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as any);
-		executeFunctions.getMode.mockReturnValue('manual');
-		executeFunctions.getInstanceId.mockReturnValue('instanceId');
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
 
 		const result = await formWebhook(executeFunctions);
