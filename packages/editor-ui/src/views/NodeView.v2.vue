@@ -31,6 +31,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowTemplate,
 	NodeCreatorOpenSource,
+	NodeFilterType,
 	ToggleNodeCreatorOptions,
 	WorkflowDataWithTemplateId,
 	XYPosition,
@@ -1559,13 +1560,15 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openSelectiveNodeCreator',
 		action: ({
+			creatorview: creatorView,
 			connectiontype: connectionType,
 			node,
 		}: {
+			creatorview: NodeFilterType;
 			connectiontype: NodeConnectionType;
 			node: string;
 		}) => {
-			void onOpenSelectiveNodeCreator(node, connectionType);
+			nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, creatorView });
 		},
 	});
 
