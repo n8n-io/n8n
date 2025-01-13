@@ -38,159 +38,35 @@ import type {
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
-import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowErrorData, UpdateExecutionPayload } from '@/interfaces';
-import { NodeTypes } from '@/node-types';
-import { Push } from '@/push';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
-import * as WorkflowHelpers from '@/workflow-helpers';
-
-import { WorkflowRepository } from './databases/repositories/workflow.repository';
-import { EventService } from './events/event.service';
-import { restoreBinaryDataId } from './execution-lifecycle-hooks/restore-binary-data-id';
-import { saveExecutionProgress } from './execution-lifecycle-hooks/save-execution-progress';
+import { executeErrorWorkflow } from '@/execution-lifecycle-hooks/execute-error-workflow';
+import { restoreBinaryDataId } from '@/execution-lifecycle-hooks/restore-binary-data-id';
+import { saveExecutionProgress } from '@/execution-lifecycle-hooks/save-execution-progress';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
-} from './execution-lifecycle-hooks/shared/shared-hook-functions';
-import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { SecretsHelper } from './secrets-helpers.ee';
-import { OwnershipService } from './services/ownership.service';
-import { UrlService } from './services/url.service';
-import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
-import { TaskRequester } from './task-runners/task-managers/task-requester';
-import { PermissionChecker } from './user-management/permission-checker';
-import { objectToError } from './utils/object-to-error';
-import { WorkflowExecutionService } from './workflows/workflow-execution.service';
-import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
-
-/**
- * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
- * all the data and executes it
- *
- * @param {IWorkflowBase} workflowData The workflow which got executed
- * @param {IRun} fullRunData The run which produced the error
- * @param {WorkflowExecuteMode} mode The mode in which the workflow got started in
- * @param {string} [executionId] The id the execution got saved as
- */
-export function executeErrorWorkflow(
-	workflowData: IWorkflowBase,
-	fullRunData: IRun,
-	mode: WorkflowExecuteMode,
-	executionId?: string,
-	retryOf?: string,
-): void {
-	const logger = Container.get(Logger);
-
-	// Check if there was an error and if so if an errorWorkflow or a trigger is set
-	let pastExecutionUrl: string | undefined;
-	if (executionId !== undefined) {
-		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${
-			workflowData.id
-		}/executions/${executionId}`;
-	}
-
-	if (fullRunData.data.resultData.error !== undefined) {
-		let workflowErrorData: IWorkflowErrorData;
-		const workflowId = workflowData.id;
-
-		if (executionId) {
-			// The error did happen in an execution
-			workflowErrorData = {
-				execution: {
-					id: executionId,
-					url: pastExecutionUrl,
-					error: fullRunData.data.resultData.error,
-					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
-					mode,
-					retryOf,
-				},
-				workflow: {
-					id: workflowId,
-					name: workflowData.name,
-				},
-			};
-		} else {
-			// The error did happen in a trigger
-			workflowErrorData = {
-				trigger: {
-					error: fullRunData.data.resultData.error,
-					mode,
-				},
-				workflow: {
-					id: workflowId,
-					name: workflowData.name,
-				},
-			};
-		}
-
-		const { errorTriggerType } = Container.get(GlobalConfig).nodes;
-		// Run the error workflow
-		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
-		const { errorWorkflow } = workflowData.settings ?? {};
-		if (errorWorkflow && !(mode === 'error' && workflowId && errorWorkflow === workflowId)) {
-			logger.debug('Start external error workflow', {
-				executionId,
-				errorWorkflowId: errorWorkflow,
-				workflowId,
-			});
-			// If a specific error workflow is set run only that one
-
-			// First, do permission checks.
-			if (!workflowId) {
-				// Manual executions do not trigger error workflows
-				// So this if should never happen. It was added to
-				// make sure there are no possible security gaps
-				return;
-			}
-
-			Container.get(OwnershipService)
-				.getWorkflowProjectCached(workflowId)
-				.then((project) => {
-					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
-						errorWorkflow,
-						workflowErrorData,
-						project,
-					);
-				})
-				.catch((error: Error) => {
-					Container.get(ErrorReporter).error(error);
-					logger.error(
-						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
-						{
-							executionId,
-							errorWorkflowId: errorWorkflow,
-							workflowId,
-							error,
-							workflowErrorData,
-						},
-					);
-				});
-		} else if (
-			mode !== 'error' &&
-			workflowId !== undefined &&
-			workflowData.nodes.some((node) => node.type === errorTriggerType)
-		) {
-			logger.debug('Start internal error workflow', { executionId, workflowId });
-			void Container.get(OwnershipService)
-				.getWorkflowProjectCached(workflowId)
-				.then((project) => {
-					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
-						workflowId,
-						workflowErrorData,
-						project,
-					);
-				});
-		}
-	}
-}
+} from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
+import { toSaveSettings } from '@/execution-lifecycle-hooks/to-save-settings';
+import { ExternalHooks } from '@/external-hooks';
+import type { UpdateExecutionPayload } from '@/interfaces';
+import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { SecretsHelper } from '@/secrets-helpers.ee';
+import { UrlService } from '@/services/url.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
+import { TaskRequester } from '@/task-runners/task-managers/task-requester';
+import { PermissionChecker } from '@/user-management/permission-checker';
+import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
+import { objectToError } from '@/utils/object-to-error';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 /**
  * Returns hook functions to push data to Editor-UI
- *
  */
 function hookFunctionsPush(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
