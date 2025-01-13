@@ -96,9 +96,14 @@ class ContainerClass {
 			} else {
 				const paramTypes = (Reflect.getMetadata('design:paramtypes', type) ??
 					[]) as Constructable[];
-				const dependencies = paramTypes.map(<P>(paramType: Constructable<P>) =>
-					this.get(paramType),
-				);
+				const dependencies = paramTypes.map(<P>(paramType: Constructable<P>, index: number) => {
+					if (paramType === undefined) {
+						throw new DIError(
+							`Circular dependency detected in ${type.name} at index ${index}.\n${resolutionStack.map((t) => t.name).join(' -> ')}\n`,
+						);
+					}
+					return this.get(paramType);
+				});
 				// Create new instance with resolved dependencies
 				instance = new (type as Constructable)(...dependencies) as T;
 			}
