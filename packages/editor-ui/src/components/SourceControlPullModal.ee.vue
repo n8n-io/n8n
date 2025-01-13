@@ -126,7 +126,11 @@ async function pullWorkfolder() {
 					style="max-height: 440px"
 				>
 					<template #default="{ item, index, active }">
-						<div v-if="item.type === 'render-title'" :class="$style.listHeader">
+						<div
+							v-if="item.type === 'render-title'"
+							:class="$style.listHeader"
+							data-test-id="pull-modal-item-header"
+						>
 							<N8nText bold>{{ item.title }}</N8nText>
 						</div>
 						<DynamicScrollerItem
@@ -136,7 +140,7 @@ async function pullWorkfolder() {
 							:size-dependencies="[item.name]"
 							:data-index="index"
 						>
-							<div :class="$style.listItem">
+							<div :class="$style.listItem" data-test-id="pull-modal-item">
 								<RouterLink
 									v-if="item.type === 'credential'"
 									target="_blank"
@@ -167,7 +171,7 @@ async function pullWorkfolder() {
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
 				</N8nButton>
-				<N8nButton type="primary" @click="pullWorkfolder">
+				<N8nButton type="primary" data-test-id="force-pull" @click="pullWorkfolder">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.save') }}
 				</N8nButton>
 			</div>
