@@ -71,7 +71,7 @@ async function pullWorkfolder() {
 	try {
 		const status = await sourceControlStore.pullWorkfolder(false);
 
-		await notifyUserAboutPullWorkFolderOutcome(status);
+		await notifyUserAboutPullWorkFolderOutcome(status, toast);
 
 		sourceControlEventBus.emit('pull');
 	} catch (error) {

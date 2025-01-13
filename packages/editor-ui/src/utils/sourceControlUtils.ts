@@ -5,7 +5,7 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-
 import type { BaseTextKey } from '@/plugins/i18n';
 import { VIEWS } from '@/constants';
 import { groupBy } from 'lodash-es';
-import { useToast } from '@/composables/useToast';
+import type { useToast } from '@/composables/useToast';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
@@ -106,10 +106,9 @@ const pullMessage = ({
 };
 
 export const notifyUserAboutPullWorkFolderOutcome = async (
-	files: SourceControlledFile[] | undefined,
+	files: SourceControlledFile[],
+	toast: ReturnType<typeof useToast>,
 ) => {
-	const toast = useToast();
-
 	if (!files?.length) {
 		toast.showMessage({
 			title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
