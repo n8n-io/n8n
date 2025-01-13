@@ -1564,7 +1564,6 @@ function registerCustomActions() {
 			node: string;
 		}) => {
 			nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, creatorView });
-			void onOpenSelectiveNodeCreator(node, connectionType);
 		},
 	});
 
