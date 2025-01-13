@@ -33,7 +33,7 @@ describe('CredentialsController', () => {
 	});
 
 	describe('createCredentials', () => {
-		it('it should create new credentials and emit "credentials-created"', async () => {
+		it('should create new credentials and emit "credentials-created"', async () => {
 			// Arrange
 
 			const newCredentialsPayload = createNewCredentialsPayload();

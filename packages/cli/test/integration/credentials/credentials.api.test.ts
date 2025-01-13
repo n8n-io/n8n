@@ -4,6 +4,7 @@ import type { Scope } from '@sentry/node';
 import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -1162,6 +1163,73 @@ describe('PATCH /credentials/:id', () => {
 		});
 
 		expect(shellCredential.name).toBe(patchPayload.name); // updated
+	});
+
+	test('should not store redacted value in the db for oauthTokenData', async () => {
+		// ARRANGE
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact').mockReturnValueOnce({
+			accessToken: CREDENTIAL_BLANKING_VALUE,
+			oauthTokenData: CREDENTIAL_BLANKING_VALUE,
+		});
+
+		const payload = randomCredentialPayload();
+		payload.data.oauthTokenData = { tokenData: true };
+		const savedCredential = await saveCredential(payload, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		const patchPayload = { ...payload, data: { foo: 'bar' } };
+		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
+
+		// ASSERT
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		const { id, data } = response.body.data;
+
+		expect(id).toBe(savedCredential.id);
+		expect(data).toEqual({
+			...patchPayload.data,
+			// should be the original
+			oauthTokenData: payload.data.oauthTokenData,
+		});
+		expect(redactSpy).not.toHaveBeenCalled();
+	});
+
+	test('should not allow to overwrite oauthTokenData', async () => {
+		// ARRANGE
+		const payload = randomCredentialPayload();
+		payload.data.oauthTokenData = { tokenData: true };
+		const savedCredential = await saveCredential(payload, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		const patchPayload = {
+			...payload,
+			data: { accessToken: 'new', oauthTokenData: { tokenData: false } },
+		};
+		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
+
+		// ASSERT
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		const { id, data } = response.body.data;
+
+		expect(id).toBe(savedCredential.id);
+		// was overwritten
+		expect(data.accessToken).toBe(patchPayload.data.accessToken);
+		// was not overwritten
+		expect(data.oauthTokenData).toEqual(payload.data.oauthTokenData);
 	});
 
 	test('should fail with invalid inputs', async () => {
