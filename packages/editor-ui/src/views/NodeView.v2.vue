@@ -996,7 +996,11 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 }
 
 async function onSwitchActiveNode(nodeName: string) {
+	const node = workflowsStore.getNodeByName(nodeName);
+	if (!node) return;
+
 	setNodeActiveByName(nodeName);
+	selectNodes([node.id]);
 }
 
 async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
