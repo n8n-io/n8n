@@ -91,6 +91,7 @@ const addTargetBlank = (html: string) =>
 			</div>
 			<div
 				v-if="$slots.persistentOptions"
+				:class="$style.persistentOptions"
 				:data-test-id="`${inputName}-parameter-input-options-container-1`"
 			>
 				<slot name="persistentOptions" />
@@ -107,6 +108,7 @@ const addTargetBlank = (html: string) =>
 }
 .inputLabel {
 	display: block;
+	align-items: center;
 }
 .container:hover,
 .inputLabel:hover {
@@ -206,15 +208,19 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 
 	&.small {
-		margin-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing-5xs);
 	}
 	&.medium {
-		margin-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing-2xs);
 	}
 }
 
 .underline {
 	border-bottom: var(--border-base);
+}
+
+.persistentOptions {
+	padding-left: var(--spacing-4xs);
 }
 
 :root .tooltipPopper {

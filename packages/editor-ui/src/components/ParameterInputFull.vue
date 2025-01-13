@@ -94,7 +94,7 @@ function isOverrideValue(s: string) {
 function parseOverrides(s: string) {
 	/*
 		Approaches:
-		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts ; unclear where to move it
+		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts - unclear where to move it
 		- Fun and dangerous: Use eval, see below
 	*/
 	if (!isOverrideValue(s)) return null;
@@ -105,7 +105,6 @@ function parseOverrides(s: string) {
 	const end = '}}'.length;
 	// `eval?.` is an indirect evaluation, outside of local scope
 	const params: unknown[] = eval?.(`${fns} ${s.slice(cursor, -end)}`) ?? [];
-	console.log(fns, params);
 	return {
 		key: params[0] ?? '',
 		description: params[1] ?? '',
@@ -122,7 +121,8 @@ const canBeContentOverride = computed(() =>
 				.getNodeType(node.value.type, node.value.typeVersion)
 				?.codex?.categories?.includes('AI') &&
 			(!props.parameter.noDataExpression || props.parameter.typeOptions?.editor !== undefined) &&
-			props.parameter.type !== 'options',
+			!isResourceLocator.value &&
+			'options' !== props.parameter.type,
 );
 // const canBeContentOverride = computed(() => getNodeTypeDescription().codex?.ai?.subcategories.contains('Tool'));
 
@@ -299,11 +299,21 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 		color="text-dark"
 	>
 		<template
-			v-if="canBeContentOverride && !isSingleLineInput && optionsPosition === 'top'"
+			v-if="
+				!isSingleLineInput &&
+				canBeContentOverride &&
+				!isContentOverride &&
+				optionsPosition === 'top'
+			"
 			#persistentOptions
 		>
 			<N8nButton
-				:class="['n8n-input', $style.overrideButton, $style.cornersRight]"
+				:class="[
+					'n8n-input',
+					$style.overrideButton,
+					// $style.noCornersBottom,
+					$style.overrideButtonInOptions,
+				]"
 				type="tertiary"
 				@click="
 					() => {
@@ -338,7 +348,9 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 		>
 			<template #default="{ droppable, activeDrop }">
 				<div v-if="canBeContentOverride && isContentOverride" :class="$style.contentOverride">
-					<div :class="[$style['prepend-section'], 'el-input-group__prepend', $style.cornersLeft]">
+					<div
+						:class="[$style['prepend-section'], 'el-input-group__prepend', $style.noCornersRight]"
+					>
 						<AiStarsIcon />
 					</div>
 					<N8nInput
@@ -350,7 +362,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					<!-- <ElInput class="n8n-input" size="small" disabled /> -->
 					<N8nIconButton
 						type="tertiary"
-						:class="['n8n-input', $style.closeButton, $style.cornersRight]"
+						:class="['n8n-input', $style.closeButton /*$style.noCornersRight*/]"
 						outline="false"
 						icon="xmark"
 						size="xsmall"
@@ -391,8 +403,13 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					>
 						<template #overrideButton>
 							<N8nButton
-								v-if="canBeContentOverride && isSingleLineInput"
-								:class="['n8n-input', $style.overrideButton, $style.cornersRight]"
+								v-if="isSingleLineInput && canBeContentOverride"
+								:class="[
+									'n8n-input',
+									$style.overrideButton,
+									$style.overrideButtonInLine,
+									$style.noCornersLeft,
+								]"
 								type="tertiary"
 								@click="
 									() => {
@@ -461,10 +478,8 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 .overrideButton {
 	display: flex;
 	justify-content: center;
-	align-self: start;
-	flex-grow: 1;
 	border: 0px;
-	// height: 30px;
+	height: 30px;
 	width: 30px;
 	background: var(--color-background-base);
 
@@ -473,13 +488,25 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	}
 }
 
-.cornersLeft {
+.overrideButtonInLine {
+	align-self: start;
+}
+
+.overrideButtonInOptions {
+}
+
+.noCornersRight {
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
-.cornersRight {
+.noCornersLeft {
 	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.noCornersBottom {
+	border-bottom-right-radius: 0;
 	border-bottom-left-radius: 0;
 }
 

@@ -103,7 +103,7 @@ defineExpose({ focus, blur, select });
 .xlarge {
 	--input-font-size: var(--font-size-m);
 	input {
-		// height: 48px;
+		height: 48px;
 	}
 }
 </style>

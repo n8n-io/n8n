@@ -960,8 +960,10 @@ onMounted(() => {
 const { height } = useElementSize(wrapper);
 
 const isSingleLineInput = computed(() => {
-	// if (props.rows > 2) return false;
-	console.log(props.rows, editorRows.value);
+	if (getStringInputType.value === 'textarea') {
+		return false;
+	}
+
 	if (isSingleLineInput.value) {
 		return height.value <= 70;
 	} else {
@@ -1051,7 +1053,13 @@ onUpdated(async () => {
 		></ExpressionEditModal>
 
 		<div
-			:class="[$style.parameterInput, 'ignore-key-press-canvas']"
+			:class="[
+				$style.parameterInput,
+				'ignore-key-press-canvas',
+				'abc',
+				$style.noRightCorners,
+				// { [$style.noRightCorners]: true || $slots.overrideButton !== undefined },
+			]"
 			:style="parameterInputWrapperStyle"
 			data-test-id="parameter-input-wrapper-in-input"
 		>
@@ -1729,5 +1737,10 @@ onUpdated(async () => {
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;
 	border-bottom-right-radius: 4px;
+}
+
+.noRightCorners > * {
+	--input-border-bottom-right-radius: 0;
+	--input-border-top-right-radius: 0;
 }
 </style>
