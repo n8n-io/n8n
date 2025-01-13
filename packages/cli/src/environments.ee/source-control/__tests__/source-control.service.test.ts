@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -12,7 +13,6 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { ExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
-import type { SourceControlledFile } from '../types/source-controlled-file';
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
@@ -80,7 +80,7 @@ describe('SourceControlService', () => {
 			jest.spyOn(sourceControlService, 'getStatus').mockResolvedValueOnce(statuses);
 
 			// ACT
-			const result = await sourceControlService.pullWorkfolder(user, { userId: user.id });
+			const result = await sourceControlService.pullWorkfolder(user, {});
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
@@ -104,7 +104,7 @@ describe('SourceControlService', () => {
 			jest.spyOn(sourceControlService, 'getStatus').mockResolvedValueOnce(statuses);
 
 			// ACT
-			const result = await sourceControlService.pullWorkfolder(user, { userId: user.id });
+			const result = await sourceControlService.pullWorkfolder(user, {});
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
