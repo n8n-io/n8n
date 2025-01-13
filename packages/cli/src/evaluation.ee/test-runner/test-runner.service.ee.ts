@@ -365,6 +365,9 @@ export class TestRunnerService {
 		if (abortController) {
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
+		} else {
+			// If there is no abort controller - just mark the test run as cancelled
+			await this.testRunRepository.markAsCancelled(testRunId);
 		}
 	}
 }
