@@ -7,12 +7,17 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { orderBy, groupBy } from 'lodash-es';
 import { N8nBadge, N8nText, N8nLink, N8nButton } from 'n8n-design-system';
 import { RouterLink } from 'vue-router';
-import { getStatusText, getStatusTheme, getPullPriorityByStatus } from '@/utils/sourceControlUtils';
+import {
+	getStatusText,
+	getStatusTheme,
+	getPullPriorityByStatus,
+	notifyUserAboutPullWorkFolderOutcome,
+} from '@/utils/sourceControlUtils';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
@@ -83,28 +88,10 @@ async function pullWorkfolder() {
 	close();
 
 	try {
-		await sourceControlStore.pullWorkfolder(true);
+		const status = await sourceControlStore.pullWorkfolder(true);
 
-		const hasVariablesOrCredentials =
-			groupedFilesByType.value.credential?.length || groupedFilesByType.value.variables?.length;
+		await notifyUserAboutPullWorkFolderOutcome(status);
 
-		toast.showMessage({
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			type: 'success',
-		});
-
-		if (hasVariablesOrCredentials) {
-			void nextTick(() => {
-				toast.showMessage({
-					message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-					title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-					type: 'info',
-					duration: 0,
-					showClose: true,
-					offset: 0,
-				});
-			});
-		}
 		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		toast.showError(error, 'Error');

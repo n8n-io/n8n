@@ -1,11 +1,18 @@
+import { h, nextTick } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { VIEWS } from '@/constants';
+import { groupBy } from 'lodash-es';
+import { useToast } from '@/composables/useToast';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
+const i18n = useI18n();
+
 export const getStatusText = (status: SourceControlledFileStatus) =>
-	useI18n().baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
+	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
 
 export const getStatusTheme = (status: SourceControlledFileStatus) => {
 	const statusToBadgeThemeMap: Partial<
@@ -37,3 +44,102 @@ const pushStatusPriority: StatusPriority = {
 
 export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 	pushStatusPriority[status] ?? 0;
+
+const variablesToast = {
+	title: i18n.baseText('settings.sourceControl.pull.upToDate.variables.title'),
+	message: h(RouterLink, { to: { name: VIEWS.VARIABLES } }, () =>
+		i18n.baseText('settings.sourceControl.pull.upToDate.variables.description'),
+	),
+	type: 'info' as const,
+	closeOnClick: true,
+	duration: 0,
+};
+
+const credentialsToast = {
+	title: i18n.baseText('settings.sourceControl.pull.upToDate.credentials.title'),
+	message: h(RouterLink, { to: { name: VIEWS.CREDENTIALS, query: { setupNeeded: 'true' } } }, () =>
+		i18n.baseText('settings.sourceControl.pull.upToDate.credentials.description'),
+	),
+	type: 'info' as const,
+	closeOnClick: true,
+	duration: 0,
+};
+
+const pullMessage = ({
+	credential,
+	tags,
+	variables,
+	workflow,
+}: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
+	const messages: string[] = [];
+
+	if (workflow?.length) {
+		messages.push(
+			i18n.baseText('generic.workflow', {
+				adjustToNumber: workflow.length,
+				interpolate: { count: workflow.length },
+			}),
+		);
+	}
+
+	if (credential?.length) {
+		messages.push(
+			i18n.baseText('generic.credential', {
+				adjustToNumber: credential.length,
+				interpolate: { count: credential.length },
+			}),
+		);
+	}
+
+	if (variables?.length) {
+		messages.push(i18n.baseText('generic.variable_plural'));
+	}
+
+	if (tags?.length) {
+		messages.push(i18n.baseText('generic.tag_plural'));
+	}
+
+	return [
+		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
+		'were pulled',
+	].join(' ');
+};
+
+export const notifyUserAboutPullWorkFolderOutcome = async (
+	files: SourceControlledFile[] | undefined,
+) => {
+	const toast = useToast();
+
+	if (!files?.length) {
+		toast.showMessage({
+			title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
+			message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+			type: 'success',
+		});
+		return;
+	}
+
+	const { credential, tags, variables, workflow } = groupBy(files, 'type');
+
+	const toastMessages = [
+		...(variables?.length ? [variablesToast] : []),
+		...(credential?.length ? [credentialsToast] : []),
+		{
+			title: i18n.baseText('settings.sourceControl.pull.success.title'),
+			message: pullMessage({ credential, tags, variables, workflow }),
+			type: 'success' as const,
+		},
+	];
+
+	for (const message of toastMessages) {
+		/**
+		 * the toasts stack in a reversed way, resulting in
+		 * Success
+		 * Credentials
+		 * Variables
+		 */
+		//
+		toast.showToast(message);
+		await nextTick();
+	}
+};
