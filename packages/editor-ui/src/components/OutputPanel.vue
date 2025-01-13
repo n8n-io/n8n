@@ -4,7 +4,6 @@ import {
 	NodeConnectionType,
 	type IRunData,
 	type IRunExecutionData,
-	type NodeError,
 	type Workflow,
 } from 'n8n-workflow';
 import RunData from './RunData.vue';
@@ -120,14 +119,17 @@ const hasAiMetadata = computed(() => {
 	return false;
 });
 
+const hasError = computed(() =>
+	Boolean(
+		workflowRunData.value &&
+			node.value &&
+			workflowRunData.value[node.value.name]?.[props.runIndex]?.error,
+	),
+);
+
 // Determine the initial output mode to logs if the node has an error and the logs are available
 const defaultOutputMode = computed<OutputType>(() => {
-	const hasError =
-		workflowRunData.value &&
-		node.value &&
-		(workflowRunData.value[node.value.name]?.[props.runIndex]?.error as NodeError);
-
-	return Boolean(hasError) && hasAiMetadata.value ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
+	return hasError.value && hasAiMetadata.value ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
 });
 
 const isNodeRunning = computed(() => {
@@ -216,7 +218,7 @@ const canPinData = computed(() => {
 });
 
 const allToolsWereUnusedNotice = computed(() => {
-	if (!node.value || runsCount.value === 0) return undefined;
+	if (!node.value || runsCount.value === 0 || hasError.value) return undefined;
 
 	// With pinned data there's no clear correct answer for whether
 	// we should use historic or current parents, so we don't show the notice,
