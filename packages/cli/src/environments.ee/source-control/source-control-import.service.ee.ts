@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
@@ -66,6 +66,9 @@ export class SourceControlImportService {
 		private readonly variablesRepository: VariablesRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
+		private readonly workflowService: WorkflowService,
+		private readonly credentialsService: CredentialsService,
+		private readonly tagService: TagService,
 		instanceSettings: InstanceSettings,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -505,34 +508,26 @@ export class SourceControlImportService {
 	}
 
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
-		const workflowService = Container.get(WorkflowService);
-
 		for (const candidate of candidates) {
-			await workflowService.delete(user, candidate.id);
+			await this.workflowService.delete(user, candidate.id);
 		}
 	}
 
 	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
-		const credentialService = Container.get(CredentialsService);
-
 		for (const candidate of candidates) {
-			await credentialService.delete(user, candidate.id);
+			await this.credentialsService.delete(user, candidate.id);
 		}
 	}
 
 	async deleteVariablesNotInWorkfolder(candidates: SourceControlledFile[]) {
-		const variablesService = Container.get(VariablesService);
-
 		for (const candidate of candidates) {
-			await variablesService.delete(candidate.id);
+			await this.variablesService.delete(candidate.id);
 		}
 	}
 
 	async deleteTagsNotInWorkfolder(candidates: SourceControlledFile[]) {
-		const tagsService = Container.get(TagService);
-
 		for (const candidate of candidates) {
-			await tagsService.delete(candidate.id);
+			await this.tagService.delete(candidate.id);
 		}
 	}
 
