@@ -262,13 +262,10 @@ export class ProjectService {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
-		// TODO: assert that the user exists, else invite the user first
-		// TODO: skip inserting if the user already exists
-		await this.projectRelationRepository.upsert(
+		await this.projectRelationRepository.insert(
 			relations.map((relation) =>
 				this.projectRelationRepository.create({ projectId, ...relation }),
 			),
-			['projectId', 'userId'],
 		);
 	}
 
