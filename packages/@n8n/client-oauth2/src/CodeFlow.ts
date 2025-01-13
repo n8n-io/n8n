@@ -79,7 +79,10 @@ export class CodeFlow {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		const error = getAuthError(data);
-		if (error) throw error;
+		if (error) {
+			console.error({ data, url, options });
+			throw error;
+		}
 
 		if (options.state && data.state !== options.state) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
