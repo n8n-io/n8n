@@ -91,6 +91,7 @@ type Props = {
 	hideIssues?: boolean;
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
+	canBeOverride?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -420,6 +421,10 @@ const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
 	return remoteParameterOptions.value;
 });
 
+const isSwitch = computed(
+	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
+);
+
 const parameterInputClasses = computed(() => {
 	const classes: { [c: string]: boolean } = {
 		droppable: props.droppable,
@@ -428,13 +433,12 @@ const parameterInputClasses = computed(() => {
 
 	const rows = editorRows.value;
 	const isTextarea = props.parameter.type === 'string' && rows !== undefined;
-	const isSwitch = props.parameter.type === 'boolean' && !isModelValueExpression.value;
 
-	if (!isTextarea && !isSwitch) {
+	if (!isTextarea && !isSwitch.value) {
 		classes['parameter-value-container'] = true;
-	} else {
+	} else if (isSwitch.value) {
 		// todo bring the fromAi button inline
-		classes['parameter-simple'] = true;
+		classes['parameter-switch'] = true;
 	}
 
 	if (
@@ -449,10 +453,6 @@ const parameterInputClasses = computed(() => {
 	return classes;
 });
 
-const isNormalBoolParameter = computed(
-	() => props.parameter.type === 'boolean' && !props.droppable,
-);
-
 const parameterInputWrapperStyle = computed(() => {
 	let deductWidth = 0;
 
@@ -464,10 +464,6 @@ const parameterInputWrapperStyle = computed(() => {
 	}
 	if (getIssues.value.length) {
 		deductWidth += 20;
-	}
-
-	if (isNormalBoolParameter.value) {
-		deductWidth += 30;
 	}
 
 	if (deductWidth !== 0) {
@@ -960,7 +956,7 @@ onMounted(() => {
 const { height } = useElementSize(wrapper);
 
 const isSingleLineInput = computed(() => {
-	if (getStringInputType.value === 'textarea') {
+	if (getStringInputType.value === 'textarea' && !expressionDisplayValue.value) {
 		return false;
 	}
 
@@ -1056,9 +1052,10 @@ onUpdated(async () => {
 			:class="[
 				$style.parameterInput,
 				'ignore-key-press-canvas',
-				'abc',
-				$style.noRightCorners,
-				// { [$style.noRightCorners]: true || $slots.overrideButton !== undefined },
+				{
+					[$style.hardRightCornersInput]: canBeOverride,
+					[$style.noRightBorder]: canBeOverride && isSingleLineInput,
+				},
 			]"
 			:style="parameterInputWrapperStyle"
 			data-test-id="parameter-input-wrapper-in-input"
@@ -1210,7 +1207,6 @@ onUpdated(async () => {
 
 				<CodeNodeEditor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode"
-					ref="inputField"
 					:key="'code-' + codeEditDialogVisible.toString()"
 					:mode="codeEditorMode"
 					:model-value="modelValueString"
@@ -1236,7 +1232,6 @@ onUpdated(async () => {
 
 				<HtmlEditor
 					v-else-if="editorType === 'htmlEditor'"
-					ref="inputField"
 					:key="'html-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
@@ -1259,7 +1254,6 @@ onUpdated(async () => {
 
 				<SqlEditor
 					v-else-if="editorType === 'sqlEditor'"
-					ref="inputField"
 					:key="'sql-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:dialect="getArgument('sqlDialect')"
@@ -1281,7 +1275,6 @@ onUpdated(async () => {
 
 				<JsEditor
 					v-else-if="editorType === 'jsEditor'"
-					ref="inputField"
 					:key="'js-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
@@ -1304,7 +1297,6 @@ onUpdated(async () => {
 
 				<JsonEditor
 					v-else-if="parameter.type === 'json'"
-					ref="inputField"
 					:key="'json-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
@@ -1553,7 +1545,14 @@ onUpdated(async () => {
 				<InlineExpressionTip />
 			</div>
 		</div>
-		<slot name="overrideButton" />
+		<div
+			:class="[
+				$style.overrideButton,
+				{ [$style.overrideButtonStandalone]: isSwitch, [$style.overrideButtonInline]: !isSwitch },
+			]"
+		>
+			<slot name="overrideButton" />
+		</div>
 		<ParameterIssues
 			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
 			:issues="getIssues"
@@ -1580,8 +1579,11 @@ onUpdated(async () => {
 	align-items: center;
 }
 
-.parameter-simple {
+.parameter-switch {
 	display: inline-flex;
+	align-self: flex-start;
+	justify-items: center;
+	gap: var(--spacing-xs);
 }
 
 .parameter-input {
@@ -1739,8 +1741,28 @@ onUpdated(async () => {
 	border-bottom-right-radius: 4px;
 }
 
-.noRightCorners > * {
+.hardRightCornersInput > * {
 	--input-border-bottom-right-radius: 0;
 	--input-border-top-right-radius: 0;
+}
+
+.noRightBorder > * {
+	border-right: unset;
+}
+
+.overrideButton {
+	align-self: start;
+}
+
+.overrideButtonStandalone {
+	position: relative;
+	top: -2px;
+}
+
+.overrideButtonInline {
+	> button {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
 }
 </style>

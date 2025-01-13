@@ -308,12 +308,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 			#persistentOptions
 		>
 			<N8nButton
-				:class="[
-					'n8n-input',
-					$style.overrideButton,
-					// $style.noCornersBottom,
-					$style.overrideButtonInOptions,
-				]"
+				:class="[$style.overrideButton, $style.noCornersBottom, $style.overrideButtonInOptions]"
 				type="tertiary"
 				@click="
 					() => {
@@ -359,7 +354,6 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						type="text"
 						size="small"
 					/>
-					<!-- <ElInput class="n8n-input" size="small" disabled /> -->
 					<N8nIconButton
 						type="tertiary"
 						:class="['n8n-input', $style.closeButton /*$style.noCornersRight*/]"
@@ -394,6 +388,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
+						:can-be-override="canBeContentOverride"
 						input-size="small"
 						@update="valueChanged"
 						@text-input="onTextInput"
@@ -401,14 +396,13 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 						@blur="onBlur"
 						@drop="onDrop"
 					>
-						<template #overrideButton>
+						<template v-if="canBeContentOverride && isSingleLineInput" #overrideButton>
 							<N8nButton
-								v-if="isSingleLineInput && canBeContentOverride"
 								:class="[
 									'n8n-input',
 									$style.overrideButton,
-									$style.overrideButtonInLine,
-									$style.noCornersLeft,
+									// $style.overrideButtonInLine,
+									// $style.noCornersLeft,
 								]"
 								type="tertiary"
 								@click="
@@ -488,21 +482,14 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	}
 }
 
-.overrideButtonInLine {
-	align-self: start;
-}
-
 .overrideButtonInOptions {
+	position: relative;
+	top: 1px;
 }
 
 .noCornersRight {
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
-}
-
-.noCornersLeft {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
 }
 
 .noCornersBottom {
