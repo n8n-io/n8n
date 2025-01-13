@@ -16,6 +16,7 @@ import {
 	WAIT_NODE_TYPE,
 	jsonParse,
 } from 'n8n-workflow';
+import sanitize from 'sanitize-html';
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
@@ -380,7 +381,13 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = context.getNodeParameter('formDescription', '') as string;
+		const formDescription = sanitize(context.getNodeParameter('formDescription', '') as string, {
+			allowedTags: ['b', 'i', 'em', 'strong', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+			allowedAttributes: {
+				a: ['href'],
+			},
+			nonBooleanAttributes: ['*'],
+		});
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
