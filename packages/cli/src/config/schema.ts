@@ -349,15 +349,6 @@ export const schema = {
 		},
 	},
 
-	sourceControl: {
-		defaultKeyPairType: {
-			doc: 'Default SSH key type to use when generating SSH keys',
-			format: ['rsa', 'ed25519'] as const,
-			default: 'ed25519',
-			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
-		},
-	},
-
 	workflowHistory: {
 		enabled: {
 			doc: 'Whether to save workflow history versions',
