@@ -519,6 +519,13 @@ function onOpenContextMenu(event: MouseEvent) {
 	});
 }
 
+function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: selectedNodeIds.value,
+	});
+}
+
 function onOpenNodeContextMenu(
 	id: string,
 	event: MouseEvent,
@@ -692,6 +699,7 @@ provide(CanvasKey, {
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
 	>
