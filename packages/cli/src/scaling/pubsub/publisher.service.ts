@@ -1,10 +1,9 @@
+import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
-import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import { InstanceSettings, Logger } from 'n8n-core';
+import type { LogMetadata } from 'n8n-workflow';
 
 import config from '@/config';
-import { Logger } from '@/logging/logger.service';
-import type { LogMetadata } from '@/logging/types';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';

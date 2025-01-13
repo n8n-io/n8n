@@ -1,18 +1,14 @@
+import { getWorkflowHistoryCloseButton } from '../composables/workflow';
 import {
 	CODE_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	IF_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../constants';
-import {
-	WorkflowExecutionsTab,
-	WorkflowPage as WorkflowPageClass,
-	WorkflowHistoryPage,
-} from '../pages';
+import { WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
-const workflowHistoryPage = new WorkflowHistoryPage();
 
 const createNewWorkflowAndActivate = () => {
 	workflowPage.actions.visit();
@@ -92,7 +88,7 @@ const switchBetweenEditorAndHistory = () => {
 	cy.wait(['@getVersion']);
 
 	cy.intercept('GET', '/rest/workflows/*').as('workflowGet');
-	workflowHistoryPage.getters.workflowHistoryCloseButton().click();
+	getWorkflowHistoryCloseButton().click();
 	cy.wait(['@workflowGet']);
 	cy.wait(1000);
 
@@ -168,7 +164,7 @@ describe('Editor actions should work', () => {
 		cy.wait(['@getVersion']);
 
 		cy.intercept('GET', '/rest/workflows/*').as('workflowGet');
-		workflowHistoryPage.getters.workflowHistoryCloseButton().click();
+		getWorkflowHistoryCloseButton().click();
 		cy.wait(['@workflowGet']);
 		cy.wait(1000);
 

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
@@ -11,6 +12,7 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	Logger,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -27,7 +29,6 @@ import type {
 import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
-import { Container, Service } from 'typedi';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -36,7 +37,6 @@ import {
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { isContainedWithin } from '@/utils/path-util';
 
 interface LoadedNodesAndCredentials {

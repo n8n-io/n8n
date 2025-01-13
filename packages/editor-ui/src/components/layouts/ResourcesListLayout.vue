@@ -168,13 +168,19 @@ const focusSearchInput = () => {
 };
 
 const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find(
-		(key) =>
-			key !== 'search' &&
-			(Array.isArray(props.filters[key])
-				? props.filters[key].length > 0
-				: props.filters[key] !== ''),
-	);
+	return !!filterKeys.value.find((key) => {
+		if (key === 'search') return false;
+
+		if (typeof props.filters[key] === 'boolean') {
+			return props.filters[key];
+		}
+
+		if (Array.isArray(props.filters[key])) {
+			return props.filters[key].length > 0;
+		}
+
+		return props.filters[key] !== '';
+	});
 };
 
 const setRowsPerPage = (numberOfRowsPerPage: number) => {
@@ -475,6 +481,7 @@ onMounted(async () => {
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
 }
 
 .filters {
@@ -483,10 +490,24 @@ onMounted(async () => {
 	grid-auto-columns: max-content;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	width: 100%;
+
+	@include mixins.breakpoint('xs-only') {
+		grid-template-columns: 1fr auto;
+		grid-auto-flow: row;
+
+		> *:last-child {
+			grid-column: auto;
+		}
+	}
 }
 
 .search {
 	max-width: 240px;
+
+	@include mixins.breakpoint('sm-and-down') {
+		max-width: 100%;
+	}
 }
 
 .listWrapper {
@@ -497,6 +518,10 @@ onMounted(async () => {
 
 .sort-and-filter {
 	white-space: nowrap;
+
+	@include mixins.breakpoint('sm-and-down') {
+		width: 100%;
+	}
 }
 
 .datatable {

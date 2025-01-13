@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { get } from 'lodash';
 import type {
 	FunctionsBase,
@@ -23,16 +24,15 @@ import {
 	ApplicationError,
 	deepCopy,
 	ExpressionError,
-	LoggerProxy,
 	NodeHelpers,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/Constants';
 import { Memoized } from '@/decorators';
 import { extractValue } from '@/ExtractValue';
 import { InstanceSettings } from '@/InstanceSettings';
+import { Logger } from '@/logging/logger';
 
 import { cleanupParameterData } from './utils/cleanupParameterData';
 import { ensureType } from './utils/ensureType';
@@ -53,8 +53,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		protected readonly executeData?: IExecuteData,
 	) {}
 
+	@Memoized
 	get logger() {
-		return LoggerProxy;
+		return Container.get(Logger);
 	}
 
 	getExecutionId() {

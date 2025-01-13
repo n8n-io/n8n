@@ -1,13 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
-import { InstanceSettings, ObjectStoreService } from 'n8n-core';
-import Container, { Service } from 'typedi';
+import { InstanceSettings, ObjectStoreService, Logger } from 'n8n-core';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import {
@@ -18,6 +17,9 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
+
+const LICENSE_RENEWAL_DISABLED_WARNING =
+	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
 
 export type FeatureReturnType = Partial<
 	{
@@ -39,25 +41,6 @@ export class License {
 		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('license');
-	}
-
-	/**
-	 * Whether this instance should renew the license - on init and periodically.
-	 */
-	private renewalEnabled() {
-		if (this.instanceSettings.instanceType !== 'main') return false;
-		const autoRenewEnabled = this.globalConfig.license.autoRenewalEnabled;
-
-		/**
-		 * In multi-main setup, all mains start off with `unset` status and so renewal disabled.
-		 * On becoming leader or follower, each will enable or disable renewal, respectively.
-		 * This ensures the mains do not cause a 429 (too many requests) on license init.
-		 */
-		if (this.globalConfig.multiMainSetup.enabled) {
-			return autoRenewEnabled && this.instanceSettings.isLeader;
-		}
-
-		return autoRenewEnabled;
 	}
 
 	async init(forceRecreate = false) {
@@ -88,15 +71,20 @@ export class License {
 			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
 
-		const renewalEnabled = this.renewalEnabled();
+		const { isLeader } = this.instanceSettings;
+		const { autoRenewalEnabled } = this.globalConfig.license;
+
+		const shouldRenew = isLeader && autoRenewalEnabled;
+
+		if (isLeader && !autoRenewalEnabled) this.logger.warn(LICENSE_RENEWAL_DISABLED_WARNING);
 
 		try {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled: renewalEnabled,
-				renewOnInit: renewalEnabled,
+				autoRenewEnabled: shouldRenew,
+				renewOnInit: shouldRenew,
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
@@ -256,6 +244,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ASK_AI);
 	}
 
+	isAiCreditsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.AI_CREDITS);
+	}
+
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
@@ -272,7 +264,7 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 	}
 
-	isMultipleMainInstancesLicensed() {
+	isMultiMainLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
@@ -364,6 +356,10 @@ export class License {
 
 	getVariablesLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getAiCredits() {
+		return this.getFeatureValue(LICENSE_QUOTAS.AI_CREDITS) ?? 0;
 	}
 
 	getWorkflowHistoryPruneLimit() {

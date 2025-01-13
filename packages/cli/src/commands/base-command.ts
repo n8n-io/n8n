@@ -1,15 +1,16 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataService,
 	InstanceSettings,
+	Logger,
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
 import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -22,14 +23,13 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -61,10 +61,15 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
-		await this.errorReporter.init(
-			this.instanceSettings.instanceType,
-			this.globalConfig.sentry.backendDsn,
-		);
+
+		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
+		await this.errorReporter.init({
+			serverType: this.instanceSettings.instanceType,
+			dsn: backendDsn,
+			environment,
+			release: n8nVersion,
+			serverName: deploymentName,
+		});
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));

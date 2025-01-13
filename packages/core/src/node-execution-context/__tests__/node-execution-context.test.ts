@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	Expression,
@@ -10,7 +11,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { InstanceSettings } from '@/InstanceSettings';
 

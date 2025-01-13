@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton } from 'n8n-design-system';
+import { N8nButton, N8nTooltip } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
-import { ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
@@ -17,13 +17,13 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 
-const headerIcon = computed(() => {
+const headerIcon = computed((): ProjectIcon => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return 'user';
+		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return 'layer-group';
+		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
 	} else {
-		return 'home';
+		return { type: 'icon', value: 'home' };
 	}
 });
 
@@ -59,6 +59,8 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
 	label: 'Create Workflow',
+	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
+	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
@@ -104,32 +106,38 @@ const onSelect = (action: string) => {
 
 <template>
 	<div>
-		<div :class="[$style.projectHeader]">
-			<div :class="[$style.icon]">
-				<N8nIcon :icon="headerIcon" color="text-light"></N8nIcon>
-			</div>
-			<div>
-				<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
-				<N8nText color="text-light">
-					<slot name="subtitle">
-						<span v-if="!projectsStore.currentProject">{{
-							i18n.baseText('projects.header.subtitle')
-						}}</span>
-					</slot>
-				</N8nText>
+		<div :class="$style.projectHeader">
+			<div :class="$style.projectDetails">
+				<ProjectIcon :icon="headerIcon" :border-less="true" size="medium" />
+				<div :class="$style.headerActions">
+					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+					<N8nText color="text-light">
+						<slot name="subtitle">
+							<span v-if="!projectsStore.currentProject">{{
+								i18n.baseText('projects.header.subtitle')
+							}}</span>
+						</slot>
+					</N8nText>
+				</div>
 			</div>
 			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
-				<ProjectCreateResource
-					data-test-id="add-resource-buttons"
-					:actions="menu"
-					@action="onSelect"
+				<N8nTooltip
+					:disabled="!sourceControlStore.preferences.branchReadOnly"
+					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
-					<N8nButton
-						data-test-id="add-resource-workflow"
-						v-bind="createWorkflowButton"
-						@click="onSelect(ACTION_TYPES.WORKFLOW)"
-					/>
-				</ProjectCreateResource>
+					<ProjectCreateResource
+						data-test-id="add-resource-buttons"
+						:actions="menu"
+						:disabled="sourceControlStore.preferences.branchReadOnly"
+						@action="onSelect"
+					>
+						<N8nButton
+							data-test-id="add-resource-workflow"
+							v-bind="createWorkflowButton"
+							@click="onSelect(ACTION_TYPES.WORKFLOW)"
+						/>
+					</ProjectCreateResource>
+				</N8nTooltip>
 			</div>
 		</div>
 		<div :class="$style.actions">
@@ -139,28 +147,33 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-.projectHeader {
+.projectHeader,
+.projectDescription {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	justify-content: space-between;
 	padding-bottom: var(--spacing-m);
-	min-height: 64px;
+	min-height: var(--spacing-3xl);
 }
 
-.headerActions {
-	margin-left: auto;
-}
-
-.icon {
-	border: 1px solid var(--color-foreground-light);
-	padding: 6px;
-	border-radius: var(--border-radius-base);
+.projectDetails {
+	display: flex;
+	align-items: center;
 }
 
 .actions {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-end;
 	padding: var(--spacing-2xs) 0 var(--spacing-l);
+}
+
+@include mixins.breakpoint('xs-only') {
+	.projectHeader {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing-xs);
+	}
+
+	.headerActions {
+		margin-left: auto;
+	}
 }
 </style>

@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -15,15 +16,12 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	LoggerProxy as Logger,
-	applyDeclarativeNodeOptionParameters,
-	jsonParse,
-} from 'n8n-workflow';
+import { ApplicationError, applyDeclarativeNodeOptionParameters, jsonParse } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import * as path from 'path';
+
+import { Logger } from '@/logging/logger';
 
 import { loadClassInIsolation } from './ClassLoader';
 import { commonCORSParameters, commonPollingParameters, CUSTOM_NODES_CATEGORY } from './Constants';
@@ -78,10 +76,12 @@ export abstract class DirectoryLoader {
 
 	readonly nodesByCredential: Record<string, string[]> = {};
 
+	protected readonly logger = Container.get(Logger);
+
 	constructor(
 		readonly directory: string,
-		protected readonly excludeNodes: string[] = [],
-		protected readonly includeNodes: string[] = [],
+		protected excludeNodes: string[] = [],
+		protected includeNodes: string[] = [],
 	) {}
 
 	abstract packageName: string;
@@ -121,13 +121,12 @@ export abstract class DirectoryLoader {
 		this.addCodex(tempNode, filePath);
 
 		const nodeType = tempNode.description.name;
-		const fullNodeType = `${this.packageName}.${nodeType}`;
 
-		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeType)) {
+		if (this.includeNodes.length && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
 
-		if (this.excludeNodes.includes(fullNodeType)) {
+		if (this.excludeNodes.includes(nodeType)) {
 			return;
 		}
 
@@ -151,7 +150,7 @@ export abstract class DirectoryLoader {
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				throw new ApplicationError(
 					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead.',
-					{ extra: { nodeType: fullNodeType } },
+					{ extra: { nodeType } },
 				);
 			}
 		} else {
@@ -336,7 +335,7 @@ export abstract class DirectoryLoader {
 
 			node.description.codex = codex;
 		} catch {
-			Logger.debug(`No codex available for: ${node.description.name}`);
+			this.logger.debug(`No codex available for: ${node.description.name}`);
 
 			if (isCustom) {
 				node.description.codex = {
@@ -430,9 +429,25 @@ export class CustomDirectoryLoader extends DirectoryLoader {
  * e.g. /nodes-base or community packages.
  */
 export class PackageDirectoryLoader extends DirectoryLoader {
-	packageJson: n8n.PackageJson = this.readJSONSync('package.json');
+	packageJson: n8n.PackageJson;
 
-	packageName = this.packageJson.name;
+	packageName: string;
+
+	constructor(directory: string, excludeNodes: string[] = [], includeNodes: string[] = []) {
+		super(directory, excludeNodes, includeNodes);
+
+		this.packageJson = this.readJSONSync('package.json');
+		this.packageName = this.packageJson.name;
+		this.excludeNodes = this.extractNodeTypes(excludeNodes);
+		this.includeNodes = this.extractNodeTypes(includeNodes);
+	}
+
+	private extractNodeTypes(fullNodeTypes: string[]) {
+		return fullNodeTypes
+			.map((fullNodeType) => fullNodeType.split('.'))
+			.filter(([packageName]) => packageName === this.packageName)
+			.map(([_, nodeType]) => nodeType);
+	}
 
 	override async loadAll() {
 		const { n8n } = this.packageJson;
@@ -454,7 +469,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		this.inferSupportedNodes();
 
-		Logger.debug(`Loaded all credentials and nodes from ${this.packageName}`, {
+		this.logger.debug(`Loaded all credentials and nodes from ${this.packageName}`, {
 			credentials: credentials?.length ?? 0,
 			nodes: nodes?.length ?? 0,
 		});
@@ -524,9 +539,8 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 
 			if (this.includeNodes.length) {
 				const allowedNodes: typeof this.known.nodes = {};
-				for (const fullNodeType of this.includeNodes) {
-					const [packageName, nodeType] = fullNodeType.split('.');
-					if (packageName === this.packageName && nodeType in this.known.nodes) {
+				for (const nodeType of this.includeNodes) {
+					if (nodeType in this.known.nodes) {
 						allowedNodes[nodeType] = this.known.nodes[nodeType];
 					}
 				}
@@ -538,11 +552,8 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 			}
 
 			if (this.excludeNodes.length) {
-				for (const fullNodeType of this.excludeNodes) {
-					const [packageName, nodeType] = fullNodeType.split('.');
-					if (packageName === this.packageName) {
-						delete this.known.nodes[nodeType];
-					}
+				for (const nodeType of this.excludeNodes) {
+					delete this.known.nodes[nodeType];
 				}
 
 				this.types.nodes = this.types.nodes.filter(
@@ -550,7 +561,7 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 				);
 			}
 
-			Logger.debug(`Lazy-loading nodes and credentials from ${this.packageJson.name}`, {
+			this.logger.debug(`Lazy-loading nodes and credentials from ${this.packageJson.name}`, {
 				nodes: this.types.nodes?.length ?? 0,
 				credentials: this.types.credentials?.length ?? 0,
 			});
@@ -559,7 +570,7 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 
 			return; // We can load nodes and credentials lazily now
 		} catch {
-			Logger.debug("Can't enable lazy-loading");
+			this.logger.debug("Can't enable lazy-loading");
 			await super.loadAll();
 		}
 	}

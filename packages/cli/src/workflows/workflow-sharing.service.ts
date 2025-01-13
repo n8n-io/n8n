@@ -1,9 +1,9 @@
+import type { ProjectRole } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';

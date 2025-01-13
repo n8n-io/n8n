@@ -1,21 +1,29 @@
 <script setup lang="ts">
+import type { TestMetricRecord } from '@/api/testDefinition.ee';
 import { useI18n } from '@/composables/useI18n';
 
 export interface MetricsInputProps {
-	modelValue: string[];
+	modelValue: Array<Partial<TestMetricRecord>>;
 }
 const props = defineProps<MetricsInputProps>();
-const emit = defineEmits<{ 'update:modelValue': [value: MetricsInputProps['modelValue']] }>();
+const emit = defineEmits<{
+	'update:modelValue': [value: MetricsInputProps['modelValue']];
+	deleteMetric: [metric: Partial<TestMetricRecord>];
+}>();
 const locale = useI18n();
 
 function addNewMetric() {
-	emit('update:modelValue', [...props.modelValue, '']);
+	emit('update:modelValue', [...props.modelValue, { name: '' }]);
 }
 
-function updateMetric(index: number, value: string) {
+function updateMetric(index: number, name: string) {
 	const newMetrics = [...props.modelValue];
-	newMetrics[index] = value;
+	newMetrics[index].name = name;
 	emit('update:modelValue', newMetrics);
+}
+
+function onDeleteMetric(metric: Partial<TestMetricRecord>) {
+	emit('deleteMetric', metric);
 }
 </script>
 
@@ -27,14 +35,15 @@ function updateMetric(index: number, value: string) {
 			:class="$style.metricField"
 		>
 			<div :class="$style.metricsContainer">
-				<div v-for="(metric, index) in modelValue" :key="index">
+				<div v-for="(metric, index) in modelValue" :key="index" :class="$style.metricItem">
 					<N8nInput
 						:ref="`metric_${index}`"
 						data-test-id="evaluation-metric-item"
-						:model-value="metric"
+						:model-value="metric.name"
 						:placeholder="locale.baseText('testDefinition.edit.metricsPlaceholder')"
 						@update:model-value="(value: string) => updateMetric(index, value)"
 					/>
+					<n8n-icon-button icon="trash" type="text" @click="onDeleteMetric(metric)" />
 				</div>
 				<n8n-button
 					type="tertiary"
@@ -52,6 +61,11 @@ function updateMetric(index: number, value: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-xs);
+}
+
+.metricItem {
+	display: flex;
+	align-items: center;
 }
 
 .metricField {
