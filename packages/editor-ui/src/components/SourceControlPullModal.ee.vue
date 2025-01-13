@@ -5,6 +5,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import {
 	type SourceControlAggregatedFile,
 	type SourceControlledFileType,
+	SOURCE_CONTROL_FILE_TYPE,
 } from '@/types/sourceControl.types';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
@@ -14,7 +15,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { computed, nextTick } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { orderBy, groupBy } from 'lodash-es';
-import { N8nBadge, N8nText } from 'n8n-design-system';
+import { N8nBadge, N8nText, N8nLink, N8nButton } from 'n8n-design-system';
 import { RouterLink } from 'vue-router';
 import { getStatusText, getStatusTheme, getPullPriorityByStatus } from '@/utils/sourceControlUtils';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
@@ -38,55 +39,43 @@ const sortedFiles = computed(() =>
 	),
 );
 
-const groupedChangesByType = computed<
+const groupedFilesByType = computed<
 	Partial<Record<SourceControlledFileType, SourceControlAggregatedFile[]>>
 >(() => groupBy(sortedFiles.value, 'type'));
 
-type HeaderItem = { type: 'render-title'; title: string; id: string };
-type ItemsList = Array<HeaderItem | SourceControlAggregatedFile>;
-const files = computed<ItemsList>(() => {
-	const { workflow, credential, tags, variables } = groupedChangesByType.value;
+type ItemsList = Array<
+	| { type: 'render-title'; title: string; id: SourceControlledFileType }
+	| SourceControlAggregatedFile
+>;
 
-	const output: ItemsList = [];
+const ITEM_TITLES: Record<Exclude<SourceControlledFileType, 'file'>, string> = {
+	[SOURCE_CONTROL_FILE_TYPE.WORKFLOW]: 'Workflows',
+	[SOURCE_CONTROL_FILE_TYPE.CREDENTIAL]: 'Credentials',
+	[SOURCE_CONTROL_FILE_TYPE.VARIABLES]: 'Variables',
+	[SOURCE_CONTROL_FILE_TYPE.TAGS]: 'Tags',
+} as const;
 
-	if (workflow) {
-		output.push({
+const files = computed<ItemsList>(() =>
+	[
+		SOURCE_CONTROL_FILE_TYPE.WORKFLOW,
+		SOURCE_CONTROL_FILE_TYPE.CREDENTIAL,
+		SOURCE_CONTROL_FILE_TYPE.VARIABLES,
+		SOURCE_CONTROL_FILE_TYPE.TAGS,
+	].reduce<ItemsList>((acc, fileType) => {
+		if (!groupedFilesByType.value[fileType]) {
+			return acc;
+		}
+
+		acc.push({
 			type: 'render-title',
-			title: 'Workflows',
-			id: 'workflow',
+			title: ITEM_TITLES[fileType],
+			id: fileType,
 		});
-		output.push(...workflow);
-	}
 
-	if (credential) {
-		output.push({
-			type: 'render-title',
-			title: 'Credentials',
-			id: 'credential',
-		});
-		output.push(...credential);
-	}
-
-	if (variables) {
-		output.push({
-			type: 'render-title',
-			title: 'Variables',
-			id: 'variable',
-		});
-		output.push(...variables);
-	}
-
-	if (tags) {
-		output.push({
-			type: 'render-title',
-			title: 'Tags',
-			id: 'tag',
-		});
-		output.push(...tags);
-	}
-
-	return output;
-});
+		acc.push(...groupedFilesByType.value[fileType]);
+		return acc;
+	}, []),
+);
 
 function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PULL_MODAL_KEY);
@@ -100,7 +89,7 @@ async function pullWorkfolder() {
 		await sourceControlStore.pullWorkfolder(true);
 
 		const hasVariablesOrCredentials =
-			groupedChangesByType.value.credential?.length || groupedChangesByType.value.variables?.length;
+			groupedFilesByType.value.credential?.length || groupedFilesByType.value.variables?.length;
 
 		toast.showMessage({
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
@@ -138,27 +127,32 @@ async function pullWorkfolder() {
 		<template #content>
 			<N8nText tag="div" class="mb-xs">
 				These resources will be updated or deleted, and any local changes to them will be lost. To
-				keep the local version, push it before pulling. <br /><RouterLink>More info</RouterLink>
+				keep the local version, push it before pulling.
+				<br />
+				<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+					{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+				</N8nLink>
 			</N8nText>
 			<div :class="$style.container">
 				<DynamicScroller
 					ref="scroller"
 					:items="files"
-					:min-item-size="30"
+					:min-item-size="47"
 					class="full-height scroller"
 					style="max-height: 440px"
 				>
 					<template #default="{ item, index, active }">
+						<div v-if="item.type === 'render-title'" :class="$style.listHeader">
+							<N8nText bold>{{ item.title }}</N8nText>
+						</div>
 						<DynamicScrollerItem
+							v-else
 							:item="item"
 							:active="active"
 							:size-dependencies="[item.name]"
 							:data-index="index"
 						>
-							<div v-if="item.type === 'render-title'" :class="$style.listHeader">
-								<N8nText bold>{{ item.title }}</N8nText>
-							</div>
-							<div v-else :class="$style.listItem">
+							<div :class="$style.listItem">
 								<RouterLink
 									v-if="item.type === 'credential'"
 									target="_blank"
@@ -186,12 +180,12 @@ async function pullWorkfolder() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button type="tertiary" class="mr-2xs" @click="close">
+				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
-				</n8n-button>
-				<n8n-button type="primary" @click="pullWorkfolder">
+				</N8nButton>
+				<N8nButton type="primary" @click="pullWorkfolder">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.save') }}
-				</n8n-button>
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
@@ -212,20 +206,10 @@ async function pullWorkfolder() {
 	}
 }
 
-.fileLink {
-	svg {
-		display: none;
-		margin-left: var(--spacing-4xs);
-	}
-
-	&:hover svg {
-		display: inline-flex;
-	}
-}
-
 .listHeader {
 	padding-top: 16px;
 	padding-bottom: 12px;
+	height: 47px;
 }
 
 .listBadge {
