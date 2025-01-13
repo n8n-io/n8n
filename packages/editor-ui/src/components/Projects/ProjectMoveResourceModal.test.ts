@@ -103,15 +103,13 @@ describe('ProjectMoveResourceModal', () => {
 			},
 		};
 
-		const { queryByText } = renderComponent({ props });
+		const { getByText } = renderComponent({ props });
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
 			'User clicked to move a credential',
 			expect.objectContaining({ credential_id: '1' }),
 		);
 		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
-		expect(
-			queryByText(/Moving will remove any existing sharing for this credential/),
-		).not.toBeInTheDocument();
+		expect(getByText(/Moving will remove any existing sharing for this credential/)).toBeVisible();
 	});
 
 	it('should send credential IDs when workflow moved with used credentials and checkbox checked', async () => {

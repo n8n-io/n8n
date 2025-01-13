@@ -184,10 +184,7 @@ onMounted(async () => {
 					></N8nOption>
 				</N8nSelect>
 				<N8nText>
-					<i18n-t
-						v-if="isResourceWorkflow"
-						keypath="projects.move.resource.modal.message.sharingNote"
-					>
+					<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
 						<template #note
 							><strong>{{
 								i18n.baseText('projects.move.resource.modal.message.note')
