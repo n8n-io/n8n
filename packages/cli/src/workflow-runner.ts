@@ -145,7 +145,7 @@ export class WorkflowRunner {
 			const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
-			const hooks = executionLifecycleHooksFactory.forExecutionOnMain(data, executionId);
+			const hooks = executionLifecycleHooksFactory.forMainProcess(data, executionId);
 			await hooks.executeHook('workflowExecuteBefore', [undefined, data.executionData]);
 			await hooks.executeHook('workflowExecuteAfter', [runData]);
 			responsePromise?.reject(error);
@@ -272,7 +272,7 @@ export class WorkflowRunner {
 
 		try {
 			const executionLifecycleHooksFactory = Container.get(ExecutionLifecycleHooksFactory);
-			additionalData.hooks = executionLifecycleHooksFactory.forExecutionOnMain(data, executionId);
+			additionalData.hooks = executionLifecycleHooksFactory.forMainProcess(data, executionId);
 
 			additionalData.hooks.addHook('sendResponse', async (response) => {
 				this.activeExecutions.resolveResponsePromise(executionId, response);

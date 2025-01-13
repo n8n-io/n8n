@@ -64,7 +64,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 		workflowData.settings = {};
 	});
 
-	describe('forExecutionOnMain', () => {
+	describe('forMainProcess', () => {
 		const executionData = mock<IWorkflowExecutionDataProcess>({
 			executionMode: 'manual',
 			workflowData,
@@ -80,7 +80,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 		};
 
 		it('should add all required hooks', () => {
-			const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+			const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 			const registeredHooks = (hooks as any).registered;
 			expect(registeredHooks.nodeExecuteBefore).toHaveLength(2);
@@ -92,7 +92,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 		});
 
 		it('should create hooks and execute them correctly', async () => {
-			const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+			const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 			// Test workflowExecuteBefore hook
 			await hooks.executeHook('workflowExecuteBefore', []);
@@ -146,7 +146,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 		});
 
 		it('should handle waiting status in workflowExecuteAfter', async () => {
-			const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+			const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 			await hooks.executeHook('workflowExecuteAfter', [
 				{
@@ -165,7 +165,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 
 		describe('static data', () => {
 			it('should not update for manual executions', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 				await hooks.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
@@ -173,7 +173,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			});
 
 			it('should update for non-manual executions', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(
+				const hooks = hooksFactory.forMainProcess(
 					{
 						...executionData,
 						executionMode: 'webhook',
@@ -192,7 +192,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 
 		describe('execution saving', () => {
 			it('should cleanup manual executions, if saving is disabled', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 				// Mock workflow settings to not save manual executions
 				workflowData.settings = { saveManualExecutions: false };
@@ -205,7 +205,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			it('should handle execution progress saving', async () => {
 				workflowData.settings = { saveExecutionProgress: true };
 
-				const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 				const taskData = mock<ITaskData>({});
 				const runExecutionData: IRunExecutionData = {
@@ -238,7 +238,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 				// Set workflow settings to save error executions
 				workflowData.settings = { saveDataErrorExecution: 'all' };
 
-				const hooks = hooksFactory.forExecutionOnMain(
+				const hooks = hooksFactory.forMainProcess(
 					{
 						...executionData,
 						executionMode: 'webhook',
@@ -277,7 +277,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			});
 
 			it('should handle static data save errors', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(
+				const hooks = hooksFactory.forMainProcess(
 					{
 						...executionData,
 						executionMode: 'webhook',
@@ -294,7 +294,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			});
 
 			it('should handle execution save errors', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 				const error = new Error('DB save failed');
 				executionRepository.updateExistingExecution.mockRejectedValueOnce(error);
@@ -307,7 +307,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 
 		describe('metadata handling', () => {
 			it('should save execution metadata when present', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 				const runDataWithMetadata: IRun = {
 					...fullRunData,
@@ -329,7 +329,7 @@ describe('ExecutionLifecycleHooksFactory', () => {
 			});
 
 			it('should handle metadata save errors gracefully', async () => {
-				const hooks = hooksFactory.forExecutionOnMain(executionData, executionId);
+				const hooks = hooksFactory.forMainProcess(executionData, executionId);
 
 				const error = new Error('Metadata save failed');
 				executionMetadataService.save.mockRejectedValueOnce(error);

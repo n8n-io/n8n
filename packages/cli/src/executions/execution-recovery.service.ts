@@ -183,7 +183,7 @@ export class ExecutionRecoveryService {
 			runData: execution,
 		});
 
-		const lifecycleHooks = this.executionLifecycleHooksFactory.forExecutionOnMain(
+		const lifecycleHooks = this.executionLifecycleHooksFactory.forMainProcess(
 			{
 				userId: '',
 				workflowData: execution.workflowData,

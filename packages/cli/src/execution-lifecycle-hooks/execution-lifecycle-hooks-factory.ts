@@ -43,8 +43,8 @@ export class ExecutionLifecycleHooksFactory {
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
-	/** Returns ExecutionHooks instance for running the main workflow */
-	forExecutionOnMain(
+	/** Returns internal hooks for running a workflow in the main process in regular mode. */
+	forMainProcess(
 		{ executionMode, workflowData, pushRef, retryOf }: IWorkflowExecutionDataProcess,
 		executionId: string,
 	) {
