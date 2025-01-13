@@ -58,7 +58,7 @@ export class TelegramTrigger implements INodeType {
 						name: '*',
 						value: '*',
 						description:
-							'All updates except chat_member, message_reaction, and message_reaction_count (default behavior of Telegram API as they produces a lot of calls of webhooks)',
+							'All updates except "Chat Member", "Message Reaction", and "Message Reaction Count" (default behavior of Telegram API as they produces a lot of calls of updates)',
 					},
 					{
 						name: 'Business Connection',
