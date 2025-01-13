@@ -5,8 +5,7 @@ import { createEventBus } from 'n8n-design-system';
 import userEvent from '@testing-library/user-event';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
-import { within, waitFor } from '@testing-library/dom';
-// import { flushPromises } from '@vue/test-utils';
+import { waitFor } from '@testing-library/dom';
 
 const eventBus = createEventBus();
 
