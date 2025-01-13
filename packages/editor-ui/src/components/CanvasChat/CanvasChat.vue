@@ -38,6 +38,7 @@ const messages = ref<ChatMessage[]>([]);
 const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
+const ws = ref<WebSocket | null>(null);
 
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
@@ -206,6 +207,17 @@ async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 			nodeData: payload.nodeData,
 			source: payload.source,
 		});
+		ws.value = new WebSocket(
+			`http://localhost:5678/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
+		);
+
+		ws.value.onmessage = (event) => {
+			console.log(event.data);
+			if (event.data === 'responding to chat trigger') {
+				ws.value?.send(JSON.stringify({ message: 'responding to chat node' }));
+			}
+		};
+		console.log('handler connected');
 
 		if (response) {
 			await createExecutionPromise();

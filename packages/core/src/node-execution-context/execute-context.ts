@@ -211,7 +211,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	sendChatMessage(message: string) {
 		const connection = this.additionalData.getChatConnection?.(this.additionalData.executionId);
-		if (connection) connection.send(message);
+		if (connection) {
+			connection.send(message);
+			return;
+		}
 
 		throw new ApplicationError('WebSocket connection is not available');
 	}

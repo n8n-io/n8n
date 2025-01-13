@@ -2,7 +2,7 @@ import { Container, Service } from '@n8n/di';
 import type { Application, Request } from 'express';
 import type { Server } from 'http';
 import { ServerResponse } from 'http';
-import type { IExecuteData, INode, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
 import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
@@ -16,7 +16,12 @@ import { WorkflowRunner } from '@/workflow-runner';
 import type { Project } from '../databases/entities/project';
 import { OwnershipService } from '../services/ownership.service';
 
-type ChatRequest = Request<{ workflowId: string }, {}, {}, { sessionId: string }> & {
+type ChatRequest = Request<
+	{ workflowId: string },
+	{},
+	{},
+	{ sessionId: string; executionId?: string }
+> & {
 	ws: WebSocket;
 };
 type Session = {
@@ -78,7 +83,7 @@ export class ChatService {
 	async startSession(req: ChatRequest) {
 		const {
 			ws,
-			query: { sessionId },
+			query: { sessionId, executionId },
 		} = req;
 		if (!sessionId) {
 			ws.send('The query parameter "sessionId" is missing!');
@@ -86,7 +91,7 @@ export class ChatService {
 			return;
 		}
 
-		const session: Session = this.sessions.get(sessionId) ?? { connection: ws };
+		const session: Session = this.sessions.get(sessionId) ?? { connection: ws, executionId };
 		// Make sure that the session always points to the latest websocket connection
 		session.connection = ws;
 
@@ -122,6 +127,15 @@ export class ChatService {
 		};
 	}
 
+	updateSessionExecutionId(sessionId: string, executionId: string) {
+		const session = this.sessions.get(sessionId);
+		if (session) {
+			session.executionId = executionId;
+		}
+
+		throw new NotFoundError(`The session "${sessionId}" does not exist.`);
+	}
+
 	private async resumeExecution(executionId: string, data: RawData) {
 		const execution = await this.getExecution(executionId ?? '');
 
@@ -144,20 +158,9 @@ export class ChatService {
 		const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 		const message = jsonParse<string>(buffer.toString('utf8'));
 
-		const workflowStartNode = execution.workflowData.nodes.find(
-			(node) => node.name === (execution.data.resultData.lastNodeExecuted as string),
-		);
-
 		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
 
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			node: workflowStartNode as INode,
-			data: {
-				main: [[{ json: { message } }]],
-			},
-			source: null,
-		});
+		runExecutionData.executionData!.nodeExecutionStack[0].data.main = [[{ json: { message } }]];
 
 		let project: Project | undefined = undefined;
 		try {
