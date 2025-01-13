@@ -201,9 +201,13 @@ watch(
 				<n8n-button
 					v-if="runs.length > 0"
 					size="small"
-					:icon="showConfig ? 'eye' : 'eye-slash'"
+					:icon="showConfig ? 'eye-slash' : 'eye'"
 					data-test-id="toggle-config-button"
-					label="Hide config"
+					:label="
+						showConfig
+							? locale.baseText('testDefinition.edit.hideConfig')
+							: locale.baseText('testDefinition.edit.showConfig')
+					"
 					type="tertiary"
 					@click="toggleConfig"
 				/>
@@ -221,7 +225,7 @@ watch(
 					:class="$style.runTestButton"
 					size="small"
 					data-test-id="run-test-button"
-					:label="'Save Test'"
+					:label="locale.baseText('testDefinition.edit.saveTest')"
 					type="primary"
 					@click="onSaveTest"
 				/>
@@ -364,15 +368,13 @@ watch(
 <style module lang="scss">
 .container {
 	--evaluation-edit-panel-width: 24rem;
-	--metrics-chart-height: 200px;
-
-	width: 100%;
+	--metrics-chart-height: 13rem;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing-m);
 
 	@include mixins.breakpoint('lg-and-up') {
+		--metrics-chart-height: 16rem;
 		--evaluation-edit-panel-width: 35rem;
 	}
 }
@@ -380,9 +382,6 @@ watch(
 .content {
 	display: flex;
 	overflow-y: hidden;
-	max-width: 100%;
-	max-height: 100%;
-	justify-content: space-between;
 	position: relative;
 
 	.noRuns & {
@@ -392,62 +391,46 @@ watch(
 }
 
 .headerSection {
-	grid-area: header;
-	justify-self: start;
-	width: 100%;
-	background: var(--color-background-xlight);
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-start;
 	background-color: var(--color-background-light);
-	padding-top: var(--spacing-l);
 	width: 100%;
+}
 
-	.headerMeta {
-		width: 100%;
-		max-width: 50%;
-	}
+.headerMeta {
+	max-width: 50%;
+}
+
+.name {
+	display: flex;
+	align-items: center;
 
 	.lastSaved {
 		font-size: var(--font-size-s);
 		color: var(--color-text-light);
 	}
-
-	.controls {
-		display: flex;
-		gap: var(--spacing-s);
-		top: 0;
-		z-index: 1;
-	}
-
-	.name {
-		display: flex;
-		align-items: center;
-	}
 }
 
-.runsTableTotal {
-	display: block;
-	margin-bottom: var(--spacing-xs);
+.descriptionInput {
+	margin-top: var(--spacing-2xs);
 }
+
 .runs {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-m);
 	flex: 1;
-	min-width: 0;
 	padding-top: var(--spacing-3xs);
-	margin-top: var(--spacing-2xl);
-	overflow-y: auto;
-	overflow-x: hidden;
+	overflow: auto hidden;
+
+	@include mixins.breakpoint('lg-and-up') {
+		margin-top: var(--spacing-2xl);
+	}
 }
 
-.runsTableHeading {
-	display: block;
-	margin-bottom: var(--spacing-xl);
-}
 .panelBlock {
-	width: var(--evaluation-edit-panel-width, 35rem);
+	width: var(--evaluation-edit-panel-width);
 	display: grid;
 	height: 100%;
 	overflow-y: auto;
@@ -458,15 +441,16 @@ watch(
 
 	&.hidden {
 		margin-left: 0;
-		overflow: hidden;
 		width: 0;
+		overflow: hidden;
 		flex-shrink: 1;
 	}
+
 	.noRuns & {
-		max-height: 100%;
 		overflow-y: initial;
 	}
 }
+
 .panelIntro {
 	font-size: var(--font-size-m);
 	color: var(--color-text-dark);
@@ -475,6 +459,7 @@ watch(
 	position: relative;
 	display: block;
 }
+
 .step {
 	position: relative;
 
@@ -482,11 +467,13 @@ watch(
 		margin-top: var(--spacing-m);
 	}
 }
+
 .introArrow {
 	--arrow-height: 1.5rem;
+	margin-bottom: -1rem;
 	justify-self: center;
-	margin-bottom: -0.8rem;
 }
+
 .evaluationArrows {
 	--arrow-height: 22rem;
 	display: flex;
@@ -501,7 +488,5 @@ watch(
 .controls {
 	display: flex;
 	gap: var(--spacing-s);
-	top: 0;
-	z-index: 1;
 }
 </style>

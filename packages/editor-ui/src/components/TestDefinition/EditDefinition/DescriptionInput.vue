@@ -18,7 +18,7 @@ const locale = useI18n();
 <template>
 	<div :class="$style.description">
 		<template v-if="!modelValue.isEditing">
-			<span :class="$style.descriptionText">
+			<span :class="$style.descriptionText" @click="startEditing('description')">
 				<n8n-icon
 					v-if="modelValue.value.length === 0"
 					:class="$style.icon"

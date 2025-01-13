@@ -55,6 +55,12 @@ const emit = defineEmits<{
 	selectionChange: [rows: TableRow[]];
 }>();
 
+// Watch for changes to the data prop and update the local data state
+// This preserves selected rows when the data changes by:
+// 1. Storing current selection IDs
+// 2. Updating local data with new data
+// 3. Re-applying default sort
+// 4. Re-selecting previously selected rows that still exist in new data
 watch(
 	() => props.data,
 	async (newData) => {
@@ -101,9 +107,9 @@ onUnmounted(() => {
 <template>
 	<ElTable
 		ref="tableRef"
+		:class="$style.table"
 		:default-sort="defaultSort"
 		:data="localData"
-		style="width: 100%"
 		:border="true"
 		:max-height="tableHeight"
 		resizable
@@ -114,14 +120,12 @@ onUnmounted(() => {
 			v-if="selectable"
 			type="selection"
 			:selectable="selectableFilter"
-			width="55"
 			data-test-id="table-column-select"
 		/>
 		<ElTableColumn
 			v-for="column in columns"
 			:key="column.prop"
 			v-bind="column"
-			style="width: 100%"
 			:resizable="true"
 			data-test-id="table-column"
 		>
@@ -137,3 +141,11 @@ onUnmounted(() => {
 		</ElTableColumn>
 	</ElTable>
 </template>
+
+<style module lang="scss">
+.table {
+	:global(.el-table__cell) {
+		padding: var(--spacing-3xs) 0;
+	}
+}
+</style>
