@@ -118,6 +118,53 @@ describe('FormTrigger, formWebhook', () => {
 		});
 	});
 
+	it('should sanitize form descriptions', async () => {
+		const mockRender = jest.fn();
+
+		const formDescription = [
+			{ description: 'Test Description', expected: 'Test Description' },
+			{ description: '<i>hello</i>', expected: '<i>hello</i>' },
+			{ description: '<script>alert("hello world")</script>', expected: '' },
+		];
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+
+		for (const { description, expected } of formDescription) {
+			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
+
+			await formWebhook(executeFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+				appendAttribution: true,
+				buttonLabel: 'Submit',
+				formDescription: expected,
+				formFields: [
+					{
+						defaultValue: '',
+						errorId: 'error-field-0',
+						id: 'field-0',
+						inputRequired: 'form-required',
+						isInput: true,
+						label: 'Name',
+						placeholder: undefined,
+						type: 'text',
+					},
+				],
+				formSubmittedText: 'Your response has been recorded',
+				formTitle: 'Test Form',
+				n8nWebsiteLink:
+					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+				testRun: true,
+				useResponseData: false,
+				validForm: true,
+			});
+		}
+	});
+
 	it('should return workflowData on POST request', async () => {
 		const mockStatus = jest.fn();
 		const mockEnd = jest.fn();
