@@ -6,14 +6,8 @@ import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import {
-	ErrorReporter,
-	Logger,
-	InstanceSettings,
-	WorkflowExecute,
-	isObjectLiteral,
-} from 'n8n-core';
-import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
+import { ErrorReporter, Logger, InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ApplicationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -69,58 +63,9 @@ import { UrlService } from './services/url.service';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
 import { TaskRequester } from './task-runners/task-managers/task-requester';
 import { PermissionChecker } from './user-management/permission-checker';
+import { objectToError } from './utils/object-to-error';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
-
-export function objectToError(errorObject: unknown, workflow: Workflow): Error {
-	// TODO: Expand with other error types
-	if (errorObject instanceof Error) {
-		// If it's already an Error instance, return it as is.
-		return errorObject;
-	} else if (
-		isObjectLiteral(errorObject) &&
-		'message' in errorObject &&
-		typeof errorObject.message === 'string'
-	) {
-		// If it's an object with a 'message' property, create a new Error instance.
-		let error: Error | undefined;
-		if (
-			'node' in errorObject &&
-			isObjectLiteral(errorObject.node) &&
-			typeof errorObject.node.name === 'string'
-		) {
-			const node = workflow.getNode(errorObject.node.name);
-
-			if (node) {
-				error = new NodeOperationError(
-					node,
-					errorObject as unknown as Error,
-					errorObject as object,
-				);
-			}
-		}
-
-		if (error === undefined) {
-			error = new Error(errorObject.message);
-		}
-
-		if ('description' in errorObject) {
-			// @ts-expect-error Error descriptions are surfaced by the UI but
-			// not all backend errors account for this property yet.
-			error.description = errorObject.description as string;
-		}
-
-		if ('stack' in errorObject) {
-			// If there's a 'stack' property, set it on the new Error instance.
-			error.stack = errorObject.stack as string;
-		}
-
-		return error;
-	} else {
-		// If it's neither an Error nor an object with a 'message' property, create a generic Error.
-		return new Error('An error occurred');
-	}
-}
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
