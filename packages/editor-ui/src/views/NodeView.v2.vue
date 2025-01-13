@@ -1385,7 +1385,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
-				isProductionExecutionPreview.value = json.executionMode !== 'manual';
+				isProductionExecutionPreview.value =
+					json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
 
 				await onOpenExecution(json.executionId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
