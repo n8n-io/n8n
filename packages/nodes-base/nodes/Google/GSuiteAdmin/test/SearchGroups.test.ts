@@ -49,12 +49,4 @@ describe('GenericFunctions - searchGroups', () => {
 
 		expect(result).toEqual({ results: [] });
 	});
-
-	it('should warn and return an empty array when no groups are found', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([]);
-
-		const result = await searchGroups.call(mockContext);
-
-		expect(result).toEqual({ results: [] });
-	});
 });

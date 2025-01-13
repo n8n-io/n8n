@@ -85,15 +85,14 @@ export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeLis
 
 	// Handle cases where no users are found
 	if (!responseData || responseData.length === 0) {
-		console.warn('No users found in the response');
 		return { results: [] };
 	}
 
 	//Map the API response
 	const results: INodeListSearchItems[] = responseData.map(
-		(user: { name?: { fullName?: string }; primaryEmail?: string; id?: string }) => ({
-			name: user.name?.fullName || user.primaryEmail || 'Unnamed User',
-			value: user.id || user.primaryEmail,
+		(user: { name?: { fullName?: string }; id?: string }) => ({
+			name: user.name?.fullName,
+			value: user.id,
 		}),
 	);
 
@@ -117,7 +116,6 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 
 	// Handle cases where no groups are found
 	if (!responseData || responseData.length === 0) {
-		console.warn('No groups found in the response');
 		return { results: [] };
 	}
 
@@ -125,7 +123,7 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 	const results: INodeListSearchItems[] = responseData.map(
 		(group: { name?: string; email?: string; id?: string }) => ({
 			name: group.name || group.email || 'Unnamed Group',
-			value: group.id || group.email,
+			value: group.id,
 		}),
 	);
 

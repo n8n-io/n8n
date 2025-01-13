@@ -15,10 +15,19 @@ describe('googleApiRequestAllItems', () => {
 		jest.clearAllMocks();
 	});
 	it('should return all items across multiple pages', async () => {
-		(mockContext.helpers.requestOAuth2 as jest.Mock).mockResolvedValueOnce({
-			nextPageToken: '',
-			items: [{ id: '1' }, { id: '2' }],
-		});
+		(mockContext.helpers.requestOAuth2 as jest.Mock)
+			.mockResolvedValueOnce({
+				nextPageToken: 'pageToken1',
+				items: [{ id: '1' }, { id: '2' }],
+			})
+			.mockResolvedValueOnce({
+				nextPageToken: 'pageToken2',
+				items: [{ id: '3' }, { id: '4' }],
+			})
+			.mockResolvedValueOnce({
+				nextPageToken: '',
+				items: [{ id: '5' }],
+			});
 
 		const result = await googleApiRequestAllItems.call(
 			mockContext,
@@ -27,13 +36,39 @@ describe('googleApiRequestAllItems', () => {
 			'/example/resource',
 		);
 
-		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
-		expect(mockContext.helpers.requestOAuth2).toHaveBeenCalledTimes(1);
-		expect(mockContext.helpers.requestOAuth2).toHaveBeenCalledWith(
+		expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }]);
+		expect(mockContext.helpers.requestOAuth2).toHaveBeenCalledTimes(3);
+		expect(mockContext.helpers.requestOAuth2).toHaveBeenNthCalledWith(
+			1,
 			'gSuiteAdminOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				qs: expect.objectContaining({ pageToken: '', maxResults: 100 }),
+				qs: { maxResults: 100, pageToken: '' },
+				headers: { 'Content-Type': 'application/json' },
+				uri: 'https://www.googleapis.com/admin/example/resource',
+				json: true,
+			}),
+		);
+		expect(mockContext.helpers.requestOAuth2).toHaveBeenNthCalledWith(
+			2,
+			'gSuiteAdminOAuth2Api',
+			expect.objectContaining({
+				method: 'GET',
+				qs: { maxResults: 100, pageToken: '' },
+				headers: { 'Content-Type': 'application/json' },
+				uri: 'https://www.googleapis.com/admin/example/resource',
+				json: true,
+			}),
+		);
+		expect(mockContext.helpers.requestOAuth2).toHaveBeenNthCalledWith(
+			3,
+			'gSuiteAdminOAuth2Api',
+			expect.objectContaining({
+				method: 'GET',
+				qs: { maxResults: 100, pageToken: '' },
+				headers: { 'Content-Type': 'application/json' },
+				uri: 'https://www.googleapis.com/admin/example/resource',
+				json: true,
 			}),
 		);
 	});
@@ -55,7 +90,7 @@ describe('googleApiRequestAllItems', () => {
 		expect(mockContext.helpers.requestOAuth2).toHaveBeenCalledTimes(1);
 	});
 
-	it('should handle empty responses gracefully', async () => {
+	it('should handle empty responses', async () => {
 		(mockContext.helpers.requestOAuth2 as jest.Mock).mockResolvedValueOnce({
 			nextPageToken: '',
 			items: [],

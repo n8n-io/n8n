@@ -114,7 +114,7 @@ export class GSuiteAdmin implements INodeType {
 					console.warn('No Custom Fields found in additionalFields.');
 					return [
 						{
-							name: 'Please Select a Schema First.',
+							name: 'Invalid Schema: Missing schemaName.',
 							value: '',
 						},
 					];
@@ -130,7 +130,6 @@ export class GSuiteAdmin implements INodeType {
 						this,
 						'GET',
 						`/directory/v1/customer/my_customer/schemas/${schemaName}`,
-						//'/directory/v1/customer/my_customer/schemas/new',
 					);
 
 					if (schema.fields && Array.isArray(schema.fields)) {
@@ -139,7 +138,6 @@ export class GSuiteAdmin implements INodeType {
 							value: field.fieldName,
 						}));
 					} else {
-						console.warn('No fields found for the schema.');
 					}
 				} catch (error) {
 					console.error('Error fetching schema fields:', error);
@@ -214,9 +212,7 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/delete
 					if (operation === 'delete') {
-						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
-
+						const groupId = (this.getNodeParameter('groupId', i) as IDataObject).value;
 						if (!groupId) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -236,8 +232,7 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/get
 					if (operation === 'get') {
-						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
+						const groupId = (this.getNodeParameter('groupId', i) as IDataObject).value;
 
 						if (!groupId) {
 							throw new NodeOperationError(
@@ -330,8 +325,7 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/update
 					if (operation === 'update') {
-						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
+						const groupId = (this.getNodeParameter('groupId', i) as IDataObject).value;
 
 						if (!groupId) {
 							throw new NodeOperationError(
@@ -359,11 +353,18 @@ export class GSuiteAdmin implements INodeType {
 				if (resource === 'user') {
 					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/members/insert
 					if (operation === 'addToGroup') {
-						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
+						const groupId = (this.getNodeParameter('groupId', i) as IDataObject).value;
+						const userIdParam = this.getNodeParameter('userId', i);
+						const userId =
+							typeof userIdParam === 'string' ? userIdParam : (userIdParam as IDataObject)?.value;
 
-						const userIdRaw = this.getNodeParameter('userId', i) as any;
-						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+						if (!userId || typeof userId !== 'string') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Invalid or missing user ID. Please provide a valid user ID.',
+								{ itemIndex: i },
+							);
+						}
 
 						let userEmail: string | undefined;
 
@@ -384,6 +385,7 @@ export class GSuiteAdmin implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Unable to determine the user email for adding to the group.',
+								{ itemIndex: i },
 							);
 						}
 
@@ -456,7 +458,6 @@ export class GSuiteAdmin implements INodeType {
 						if (additionalFields.customFields) {
 							const customFields = (additionalFields.customFields as IDataObject)
 								.fieldValues as IDataObject[];
-							console.log('Custom Fields:', customFields);
 							const customSchemas: IDataObject = {};
 							customFields.forEach((field) => {
 								const { schemaName, fieldName, value } = field as {
@@ -493,9 +494,7 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/delete
 					if (operation === 'delete') {
-						const userIdRaw = this.getNodeParameter('userId', i) as any;
-						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
-
+						const userId = (this.getNodeParameter('userId', i) as IDataObject).value;
 						if (!userId) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -516,8 +515,7 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/get
 					if (operation === 'get') {
-						const userIdRaw = this.getNodeParameter('userId', i) as any;
-						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+						const userId = (this.getNodeParameter('userId', i) as IDataObject).value;
 
 						const output = this.getNodeParameter('output', i);
 						const projection = this.getNodeParameter('projection', i);
@@ -663,10 +661,8 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/members/delete
 					if (operation === 'removeFromGroup') {
-						const groupIdRaw = this.getNodeParameter('groupId', i) as any;
-						const groupId = typeof groupIdRaw === 'string' ? groupIdRaw : groupIdRaw.value;
-						const userIdRaw = this.getNodeParameter('userId', i) as any;
-						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+						const groupId = (this.getNodeParameter('groupId', i) as IDataObject).value;
+						const userId = (this.getNodeParameter('userId', i) as IDataObject).value;
 						const body: IDataObject = {
 							email: userId,
 							role: 'MEMBER',
@@ -683,8 +679,7 @@ export class GSuiteAdmin implements INodeType {
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/users/update
 					if (operation === 'update') {
-						const userIdRaw = this.getNodeParameter('userId', i) as any;
-						const userId = typeof userIdRaw === 'string' ? userIdRaw : userIdRaw.value;
+						const userId = (this.getNodeParameter('userId', i) as IDataObject).value;
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						// Validate User ID
@@ -703,6 +698,7 @@ export class GSuiteAdmin implements INodeType {
 							phones?: IDataObject[];
 							suspended?: boolean;
 							roles?: { [key: string]: boolean };
+							customSchemas?: IDataObject;
 						} = {};
 
 						if (updateFields.firstName) {
@@ -751,6 +747,34 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
+						if (updateFields.customFields) {
+							const customFields = (updateFields.customFields as IDataObject)
+								.fieldValues as IDataObject[];
+							const customSchemas: IDataObject = {};
+							customFields.forEach((field) => {
+								const { schemaName, fieldName, value } = field as {
+									schemaName: string;
+									fieldName: string;
+									value: any;
+								};
+
+								if (!schemaName || !fieldName || value === undefined || value === '') {
+									console.error('Missing schemaName, fieldName, or value in customFields:', field);
+									return;
+								}
+
+								if (!customSchemas[schemaName]) {
+									customSchemas[schemaName] = {};
+								}
+
+								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
+							});
+
+							if (Object.keys(customSchemas).length > 0) {
+								body.customSchemas = customSchemas;
+							}
+						}
+
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
@@ -775,7 +799,7 @@ export class GSuiteAdmin implements INodeType {
 								{ itemIndex: i },
 							);
 						}
-						console.log('deviceId', deviceId);
+
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',

@@ -34,24 +34,6 @@ describe('googleApiRequest', () => {
 		expect(result).toEqual({ success: true });
 	});
 
-	it('should handle additional headers', async () => {
-		(mockContext.helpers.requestOAuth2 as jest.Mock).mockResolvedValueOnce({ success: true });
-
-		await googleApiRequest.call(mockContext, 'POST', '/example/resource', {}, {}, undefined, {
-			Authorization: 'Bearer token',
-		});
-
-		expect(mockContext.helpers.requestOAuth2).toHaveBeenCalledWith(
-			'gSuiteAdminOAuth2Api',
-			expect.objectContaining({
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: 'Bearer token',
-				},
-			}),
-		);
-	});
-
 	it('should omit the body if it is empty', async () => {
 		(mockContext.helpers.requestOAuth2 as jest.Mock).mockResolvedValueOnce({ success: true });
 

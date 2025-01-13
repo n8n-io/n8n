@@ -5,18 +5,15 @@ describe('GenericFunctions - searchUsers', () => {
 	const mockGoogleApiRequestAllItems = jest.fn();
 
 	const mockContext = {
-		helpers: {
-			requestOAuth2: mockGoogleApiRequestAllItems,
-		},
+		googleApiRequestAllItems: mockGoogleApiRequestAllItems,
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
 		mockGoogleApiRequestAllItems.mockClear();
 	});
 
-	//TODO - this test need to be fixed
 	it('should return a list of users when API responds with users', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([
+		mockGoogleApiRequestAllItems.mockResolvedValueOnce([
 			{
 				id: '1',
 				name: { fullName: 'John Doe' },
@@ -37,35 +34,16 @@ describe('GenericFunctions - searchUsers', () => {
 				{ name: 'Jane Smith', value: '2' },
 			],
 		});
+		expect(mockGoogleApiRequestAllItems).toHaveBeenCalledWith(
+			'users',
+			'GET',
+			'/directory/v1/users',
+			{},
+			{ customer: 'my_customer' },
+		);
 	});
 
 	it('should return an empty array when API responds with no users', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([]);
-
-		const result = await searchUsers.call(mockContext);
-
-		expect(result).toEqual({ results: [] });
-	});
-
-	it('should handle missing fields gracefully', async () => {
-		mockGoogleApiRequestAllItems.mockResolvedValue([
-			{ primaryEmail: 'john.doe@example.com', id: '1' },
-			{ name: { fullName: 'Jane Smith' }, id: '2' },
-			{},
-		]);
-
-		const result = await searchUsers.call(mockContext);
-
-		expect(result).toEqual({
-			results: [
-				{ name: 'john.doe@example.com', value: '1' },
-				{ name: 'Jane Smith', value: '2' },
-				{ name: 'Unnamed User', value: undefined },
-			],
-		});
-	});
-
-	it('should warn and return an empty array when no users are found', async () => {
 		mockGoogleApiRequestAllItems.mockResolvedValue([]);
 
 		const result = await searchUsers.call(mockContext);
