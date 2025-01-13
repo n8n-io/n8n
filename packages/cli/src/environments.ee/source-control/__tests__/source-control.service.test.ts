@@ -19,6 +19,8 @@ describe('SourceControlService', () => {
 		Container.get(InstanceSettings),
 		mock(),
 		mock(),
+		mock(),
+		mock(),
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const tagRepository = mock<TagRepository>();

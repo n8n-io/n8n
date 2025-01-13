@@ -29,7 +29,10 @@ exports[`useCanvasOperations > copyNodes > should copy nodes 1`] = `
     }
   ],
   "connections": {},
-  "pinData": {}
+  "pinData": {},
+  "meta": {
+    "instanceId": ""
+  }
 }",
   ],
 ]
@@ -64,7 +67,10 @@ exports[`useCanvasOperations > cutNodes > should copy and delete nodes 1`] = `
     }
   ],
   "connections": {},
-  "pinData": {}
+  "pinData": {},
+  "meta": {
+    "instanceId": ""
+  }
 }",
   ],
 ]

@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from 'n8n-design-system';
-import type { SourceControlAggregatedFile } from '@/types/sourceControl.types';
+import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/constants';
@@ -71,7 +71,7 @@ describe('SourceControlPushModal', () => {
 	});
 
 	it('should toggle checkboxes', async () => {
-		const status: SourceControlAggregatedFile[] = [
+		const status: SourceControlledFile[] = [
 			{
 				id: 'gTbbBkkYTnNyX1jD',
 				name: 'My workflow 1',
@@ -160,7 +160,7 @@ describe('SourceControlPushModal', () => {
 	});
 
 	it('should push non workflow entities', async () => {
-		const status: SourceControlAggregatedFile[] = [
+		const status: SourceControlledFile[] = [
 			{
 				id: 'gTbbBkkYTnNyX1jD',
 				name: 'credential',
@@ -226,7 +226,7 @@ describe('SourceControlPushModal', () => {
 	});
 
 	it('should auto select currentWorkflow', async () => {
-		const status: SourceControlAggregatedFile[] = [
+		const status: SourceControlledFile[] = [
 			{
 				id: 'gTbbBkkYTnNyX1jD',
 				name: 'My workflow 1',
@@ -276,7 +276,7 @@ describe('SourceControlPushModal', () => {
 
 	describe('filters', () => {
 		it('should filter by name', async () => {
-			const status: SourceControlAggregatedFile[] = [
+			const status: SourceControlledFile[] = [
 				{
 					id: 'gTbbBkkYTnNyX1jD',
 					name: 'My workflow 1',
@@ -317,7 +317,7 @@ describe('SourceControlPushModal', () => {
 		});
 
 		it('should filter by status', async () => {
-			const status: SourceControlAggregatedFile[] = [
+			const status: SourceControlledFile[] = [
 				{
 					id: 'gTbbBkkYTnNyX1jD',
 					name: 'Created Workflow',
@@ -375,7 +375,7 @@ describe('SourceControlPushModal', () => {
 		});
 
 		it('should reset', async () => {
-			const status: SourceControlAggregatedFile[] = [
+			const status: SourceControlledFile[] = [
 				{
 					id: 'JIGKevgZagmJAnM6',
 					name: 'Modified workflow',

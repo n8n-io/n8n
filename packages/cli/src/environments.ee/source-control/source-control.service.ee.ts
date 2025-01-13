@@ -1,3 +1,8 @@
+import type {
+	PullWorkFolderRequestDto,
+	PushWorkFolderRequestDto,
+	SourceControlledFile,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
@@ -34,10 +39,7 @@ import type { ExportableCredential } from './types/exportable-credential';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
-import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
-import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { SourceControlledFile } from './types/source-controlled-file';
 
 @Service()
 export class SourceControlService {
@@ -207,7 +209,7 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(options: SourceControlPushWorkFolder): Promise<{
+	async pushWorkfolder(options: PushWorkFolderRequestDto): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
@@ -299,7 +301,7 @@ export class SourceControlService {
 			}
 		}
 
-		await this.gitService.commit(options.message ?? 'Updated Workfolder');
+		await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 
 		const pushResult = await this.gitService.push({
 			branch: this.sourceControlPreferencesService.getBranchName(),
@@ -358,7 +360,7 @@ export class SourceControlService {
 
 	async pullWorkfolder(
 		user: User,
-		options: SourceControllPullOptions,
+		options: PullWorkFolderRequestDto,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
@@ -382,7 +384,7 @@ export class SourceControlService {
 		const workflowsToBeImported = this.getWorkflowsToImport(statusResult);
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
-			options.userId,
+			user.id,
 		);
 		const workflowsToBeDeleted = this.getWorkflowsToDelete(statusResult);
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
@@ -392,7 +394,7 @@ export class SourceControlService {
 		const credentialsToBeImported = this.getCredentialsToImport(statusResult);
 		await this.sourceControlImportService.importCredentialsFromWorkFolder(
 			credentialsToBeImported,
-			options.userId,
+			user.id,
 		);
 		const credentialsToBeDeleted = this.getCredentialsToDelete(statusResult);
 		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(

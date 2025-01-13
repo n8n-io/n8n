@@ -2,11 +2,6 @@
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import type { EventBus } from 'n8n-design-system/utils';
-import {
-	type SourceControlAggregatedFile,
-	type SourceControlledFileType,
-	SOURCE_CONTROL_FILE_TYPE,
-} from '@/types/sourceControl.types';
 import { useI18n } from '@/composables/useI18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
@@ -20,9 +15,12 @@ import { RouterLink } from 'vue-router';
 import { getStatusText, getStatusTheme, getPullPriorityByStatus } from '@/utils/sourceControlUtils';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+
+type SourceControlledFileType = SourceControlledFile['type'];
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+	data: { eventBus: EventBus; status: SourceControlledFile[] };
 }>();
 
 const loadingService = useLoadingService();
@@ -40,27 +38,26 @@ const sortedFiles = computed(() =>
 );
 
 const groupedFilesByType = computed<
-	Partial<Record<SourceControlledFileType, SourceControlAggregatedFile[]>>
+	Partial<Record<SourceControlledFileType, SourceControlledFile[]>>
 >(() => groupBy(sortedFiles.value, 'type'));
 
 type ItemsList = Array<
-	| { type: 'render-title'; title: string; id: SourceControlledFileType }
-	| SourceControlAggregatedFile
+	{ type: 'render-title'; title: string; id: SourceControlledFileType } | SourceControlledFile
 >;
 
 const ITEM_TITLES: Record<Exclude<SourceControlledFileType, 'file'>, string> = {
-	[SOURCE_CONTROL_FILE_TYPE.WORKFLOW]: 'Workflows',
-	[SOURCE_CONTROL_FILE_TYPE.CREDENTIAL]: 'Credentials',
-	[SOURCE_CONTROL_FILE_TYPE.VARIABLES]: 'Variables',
-	[SOURCE_CONTROL_FILE_TYPE.TAGS]: 'Tags',
+	[SOURCE_CONTROL_FILE_TYPE.workflow]: 'Workflows',
+	[SOURCE_CONTROL_FILE_TYPE.credential]: 'Credentials',
+	[SOURCE_CONTROL_FILE_TYPE.variables]: 'Variables',
+	[SOURCE_CONTROL_FILE_TYPE.tags]: 'Tags',
 } as const;
 
 const files = computed<ItemsList>(() =>
 	[
-		SOURCE_CONTROL_FILE_TYPE.WORKFLOW,
-		SOURCE_CONTROL_FILE_TYPE.CREDENTIAL,
-		SOURCE_CONTROL_FILE_TYPE.VARIABLES,
-		SOURCE_CONTROL_FILE_TYPE.TAGS,
+		SOURCE_CONTROL_FILE_TYPE.workflow,
+		SOURCE_CONTROL_FILE_TYPE.credential,
+		SOURCE_CONTROL_FILE_TYPE.variables,
+		SOURCE_CONTROL_FILE_TYPE.tags,
 	].reduce<ItemsList>((acc, fileType) => {
 		if (!groupedFilesByType.value[fileType]) {
 			return acc;

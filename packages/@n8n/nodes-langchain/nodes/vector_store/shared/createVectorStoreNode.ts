@@ -111,17 +111,17 @@ function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePro
 			action: 'Add documents to vector store',
 		},
 		{
-			name: 'Retrieve Documents (As Vector Store for AI Agent)',
+			name: 'Retrieve Documents (As Vector Store for Chain/Tool)',
 			value: 'retrieve',
 			description: 'Retrieve documents from vector store to be used as vector store with AI nodes',
-			action: 'Retrieve documents for AI processing as Vector Store',
+			action: 'Retrieve documents for Chain/Tool as Vector Store',
 			outputConnectionType: NodeConnectionType.AiVectorStore,
 		},
 		{
 			name: 'Retrieve Documents (As Tool for AI Agent)',
 			value: 'retrieve-as-tool',
 			description: 'Retrieve documents from vector store to be used as tool with AI nodes',
-			action: 'Retrieve documents for AI processing as Tool',
+			action: 'Retrieve documents for AI Agent as Tool',
 			outputConnectionType: NodeConnectionType.AiTool,
 		},
 		{

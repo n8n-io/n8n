@@ -801,7 +801,6 @@ $--header-spacing: 20px;
 	color: $custom-font-dark;
 	font-size: 15px;
 	display: block;
-	min-width: 150px;
 }
 
 .activator {
@@ -847,6 +846,14 @@ $--header-spacing: 20px;
 	align-items: center;
 	gap: var(--spacing-m);
 	flex-wrap: nowrap;
+}
+
+@include mixins.breakpoint('xs-only') {
+	.name {
+		:deep(input) {
+			min-width: 180px;
+		}
+	}
 }
 </style>
 

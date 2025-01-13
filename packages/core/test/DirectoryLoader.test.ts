@@ -235,10 +235,7 @@ describe('DirectoryLoader', () => {
 					return JSON.stringify({});
 				}
 				if (path.endsWith('types/nodes.json')) {
-					return JSON.stringify([
-						{ name: 'n8n-nodes-testing.node1' },
-						{ name: 'n8n-nodes-testing.node2' },
-					]);
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
 				}
 				if (path.endsWith('types/credentials.json')) {
 					return JSON.stringify([]);
@@ -254,7 +251,7 @@ describe('DirectoryLoader', () => {
 				node1: { className: 'Node1', sourcePath: 'dist/Node1/Node1.node.js' },
 			});
 			expect(loader.types.nodes).toHaveLength(1);
-			expect(loader.types.nodes[0].name).toBe('n8n-nodes-testing.node1');
+			expect(loader.types.nodes[0].name).toBe('node1');
 			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
 		});
 
@@ -274,10 +271,7 @@ describe('DirectoryLoader', () => {
 					return JSON.stringify({});
 				}
 				if (path.endsWith('types/nodes.json')) {
-					return JSON.stringify([
-						{ name: 'n8n-nodes-testing.node1' },
-						{ name: 'n8n-nodes-testing.node2' },
-					]);
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
 				}
 				if (path.endsWith('types/credentials.json')) {
 					return JSON.stringify([]);
@@ -314,10 +308,7 @@ describe('DirectoryLoader', () => {
 					return JSON.stringify({});
 				}
 				if (path.endsWith('types/nodes.json')) {
-					return JSON.stringify([
-						{ name: 'n8n-nodes-testing.node1' },
-						{ name: 'n8n-nodes-testing.node2' },
-					]);
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
 				}
 				if (path.endsWith('types/credentials.json')) {
 					return JSON.stringify([]);
@@ -333,7 +324,7 @@ describe('DirectoryLoader', () => {
 				node2: { className: 'Node2', sourcePath: 'dist/Node2/Node2.node.js' },
 			});
 			expect(loader.types.nodes).toHaveLength(1);
-			expect(loader.types.nodes[0].name).toBe('n8n-nodes-testing.node2');
+			expect(loader.types.nodes[0].name).toBe('node2');
 			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
 		});
 	});
@@ -652,18 +643,6 @@ describe('DirectoryLoader', () => {
 				dark: 'icons/CUSTOM/dist/Node1/dark.svg',
 			});
 			expect(nodeWithIcon.description.icon).toBeUndefined();
-		});
-
-		it('should skip node if included in excludeNodes', () => {
-			const loader = new CustomDirectoryLoader(directory, ['CUSTOM.node1']);
-			const filePath = 'dist/Node1/Node1.node.js';
-
-			loader.loadNodeFromFile(filePath);
-
-			expect(loader.nodeTypes).toEqual({});
-			expect(loader.known.nodes).toEqual({});
-			expect(loader.types.nodes).toEqual([]);
-			expect(loader.loadedNodes).toEqual([]);
 		});
 
 		it('should skip node if not in includeNodes', () => {
