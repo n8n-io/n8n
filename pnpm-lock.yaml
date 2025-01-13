@@ -1851,6 +1851,9 @@ importers:
       rss-parser:
         specifier: 3.13.0
         version: 3.13.0
+      sanitize-html:
+        specifier: 2.12.1
+        version: 2.12.1
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -1936,6 +1939,9 @@ importers:
       '@types/rfc2047':
         specifier: ^2.0.1
         version: 2.0.1
+      '@types/sanitize-html':
+        specifier: ^2.11.0
+        version: 2.11.0
       '@types/showdown':
         specifier: ^1.9.4
         version: 1.9.4
