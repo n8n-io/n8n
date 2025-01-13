@@ -70,6 +70,10 @@ export function disableNode(name: string) {
 	cy.getByTestId('context-menu-item-toggle_activation').click();
 }
 
+export function getConnections() {
+	return cy.getByTestId('edge');
+}
+
 export function getConnectionBySourceAndTarget(source: string, target: string) {
 	return cy.ifCanvasVersion(
 		() =>

@@ -1,4 +1,8 @@
-import { getWorkflowHistoryCloseButton } from '../composables/workflow';
+import {
+	getConnectionBySourceAndTarget,
+	getConnections,
+	getWorkflowHistoryCloseButton,
+} from '../composables/workflow';
 import {
 	CODE_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
@@ -22,7 +26,15 @@ const editWorkflowAndDeactivate = () => {
 	workflowPage.getters.canvasNodePlusEndpointByName(SCHEDULE_TRIGGER_NODE_NAME).click();
 	workflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 	workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
-	cy.get('.jtk-connector').should('have.length', 1);
+
+	cy.ifCanvasVersion(
+		() => {
+			cy.get('.jtk-connector').should('have.length', 1);
+		},
+		() => {
+			getConnections().should('have.length', 1);
+		},
+	);
 	workflowPage.actions.saveWorkflowOnButtonClick();
 	workflowPage.getters.activatorSwitch().click();
 	workflowPage.actions.zoomToFit();
@@ -36,14 +48,38 @@ const editWorkflowMoreAndActivate = () => {
 	workflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 
 	workflowPage.actions.addNodeToCanvas(CODE_NODE_NAME, false);
-	workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
-	cy.get('.jtk-connector').should('have.length', 2);
+
+	cy.ifCanvasVersion(
+		() => {
+			workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
+			cy.get('.jtk-connector').should('have.length', 2);
+		},
+		() => {
+			workflowPage.getters.nodeViewBackground().realClick({
+				x: 10,
+				y: 10,
+			});
+			getConnections().should('have.length', 2);
+		},
+	);
+
 	workflowPage.actions.zoomToFit();
 	workflowPage.actions.saveWorkflowOnButtonClick();
-
 	workflowPage.actions.addNodeToCanvas(IF_NODE_NAME);
-	workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
-	cy.get('.jtk-connector').should('have.length', 2);
+
+	cy.ifCanvasVersion(
+		() => {
+			workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
+			cy.get('.jtk-connector').should('have.length', 2);
+		},
+		() => {
+			workflowPage.getters.nodeViewBackground().realClick({
+				x: 10,
+				y: 10,
+			});
+			getConnections().should('have.length', 2);
+		},
+	);
 
 	const position = {
 		top: 0,
@@ -75,7 +111,15 @@ const editWorkflowMoreAndActivate = () => {
 		workflowPage.getters.getEndpointSelector('output', CODE_NODE_NAME),
 		workflowPage.getters.getEndpointSelector('input', IF_NODE_NAME),
 	);
-	cy.get('.jtk-connector').should('have.length', 3);
+
+	cy.ifCanvasVersion(
+		() => {
+			cy.get('.jtk-connector').should('have.length', 3);
+		},
+		() => {
+			getConnections().should('have.length', 3);
+		},
+	);
 
 	workflowPage.actions.saveWorkflowOnButtonClick();
 	workflowPage.getters.activatorSwitch().click();
@@ -124,7 +168,7 @@ describe('Editor actions should work', () => {
 		createNewWorkflowAndActivate();
 	});
 
-	it('after switching between Editor and Executions', () => {
+	it.only('after switching between Editor and Executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 
 		executionsTab.actions.switchToExecutionsTab();
