@@ -995,6 +995,18 @@ describe('useCanvasOperations', () => {
 
 			expect(ndvStore.activeNodeName).toBe('Existing Node');
 		});
+
+		it('should set node as dirty when node is set active', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const node = createTestNode();
+
+			workflowsStore.getNodeById.mockImplementation(() => node);
+
+			const { setNodeActive } = useCanvasOperations({ router });
+			setNodeActive(node.id);
+
+			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(node.name, false);
+		});
 	});
 
 	describe('setNodeActiveByName', () => {
