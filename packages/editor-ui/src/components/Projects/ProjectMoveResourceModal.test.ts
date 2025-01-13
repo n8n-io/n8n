@@ -45,7 +45,7 @@ describe('ProjectMoveResourceModal', () => {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
 				resourceType: 'workflow',
-				resourceTypeLabel: 'Workflow',
+				resourceTypeLabel: 'workflow',
 				resource: {
 					id: '1',
 					homeProject: {
@@ -70,7 +70,7 @@ describe('ProjectMoveResourceModal', () => {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
 				resourceType: 'workflow',
-				resourceTypeLabel: 'Workflow',
+				resourceTypeLabel: 'workflow',
 				resource: {
 					id: '1',
 					homeProject: {
@@ -92,7 +92,7 @@ describe('ProjectMoveResourceModal', () => {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
 				resourceType: 'credential',
-				resourceTypeLabel: 'Credential',
+				resourceTypeLabel: 'credential',
 				resource: {
 					id: '1',
 					homeProject: {
@@ -103,12 +103,15 @@ describe('ProjectMoveResourceModal', () => {
 			},
 		};
 
-		renderComponent({ props });
+		const { queryByText } = renderComponent({ props });
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
 			'User clicked to move a credential',
 			expect.objectContaining({ credential_id: '1' }),
 		);
 		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		expect(
+			queryByText(/Moving will remove any existing sharing for this credential/),
+		).not.toBeInTheDocument();
 	});
 
 	it('should send credential IDs when workflow moved with used credentials and checkbox checked', async () => {
@@ -140,12 +143,13 @@ describe('ProjectMoveResourceModal', () => {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
 				resourceType: 'workflow',
-				resourceTypeLabel: 'Workflow',
+				resourceTypeLabel: 'workflow',
 				resource: movedWorkflow,
 			},
 		};
-		const { getByTestId } = renderComponent({ props });
+		const { getByTestId, getByText } = renderComponent({ props });
 		expect(getByTestId('project-move-resource-modal-button')).toBeDisabled();
+		expect(getByText(/Moving will remove any existing sharing for this workflow/)).toBeVisible();
 
 		const projectSelect = getByTestId('project-move-resource-modal-select');
 		expect(projectSelect).toBeVisible();

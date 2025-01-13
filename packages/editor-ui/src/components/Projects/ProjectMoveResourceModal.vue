@@ -54,7 +54,6 @@ const selectedProject = computed(() =>
 );
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
-const isResourceCredential = computed(() => props.data.resourceType === ResourceType.Credential);
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -186,7 +185,7 @@ onMounted(async () => {
 				</N8nSelect>
 				<N8nText>
 					<i18n-t
-						v-if="isResourceCredential"
+						v-if="isResourceWorkflow"
 						keypath="projects.move.resource.modal.message.sharingNote"
 					>
 						<template #note
