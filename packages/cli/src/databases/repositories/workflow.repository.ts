@@ -12,7 +12,6 @@ import {
 	type FindOptionsRelations,
 } from '@n8n/typeorm';
 
-import config from '@/config';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
@@ -132,7 +131,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const relations: string[] = [];
 
-		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
+		const areTagsEnabled = !this.globalConfig.tags.disabled;
 		const isDefaultSelect = options?.select === undefined;
 		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
 		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;

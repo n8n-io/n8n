@@ -61,10 +61,15 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
-		await this.errorReporter.init(
-			this.instanceSettings.instanceType,
-			this.globalConfig.sentry.backendDsn,
-		);
+
+		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
+		await this.errorReporter.init({
+			serverType: this.instanceSettings.instanceType,
+			dsn: backendDsn,
+			environment,
+			release: n8nVersion,
+			serverName: deploymentName,
+		});
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));

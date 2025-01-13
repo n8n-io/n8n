@@ -80,10 +80,9 @@ const createTagsStore = (id: STORES.TAGS | STORES.ANNOTATION_TAGS) => {
 				}
 
 				loading.value = true;
-				const retrievedTags = await tagsApi.getTags(
-					rootStore.restApiContext,
-					Boolean(withUsageCount),
-				);
+				const retrievedTags = await tagsApi.getTags(rootStore.restApiContext, {
+					withUsageCount,
+				});
 				setAllTags(retrievedTags);
 				loading.value = false;
 				return retrievedTags;
