@@ -1,35 +1,24 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { searchUsers, awsRequest } from '../GenericFunctions';
+import { searchUsers } from '../GenericFunctions';
 
-interface AwsResponse {
-	Users: Array<{ Username: string; Attributes: Array<{ Name: string; Value: string }> }>;
-	NextToken?: string;
-}
-
-jest.mock('../GenericFunctions', () => ({
-	awsRequest: jest.fn(),
-	searchUsers: jest.fn(),
-}));
-
-describe('searchUsers', () => {
-	const mockGetNodeParameter = jest.fn();
-	const mockAwsRequest = awsRequest as jest.Mock;
-	const mockSearchUsers = searchUsers as jest.Mock;
+describe('GenericFunctions - searchUsers', () => {
+	const mockRequestWithAuthentication = jest.fn();
 
 	const mockContext = {
-		getNodeParameter: mockGetNodeParameter,
+		helpers: {
+			requestWithAuthentication: mockRequestWithAuthentication,
+		},
+		getNodeParameter: jest.fn(),
+		getCredentials: jest.fn(),
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		mockGetNodeParameter.mockClear();
-		mockAwsRequest.mockClear();
-		mockSearchUsers.mockClear();
+		jest.clearAllMocks();
 	});
 
 	it('should throw an error if User Pool ID is missing', async () => {
-		mockGetNodeParameter.mockReturnValueOnce(undefined);
-		mockSearchUsers.mockRejectedValueOnce(new Error('User Pool ID is required to search users'));
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({});
 
 		await expect(searchUsers.call(mockContext)).rejects.toThrow(
 			'User Pool ID is required to search users',
@@ -37,140 +26,117 @@ describe('searchUsers', () => {
 	});
 
 	it('should make a POST request to search users and return results', async () => {
-		mockGetNodeParameter.mockReturnValueOnce({ value: 'mockUserPoolId' });
-		mockAwsRequest.mockResolvedValueOnce({
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
+
+		mockRequestWithAuthentication.mockResolvedValueOnce({
 			Users: [
-				{ Username: 'user1', Attributes: [{ Name: 'email', Value: 'user1@example.com' }] },
-				{ Username: 'user2', Attributes: [{ Name: 'email', Value: 'user2@example.com' }] },
+				{
+					Username: 'User1',
+					Attributes: [
+						{ Name: 'email', Value: 'user1@example.com' },
+						{ Name: 'sub', Value: 'sub1' },
+					],
+				},
+				{
+					Username: 'User2',
+					Attributes: [
+						{ Name: 'email', Value: 'user2@example.com' },
+						{ Name: 'sub', Value: 'sub2' },
+					],
+				},
 			],
 			NextToken: 'nextTokenValue',
 		});
 
-		mockSearchUsers.mockImplementation(async (filter, nextToken) => {
-			const awsResponse: AwsResponse = await mockAwsRequest({
-				url: '',
+		const response = await searchUsers.call(mockContext);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'aws',
+			expect.objectContaining({
+				baseURL: 'https://cognito-idp.us-east-1.amazonaws.com',
 				method: 'POST',
-				headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
+				headers: {
+					'Content-Type': 'application/x-amz-json-1.1',
+					'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
+				},
 				body: JSON.stringify({
 					UserPoolId: 'mockUserPoolId',
 					MaxResults: 60,
-					NextToken: nextToken,
+					NextToken: undefined,
 				}),
-			});
-
-			const users = awsResponse.Users.map((user: any) => ({
-				name: user.Attributes?.find((attr: any) => attr.Name === 'email')?.Value || user.Username,
-				value: user.Username,
-			}));
-
-			return {
-				results: users,
-				paginationToken: awsResponse.NextToken,
-			};
-		});
-
-		const response = await searchUsers.call(mockContext, 'user1');
-
-		expect(mockAwsRequest).toHaveBeenCalledWith({
-			url: '',
-			method: 'POST',
-			headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
-			body: JSON.stringify({
-				UserPoolId: 'mockUserPoolId',
-				MaxResults: 60,
-				NextToken: undefined,
 			}),
-		});
+		);
 
 		expect(response).toEqual({
 			results: [
-				{ name: 'user1@example.com', value: 'user1' },
-				{ name: 'user2@example.com', value: 'user2' },
+				{ name: 'user1@example.com', value: 'User1' },
+				{ name: 'user2@example.com', value: 'User2' },
 			],
 			paginationToken: 'nextTokenValue',
 		});
 	});
 
 	it('should handle pagination and return all results', async () => {
-		mockAwsRequest
-			.mockResolvedValueOnce({
-				Users: [
-					{ Username: 'user1', Attributes: [{ Name: 'email', Value: 'user1@example.com' }] },
-					{ Username: 'user2', Attributes: [{ Name: 'email', Value: 'user2@example.com' }] },
-				],
-				NextToken: 'nextTokenValue',
-			})
-			.mockResolvedValueOnce({
-				Users: [{ Username: 'user3', Attributes: [{ Name: 'email', Value: 'user3@example.com' }] }],
-				NextToken: undefined,
-			});
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
 
-		mockGetNodeParameter.mockReturnValueOnce('mockUserPoolId');
-		mockGetNodeParameter.mockReturnValueOnce(false);
-		mockGetNodeParameter.mockReturnValueOnce(10);
-
-		mockSearchUsers.mockImplementation(async () => {
-			let allResults: any[] = [];
-			let nextToken: string | undefined;
-			do {
-				const response: AwsResponse = await mockAwsRequest({
-					url: '',
-					method: 'POST',
-					headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
-					body: JSON.stringify({
-						UserPoolId: 'mockUserPoolId',
-						MaxResults: 60,
-						NextToken: nextToken,
-					}),
-				});
-
-				if (response.Users) {
-					allResults = allResults.concat(
-						response.Users.map((user: any) => ({
-							name:
-								user.Attributes?.find((attr: any) => attr.Name === 'email')?.Value || user.Username,
-							value: user.Username,
-						})),
-					);
-				}
-
-				nextToken = response.NextToken;
-			} while (nextToken);
-
-			return {
-				results: allResults,
-				paginationToken: nextToken,
-			};
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			Users: [
+				{
+					Username: 'User1',
+					Attributes: [
+						{ Name: 'email', Value: 'user1@example.com' },
+						{ Name: 'sub', Value: 'sub1' },
+					],
+				},
+				{
+					Username: 'User2',
+					Attributes: [
+						{ Name: 'email', Value: 'user2@example.com' },
+						{ Name: 'sub', Value: 'sub2' },
+					],
+				},
+			],
+			NextToken: undefined,
 		});
 
-		const result = await searchUsers.call(mockContext, '');
+		const response = await searchUsers.call(mockContext, '', 'prevTokenValue');
 
-		expect(mockAwsRequest).toHaveBeenCalledTimes(2);
+		expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
 
-		expect(result).toEqual({
+		expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+			1,
+			'aws',
+			expect.objectContaining({
+				body: JSON.stringify({
+					UserPoolId: 'mockUserPoolId',
+					MaxResults: 60,
+					NextToken: 'prevTokenValue',
+				}),
+			}),
+		);
+
+		expect(response).toEqual({
 			results: [
-				{ name: 'user1@example.com', value: 'user1' },
-				{ name: 'user2@example.com', value: 'user2' },
-				{ name: 'user3@example.com', value: 'user3' },
+				{ name: 'user1@example.com', value: 'User1' },
+				{ name: 'user2@example.com', value: 'User2' },
 			],
 			paginationToken: undefined,
 		});
 	});
 
-	it('should return empty results if no users are found', async () => {
-		mockGetNodeParameter.mockReturnValueOnce('mockUserPoolId');
-		mockAwsRequest.mockResolvedValueOnce({
+	it('should handle empty results', async () => {
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+		(mockContext.getCredentials as jest.Mock).mockResolvedValueOnce({ region: 'us-east-1' });
+
+		mockRequestWithAuthentication.mockResolvedValueOnce({
 			Users: [],
 			NextToken: undefined,
 		});
 
-		mockSearchUsers.mockResolvedValueOnce({
-			results: [],
-			paginationToken: undefined,
-		});
-
 		const response = await searchUsers.call(mockContext);
 
-		expect(response).toEqual({ results: [] });
+		expect(response).toEqual({ results: [], paginationToken: undefined });
 	});
 });
