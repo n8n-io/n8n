@@ -108,7 +108,7 @@ export class JsTaskRunner extends TaskRunner {
 	private preventPrototypePollution() {
 		if (process.env.NODE_ENV === 'test') return; // needed for Jest
 
-		const prototypes = [
+		[
 			Object,
 			Array,
 			Buffer,
@@ -133,13 +133,10 @@ export class JsTaskRunner extends TaskRunner {
 			Uint32Array,
 			Float32Array,
 			Float64Array,
+		]
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		].map((constructor) => constructor.prototype);
-
-		prototypes.forEach(Object.freeze);
-
-		Object.setPrototypeOf = () => false;
-		Reflect.setPrototypeOf = () => false;
+			.map((constructor) => constructor.prototype)
+			.forEach(Object.freeze);
 
 		Object.setPrototypeOf = () => false;
 		Reflect.setPrototypeOf = () => false;
