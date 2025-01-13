@@ -71,7 +71,11 @@ export class ManualExecutionService {
 				},
 			};
 
-			const workflowExecute = new WorkflowExecute(additionalData, 'manual', executionData);
+			const workflowExecute = new WorkflowExecute(
+				additionalData,
+				data.executionMode,
+				executionData,
+			);
 			return workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||

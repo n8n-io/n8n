@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { NodeConnectionType, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -39,6 +39,7 @@ import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
 @Service()
 export class TestRunnerService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly executionRepository: ExecutionRepository,
@@ -115,8 +116,9 @@ export class TestRunnerService {
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
-			workflowData: workflow,
+			workflowData: { ...workflow, pinData },
 			userId,
+			partialExecutionVersion: '1',
 		};
 
 		// Trigger the workflow under test with mocked data
@@ -203,6 +205,8 @@ export class TestRunnerService {
 	 * Creates a new test run for the given test definition.
 	 */
 	async runTest(user: User, test: TestDefinition): Promise<void> {
+		this.logger.debug('Starting new test run', { testId: test.id });
+
 		const workflow = await this.workflowRepository.findById(test.workflowId);
 		assert(workflow, 'Workflow not found');
 
@@ -227,6 +231,8 @@ export class TestRunnerService {
 				.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
 				.getMany();
 
+		this.logger.debug('Found past executions', { count: pastExecutions.length });
+
 		// Get the metrics to collect from the evaluation workflow
 		const testMetricNames = await this.getTestMetricNames(test.id);
 
@@ -238,6 +244,8 @@ export class TestRunnerService {
 		const metrics = new EvaluationMetrics(testMetricNames);
 
 		for (const { id: pastExecutionId } of pastExecutions) {
+			this.logger.debug('Running test case', { pastExecutionId });
+
 			try {
 				// Fetch past execution with data
 				const pastExecution = await this.executionRepository.findOne({
@@ -256,6 +264,8 @@ export class TestRunnerService {
 					test.mockedNodes,
 					user.id,
 				);
+
+				this.logger.debug('Test case execution finished', { pastExecutionId });
 
 				// In case of a permission check issue, the test case execution will be undefined.
 				// Skip them, increment the failed count and continue with the next test case
@@ -279,6 +289,8 @@ export class TestRunnerService {
 				);
 				assert(evalExecution);
 
+				this.logger.debug('Evaluation execution finished', { pastExecutionId });
+
 				metrics.addResults(this.extractEvaluationResult(evalExecution));
 
 				if (evalExecution.data.resultData.error) {
@@ -297,5 +309,7 @@ export class TestRunnerService {
 		const aggregatedMetrics = metrics.getAggregatedMetrics();
 
 		await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+
+		this.logger.debug('Test run finished', { testId: test.id });
 	}
 }
