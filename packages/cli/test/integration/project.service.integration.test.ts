@@ -83,6 +83,27 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('addUser', () => {
+		it("don't throw a unique constraint violation error when adding a user that is already part of the project", async () => {
+			// ARRANGE
+			const user = await createUser();
+			const project = await createTeamProject('project', user);
+
+			// ACT
+			// add user again
+			await projectService.addUser(project.id, user.id, 'project:admin');
+
+			// ASSERT
+			const relations = await getAllProjectRelations({ projectId: project.id });
+			expect(relations).toHaveLength(1);
+			expect(relations[0]).toMatchObject({
+				projectId: project.id,
+				userId: user.id,
+				role: 'project:admin',
+			});
+		});
+	});
+
 	describe('findRolesInProjects', () => {
 		describe('when user has roles in projects where workflow is accessible', () => {
 			it('should return roles and project IDs', async () => {

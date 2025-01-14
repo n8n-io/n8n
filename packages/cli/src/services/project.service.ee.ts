@@ -387,13 +387,8 @@ export class ProjectService {
 		});
 	}
 
-	async addUser(projectId: string, userId: string, role: ProjectRole, trx?: EntityManager) {
-		trx = trx ?? this.projectRelationRepository.manager;
-		return await trx.save(ProjectRelation, {
-			projectId,
-			userId,
-			role,
-		});
+	async addUser(projectId: string, userId: string, role: ProjectRole) {
+		return await this.addUsersToProject(projectId, [{ userId, role }]);
 	}
 
 	async getProject(projectId: string): Promise<Project> {
