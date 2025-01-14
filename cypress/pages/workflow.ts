@@ -58,13 +58,13 @@ export class WorkflowPage extends BasePage {
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			if (isCanvasV2()) {
 				if (type === 'input') {
-					return `[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-handle-index="${index}"]`;
+					return `[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${index}"]`;
 				}
 				if (type === 'output') {
-					return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-handle-index="${index}"]`;
+					return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${index}"]`;
 				}
 				if (type === 'plus') {
-					return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-handle-index="${index}"] [data-test-id="canvas-handle-plus"] .clickable`;
+					return `[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${index}"] [data-test-id="canvas-handle-plus"]`;
 				}
 			}
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
@@ -81,7 +81,7 @@ export class WorkflowPage extends BasePage {
 				() =>
 					cy
 						.get(
-							`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"] .clickable`,
+							`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
 						)
 						.eq(index),
 			);
@@ -103,7 +103,7 @@ export class WorkflowPage extends BasePage {
 		nodeConnections: () =>
 			cy.ifCanvasVersion(
 				() => cy.get('.jtk-connector'),
-				() => cy.getByTestId('edge-label-wrapper'),
+				() => cy.getByTestId('edge-label'),
 			),
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
@@ -189,7 +189,7 @@ export class WorkflowPage extends BasePage {
 					),
 				() =>
 					cy.get(
-						`[data-test-id="edge-label-wrapper"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
+						`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
 					),
 			),
 		getConnectionActionsBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
@@ -200,7 +200,7 @@ export class WorkflowPage extends BasePage {
 					),
 				() =>
 					cy.get(
-						`[data-test-id="edge-label-wrapper"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+						`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
 					),
 			),
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),

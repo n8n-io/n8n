@@ -1,4 +1,4 @@
-import type { AuthenticationMethod } from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -8,7 +8,6 @@ import type {
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole, User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
@@ -353,10 +352,7 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: GlobalRole;
-		members: Array<{
-			userId: string;
-			role: ProjectRole;
-		}>;
+		members: ProjectRelation[];
 		projectId: string;
 	};
 

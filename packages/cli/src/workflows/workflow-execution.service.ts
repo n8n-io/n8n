@@ -147,6 +147,12 @@ export class WorkflowExecutionService {
 			triggerToStartFrom,
 		};
 
+		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
+
+		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
+			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
+		}
+
 		/**
 		 * Historically, manual executions in scaling mode ran in the main process,
 		 * so some execution details were never persisted in the database.
@@ -160,7 +166,7 @@ export class WorkflowExecutionService {
 		) {
 			data.executionData = {
 				startData: {
-					startNodes,
+					startNodes: data.startNodes,
 					destinationNode,
 				},
 				resultData: {
@@ -174,12 +180,6 @@ export class WorkflowExecutionService {
 					triggerToStartFrom,
 				},
 			};
-		}
-
-		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
-
-		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
-			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
 		}
 
 		const executionId = await this.workflowRunner.run(data);

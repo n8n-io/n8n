@@ -31,6 +31,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowTemplate,
 	NodeCreatorOpenSource,
+	NodeFilterType,
 	ToggleNodeCreatorOptions,
 	WorkflowDataWithTemplateId,
 	XYPosition,
@@ -697,6 +698,11 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
+	const workflowIsSaved = !uiStore.stateIsDirty;
+
+	if (workflowIsSaved) {
+		return;
+	}
 	const saved = await workflowHelpers.saveCurrentWorkflow();
 	if (saved) {
 		canvasEventBus.emit('saved:workflow');
@@ -991,7 +997,11 @@ async function onRevertAddNode({ node }: { node: INodeUi }) {
 }
 
 async function onSwitchActiveNode(nodeName: string) {
+	const node = workflowsStore.getNodeByName(nodeName);
+	if (!node) return;
+
 	setNodeActiveByName(nodeName);
+	selectNodes([node.id]);
 }
 
 async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
@@ -1380,7 +1390,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			try {
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
-				isProductionExecutionPreview.value = json.executionMode !== 'manual';
+				isProductionExecutionPreview.value =
+					json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
 
 				await onOpenExecution(json.executionId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
@@ -1549,13 +1560,15 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openSelectiveNodeCreator',
 		action: ({
+			creatorview: creatorView,
 			connectiontype: connectionType,
 			node,
 		}: {
+			creatorview: NodeFilterType;
 			connectiontype: NodeConnectionType;
 			node: string;
 		}) => {
-			void onOpenSelectiveNodeCreator(node, connectionType);
+			nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType, creatorView });
 		},
 	});
 

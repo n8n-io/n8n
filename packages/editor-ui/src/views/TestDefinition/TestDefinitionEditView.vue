@@ -180,7 +180,6 @@ watch(
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.description')"
 					:expanded="false"
-					:tooltip="locale.baseText('testDefinition.edit.description.tooltip')"
 				>
 					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 					<template #cardContent>
@@ -200,7 +199,7 @@ watch(
 							adjustToNumber: tagUsageCount,
 						})
 					"
-					:tooltip="locale.baseText('testDefinition.edit.step.executions.tooltip')"
+					:description="locale.baseText('testDefinition.edit.step.executions.description')"
 				>
 					<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 					<template #cardContent>
@@ -232,7 +231,7 @@ watch(
 					"
 					:small="true"
 					:expanded="true"
-					:tooltip="locale.baseText('testDefinition.edit.step.nodes.tooltip')"
+					:description="locale.baseText('testDefinition.edit.step.nodes.description')"
 				>
 					<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 					<template #cardContent>
@@ -251,7 +250,7 @@ watch(
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.reRunExecutions')"
 					:small="true"
-					:tooltip="locale.baseText('testDefinition.edit.step.reRunExecutions.tooltip')"
+					:description="locale.baseText('testDefinition.edit.step.reRunExecutions.description')"
 				>
 					<template #icon><font-awesome-icon icon="redo" size="lg" /></template>
 				</EvaluationStep>
@@ -260,7 +259,7 @@ watch(
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
-					:tooltip="locale.baseText('testDefinition.edit.step.compareExecutions.tooltip')"
+					:description="locale.baseText('testDefinition.edit.step.compareExecutions.description')"
 				>
 					<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 					<template #cardContent>
@@ -275,7 +274,7 @@ watch(
 				<EvaluationStep
 					:class="$style.step"
 					:title="locale.baseText('testDefinition.edit.step.metrics')"
-					:tooltip="locale.baseText('testDefinition.edit.step.metrics.tooltip')"
+					:description="locale.baseText('testDefinition.edit.step.metrics.description')"
 				>
 					<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 					<template #cardContent>
@@ -339,12 +338,13 @@ watch(
 
 <style module lang="scss">
 .container {
+	--evaluation-edit-panel-width: 35rem;
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
 	padding: var(--spacing-s);
 	display: grid;
-	grid-template-columns: minmax(auto, 24rem) 1fr;
+	grid-template-columns: minmax(auto, var(--evaluation-edit-panel-width)) 1fr;
 	gap: var(--spacing-2xl);
 }
 
@@ -371,7 +371,7 @@ watch(
 	margin-bottom: var(--spacing-xl);
 }
 .panelBlock {
-	max-width: var(--evaluation-edit-panel-width, 24rem);
+	max-width: var(--evaluation-edit-panel-width, 35rem);
 	display: grid;
 	overflow-y: auto;
 	min-height: 0;
@@ -396,7 +396,7 @@ watch(
 	justify-self: center;
 }
 .evaluationArrows {
-	--arrow-height: 13.8rem;
+	--arrow-height: 22rem;
 	display: flex;
 	justify-content: space-between;
 	width: 100%;

@@ -19,7 +19,7 @@ import type {
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { inspect } from 'node:util';
-import { runInNewContext, type Context } from 'node:vm';
+import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
@@ -158,10 +158,8 @@ export class JsTaskRunner extends TaskRunner {
 
 	private getNativeVariables() {
 		return {
-			// Exposed Node.js globals in vm2
+			// Exposed Node.js globals
 			Buffer,
-			Function,
-			eval,
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -205,7 +203,7 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const taskResult = runInNewContext(
+				const taskResult = runInContext(
 					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 					{ timeout: this.taskTimeout * 1000 },
@@ -268,7 +266,7 @@ export class JsTaskRunner extends TaskRunner {
 
 					signal.addEventListener('abort', abortHandler);
 
-					const taskResult = runInNewContext(
+					const taskResult = runInContext(
 						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 						context,
 						{ timeout: this.taskTimeout * 1000 },
@@ -470,7 +468,7 @@ export class JsTaskRunner extends TaskRunner {
 		dataProxy: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
-		const context: Context = {
+		return createContext({
 			[inspect.custom]: () => '[[ExecutionContext]]',
 			require: this.requireResolver,
 			module: {},
@@ -480,8 +478,6 @@ export class JsTaskRunner extends TaskRunner {
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
-		};
-
-		return context;
+		});
 	}
 }
