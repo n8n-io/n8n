@@ -99,7 +99,13 @@ export class ConcurrencyControlService {
 	has(executionId: string) {
 		if (!this.isEnabled) return false;
 
-		return Array.from(this.queues.values()).some((queue) => queue.getAll().has(executionId));
+		for (const queue of this.queues.values()) {
+			if (queue.has(executionId)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
