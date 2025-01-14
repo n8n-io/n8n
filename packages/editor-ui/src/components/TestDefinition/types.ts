@@ -24,6 +24,7 @@ export interface TestExecution {
 	errorRate: number | null;
 	metrics: Record<string, number>;
 	status: TestRunRecord['status'];
+	id: string | null;
 }
 
 export interface TestListItem {

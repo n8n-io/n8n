@@ -3,6 +3,7 @@ import type { TestListItem } from '@/components/TestDefinition/types';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
 import n8nIconButton from 'n8n-design-system/components/N8nIconButton';
+import { computed } from 'vue';
 
 export interface TestItemProps {
 	test: TestListItem;
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 	'view-details': [testId: string];
 	'edit-test': [testId: string];
 	'delete-test': [testId: string];
+	'cancel-test-run': [testId: string, testRunId: string | null];
 }>();
 
 const actions = [
@@ -24,6 +26,14 @@ const actions = [
 		id: 'run',
 		event: () => emit('run-test', props.test.id),
 		tooltip: locale.baseText('testDefinition.runTest'),
+		show: () => props.test.execution.status !== 'running',
+	},
+	{
+		icon: 'stop',
+		id: 'cancel',
+		event: () => emit('cancel-test-run', props.test.id, props.test.execution.id),
+		tooltip: locale.baseText('testDefinition.cancelTestRun'),
+		show: () => props.test.execution.status === 'running',
 	},
 	{
 		icon: 'list',
@@ -44,6 +54,8 @@ const actions = [
 		tooltip: locale.baseText('testDefinition.deleteTest'),
 	},
 ];
+
+const visibleActions = computed(() => actions.filter((action) => action.show?.() ?? true));
 </script>
 
 <template>
@@ -85,7 +97,12 @@ const actions = [
 		</div>
 
 		<div :class="$style.actions">
-			<n8n-tooltip v-for="action in actions" :key="action.icon" placement="top" :show-after="1000">
+			<n8n-tooltip
+				v-for="action in visibleActions"
+				:key="action.icon"
+				placement="top"
+				:show-after="1000"
+			>
 				<template #content>
 					{{ action.tooltip }}
 				</template>
