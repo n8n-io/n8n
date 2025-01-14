@@ -39,8 +39,8 @@ export class UnlicensedProjectRoleError extends UserError {
 }
 
 class ProjectNotFoundError extends NotFoundError {
-	constructor() {
-		super('Project not found.');
+	constructor(projectId: string) {
+		super(`Could not find project with ID: ${projectId}`);
 	}
 }
 
@@ -92,7 +92,7 @@ export class ProjectService {
 
 		const project = await this.getProjectWithScope(user, projectId, ['project:delete']);
 		if (!project || project.type !== 'team') {
-			throw new ProjectNotFoundError();
+			throw new ProjectNotFoundError(projectId);
 		}
 
 		let targetProject: Project | null = null;
@@ -229,7 +229,7 @@ export class ProjectService {
 			{ name, icon },
 		);
 		if (!result.affected) {
-			throw new ProjectNotFoundError();
+			throw new ProjectNotFoundError(projectId);
 		}
 	}
 
@@ -275,7 +275,7 @@ export class ProjectService {
 			relations: { projectRelations: true },
 		});
 		if (!project) {
-			throw new ProjectNotFoundError();
+			throw new ProjectNotFoundError(projectId);
 		}
 		return project;
 	}
@@ -295,7 +295,7 @@ export class ProjectService {
 	async deleteUserFromProject(projectId: string, userId: string) {
 		const projectExists = await this.projectRepository.existsBy({ id: projectId });
 		if (!projectExists) {
-			throw new ProjectNotFoundError();
+			throw new ProjectNotFoundError(projectId);
 		}
 
 		// TODO: do we need to prevent project owner from being removed?
@@ -305,7 +305,7 @@ export class ProjectService {
 	async changeUserRoleInProject(projectId: string, userId: string, role: ProjectRole) {
 		const projectUserExists = await this.projectRelationRepository.existsBy({ projectId, userId });
 		if (!projectUserExists) {
-			throw new ProjectNotFoundError();
+			throw new ProjectNotFoundError(projectId);
 		}
 
 		// TODO: do we need to block any specific roles here?

@@ -492,7 +492,7 @@ describe('Projects in Public API', () => {
 					.send(payload);
 
 				expect(response.status).toBe(404);
-				expect(response.body).toHaveProperty('message', 'Project not found.');
+				expect(response.body).toHaveProperty('message', 'Could not find project with ID: 123456');
 			});
 
 			it('should add expected users to project', async () => {
@@ -647,7 +647,7 @@ describe('Projects in Public API', () => {
 					.send({ role: 'project:editor' })
 					.expect(404);
 
-				expect(response.body).toHaveProperty('message', 'Project not found.');
+				expect(response.body).toHaveProperty('message', 'Could not find project with ID: 123456');
 			});
 
 			it('should reject with 404 if user is not in the project', async () => {
@@ -663,7 +663,10 @@ describe('Projects in Public API', () => {
 					.send({ role: 'project:editor' })
 					.expect(404);
 
-				expect(response.body).toHaveProperty('message', 'Project not found.');
+				expect(response.body).toHaveProperty(
+					'message',
+					`Could not find project with ID: ${project.id}`,
+				);
 			});
 		});
 	});
@@ -752,7 +755,7 @@ describe('Projects in Public API', () => {
 					.delete(`/projects/123456/users/${member.id}`);
 
 				expect(response.status).toBe(404);
-				expect(response.body).toHaveProperty('message', 'Project not found.');
+				expect(response.body).toHaveProperty('message', 'Could not find project with ID: 123456');
 			});
 
 			it('should remain unchanged if user if not in project', async () => {
