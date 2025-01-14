@@ -83,6 +83,7 @@ const {
 	editor: editorRef,
 	segments,
 	readEditorValue,
+	isDirty,
 } = useExpressionEditor({
 	editorRef: htmlEditor,
 	editorValue,
@@ -230,6 +231,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	if (isDirty.value) emit('update:model-value', readEditorValue());
 	htmlEditorEventBus.off('format-html', formatHtml);
 });
 
@@ -246,7 +248,10 @@ async function onDrop(value: string, event: MouseEvent) {
 			<template #default="{ activeDrop, droppable }">
 				<div
 					ref="htmlEditor"
-					:class="{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable }"
+					:class="[
+						$style.fillHeight,
+						{ [$style.activeDrop]: activeDrop, [$style.droppable]: droppable },
+					]"
 					data-test-id="html-editor-container"
 				></div
 			></template>
@@ -262,6 +267,10 @@ async function onDrop(value: string, event: MouseEvent) {
 	& > div {
 		height: 100%;
 	}
+}
+
+.fillHeight {
+	height: 100%;
 }
 
 .droppable {
