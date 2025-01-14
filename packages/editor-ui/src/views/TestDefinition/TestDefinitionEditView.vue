@@ -54,7 +54,11 @@ const tagUsageCount = computed(
 const hasRuns = computed(() => runs.value.length > 0);
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
-
+const runTestTooltip = computed(() => {
+	const issues = fieldsIssues.value.map((issue) => issue.message).join('\n');
+	return `Complete the configuration below to run the test: <br>
+ - ${issues}`;
+});
 onMounted(async () => {
 	if (!testDefinitionStore.isFeatureEnabled) {
 		toast.showMessage({
@@ -95,8 +99,8 @@ async function onSaveTest() {
 	}
 }
 
-function hasIssues(key: string) {
-	return fieldsIssues.value.some((issue) => issue.field === key);
+function getFieldIssues(key: string) {
+	return fieldsIssues.value.filter((issue) => issue.field === key);
 }
 
 async function onDeleteMetric(deletedMetric: Partial<TestMetricRecord>) {
@@ -129,6 +133,9 @@ const runs = computed(() =>
 		(run) => run.testDefinitionId === testId.value,
 	),
 );
+
+const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
+const isRunTestEnabled = computed(() => fieldsIssues.value.length === 0 && !isRunning.value);
 
 async function onDeleteRuns(toDelete: TestRunRecord[]) {
 	await Promise.all(
@@ -170,7 +177,7 @@ watch(
 			v-model:tags="state.tags"
 			:has-runs="hasRuns"
 			:is-saving="isSaving"
-			:has-issues="hasIssues"
+			:get-field-issues="getFieldIssues"
 			:start-editing="startEditing"
 			:save-changes="saveChanges"
 			:handle-keydown="handleKeydown"
@@ -178,10 +185,18 @@ watch(
 			:run-test="runTest"
 			:show-config="showConfig"
 			:toggle-config="toggleConfig"
-			:show-run-test-button="
-				(state.evaluationWorkflow.value && state.tags.value.length > 0) === true
-			"
-		/>
+			:run-test-enabled="isRunTestEnabled"
+		>
+			<template #runTestTooltip>
+				<template v-if="fieldsIssues.length > 0">
+					<div>Complete the configuration below to run the test:</div>
+					<div v-for="issue in fieldsIssues" :key="issue.field">- {{ issue.message }}</div>
+				</template>
+				<template v-if="isRunning">
+					<div>Test is running. Please wait for it to finish.</div>
+				</template>
+			</template>
+		</HeaderSection>
 
 		<div :class="$style.content">
 			<RunsSection
@@ -204,7 +219,7 @@ watch(
 				:all-tags="allTags"
 				:tags-by-id="tagsById"
 				:is-loading="isLoading"
-				:has-issues="hasIssues"
+				:get-field-issues="getFieldIssues"
 				:start-editing="startEditing"
 				:save-changes="saveChanges"
 				:create-tag="handleCreateTag"

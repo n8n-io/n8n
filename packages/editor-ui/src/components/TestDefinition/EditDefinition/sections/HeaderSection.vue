@@ -1,42 +1,53 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import EvaluationHeader from '@/components/TestDefinition/EditDefinition/EvaluationHeader.vue';
+import TestNameInput from '@/components/TestDefinition/EditDefinition/TestNameInput.vue';
 import DescriptionInput from '@/components/TestDefinition/EditDefinition/DescriptionInput.vue';
 import type { EditableField, EditableFormState } from '@/components/TestDefinition/types';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import { computed } from 'vue';
 
 const props = defineProps<{
 	hasRuns: boolean;
 	isSaving: boolean;
-	hasIssues: (key: string) => boolean;
+	showConfig: boolean;
+	runTestEnabled: boolean;
 	startEditing: <T extends keyof EditableFormState>(field: T) => void;
 	saveChanges: <T extends keyof EditableFormState>(field: T) => void;
 	handleKeydown: <T extends keyof EditableFormState>(event: KeyboardEvent, field: T) => void;
 	onSaveTest: () => Promise<void>;
 	runTest: () => Promise<void>;
-	showConfig: boolean;
 	toggleConfig: () => void;
-	showRunTestButton?: boolean;
+	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 }>();
 
 const name = defineModel<EditableField<string>>('name', { required: true });
 const description = defineModel<EditableField<string>>('description', { required: true });
 
 const locale = useI18n();
+
+const showSavingIndicator = computed(() => {
+	return !name.value.isEditing;
+});
 </script>
 
 <template>
 	<div :class="$style.headerSection">
 		<div :class="$style.headerMeta">
 			<div :class="$style.name">
-				<EvaluationHeader
+				<n8n-icon-button
+					:class="$style.backButton"
+					icon="arrow-left"
+					type="tertiary"
+					:title="locale.baseText('testDefinition.edit.backButtonTitle')"
+					@click="$router.back()"
+				/>
+				<TestNameInput
 					v-model="name"
-					:class="{ 'has-issues': hasIssues('name') }"
+					:class="{ 'has-issues': getFieldIssues('name').length > 0 }"
 					:start-editing="startEditing"
 					:save-changes="saveChanges"
 					:handle-keydown="handleKeydown"
 				/>
-				<div :class="$style.lastSaved">
+				<div v-if="showSavingIndicator" :class="$style.lastSaved">
 					<template v-if="isSaving">
 						{{ locale.baseText('testDefinition.edit.saving') }}
 					</template>
@@ -65,24 +76,20 @@ const locale = useI18n();
 				type="tertiary"
 				@click="toggleConfig"
 			/>
-			<N8nButton
-				v-if="showRunTestButton"
-				:class="$style.runTestButton"
-				size="small"
-				data-test-id="run-test-button"
-				:label="locale.baseText('testDefinition.runTest')"
-				type="primary"
-				@click="runTest"
-			/>
-			<N8nButton
-				v-else
-				:class="$style.runTestButton"
-				size="small"
-				data-test-id="run-test-button"
-				:label="locale.baseText('testDefinition.edit.saveTest')"
-				type="primary"
-				@click="onSaveTest"
-			/>
+			<N8nTooltip :disabled="runTestEnabled" :placement="'left'">
+				<N8nButton
+					:disabled="!runTestEnabled"
+					:class="$style.runTestButton"
+					size="small"
+					data-test-id="run-test-button"
+					:label="locale.baseText('testDefinition.runTest')"
+					type="primary"
+					@click="runTest"
+				/>
+				<template #content>
+					<slot name="runTestTooltip" />
+				</template>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>
@@ -103,6 +110,7 @@ const locale = useI18n();
 .name {
 	display: flex;
 	align-items: center;
+	justify-content: flex-start;
 
 	.lastSaved {
 		font-size: var(--font-size-s);
@@ -117,5 +125,10 @@ const locale = useI18n();
 .controls {
 	display: flex;
 	gap: var(--spacing-s);
+}
+.backButton {
+	--button-font-color: var(--color-text-light);
+	border: none;
+	padding-left: 0;
 }
 </style>

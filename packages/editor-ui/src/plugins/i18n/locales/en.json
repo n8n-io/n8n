@@ -2859,6 +2859,7 @@
 	"testDefinition.viewDetails": "View Details",
 	"testDefinition.editTest": "Edit Test",
 	"testDefinition.deleteTest": "Delete Test",
+	"testDefinition.deleteTest.warning": "The test will be removed. This cannot be undone | The test and 1 run will be removed. This cannot be undone | The test and associated {count} runs will be removed. This cannot be undone",
 	"freeAi.credits.callout.claim.title": "Get {credits} free OpenAI API credits",
 	"freeAi.credits.callout.claim.button.label": "Claim credits",
 	"freeAi.credits.callout.success.title.part1": "Claimed {credits} free OpenAI API credits! Please note these free credits are only for the following models:",

@@ -16,13 +16,14 @@ defineProps<{
 	allTags: ITag[];
 	tagsById: Record<string, ITag>;
 	isLoading: boolean;
-	hasIssues: (key: string) => boolean;
+	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
 	cancelEditing: (field: keyof EditableFormState) => void;
 	createTag?: (name: string) => Promise<ITag>;
 }>();
 
+const changedFieldsKeys = ref<string[]>([]);
 const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true });
 const evaluationWorkflow = defineModel<EvaluationFormState['evaluationWorkflow']>(
 	'evaluationWorkflow',
@@ -40,6 +41,15 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+
+function updateChangedFieldsKeys(key: string) {
+	console.log('🚀 ~ updateChangedFieldsKeys ~ key:', key);
+	changedFieldsKeys.value.push(key);
+}
+
+function showFieldIssues(fieldKey: string) {
+	return changedFieldsKeys.value.includes(fieldKey);
+}
 </script>
 
 <template>
@@ -57,12 +67,14 @@ const locale = useI18n();
 				})
 			"
 			:description="locale.baseText('testDefinition.edit.step.executions.description')"
+			:issues="getFieldIssues('tags')"
+			:show-issues="showFieldIssues('tags')"
 		>
 			<template #icon><font-awesome-icon icon="history" size="lg" /></template>
 			<template #cardContent>
 				<TagsInput
 					v-model="tags"
-					:class="{ 'has-issues': hasIssues('tags') }"
+					:class="{ 'has-issues': getFieldIssues('tags') }"
 					:all-tags="allTags"
 					:tags-by-id="tagsById"
 					:is-loading="isLoading"
@@ -70,6 +82,7 @@ const locale = useI18n();
 					:save-changes="saveChanges"
 					:cancel-editing="cancelEditing"
 					:create-tag="createTag"
+					@update:model-value="updateChangedFieldsKeys('tags')"
 				/>
 			</template>
 		</EvaluationStep>
@@ -89,6 +102,8 @@ const locale = useI18n();
 			:small="true"
 			:expanded="true"
 			:description="locale.baseText('testDefinition.edit.step.nodes.description')"
+			:issues="getFieldIssues('mockedNodes')"
+			:show-issues="showFieldIssues('mockedNodes')"
 		>
 			<template #icon><font-awesome-icon icon="thumbtack" size="lg" /></template>
 			<template #cardContent>
@@ -117,12 +132,15 @@ const locale = useI18n();
 			:class="$style.step"
 			:title="locale.baseText('testDefinition.edit.step.compareExecutions')"
 			:description="locale.baseText('testDefinition.edit.step.compareExecutions.description')"
+			:issues="getFieldIssues('evaluationWorkflow')"
+			:show-issues="showFieldIssues('evaluationWorkflow')"
 		>
 			<template #icon><font-awesome-icon icon="equals" size="lg" /></template>
 			<template #cardContent>
 				<WorkflowSelector
 					v-model="evaluationWorkflow"
-					:class="{ 'has-issues': hasIssues('evaluationWorkflow') }"
+					:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
+					@update:model-value="updateChangedFieldsKeys('evaluationWorkflow')"
 				/>
 			</template>
 		</EvaluationStep>
@@ -132,13 +150,16 @@ const locale = useI18n();
 			:class="$style.step"
 			:title="locale.baseText('testDefinition.edit.step.metrics')"
 			:description="locale.baseText('testDefinition.edit.step.metrics.description')"
+			:issues="getFieldIssues('metrics')"
+			:show-issues="showFieldIssues('metrics')"
 		>
 			<template #icon><font-awesome-icon icon="chart-bar" size="lg" /></template>
 			<template #cardContent>
 				<MetricsInput
 					v-model="metrics"
-					:class="{ 'has-issues': hasIssues('metrics') }"
+					:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
 					@delete-metric="(metric) => emit('deleteMetric', metric)"
+					@update:model-value="updateChangedFieldsKeys('metrics')"
 				/>
 			</template>
 		</EvaluationStep>

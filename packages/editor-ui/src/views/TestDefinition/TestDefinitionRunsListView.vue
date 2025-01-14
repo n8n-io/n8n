@@ -8,6 +8,7 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
+import { useMessage } from '@/composables/useMessage';
 
 const router = useRouter();
 const testDefinitionStore = useTestDefinitionStore();
@@ -75,6 +76,19 @@ async function runTest() {
 }
 
 async function onDeleteRuns(runsToDelete: TestRunRecord[]) {
+	const { confirm } = useMessage();
+
+	const deleteConfirmed = await confirm(locale.baseText('Delete runs'), {
+		type: 'warning',
+		confirmButtonText: locale.baseText(
+			'settings.log-streaming.destinationDelete.confirmButtonText',
+		),
+		cancelButtonText: locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
+	});
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
 	await Promise.all(
 		runsToDelete.map(async (run) => {
 			await testDefinitionStore.deleteTestRun({ testDefinitionId: testId.value, runId: run.id });

@@ -5,6 +5,7 @@ import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.e
 import type { N8nInput } from 'n8n-design-system';
 import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
 import type { EditableField, EditableFormState, EvaluationFormState } from '../types';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 type FormRefs = {
 	nameInput: ComponentPublicInstance<typeof N8nInput>;
@@ -13,7 +14,12 @@ type FormRefs = {
 
 export function useTestDefinitionForm() {
 	const evaluationsStore = useTestDefinitionStore();
+	const tagsStore = useAnnotationTagsStore();
 
+	const tagsById = computed(() => tagsStore.tagsById);
+	const tagUsageCount = computed(
+		() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
+	);
 	// State initialization
 	const state = ref<EvaluationFormState>({
 		name: {
@@ -137,14 +143,52 @@ export function useTestDefinitionForm() {
 		});
 		isSaving.value = true;
 		await Promise.all(promises);
+		updateRunFieldIssues();
 		isSaving.value = false;
 	};
 
+	const updateRunFieldIssues = () => {
+		const issues: Array<{ field: string; message: string }> = [];
+
+		const evaluationTagId = state.value.tags.value[0];
+		if (!evaluationTagId) {
+			issues.push({
+				field: 'tags',
+				message: 'No evaluation tag set',
+			});
+		} else {
+			// Check if there are executions for this tag
+			if (tagUsageCount.value === 0) {
+				issues.push({
+					field: 'tags',
+					message: 'No executions added to this tag',
+				});
+			}
+		}
+
+		if (!state.value.evaluationWorkflow.value) {
+			issues.push({
+				field: 'evaluationWorkflow',
+				message: 'No evaluation workflow set',
+			});
+		}
+
+		if (state.value.metrics.filter((metric) => metric.name).length === 0) {
+			issues.push({
+				field: 'metrics',
+				message: 'No metrics set',
+			});
+		}
+
+		fieldsIssues.value = issues;
+	};
+
 	const updateTest = async (testId: string) => {
+		console.log('🚀 ~ updateTest ~ testId:', testId);
 		if (isSaving.value) return;
 
 		isSaving.value = true;
-		fieldsIssues.value = [];
+		updateRunFieldIssues();
 
 		try {
 			if (!testId) {
@@ -233,6 +277,7 @@ export function useTestDefinitionForm() {
 		fields,
 		isSaving: computed(() => isSaving.value),
 		fieldsIssues: computed(() => fieldsIssues.value),
+		updateRunFieldIssues,
 		deleteMetric,
 		updateMetrics,
 		loadTestData,
