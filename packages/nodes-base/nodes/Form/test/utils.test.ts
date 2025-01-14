@@ -7,7 +7,13 @@ import type {
 	MultiPartFormData,
 } from 'n8n-workflow';
 
-import { formWebhook, prepareFormData, prepareFormReturnItem, resolveRawData } from '../utils';
+import {
+	formWebhook,
+	parseFormDescription,
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+} from '../utils';
 
 describe('FormTrigger, formWebhook', () => {
 	const executeFunctions = mock<IWebhookFunctions>();
@@ -58,6 +64,7 @@ describe('FormTrigger, formWebhook', () => {
 			appendAttribution: true,
 			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',
@@ -135,6 +142,7 @@ describe('FormTrigger, formWebhook', () => {
 				appendAttribution: true,
 				buttonLabel: 'Submit',
 				formDescription: expected,
+				formDescriptionMetadata: parseFormDescription(expected),
 				formFields: [
 					{
 						defaultValue: '',
@@ -247,6 +255,7 @@ describe('FormTrigger, prepareFormData', () => {
 			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
 			formSubmittedText: 'Thank you for your submission',
 			n8nWebsiteLink:
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=test-instance',
@@ -326,6 +335,7 @@ describe('FormTrigger, prepareFormData', () => {
 			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
 			formSubmittedText: 'Your response has been recorded',
 			n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 			formFields: [

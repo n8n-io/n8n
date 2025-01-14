@@ -53,8 +53,8 @@ function sanitizeHtml(text: string) {
 	});
 }
 
-function parseFormDescription(description: string) {
-	return description.replace(/\\n/g, '\n').replace(/<br>/g, '\n');
+export function parseFormDescription(description: string) {
+	return description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
 }
 
 export function prepareFormData({
@@ -97,6 +97,7 @@ export function prepareFormData({
 		validForm,
 		formTitle,
 		formDescription,
+		formDescriptionMetadata: parseFormDescription(formDescription),
 		formSubmittedHeader,
 		formSubmittedText,
 		n8nWebsiteLink,
