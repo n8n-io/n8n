@@ -24,6 +24,35 @@ import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
 
+function sanitizeHtml(text: string) {
+	return sanitize(text, {
+		allowedTags: [
+			'b',
+			'i',
+			'em',
+			'strong',
+			'a',
+			'h1',
+			'h2',
+			'h3',
+			'h4',
+			'h5',
+			'h6',
+			'u',
+			'sub',
+			'sup',
+			'code',
+			'pre',
+			'span',
+			'br',
+		],
+		allowedAttributes: {
+			a: ['href', 'target', 'rel'],
+		},
+		nonBooleanAttributes: ['*'],
+	});
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -381,13 +410,7 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = sanitize(context.getNodeParameter('formDescription', '') as string, {
-			allowedTags: ['b', 'i', 'em', 'strong', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
-			allowedAttributes: {
-				a: ['href'],
-			},
-			nonBooleanAttributes: ['*'],
-		});
+		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
