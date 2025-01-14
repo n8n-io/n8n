@@ -103,6 +103,8 @@ export class JsTaskRunner extends TaskRunner {
 			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
 			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
 		});
+
+		this.preventPrototypePollution();
 	}
 
 	private preventPrototypePollution() {
@@ -505,8 +507,6 @@ export class JsTaskRunner extends TaskRunner {
 		dataProxy: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
-		this.preventPrototypePollution();
-
 		return createContext({
 			[inspect.custom]: () => '[[ExecutionContext]]',
 			require: this.requireResolver,
