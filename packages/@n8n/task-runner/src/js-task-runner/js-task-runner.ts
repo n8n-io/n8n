@@ -110,34 +110,11 @@ export class JsTaskRunner extends TaskRunner {
 	private preventPrototypePollution() {
 		if (process.env.NODE_ENV === 'test') return; // needed for Jest
 
-		[
-			Object,
-			Array,
-			Buffer,
-			Function,
-			RegExp,
-			Error,
-			Number,
-			String,
-			Promise,
-			Date,
-			Map,
-			Set,
-			BigInt,
-			Symbol,
-			WeakMap,
-			WeakSet,
-			Int8Array,
-			Uint8Array,
-			Int16Array,
-			Uint16Array,
-			Int32Array,
-			Uint32Array,
-			Float32Array,
-			Float64Array,
-		]
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			.map((constructor) => constructor.prototype)
+		Object.getOwnPropertyNames(globalThis)
+			// @ts-expect-error globalThis does not have string in index signature
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+			.map((name) => globalThis[name])
+			.filter((value) => typeof value === 'function')
 			.forEach(Object.freeze);
 	}
 
