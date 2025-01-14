@@ -858,7 +858,7 @@ describe('DELETE /project/:projectId', () => {
 		const owner = await createOwner();
 		const project = await getPersonalProject(owner);
 
-		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(404);
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(403);
 
 		const projectInDB = await findProject(project.id);
 
