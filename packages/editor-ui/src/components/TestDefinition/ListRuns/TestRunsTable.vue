@@ -57,6 +57,8 @@ const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 			label: locale.baseText('testDefinition.listRuns.runDate'),
 			sortable: true,
 			formatter: (row: TestRunRecord) => convertToDisplayDate(new Date(row.runAt).getTime()),
+			sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
+				new Date(a.runAt).getTime() - new Date(b.runAt).getTime(),
 		},
 
 		...metrics.value.map((metric) => ({
@@ -88,8 +90,8 @@ function deleteRuns() {
 				v-show="selectedRows.length > 0"
 				type="danger"
 				:class="$style.activator"
-				:size="'medium'"
-				:icon="'trash'"
+				size="medium"
+				icon="trash"
 				data-test-id="delete-runs-button"
 				@click="deleteRuns"
 			>

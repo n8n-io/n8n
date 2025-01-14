@@ -22,6 +22,7 @@ export type TestTableColumn<TRow> = {
 	filters?: Array<{ text: string; value: string }>;
 	filterMethod?: (value: string, row: TRow) => boolean;
 	route?: (row: TRow) => RouteLocationRaw;
+	sortMethod?: (a: TRow, b: TRow) => number;
 	openInNewTab?: boolean;
 	formatter?: (row: TRow) => string;
 };
