@@ -20,6 +20,7 @@ defineProps<{
 	startEditing: (field: keyof EditableFormState) => void;
 	saveChanges: (field: keyof EditableFormState) => void;
 	cancelEditing: (field: keyof EditableFormState) => void;
+	createTag?: (name: string) => Promise<ITag>;
 }>();
 
 const tags = defineModel<EvaluationFormState['tags']>('tags', { required: true });
@@ -33,11 +34,9 @@ const mockedNodes = defineModel<EvaluationFormState['mockedNodes']>('mockedNodes
 });
 
 const nodePinningModal = ref<ModalState | null>(null);
-
 const emit = defineEmits<{
 	openPinningModal: [];
 	deleteMetric: [metric: Partial<TestMetricRecord>];
-	createTag?: (name: string) => Promise<ITag>;
 }>();
 
 const locale = useI18n();
@@ -70,7 +69,7 @@ const locale = useI18n();
 					:start-editing="startEditing"
 					:save-changes="saveChanges"
 					:cancel-editing="cancelEditing"
-					:create-tag="emit('createTag')"
+					:create-tag="createTag"
 				/>
 			</template>
 		</EvaluationStep>
