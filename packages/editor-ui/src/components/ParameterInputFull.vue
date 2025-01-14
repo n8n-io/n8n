@@ -59,6 +59,8 @@ const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 
+const FROM_AI_DENYLIST = ['toolWorkflow', 'toolCode', 'toolHttpRequest'];
+
 const fromAiOverride = {
 	overridePlaceholder: 'Defined automatically by the model',
 	icon: 'plus',
@@ -73,7 +75,7 @@ const fromAiOverride = {
 			default: '',
 			placeholder: 'Description of how the model should define this value',
 		},
-	},
+	} as Record<string, { default: string; placeholder: string }>,
 };
 const selectedFields = ref<string[]>([]);
 // const extraPropValues = ref<Record<keyof (typeof fromAiOverride)['extraProps'], string>>(
@@ -136,16 +138,23 @@ function parseOverrides(s: string): Partial<typeof extraPropValues.value> | null
 }
 
 const isContentOverride = computed(() => isOverrideValue(props.value?.toString() ?? ''));
-const canBeContentOverride = computed(() =>
-	node.value?.type === undefined
-		? false
-		: nodeTypesStore
-				.getNodeType(node.value.type, node.value.typeVersion)
-				?.codex?.categories?.includes('AI') &&
-			(!props.parameter.noDataExpression || props.parameter.typeOptions?.editor !== undefined) &&
-			!isResourceLocator.value &&
-			'options' !== props.parameter.type,
-);
+const canBeContentOverride = computed(() => {
+	if (!node.value) return false;
+
+	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+
+	if (FROM_AI_DENYLIST.some((x) => nodeType?.name?.endsWith(x) ?? false)) return false;
+
+	const codex = nodeType?.codex;
+	if (!codex?.categories?.includes('AI') || !codex?.subcategories?.AI?.includes('Tools'))
+		return false;
+
+	return (
+		(!props.parameter.noDataExpression || props.parameter.typeOptions?.editor !== undefined) &&
+		!isResourceLocator.value &&
+		'options' !== props.parameter.type
+	);
+});
 
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -177,7 +186,7 @@ onMounted(() => {
 	if (isOverrideValue(props.value?.toString() ?? '')) {
 		const x = parseOverrides(props.value?.toString() ?? '') ?? {};
 		for (const [key, value] of Object.entries(x)) {
-			if (value === undefined) continue;
+			if (value === undefined || value === fromAiOverride.extraProps[key].default) continue;
 
 			extraPropValues.value[key] = value;
 			selectedFields.value.push(key);
