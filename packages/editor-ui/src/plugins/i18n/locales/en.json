@@ -2798,7 +2798,7 @@
 	"testDefinition.edit.description.description": "Add details about what this test evaluates and what success looks like",
 	"testDefinition.edit.tagName": "Tag name",
 	"testDefinition.edit.step.intro": "When running a test",
-	"testDefinition.edit.step.executions": "1. Fetch N past executions tagge | 1. Fetch {count} past execution tagged | 1. Fetch {count} past executions tagged",
+	"testDefinition.edit.step.executions": "1. Fetch N past executions tagged | 1. Fetch {count} past execution tagged | 1. Fetch {count} past executions tagged",
 	"testDefinition.edit.step.executions.description": "Use a tag to select past executions for use as test cases in evaluation. The trigger data from each of these past executions will be used as input to run your workflow. The outputs of past executions are used as benchmark and compared against to check whether performance has changed based on logic and metrics that you define below.",
 	"testDefinition.edit.step.mockedNodes": "2. Mock N nodes |2. Mock {count} node |2. Mock {count} nodes",
 	"testDefinition.edit.step.nodes.description": "Mocked nodes have their data replayed rather than being re-executed. Do this to avoid calling external services, save time executing, and isolate what you are evaluating. If a node is mocked, the tagged past execution's output data for that node is used in the evaluation instead.",

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import { computed, ref } from 'vue';
-import type { TestDefinitionTableColumn } from '../shared/TestDefinitionTable.vue';
-import TestDefinitionTable from '../shared/TestDefinitionTable.vue';
+import type { TestTableColumn } from '../shared/TestTableBase.vue';
+import TestTableBase from '../shared/TestTableBase.vue';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
@@ -29,7 +29,7 @@ const metrics = computed(() => {
 	}, [] as string[]);
 });
 
-const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => {
+const columns = computed((): Array<TestTableColumn<TestRunRecord>> => {
 	return [
 		{
 			prop: 'runNumber',
@@ -100,7 +100,7 @@ function deleteRuns() {
 				}}
 			</n8n-button>
 		</div>
-		<TestDefinitionTable
+		<TestTableBase
 			:data="runs"
 			:columns="columns"
 			selectable

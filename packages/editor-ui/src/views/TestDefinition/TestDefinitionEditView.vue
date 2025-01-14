@@ -368,14 +368,17 @@ watch(
 <style module lang="scss">
 .container {
 	--evaluation-edit-panel-width: 24rem;
-	--metrics-chart-height: 13rem;
+	--metrics-chart-height: 10rem;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
 
-	@include mixins.breakpoint('lg-and-up') {
+	@media (min-height: 56rem) {
 		--metrics-chart-height: 16rem;
-		--evaluation-edit-panel-width: 35rem;
+	}
+
+	@include mixins.breakpoint('lg-and-up') {
+		--evaluation-edit-panel-width: 30rem;
 	}
 }
 
@@ -422,9 +425,9 @@ watch(
 	gap: var(--spacing-m);
 	flex: 1;
 	padding-top: var(--spacing-3xs);
-	overflow: auto hidden;
+	overflow: auto;
 
-	@include mixins.breakpoint('lg-and-up') {
+	@media (min-height: 56rem) {
 		margin-top: var(--spacing-2xl);
 	}
 }

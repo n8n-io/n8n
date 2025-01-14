@@ -6,7 +6,7 @@ import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import type { TableInstance } from 'element-plus';
 import { isEqual } from 'lodash-es';
 /**
- * A reusable table component for displaying test definition data
+ * A reusable table component for displaying evaluation results data
  * @template T - The type of data being displayed in the table rows
  */
 
@@ -14,7 +14,7 @@ import { isEqual } from 'lodash-es';
  * Configuration for a table column
  * @template TRow - The type of data in each table row
  */
-export type TestDefinitionTableColumn<TRow> = {
+export type TestTableColumn<TRow> = {
 	prop: string;
 	label: string;
 	width?: number;
@@ -33,7 +33,7 @@ const MAX_TABLE_HEIGHT = 1400;
 const props = withDefaults(
 	defineProps<{
 		data: TableRow[];
-		columns: Array<TestDefinitionTableColumn<TableRow>>;
+		columns: Array<TestTableColumn<TableRow>>;
 		showControls?: boolean;
 		defaultSort?: { prop: string; order: 'ascending' | 'descending' };
 		selectable?: boolean;

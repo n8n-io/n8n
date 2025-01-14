@@ -90,13 +90,9 @@ export function useMetricsChart(mode: AppliedThemeOption = 'light') {
 						display: false,
 					},
 					ticks: {
-						maxRotation: 45,
-						minRotation: 45,
 						display: false,
-						color: colors.text.primary,
 					},
 					title: {
-						display: false,
 						text: params.xTitle,
 						padding: 1,
 						color: colors.text.primary,

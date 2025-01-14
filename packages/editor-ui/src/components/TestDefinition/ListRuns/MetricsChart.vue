@@ -49,6 +49,7 @@ watchEffect(() => {
 				:model-value="selectedMetric"
 				:class="$style.metricSelect"
 				placeholder="Select metric"
+				size="small"
 				@update:model-value="emit('update:selectedMetric', $event)"
 			>
 				<N8nOption
@@ -84,7 +85,7 @@ watchEffect(() => {
 		align-items: center;
 		gap: var(--spacing-s);
 		margin-bottom: var(--spacing-m);
-		padding: var(--spacing-s);
+		padding: var(--spacing-xs) var(--spacing-s);
 		border-bottom: 1px solid var(--color-foreground-base);
 	}
 
