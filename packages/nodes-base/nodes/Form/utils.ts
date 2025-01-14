@@ -53,6 +53,10 @@ function sanitizeHtml(text: string) {
 	});
 }
 
+function parseFormDescription(description: string) {
+	return description.replace(/\\n/g, '\n').replace(/<br>/g, '\n');
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -404,6 +408,7 @@ export async function formWebhook(
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
+		const formDescriptionMetadata = parseFormDescription(formDescription);
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
