@@ -528,7 +528,12 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			 * This prevents the items count from jumping up when the execution
 			 * finishes and the full data replaces the placeholder.
 			 */
-			if (pushData.itemCount && pushData.data.data) {
+			if (
+				pushData.itemCount &&
+				pushData.data?.data?.main &&
+				Array.isArray(pushData.data.data.main[0]) &&
+				pushData.data.data.main[0].length < pushData.itemCount
+			) {
 				pushData.data.data.main[0]?.push(...new Array(pushData.itemCount - 1).fill({ json: {} }));
 			}
 
