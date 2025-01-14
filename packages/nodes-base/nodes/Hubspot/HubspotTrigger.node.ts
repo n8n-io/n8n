@@ -189,7 +189,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property Name',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								description:
