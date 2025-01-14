@@ -48,6 +48,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      - N8N_RUNNERS_ENABLED=true
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker1:/n8n
@@ -78,6 +79,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      - N8N_RUNNERS_ENABLED=true
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker2:/n8n
@@ -109,6 +111,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      - N8N_RUNNERS_ENABLED=true
     ports:
       - 5678:5678
     volumes:
