@@ -39,6 +39,7 @@ export interface ChatMessagingDependencies {
 	onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
 	) => Promise<IExecutionPushResponse | undefined>;
+	ws: Ref<WebSocket | null>;
 }
 
 export function useChatMessaging({
@@ -50,11 +51,16 @@ export function useChatMessaging({
 	executionResultData,
 	getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
+	ws,
 }: ChatMessagingDependencies) {
 	const locale = useI18n();
 	const { showError } = useToast();
 	const previousMessageIndex = ref(0);
 	const isLoading = ref(false);
+
+	const setLoadingState = (loading: boolean) => {
+		isLoading.value = loading;
+	};
 
 	/** Converts a file to binary data */
 	async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
@@ -179,6 +185,7 @@ export function useChatMessaging({
 			responseMessage = extractResponseMessage(responseData);
 		}
 		isLoading.value = false;
+		ws.value = null;
 		messages.value.push({
 			text: responseMessage,
 			sender: 'bot',
@@ -244,7 +251,16 @@ export function useChatMessaging({
 		};
 		messages.value.push(newMessage);
 
-		await startWorkflowWithMessage(newMessage.text, files);
+		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
+			ws.value?.send(
+				JSON.stringify({
+					text: message,
+				}),
+			);
+			isLoading.value = true;
+		} else {
+			await startWorkflowWithMessage(newMessage.text, files);
+		}
 	}
 
 	function getChatMessages(): ChatMessageText[] {
@@ -282,5 +298,6 @@ export function useChatMessaging({
 		sendMessage,
 		extractResponseMessage,
 		getChatMessages,
+		setLoadingState,
 	};
 }

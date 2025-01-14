@@ -52,6 +52,7 @@ const canvasNodes = computed(() => workflowsStore.allNodes);
 const isLogsOpen = computed(() => workflowsStore.isLogsPanelOpen);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
+
 // Expose internal state for testing
 defineExpose({
 	messages,
@@ -77,7 +78,7 @@ const {
 	getNodeType: nodeTypesStore.getNodeType,
 });
 
-const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
+const { sendMessage, getChatMessages, isLoading, setLoadingState } = useChatMessaging({
 	chatTrigger: chatTriggerNode,
 	connectedNode,
 	messages,
@@ -86,6 +87,7 @@ const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
 	executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
 	getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
+	ws,
 });
 
 const {
@@ -212,12 +214,16 @@ async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 		);
 
 		ws.value.onmessage = (event) => {
-			console.log(event.data);
-			if (event.data === 'responding to chat trigger') {
-				ws.value?.send(JSON.stringify({ message: 'responding to chat node' }));
-			}
+			const newMessage: ChatMessage & { sessionId: string } = {
+				text: event.data,
+				sender: 'bot',
+				createdAt: new Date().toISOString(),
+				sessionId: currentSessionId.value,
+				id: uuid(),
+			};
+			messages.value.push(newMessage);
+			setLoadingState(false);
 		};
-		console.log('handler connected');
 
 		if (response) {
 			await createExecutionPromise();

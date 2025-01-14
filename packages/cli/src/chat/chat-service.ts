@@ -3,7 +3,7 @@ import type { Application, Request } from 'express';
 import type { Server } from 'http';
 import { ServerResponse } from 'http';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
@@ -91,30 +91,26 @@ export class ChatService {
 			return;
 		}
 
-		const session: Session = this.sessions.get(sessionId) ?? { connection: ws, executionId };
-		// Make sure that the session always points to the latest websocket connection
-		session.connection = ws;
+		const previousSessionConnection = this.sessions.get(sessionId)?.connection;
 
+		const session: Session = { connection: ws, executionId };
+
+		this.sessions.set(sessionId, session);
 		ws.isAlive = true;
 		ws.on('pong', heartbeat);
-		this.sessions.set(sessionId, session);
+
+		if (previousSessionConnection) {
+			previousSessionConnection.close(1008);
+		}
 
 		const onMessage = this.messageHandler(sessionId);
 
 		ws.once('close', async () => {
 			ws.off('pong', heartbeat);
 			ws.off('message', await onMessage);
-			this.sessions.delete(sessionId);
 		});
 
 		ws.on('message', await onMessage);
-
-		ws.send(
-			jsonStringify({
-				type: 'chat_started',
-				data: { sessionId },
-			}),
-		);
 	}
 
 	private async messageHandler(sessionId: string) {
