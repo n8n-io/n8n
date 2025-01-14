@@ -36,7 +36,7 @@ import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
-import { clearPopupWindowState } from '../utils/executionUtils';
+import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '../utils/executionUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 
@@ -283,7 +283,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				const activeRunData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 				if (activeRunData) {
 					for (const key of Object.keys(activeRunData)) {
-						if (workflowsStore.hasTrimmedItem(activeRunData[key])) continue;
+						if (hasTrimmedItem(activeRunData[key])) continue;
 						iRunExecutionData.resultData.runData[key] = activeRunData[key];
 					}
 				}
@@ -477,10 +477,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			// node that did finish. For that reason copy in here the data
 			// which we already have. But if the run data in the store is trimmed,
 			// we skip copying so we use the full data from the final message.
-			if (
-				workflowsStore.getWorkflowRunData &&
-				!workflowsStore.hasTrimmedData(workflowsStore.getWorkflowRunData)
-			) {
+			if (workflowsStore.getWorkflowRunData && !hasTrimmedData(workflowsStore.getWorkflowRunData)) {
 				iRunExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
 			}
 

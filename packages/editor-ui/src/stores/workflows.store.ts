@@ -58,7 +58,6 @@ import {
 	NodeConnectionType,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	Workflow,
 } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
@@ -1619,28 +1618,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	/**
-	 * Check whether task data contains a trimmed item.
-	 *
-	 * In manual executions in scaling mode, the payload in push messages may be
-	 * arbitrarily large. To protect Redis as it relays run data from workers to
-	 * main process, we set a limit on payload size. If the payload is oversize,
-	 * we replace it with a placeholder, which is later overridden on execution
-	 * finish, when the client receives the full data.
-	 */
-	function hasTrimmedItem(taskData: ITaskData[]) {
-		return taskData[0]?.data?.main[0]?.[0].json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
-	}
-
-	/**
-	 * Check whether run data contains any trimmed items.
-	 *
-	 * See {@link hasTrimmedItem} for more details.
-	 */
-	function hasTrimmedData(runData: IRunData) {
-		return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
-	}
-
 	return {
 		workflow,
 		usedCredentials,
@@ -1779,7 +1756,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
-		hasTrimmedItem,
-		hasTrimmedData,
 	};
 });
