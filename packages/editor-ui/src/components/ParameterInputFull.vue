@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ComputedRef, ref, useTemplateRef, watch } from 'vue';
+import { computed, type ComputedRef, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -17,7 +17,7 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { N8nButton, N8nInputLabel } from 'n8n-design-system';
+import { N8nButton, N8nInputLabel, N8nTagList } from 'n8n-design-system';
 import AiStarsIcon from './AiStarsIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -66,7 +66,7 @@ const fromAiOverride = {
 	providers: {
 		marker: '/* n8n-auto-generated-override */',
 		key: (props: Props) => props.parameter.name, // todo - need to check these
-		type: (props: Props) => 'string', // todo - infer boolean, number and other matching types
+		type: (props: Props) => fieldTypeToFromAiType(props), // todo - infer boolean, number and other matching types
 	},
 	extraProps: {
 		description: {
@@ -75,23 +75,40 @@ const fromAiOverride = {
 		},
 	},
 };
+const selectedFields = ref<string[]>([]);
+// const extraPropValues = ref<Record<keyof (typeof fromAiOverride)['extraProps'], string>>(
+const extraPropValues = ref<Record<string, string>>(
+	Object.fromEntries(Object.entries(fromAiOverride.extraProps).map((x) => [x[0], x[1].default])),
+);
 
-function buildValueFromOverride(
-	providedExtraProps: (typeof fromAiOverride)['extraProps'], // todo generic-ify
-	includeMarker: boolean,
-) {
+function fieldTypeToFromAiType(props: Props) {
+	switch (props.parameter.type) {
+		case 'boolean':
+			return 'boolean';
+		case 'number':
+			return 'number';
+		case 'string':
+		default:
+			return 'string';
+	}
+}
+
+function buildValueFromOverride(excludeMarker: boolean) {
 	const {
 		providers: { marker, key, type },
 		extraProps,
 	} = fromAiOverride;
-	return `={{ ${includeMarker ? marker : ''} $fromAI('${key(props)}', '${providedExtraProps.description.default ?? extraProps.description}', '${type(props)}') }}`;
+	const providedExtraProps = Object.fromEntries(
+		Object.entries(extraPropValues.value).filter((x) => selectedFields.value.includes(x[0])),
+	);
+	return `={{ ${excludeMarker ? '' : marker} $fromAI('${key(props)}', '${providedExtraProps?.description ?? extraProps.description.default}', '${type(props)}') }}`;
 }
 
 function isOverrideValue(s: string) {
 	return s.startsWith('={{ /* n8n-auto-generated-override */ $fromAI(');
 }
 
-function parseOverrides(s: string) {
+function parseOverrides(s: string): Partial<typeof extraPropValues.value> | null {
 	/*
 		Approaches:
 		- Smart and boring: Reuse packages/core/src/CreateNodeAsTool.ts - unclear where to move it
@@ -101,14 +118,19 @@ function parseOverrides(s: string) {
 
 	const fromAI = (...args: unknown[]) => args;
 	const fns = `const $fromAI = ${fromAI}; const $fromAi = ${fromAI}; const $fromai = ${fromAI};`;
-	const cursor = '={{ /* n8n-auto-generated-override */ $fromAI('.length;
+	const cursor = '={{ /* n8n-auto-generated-override */ '.length;
 	const end = '}}'.length;
-	// `eval?.` is an indirect evaluation, outside of local scope
-	const params: unknown[] = eval?.(`${fns} ${s.slice(cursor, -end)}`) ?? [];
+
+	let params: unknown[] = [];
+	try {
+		// `eval?.` is an indirect evaluation, outside of local scope
+		const code = `${fns} ${s.slice(cursor, -end)}`;
+		params = eval?.(code) ?? [];
+	} catch (e) {}
 	return {
-		key: params[0] ?? '',
-		description: params[1] ?? '',
-		type: params[2] ?? undefined,
+		// key: params[0],
+		description: params[1] as string | undefined,
+		// type: (params[2] as string) ?? undefined,
 		// todo - parse the string to get the values
 	};
 }
@@ -150,6 +172,18 @@ const isReadOnlyParameter = computed(
 	() =>
 		props.isReadOnly || props.parameter.disabledOptions !== undefined || isContentOverride.value,
 );
+
+onMounted(() => {
+	if (isOverrideValue(props.value?.toString() ?? '')) {
+		const x = parseOverrides(props.value?.toString() ?? '') ?? {};
+		for (const [key, value] of Object.entries(x)) {
+			if (value === undefined) continue;
+
+			extraPropValues.value[key] = value;
+			selectedFields.value.push(key);
+		}
+	}
+});
 
 function onFocus() {
 	focused.value = true;
@@ -313,7 +347,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 					() => {
 						valueChanged({
 							name: props.path,
-							value: buildValueFromOverride(fromAiOverride.extraProps, true),
+							value: buildValueFromOverride(false),
 						});
 					}
 				"
@@ -362,7 +396,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 								valueChanged({
 									node: node?.name,
 									name: props.path,
-									value: buildValueFromOverride(fromAiOverride.extraProps, false),
+									value: buildValueFromOverride(true),
 								});
 							}
 						"
@@ -401,7 +435,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 									() => {
 										valueChanged({
 											name: props.path,
-											value: buildValueFromOverride(fromAiOverride.extraProps, true),
+											value: buildValueFromOverride(false),
 										});
 									}
 								"
@@ -430,7 +464,37 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>
+		<N8nTagList
+			v-if="isContentOverride"
+			v-model="selectedFields"
+			:inputs="Object.keys(fromAiOverride.extraProps).map((x) => ({ name: x }))"
+		>
+			<template #displayItem="{ name }">
+				<ParameterInputFull
+					:parameter="{
+						name: name,
+						displayName: name[0].toUpperCase() + name.slice(1),
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+					}"
+					:value="extraPropValues[name]"
+					:path="`${path}.tags.${name}`"
+					input-size="small"
+					@update="
+						(x) => {
+							extraPropValues[name] = x.value as never;
+							valueChanged({
+								name: props.path,
+								value: buildValueFromOverride(false),
+							});
+						}
+					"
+				/>
+			</template>
+		</N8nTagList>
 	</N8nInputLabel>
+
 	<!-- badges to add extra fields from overrides go here -->
 </template>
 
@@ -466,7 +530,7 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 	background: var(--color-background-base);
 
 	&:hover {
-		background: var(--color-primary);
+		background: var(--color-secondary);
 	}
 }
 
