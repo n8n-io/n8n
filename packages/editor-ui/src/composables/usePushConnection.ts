@@ -264,13 +264,24 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					showedSuccessToast = true;
 				}
 
-				const execution = await workflowsStore.fetchExecutionDataById(executionId);
-				if (!execution?.data) return false;
-				executionData = {
-					workflowId: execution.workflowId,
-					data: parse(execution.data as unknown as string),
-					status: execution.status,
-				};
+				let execution: IExecutionResponse | null;
+
+				try {
+					execution = await workflowsStore.fetchExecutionDataById(executionId);
+					if (!execution?.data) {
+						uiStore.setProcessingExecutionResults(false);
+						return false;
+					}
+
+					executionData = {
+						workflowId: execution.workflowId,
+						data: parse(execution.data as unknown as string),
+						status: execution.status,
+					};
+				} catch {
+					uiStore.setProcessingExecutionResults(false);
+					return false;
+				}
 			}
 
 			const iRunExecutionData: IRunExecutionData = {
