@@ -2796,6 +2796,8 @@
 	"testDefinition.edit.testSaveFailed": "Failed to save test",
 	"testDefinition.edit.description": "Description",
 	"testDefinition.edit.description.description": "Add details about what this test evaluates and what success looks like",
+	"testDefinition.edit.pinNodes.noNodes.title": "No nodes to pin",
+	"testDefinition.edit.pinNodes.noNodes.description": "Your workflow needs to have at least one node to run a test",
 	"testDefinition.edit.tagName": "Tag name",
 	"testDefinition.edit.step.intro": "When running a test",
 	"testDefinition.edit.step.executions": "1. Fetch N past executions tagged | 1. Fetch {count} past execution tagged | 1. Fetch {count} past executions tagged",
