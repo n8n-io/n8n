@@ -1344,20 +1344,43 @@ describe('JsTaskRunner', () => {
 	});
 
 	describe('prototype pollution prevention', () => {
-		test('should prevent Object.setPrototypeOf in runOnceForAllItems', async () => {
+		const checkPrototypeIntact = () => {
+			const obj: Record<string, unknown> = {};
+			expect(obj.toString).toBe(Object.prototype.toString);
+			expect(obj.hasOwnProperty).toBe(Object.prototype.hasOwnProperty);
+			expect(obj.maliciousKey).toBeUndefined();
+		};
+
+		test('Object.setPrototypeOf should no-op', async () => {
+			checkPrototypeIntact();
+
 			const outcome = await executeForAllItems({
-				code: 'Object.setPrototypeOf({}, {}); return [{json: {result: true}}]',
+				code: `
+					const obj = {};
+					Object.setPrototypeOf(obj, { maliciousKey: 'value' });
+					return [{ json: { prototypeChanged: obj.maliciousKey !== undefined } }];
+				`,
 				inputItems: [{ a: 1 }],
 			});
-			expect(outcome.result).toEqual([wrapIntoJson({ result: true })]);
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
+			checkPrototypeIntact();
 		});
 
-		test('should prevent Reflect.setPrototypeOf in runOnceForEachItem', async () => {
-			const outcome = await executeForEachItem({
-				code: 'Reflect.setPrototypeOf({}, {}); return {json: {result: true}}',
+		test('Reflect.setPrototypeOf should no-op', async () => {
+			checkPrototypeIntact();
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = {};
+					Reflect.setPrototypeOf(obj, { maliciousKey: 'value' });
+					return [{ json: { prototypeChanged: obj.maliciousKey !== undefined } }];
+				`,
 				inputItems: [{ a: 1 }],
 			});
-			expect(outcome.result).toEqual([withPairedItem(0, wrapIntoJson({ result: true }))]);
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
+			checkPrototypeIntact();
 		});
 	});
 });
