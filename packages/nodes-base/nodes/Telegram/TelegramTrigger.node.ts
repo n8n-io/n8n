@@ -104,7 +104,7 @@ export class TelegramTrigger implements INodeType {
 						name: 'Chosen Inline Result',
 						value: 'chosen_inline_result',
 						description:
-							'Trigger when the result of an inline query that was chosen by a user and sent to their chat partner. Please see our documentation on the feedback collecting for details on how to enable these updates for your bot.',
+							"Trigger when the result of an inline query that was chosen by a user and sent to their chat partner. Please see Telegram's documentation on the feedback collecting for details on how to enable these updates for your bot.",
 					},
 					{
 						name: 'Deleted Business Messages',
