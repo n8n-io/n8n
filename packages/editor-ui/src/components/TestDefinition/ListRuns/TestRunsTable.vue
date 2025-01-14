@@ -49,6 +49,7 @@ const columns = computed((): Array<TestDefinitionTableColumn<TestRunRecord>> => 
 				{ text: locale.baseText('testDefinition.listRuns.status.running'), value: 'running' },
 				{ text: locale.baseText('testDefinition.listRuns.status.completed'), value: 'completed' },
 				{ text: locale.baseText('testDefinition.listRuns.status.error'), value: 'error' },
+				{ text: locale.baseText('testDefinition.listRuns.status.cancelled'), value: 'cancelled' },
 			],
 			filterMethod: (value: string, row: TestRunRecord) => row.status === value,
 		},
