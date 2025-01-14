@@ -58,6 +58,7 @@ class WebhookRequestHandler {
 			const error = ensureError(e);
 			Container.get(Logger).debug(
 				`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
+				{ stacktrace: error.stack },
 			);
 
 			return ResponseHelper.sendErrorResponse(res, error);
