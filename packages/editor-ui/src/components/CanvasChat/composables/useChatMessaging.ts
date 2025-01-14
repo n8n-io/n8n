@@ -252,9 +252,11 @@ export function useChatMessaging({
 		messages.value.push(newMessage);
 
 		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
-			ws.value?.send(
+			ws.value.send(
 				JSON.stringify({
-					text: message,
+					sessionId: sessionId.value,
+					action: 'sendMessage',
+					chatInput: message,
 				}),
 			);
 			isLoading.value = true;

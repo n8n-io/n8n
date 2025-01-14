@@ -28,6 +28,11 @@ type Session = {
 	connection: WebSocket;
 	executionId?: string;
 };
+type ChatMessage = {
+	sessionId: string;
+	action: string;
+	chatInput: string;
+};
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -152,11 +157,11 @@ export class ChatService {
 		}
 
 		const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
-		const message = jsonParse<string>(buffer.toString('utf8'));
+		const message = jsonParse<ChatMessage>(buffer.toString('utf8'));
 
 		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
 
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main = [[{ json: { message } }]];
+		runExecutionData.executionData!.nodeExecutionStack[0].data.main = [[{ json: message }]];
 
 		let project: Project | undefined = undefined;
 		try {

@@ -216,6 +216,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			return;
 		}
 
-		throw new ApplicationError('WebSocket connection is not available');
+		throw new ApplicationError('Connection to chat is not available, cannot send message');
 	}
 }

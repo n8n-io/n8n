@@ -26,10 +26,12 @@ import type { RunWorkflowChatPayload } from './composables/useChatMessaging';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/root.store';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const nodeTypesStore = useNodeTypesStore();
+const rootStore = useRootStore();
 const nodeHelpers = useNodeHelpers();
 const router = useRouter();
 
@@ -210,7 +212,7 @@ async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
 			source: payload.source,
 		});
 		ws.value = new WebSocket(
-			`http://localhost:5678/chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
+			`${rootStore.urlBaseEditor}chat?sessionId=${currentSessionId.value}&executionId=${response?.executionId}`,
 		);
 
 		ws.value.onmessage = (event) => {
