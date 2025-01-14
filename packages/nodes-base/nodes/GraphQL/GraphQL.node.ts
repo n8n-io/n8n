@@ -512,10 +512,7 @@ export class GraphQL implements INodeType {
 				} else {
 					if (typeof response === 'string') {
 						try {
-							if (typeof response === 'string') {
-								response = JSON.parse(response) as IDataObject;
-							}
-
+							response = JSON.parse(response) as IDataObject;
 							if (
 								response.errors &&
 								Array.isArray(response.errors) &&
