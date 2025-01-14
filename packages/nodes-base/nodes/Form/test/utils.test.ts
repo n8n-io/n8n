@@ -10,12 +10,37 @@ import type {
 
 import {
 	formWebhook,
+	createDescriptionMetadata,
 	prepareFormData,
 	prepareFormReturnItem,
 	resolveRawData,
 	isFormConnected,
-	createDescriptionMetadata,
 } from '../utils';
+
+describe('FormTrigger, parseFormDescription', () => {
+	it('should remove HTML tags and truncate to 150 characters', () => {
+		const descriptions = [
+			{ description: '<p>This is a test description</p>', expected: 'This is a test description' },
+			{ description: 'Test description', expected: 'Test description' },
+			{
+				description:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and soothing song.',
+				expected:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and so',
+			},
+			{
+				description:
+					'<p>Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and soothing song.</p>',
+				expected:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and so',
+			},
+		];
+
+		descriptions.forEach(({ description, expected }) => {
+			expect(createDescriptionMetadata(description)).toBe(expected);
+		});
+	});
+});
 
 describe('FormTrigger, formWebhook', () => {
 	const executeFunctions = mock<IWebhookFunctions>();
