@@ -473,6 +473,35 @@ describe('Projects in Public API', () => {
 				testServer.license.enable('feat:projectRole:admin');
 			});
 
+			it("should reject with 400 if the payload can't be validated", async () => {
+				// ARRANGE
+				const owner = await createOwnerWithApiKey();
+				const member = await createMember();
+
+				const payload = {
+					relations: [
+						{
+							userId: member.id,
+							// role does not exist
+							role: 'project:boss',
+						},
+					],
+				};
+
+				// ACT
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post('/projects/123456/users')
+					.send(payload)
+					.expect(400);
+
+				// ASSERT
+				expect(response.body).toHaveProperty(
+					'message',
+					"Invalid enum value. Expected 'project:personalOwner' | 'project:admin' | 'project:editor' | 'project:viewer', received 'project:boss'",
+				);
+			});
+
 			it('should reject with 404 if no project found', async () => {
 				const owner = await createOwnerWithApiKey();
 				const member = await createMember();
