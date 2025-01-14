@@ -118,22 +118,28 @@ function onEdgeLabelMouseLeave() {
 </script>
 
 <template>
-	<BaseEdge
-		v-for="(segment, index) in segments"
-		:id="`${id}-${index}`"
-		:key="segment[0]"
-		:class="edgeClasses"
-		:style="edgeStyle"
-		:path="segment[0]"
-		:marker-end="markerEnd"
-		:interaction-width="40"
-	/>
+	<g
+		data-test-id="edge"
+		:data-source-node-name="data.source?.node"
+		:data-target-node-name="data.target?.node"
+	>
+		<BaseEdge
+			v-for="(segment, index) in segments"
+			:id="`${id}-${index}`"
+			:key="segment[0]"
+			:class="edgeClasses"
+			:style="edgeStyle"
+			:path="segment[0]"
+			:marker-end="markerEnd"
+			:interaction-width="40"
+		/>
+	</g>
 
 	<EdgeLabelRenderer>
 		<div
-			data-test-id="edge-label-wrapper"
-			:data-source-node-name="sourceNode?.label"
-			:data-target-node-name="targetNode?.label"
+			data-test-id="edge-label"
+			:data-source-node-name="data.source?.node"
+			:data-target-node-name="data.target?.node"
 			:data-edge-status="status"
 			:style="edgeToolbarStyle"
 			:class="edgeToolbarClasses"

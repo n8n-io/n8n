@@ -44,7 +44,18 @@ const filtersLength = computed(() => {
 		}
 
 		const value = props.modelValue[key];
-		length += (Array.isArray(value) ? value.length > 0 : value !== '') ? 1 : 0;
+
+		if (value === true) {
+			length += 1;
+		}
+
+		if (Array.isArray(value) && value.length) {
+			length += 1;
+		}
+
+		if (typeof value === 'string' && value !== '') {
+			length += 1;
+		}
 	});
 
 	return length;

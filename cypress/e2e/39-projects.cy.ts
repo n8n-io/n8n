@@ -367,7 +367,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
@@ -382,7 +382,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
@@ -396,7 +396,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
@@ -407,7 +407,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
@@ -425,7 +425,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account personal project');
 			ndv.getters.backToCanvas().click();
@@ -436,7 +436,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account personal project');
 		});

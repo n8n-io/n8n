@@ -130,6 +130,9 @@ patchedDependencies:
   '@types/ws@8.5.4':
     hash: nbzuqaoyqbrfwipijj5qriqqju
     path: patches/@types__ws@8.5.4.patch
+  bull@4.12.1:
+    hash: ep6h4rqtpclldfcdohxlgcb3aq
+    path: patches/bull@4.12.1.patch
   pkce-challenge@3.0.0:
     hash: dypouzb3lve7vncq25i5fuanki
     path: patches/pkce-challenge@3.0.0.patch
@@ -822,7 +825,7 @@ importers:
         version: 2.4.3
       bull:
         specifier: 4.12.1
-        version: 4.12.1
+        version: 4.12.1(patch_hash=ep6h4rqtpclldfcdohxlgcb3aq)
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
@@ -19827,7 +19830,7 @@ snapshots:
       - supports-color
     optional: true
 
-  bull@4.12.1:
+  bull@4.12.1(patch_hash=ep6h4rqtpclldfcdohxlgcb3aq):
     dependencies:
       cron-parser: 4.9.0
       get-port: 5.1.1
