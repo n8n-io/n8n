@@ -43,6 +43,15 @@ class ProjectNotFoundError extends NotFoundError {
 	constructor(projectId: string) {
 		super(`Could not find project with ID: ${projectId}`);
 	}
+
+	static isDefinedAndNotNull<T>(
+		value: T | undefined | null,
+		projectId: string,
+	): asserts value is T {
+		if (value === undefined || value === null) {
+			throw new ProjectNotFoundError(projectId);
+		}
+	}
 }
 
 @Service()
@@ -92,9 +101,7 @@ export class ProjectService {
 		}
 
 		const project = await this.getProjectWithScope(user, projectId, ['project:delete']);
-		if (!project) {
-			throw new ProjectNotFoundError(projectId);
-		}
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
 
 		let targetProject: Project | null = null;
 		if (migrateToProject) {
@@ -282,9 +289,7 @@ export class ProjectService {
 			where: { id: projectId, type: 'team' },
 			relations: { projectRelations: true },
 		});
-		if (!project) {
-			throw new ProjectNotFoundError(projectId);
-		}
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
 		return project;
 	}
 
