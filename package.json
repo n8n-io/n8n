@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.73.0",
+  "version": "1.74.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -18,6 +18,11 @@
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
     "dev:be": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
+    "dev:fe": "run-p start \"dev:fe:editor --filter=n8n-design-system\"",
+    "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
+    "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
+    "dev:e2e:v2": "cd cypress && pnpm run test:e2e:dev:v2",
+    "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
@@ -55,6 +60,7 @@
     "lefthook": "^1.7.15",
     "nock": "^13.3.2",
     "nodemon": "^3.0.1",
+    "npm-run-all2": "^7.0.2",
     "p-limit": "^3.1.0",
     "rimraf": "^5.0.1",
     "run-script-os": "^1.0.7",
@@ -84,7 +90,7 @@
       "ws": ">=8.17.1"
     },
     "patchedDependencies": {
-      "typedi@0.10.0": "patches/typedi@0.10.0.patch",
+      "bull@4.12.1": "patches/bull@4.12.1.patch",
       "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",
       "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@4.17.43": "patches/@types__express-serve-static-core@4.17.43.patch",

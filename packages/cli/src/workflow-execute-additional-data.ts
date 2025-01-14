@@ -4,8 +4,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import { ErrorReporter, Logger, WorkflowExecute, isObjectLiteral } from 'n8n-core';
+import {
+	ErrorReporter,
+	Logger,
+	InstanceSettings,
+	WorkflowExecute,
+	isObjectLiteral,
+} from 'n8n-core';
 import { ApplicationError, NodeOperationError, Workflow, WorkflowHooks } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -33,10 +40,8 @@ import type {
 	ExecuteWorkflowData,
 	RelatedExecution,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
@@ -58,11 +63,11 @@ import {
 	updateExistingExecution,
 } from './execution-lifecycle-hooks/shared/shared-hook-functions';
 import { toSaveSettings } from './execution-lifecycle-hooks/to-save-settings';
-import { TaskManager } from './runners/task-managers/task-manager';
-import { SecretsHelper } from './secrets-helpers';
+import { SecretsHelper } from './secrets-helpers.ee';
 import { OwnershipService } from './services/ownership.service';
 import { UrlService } from './services/url.service';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
+import { TaskRequester } from './task-runners/task-managers/task-requester';
 import { PermissionChecker } from './user-management/permission-checker';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from './workflows/workflow-static-data.service';
@@ -728,7 +733,7 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
+		const relations = Container.get(GlobalConfig).tags.disabled ? [] : ['tags'];
 
 		workflowData = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },
@@ -1015,7 +1020,7 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		async startAgentJob(
+		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,
 			settings: unknown,
@@ -1033,7 +1038,7 @@ export async function getBase(
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
-			return await Container.get(TaskManager).startTask(
+			return await Container.get(TaskRequester).startTask(
 				additionalData,
 				jobType,
 				settings,
@@ -1076,8 +1081,7 @@ function getWorkflowHooksIntegrated(
 }
 
 /**
- * Returns WorkflowHooks instance for running integrated workflows
- * (Workflows which get started inside of another workflow)
+ * Returns WorkflowHooks instance for worker in scaling mode.
  */
 export function getWorkflowHooksWorkerExecuter(
 	mode: WorkflowExecuteMode,
@@ -1091,6 +1095,17 @@ export function getWorkflowHooksWorkerExecuter(
 	for (const key of Object.keys(preExecuteFunctions)) {
 		const hooks = hookFunctions[key] ?? [];
 		hooks.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
+
+	if (mode === 'manual' && Container.get(InstanceSettings).isWorker) {
+		const pushHooks = hookFunctionsPush();
+		for (const key of Object.keys(pushHooks)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
+			// eslint-disable-next-line prefer-spread
+			hookFunctions[key].push.apply(hookFunctions[key], pushHooks[key]);
+		}
 	}
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);

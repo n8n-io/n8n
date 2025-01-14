@@ -123,12 +123,17 @@ const isItemActive = (item: IMenuItem): boolean => {
 					:disabled="item.disabled"
 					@click="handleSelect?.(item)"
 				>
-					<N8nIcon
-						v-if="item.icon"
-						:class="$style.icon"
-						:icon="item.icon"
-						:size="item.customIconSize || 'large'"
-					/>
+					<div v-if="item.icon">
+						<N8nIcon
+							v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
+							:class="$style.icon"
+							:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
+							:size="item.customIconSize || 'large'"
+						/>
+						<span v-else-if="item.icon.type === 'emoji'" :class="$style.icon">{{
+							item.icon.value
+						}}</span>
+					</div>
 					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
 					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
 						getInitials(item.label)

@@ -1,4 +1,5 @@
 import type { CallbackManager } from '@langchain/core/callbacks/manager';
+import { Container } from '@n8n/di';
 import { get } from 'lodash';
 import type {
 	Workflow,
@@ -27,7 +28,6 @@ import {
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 

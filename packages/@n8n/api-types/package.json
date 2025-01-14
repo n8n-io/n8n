@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -27,6 +27,6 @@
   "dependencies": {
     "xss": "catalog:",
     "zod": "catalog:",
-    "zod-class": "0.0.15"
+    "zod-class": "0.0.16"
   }
 }

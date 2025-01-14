@@ -9,6 +9,7 @@ import type {
 	ExecuteWorkflowData,
 	ExecutionError,
 	IDataObject,
+	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeParameterResourceLocator,
@@ -251,7 +252,9 @@ export class WorkflowToolService {
 		let jsonData = typeof query === 'object' ? query : { query };
 
 		if (this.useSchema) {
-			const currentWorkflowInputs = getCurrentWorkflowInputData.call(this.context);
+			const currentWorkflowInputs = getCurrentWorkflowInputData.call(
+				this.context as unknown as IExecuteFunctions,
+			);
 			jsonData = currentWorkflowInputs[itemIndex].json;
 		}
 

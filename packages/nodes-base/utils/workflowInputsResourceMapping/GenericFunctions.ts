@@ -10,7 +10,7 @@ import type {
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
 	ResourceMapperFields,
-	ISupplyDataFunctions,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -66,7 +66,7 @@ function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 }
 
 export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption[] {
-	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0);
+	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
 		if (inputSource === WORKFLOW_INPUTS) {
@@ -94,7 +94,7 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 	throw new NodeOperationError(context.getNode(), result);
 }
 
-export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
+export function getWorkflowInputValues(this: IExecuteFunctions): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
 	return inputData.map((item, itemIndex) => {
@@ -117,7 +117,7 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 	});
 }
 
-export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+export function getCurrentWorkflowInputData(this: IExecuteFunctions) {
 	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
 
 	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];

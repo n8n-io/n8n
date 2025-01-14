@@ -65,7 +65,7 @@ export class VectorStorePinecone extends createVectorStoreNode({
 				required: true,
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update'],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
 	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,

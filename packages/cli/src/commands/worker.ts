@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';
@@ -113,7 +113,7 @@ export class Worker extends BaseCommand {
 
 		const { taskRunners: taskRunnerConfig } = this.globalConfig;
 		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/runners/task-runner-module');
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();
 		}

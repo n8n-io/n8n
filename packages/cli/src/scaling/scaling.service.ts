@@ -1,9 +1,16 @@
 import { GlobalConfig } from '@n8n/config';
-import { ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify, ensureError } from 'n8n-workflow';
+import { Container, Service } from '@n8n/di';
+import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
+import {
+	ApplicationError,
+	BINARY_ENCODING,
+	sleep,
+	jsonStringify,
+	ensureError,
+	ExecutionCancelledError,
+} from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
-import { strict } from 'node:assert';
-import Container, { Service } from 'typedi';
+import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
@@ -86,6 +93,12 @@ export class ScalingService {
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
+				if (!this.hasValidJobData(job)) {
+					throw new ApplicationError('Worker received invalid job', {
+						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
+					});
+				}
+
 				await this.jobProcessor.processJob(job);
 			} catch (error) {
 				await this.reportJobProcessingError(ensureError(error), job);
@@ -206,7 +219,8 @@ export class ScalingService {
 		try {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
-				this.logger.debug('Stopped active job', props);
+				await job.discard(); // prevent retries
+				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
 				return true;
 			}
 
@@ -214,8 +228,15 @@ export class ScalingService {
 			this.logger.debug('Stopped inactive job', props);
 			return true;
 		} catch (error: unknown) {
-			await job.progress({ kind: 'abort-job' });
-			this.logger.error('Failed to stop job', { ...props, error });
+			assert(error instanceof Error);
+			this.logger.error('Failed to stop job', {
+				...props,
+				error: {
+					message: error.message,
+					name: error.name,
+					stack: error.stack,
+				},
+			});
 			return false;
 		}
 	}
@@ -486,6 +507,10 @@ export class ScalingService {
 		return error instanceof Error
 			? error.message
 			: jsonStringify(error, { replaceCircularRefs: true });
+	}
+
+	private hasValidJobData(job: Job) {
+		return isObjectLiteral(job.data) && 'executionId' in job.data && 'loadStaticData' in job.data;
 	}
 
 	// #endregion

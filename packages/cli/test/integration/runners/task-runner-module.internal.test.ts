@@ -1,10 +1,10 @@
 import { TaskRunnersConfig } from '@n8n/config';
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
-import { TaskRunnerModule } from '@/runners/task-runner-module';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
-import { InternalTaskRunnerDisconnectAnalyzer } from '../../../src/runners/internal-task-runner-disconnect-analyzer';
-import { TaskRunnerWsServer } from '../../../src/runners/runner-ws-server';
+import { InternalTaskRunnerDisconnectAnalyzer } from '../../../src/task-runners/internal-task-runner-disconnect-analyzer';
+import { TaskRunnerWsServer } from '../../../src/task-runners/task-runner-ws-server';
 
 describe('TaskRunnerModule in internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);

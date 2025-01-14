@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext } from 'n8n-core';
 import type {
 	ILoadOptions,
@@ -20,7 +21,6 @@ import type {
 	ILocalLoadOptionsFunctions,
 } from 'n8n-workflow';
 import { Workflow, ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { NodeTypes } from '@/node-types';
 

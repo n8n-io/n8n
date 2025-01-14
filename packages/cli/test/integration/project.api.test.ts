@@ -1,10 +1,10 @@
+import type { ProjectRole } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { Project } from '@/databases/entities/project';
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
@@ -177,11 +177,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer
-			.authAgentFor(testUser1)
-			.get('/projects/my-projects')
-			.query({ includeScopes: true })
-			.expect(200);
+		const resp = await testServer.authAgentFor(testUser1).get('/projects/my-projects').expect(200);
 		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
 			resp.body.data;
 
@@ -258,11 +254,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer
-			.authAgentFor(ownerUser)
-			.get('/projects/my-projects')
-			.query({ includeScopes: true })
-			.expect(200);
+		const resp = await testServer.authAgentFor(ownerUser).get('/projects/my-projects').expect(200);
 		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
 			resp.body.data;
 

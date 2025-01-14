@@ -15,7 +15,7 @@ import {
 	NDV,
 	MainSidebar,
 } from '../pages';
-import { clearNotifications } from '../pages/notifications';
+import { clearNotifications, successToast } from '../pages/notifications';
 import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
@@ -367,7 +367,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
@@ -382,7 +382,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 1');
 			ndv.getters.backToCanvas().click();
@@ -396,7 +396,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
@@ -407,7 +407,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account project 2');
 			ndv.getters.backToCanvas().click();
@@ -425,7 +425,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account personal project');
 			ndv.getters.backToCanvas().click();
@@ -436,7 +436,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCredentialsSelect().first().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
+				.should('have.length', 1)
 				.first()
 				.should('contain.text', 'Notion account personal project');
 		});
@@ -829,5 +829,24 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.find('input')
 				.should('not.have.length');
 		});
+	});
+
+	it('should set and update project icon', () => {
+		const DEFAULT_ICON = 'fa-layer-group';
+		const NEW_PROJECT_NAME = 'Test Project';
+
+		cy.signinAsAdmin();
+		cy.visit(workflowsPage.url);
+		projects.createProject(NEW_PROJECT_NAME);
+		// New project should have default icon
+		projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+		// Choose another icon
+		projects.getIconPickerButton().click();
+		projects.getIconPickerTab('Emojis').click();
+		projects.getIconPickerEmojis().first().click();
+		// Project should be updated with new icon
+		successToast().contains('Project icon updated successfully');
+		projects.getIconPickerButton().should('contain', '😀');
+		projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
 	});
 });

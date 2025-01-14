@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import type {
 	IDataObject,
 	INode,
@@ -9,12 +10,11 @@ import type {
 	WorkflowOperationError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,

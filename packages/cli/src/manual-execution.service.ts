@@ -1,3 +1,4 @@
+import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
 	DirectedGraph,
@@ -15,7 +16,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-import { Service } from 'typedi';
 
 @Service()
 export class ManualExecutionService {
@@ -71,7 +71,11 @@ export class ManualExecutionService {
 				},
 			};
 
-			const workflowExecute = new WorkflowExecute(additionalData, 'manual', executionData);
+			const workflowExecute = new WorkflowExecute(
+				additionalData,
+				data.executionMode,
+				executionData,
+			);
 			return workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||

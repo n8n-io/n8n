@@ -13,6 +13,7 @@ import {
 	getCurrentWorkflowInputData,
 	loadWorkflowInputMappings,
 } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
+
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
