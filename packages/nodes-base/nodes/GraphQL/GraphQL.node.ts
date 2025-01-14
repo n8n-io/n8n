@@ -478,7 +478,7 @@ export class GraphQL implements INodeType {
 						...requestOptions.body,
 						query: gqlQuery,
 						variables: parsedVariables,
-						operationName: this.getNodeParameter('operationName', itemIndex) as string,
+						operationName: this.getNodeParameter('operationName', itemIndex, '') as string,
 					};
 
 					if (jsonBody.operationName === '') {
@@ -516,15 +516,15 @@ export class GraphQL implements INodeType {
 								response = JSON.parse(response) as IDataObject;
 							}
 
-							// Check for errors in the response
-							if (response.errors && Array.isArray(response.errors)) {
-								// If the request format is 'graphql', throw an error suggesting to try JSON
-								if (requestFormat === 'graphql') {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Error in GraphQL request. Please try using the Request format "JSON" instead.',
-									);
-								}
+							if (
+								response.errors &&
+								Array.isArray(response.errors) &&
+								requestFormat === 'graphql'
+							) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Error in GraphQL request. Please try using the Request format "JSON" instead.',
+								);
 							}
 						} catch (error) {
 							throw new NodeOperationError(
