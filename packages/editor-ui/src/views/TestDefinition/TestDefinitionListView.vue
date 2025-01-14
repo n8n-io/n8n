@@ -101,7 +101,7 @@ async function onCancelTestRun(testId: string, testRunId: string | null) {
 		const result = await testDefinitionStore.cancelTestRun(testId, testRunId);
 		if (result.success) {
 			toast.showMessage({
-				title: locale.baseText('testDefinition.list.testStarted'),
+				title: locale.baseText('testDefinition.list.testCancelled'),
 				type: 'success',
 			});
 
