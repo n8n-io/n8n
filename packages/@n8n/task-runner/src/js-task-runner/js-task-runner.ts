@@ -140,6 +140,8 @@ export class JsTaskRunner extends TaskRunner {
 			.map((constructor) => constructor.prototype)
 			.forEach(Object.freeze);
 
+		Object.getPrototypeOf = () => ({});
+		Reflect.getPrototypeOf = () => ({});
 		Object.setPrototypeOf = () => false;
 		Reflect.setPrototypeOf = () => false;
 	}
