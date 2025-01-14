@@ -277,10 +277,8 @@ export class ProjectService {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
-		await this.projectRelationRepository.insert(
-			relations.map((relation) =>
-				this.projectRelationRepository.create({ projectId, ...relation }),
-			),
+		await this.projectRelationRepository.save(
+			relations.map((relation) => ({ projectId, ...relation })),
 		);
 	}
 
