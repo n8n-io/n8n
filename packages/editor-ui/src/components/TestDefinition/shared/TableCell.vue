@@ -28,6 +28,7 @@ const statusThemeMap: Record<string, string> = {
 	completed: 'success',
 	error: 'danger',
 	success: 'success',
+	cancelled: 'default',
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -36,6 +37,7 @@ const statusLabelMap: Record<string, string> = {
 	completed: locale.baseText('testDefinition.listRuns.status.completed'),
 	error: locale.baseText('testDefinition.listRuns.status.error'),
 	success: locale.baseText('testDefinition.listRuns.status.success'),
+	cancelled: locale.baseText('testDefinition.listRuns.status.cancelled'),
 };
 
 function hasProperty(row: unknown, prop: string): row is Record<string, unknown> {
