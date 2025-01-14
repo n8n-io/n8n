@@ -48,6 +48,7 @@ function getTestExecution(testId: string): TestExecution {
 	const lastRun = testDefinitionStore.lastRunByTestId[testId];
 	if (!lastRun) {
 		return {
+			id: null,
 			lastRun: null,
 			errorRate: 0,
 			metrics: {},
@@ -56,6 +57,7 @@ function getTestExecution(testId: string): TestExecution {
 	}
 
 	const mockExecutions = {
+		id: lastRun.id,
 		lastRun: lastRun.updatedAt ?? '',
 		errorRate: 0,
 		metrics: lastRun.metrics ?? {},
@@ -83,6 +85,30 @@ async function onRunTest(testId: string) {
 			await testDefinitionStore.fetchTestRuns(testId);
 		} else {
 			throw new Error('Test run failed to start');
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('testDefinition.list.testStartError'));
+	}
+}
+
+async function onCancelTestRun(testId: string, testRunId: string | null) {
+	try {
+		// FIXME: testRunId might be null for a short period of time between user clicking start and the test run being created and fetched. Just ignore it for now.
+		if (!testRunId) {
+			throw new Error('Failed to cancel test run');
+		}
+
+		const result = await testDefinitionStore.cancelTestRun(testId, testRunId);
+		if (result.success) {
+			toast.showMessage({
+				title: locale.baseText('testDefinition.list.testCancelled'),
+				type: 'success',
+			});
+
+			// Optionally fetch the updated test runs
+			await testDefinitionStore.fetchTestRuns(testId);
+		} else {
+			throw new Error('Failed to cancel test run');
 		}
 	} catch (error) {
 		toast.showError(error, locale.baseText('testDefinition.list.testStartError'));
@@ -165,6 +191,7 @@ onMounted(() => {
 				@view-details="onViewDetails"
 				@edit-test="onEditTest"
 				@delete-test="onDeleteTest"
+				@cancel-test-run="onCancelTestRun"
 			/>
 		</template>
 	</div>
