@@ -11,11 +11,9 @@ import { useTestDefinitionForm } from '@/components/TestDefinition/composables/u
 import HeaderSection from '@/components/TestDefinition/EditDefinition/sections/HeaderSection.vue';
 import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
 import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
-import type { ModalState } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
-import type { EditableFormState } from '@/components/TestDefinition/types';
 const props = defineProps<{
 	testId?: string;
 }>();
@@ -54,8 +52,6 @@ const tagUsageCount = computed(
 	() => tagsStore.tagsById[state.value.tags.value[0]]?.usageCount ?? 0,
 );
 const hasRuns = computed(() => runs.value.length > 0);
-const nodePinningModal = ref<ModalState | null>(null);
-const modalContentWidth = ref(0);
 const showConfig = ref(true);
 const selectedMetric = ref<string>('');
 
@@ -146,12 +142,6 @@ function toggleConfig() {
 	showConfig.value = !showConfig.value;
 }
 
-async function refetchNodes() {
-	console.log('refetchNodes');
-
-	await workflowsStore.fetchWorkflow(currentWorkflowId.value);
-}
-
 // Debounced watchers for auto-saving
 watch(
 	() => state.value.metrics,
@@ -177,18 +167,20 @@ watch(
 		<HeaderSection
 			v-model:name="state.name"
 			v-model:description="state.description"
-			v-model:evaluationWorkflow="state.evaluationWorkflow"
 			v-model:tags="state.tags"
 			:has-runs="hasRuns"
 			:is-saving="isSaving"
 			:has-issues="hasIssues"
-			:start-editing="(field) => startEditing(field)"
-			:save-changes="(field) => saveChanges(field)"
-			:handle-keydown="(event, field) => handleKeydown(event, field)"
+			:start-editing="startEditing"
+			:save-changes="saveChanges"
+			:handle-keydown="handleKeydown"
 			:on-save-test="onSaveTest"
 			:run-test="runTest"
 			:show-config="showConfig"
 			:toggle-config="toggleConfig"
+			:show-run-test-button="
+				(state.evaluationWorkflow.value && state.tags.value.length > 0) === true
+			"
 		/>
 
 		<div :class="$style.content">
@@ -206,15 +198,15 @@ watch(
 				v-model:evaluationWorkflow="state.evaluationWorkflow"
 				v-model:metrics="state.metrics"
 				v-model:mockedNodes="state.mockedNodes"
-				:cancel-editing="(field: keyof EditableFormState) => cancelEditing(field)"
+				:cancel-editing="cancelEditing"
 				:show-config="showConfig"
 				:tag-usage-count="tagUsageCount"
 				:all-tags="allTags"
 				:tags-by-id="tagsById"
 				:is-loading="isLoading"
 				:has-issues="hasIssues"
-				:start-editing="(field) => startEditing(field)"
-				:save-changes="(field) => saveChanges(field)"
+				:start-editing="startEditing"
+				:save-changes="saveChanges"
 				:create-tag="handleCreateTag"
 				@open-pinning-modal="openPinningModal"
 				@delete-metric="onDeleteMetric"
@@ -249,105 +241,5 @@ watch(
 		justify-content: center;
 		overflow-y: auto;
 	}
-}
-
-.headerSection {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	background-color: var(--color-background-light);
-	width: 100%;
-}
-
-.headerMeta {
-	max-width: 50%;
-}
-
-.name {
-	display: flex;
-	align-items: center;
-
-	.lastSaved {
-		font-size: var(--font-size-s);
-		color: var(--color-text-light);
-	}
-}
-
-.descriptionInput {
-	margin-top: var(--spacing-2xs);
-}
-
-.runs {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
-	flex: 1;
-	padding-top: var(--spacing-3xs);
-	overflow: auto;
-
-	@media (min-height: 56rem) {
-		margin-top: var(--spacing-2xl);
-	}
-}
-
-.panelBlock {
-	width: var(--evaluation-edit-panel-width);
-	display: grid;
-	height: 100%;
-	overflow-y: auto;
-	flex-shrink: 0;
-	padding-bottom: var(--spacing-l);
-	margin-left: var(--spacing-2xl);
-	transition: width 0.2s ease;
-
-	&.hidden {
-		margin-left: 0;
-		width: 0;
-		overflow: hidden;
-		flex-shrink: 1;
-	}
-
-	.noRuns & {
-		overflow-y: initial;
-	}
-}
-
-.panelIntro {
-	font-size: var(--font-size-m);
-	color: var(--color-text-dark);
-
-	justify-self: center;
-	position: relative;
-	display: block;
-}
-
-.step {
-	position: relative;
-
-	&:not(:first-child) {
-		margin-top: var(--spacing-m);
-	}
-}
-
-.introArrow {
-	--arrow-height: 1.5rem;
-	margin-bottom: -1rem;
-	justify-self: center;
-}
-
-.evaluationArrows {
-	--arrow-height: 22rem;
-	display: flex;
-	justify-content: space-between;
-	width: 100%;
-	max-width: 80%;
-	margin: 0 auto;
-	margin-bottom: -100%;
-	z-index: 0;
-}
-
-.controls {
-	display: flex;
-	gap: var(--spacing-s);
 }
 </style>

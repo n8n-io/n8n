@@ -16,14 +16,11 @@ const props = defineProps<{
 	runTest: () => Promise<void>;
 	showConfig: boolean;
 	toggleConfig: () => void;
+	showRunTestButton?: boolean;
 }>();
 
 const name = defineModel<EditableField<string>>('name', { required: true });
 const description = defineModel<EditableField<string>>('description', { required: true });
-const evaluationWorkflow = defineModel<INodeParameterResourceLocator>('evaluationWorkflow', {
-	required: true,
-});
-const tags = defineModel<{ value: string[] }>('tags', { required: true });
 
 const locale = useI18n();
 </script>
@@ -69,7 +66,7 @@ const locale = useI18n();
 				@click="toggleConfig"
 			/>
 			<N8nButton
-				v-if="evaluationWorkflow.value && tags.value.length > 0"
+				v-if="showRunTestButton"
 				:class="$style.runTestButton"
 				size="small"
 				data-test-id="run-test-button"
