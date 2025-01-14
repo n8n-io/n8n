@@ -2608,6 +2608,8 @@
 	"projects.move.resource.modal.message.sharingInfo": "(Currently shared with {numberOfProjects} project) | (Currently shared with {numberOfProjects} projects)",
 	"projects.move.resource.modal.message.usedCredentials": "Also share the {usedCredentials} used by this workflow to ensure it will continue to run correctly",
 	"projects.move.resource.modal.message.usedCredentials.number": "{number} credential | {number} credentials",
+	"projects.move.resource.modal.message.unAccessibleCredentials": "Some credentials",
+	"projects.move.resource.modal.message.unAccessibleCredentials.note": "{credentials} used in this workflow will not be shared",
 	"projects.move.resource.modal.message.noProjects": "Currently there are not any projects or users available for you to move this {resourceTypeLabel} to.",
 	"projects.move.resource.modal.button": "Move {resourceTypeLabel}",
 	"projects.move.resource.modal.selectPlaceholder": "Select project or user...",

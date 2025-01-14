@@ -14,6 +14,8 @@ import { useToast } from '@/composables/useToast';
 import { getResourcePermissions } from '@/permissions';
 import { sortByProperty } from '@/utils/sortUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { RouteLocationNamedRaw } from 'vue-router';
 
 const props = defineProps<{
 	modalName: string;
@@ -29,11 +31,13 @@ const uiStore = useUIStore();
 const toast = useToast();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
+const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
 
 const filter = ref('');
 const projectId = ref<string | null>(null);
-const usedCredentials = ref<IUsedCredential[]>([]);
+const usedCredentials = ref<ICredentialsResponse[]>([]);
+const inAccessibleCredentials = ref<IUsedCredential[]>([]);
 const shareUsedCredentials = ref(false);
 const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
@@ -118,6 +122,29 @@ const moveResource = async () => {
 	}
 };
 
+const getCredentialRouterLocation = (
+	credential: ICredentialsResponse | IUsedCredential,
+): RouteLocationNamedRaw => {
+	const isSharedWithCurrentProject = credential.sharedWithProjects?.find(
+		(p) => p.id === projectsStore.currentProjectId,
+	);
+	const params: {
+		projectId?: string;
+		credentialId: string;
+	} = { credentialId: credential.id };
+
+	if (isSharedWithCurrentProject ?? credential.homeProject?.id) {
+		params.projectId = isSharedWithCurrentProject
+			? projectsStore.currentProjectId
+			: credential.homeProject?.id;
+	}
+
+	return {
+		name: isSharedWithCurrentProject ? VIEWS.PROJECTS_CREDENTIALS : VIEWS.CREDENTIALS,
+		params,
+	};
+};
+
 onMounted(async () => {
 	telemetry.track(`User clicked to move a ${props.data.resourceType}`, {
 		[`${props.data.resourceType}_id`]: props.data.resource.id,
@@ -125,8 +152,17 @@ onMounted(async () => {
 	});
 
 	if (isResourceWorkflow.value) {
-		const data = await workflowsStore.fetchWorkflow(props.data.resource.id);
-		usedCredentials.value = data.usedCredentials ?? [];
+		const [workflow, credentials] = await Promise.all([
+			workflowsStore.fetchWorkflow(props.data.resource.id),
+			credentialsStore.fetchAllCredentials(),
+		]);
+
+		usedCredentials.value = credentials.filter((credential) =>
+			(workflow.usedCredentials ?? []).find((c) => c.id === credential.id),
+		);
+		inAccessibleCredentials.value = (workflow.usedCredentials ?? []).filter(
+			(credential) => !credentialsStore.getCredentialById(credential.id),
+		);
 	}
 });
 </script>
@@ -225,15 +261,7 @@ onMounted(async () => {
 									<template #content>
 										<ul :class="$style.credentialsList">
 											<li v-for="credential in usedCredentials" :key="credential.id">
-												<router-link
-													target="_blank"
-													:to="{
-														name: projectsStore.currentProjectId
-															? VIEWS.PROJECTS_CREDENTIALS
-															: VIEWS.CREDENTIALS,
-														params: { credentialId: credential.id },
-													}"
-												>
+												<router-link target="_blank" :to="getCredentialRouterLocation(credential)">
 													{{ credential.name }}
 												</router-link>
 											</li>
@@ -243,6 +271,26 @@ onMounted(async () => {
 							</template>
 						</i18n-t>
 					</N8nCheckbox>
+					<span v-if="inAccessibleCredentials.length" :class="$style.textBlock">
+						<i18n-t keypath="projects.move.resource.modal.message.unAccessibleCredentials.note">
+							<template #credentials>
+								<N8nTooltip placement="top">
+									<span :class="$style.tooltipText">{{
+										i18n.baseText('projects.move.resource.modal.message.unAccessibleCredentials')
+									}}</span>
+									<template #content>
+										<ul :class="$style.credentialsList">
+											<li v-for="credential in inAccessibleCredentials" :key="credential.id">
+												<router-link target="_blank" :to="getCredentialRouterLocation(credential)">
+													{{ credential.name }}
+												</router-link>
+											</li>
+										</ul>
+									</template>
+								</N8nTooltip>
+							</template>
+						</i18n-t>
+					</span>
 				</N8nText>
 			</div>
 			<N8nText v-else>{{
