@@ -370,9 +370,10 @@ describe('NDV', () => {
 
 		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
-
+		ndv.getters.codeEditorFullscreen().blur();
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
+		cy.wait(200); // allow change to emit before closing modal
 		ndv.actions.close();
 
 		// SQL
@@ -385,7 +386,7 @@ describe('NDV', () => {
 			.type('{backspace}')
 			.type('SELECT * FROM workflows');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'SELECT * FROM workflows');
-
+		cy.wait(200);
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('query')
@@ -403,6 +404,7 @@ describe('NDV', () => {
 			.type('{backspace}')
 			.type('<div>Hello World');
 		ndv.getters.codeEditorFullscreen().should('contain.text', '<div>Hello World</div>');
+		cy.wait(200);
 
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
@@ -421,7 +423,7 @@ describe('NDV', () => {
 			.type('{backspace}')
 			.type('{ "key": "value" }', { parseSpecialCharSequences: false });
 		ndv.getters.codeEditorFullscreen().should('contain.text', '{ "key": "value" }');
-
+		cy.wait(200);
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('jsonOutput')
