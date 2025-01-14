@@ -714,6 +714,7 @@
 	"executionsList.activeExecutions.none": "No active executions",
 	"executionsList.activeExecutions.header": "{running}/{cap} active executions",
 	"executionsList.activeExecutions.tooltip": "Current active executions: {running} out of {cap}. This instance is limited to {cap} concurrent production executions.",
+	"executionsList.activeExecutions.evaluationNote": "Evaluation runs appear in the list of executions but do not count towards your execution concurrency.",
 	"executionsList.allWorkflows": "All Workflows",
 	"executionsList.anyStatus": "Any Status",
 	"executionsList.autoRefresh": "Auto refresh",
