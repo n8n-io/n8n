@@ -53,6 +53,12 @@ function sanitizeHtml(text: string) {
 	});
 }
 
+export function createDescriptionMetadata(description: string) {
+	return description === ''
+		? 'n8n form'
+		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -93,6 +99,7 @@ export function prepareFormData({
 		validForm,
 		formTitle,
 		formDescription,
+		formDescriptionMetadata: createDescriptionMetadata(formDescription),
 		formSubmittedHeader,
 		formSubmittedText,
 		n8nWebsiteLink,
