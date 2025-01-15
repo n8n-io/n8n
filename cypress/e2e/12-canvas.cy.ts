@@ -18,7 +18,6 @@ import {
 } from '../composables/workflow';
 import { NDV, WorkflowExecutionsTab } from '../pages';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { isCanvasV2 } from '../utils/workflowUtils';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();
