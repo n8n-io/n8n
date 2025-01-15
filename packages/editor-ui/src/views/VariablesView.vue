@@ -11,8 +11,8 @@ import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import VariablesForm from './VariablesForm.vue';
-import VariablesUsageBadge from './VariablesUsageBadge.vue';
+import VariablesForm from '@/components/VariablesForm.vue';
+import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 
 import ResourcesListLayout, {
 	type IResource,
@@ -296,13 +296,14 @@ onMounted(() => {
 		<template #default="{ data }">
 			<VariablesForm
 				v-if="editableVariables.includes(data.id)"
+				data-test-id="variables-row"
 				:key="data.id"
 				:variable="data"
 				@submit="handleSubmit"
 				@cancel="removeEditableVariable(data.id)"
 			/>
 
-			<tr v-else>
+			<tr v-else data-test-id="variables-row">
 				<td>
 					{{ data.key }}
 					<N8nBadge v-if="!data.value" class="ml-3xs" theme="warning">
