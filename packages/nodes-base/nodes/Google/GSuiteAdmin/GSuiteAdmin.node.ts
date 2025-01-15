@@ -107,11 +107,14 @@ export class GSuiteAdmin implements INodeType {
 			},
 			async getSchemaFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-				console.log('additionalFields', JSON.stringify(additionalFields));
+				const updateFields = this.getNodeParameter('updateFields', {}) as IDataObject;
 
-				if (additionalFields.customFields) {
-				} else {
-					console.warn('No Custom Fields found in additionalFields.');
+				const fieldsContainer = { ...additionalFields, ...updateFields };
+
+				const customFields = (fieldsContainer.customFields as IDataObject)
+					.fieldValues as IDataObject[];
+				const schemaName = customFields?.[0]?.schemaName as string;
+				if (!schemaName) {
 					return [
 						{
 							name: 'Invalid Schema: Missing schemaName.',
@@ -119,11 +122,6 @@ export class GSuiteAdmin implements INodeType {
 						},
 					];
 				}
-				const customFields = (additionalFields.customFields as IDataObject)
-					.fieldValues as IDataObject[];
-				console.log('customFields', customFields);
-				const schemaName = customFields?.[0]?.schemaName as string;
-				console.log('Schema Name:', schemaName);
 
 				try {
 					const schema = await googleApiRequest.call(
