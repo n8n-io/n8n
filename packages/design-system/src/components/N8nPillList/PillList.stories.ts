@@ -1,5 +1,4 @@
 import type { StoryFn } from '@storybook/vue3';
-import { ref, watch } from 'vue';
 
 import N8nPillList from './PillList.vue';
 
