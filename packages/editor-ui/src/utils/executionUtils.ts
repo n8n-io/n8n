@@ -192,7 +192,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
  * finish, when the client receives the full data.
  */
 export function hasTrimmedItem(taskData: ITaskData[]) {
-	return taskData[0]?.data?.main[0]?.[0].json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
+	return taskData[0]?.data?.main?.[0]?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
 }
 
 /**
