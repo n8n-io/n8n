@@ -47,7 +47,6 @@ export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTagList } from './N8nTagList';
 export { default as N8nTags } from './N8nTags';
-export { default as N8nTagsSelector } from './N8nTagsSelector';
 export { default as N8nText } from './N8nText';
 export { default as N8nTooltip } from './N8nTooltip';
 export { default as N8nTree } from './N8nTree';

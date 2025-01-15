@@ -1,59 +1,68 @@
-<script setup lang="ts" generic="Item extends { name: string }">
+<script
+	setup
+	lang="ts"
+	generic="Value, Item extends { name: string; tooltip: string; defaultValue: Value }"
+>
 import { computed } from 'vue';
 
-import N8nTagsSelector from '../N8nTagsSelector';
-
 defineSlots<{
-	// selector?: (props: Pick<Item, 'name'>) => unknown;
 	displayItem: (props: Item) => unknown;
 }>();
 
 type TagListProps = {
-	inputs?: Item[];
-	columnView?: boolean;
-	verticalSpacing?: '' | 'xs' | 's' | 'm' | 'l' | 'xl';
+	inputs: Item[];
 };
 
 const props = withDefaults(defineProps<TagListProps>(), {
 	inputs: () => [],
-	columnView: false,
-	verticalSpacing: '',
 });
 
-const emit = defineEmits<{
-	itemDeclared: [name: string];
-	itemUndeclared: [name: string];
-}>();
+const selectedItems = defineModel<Record<string, Value>>({ required: true });
+const inputMap = computed(() => Object.fromEntries(props.inputs.map((x) => [x.name, x] as const)));
 
-const selectedItems = defineModel<string[]>({ required: true });
-const selectableItems = computed(() =>
-	props.inputs.filter((item) => !selectedItems.value.includes(item.name)),
-);
-const inputMap = computed(() => Object.fromEntries(props.inputs.map((x) => [x.name, x])));
+const visibleTags = computed(() => {
+	return props.inputs.filter((tag) => !selectedItems.value.hasOwnProperty(tag.name));
+});
+
+const sortedSelectedItems = computed(() => {
+	return Object.keys(selectedItems.value)
+		.map((name) => ({ name, item: inputMap.value[name] }))
+		.toSorted((a, b) => (a[0] < b[0] ? -1 : 1));
+});
+
+function addToSelectedItems(name: string) {
+	selectedItems.value[name] = inputMap.value[name].defaultValue;
+}
 
 function removeItem(name: string) {
-	const index = selectedItems.value.indexOf(name);
-	if (index !== -1) {
-		selectedItems.value.splice(index, 1);
-	}
+	delete selectedItems.value[name];
 }
 </script>
 
 <template>
 	<div>
-		<N8nTagsSelector v-model="selectedItems" :inputs="props.inputs.map((x) => x.name)" />
-		<div v-for="name in selectedItems" :class="$style.slotComboContainer" :key="name">
+		<div :class="$style.tagContainer">
+			<span
+				v-for="item in visibleTags.toSorted((a, b) => (a.name < b.name ? -1 : 1))"
+				:key="item.name"
+				:class="$style.tagCell"
+				@click="addToSelectedItems(item.name)"
+			>
+				+ Add a {{ item.name }}
+			</span>
+		</div>
+		<div v-for="item in sortedSelectedItems" :key="item.name" :class="$style.slotComboContainer">
 			<N8nIconButton
 				type="tertiary"
 				text
 				:class="$style.slotRemoveIcon"
 				size="mini"
 				icon="trash"
-				:data-test-id="`tag-listremove-field-button-${name}`"
-				@click="removeItem(name)"
+				:data-test-id="`tag-listremove-field-button-${item.name}`"
+				@click="removeItem(item.name)"
 			/>
 			<div :class="$style.slotContainer">
-				<slot name="displayItem" v-bind="inputMap[name]">{ Empty TagList slot}</slot>
+				<slot name="displayItem" v-bind="item.item">{ Empty TagList slot}</slot>
 			</div>
 		</div>
 	</div>
@@ -84,5 +93,27 @@ function removeItem(name: string) {
 .gridMulti {
 	composes: grid;
 	grid-template-columns: repeat(2, 1fr);
+}
+
+.tagContainer {
+	width: 100%;
+	flex-wrap: wrap;
+	display: flex;
+}
+.tagCell {
+	display: flex;
+	margin: var(--spacing-4xs) var(--spacing-3xs) 0 0;
+
+	min-width: max-content;
+	border-radius: var(--border-radius-base);
+	font-size: small;
+	background-color: var(--color-ndv-background);
+	color: var(--text-color-dark);
+
+	cursor: pointer;
+
+	:hover {
+		color: var(--color-primary);
+	}
 }
 </style>

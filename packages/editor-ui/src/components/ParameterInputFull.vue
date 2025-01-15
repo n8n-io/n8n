@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type ComputedRef, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, type ComputedRef, ref, useTemplateRef, watch } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -63,8 +63,6 @@ const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 
-const selectedFields = ref<string[]>([]);
-
 const node = computed(() => ndvStore.activeNode);
 const parameterOverrides = ref<ParameterOverride | null>(
 	makeOverrideValue(
@@ -72,13 +70,6 @@ const parameterOverrides = ref<ParameterOverride | null>(
 		node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	),
 );
-
-onMounted(() => {
-	parameterOverrides.value = makeOverrideValue(
-		props,
-		node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
-	);
-});
 
 const isContentOverride = computed(() =>
 	parameterOverrides.value?.isOverrideValue(props.value?.toString() ?? ''),
@@ -391,19 +382,25 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 			/>
 		</div>
 		<N8nTagList
-			v-if="isContentOverride"
-			v-model="selectedFields"
-			:inputs="Object.keys(parameterOverrides?.extraProps ?? {}).map((x) => ({ name: x }))"
+			v-if="isContentOverride && parameterOverrides"
+			v-model="parameterOverrides.extraPropValues"
+			:inputs="
+				Object.entries(parameterOverrides.extraProps).map(([name, prop]) => ({
+					name,
+					...prop,
+				}))
+			"
 		>
-			<template #displayItem="{ name }">
+			<template #displayItem="{ name, tooltip, defaultValue }">
 				<ParameterInputFull
 					:parameter="{
-						name: name,
-						displayName: name[0].toUpperCase() + name.slice(1),
+						name,
+						displayName: name,
 						type: 'string',
-						default: '',
+						default: defaultValue,
 						noDataExpression: true,
 					}"
+					:tooltip="tooltip"
 					:value="parameterOverrides?.extraPropValues[name]"
 					:path="`${path}.tags.${name}`"
 					input-size="small"

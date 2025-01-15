@@ -21,8 +21,8 @@ type Context = {
 
 type FromAiOverrideExtraProps = 'description';
 type ExtraPropValue = {
-	default: string;
-	placeholder: string;
+	defaultValue: string;
+	tooltip: string;
 };
 
 export class FromAiOverride implements ParameterOverride {
@@ -39,8 +39,8 @@ export class FromAiOverride implements ParameterOverride {
 
 	readonly extraProps: Record<FromAiOverrideExtraProps, ExtraPropValue> = {
 		description: {
-			default: '',
-			placeholder: 'Description of how the model should define this value',
+			defaultValue: '',
+			tooltip: 'Description of how the model should define this value',
 		},
 	};
 
@@ -66,10 +66,7 @@ export class FromAiOverride implements ParameterOverride {
 
 	buildValueFromOverride(props: Context, excludeMarker: boolean) {
 		const { key, type } = this.providers;
-		// const providedExtraProps = Object.fromEntries(
-		// 	Object.entries(extraPropValues ?? {}).filter((x) => selectedFields.includes(x[0])),
-		// );
-		return `={{ ${excludeMarker ? '' : FromAiOverride.MARKER} $fromAI('${key(props)}', '${this.extraPropValues?.description?.toString() ?? this.extraProps.description.default}', '${type(props)}') }}`;
+		return `={{ ${excludeMarker ? '' : FromAiOverride.MARKER} $fromAI('${key(props)}', '${this.extraPropValues?.description?.toString() ?? this.extraProps.description.defaultValue}', '${type(props)}') }}`;
 	}
 
 	parseOverrides(s: string): Record<keyof typeof this.extraProps, string | undefined> | null {
@@ -118,14 +115,13 @@ export function makeOverrideValue(
 ): ParameterOverride | null {
 	if (!nodeType) return null;
 
-	const s = context.value?.toString();
 	if (FromAiOverride.canBeContentOverride(context, nodeType)) {
 		const fromAiOverride = new FromAiOverride();
-		const existingOverrides = fromAiOverride.parseOverrides(s ?? '');
+		const existingOverrides = fromAiOverride.parseOverrides(context.value?.toString() ?? '');
 		for (const [key, value] of Object.entries(existingOverrides ?? {})) {
 			if (
 				value === undefined ||
-				value === fromAiOverride.extraProps[key as FromAiOverrideExtraProps].default
+				value === fromAiOverride.extraProps[key as FromAiOverrideExtraProps].defaultValue
 			)
 				continue;
 
