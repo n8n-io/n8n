@@ -547,7 +547,10 @@ export const userFields: INodeProperties[] = [
 								name: 'fieldName',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: ['schemaName.value'],
+									loadOptionsDependsOn: [
+										'additionalFields.test',
+										'additionalFields.customFields.fieldValues[0].schemaName',
+									],
 									loadOptionsMethod: 'getSchemaFields',
 								},
 								default: '',

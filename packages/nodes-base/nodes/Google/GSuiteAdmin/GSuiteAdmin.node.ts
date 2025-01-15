@@ -10,13 +10,9 @@ import type {
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-	searchGroups,
-	searchUsers,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescripion';
+import { searchGroups, searchUsers } from './SearchFunctions';
 import { userFields, userOperations } from './UserDescription';
 
 export class GSuiteAdmin implements INodeType {
@@ -107,14 +103,9 @@ export class GSuiteAdmin implements INodeType {
 			},
 			async getSchemaFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-				const updateFields = this.getNodeParameter('updateFields', {}) as IDataObject;
-
-				const fieldsContainer = { ...additionalFields, ...updateFields };
-
-				const customFields = (fieldsContainer.customFields as IDataObject)
-					.fieldValues as IDataObject[];
-				const schemaName = customFields?.[0]?.schemaName as string;
-				if (!schemaName) {
+				this.getExecutionId();
+				if (additionalFields.customFields) {
+				} else {
 					return [
 						{
 							name: 'Invalid Schema: Missing schemaName.',
@@ -122,6 +113,9 @@ export class GSuiteAdmin implements INodeType {
 						},
 					];
 				}
+				const customFields = (additionalFields.customFields as IDataObject)
+					.fieldValues as IDataObject[];
+				const schemaName = customFields?.[0]?.schemaName as string;
 
 				try {
 					const schema = await googleApiRequest.call(
