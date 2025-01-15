@@ -26,7 +26,11 @@ export function useTestDefinitionForm() {
 			tempValue: [],
 			isEditing: false,
 		},
-		description: '',
+		description: {
+			value: '',
+			tempValue: '',
+			isEditing: false,
+		},
 		evaluationWorkflow: {
 			mode: 'list',
 			value: '',
@@ -45,9 +49,11 @@ export function useTestDefinitionForm() {
 	const editableFields: ComputedRef<{
 		name: EditableField<string>;
 		tags: EditableField<string[]>;
+		description: EditableField<string>;
 	}> = computed(() => ({
 		name: state.value.name,
 		tags: state.value.tags,
+		description: state.value.description,
 	}));
 
 	/**
@@ -61,7 +67,11 @@ export function useTestDefinitionForm() {
 			if (testDefinition) {
 				const metrics = await evaluationsStore.fetchMetrics(testId);
 
-				state.value.description = testDefinition.description ?? '';
+				state.value.description = {
+					value: testDefinition.description ?? '',
+					isEditing: false,
+					tempValue: '',
+				};
 				state.value.name = {
 					value: testDefinition.name ?? '',
 					isEditing: false,
@@ -95,7 +105,7 @@ export function useTestDefinitionForm() {
 			const params = {
 				name: state.value.name.value,
 				workflowId,
-				description: state.value.description,
+				description: state.value.description.value,
 			};
 			return await evaluationsStore.create(params);
 		} finally {
@@ -125,8 +135,9 @@ export function useTestDefinitionForm() {
 				});
 			}
 		});
-
+		isSaving.value = true;
 		await Promise.all(promises);
+		isSaving.value = false;
 	};
 
 	const updateTest = async (testId: string) => {
@@ -142,7 +153,7 @@ export function useTestDefinitionForm() {
 
 			const params: UpdateTestDefinitionParams = {
 				name: state.value.name.value,
-				description: state.value.description,
+				description: state.value.description.value,
 			};
 
 			if (state.value.evaluationWorkflow.value) {
@@ -157,7 +168,8 @@ export function useTestDefinitionForm() {
 				params.mockedNodes = state.value.mockedNodes;
 			}
 
-			return await evaluationsStore.update({ ...params, id: testId });
+			const response = await evaluationsStore.update({ ...params, id: testId });
+			return response;
 		} finally {
 			isSaving.value = false;
 		}
