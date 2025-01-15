@@ -107,8 +107,10 @@ const classes = computed(() => ({
 	...Object.fromEntries([...nodeClasses.value].map((c) => [c, true])),
 }));
 
+const renderType = computed<CanvasNodeRenderType>(() => props.data.render.type);
+
 const dataTestId = computed(() =>
-	[CanvasNodeRenderType.StickyNote, CanvasNodeRenderType.AddNodes].includes(props.data.type)
+	[CanvasNodeRenderType.StickyNote, CanvasNodeRenderType.AddNodes].includes(renderType.value)
 		? undefined
 		: 'canvas-node',
 );
