@@ -1108,7 +1108,7 @@ onUpdated(async () => {
 				>
 					<div class="ignore-key-press-canvas code-edit-dialog">
 						<CodeNodeEditor
-							v-if="editorType === 'codeNodeEditor'"
+							v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
 							:id="parameterId"
 							:mode="codeEditorMode"
 							:model-value="modelValueString"
@@ -1119,7 +1119,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 						<HtmlEditor
-							v-else-if="editorType === 'htmlEditor' && !codeEditDialogVisible"
+							v-else-if="editorType === 'htmlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1129,7 +1129,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 						<SqlEditor
-							v-else-if="editorType === 'sqlEditor' && !codeEditDialogVisible"
+							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
@@ -1138,7 +1138,7 @@ onUpdated(async () => {
 							@update:model-value="valueChangedDebounced"
 						/>
 						<JsEditor
-							v-else-if="editorType === 'jsEditor' && !codeEditDialogVisible"
+							v-else-if="editorType === 'jsEditor' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1148,7 +1148,7 @@ onUpdated(async () => {
 						/>
 
 						<JsonEditor
-							v-else-if="parameter.type === 'json' && !codeEditDialogVisible"
+							v-else-if="parameter.type === 'json' && codeEditDialogVisible"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1256,7 +1256,7 @@ onUpdated(async () => {
 				</JsEditor>
 
 				<JsonEditor
-					v-else-if="parameter.type === 'json'"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"

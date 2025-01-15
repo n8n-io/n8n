@@ -103,6 +103,20 @@ export class JsTaskRunner extends TaskRunner {
 			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
 			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
 		});
+
+		this.preventPrototypePollution();
+	}
+
+	private preventPrototypePollution() {
+		if (process.env.NODE_ENV === 'test') return; // needed for Jest
+
+		Object.getOwnPropertyNames(globalThis)
+			// @ts-expect-error globalThis does not have string in index signature
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+			.map((name) => globalThis[name])
+			.filter((value) => typeof value === 'function')
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+			.forEach((fn) => Object.freeze(fn.prototype));
 	}
 
 	async executeTask(
@@ -203,8 +217,11 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
+				const preventPrototypeManipulation =
+					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
+
 				const taskResult = runInContext(
-					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 					{ timeout: this.taskTimeout * 1000 },
 				) as Promise<TaskResultData['result']>;
