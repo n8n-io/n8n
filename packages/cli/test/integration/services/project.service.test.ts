@@ -52,7 +52,7 @@ describe('ProjectService', () => {
 				//
 				// ACT
 				//
-				await projectService.addUser(project.id, member.id, role);
+				await projectService.addUser(project.id, { userId: member.id, role });
 
 				//
 				// ASSERT
@@ -74,7 +74,7 @@ describe('ProjectService', () => {
 					type: 'team',
 				}),
 			);
-			await projectService.addUser(project.id, member.id, 'project:viewer');
+			await projectService.addUser(project.id, { userId: member.id, role: 'project:viewer' });
 
 			await projectRelationRepository.findOneOrFail({
 				where: { userId: member.id, projectId: project.id, role: 'project:viewer' },
@@ -83,7 +83,7 @@ describe('ProjectService', () => {
 			//
 			// ACT
 			//
-			await projectService.addUser(project.id, member.id, 'project:admin');
+			await projectService.addUser(project.id, { userId: member.id, role: 'project:admin' });
 
 			//
 			// ASSERT
@@ -117,7 +117,7 @@ describe('ProjectService', () => {
 						type: 'team',
 					}),
 				);
-				await projectService.addUser(project.id, projectOwner.id, role);
+				await projectService.addUser(project.id, { userId: projectOwner.id, role });
 
 				//
 				// ACT
@@ -157,7 +157,7 @@ describe('ProjectService', () => {
 						type: 'team',
 					}),
 				);
-				await projectService.addUser(project.id, projectViewer.id, role);
+				await projectService.addUser(project.id, { userId: projectViewer.id, role });
 
 				//
 				// ACT

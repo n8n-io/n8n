@@ -91,7 +91,7 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUser(project.id, user.id, 'project:admin');
+			await projectService.addUser(project.id, { userId: user.id, role: 'project:admin' });
 
 			// ASSERT
 			const relations = await getAllProjectRelations({ projectId: project.id });

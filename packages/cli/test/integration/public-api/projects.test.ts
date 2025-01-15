@@ -498,7 +498,7 @@ describe('Projects in Public API', () => {
 				// ASSERT
 				expect(response.body).toHaveProperty(
 					'message',
-					"Invalid enum value. Expected 'project:personalOwner' | 'project:admin' | 'project:editor' | 'project:viewer', received 'project:boss'",
+					"Invalid enum value. Expected 'project:admin' | 'project:editor' | 'project:viewer', received 'project:boss'",
 				);
 			});
 
