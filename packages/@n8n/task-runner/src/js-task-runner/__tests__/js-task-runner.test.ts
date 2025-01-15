@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon';
+import { DateTime, Duration, Interval } from 'luxon';
 import type { IBinaryData } from 'n8n-workflow';
 import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
 import fs from 'node:fs';
@@ -1411,6 +1411,29 @@ describe('JsTaskRunner', () => {
 
 			expect(outcome.result).toEqual([wrapIntoJson({ prototypeChanged: false })]);
 			checkPrototypeIntact();
+		});
+
+		test('should freeze luxon prototypes', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+				[DateTime, Interval, Duration]
+						.forEach(constructor => {
+								constructor.prototype.maliciousKey = 'value';
+						});
+
+				return []
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([]);
+
+			// @ts-expect-error Non-existing property
+			expect(DateTime.now().maliciousKey).toBeUndefined();
+			// @ts-expect-error Non-existing property
+			expect(Interval.fromISO('P1Y2M10DT2H30M').maliciousKey).toBeUndefined();
+			// @ts-expect-error Non-existing property
+			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
 		});
 	});
 });
